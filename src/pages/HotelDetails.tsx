@@ -4,7 +4,8 @@ import { doc, getDoc, collection, query, where, getDocs, addDoc } from 'firebase
 import { db } from '../lib/firebase';
 import { Hotel, RoomType } from '../types';
 import { useAuth } from '../contexts/AuthContext';
-import { MapPin, Users, CheckCircle2, Star } from 'lucide-react';
+import { MapPin, Calendar, Users, Star, CheckCircle2, ChevronRight, Info } from 'lucide-react';
+import toast from 'react-hot-toast';
 import AvailabilityCalendar from '../components/AvailabilityCalendar';
 import { motion } from 'motion/react';
 
@@ -60,15 +61,15 @@ export default function HotelDetails() {
 
   const initiateBooking = (room: RoomType) => {
     if (!user) {
-      alert("Please sign in as a traveller to book.");
+      toast.error("Please sign in as a traveller to book.");
       return;
     }
     if (user.role !== 'traveller') {
-      alert("Only travellers can book rooms. Please sign in as a traveller.");
+      toast.error("Only travellers can book rooms. Please sign in as a traveller.");
       return;
     }
     if (guestsCount > room.maxGuests) {
-      alert(`This room can only accommodate up to ${room.maxGuests} guests. Please select a different room or reduce your guest count.`);
+      toast.error(`This room can only accommodate up to ${room.maxGuests} guests. Please select a different room or reduce your guest count.`);
       return;
     }
     setSelectedRoom(room);
@@ -99,14 +100,14 @@ export default function HotelDetails() {
         status: 'pending',
         createdAt: Date.now()
       });
-      setBookingStatus('Manual booking requested! Manager will review.');
-      setTimeout(() => {
-        setSelectedRoom(null);
-        navigate('/my-bookings');
-      }, 2000);
+      setSaving(false);
+      toast.success('Manual booking requested! Manager will review.');
+      setSelectedRoom(null);
+      navigate('/my-bookings');
     } catch (error) {
       console.error("Booking error:", error);
-      setBookingStatus('Failed to submit booking. Please try again.');
+      setSaving(false);
+      toast.error('Failed to submit booking.');
     }
   };
 

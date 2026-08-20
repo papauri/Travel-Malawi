@@ -13,6 +13,7 @@ import ManagerDashboard from './pages/ManagerDashboard';
 import ManageHotel from './pages/ManageHotel';
 import HotelDetails from './pages/HotelDetails';
 import MyBookings from './pages/MyBookings';
+import { Toaster } from 'react-hot-toast';
 
 export default function App() {
   return (
@@ -20,6 +21,17 @@ export default function App() {
       <BrowserRouter>
         <div className="min-h-screen bg-stone-50 flex flex-col font-sans">
           <Navbar />
+          <Toaster 
+            position="bottom-center"
+            toastOptions={{
+              style: {
+                background: '#1c1917',
+                color: '#fff',
+                borderRadius: '16px',
+                padding: '16px 24px',
+              }
+            }} 
+          />
           <main className="flex-1">
             <Routes>
               <Route path="/" element={<Home />} />

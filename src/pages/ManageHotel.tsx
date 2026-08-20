@@ -6,7 +6,9 @@ import { Hotel, RoomType, Booking } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { Building2, Plus, ChevronLeft, ChevronDown, CheckCircle2, XCircle, Clock, Save, Edit2, Key, Bed, Settings, Info, CreditCard, Trash2 } from 'lucide-react';
 import ImageUpload from '../components/ImageUpload';
+import ConfirmDialog from '../components/ConfirmDialog';
 import { Plus as PlusIcon, Users, Calendar, Check, X, Building, BedDouble } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 type Tab = 'details' | 'rooms' | 'bookings';
 
@@ -19,6 +21,7 @@ export default function ManageHotel() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [confirmModalBooking, setConfirmModalBooking] = useState<string | null>(null);
+  const [bookingToDelete, setBookingToDelete] = useState<string | null>(null);
 
   // Data states
   const [hotel, setHotel] = useState<Hotel | null>(null);
@@ -96,10 +99,10 @@ export default function ManageHotel() {
 
       await updateDoc(doc(db, 'hotels', id), updateData);
       setHotel({ ...hotel, ...updateData } as Hotel);
-      alert('Property details updated successfully!');
+      toast.success('Property details updated successfully!');
     } catch (error) {
       console.error("Error updating hotel:", error);
-      alert('Failed to update property details.');
+      toast.error('Failed to update property details.');
     } finally {
       setSaving(false);
     }
@@ -134,7 +137,7 @@ export default function ManageHotel() {
       setEditingRoomId(null);
     } catch (error) {
       console.error("Error saving room:", error);
-      alert('Failed to save room.');
+      toast.error('Failed to save room.');
     } finally {
       setSaving(false);
     }
@@ -178,13 +181,13 @@ export default function ManageHotel() {
   };
 
   const deleteBooking = async (bookingId: string) => {
-    if (!window.confirm('Are you sure you want to delete this booking permanently?')) return;
     try {
       await deleteDoc(doc(db, 'bookings', bookingId));
       setBookings(bookings.filter(b => b.id !== bookingId));
+      toast.success('Booking deleted.');
     } catch (error) {
       console.error("Error deleting booking:", error);
-      alert("Failed to delete booking.");
+      toast.error('Failed to delete booking.');
     }
   };
 
@@ -248,8 +251,8 @@ export default function ManageHotel() {
                       if (navigator.geolocation) {
                         navigator.geolocation.getCurrentPosition((position) => {
                           setEditHotelData({...editHotelData, coordinates: { lat: position.coords.latitude, lng: position.coords.longitude }});
-                          alert('Coordinates updated!');
-                        }, () => alert('Failed to get location'));
+                          toast.success('Coordinates updated!');
+                        }, () => toast.error('Failed to get location'));
                       }
                     }}
                     className="bg-stone-200 text-stone-700 px-4 rounded-xl hover:bg-stone-300 transition font-medium whitespace-nowrap"
@@ -446,7 +449,7 @@ export default function ManageHotel() {
                     <div className="text-right flex flex-col items-end">
                       <span className="font-serif font-bold text-2xl text-stone-900 mb-2">{booking.currency === 'MWK' ? 'MWK ' : '$'}{booking.total}</span>
                       <div className="flex gap-2">
-                        <button onClick={() => deleteBooking(booking.id!)} className="text-stone-400 hover:text-red-500 transition p-2">
+                        <button onClick={() => setBookingToDelete(booking.id!)} className="text-stone-400 hover:text-red-500 transition p-2">
                           <Trash2 className="h-5 w-5" />
                         </button>
                       </div>
@@ -509,6 +512,18 @@ export default function ManageHotel() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={!!bookingToDelete}
+        title="Delete Booking"
+        message="Are you sure you want to permanently delete this booking? This action cannot be undone."
+        confirmText="Delete"
+        isDestructive={true}
+        onConfirm={() => {
+          if (bookingToDelete) deleteBooking(bookingToDelete);
+        }}
+        onCancel={() => setBookingToDelete(null)}
+      />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
-import { Search, MapPin, Calendar, Users, Star } from 'lucide-react';
+import { Search, MapPin, Calendar, Users, Star, LocateFixed, ChevronDown } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { collection, getDocs, addDoc, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Hotel } from '../types';
@@ -30,13 +31,15 @@ export default function Home() {
   const [searchCheckIn, setSearchCheckIn] = useState('');
   const [searchCheckOut, setSearchCheckOut] = useState('');
   const [searchGuests, setSearchGuests] = useState<number | ''>('');
+  const [searchProximity, setSearchProximity] = useState(50);
   const [appliedSearch, setAppliedSearch] = useState<{
     location: string;
     checkIn: string;
     checkOut: string;
     guests: number | '';
     coords: { lat: number; lng: number } | null;
-  }>({ location: '', checkIn: '', checkOut: '', guests: '', coords: null });
+    proximity: number;
+  }>({ location: '', checkIn: '', checkOut: '', guests: '', coords: null, proximity: 50 });
 
   const fetchHotels = async () => {
     try {
@@ -194,7 +197,7 @@ export default function Home() {
   };
 
   const handleSearch = () => {
-    setAppliedSearch({ location: searchLocation, checkIn: searchCheckIn, checkOut: searchCheckOut, guests: searchGuests, coords: null });
+    setAppliedSearch({ location: searchLocation, checkIn: searchCheckIn, checkOut: searchCheckOut, guests: searchGuests, coords: null, proximity: searchProximity });
   };
 
   const handleNearMe = () => {
@@ -205,10 +208,14 @@ export default function Home() {
           checkIn: searchCheckIn,
           checkOut: searchCheckOut,
           guests: searchGuests,
-          coords: { lat: pos.coords.latitude, lng: pos.coords.longitude }
+          coords: { lat: pos.coords.latitude, lng: pos.coords.longitude },
+          proximity: searchProximity
         });
         setSearchLocation('Near Me');
-      }, () => alert("Could not get your location. Please check browser permissions."));
+        toast.success(`Found your location! Showing places within ${searchProximity}km.`);
+      }, () => toast.error("Could not get your location. Please check browser permissions."));
+    } else {
+      toast.error("Geolocation is not supported by your browser.");
     }
   };
 
@@ -219,8 +226,7 @@ export default function Home() {
       if (appliedSearch.coords) {
         if (!h.coordinates) return false;
         const dist = getDistance(appliedSearch.coords.lat, appliedSearch.coords.lng, h.coordinates.lat, h.coordinates.lng);
-        // Show properties within 100km radius
-        if (dist > 100) return false;
+        if (dist > appliedSearch.proximity) return false;
       } else if (appliedSearch.location) {
         const query = appliedSearch.location.toLowerCase();
         if (!h.name.toLowerCase().includes(query) && !h.location.toLowerCase().includes(query)) {
@@ -268,25 +274,71 @@ export default function Home() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-white/95 backdrop-blur-xl rounded-[2rem] p-4 shadow-2xl flex flex-col md:flex-row items-center gap-3 w-full max-w-4xl border border-white/40 ring-1 ring-black/5"
+            className="bg-white rounded-full p-2 shadow-2xl flex flex-col md:flex-row items-center w-full max-w-4xl border border-stone-200"
           >
-            <div className="flex-1 flex items-center px-4 py-3 hover:bg-stone-50 rounded-xl cursor-pointer w-full transition">
-              <MapPin className="h-5 w-5 text-stone-400 mr-4 shrink-0" />
-              <div className="text-left w-full">
+            {/* Location & Near Me */}
+            <div className="flex-1 flex items-center px-6 py-3 hover:bg-stone-50 rounded-full cursor-pointer w-full transition relative group">
+              <MapPin className="h-5 w-5 text-stone-400 mr-3 shrink-0" />
+              <div className="text-left w-full flex-1">
                 <p className="text-xs font-bold text-stone-900 uppercase tracking-wider mb-0.5">Where</p>
-                <input 
-                  type="text" 
-                  value={searchLocation}
-                  onChange={(e) => setSearchLocation(e.target.value)}
-                  placeholder="Search destinations" 
-                  className="bg-transparent border-none p-0 focus:ring-0 text-stone-600 text-sm w-full outline-none"
-                />
+                <div className="flex items-center">
+                  <input 
+                    type="text" 
+                    value={searchLocation}
+                    onChange={(e) => setSearchLocation(e.target.value)}
+                    placeholder="Search destinations" 
+                    className="bg-transparent border-none p-0 focus:ring-0 text-stone-600 text-sm w-full outline-none"
+                  />
+                  
+                  {/* Near Me Target Button inside input */}
+                  <div className="relative flex items-center">
+                    <button 
+                      title="Near Me"
+                      onClick={handleNearMe}
+                      className={`p-1.5 rounded-full transition ${searchLocation === 'Near Me' ? 'bg-emerald-100 text-emerald-600' : 'hover:bg-stone-200 text-stone-400 hover:text-stone-600'}`}
+                    >
+                      <LocateFixed className="w-4 h-4" />
+                    </button>
+                    
+                    {/* Proximity Dropdown (Visible only when 'Near Me' is active) */}
+                    {searchLocation === 'Near Me' && (
+                      <div className="absolute top-full right-0 mt-4 bg-white rounded-2xl shadow-xl border border-stone-100 p-4 w-64 z-50">
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-sm font-bold text-stone-900">Radius</span>
+                          <span className="text-sm font-medium text-emerald-600">{searchProximity} km</span>
+                        </div>
+                        <input 
+                          type="range" 
+                          min="5" 
+                          max="200" 
+                          step="5"
+                          value={searchProximity} 
+                          onChange={(e) => {
+                            setSearchProximity(Number(e.target.value));
+                            // Update applied search if already active
+                            if (appliedSearch.coords) {
+                              setAppliedSearch(prev => ({ ...prev, proximity: Number(e.target.value) }));
+                            }
+                          }}
+                          className="w-full accent-emerald-600 cursor-pointer"
+                        />
+                        <div className="flex justify-between text-xs text-stone-400 mt-2 font-medium">
+                          <span>5km</span>
+                          <span>200km</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
-            <div className="hidden md:block w-px h-10 bg-stone-200" />
-            <div className="flex-1 flex items-center px-4 py-3 hover:bg-stone-50 rounded-xl cursor-pointer w-full transition">
-              <Calendar className="h-5 w-5 text-stone-400 mr-4 shrink-0" />
-              <div className="text-left w-full flex gap-2">
+            
+            <div className="hidden md:block w-px h-10 bg-stone-200 mx-2" />
+            
+            {/* Dates */}
+            <div className="flex-[1.2] flex items-center px-6 py-3 hover:bg-stone-50 rounded-full cursor-pointer w-full transition">
+              <Calendar className="h-5 w-5 text-stone-400 mr-3 shrink-0" />
+              <div className="text-left w-full flex gap-4">
                 <div className="flex-1">
                   <p className="text-xs font-bold text-stone-900 uppercase tracking-wider mb-0.5">Check in</p>
                   <input type="date" min={new Date().toISOString().split('T')[0]} value={searchCheckIn} onChange={(e) => setSearchCheckIn(e.target.value)} className="bg-transparent border-none p-0 focus:ring-0 text-stone-600 text-sm w-full outline-none" />
@@ -297,33 +349,30 @@ export default function Home() {
                 </div>
               </div>
             </div>
-            <div className="hidden md:block w-px h-10 bg-stone-200" />
-            <div className="flex-1 flex items-center px-4 py-3 hover:bg-stone-50 rounded-xl cursor-pointer w-full transition">
-              <Users className="h-5 w-5 text-stone-400 mr-4 shrink-0" />
-              <div className="text-left w-full">
-                <p className="text-xs font-bold text-stone-900 uppercase tracking-wider mb-0.5">Who</p>
-                <input 
-                  type="number" 
-                  min="1"
-                  value={searchGuests}
-                  onChange={(e) => setSearchGuests(e.target.value ? parseInt(e.target.value) : '')}
-                  placeholder="Guests" 
-                  className="bg-transparent border-none p-0 focus:ring-0 text-stone-600 text-sm w-full outline-none"
-                />
+            
+            <div className="hidden md:block w-px h-10 bg-stone-200 mx-2" />
+            
+            {/* Guests & Search Button */}
+            <div className="flex-[0.8] flex items-center pl-6 pr-2 py-2 hover:bg-stone-50 rounded-full cursor-pointer w-full transition justify-between">
+              <div className="flex items-center flex-1">
+                <Users className="h-5 w-5 text-stone-400 mr-3 shrink-0" />
+                <div className="text-left w-full pr-4">
+                  <p className="text-xs font-bold text-stone-900 uppercase tracking-wider mb-0.5">Who</p>
+                  <input 
+                    type="number" 
+                    min="1"
+                    value={searchGuests}
+                    onChange={(e) => setSearchGuests(e.target.value ? parseInt(e.target.value) : '')}
+                    placeholder="Guests" 
+                    className="bg-transparent border-none p-0 focus:ring-0 text-stone-600 text-sm w-full outline-none"
+                  />
+                </div>
               </div>
-            </div>
-            <div className="flex flex-col md:flex-row gap-2">
-              <button 
-                onClick={handleNearMe}
-                className="bg-emerald-600 px-6 py-5 rounded-xl text-white hover:bg-emerald-700 transition w-full md:w-auto font-medium whitespace-nowrap"
-              >
-                📍 Near Me
-              </button>
               <button 
                 onClick={handleSearch}
-                className="bg-stone-900 px-8 py-5 rounded-xl text-white hover:bg-stone-800 transition w-full md:w-auto font-medium"
+                className="bg-stone-900 h-12 w-12 rounded-full flex items-center justify-center text-white hover:bg-stone-800 transition shrink-0"
               >
-                Search
+                <Search className="h-5 w-5" />
               </button>
             </div>
           </motion.div>

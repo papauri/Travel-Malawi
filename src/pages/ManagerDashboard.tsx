@@ -5,6 +5,7 @@ import { db } from '../lib/firebase';
 import { Hotel } from '../types';
 import { Building2, Plus, ChevronRight, TestTube } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
+import toast from 'react-hot-toast';
 
 import ImageUpload from '../components/ImageUpload';
 
@@ -148,8 +149,8 @@ export default function ManagerDashboard() {
                     if (navigator.geolocation) {
                       navigator.geolocation.getCurrentPosition((position) => {
                         setNewHotel({...newHotel, coordinates: { lat: position.coords.latitude, lng: position.coords.longitude }});
-                        alert('Coordinates updated!');
-                      }, () => alert('Failed to get location'));
+                        toast.success('Coordinates updated!');
+                      }, () => toast.error('Failed to get location'));
                     }
                   }}
                   className="bg-stone-100 text-stone-600 px-4 rounded-xl hover:bg-stone-200 transition font-medium whitespace-nowrap"

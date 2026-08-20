@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Upload, Link as LinkIcon, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { uploadImage } from '../lib/uploadImage';
+import toast from 'react-hot-toast';
 
 interface Props {
   value: string;
@@ -25,7 +26,7 @@ export default function ImageUpload({ value, onChange, label = 'Image', folder =
       setMode('url');
     } catch (error) {
       console.error("Error uploading image:", error);
-      alert("Failed to upload image. Please try again.");
+      toast.error('Failed to upload image.');
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) {
