@@ -7,7 +7,7 @@ import { Building2, Plus, ChevronRight, TestTube } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 
 export default function ManagerDashboard() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [hotels, setHotels] = useState<Hotel[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,12 +37,14 @@ export default function ManagerDashboard() {
   };
 
   useEffect(() => {
-    if (!user || user.role !== 'hotel_manager') {
-      navigate('/');
-      return;
+    if (!authLoading) {
+      if (!user || user.role !== 'hotel_manager') {
+        navigate('/');
+        return;
+      }
+      fetchMyHotels();
     }
-    fetchMyHotels();
-  }, [user, navigate]);
+  }, [user, authLoading, navigate]);
 
   const handleAddHotel = async (e: React.FormEvent) => {
     e.preventDefault();

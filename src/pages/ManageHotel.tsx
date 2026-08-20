@@ -11,7 +11,7 @@ type Tab = 'details' | 'rooms' | 'bookings';
 export default function ManageHotel() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   
   const [activeTab, setActiveTab] = useState<Tab>('details');
   const [loading, setLoading] = useState(true);
@@ -29,6 +29,8 @@ export default function ManageHotel() {
   const [editRoomData, setEditRoomData] = useState<Partial<RoomType>>({});
 
   useEffect(() => {
+    if (authLoading) return;
+    
     if (!user || user.role !== 'hotel_manager') {
       navigate('/');
       return;
@@ -63,7 +65,7 @@ export default function ManageHotel() {
       }
     }
     fetchData();
-  }, [id, user, navigate]);
+  }, [id, user, authLoading, navigate]);
 
   // --- HOTEL HANDLERS ---
   const handleSaveHotel = async (e: React.FormEvent) => {
