@@ -4,7 +4,9 @@ import { doc, getDoc, collection, query, where, getDocs, addDoc, updateDoc } fro
 import { db } from '../lib/firebase';
 import { Hotel, RoomType, Booking } from '../types';
 import { useAuth } from '../contexts/AuthContext';
-import { Plus, Users, Calendar, Check, X, Building, BedDouble, Save, Edit2 } from 'lucide-react';
+import { Building2, Plus, ChevronLeft, ChevronDown, CheckCircle2, XCircle, Clock, Save, Edit2, Key, Bed, Settings, Info, CreditCard } from 'lucide-react';
+import ImageUpload from '../components/ImageUpload';
+import { Plus as PlusIcon, Users, Calendar, Check, X, Building, BedDouble } from 'lucide-react';
 
 type Tab = 'details' | 'rooms' | 'bookings';
 
@@ -227,12 +229,14 @@ export default function ManageHotel() {
                 <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Location</label>
                 <input type="text" required value={editHotelData.location || ''} onChange={e => setEditHotelData({...editHotelData, location: e.target.value})} className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition" />
               </div>
-              <div>
-                <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Main Image URL</label>
-                <input type="url" required value={editHotelData.imageUrl || ''} onChange={e => setEditHotelData({...editHotelData, imageUrl: e.target.value})} className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition" />
-              </div>
+              <ImageUpload
+                label="Main Property Image"
+                value={editHotelData.imageUrl || ''}
+                onChange={(url) => setEditHotelData({ ...editHotelData, imageUrl: url })}
+                folder="hotels"
+              />
               <div className="md:col-span-2">
-                <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Gallery Image URLs (comma separated)</label>
+                <label className="block text-sm font-bold text-stone-700 mb-2 uppercase tracking-wide">Gallery Image URLs (comma separated)</label>
                 <input type="text" value={Array.isArray(editHotelData.galleryUrls) ? editHotelData.galleryUrls.join(', ') : editHotelData.galleryUrls || ''} onChange={e => setEditHotelData({...editHotelData, galleryUrls: e.target.value as any})} className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition" placeholder="https://..., https://..." />
               </div>
               <div className="md:col-span-2">
@@ -278,10 +282,14 @@ export default function ManageHotel() {
                     <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Description</label>
                     <textarea required rows={3} value={editRoomData.description || ''} onChange={e => setEditRoomData({...editRoomData, description: e.target.value})} className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition" />
                   </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Image URL</label>
-                    <input type="url" value={editRoomData.imageUrl || ''} onChange={e => setEditRoomData({...editRoomData, imageUrl: e.target.value})} className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition" />
-                  </div>
+                    <div className="md:col-span-2">
+                      <ImageUpload
+                        label="Room Image"
+                        value={editRoomData.imageUrl || ''}
+                        onChange={(url) => setEditRoomData({...editRoomData, imageUrl: url})}
+                        folder="rooms"
+                      />
+                    </div>
                   <div>
                     <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Currency</label>
                     <select value={editRoomData.currency || 'USD'} onChange={e => setEditRoomData({...editRoomData, currency: e.target.value})} className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition">
@@ -384,6 +392,13 @@ export default function ManageHotel() {
                           {booking.status}
                         </span>
                       </div>
+                      {(booking.guestEmail || booking.guestPhone) && (
+                        <div className="text-sm text-stone-500 mb-2 flex gap-4">
+                          {booking.guestEmail && <span>✉️ {booking.guestEmail}</span>}
+                          {booking.guestPhone && <span>📞 {booking.guestPhone}</span>}
+                        </div>
+                      )}
+                      <p className="text-stone-500 font-medium mb-1">{rooms.find(r => r.id === booking.roomTypeId)?.name || 'Unknown Room'}</p>
                       <div className="text-sm text-stone-500 flex items-center gap-2">
                         <Calendar className="h-4 w-4" />
                         {booking.checkIn} — {booking.checkOut} ({booking.guests} Guests)

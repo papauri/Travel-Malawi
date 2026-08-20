@@ -13,6 +13,8 @@ export default function HotelDetails() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
+  
+  const today = new Date().toISOString().split('T')[0];
   const [hotel, setHotel] = useState<Hotel | null>(null);
   const [rooms, setRooms] = useState<RoomType[]>([]);
   const [loading, setLoading] = useState(true);
@@ -22,6 +24,8 @@ export default function HotelDetails() {
   const [checkOut, setCheckOut] = useState(searchParams.get('checkOut') || '');
   const [guestsCount, setGuestsCount] = useState(searchParams.get('guests') ? parseInt(searchParams.get('guests')!) : 2);
   const [guestName, setGuestName] = useState(user?.displayName || '');
+  const [guestEmail, setGuestEmail] = useState(user?.email || '');
+  const [guestPhone, setGuestPhone] = useState('');
   const [specialRequests, setSpecialRequests] = useState('');
 
   useEffect(() => {
@@ -49,6 +53,7 @@ export default function HotelDetails() {
   useEffect(() => {
     if (user) {
       setGuestName(user.displayName || '');
+      setGuestEmail(user.email || '');
     }
   }, [user]);
 
@@ -59,6 +64,10 @@ export default function HotelDetails() {
     }
     if (user.role !== 'traveller') {
       alert("Only travellers can book rooms. Please sign in as a traveller.");
+      return;
+    }
+    if (guestsCount > room.maxGuests) {
+      alert(`This room can only accommodate up to ${room.maxGuests} guests. Please select a different room or reduce your guest count.`);
       return;
     }
     setSelectedRoom(room);
@@ -75,10 +84,12 @@ export default function HotelDetails() {
         roomTypeId: selectedRoom.id,
         guestId: user.uid,
         guestName: guestName,
+        guestEmail: guestEmail,
+        guestPhone: guestPhone,
         checkIn: checkIn,
         checkOut: checkOut,
         specialRequests: specialRequests,
-        guests: 2,
+        guests: guestsCount,
         quantity: 1,
         total: selectedRoom.price,
         currency: selectedRoom.currency || 'USD',
@@ -310,12 +321,22 @@ export default function HotelDetails() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
+                  <label className="block text-sm font-bold text-stone-700 mb-2 uppercase tracking-wide">Email</label>
+                  <input type="email" required value={guestEmail} onChange={e => setGuestEmail(e.target.value)} className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition" />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-stone-700 mb-2 uppercase tracking-wide">Phone Number</label>
+                  <input type="tel" required value={guestPhone} onChange={e => setGuestPhone(e.target.value)} className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition" placeholder="+1234567890" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
                   <label className="block text-sm font-bold text-stone-700 mb-2 uppercase tracking-wide">Check In</label>
-                  <input type="date" required value={checkIn} onChange={e => setCheckIn(e.target.value)} className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition" />
+                  <input type="date" required min={today} value={checkIn} onChange={e => setCheckIn(e.target.value)} className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition" />
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-stone-700 mb-2 uppercase tracking-wide">Check Out</label>
-                  <input type="date" required value={checkOut} onChange={e => setCheckOut(e.target.value)} className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition" />
+                  <input type="date" required min={checkIn || today} value={checkOut} onChange={e => setCheckOut(e.target.value)} className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition" />
                 </div>
               </div>
               <div>

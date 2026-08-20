@@ -6,6 +6,8 @@ import { Hotel } from '../types';
 import { Building2, Plus, ChevronRight, TestTube } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 
+import ImageUpload from '../components/ImageUpload';
+
 export default function ManagerDashboard() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -132,16 +134,12 @@ export default function ManagerDashboard() {
                 placeholder="e.g. Lake Malawi"
               />
             </div>
-            <div>
-              <label className="block text-sm font-bold text-stone-700 mb-2 uppercase tracking-wide">Image URL</label>
-              <input 
-                type="url" 
-                value={newHotel.imageUrl}
-                onChange={e => setNewHotel({...newHotel, imageUrl: e.target.value})}
-                className="w-full rounded-xl border-stone-200 border bg-stone-50 p-4 focus:ring-2 focus:ring-stone-900 focus:border-transparent outline-none transition"
-                placeholder="https://images.unsplash.com/..."
-              />
-            </div>
+            <ImageUpload 
+              label="Property Main Image"
+              value={newHotel.imageUrl}
+              onChange={(url) => setNewHotel({...newHotel, imageUrl: url})}
+              folder="hotels"
+            />
             <div>
               <label className="block text-sm font-bold text-stone-700 mb-2 uppercase tracking-wide">Description</label>
               <textarea 

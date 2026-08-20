@@ -40,6 +40,8 @@ export interface Booking {
   roomTypeId: string;
   guestId: string;
   guestName: string;
+  guestEmail?: string;
+  guestPhone?: string;
   checkIn: string;
   checkOut: string;
   guests: number;

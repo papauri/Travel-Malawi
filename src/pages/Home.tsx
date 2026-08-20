@@ -250,11 +250,11 @@ export default function Home() {
               <div className="text-left w-full flex gap-2">
                 <div className="flex-1">
                   <p className="text-xs font-bold text-stone-900 uppercase tracking-wider mb-0.5">Check in</p>
-                  <input type="date" value={searchCheckIn} onChange={(e) => setSearchCheckIn(e.target.value)} className="bg-transparent border-none p-0 focus:ring-0 text-stone-600 text-sm w-full outline-none" />
+                  <input type="date" min={new Date().toISOString().split('T')[0]} value={searchCheckIn} onChange={(e) => setSearchCheckIn(e.target.value)} className="bg-transparent border-none p-0 focus:ring-0 text-stone-600 text-sm w-full outline-none" />
                 </div>
                 <div className="flex-1">
                   <p className="text-xs font-bold text-stone-900 uppercase tracking-wider mb-0.5">Check out</p>
-                  <input type="date" value={searchCheckOut} onChange={(e) => setSearchCheckOut(e.target.value)} className="bg-transparent border-none p-0 focus:ring-0 text-stone-600 text-sm w-full outline-none" />
+                  <input type="date" min={searchCheckIn || new Date().toISOString().split('T')[0]} value={searchCheckOut} onChange={(e) => setSearchCheckOut(e.target.value)} className="bg-transparent border-none p-0 focus:ring-0 text-stone-600 text-sm w-full outline-none" />
                 </div>
               </div>
             </div>
