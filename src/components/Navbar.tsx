@@ -3,10 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogOut, User as UserIcon, X, Palmtree, Mail, Lock, ChevronDown } from 'lucide-react';
+import { LogOut, User as UserIcon, X, Palmtree, Mail, Lock, ChevronDown, Bell } from 'lucide-react';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
 type AuthMode = 'signin' | 'signup';
 type RoleChoice = 'traveller' | 'hotel_manager';
@@ -22,6 +24,21 @@ export default function Navbar() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
+
+  useEffect(() => {
+    if (user?.role === 'hotel_manager') {
+      const q = query(
+        collection(db, 'bookings'),
+        where('managerId', '==', user.uid),
+        where('status', '==', 'pending')
+      );
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        setPendingCount(snapshot.docs.length);
+      });
+      return () => unsubscribe();
+    }
+  }, [user]);
 
   const resetForm = () => {
     setEmail('');
@@ -108,9 +125,14 @@ export default function Navbar() {
                   {user.role === 'hotel_manager' && (
                     <Link
                       to="/dashboard"
-                      className="text-sm font-medium text-stone-600 hover:text-stone-900 transition relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-stone-900 after:transition-all hover:after:w-full"
+                      className="text-sm font-medium text-stone-600 hover:text-stone-900 transition flex items-center gap-1"
                     >
                       Dashboard
+                      {pendingCount > 0 && (
+                        <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full flex items-center justify-center">
+                          {pendingCount}
+                        </span>
+                      )}
                     </Link>
                   )}
                   {user.role === 'traveller' && (

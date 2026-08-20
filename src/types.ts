@@ -14,6 +14,7 @@ export interface Hotel {
   name: string;
   description: string;
   location: string;
+  coordinates?: { lat: number; lng: number };
   amenities: string[];
   categories?: string[];
   galleryUrls?: string[];
@@ -37,11 +38,13 @@ export interface RoomType {
 export interface Booking {
   id?: string;
   hotelId: string;
+  managerId: string;
   roomTypeId: string;
   guestId: string;
   guestName: string;
   guestEmail?: string;
   guestPhone?: string;
+  guestWhatsapp?: string;
   checkIn: string;
   checkOut: string;
   guests: number;

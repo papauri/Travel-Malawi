@@ -15,11 +15,18 @@ export default function ManagerDashboard() {
   const [loading, setLoading] = useState(true);
   
   const [showAddForm, setShowAddForm] = useState(false);
-  const [newHotel, setNewHotel] = useState({
+  const [newHotel, setNewHotel] = useState<{
+    name: string;
+    description: string;
+    location: string;
+    imageUrl: string;
+    coordinates: { lat: number; lng: number } | null;
+  }>({
     name: '',
     description: '',
     location: '',
-    imageUrl: ''
+    imageUrl: '',
+    coordinates: null
   });
 
   const fetchMyHotels = async () => {
@@ -58,6 +65,7 @@ export default function ManagerDashboard() {
         name: newHotel.name,
         description: newHotel.description,
         location: newHotel.location,
+        coordinates: newHotel.coordinates,
         imageUrl: newHotel.imageUrl,
         amenities: [],
         categories: [],
@@ -125,14 +133,33 @@ export default function ManagerDashboard() {
             </div>
             <div>
               <label className="block text-sm font-bold text-stone-700 mb-2 uppercase tracking-wide">Location</label>
-              <input 
-                required
-                type="text" 
-                value={newHotel.location}
-                onChange={e => setNewHotel({...newHotel, location: e.target.value})}
-                className="w-full rounded-xl border-stone-200 border bg-stone-50 p-4 focus:ring-2 focus:ring-stone-900 focus:border-transparent outline-none transition"
-                placeholder="e.g. Lake Malawi"
-              />
+              <div className="flex gap-2">
+                <input 
+                  required
+                  type="text" 
+                  value={newHotel.location}
+                  onChange={e => setNewHotel({...newHotel, location: e.target.value})}
+                  className="flex-1 rounded-xl border-stone-200 border bg-stone-50 p-4 focus:ring-2 focus:ring-stone-900 focus:border-transparent outline-none transition"
+                  placeholder="e.g. Lake Malawi"
+                />
+                <button 
+                  type="button"
+                  onClick={() => {
+                    if (navigator.geolocation) {
+                      navigator.geolocation.getCurrentPosition((position) => {
+                        setNewHotel({...newHotel, coordinates: { lat: position.coords.latitude, lng: position.coords.longitude }});
+                        alert('Coordinates updated!');
+                      }, () => alert('Failed to get location'));
+                    }
+                  }}
+                  className="bg-stone-100 text-stone-600 px-4 rounded-xl hover:bg-stone-200 transition font-medium whitespace-nowrap"
+                >
+                  📍 Get Coords
+                </button>
+              </div>
+              {newHotel.coordinates && (
+                <p className="text-xs text-stone-500 mt-2">Saved coordinates: {newHotel.coordinates.lat.toFixed(4)}, {newHotel.coordinates.lng.toFixed(4)}</p>
+              )}
             </div>
             <ImageUpload 
               label="Property Main Image"

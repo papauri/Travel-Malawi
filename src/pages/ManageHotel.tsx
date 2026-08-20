@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { doc, getDoc, collection, query, where, getDocs, addDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Hotel, RoomType, Booking } from '../types';
 import { useAuth } from '../contexts/AuthContext';
-import { Building2, Plus, ChevronLeft, ChevronDown, CheckCircle2, XCircle, Clock, Save, Edit2, Key, Bed, Settings, Info, CreditCard } from 'lucide-react';
+import { Building2, Plus, ChevronLeft, ChevronDown, CheckCircle2, XCircle, Clock, Save, Edit2, Key, Bed, Settings, Info, CreditCard, Trash2 } from 'lucide-react';
 import ImageUpload from '../components/ImageUpload';
 import { Plus as PlusIcon, Users, Calendar, Check, X, Building, BedDouble } from 'lucide-react';
 
@@ -18,6 +18,7 @@ export default function ManageHotel() {
   const [activeTab, setActiveTab] = useState<Tab>('details');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [confirmModalBooking, setConfirmModalBooking] = useState<string | null>(null);
 
   // Data states
   const [hotel, setHotel] = useState<Hotel | null>(null);
@@ -170,8 +171,20 @@ export default function ManageHotel() {
     try {
       await updateDoc(doc(db, 'bookings', bookingId), { status });
       setBookings(bookings.map(b => b.id === bookingId ? { ...b, status } : b));
+      if (status === 'confirmed') setConfirmModalBooking(null);
     } catch (error) {
       console.error("Error updating booking:", error);
+    }
+  };
+
+  const deleteBooking = async (bookingId: string) => {
+    if (!window.confirm('Are you sure you want to delete this booking permanently?')) return;
+    try {
+      await deleteDoc(doc(db, 'bookings', bookingId));
+      setBookings(bookings.filter(b => b.id !== bookingId));
+    } catch (error) {
+      console.error("Error deleting booking:", error);
+      alert("Failed to delete booking.");
     }
   };
 
@@ -227,7 +240,26 @@ export default function ManageHotel() {
               </div>
               <div>
                 <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Location</label>
-                <input type="text" required value={editHotelData.location || ''} onChange={e => setEditHotelData({...editHotelData, location: e.target.value})} className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition" />
+                <div className="flex gap-2">
+                  <input type="text" required value={editHotelData.location || ''} onChange={e => setEditHotelData({...editHotelData, location: e.target.value})} className="flex-1 bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition" />
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      if (navigator.geolocation) {
+                        navigator.geolocation.getCurrentPosition((position) => {
+                          setEditHotelData({...editHotelData, coordinates: { lat: position.coords.latitude, lng: position.coords.longitude }});
+                          alert('Coordinates updated!');
+                        }, () => alert('Failed to get location'));
+                      }
+                    }}
+                    className="bg-stone-200 text-stone-700 px-4 rounded-xl hover:bg-stone-300 transition font-medium whitespace-nowrap"
+                  >
+                    📍 Get Coords
+                  </button>
+                </div>
+                {editHotelData.coordinates && (
+                  <p className="text-xs text-stone-500 mt-2">Saved coordinates: {editHotelData.coordinates.lat.toFixed(4)}, {editHotelData.coordinates.lng.toFixed(4)}</p>
+                )}
               </div>
               <ImageUpload
                 label="Main Property Image"
@@ -392,10 +424,16 @@ export default function ManageHotel() {
                           {booking.status}
                         </span>
                       </div>
-                      {(booking.guestEmail || booking.guestPhone) && (
-                        <div className="text-sm text-stone-500 mb-2 flex gap-4">
+                      {(booking.guestEmail || booking.guestPhone || booking.guestWhatsapp) && (
+                        <div className="text-sm text-stone-500 mb-2 flex gap-4 flex-wrap">
                           {booking.guestEmail && <span>✉️ {booking.guestEmail}</span>}
                           {booking.guestPhone && <span>📞 {booking.guestPhone}</span>}
+                          {booking.guestWhatsapp && (
+                            <a href={`https://wa.me/${booking.guestWhatsapp.replace(/[^0-9]/g, '')}`} target="_blank" rel="noreferrer" className="text-green-600 hover:underline flex items-center gap-1">
+                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>
+                              WhatsApp
+                            </a>
+                          )}
                         </div>
                       )}
                       <p className="text-stone-500 font-medium mb-1">{rooms.find(r => r.id === booking.roomTypeId)?.name || 'Unknown Room'}</p>
@@ -404,8 +442,14 @@ export default function ManageHotel() {
                         {booking.checkIn} — {booking.checkOut} ({booking.guests} Guests)
                       </div>
                     </div>
-                    <div className="text-2xl font-serif font-bold text-stone-900">
-                      {booking.currency === 'MWK' ? 'MWK ' : '$'}{booking.total}
+                    
+                    <div className="text-right flex flex-col items-end">
+                      <span className="font-serif font-bold text-2xl text-stone-900 mb-2">{booking.currency === 'MWK' ? 'MWK ' : '$'}{booking.total}</span>
+                      <div className="flex gap-2">
+                        <button onClick={() => deleteBooking(booking.id!)} className="text-stone-400 hover:text-red-500 transition p-2">
+                          <Trash2 className="h-5 w-5" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                   
@@ -419,7 +463,7 @@ export default function ManageHotel() {
                   {booking.status === 'pending' && (
                     <div className="flex gap-3 pt-2">
                       <button 
-                        onClick={() => updateBookingStatus(booking.id!, 'confirmed')}
+                        onClick={() => setConfirmModalBooking(booking.id!)}
                         className="bg-stone-900 text-white px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-stone-800 transition flex items-center gap-2"
                       >
                         <Check className="h-4 w-4" /> Confirm Booking
@@ -436,6 +480,33 @@ export default function ManageHotel() {
               ))}
             </ul>
           )}
+        </div>
+      )}
+
+      {/* Confirmation Modal */}
+      {confirmModalBooking && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-sm">
+          <div className="bg-white rounded-[2rem] w-full max-w-md overflow-hidden shadow-2xl p-8">
+            <h2 className="text-2xl font-serif text-stone-900 font-bold mb-4">Confirm Booking</h2>
+            <div className="space-y-4 mb-8">
+              <div className="bg-amber-50 text-amber-800 p-4 rounded-xl text-sm border border-amber-200">
+                <span className="font-bold block mb-1">⚠️ Guideline</span>
+                Please call the guest or message them on WhatsApp to confirm their arrival time before approving this booking.
+              </div>
+              <div className="bg-stone-50 text-stone-600 p-4 rounded-xl text-sm border border-stone-200">
+                <span className="font-bold block mb-1">💳 Payment</span>
+                Remind the guest that payment is to be settled directly at the property upon arrival.
+              </div>
+            </div>
+            <div className="flex gap-4">
+              <button onClick={() => setConfirmModalBooking(null)} className="flex-1 bg-stone-100 text-stone-900 px-6 py-3 rounded-full font-medium hover:bg-stone-200 transition">
+                Cancel
+              </button>
+              <button onClick={() => updateBookingStatus(confirmModalBooking, 'confirmed')} className="flex-1 bg-emerald-600 text-white px-6 py-3 rounded-full font-medium hover:bg-emerald-700 transition">
+                Approve Booking
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -26,6 +26,7 @@ export default function HotelDetails() {
   const [guestName, setGuestName] = useState(user?.displayName || '');
   const [guestEmail, setGuestEmail] = useState(user?.email || '');
   const [guestPhone, setGuestPhone] = useState('');
+  const [guestWhatsapp, setGuestWhatsapp] = useState('');
   const [specialRequests, setSpecialRequests] = useState('');
 
   useEffect(() => {
@@ -81,11 +82,13 @@ export default function HotelDetails() {
     try {
       await addDoc(collection(db, 'bookings'), {
         hotelId: hotel?.id,
+        managerId: hotel?.managerId,
         roomTypeId: selectedRoom.id,
         guestId: user.uid,
         guestName: guestName,
         guestEmail: guestEmail,
         guestPhone: guestPhone,
+        guestWhatsapp: guestWhatsapp,
         checkIn: checkIn,
         checkOut: checkOut,
         specialRequests: specialRequests,
@@ -174,9 +177,21 @@ export default function HotelDetails() {
               </h3>
               <p className="text-stone-600 leading-relaxed mb-4">{hotel.location}</p>
               <div className="w-full h-48 bg-stone-200 rounded-2xl overflow-hidden relative">
-                <div className="absolute inset-0 flex items-center justify-center bg-stone-300">
-                  <span className="text-stone-500 font-medium text-sm">Map View (Placeholder)</span>
-                </div>
+                {hotel.coordinates ? (
+                  <iframe
+                    width="100%"
+                    height="100%"
+                    style={{ border: 0 }}
+                    loading="lazy"
+                    allowFullScreen
+                    referrerPolicy="no-referrer-when-downgrade"
+                    src={`https://maps.google.com/maps?q=${hotel.coordinates.lat},${hotel.coordinates.lng}&z=14&output=embed`}
+                  ></iframe>
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center bg-stone-300">
+                    <span className="text-stone-500 font-medium text-sm">No map coordinates available</span>
+                  </div>
+                )}
               </div>
             </div>
             
@@ -319,14 +334,18 @@ export default function HotelDetails() {
                 <label className="block text-sm font-bold text-stone-700 mb-2 uppercase tracking-wide">Guest Name</label>
                 <input type="text" required value={guestName} onChange={e => setGuestName(e.target.value)} className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition" />
               </div>
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-stone-700 mb-2 uppercase tracking-wide">Email</label>
+                <input type="email" required value={guestEmail} onChange={e => setGuestEmail(e.target.value)} className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition" />
+              </div>
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-bold text-stone-700 mb-2 uppercase tracking-wide">Email</label>
-                  <input type="email" required value={guestEmail} onChange={e => setGuestEmail(e.target.value)} className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition" />
-                </div>
                 <div>
                   <label className="block text-sm font-bold text-stone-700 mb-2 uppercase tracking-wide">Phone Number</label>
                   <input type="tel" required value={guestPhone} onChange={e => setGuestPhone(e.target.value)} className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition" placeholder="+1234567890" />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-stone-700 mb-2 uppercase tracking-wide">WhatsApp (Optional)</label>
+                  <input type="tel" value={guestWhatsapp} onChange={e => setGuestWhatsapp(e.target.value)} className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition" placeholder="+1234567890" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">

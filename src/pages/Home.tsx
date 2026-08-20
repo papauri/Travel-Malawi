@@ -7,6 +7,18 @@ import { Hotel } from '../types';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
+function getDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371; // Radius of the earth in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2); 
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+  return R * c; // Distance in km
+}
+
 export default function Home() {
   const { user, signIn, isSigningIn } = useAuth();
   const [hotels, setHotels] = useState<Hotel[]>([]);
@@ -18,7 +30,13 @@ export default function Home() {
   const [searchCheckIn, setSearchCheckIn] = useState('');
   const [searchCheckOut, setSearchCheckOut] = useState('');
   const [searchGuests, setSearchGuests] = useState<number | ''>('');
-  const [appliedSearch, setAppliedSearch] = useState({ location: '', checkIn: '', checkOut: '', guests: '' as number | '' });
+  const [appliedSearch, setAppliedSearch] = useState<{
+    location: string;
+    checkIn: string;
+    checkOut: string;
+    guests: number | '';
+    coords: { lat: number; lng: number } | null;
+  }>({ location: '', checkIn: '', checkOut: '', guests: '', coords: null });
 
   const fetchHotels = async () => {
     try {
@@ -136,6 +154,7 @@ export default function Home() {
           name: h.name,
           description: h.description,
           location: h.location,
+          coordinates: { lat: -13.9626 + (Math.random() - 0.5), lng: 34.7816 + (Math.random() - 0.5) },
           imageUrl: h.imageUrl,
           galleryUrls: h.galleryUrls,
           reviews: h.reviews,
@@ -175,14 +194,34 @@ export default function Home() {
   };
 
   const handleSearch = () => {
-    setAppliedSearch({ location: searchLocation, checkIn: searchCheckIn, checkOut: searchCheckOut, guests: searchGuests });
+    setAppliedSearch({ location: searchLocation, checkIn: searchCheckIn, checkOut: searchCheckOut, guests: searchGuests, coords: null });
+  };
+
+  const handleNearMe = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition((pos) => {
+        setAppliedSearch({
+          location: 'Near Me',
+          checkIn: searchCheckIn,
+          checkOut: searchCheckOut,
+          guests: searchGuests,
+          coords: { lat: pos.coords.latitude, lng: pos.coords.longitude }
+        });
+        setSearchLocation('Near Me');
+      }, () => alert("Could not get your location. Please check browser permissions."));
+    }
   };
 
   const filteredHotels = (activeCategory === 'All' 
     ? hotels 
     : hotels.filter(h => h.categories?.includes(activeCategory)))
     .filter(h => {
-      if (appliedSearch.location) {
+      if (appliedSearch.coords) {
+        if (!h.coordinates) return false;
+        const dist = getDistance(appliedSearch.coords.lat, appliedSearch.coords.lng, h.coordinates.lat, h.coordinates.lng);
+        // Show properties within 100km radius
+        if (dist > 100) return false;
+      } else if (appliedSearch.location) {
         const query = appliedSearch.location.toLowerCase();
         if (!h.name.toLowerCase().includes(query) && !h.location.toLowerCase().includes(query)) {
           return false;
@@ -273,12 +312,20 @@ export default function Home() {
                 />
               </div>
             </div>
-            <button 
-              onClick={handleSearch}
-              className="bg-stone-900 px-8 py-5 rounded-xl text-white hover:bg-stone-800 transition w-full md:w-auto font-medium"
-            >
-              Search
-            </button>
+            <div className="flex flex-col md:flex-row gap-2">
+              <button 
+                onClick={handleNearMe}
+                className="bg-emerald-600 px-6 py-5 rounded-xl text-white hover:bg-emerald-700 transition w-full md:w-auto font-medium whitespace-nowrap"
+              >
+                📍 Near Me
+              </button>
+              <button 
+                onClick={handleSearch}
+                className="bg-stone-900 px-8 py-5 rounded-xl text-white hover:bg-stone-800 transition w-full md:w-auto font-medium"
+              >
+                Search
+              </button>
+            </div>
           </motion.div>
         </div>
       </section>
