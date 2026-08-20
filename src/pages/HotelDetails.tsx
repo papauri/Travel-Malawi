@@ -5,6 +5,7 @@ import { db } from '../lib/firebase';
 import { Hotel, RoomType } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { MapPin, Users, CheckCircle2, Star } from 'lucide-react';
+import AvailabilityCalendar from '../components/AvailabilityCalendar';
 import { motion } from 'motion/react';
 
 export default function HotelDetails() {
@@ -193,7 +194,19 @@ export default function HotelDetails() {
             </div>
           </div>
 
-          <h2 className="text-3xl font-serif text-stone-900 mb-8">Available Rooms</h2>
+          {/* Availability Calendar */}
+          <div className="mb-16">
+            <AvailabilityCalendar
+              hotelId={id!}
+              rooms={rooms}
+              onDateSelect={(date) => {
+                setCheckIn(date);
+                document.getElementById('rooms-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }}
+            />
+          </div>
+
+          <h2 id="rooms-section" className="text-3xl font-serif text-stone-900 mb-8">Available Rooms</h2>
           {rooms.length === 0 ? (
             <p className="text-stone-500 italic">No rooms available at the moment.</p>
           ) : (
