@@ -249,17 +249,7 @@ export default function Home() {
       return true;
     });
 
-  const getBentoClasses = (index: number) => {
-    const modulo = index % 5;
-    switch (modulo) {
-      case 0: return 'md:col-span-2 md:row-span-2';
-      case 1: return 'md:col-span-1 md:row-span-1';
-      case 2: return 'md:col-span-1 md:row-span-1';
-      case 3: return 'md:col-span-2 md:row-span-1';
-      case 4: return 'md:col-span-2 md:row-span-1';
-      default: return 'md:col-span-1 md:row-span-1';
-    }
-  };
+  
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -568,73 +558,28 @@ export default function Home() {
         </div>
         
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-4 auto-rows-[300px] gap-6">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className={`animate-pulse bg-stone-100 rounded-3xl ${getBentoClasses(i)}`} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 gap-y-10">
+            {[...Array(8)].map((_, i) => (
+              <div key={i} className="flex flex-col gap-3">
+                <div className="animate-pulse bg-stone-200 rounded-2xl aspect-[4/3] w-full" />
+                <div className="animate-pulse bg-stone-200 h-5 w-2/3 rounded mt-1" />
+                <div className="animate-pulse bg-stone-200 h-4 w-1/2 rounded" />
+              </div>
             ))}
           </div>
         ) : hotels.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-4 auto-rows-[300px] gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 gap-y-10">
             {filteredHotels.length > 0 ? filteredHotels.map((hotel, index) => (
-              <Link 
-                to={`/hotel/${hotel.id}?checkIn=${appliedSearch.checkIn || ''}&checkOut=${appliedSearch.checkOut || ''}&guests=${appliedSearch.guests || ''}`} 
-                key={hotel.id} 
-                className={`group ${getBentoClasses(index)}`}
-              >
-                <motion.div 
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  className="relative w-full h-full overflow-hidden rounded-3xl bg-stone-100 block"
-                >
-                  {hotel.imageUrl ? (
-                    <img 
-                      src={hotel.imageUrl} 
-                      alt={hotel.name} 
-                      className="absolute inset-0 object-cover w-full h-full group-hover:scale-105 transition duration-700 ease-out"
-                     
-                    />
-                  ) : (
-                    <div className="absolute inset-0 w-full h-full flex items-center justify-center text-stone-400">
-                      No Image
-                    </div>
-                  )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-stone-900/80 via-stone-900/20 to-transparent" />
-                  
-                  <div className="absolute bottom-0 left-0 w-full p-6 lg:p-8 flex flex-col justify-end text-white">
-                    <div className="flex justify-between items-end gap-4">
-                      <div>
-                        <h3 className="text-2xl md:text-3xl font-serif font-bold text-white mb-2 leading-tight drop-shadow-sm">{hotel.name}</h3>
-                        <div className="flex items-center gap-2 text-white/90 text-sm font-medium">
-                          <MapPin className="h-4 w-4" />
-                          <p>{hotel.location}</p>
-                        </div>
-                      </div>
-                      <div className="bg-white/20 backdrop-blur-md px-3 py-1.5 rounded-full flex items-center gap-1.5 whitespace-nowrap">
-                        <Star className="h-3.5 w-3.5 fill-current text-white" />
-                        <span className="font-semibold text-white text-sm tracking-wide">4.9</span>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              </Link>
+              <HotelCard key={hotel.id} hotel={hotel} index={index} searchParams={appliedSearch} />
             )) : (
-              <div className="col-span-full py-12 text-center text-stone-500 text-lg">
-                No properties found in this category.
+              <div className="col-span-full py-20 text-center text-stone-500 text-lg">
+                No properties found matching your search. Try different dates or locations.
               </div>
             )}
           </div>
         ) : (
-          <div className="text-center py-24 bg-white rounded-3xl border border-stone-200/60 shadow-sm max-w-3xl mx-auto">
-            <h3 className="text-2xl font-serif text-stone-900 mb-4">No properties available yet</h3>
-            <p className="text-stone-500 text-lg mb-8 max-w-lg mx-auto">The database is currently empty. Populate the marketplace to see how the properties are displayed in the new bento design.</p>
-            <button 
-              disabled={seeding}
-              onClick={seedData}
-              className="bg-stone-900 text-white px-8 py-3 rounded-full font-medium hover:bg-stone-800 transition disabled:opacity-50"
-            >
-              {seeding ? 'Loading Properties...' : 'Load Demo Properties'}
-            </button>
+          <div className="text-center py-20 text-stone-500">
+            No properties available at the moment.
           </div>
         )}
       </section>
