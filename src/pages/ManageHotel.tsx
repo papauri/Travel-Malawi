@@ -6,6 +6,7 @@ import { Hotel, RoomType, Booking } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { Building2, Plus, ChevronLeft, ChevronDown, CheckCircle2, XCircle, Clock, Save, Edit2, Key, Bed, Settings, Info, CreditCard, Trash2 } from 'lucide-react';
 import ImageUpload from '../components/ImageUpload';
+import GalleryUpload from '../components/GalleryUpload';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { Plus as PlusIcon, Users, Calendar, Check, X, Building, BedDouble } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -271,8 +272,12 @@ export default function ManageHotel() {
                 folder="hotels"
               />
               <div className="md:col-span-2">
-                <label className="block text-sm font-bold text-stone-700 mb-2 uppercase tracking-wide">Gallery Image URLs (comma separated)</label>
-                <input type="text" value={Array.isArray(editHotelData.galleryUrls) ? editHotelData.galleryUrls.join(', ') : editHotelData.galleryUrls || ''} onChange={e => setEditHotelData({...editHotelData, galleryUrls: e.target.value as any})} className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition" placeholder="https://..., https://..." />
+                <GalleryUpload 
+                  value={editHotelData.galleryUrls || []} 
+                  onChange={(urls) => setEditHotelData({ ...editHotelData, galleryUrls: urls })} 
+                  label="Hotel Gallery"
+                  folder="gallery"
+                />
               </div>
               <div className="md:col-span-2">
                 <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Amenities (comma separated)</label>
