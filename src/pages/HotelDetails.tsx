@@ -79,7 +79,11 @@ export default function HotelDetails() {
 
   const handleManualBook = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !selectedRoom) return;
+    if (!selectedRoom) return;
+    if (!guestName || !guestEmail || !guestPhone) {
+      toast.error("Please provide your name, email, and phone number.");
+      return;
+    }
     
     setBookingStatus(`Submitting manual booking for ${selectedRoom.name}...`);
     try {
@@ -87,7 +91,7 @@ export default function HotelDetails() {
         hotelId: hotel?.id,
         managerId: hotel?.managerId,
         roomTypeId: selectedRoom.id,
-        guestId: user.uid,
+        guestId: user?.uid || 'anonymous',
         guestName: guestName,
         guestEmail: guestEmail,
         guestPhone: guestPhone,
