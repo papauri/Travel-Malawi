@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogOut, User as UserIcon, X, Palmtree, Mail, Lock, ChevronDown, Bell } from 'lucide-react';
+import { LogOut, User as UserIcon, X, Palmtree, Map, Mail, Lock, ChevronDown, Bell } from 'lucide-react';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 

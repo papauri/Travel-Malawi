@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Palmtree, Mail, Phone, MapPin, Facebook, Instagram, Twitter } from 'lucide-react';
+import { Palmtree, Map, Mail, Phone, MapPin, Facebook, Instagram, Twitter } from 'lucide-react';
 
 export default function Footer() {
   return (
@@ -31,7 +31,7 @@ export default function Footer() {
           <ul className="space-y-4 text-sm">
             <li className="flex items-center gap-3">
               <Mail className="h-4 w-4 text-stone-500" />
-              <span>bookings@malawiscapes.com</span>
+              <span>bookings@travelmalawi.com</span>
             </li>
             <li className="flex items-center gap-3">
               <Phone className="h-4 w-4 text-stone-500" />
@@ -61,7 +61,7 @@ export default function Footer() {
       </div>
       
       <div className="max-w-7xl mx-auto px-6 lg:px-8 mt-16 pt-8 border-t border-stone-800 text-sm flex flex-col md:flex-row justify-between items-center text-stone-500">
-        <p>&copy; {new Date().getFullYear()} MalawiScapes. All rights reserved.</p>
+        <p>&copy; {new Date().getFullYear()} Travel Malawi. All rights reserved.</p>
         <div className="flex items-center gap-6 mt-4 md:mt-0">
           <a href="#" className="hover:text-white transition">Privacy Policy</a>
           <a href="#" className="hover:text-white transition">Terms of Service</a>
