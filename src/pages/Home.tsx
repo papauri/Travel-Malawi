@@ -255,7 +255,7 @@ export default function Home() {
   return (
     <div className="flex flex-col min-h-screen">
       {/* Hero Section */}
-      <section className="relative h-[80vh] w-full flex flex-col items-center justify-center overflow-hidden rounded-b-[2.5rem] shadow-2xl bg-stone-900">
+      <section className="relative h-[75vh] md:h-[80vh] w-full flex flex-col items-center justify-center overflow-hidden rounded-b-[2rem] md:rounded-b-[2.5rem] shadow-2xl bg-stone-900">
         <div className="absolute inset-0 bg-gradient-to-b from-stone-900/60 via-stone-900/40 to-stone-900/70 z-10" />
         <img 
           src="https://images.unsplash.com/photo-1499793983690-e29da59ef1c2?q=80&w=2940&auto=format&fit=crop"
@@ -268,7 +268,7 @@ export default function Home() {
           <motion.h1 
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-5xl md:text-7xl lg:text-8xl font-serif text-white max-w-4xl leading-[1.1] mb-12 drop-shadow-xl"
+            className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-serif text-white max-w-4xl leading-[1.1] mb-8 md:mb-12 drop-shadow-xl px-4"
           >
             Find the perfect place to stay.
           </motion.h1>
@@ -278,10 +278,10 @@ export default function Home() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-white rounded-full p-2 shadow-2xl flex flex-col md:flex-row items-center w-full max-w-4xl border border-stone-200"
+            className="bg-white rounded-[2rem] md:rounded-full p-2 md:p-2 shadow-2xl flex flex-col md:flex-row items-center w-[90%] md:w-full max-w-4xl border border-stone-200"
           >
             {/* Location & Near Me */}
-            <div className="flex-1 flex items-center px-6 py-3 hover:bg-stone-50 rounded-full cursor-pointer w-full transition relative group">
+            <div className="flex-1 flex items-center px-4 md:px-6 py-3 hover:bg-stone-50 rounded-3xl md:rounded-full cursor-pointer w-full transition relative group">
               <MapPin className="h-5 w-5 text-stone-400 mr-3 shrink-0" />
               <div className="text-left w-full flex-1">
                 <p className="text-xs font-bold text-stone-900 uppercase tracking-wider mb-0.5">Where</p>
@@ -349,10 +349,10 @@ export default function Home() {
               </div>
             </div>
             
-            <div className="hidden md:block w-px h-10 bg-stone-200 mx-2" />
+            <div className="hidden md:block w-px h-10 bg-stone-200 mx-2" /><div className="block md:hidden w-[90%] h-px bg-stone-200 my-1" />
             
             {/* Dates */}
-            <div className="flex-[1.2] flex items-center px-6 py-3 hover:bg-stone-50 rounded-full cursor-pointer w-full transition">
+            <div className="flex-[1.2] flex items-center px-4 md:px-6 py-3 hover:bg-stone-50 rounded-3xl md:rounded-full cursor-pointer w-full transition">
               <Calendar className="h-5 w-5 text-stone-400 mr-3 shrink-0" />
               <div className="text-left w-full flex gap-4">
                 <div className="flex-1">
@@ -366,10 +366,10 @@ export default function Home() {
               </div>
             </div>
             
-            <div className="hidden md:block w-px h-10 bg-stone-200 mx-2" />
+            <div className="hidden md:block w-px h-10 bg-stone-200 mx-2" /><div className="block md:hidden w-[90%] h-px bg-stone-200 my-1" />
             
             {/* Guests & Search Button */}
-            <div className="flex-[0.8] flex items-center pl-6 pr-2 py-2 hover:bg-stone-50 rounded-full cursor-pointer w-full transition justify-between relative">
+            <div className="flex-[0.8] flex items-center pl-4 md:pl-6 pr-2 py-2 hover:bg-stone-50 rounded-3xl md:rounded-full cursor-pointer w-full transition justify-between relative">
               <div 
                 className="flex items-center flex-1 h-full"
                 onClick={() => setShowGuestDropdown(!showGuestDropdown)}
@@ -385,7 +385,7 @@ export default function Home() {
               
               {/* Guest Selector Dropdown */}
               {showGuestDropdown && (
-                <div className="absolute top-full right-0 mt-4 bg-white rounded-2xl shadow-xl border border-stone-100 p-4 w-72 z-50">
+                <div className="absolute top-[110%] right-0 md:right-0 left-0 md:left-auto mt-4 bg-white rounded-2xl shadow-xl border border-stone-100 p-4 w-[calc(100vw-2rem)] md:w-72 z-50">
                   {/* Adults */}
                   <div className="flex items-center justify-between py-3 border-b border-stone-100">
                     <div>
