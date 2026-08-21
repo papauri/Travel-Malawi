@@ -28,11 +28,15 @@ export interface RoomType {
   hotelId: string;
   name: string;
   description: string;
-  price: number;
+  price: number; // Base price
+  baseGuests?: number; // Guests included in base price (e.g., 2)
+  extraGuestFee?: number; // Fee per additional guest per night
   maxGuests: number;
   quantity: number;
   amenities: string[];
   imageUrl: string;
+  packages?: { id: string; name: string; price: number; type: 'per_person' | 'per_room' | 'per_stay' }[];
+  blockedDates?: string[]; // Array of 'YYYY-MM-DD'
 }
 
 export interface Booking {
@@ -53,5 +57,8 @@ export interface Booking {
   currency: string;
   status: 'pending' | 'confirmed' | 'cancelled' | 'rejected';
   specialRequests?: string;
+  packageIds?: string[];
+  extraGuestTotal?: number;
+  packagesTotal?: number;
   createdAt: number;
 }

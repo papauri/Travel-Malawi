@@ -13,6 +13,7 @@ interface Props {
   hotelId: string;
   rooms: RoomType[];
   onDateSelect?: (date: string) => void;
+  selectedRoom?: RoomType | null;
 }
 
 interface DayInfo {
@@ -40,17 +41,21 @@ function addDays(dateStr: string, days: number): string {
   return toDateStr(d);
 }
 
-export default function AvailabilityCalendar({ hotelId, rooms, onDateSelect }: Props) {
-  const today = useMemo(() => toDateStr(new Date()), []);
+export default function AvailabilityCalendar({ hotelId, rooms, onDateSelect, selectedRoom }: Props) {
+  const today = toDateStr(new Date());
+  
   const [viewYear, setViewYear] = useState(() => new Date().getFullYear());
   const [viewMonth, setViewMonth] = useState(() => new Date().getMonth());
   const [bookedMap, setBookedMap] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
 
-  // Total room inventory across all room types
+  // Total room inventory across all room types (or just the selected one)
   const totalRooms = useMemo(
-    () => rooms.reduce((sum, r) => sum + (r.quantity ?? 0), 0),
-    [rooms]
+    () => {
+      if (selectedRoom) return selectedRoom.quantity ?? 1;
+      return rooms.reduce((sum, r) => sum + (r.quantity ?? 0), 0);
+    },
+    [rooms, selectedRoom]
   );
 
   useEffect(() => {
@@ -58,13 +63,30 @@ export default function AvailabilityCalendar({ hotelId, rooms, onDateSelect }: P
       if (!hotelId) return;
       setLoading(true);
       try {
-        const q = query(
-          collection(db, 'bookings'),
-          where('hotelId', '==', hotelId),
-          where('status', 'in', ['pending', 'confirmed'])
-        );
+        let q;
+        if (selectedRoom) {
+          q = query(
+            collection(db, 'bookings'),
+            where('hotelId', '==', hotelId),
+            where('roomTypeId', '==', selectedRoom.id),
+            where('status', 'in', ['pending', 'confirmed'])
+          );
+        } else {
+          q = query(
+            collection(db, 'bookings'),
+            where('hotelId', '==', hotelId),
+            where('status', 'in', ['pending', 'confirmed'])
+          );
+        }
         const snap = await getDocs(q);
         const map: Record<string, number> = {};
+
+        // Add explicit blocked dates from selected room
+        if (selectedRoom?.blockedDates) {
+          selectedRoom.blockedDates.forEach(d => {
+            map[d] = selectedRoom.quantity ?? 1; // Mark fully booked
+          });
+        }
 
         snap.docs.forEach(doc => {
           const data = doc.data();
@@ -89,7 +111,7 @@ export default function AvailabilityCalendar({ hotelId, rooms, onDateSelect }: P
       }
     }
     fetchBookings();
-  }, [hotelId]);
+  }, [hotelId, selectedRoom]);
 
   // Build grid cells for the current view month
   const { cells, weeks } = useMemo(() => {

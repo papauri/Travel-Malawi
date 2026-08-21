@@ -149,7 +149,7 @@ export default function ManageHotel() {
   };
 
   const startNewRoom = () => {
-    setEditRoomData({ name: '', description: '', price: 0, maxGuests: 2, quantity: 5, currency: 'USD', imageUrl: '', amenities: '' as any });
+    setEditRoomData({ name: '', description: '', price: 0, maxGuests: 2, baseGuests: 2, extraGuestFee: 0, quantity: 5, currency: 'USD', imageUrl: '', amenities: '' as any, packages: [], blockedDates: [] });
     setEditingRoomId('new');
     setShowAddRoom(true);
   };
@@ -527,3 +527,5 @@ export default function ManageHotel() {
     </div>
   );
 }
+
+
