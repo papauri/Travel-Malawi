@@ -6,6 +6,7 @@ import { collection, getDocs, addDoc, deleteDoc, doc } from 'firebase/firestore'
 import { db } from '../lib/firebase';
 import { Hotel } from '../types';
 import { Link } from 'react-router-dom';
+import HotelCard from '../components/HotelCard';
 import { useAuth } from '../contexts/AuthContext';
 
 function getDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {

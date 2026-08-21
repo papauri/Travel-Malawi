@@ -19,6 +19,8 @@ export default function HotelDetails() {
   const [hotel, setHotel] = useState<Hotel | null>(null);
   const [rooms, setRooms] = useState<RoomType[]>([]);
   const [loading, setLoading] = useState(true);
+  const [manualBookingData, setManualBookingData] = useState({ name: '', email: '', phone: '', whatsapp: '' });
+  const [saving, setSaving] = useState(false);
   const [bookingStatus, setBookingStatus] = useState<string | null>(null);
   const [selectedRoom, setSelectedRoom] = useState<RoomType | null>(null);
   const [checkIn, setCheckIn] = useState(searchParams.get('checkIn') || '');

@@ -12,6 +12,7 @@ interface HotelCardProps {
     guests?: number;
   };
   index: number;
+  key?: string;
 }
 
 export default function HotelCard({ hotel, searchParams, index }: HotelCardProps) {
