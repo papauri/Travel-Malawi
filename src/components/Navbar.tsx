@@ -31,10 +31,10 @@ export default function Navbar() {
       const q = query(
         collection(db, 'bookings'),
         where('managerId', '==', user.uid),
-        where('status', '==', 'pending')
+        // JS filter instead
       );
       const unsubscribe = onSnapshot(q, (snapshot) => {
-        setPendingCount(snapshot.docs.length);
+        setPendingCount(snapshot.docs.filter(d => d.data().status === 'pending').length);
       });
       return () => unsubscribe();
     }
