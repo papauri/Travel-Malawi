@@ -63,12 +63,8 @@ export default function HotelDetails() {
   }, [user]);
 
   const initiateBooking = (room: RoomType) => {
-    if (!user) {
-      toast.error("Please sign in as a traveller to book.");
-      return;
-    }
-    if (user.role !== 'traveller') {
-      toast.error("Only travellers can book rooms. Please sign in as a traveller.");
+    if (user && user.role !== 'traveller') {
+      toast.error("Only guests and travellers can book rooms.");
       return;
     }
     if (guestsCount > room.maxGuests) {
