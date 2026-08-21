@@ -178,17 +178,17 @@ export default function HotelDetails() {
   return (
     <div className="min-h-screen bg-white pb-24">
       {/* Cinematic Header Image & Gallery */}
-      <div className="w-full max-w-7xl mx-auto px-6 lg:px-8 mt-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 md:h-[60vh]">
+      <div className="w-full max-w-[90rem] mx-auto px-4 lg:px-12 mt-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 md:h-[70vh]">
           {/* Main Hero Image */}
-          <div className="md:col-span-2 md:row-span-2 relative rounded-3xl overflow-hidden h-[40vh] md:h-full">
+          <div className="md:col-span-2 md:row-span-2 relative rounded-2xl overflow-hidden h-[40vh] md:h-full">
             <img src={hotel.imageUrl} alt={hotel.name} className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
             <div className="absolute bottom-0 left-0 w-full p-8 md:p-12">
               <motion.h1 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="text-4xl md:text-6xl font-serif font-bold text-white mb-4 leading-tight"
+                className="text-5xl md:text-7xl lg:text-[6rem] font-serif font-medium tracking-tight text-white mb-4 leading-none"
               >
                 {hotel.name}
               </motion.h1>
@@ -206,13 +206,13 @@ export default function HotelDetails() {
           
           {/* Secondary Gallery Images */}
           {hotel.galleryUrls && hotel.galleryUrls.map((url, index) => (
-            <div key={index} className={`relative rounded-3xl overflow-hidden hidden md:block ${index === 0 ? 'md:col-span-2 md:row-span-1' : 'md:col-span-2 md:row-span-1'}`}>
+            <div key={index} className={`relative rounded-2xl overflow-hidden hidden md:block ${index === 0 ? 'md:col-span-2 md:row-span-1' : 'md:col-span-2 md:row-span-1'}`}>
               <img src={url} alt={`${hotel.name} surroundings ${index + 1}`} className="w-full h-full object-cover hover:scale-105 transition duration-700 ease-out" />
             </div>
           ))}
           {!hotel.galleryUrls && (
             <>
-              <div className="relative rounded-3xl overflow-hidden hidden md:block md:col-span-2 md:row-span-1 bg-stone-100 flex items-center justify-center">
+              <div className="relative rounded-2xl overflow-hidden hidden md:block md:col-span-2 md:row-span-1 bg-stone-100 flex items-center justify-center">
                 <span className="text-stone-400">No additional photo</span>
               </div>
               <div className="relative rounded-3xl overflow-hidden hidden md:block md:col-span-2 md:row-span-1 bg-stone-100 flex items-center justify-center">
@@ -223,9 +223,9 @@ export default function HotelDetails() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 lg:px-8 py-16 grid grid-cols-1 lg:grid-cols-3 gap-16">
+      <div className="max-w-[90rem] mx-auto px-4 lg:px-12 py-24 grid grid-cols-1 lg:grid-cols-3 gap-16 lg:gap-24">
         <div className="lg:col-span-2">
-          <h2 className="text-3xl font-serif text-stone-900 mb-6">About this property</h2>
+          <h2 className="text-4xl md:text-5xl font-serif text-stone-900 mb-8 tracking-tight">About this property</h2>
           <p className="text-stone-600 text-lg leading-relaxed mb-12">{hotel.description}</p>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16">
@@ -290,7 +290,7 @@ export default function HotelDetails() {
             />
           </div>
 
-          <h2 id="rooms-section" className="text-3xl font-serif text-stone-900 mb-8">Available Rooms</h2>
+          <h2 id="rooms-section" className="text-4xl md:text-5xl font-serif text-stone-900 mb-10 tracking-tight">Available Rooms</h2>
           {rooms.length === 0 ? (
             <p className="text-stone-500 italic">No rooms available at the moment.</p>
           ) : (
@@ -347,7 +347,7 @@ export default function HotelDetails() {
 
           {hotel.reviews && hotel.reviews.length > 0 && (
             <div className="mt-8 border-t border-stone-200 pt-12">
-              <h2 className="text-3xl font-serif text-stone-900 mb-8">Guest Reviews</h2>
+              <h2 className="text-4xl md:text-5xl font-serif text-stone-900 mb-10 tracking-tight">Guest Reviews</h2>
               <div className="grid grid-cols-1 gap-6">
                 {hotel.reviews.map((review, idx) => (
                   <div key={idx} className="bg-white p-8 rounded-3xl border border-stone-200 shadow-sm">

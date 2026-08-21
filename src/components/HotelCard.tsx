@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Hotel } from '../types';
 
 interface HotelCardProps {
@@ -35,14 +35,14 @@ export default function HotelCard({ hotel, searchParams, index }: HotelCardProps
   return (
     <Link 
       to={`/hotel/${hotel.id}?checkIn=${searchParams.checkIn || ''}&checkOut=${searchParams.checkOut || ''}&guests=${searchParams.guests || ''}`} 
-      className="group flex flex-col gap-3 w-full"
+      className="group flex flex-col gap-4 w-full"
     >
       <motion.div 
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 30 }}
         whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }}
-        transition={{ delay: index * 0.05 }}
-        className="relative w-full aspect-[4/3] sm:aspect-square md:aspect-[4/3] overflow-hidden rounded-2xl bg-stone-100"
+        viewport={{ once: true, margin: "-50px" }}
+        transition={{ delay: index * 0.05, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+        className="relative w-full aspect-[4/5] overflow-hidden bg-stone-100"
       >
         {allImages.length > 0 ? (
           <AnimatePresence initial={false} mode="wait">
@@ -53,12 +53,12 @@ export default function HotelCard({ hotel, searchParams, index }: HotelCardProps
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              className="absolute inset-0 object-cover w-full h-full"
+              transition={{ duration: 0.4 }}
+              className="absolute inset-0 object-cover w-full h-full group-hover:scale-105 transition-transform duration-1000 ease-[cubic-bezier(0.25,1,0.5,1)]"
             />
           </AnimatePresence>
         ) : (
-          <div className="absolute inset-0 flex items-center justify-center text-stone-400">
+          <div className="absolute inset-0 flex items-center justify-center text-stone-400 font-serif">
             No Image
           </div>
         )}
@@ -66,27 +66,27 @@ export default function HotelCard({ hotel, searchParams, index }: HotelCardProps
         {/* Carousel Controls */}
         {allImages.length > 1 && (
           <>
-            <div className="absolute inset-0 flex items-center justify-between p-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            <div className="absolute inset-0 flex items-center justify-between p-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
               <button 
                 onClick={handlePrevImage}
-                className="bg-white/80 hover:bg-white text-stone-800 p-1.5 rounded-full shadow-sm backdrop-blur-sm transition z-10"
+                className="bg-white/90 hover:bg-white text-stone-900 p-2 rounded-full shadow-sm backdrop-blur-sm transition z-10"
               >
-                <ChevronLeft className="w-5 h-5" />
+                <ChevronLeft className="w-4 h-4" />
               </button>
               <button 
                 onClick={handleNextImage}
-                className="bg-white/80 hover:bg-white text-stone-800 p-1.5 rounded-full shadow-sm backdrop-blur-sm transition z-10"
+                className="bg-white/90 hover:bg-white text-stone-900 p-2 rounded-full shadow-sm backdrop-blur-sm transition z-10"
               >
-                <ChevronRight className="w-5 h-5" />
+                <ChevronRight className="w-4 h-4" />
               </button>
             </div>
             
             {/* Dots */}
-            <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5 z-10">
+            <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1.5 z-10">
               {allImages.map((_, i) => (
                 <div 
                   key={i} 
-                  className={`h-1.5 rounded-full transition-all ${i === currentImageIdx ? 'w-4 bg-white' : 'w-1.5 bg-white/60'}`}
+                  className={`h-1 transition-all ${i === currentImageIdx ? 'w-6 bg-white' : 'w-2 bg-white/50'}`}
                 />
               ))}
             </div>
@@ -94,17 +94,19 @@ export default function HotelCard({ hotel, searchParams, index }: HotelCardProps
         )}
       </motion.div>
 
-      {/* Card Content underneath */}
-      <div className="flex flex-col">
+      {/* Dwellis Aesthetic Content */}
+      <div className="flex flex-col gap-1">
         <div className="flex justify-between items-start">
-          <h3 className="font-bold text-stone-900 truncate pr-2">{hotel.location}</h3>
+          <p className="text-[0.65rem] font-bold tracking-[0.2em] text-stone-500 uppercase">{hotel.location}</p>
           {hotel.categories && hotel.categories.length > 0 && (
-            <span className="text-xs font-medium text-stone-500 whitespace-nowrap">
+            <span className="text-[0.65rem] font-medium tracking-widest text-emerald-600 uppercase">
               {hotel.categories[0]}
             </span>
           )}
         </div>
-        <p className="text-stone-500 text-sm truncate">{hotel.name}</p>
+        <h3 className="font-serif text-2xl text-stone-900 truncate group-hover:text-emerald-700 transition-colors duration-300 pr-2">
+          {hotel.name}
+        </h3>
       </div>
     </Link>
   );
