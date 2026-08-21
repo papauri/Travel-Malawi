@@ -69,13 +69,13 @@ export default function AvailabilityCalendar({ hotelId, rooms, onDateSelect, sel
             collection(db, 'bookings'),
             where('hotelId', '==', hotelId),
             where('roomTypeId', '==', selectedRoom.id),
-            where('status', 'in', ['pending', 'confirmed'])
+            // JS filter instead
           );
         } else {
           q = query(
             collection(db, 'bookings'),
             where('hotelId', '==', hotelId),
-            where('status', 'in', ['pending', 'confirmed'])
+            // JS filter instead
           );
         }
         const snap = await getDocs(q);
@@ -95,7 +95,7 @@ export default function AvailabilityCalendar({ hotelId, rooms, onDateSelect, sel
             checkOut: string;
             quantity?: number;
           };
-          if (!checkIn || !checkOut) return;
+          if (!checkIn || !checkOut || (data.status !== "pending" && data.status !== "confirmed")) return;
           let cursor = checkIn;
           while (cursor < checkOut) {
             map[cursor] = (map[cursor] ?? 0) + quantity;
