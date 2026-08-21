@@ -18,6 +18,39 @@ export default function GalleryUpload({ value = [], onChange, label = "Gallery I
   
   // Drag and Drop state
   const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
+  const [isDraggingFile, setIsDraggingFile] = useState(false);
+
+  const handleDragOverFile = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingFile(true);
+  };
+  
+  const handleDragLeaveFile = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingFile(false);
+  };
+  
+  const handleDropFile = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingFile(false);
+    const files = e.dataTransfer.files;
+    if (!files || files.length === 0) return;
+    
+    setIsUploading(true);
+    try {
+      const newUrls = [...value];
+      for (let i = 0; i < files.length; i++) {
+        const url = await uploadImage(files[i], folder);
+        newUrls.push(url);
+      }
+      onChange(newUrls);
+    } catch (error) {
+      console.error("Error uploading images:", error);
+      toast.error("Failed to upload image(s).");
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -160,7 +193,13 @@ export default function GalleryUpload({ value = [], onChange, label = "Gallery I
             </button>
           </div>
         ) : (
-          <div className="w-full rounded-xl border-2 border-dashed border-stone-300 bg-white p-6 flex flex-col items-center justify-center text-center hover:border-stone-400 transition cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+          <div 
+            className={`w-full rounded-xl border-2 border-dashed ${isDraggingFile ? 'border-stone-900 bg-stone-100' : 'border-stone-300 bg-white'} p-6 flex flex-col items-center justify-center text-center hover:border-stone-400 transition cursor-pointer`}
+            onClick={() => fileInputRef.current?.click()}
+            onDragOver={handleDragOverFile}
+            onDragLeave={handleDragLeaveFile}
+            onDrop={handleDropFile}
+          >
             {isUploading ? (
               <div className="flex flex-col items-center justify-center space-y-3">
                 <Loader2 className="h-8 w-8 text-stone-400 animate-spin" />
@@ -168,8 +207,10 @@ export default function GalleryUpload({ value = [], onChange, label = "Gallery I
               </div>
             ) : (
               <>
-                <ImageIcon className="h-8 w-8 text-stone-400 mb-3" />
-                <p className="text-sm text-stone-600 font-medium mb-1">Click to select images</p>
+                <ImageIcon className={`h-8 w-8 mb-3 transition ${isDraggingFile ? 'text-stone-900' : 'text-stone-400'}`} />
+                <p className={`text-sm font-medium mb-1 ${isDraggingFile ? 'text-stone-900' : 'text-stone-600'}`}>
+                  {isDraggingFile ? 'Drop images here' : 'Click or drag images to upload'}
+                </p>
                 <p className="text-xs text-stone-400">JPG, PNG, WEBP (multiple allowed)</p>
               </>
             )}

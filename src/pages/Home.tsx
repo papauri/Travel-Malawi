@@ -573,14 +573,38 @@ export default function Home() {
             {filteredHotels.length > 0 ? filteredHotels.map((hotel, index) => (
               <HotelCard key={hotel.id} hotel={hotel} index={index} searchParams={appliedSearch} />
             )) : (
-              <div className="col-span-full py-20 text-center text-stone-500 text-lg">
-                No properties found matching your search. Try different dates or locations.
+              <div className="col-span-full py-20 flex flex-col items-center justify-center text-center">
+                <div className="w-20 h-20 bg-stone-100 rounded-full flex items-center justify-center mb-6">
+                  <Search className="w-8 h-8 text-stone-400" />
+                </div>
+                <h3 className="text-2xl font-serif font-bold text-stone-900 mb-2">No properties found</h3>
+                <p className="text-stone-500 text-lg max-w-md mb-8">
+                  We couldn't find any places matching your exact search criteria. Try adjusting your dates, location, or guest count.
+                </p>
+                <button 
+                  onClick={() => {
+                    setAppliedSearch({ location: '', checkIn: '', checkOut: '', guests: '', coords: null, proximity: 50 });
+                    setSearchLocation('');
+                    setSearchCheckIn('');
+                    setSearchCheckOut('');
+                    setActiveCategory('All');
+                  }}
+                  className="bg-stone-900 text-white px-8 py-3 rounded-full font-medium hover:bg-stone-800 transition"
+                >
+                  Clear all filters
+                </button>
               </div>
             )}
           </div>
         ) : (
-          <div className="text-center py-20 text-stone-500">
-            No properties available at the moment.
+          <div className="col-span-full py-20 flex flex-col items-center justify-center text-center">
+             <div className="w-20 h-20 bg-stone-100 rounded-full flex items-center justify-center mb-6">
+                <MapPin className="w-8 h-8 text-stone-400" />
+             </div>
+             <h3 className="text-2xl font-serif font-bold text-stone-900 mb-2">No properties available</h3>
+             <p className="text-stone-500 text-lg max-w-md">
+               There are no properties listed at the moment. Please check back later!
+             </p>
           </div>
         )}
       </section>

@@ -4,11 +4,10 @@ import { doc, getDoc, collection, query, where, getDocs, addDoc, updateDoc, dele
 import { db } from '../lib/firebase';
 import { Hotel, RoomType, Booking } from '../types';
 import { useAuth } from '../contexts/AuthContext';
-import { Building2, Plus, ChevronLeft, ChevronDown, CheckCircle2, XCircle, Clock, Save, Edit2, Key, Bed, Settings, Info, CreditCard, Trash2 } from 'lucide-react';
+import { Building2, Plus, ChevronLeft, ChevronDown, CheckCircle2, XCircle, Clock, Save, Edit2, Key, Bed, Settings, Info, CreditCard, Trash2, Users, Calendar, Check, X, Building, BedDouble, Loader2 } from 'lucide-react';
 import ImageUpload from '../components/ImageUpload';
 import GalleryUpload from '../components/GalleryUpload';
 import ConfirmDialog from '../components/ConfirmDialog';
-import { Plus as PlusIcon, Users, Calendar, Check, X, Building, BedDouble } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 type Tab = 'details' | 'rooms' | 'bookings';
@@ -121,10 +120,16 @@ export default function ManageHotel() {
         amenities = (amenities as string).split(',').map(s => s.trim()).filter(Boolean);
       }
 
+      let blockedDates = editRoomData.blockedDates;
+      if (typeof blockedDates === 'string') {
+        blockedDates = (blockedDates as string).split(',').map(s => s.trim()).filter(Boolean);
+      }
+
       const roomPayload = {
         ...editRoomData,
         hotelId: id,
-        amenities: amenities || []
+        amenities: amenities || [],
+        blockedDates: blockedDates || []
       } as any;
 
       if (editingRoomId === 'new') {
@@ -145,12 +150,31 @@ export default function ManageHotel() {
   };
 
   const startEditRoom = (room: RoomType) => {
-    setEditRoomData({ ...room, amenities: room.amenities?.join(', ') as any });
+    setEditRoomData({ 
+      ...room, 
+      amenities: room.amenities?.join(', ') as any,
+      blockedDates: room.blockedDates?.join(', ') as any
+    });
     setEditingRoomId(room.id!);
   };
 
   const startNewRoom = () => {
-    setEditRoomData({ name: '', description: '', price: 0, priceMWK: 0, showDualCurrency: false, maxGuests: 2, baseGuests: 2, extraGuestFee: 0, quantity: 5, currency: 'USD', imageUrl: '', amenities: '' as any, packages: [], blockedDates: [] });
+    setEditRoomData({ 
+      name: '', 
+      description: '', 
+      price: 0, 
+      priceMWK: 0, 
+      showDualCurrency: false, 
+      maxGuests: 2, 
+      baseGuests: 2, 
+      extraGuestFee: 0, 
+      quantity: 5, 
+      currency: 'USD', 
+      imageUrl: '', 
+      amenities: '' as any, 
+      blockedDates: '' as any,
+      packages: [] 
+    });
     setEditingRoomId('new');
     setShowAddRoom(true);
   };
@@ -331,7 +355,8 @@ export default function ManageHotel() {
             </div>
             <div className="pt-4 flex justify-end">
               <button type="submit" disabled={saving} className="flex items-center gap-2 bg-stone-900 text-white px-8 py-3 rounded-xl font-medium hover:bg-stone-800 transition disabled:opacity-50">
-                <Save className="h-4 w-4" /> Save Details
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                {saving ? 'Saving...' : 'Save Details'}
               </button>
             </div>
           </form>
@@ -378,11 +403,11 @@ export default function ManageHotel() {
                     </div>
                   <div>
                     <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Price in USD ($)</label>
-                    <input type="number" required value={editRoomData.price || 0} onChange={e => setEditRoomData({...editRoomData, price: Number(e.target.value)})} className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition" placeholder="e.g. 150" />
+                    <input type="number" min="0" step="0.01" required value={editRoomData.price || 0} onChange={e => setEditRoomData({...editRoomData, price: Number(e.target.value)})} className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition" placeholder="e.g. 150" />
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Price in MWK (Kwacha)</label>
-                    <input type="number" value={editRoomData.priceMWK || 0} onChange={e => setEditRoomData({...editRoomData, priceMWK: Number(e.target.value)})} className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition" placeholder="e.g. 250000" />
+                    <input type="number" min="0" step="1" value={editRoomData.priceMWK || 0} onChange={e => setEditRoomData({...editRoomData, priceMWK: Number(e.target.value)})} className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition" placeholder="e.g. 250000" />
                   </div>
                   <div className="md:col-span-2">
                     <label className="flex items-center gap-3 cursor-pointer">
@@ -454,13 +479,14 @@ export default function ManageHotel() {
                 <div className="border-t border-stone-200 pt-6">
                   <h4 className="text-sm font-bold text-stone-800 uppercase tracking-wider mb-2">Block Dates</h4>
                   <p className="text-xs text-stone-500 mb-3">Block specific dates (YYYY-MM-DD), comma separated.</p>
-                  <textarea rows={2} value={editRoomData.blockedDates ? editRoomData.blockedDates.join(", ") : ""} onChange={e => setEditRoomData({...editRoomData, blockedDates: e.target.value.split(",").map(d => d.trim()).filter(Boolean)})} className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition" placeholder="2026-09-01, 2026-09-02" />
+                  <textarea rows={2} value={editRoomData.blockedDates as any || ""} onChange={e => setEditRoomData({...editRoomData, blockedDates: e.target.value as any})} className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition" placeholder="2026-09-01, 2026-09-02" />
                 </div>
 
                 <div className="pt-4 flex justify-end gap-3">
                   <button type="button" onClick={cancelEditRoom} className="px-6 py-3 rounded-xl font-medium text-stone-600 hover:bg-stone-100 transition">Cancel</button>
                   <button type="submit" disabled={saving} className="flex items-center gap-2 bg-stone-900 text-white px-8 py-3 rounded-xl font-medium hover:bg-stone-800 transition disabled:opacity-50">
-                    <Save className="h-4 w-4" /> Save Room
+                    {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    {saving ? 'Saving...' : 'Save Room'}
                   </button>
                 </div>
               </form>

@@ -15,6 +15,37 @@ export default function ImageUpload({ value, onChange, label = 'Image', folder =
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [isDraggingFile, setIsDraggingFile] = useState(false);
+
+  const handleDragOverFile = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingFile(true);
+  };
+  
+  const handleDragLeaveFile = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingFile(false);
+  };
+  
+  const handleDropFile = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingFile(false);
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+    
+    setIsUploading(true);
+    try {
+      const url = await uploadImage(file, folder);
+      onChange(url);
+      setMode('url');
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      toast.error('Failed to upload image.');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -69,7 +100,13 @@ export default function ImageUpload({ value, onChange, label = 'Image', folder =
           placeholder="https://images.unsplash.com/..."
         />
       ) : (
-        <div className="w-full rounded-xl border-2 border-dashed border-stone-300 bg-stone-50 p-6 flex flex-col items-center justify-center text-center hover:border-stone-400 transition cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+        <div 
+          className={`w-full rounded-xl border-2 border-dashed ${isDraggingFile ? 'border-stone-900 bg-stone-100' : 'border-stone-300 bg-stone-50'} p-6 flex flex-col items-center justify-center text-center hover:border-stone-400 transition cursor-pointer`}
+          onClick={() => fileInputRef.current?.click()}
+          onDragOver={handleDragOverFile}
+          onDragLeave={handleDragLeaveFile}
+          onDrop={handleDropFile}
+        >
           {isUploading ? (
             <div className="flex flex-col items-center justify-center space-y-3">
               <Loader2 className="h-8 w-8 text-stone-400 animate-spin" />
@@ -77,8 +114,10 @@ export default function ImageUpload({ value, onChange, label = 'Image', folder =
             </div>
           ) : (
             <>
-              <ImageIcon className="h-8 w-8 text-stone-400 mb-3" />
-              <p className="text-sm text-stone-600 font-medium mb-1">Click to select an image</p>
+              <ImageIcon className={`h-8 w-8 mb-3 transition ${isDraggingFile ? 'text-stone-900' : 'text-stone-400'}`} />
+              <p className={`text-sm font-medium mb-1 ${isDraggingFile ? 'text-stone-900' : 'text-stone-600'}`}>
+                {isDraggingFile ? 'Drop image here' : 'Click or drag an image to upload'}
+              </p>
               <p className="text-xs text-stone-400">JPG, PNG, WEBP (max 5MB)</p>
             </>
           )}

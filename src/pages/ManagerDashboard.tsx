@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { collection, query, where, getDocs, addDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Hotel } from '../types';
-import { Building2, Plus, ChevronRight, TestTube } from 'lucide-react';
+import { Building2, Plus, ChevronRight, Loader2 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
@@ -56,9 +56,13 @@ export default function ManagerDashboard() {
     }
   }, [user, authLoading, navigate]);
 
+  const [saving, setSaving] = useState(false);
+
   const handleAddHotel = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+    
+    setSaving(true);
     
     try {
       const docRef = await addDoc(collection(db, 'hotels'), {
@@ -91,6 +95,9 @@ export default function ManagerDashboard() {
       setNewHotel({ name: '', description: '', location: '', imageUrl: '' });
     } catch (error) {
       console.error("Error adding hotel:", error);
+      toast.error('Failed to add property.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -183,9 +190,11 @@ export default function ManagerDashboard() {
             </div>
             <button 
               type="submit"
-              className="bg-stone-900 text-white px-8 py-3 rounded-full font-medium hover:bg-stone-800 transition"
+              disabled={saving}
+              className="flex items-center justify-center gap-2 bg-stone-900 text-white px-8 py-3 rounded-full font-medium hover:bg-stone-800 transition disabled:opacity-50"
             >
-              Save Property
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              {saving ? 'Saving Property...' : 'Save Property'}
             </button>
           </form>
         </div>

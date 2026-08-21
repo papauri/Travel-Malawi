@@ -87,6 +87,17 @@ export default function HotelDetails() {
       return;
     }
     
+    const checkInDate = new Date(checkIn);
+    const checkOutDate = new Date(checkOut);
+    const nights = checkIn && checkOut && checkOutDate > checkInDate 
+      ? Math.round((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 3600 * 24)) 
+      : 0;
+      
+    if (nights <= 0) {
+      toast.error("Please select valid check-in and check-out dates.");
+      return;
+    }
+    
     setBookingStatus(`Submitting manual booking for ${selectedRoom.name}...`);
     try {
       await addDoc(collection(db, 'bookings'), {
@@ -458,13 +469,13 @@ export default function HotelDetails() {
                   return (
                     <div className="space-y-4">
                       {selectedRoom.packages && selectedRoom.packages.length > 0 && (
-                        <div className="border border-stone-200 rounded-xl overflow-hidden mb-6">
-                          <div className="bg-stone-50 px-4 py-3 border-b border-stone-200">
+                        <div className="border border-stone-200 rounded-xl overflow-hidden mb-6 shadow-sm">
+                          <div className="bg-stone-50 px-5 py-4 border-b border-stone-200">
                             <h3 className="font-bold text-stone-800 text-sm uppercase tracking-wide">Enhance Your Stay</h3>
                           </div>
-                          <div className="divide-y divide-stone-100">
+                          <div className="divide-y divide-stone-100 bg-white">
                             {selectedRoom.packages.map(pkg => (
-                              <label key={pkg.id} className="flex items-center gap-3 p-4 hover:bg-stone-50 cursor-pointer transition">
+                              <label key={pkg.id} className="flex items-center gap-4 p-5 hover:bg-stone-50 cursor-pointer transition">
                                 <input 
                                   type="checkbox" 
                                   className="w-5 h-5 rounded text-stone-900 focus:ring-stone-900 border-stone-300"
@@ -475,8 +486,8 @@ export default function HotelDetails() {
                                   }}
                                 />
                                 <div className="flex-1">
-                                  <p className="font-medium text-stone-900">{pkg.name}</p>
-                                  <p className="text-sm text-stone-500">+${pkg.price} {pkg.type === "per_person" ? "per person/night" : pkg.type === "per_room" ? "per room/night" : "per stay"}</p>
+                                  <p className="font-bold text-stone-900">{pkg.name}</p>
+                                  <p className="text-sm text-stone-500 font-medium">+${pkg.price} {pkg.type === "per_person" ? "per person/night" : pkg.type === "per_room" ? "per room/night" : "per stay"}</p>
                                 </div>
                               </label>
                             ))}
@@ -484,31 +495,38 @@ export default function HotelDetails() {
                         </div>
                       )}
                       
-                      <div className="bg-stone-50 rounded-xl p-6 border border-stone-200 space-y-3">
-                        <h3 className="font-bold text-stone-800 text-sm uppercase tracking-wide border-b border-stone-200 pb-2 mb-3">Price Breakdown</h3>
+                      <div className="bg-white rounded-xl p-6 border border-stone-200 shadow-sm space-y-4">
+                        <h3 className="font-bold text-stone-900 text-sm uppercase tracking-wide border-b border-stone-100 pb-3 mb-4">Price Breakdown</h3>
                         
-                        <div className="flex justify-between items-center text-stone-600">
-                          <span>${basePrice} x {nights} nights</span>
-                          <span>${basePrice * nights}</span>
+                        <div className="flex justify-between items-center text-stone-600 font-medium">
+                          <span>${basePrice} x {nights} night{nights !== 1 && 's'}</span>
+                          <span className="text-stone-900">${basePrice * nights}</span>
                         </div>
                         
                         {extraGuestsCount > 0 && (
-                          <div className="flex justify-between items-center text-stone-600">
+                          <div className="flex justify-between items-center text-stone-600 font-medium">
                             <span>Extra Guests ({extraGuestsCount} x ${extraGuestFee} x {nights}n)</span>
-                            <span>${extraGuestsCount * extraGuestFee * nights}</span>
+                            <span className="text-stone-900">${extraGuestsCount * extraGuestFee * nights}</span>
                           </div>
                         )}
                         
                         {packagesTotal > 0 && (
-                          <div className="flex justify-between items-center text-emerald-600">
+                          <div className="flex justify-between items-center text-emerald-600 font-medium">
                             <span>Selected Packages</span>
                             <span>+${packagesTotal}</span>
                           </div>
                         )}
                         
-                        <div className="flex justify-between items-center border-t border-stone-200 pt-3 mt-3">
-                          <span className="font-bold text-stone-900">Total</span>
-                          <span className="font-serif font-bold text-2xl text-stone-900">{selectedRoom.currency === "MWK" ? "MWK " : "$"}{grandTotal}</span>
+                        <div className="flex justify-between items-center border-t border-stone-100 pt-4 mt-4">
+                          <span className="font-bold text-stone-900 uppercase tracking-wide">Total</span>
+                          <div className="text-right">
+                            <div className="font-serif font-bold text-3xl text-stone-900">${grandTotal}</div>
+                            {selectedRoom.showDualCurrency && selectedRoom.priceMWK && selectedRoom.price && (
+                              <div className="text-sm font-medium text-stone-500 mt-1">
+                                MWK {(grandTotal * (selectedRoom.priceMWK / selectedRoom.price)).toLocaleString()}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
