@@ -1,4 +1,4 @@
-export type Role = 'traveller' | 'hotel_manager';
+export type Role = 'traveller' | 'hotel_manager' | 'admin';
 
 export interface User {
   uid: string;
@@ -10,6 +10,7 @@ export interface User {
 
 export interface Hotel {
   id?: string;
+  status?: 'pending' | 'approved' | 'rejected';
   managerId: string;
   name: string;
   description: string;
@@ -29,6 +30,9 @@ export interface RoomType {
   name: string;
   description: string;
   price: number; // Base price
+  priceMWK?: number;
+  showDualCurrency?: boolean;
+  currency?: string;
   baseGuests?: number; // Guests included in base price (e.g., 2)
   extraGuestFee?: number; // Fee per additional guest per night
   maxGuests: number;

@@ -150,7 +150,7 @@ export default function ManageHotel() {
   };
 
   const startNewRoom = () => {
-    setEditRoomData({ name: '', description: '', price: 0, maxGuests: 2, baseGuests: 2, extraGuestFee: 0, quantity: 5, currency: 'USD', imageUrl: '', amenities: '' as any, packages: [], blockedDates: [] });
+    setEditRoomData({ name: '', description: '', price: 0, priceMWK: 0, showDualCurrency: false, maxGuests: 2, baseGuests: 2, extraGuestFee: 0, quantity: 5, currency: 'USD', imageUrl: '', amenities: '' as any, packages: [], blockedDates: [] });
     setEditingRoomId('new');
     setShowAddRoom(true);
   };
@@ -231,12 +231,57 @@ export default function ManageHotel() {
 
       {/* TAB CONTENT: DETAILS */}
       {activeTab === 'details' && (
-        <div className="bg-white rounded-3xl border border-stone-200 p-8 shadow-sm">
+        <div className="space-y-6">
+          {/* LIVE PREVIEW: How your images look to guests */}
+          {(editHotelData.imageUrl || (editHotelData.galleryUrls && editHotelData.galleryUrls.length > 0) || rooms.some(r => r.imageUrl)) && (
+            <div className="bg-white rounded-3xl border border-stone-200 p-8 shadow-sm">
+              <h3 className="text-lg font-serif font-bold text-stone-900 mb-6">📸 Live Image Preview</h3>
+              
+              {/* Hotel Gallery */}
+              {(editHotelData.imageUrl || (editHotelData.galleryUrls && editHotelData.galleryUrls.length > 0)) && (
+                <div className="mb-8">
+                  <p className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-3">Hotel Gallery</p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {editHotelData.imageUrl && (
+                      <div className="relative aspect-video rounded-xl overflow-hidden border-2 border-emerald-400">
+                        <img src={editHotelData.imageUrl} alt="Main" className="w-full h-full object-cover" />
+                        <span className="absolute top-2 left-2 bg-emerald-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">Main</span>
+                      </div>
+                    )}
+                    {(editHotelData.galleryUrls || []).map((url, idx) => (
+                      <div key={`gal-${idx}`} className="relative aspect-video rounded-xl overflow-hidden border border-stone-200">
+                        <img src={url} alt={`Gallery ${idx + 1}`} className="w-full h-full object-cover" />
+                        <span className="absolute top-2 left-2 bg-stone-900/70 text-white text-[10px] px-2 py-0.5 rounded-full">Gallery</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Room Images */}
+              {rooms.some(r => r.imageUrl) && (
+                <div>
+                  <p className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-3">Room Images</p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {rooms.filter(r => r.imageUrl).map(room => (
+                      <div key={`room-${room.id}`} className="relative aspect-video rounded-xl overflow-hidden border border-blue-200">
+                        <img src={room.imageUrl} alt={room.name} className="w-full h-full object-cover" />
+                        <span className="absolute top-2 left-2 bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">{room.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="bg-white rounded-3xl border border-stone-200 p-8 shadow-sm">
           <form onSubmit={handleSaveHotel} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="md:col-span-2">
                 <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Property Name</label>
-                <input type="text" required value={editHotelData.name || ''} onChange={e => setEditHotelData({...editHotelData, name: e.target.value})} className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition" />
+                <input type="text" required value={editHotelData.name || ''} readOnly disabled className="w-full bg-stone-200 border border-stone-300 p-3 rounded-xl outline-none text-stone-500 cursor-not-allowed" />
+                <p className="text-xs text-stone-400 mt-1">Property name cannot be changed after registration. Contact admin for assistance.</p>
               </div>
               <div className="md:col-span-2">
                 <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Description</label>
@@ -291,6 +336,7 @@ export default function ManageHotel() {
             </div>
           </form>
         </div>
+        </div>
       )}
 
       {/* TAB CONTENT: ROOMS */}
@@ -331,15 +377,18 @@ export default function ManageHotel() {
                       />
                     </div>
                   <div>
-                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Currency</label>
-                    <select value={editRoomData.currency || 'USD'} onChange={e => setEditRoomData({...editRoomData, currency: e.target.value})} className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition">
-                      <option value="USD">USD ($)</option>
-                      <option value="MWK">Malawian Kwacha (MWK)</option>
-                    </select>
+                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Price in USD ($)</label>
+                    <input type="number" required value={editRoomData.price || 0} onChange={e => setEditRoomData({...editRoomData, price: Number(e.target.value)})} className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition" placeholder="e.g. 150" />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Price per night</label>
-                    <input type="number" required value={editRoomData.price || 0} onChange={e => setEditRoomData({...editRoomData, price: Number(e.target.value)})} className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition" />
+                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Price in MWK (Kwacha)</label>
+                    <input type="number" value={editRoomData.priceMWK || 0} onChange={e => setEditRoomData({...editRoomData, priceMWK: Number(e.target.value)})} className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition" placeholder="e.g. 250000" />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input type="checkbox" checked={editRoomData.showDualCurrency || false} onChange={e => setEditRoomData({...editRoomData, showDualCurrency: e.target.checked})} className="w-5 h-5 rounded text-stone-900 border-stone-300" />
+                      <span className="text-sm font-medium text-stone-700">Show both USD and MWK prices to guests</span>
+                    </label>
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Max Guests</label>
@@ -350,6 +399,64 @@ export default function ManageHotel() {
                     <input type="number" required value={editRoomData.quantity || 1} onChange={e => setEditRoomData({...editRoomData, quantity: Number(e.target.value)})} className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition" />
                   </div>
                 </div>
+
+                {/* PACKAGES & INCLUSIONS */}
+                <div className="border-t border-stone-200 pt-6">
+                  <h4 className="text-sm font-bold text-stone-800 uppercase tracking-wider mb-4">Room Packages & Inclusions</h4>
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {[
+                      { name: "Breakfast Included", price: 15, type: "per_person" as const },
+                      { name: "All-Inclusive", price: 50, type: "per_person" as const },
+                      { name: "Airport Shuttle", price: 30, type: "per_room" as const },
+                      { name: "Gym Access", price: 10, type: "per_person" as const },
+                      { name: "Kids Free (Under 12)", price: 0, type: "per_stay" as const },
+                      { name: "Spa Access", price: 25, type: "per_person" as const },
+                      { name: "WiFi Premium", price: 5, type: "per_room" as const },
+                    ].filter(p => !(editRoomData.packages || []).some(ep => ep.name === p.name)).map(p => (
+                      <button key={p.name} type="button" onClick={() => {
+                        const pkgs = editRoomData.packages || [];
+                        setEditRoomData({...editRoomData, packages: [...pkgs, { id: Date.now().toString(), ...p }]});
+                      }} className="px-3 py-1.5 bg-stone-100 text-stone-700 rounded-full text-xs font-medium hover:bg-stone-200 transition border border-stone-200">
+                        + {p.name}
+                      </button>
+                    ))}
+                  </div>
+                  {editRoomData.packages && editRoomData.packages.length > 0 && (
+                    <div className="space-y-3">
+                      {editRoomData.packages.map(pkg => (
+                        <div key={pkg.id} className="flex items-center gap-3 bg-stone-50 p-3 rounded-xl border border-stone-100">
+                          <span className="flex-1 font-medium text-sm">{pkg.name}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-stone-500">$</span>
+                            <input type="number" value={pkg.price} onChange={e => {
+                              const updated = editRoomData.packages!.map(p => p.id === pkg.id ? {...p, price: Number(e.target.value)} : p);
+                              setEditRoomData({...editRoomData, packages: updated});
+                            }} className="w-16 bg-white border border-stone-200 p-1.5 rounded-lg text-sm text-center outline-none focus:border-stone-900" />
+                          </div>
+                          <select value={pkg.type} onChange={e => {
+                            const updated = editRoomData.packages!.map(p => p.id === pkg.id ? {...p, type: e.target.value as any} : p);
+                            setEditRoomData({...editRoomData, packages: updated});
+                          }} className="bg-white border border-stone-200 p-1.5 rounded-lg text-xs outline-none focus:border-stone-900">
+                            <option value="per_person">Per Person</option>
+                            <option value="per_room">Per Room</option>
+                            <option value="per_stay">Per Stay</option>
+                          </select>
+                          <button type="button" onClick={() => {
+                            setEditRoomData({...editRoomData, packages: editRoomData.packages?.filter(p => p.id !== pkg.id)});
+                          }} className="text-red-500 p-1 hover:bg-red-50 rounded"><Trash2 className="w-4 h-4" /></button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* BLOCKED DATES */}
+                <div className="border-t border-stone-200 pt-6">
+                  <h4 className="text-sm font-bold text-stone-800 uppercase tracking-wider mb-2">Block Dates</h4>
+                  <p className="text-xs text-stone-500 mb-3">Block specific dates (YYYY-MM-DD), comma separated.</p>
+                  <textarea rows={2} value={editRoomData.blockedDates ? editRoomData.blockedDates.join(", ") : ""} onChange={e => setEditRoomData({...editRoomData, blockedDates: e.target.value.split(",").map(d => d.trim()).filter(Boolean)})} className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition" placeholder="2026-09-01, 2026-09-02" />
+                </div>
+
                 <div className="pt-4 flex justify-end gap-3">
                   <button type="button" onClick={cancelEditRoom} className="px-6 py-3 rounded-xl font-medium text-stone-600 hover:bg-stone-100 transition">Cancel</button>
                   <button type="submit" disabled={saving} className="flex items-center gap-2 bg-stone-900 text-white px-8 py-3 rounded-xl font-medium hover:bg-stone-800 transition disabled:opacity-50">
@@ -378,7 +485,10 @@ export default function ManageHotel() {
               <div className="flex-1 min-w-0">
                 <div className="flex justify-between items-start mb-2">
                   <h4 className="text-xl font-serif font-bold text-stone-900 truncate pr-4">{room.name}</h4>
-                  <div className="text-xl font-serif font-bold text-stone-900 whitespace-nowrap">{room.currency === 'MWK' ? 'MWK ' : '$'}{room.price}</div>
+                  <div className="text-right">
+                    <div className="text-xl font-serif font-bold text-stone-900 whitespace-nowrap">${room.price}</div>
+                    {room.showDualCurrency && room.priceMWK ? <div className="text-sm text-stone-500 font-medium">MWK {room.priceMWK?.toLocaleString()}</div> : null}
+                  </div>
                 </div>
                 <p className="text-stone-500 text-sm mb-4 line-clamp-2">{room.description}</p>
                 <div className="flex flex-wrap items-center gap-4 text-sm font-medium">
@@ -386,6 +496,10 @@ export default function ManageHotel() {
                   <span className={`px-2.5 py-1 rounded-full text-xs uppercase tracking-wider ${room.quantity > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
                     {room.quantity > 0 ? `${room.quantity} Available` : 'Blocked'}
                   </span>
+                
+                  {room.packages && room.packages.length > 0 && room.packages.map(pkg => (
+                    <span key={pkg.id} className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full text-xs">{pkg.name}</span>
+                  ))}
                 </div>
               </div>
               <div className="flex md:flex-col w-full md:w-auto gap-2 border-t md:border-t-0 md:border-l border-stone-100 pt-4 md:pt-0 md:pl-6 shrink-0">

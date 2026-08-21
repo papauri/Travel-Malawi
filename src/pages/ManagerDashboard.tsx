@@ -63,6 +63,7 @@ export default function ManagerDashboard() {
     try {
       const docRef = await addDoc(collection(db, 'hotels'), {
         managerId: user.uid,
+        status: 'pending',
         name: newHotel.name,
         description: newHotel.description,
         location: newHotel.location,
@@ -76,6 +77,7 @@ export default function ManagerDashboard() {
       setHotels([...hotels, {
         id: docRef.id,
         managerId: user.uid,
+        status: 'pending',
         name: newHotel.name,
         description: newHotel.description,
         location: newHotel.location,
@@ -203,7 +205,7 @@ export default function ManagerDashboard() {
             <Link key={hotel.id} to={`/dashboard/hotel/${hotel.id}`} className="group bg-white rounded-3xl shadow-sm border border-stone-200 overflow-hidden flex flex-col hover:border-stone-400 transition duration-300">
               <div className="h-56 bg-stone-100 relative">
                 {hotel.imageUrl ? (
-                  <img src={hotel.imageUrl} alt={hotel.name} className="w-full h-full object-cover group-hover:scale-105 transition duration-700 ease-out" referrerPolicy="no-referrer" />
+                  <img src={hotel.imageUrl} alt={hotel.name} className="w-full h-full object-cover group-hover:scale-105 transition duration-700 ease-out" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
                     <Building2 className="h-12 w-12 text-stone-300" />

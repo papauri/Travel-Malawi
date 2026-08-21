@@ -13,6 +13,7 @@ import ManagerDashboard from './pages/ManagerDashboard';
 import ManageHotel from './pages/ManageHotel';
 import HotelDetails from './pages/HotelDetails';
 import MyBookings from './pages/MyBookings';
+import AdminDashboard from './pages/AdminDashboard';
 import { Toaster } from 'react-hot-toast';
 
 export default function App() {
@@ -39,6 +40,7 @@ export default function App() {
               <Route path="/dashboard" element={<ManagerDashboard />} />
               <Route path="/dashboard/hotel/:id" element={<ManageHotel />} />
               <Route path="/my-bookings" element={<MyBookings />} />
+              <Route path="/admin" element={<AdminDashboard />} />
             </Routes>
           </main>
           <Footer />

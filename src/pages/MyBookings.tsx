@@ -64,7 +64,7 @@ export default function MyBookings() {
             <div key={booking.id} className="flex flex-col md:flex-row bg-white border border-stone-200 rounded-3xl overflow-hidden shadow-sm">
               <div className="md:w-80 h-56 md:h-auto bg-stone-100 relative">
                 {booking.hotel?.imageUrl && (
-                  <img src={booking.hotel?.imageUrl} alt={booking.hotel?.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  <img src={booking.hotel?.imageUrl} alt={booking.hotel?.name} className="w-full h-full object-cover" />
                 )}
               </div>
               <div className="p-8 flex-1 flex flex-col justify-between">

@@ -55,7 +55,7 @@ export default function Home() {
         id: doc.id,
         ...doc.data()
       })) as Hotel[];
-      setHotels(hotelsData);
+      setHotels(hotelsData.filter(h => h.status === 'approved' || !h.status));
     } catch (error) {
       console.error("Error fetching hotels:", error);
     } finally {
@@ -231,9 +231,10 @@ export default function Home() {
     }
   };
 
+  const approvedHotels = hotels.filter(h => !h.status || h.status === 'approved');
   const filteredHotels = (activeCategory === 'All' 
-    ? hotels 
-    : hotels.filter(h => h.categories?.includes(activeCategory)))
+    ? approvedHotels 
+    : approvedHotels.filter(h => h.categories?.includes(activeCategory)))
     .filter(h => {
       if (appliedSearch.coords) {
         if (!h.coordinates) return false;
@@ -269,7 +270,7 @@ export default function Home() {
           src="https://images.unsplash.com/photo-1499793983690-e29da59ef1c2?q=80&w=2940&auto=format&fit=crop"
           alt="Luxury Resort"
           className="absolute inset-0 w-full h-full object-cover object-center z-0 animate-pulse-slow"
-          referrerPolicy="no-referrer"
+         
         />
         
         <div className="relative z-20 w-full max-w-7xl px-6 lg:px-8 flex flex-col items-center text-center mt-12">
@@ -474,30 +475,6 @@ export default function Home() {
             </div>
           </motion.div>
 
-          {/* Trust Strip */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="flex flex-wrap justify-center gap-6 mt-8 max-w-4xl w-full text-xs md:text-sm font-medium text-stone-200"
-          >
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              <span>Secure SSL Checkout</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <MessageCircle className="w-4 h-4 text-emerald-400" />
-              <span>WhatsApp Confirmations</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Smartphone className="w-4 h-4 text-emerald-400" />
-              <span>Mobile Money Supported</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Star className="w-4 h-4 text-emerald-400 fill-emerald-400" />
-              <span>Verified Properties</span>
-            </div>
-          </motion.div>
         </div>
       </section>
 
@@ -615,7 +592,7 @@ export default function Home() {
                       src={hotel.imageUrl} 
                       alt={hotel.name} 
                       className="absolute inset-0 object-cover w-full h-full group-hover:scale-105 transition duration-700 ease-out"
-                      referrerPolicy="no-referrer"
+                     
                     />
                   ) : (
                     <div className="absolute inset-0 w-full h-full flex items-center justify-center text-stone-400">

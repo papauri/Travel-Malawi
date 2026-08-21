@@ -173,7 +173,7 @@ export default function HotelDetails() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 md:h-[60vh]">
           {/* Main Hero Image */}
           <div className="md:col-span-2 md:row-span-2 relative rounded-3xl overflow-hidden h-[40vh] md:h-full">
-            <img src={hotel.imageUrl} alt={hotel.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+            <img src={hotel.imageUrl} alt={hotel.name} className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
             <div className="absolute bottom-0 left-0 w-full p-8 md:p-12">
               <motion.h1 
@@ -198,7 +198,7 @@ export default function HotelDetails() {
           {/* Secondary Gallery Images */}
           {hotel.galleryUrls && hotel.galleryUrls.map((url, index) => (
             <div key={index} className={`relative rounded-3xl overflow-hidden hidden md:block ${index === 0 ? 'md:col-span-2 md:row-span-1' : 'md:col-span-2 md:row-span-1'}`}>
-              <img src={url} alt={`${hotel.name} surroundings ${index + 1}`} className="w-full h-full object-cover hover:scale-105 transition duration-700 ease-out" referrerPolicy="no-referrer" />
+              <img src={url} alt={`${hotel.name} surroundings ${index + 1}`} className="w-full h-full object-cover hover:scale-105 transition duration-700 ease-out" />
             </div>
           ))}
           {!hotel.galleryUrls && (
@@ -290,7 +290,7 @@ export default function HotelDetails() {
                 <div key={room.id} className="bg-stone-50 rounded-3xl overflow-hidden flex flex-col border border-stone-200/60 shadow-sm hover:shadow-md transition">
                   <div className="h-48 bg-stone-200 relative">
                     {room.imageUrl ? (
-                      <img src={room.imageUrl} alt={room.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                      <img src={room.imageUrl} alt={room.name} className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-stone-400">No Room Photo</div>
                     )}
@@ -306,10 +306,22 @@ export default function HotelDetails() {
                         <CheckCircle2 className="h-4 w-4" /> {room.quantity} Available
                       </div>
                     </div>
+                    {room.packages && room.packages.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-6">
+                        {room.packages.map(pkg => (
+                          <span key={pkg.id} className="px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full text-xs font-medium border border-emerald-100">
+                            ✓ {pkg.name}{pkg.price > 0 ? ` (+$${pkg.price})` : ''}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                     <div className="flex items-end justify-between border-t border-stone-200 pt-6">
                       <div>
-                        <span className="text-3xl font-serif text-stone-900">{room.currency === 'MWK' ? 'MWK ' : '$'}{room.price}</span>
+                        <span className="text-3xl font-serif text-stone-900">${room.price}</span>
                         <span className="text-sm font-medium text-stone-500 ml-1">/ night</span>
+                        {room.showDualCurrency && room.priceMWK ? (
+                          <div className="text-sm text-stone-500 font-medium mt-1">MWK {room.priceMWK?.toLocaleString()} / night</div>
+                        ) : null}
                       </div>
                       <button 
                         onClick={() => initiateBooking(room)}
