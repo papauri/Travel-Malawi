@@ -294,53 +294,66 @@ export default function HotelDetails() {
           {rooms.length === 0 ? (
             <p className="text-stone-500 italic">No rooms available at the moment.</p>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16">
-              {rooms.map(room => (
-                <div key={room.id} className="bg-stone-50 rounded-3xl overflow-hidden flex flex-col border border-stone-200/60 shadow-sm hover:shadow-md transition">
-                  <div className="h-48 bg-stone-200 relative">
+            <div className="flex flex-col gap-20 mb-24">
+              {rooms.map((room, idx) => (
+                <motion.div 
+                  key={room.id} 
+                  initial={{ opacity: 0, y: 40 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-100px" }}
+                  transition={{ duration: 0.7, ease: "easeOut" }}
+                  className={`flex flex-col ${idx % 2 === 1 ? 'lg:flex-row-reverse' : 'lg:flex-row'} gap-10 lg:gap-20 items-center`}
+                >
+                  <div className="w-full lg:w-1/2 aspect-[4/3] lg:aspect-[4/5] overflow-hidden rounded-2xl relative shadow-xl">
                     {room.imageUrl ? (
-                      <img src={room.imageUrl} alt={room.name} className="w-full h-full object-cover" />
+                      <img src={room.imageUrl} alt={room.name} className="w-full h-full object-cover hover:scale-105 transition-transform duration-1000" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-stone-400">No Room Photo</div>
+                      <div className="w-full h-full flex items-center justify-center bg-stone-100 text-stone-400 font-serif">No Photo</div>
                     )}
                   </div>
-                  <div className="p-8 flex flex-col flex-1">
-                    <h3 className="text-2xl font-serif font-semibold text-stone-900 mb-3">{room.name}</h3>
-                    <p className="text-stone-500 mb-6 flex-1">{room.description}</p>
-                    <div className="flex items-center gap-6 text-sm text-stone-600 mb-8 font-medium">
-                      <div className="flex items-center gap-2">
-                        <Users className="h-4 w-4" /> {room.maxGuests} Guests
+                  
+                  <div className="w-full lg:w-1/2 flex flex-col justify-center py-6">
+                    <h3 className="text-4xl md:text-5xl lg:text-6xl font-serif text-stone-900 mb-6 tracking-tight leading-none">{room.name}</h3>
+                    <p className="text-stone-500 text-lg md:text-xl leading-relaxed mb-10 font-light">{room.description}</p>
+                    
+                    <div className="grid grid-cols-2 gap-6 text-stone-900 mb-10 border-y border-stone-200 py-8">
+                      <div className="flex items-center gap-3">
+                        <Users className="h-5 w-5 text-emerald-600" /> 
+                        <span className="font-serif text-lg">{room.maxGuests} Guests Max</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <CheckCircle2 className="h-4 w-4" /> {room.quantity} Available
+                      <div className="flex items-center gap-3">
+                        <CheckCircle2 className="h-5 w-5 text-emerald-600" /> 
+                        <span className="font-serif text-lg">{room.quantity} Available</span>
                       </div>
                     </div>
+                    
                     {room.packages && room.packages.length > 0 && (
-                      <div className="flex flex-wrap gap-2 mb-6">
+                      <div className="flex flex-wrap gap-3 mb-10">
                         {room.packages.map(pkg => (
-                          <span key={pkg.id} className="px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full text-xs font-medium border border-emerald-100">
-                            ✓ {pkg.name}{pkg.price > 0 ? ` (+$${pkg.price})` : ''}
+                          <span key={pkg.id} className="px-4 py-2 bg-stone-100 text-stone-700 rounded-full text-sm font-medium tracking-wide">
+                            + {pkg.name}{pkg.price > 0 ? ` ($${pkg.price})` : ''}
                           </span>
                         ))}
                       </div>
                     )}
-                    <div className="flex items-end justify-between border-t border-stone-200 pt-6">
+                    
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mt-auto">
                       <div>
-                        <span className="text-3xl font-serif text-stone-900">${room.price}</span>
-                        <span className="text-sm font-medium text-stone-500 ml-1">/ night</span>
+                        <span className="text-4xl font-serif text-stone-900">${room.price}</span>
+                        <span className="text-stone-500 ml-2 tracking-widest uppercase text-xs font-bold">/ night</span>
                         {room.showDualCurrency && room.priceMWK ? (
-                          <div className="text-sm text-stone-500 font-medium mt-1">MWK {room.priceMWK?.toLocaleString()} / night</div>
+                          <div className="text-sm text-stone-400 mt-1">MWK {room.priceMWK?.toLocaleString()} / night</div>
                         ) : null}
                       </div>
                       <button 
                         onClick={() => initiateBooking(room)}
-                        className="bg-stone-900 text-white px-6 py-2.5 rounded-full font-medium hover:bg-stone-800 transition"
+                        className="bg-stone-900 text-white px-10 py-4 rounded-full font-bold uppercase tracking-widest text-xs hover:bg-emerald-700 transition-colors duration-300"
                       >
-                        Request Booking
+                        Reserve
                       </button>
                     </div>
                   </div>
-                </div>
+                </motion.div>
               ))}
             </div>
           )}
