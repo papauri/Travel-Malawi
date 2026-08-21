@@ -31,11 +31,10 @@ service cloud.firestore {
     }
 
     match /bookings/{bookingId} {
-      allow read: if isAuthenticated() && (
-        resource.data.guestId == request.auth.uid || 
-        get(/databases/$(database)/documents/hotels/$(resource.data.hotelId)).data.managerId == request.auth.uid
-      );
-      allow create: if isAuthenticated() && request.resource.data.guestId == request.auth.uid;
+      // Allow public read so the AvailabilityCalendar can show blocked dates
+      allow read: if true;
+      // Allow public create so guests can book without logging in
+      allow create: if true;
       allow update: if isAuthenticated() && (
         resource.data.guestId == request.auth.uid || 
         get(/databases/$(database)/documents/hotels/$(resource.data.hotelId)).data.managerId == request.auth.uid
