@@ -23,6 +23,10 @@ service cloud.firestore {
         hotelManagerId(hotelId) == request.auth.uid;
     }
 
+    function bookingDoc(bookingId) {
+      return get(/databases/$(database)/documents/bookings/$(bookingId)).data;
+    }
+
     match /users/{userId} {
       // Profiles carry email addresses, so they are no longer world-readable.
       // The admin dashboard lists managers, so admins keep collection access.
@@ -46,7 +50,17 @@ service cloud.firestore {
       // Admins moderate listings (approve/reject), so they need write access
       // here — the previous rules only allowed the owning manager, which meant
       // the admin dashboard's approve/reject silently failed.
-      allow update: if isManager(hotelId) || isAdmin();
+      // A manager may edit their listing but not re-approve it or hand it to
+      // someone else; only an admin may change `status` or `managerId`.
+      // `get(field, default)` because listings imported before moderation
+      // existed have no `status` field, and reading a missing field would
+      // fail the rule outright.
+      allow update: if isAdmin() || (
+                      isManager(hotelId)
+                      && request.resource.data.managerId == resource.data.managerId
+                      && request.resource.data.get('status', 'approved')
+                         == resource.data.get('status', 'approved')
+                    );
       allow delete: if isManager(hotelId) || isAdmin();
     }
 
@@ -90,12 +104,72 @@ service cloud.firestore {
                         ? request.resource.data.guestId == 'anonymous'
                         : request.resource.data.guestId == request.auth.uid);
 
-      // The guest may cancel; the owning manager may confirm or reject.
-      allow update: if isAuthenticated() && (
-                      resource.data.guestId == request.auth.uid ||
-                      isManager(resource.data.hotelId) ||
-                      isAdmin()
+      // The owning manager confirms, declines or cancels. A guest may only
+      // cancel: the previous rule let a guest write any status, so a booking
+      // could be self-confirmed without the property ever seeing it. Neither
+      // party may rewrite the dates, price or room after the fact.
+      // Immutable fields are compared through `get` with a default so that a
+      // record imported without one of them cannot be locked out of updates.
+      allow update: if isAdmin() || (
+                      isAuthenticated()
+                      && request.resource.data.hotelId == resource.data.hotelId
+                      && request.resource.data.roomTypeId == resource.data.roomTypeId
+                      && request.resource.data.guestId == resource.data.guestId
+                      && request.resource.data.checkIn == resource.data.checkIn
+                      && request.resource.data.checkOut == resource.data.checkOut
+                      && request.resource.data.get('total', 0) == resource.data.get('total', 0)
+                      && (
+                        isManager(resource.data.hotelId)
+                        || (
+                          resource.data.guestId == request.auth.uid
+                          && request.resource.data.status == 'cancelled'
+                        )
+                      )
                     );
+
+      // The manager owning the property may delete a booking from their
+      // dashboard. That button existed but the rule did not allow it, so every
+      // manager-side delete failed with a permission error.
+      allow delete: if isAuthenticated() && (
+                      resource.data.guestId == request.auth.uid
+                      || isManager(resource.data.hotelId)
+                      || isAdmin()
+                    );
+    }
+
+    match /reviews/{reviewId} {
+      allow read: if true;
+
+      // A review must come from the signed-in guest's own booking, at the
+      // property being reviewed. Whether the stay is actually finished is
+      // checked in the client: rules have no clock to compare `checkOut`
+      // against, so this enforces ownership, and the UI enforces timing.
+      allow create: if isAuthenticated()
+                    && request.resource.data.guestId == request.auth.uid
+                    && request.resource.data.hotelId is string
+                    && request.resource.data.bookingId is string
+                    && request.resource.data.rating is int
+                    && request.resource.data.rating >= 1
+                    && request.resource.data.rating <= 5
+                    && request.resource.data.text is string
+                    && request.resource.data.text.size() > 0
+                    && request.resource.data.text.size() <= 2000
+                    && request.resource.data.createdAt is number
+                    && exists(/databases/$(database)/documents/bookings/$(request.resource.data.bookingId))
+                    && bookingDoc(request.resource.data.bookingId).guestId == request.auth.uid
+                    && bookingDoc(request.resource.data.bookingId).hotelId == request.resource.data.hotelId
+                    && bookingDoc(request.resource.data.bookingId).status == 'confirmed';
+
+      // The author may correct their own review; only the rating and text.
+      allow update: if isAuthenticated()
+                    && resource.data.guestId == request.auth.uid
+                    && request.resource.data.guestId == resource.data.guestId
+                    && request.resource.data.hotelId == resource.data.hotelId
+                    && request.resource.data.bookingId == resource.data.bookingId
+                    && request.resource.data.rating is int
+                    && request.resource.data.rating >= 1
+                    && request.resource.data.rating <= 5;
+
       allow delete: if isAuthenticated() &&
                     (resource.data.guestId == request.auth.uid || isAdmin());
     }

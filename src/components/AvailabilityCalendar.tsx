@@ -3,27 +3,37 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { RoomType } from '../types';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Lock } from 'lucide-react';
+import { BookingLike, buildOccupancyMap } from '../lib/availability';
+import { DateStr, toDateStr, todayStr } from '../lib/dates';
 
 interface Props {
   hotelId: string;
   rooms: RoomType[];
-  onDateSelect?: (date: string) => void;
+  onDateSelect?: (date: DateStr) => void;
   selectedRoom?: RoomType | null;
+  /**
+   * Manager mode. When supplied, clicking a day toggles it in the room's
+   * blocked list instead of selecting it as a check-in date.
+   */
+  onToggleBlocked?: (date: DateStr) => void;
+  /** Blocked dates being edited, so the grid reflects unsaved changes. */
+  blockedDates?: string[];
 }
 
 interface DayInfo {
   date: Date;
-  dateStr: string;
+  dateStr: DateStr;
   bookedCount: number;
   totalRooms: number;
+  isBlocked: boolean;
 }
 
-type Availability = 'available' | 'limited' | 'full' | 'past' | 'empty';
+type Availability = 'available' | 'limited' | 'full' | 'blocked' | 'past' | 'empty';
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTH_NAMES = [
@@ -31,98 +41,91 @@ const MONTH_NAMES = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
 
-function toDateStr(date: Date): string {
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${date.getFullYear()}-${month}-${day}`;
-}
+export default function AvailabilityCalendar({
+  hotelId,
+  rooms,
+  onDateSelect,
+  selectedRoom,
+  onToggleBlocked,
+  blockedDates,
+}: Props) {
+  const today = todayStr();
+  const isManagerMode = !!onToggleBlocked;
 
-// Stepped entirely in UTC so the result never depends on the viewer's
-// offset or on a DST transition falling inside the range.
-function addDays(dateStr: string, days: number): string {
-  const [y, m, d] = dateStr.split('-').map(Number);
-  const stepped = new Date(Date.UTC(y, m - 1, d) + days * 86400000);
-  const month = String(stepped.getUTCMonth() + 1).padStart(2, '0');
-  const day = String(stepped.getUTCDate()).padStart(2, '0');
-  return `${stepped.getUTCFullYear()}-${month}-${day}`;
-}
-
-export default function AvailabilityCalendar({ hotelId, rooms, onDateSelect, selectedRoom }: Props) {
-  const today = toDateStr(new Date());
-  
   const [viewYear, setViewYear] = useState(() => new Date().getFullYear());
   const [viewMonth, setViewMonth] = useState(() => new Date().getMonth());
-  const [bookedMap, setBookedMap] = useState<Record<string, number>>({});
+  const [bookedMap, setBookedMap] = useState<Record<DateStr, number>>({});
   const [loading, setLoading] = useState(true);
 
-  // Total room inventory across all room types (or just the selected one)
+  // Depend on the room's id rather than the object: a parent that rebuilds the
+  // room on each render would otherwise re-run the query every render.
+  const selectedRoomId = selectedRoom?.id;
+
+  /** Total inventory in view — one room type, or the whole property. */
   const totalRooms = useMemo(
-    () => {
-      if (selectedRoom) return selectedRoom.quantity ?? 1;
-      return rooms.reduce((sum, r) => sum + (r.quantity ?? 0), 0);
-    },
+    () => (selectedRoom ? selectedRoom.quantity ?? 0 : rooms.reduce((sum, r) => sum + (r.quantity ?? 0), 0)),
     [rooms, selectedRoom]
   );
+
+  /**
+   * Dates taken off sale by hand, with how much inventory each one removes.
+   * Previously only the selected room's blocked dates counted, so the
+   * property-wide calendar showed hand-blocked nights as bookable.
+   */
+  const blockedInventory = useMemo(() => {
+    const source = selectedRoom
+      ? [{ dates: blockedDates ?? selectedRoom.blockedDates ?? [], units: selectedRoom.quantity ?? 0 }]
+      : rooms.map(r => ({ dates: r.blockedDates ?? [], units: r.quantity ?? 0 }));
+
+    const totals: Record<DateStr, number> = {};
+    for (const { dates, units } of source) {
+      for (const date of dates) totals[date] = (totals[date] ?? 0) + units;
+    }
+    return Object.entries(totals).map(([date, units]) => ({ date, units }));
+  }, [rooms, selectedRoom, blockedDates]);
+
+  const blockedSet = useMemo(
+    () => new Set(blockedInventory.map(b => b.date)),
+    [blockedInventory]
+  );
+
+  const [rawBookings, setRawBookings] = useState<BookingLike[]>([]);
 
   useEffect(() => {
     async function fetchBookings() {
       if (!hotelId) return;
       setLoading(true);
       try {
-        let q;
-        if (selectedRoom) {
-          q = query(
-            collection(db, 'bookings'),
-            where('hotelId', '==', hotelId),
-            where('roomTypeId', '==', selectedRoom.id),
-            // JS filter instead
-          );
-        } else {
-          q = query(
-            collection(db, 'bookings'),
-            where('hotelId', '==', hotelId),
-            // JS filter instead
-          );
-        }
+        // Status is filtered in JS: an inequality on status would force a
+        // composite index, and the result set per hotel is small.
+        const q = selectedRoomId
+          ? query(
+              collection(db, 'bookings'),
+              where('hotelId', '==', hotelId),
+              where('roomTypeId', '==', selectedRoomId)
+            )
+          : query(collection(db, 'bookings'), where('hotelId', '==', hotelId));
+
         const snap = await getDocs(q);
-        const map: Record<string, number> = {};
-
-        // Add explicit blocked dates from selected room
-        if (selectedRoom?.blockedDates) {
-          selectedRoom.blockedDates.forEach(d => {
-            map[d] = selectedRoom.quantity ?? 1; // Mark fully booked
-          });
-        }
-
-        snap.docs.forEach(doc => {
-          const data = doc.data();
-          const { checkIn, checkOut, quantity = 1, status } = data as {
-            checkIn: string;
-            checkOut: string;
-            quantity?: number;
-            status?: string;
-          };
-          // Cancelled and rejected bookings must not consume inventory.
-          if (!checkIn || !checkOut || (status !== "pending" && status !== "confirmed")) return;
-          let cursor = checkIn;
-          while (cursor < checkOut) {
-            map[cursor] = (map[cursor] ?? 0) + quantity;
-            cursor = addDays(cursor, 1);
-          }
-        });
-
-        setBookedMap(map);
+        setRawBookings(snap.docs.map(d => d.data() as BookingLike));
       } catch (e) {
         console.error('Error fetching bookings for calendar:', e);
+        setRawBookings([]);
       } finally {
         setLoading(false);
       }
     }
     fetchBookings();
-  }, [hotelId, selectedRoom]);
+  }, [hotelId, selectedRoomId]);
+
+  // Recomputed separately from the fetch so editing blocked dates in manager
+  // mode updates the grid without another round trip.
+  useEffect(() => {
+    setBookedMap(buildOccupancyMap(rawBookings, blockedInventory));
+  }, [rawBookings, blockedInventory]);
 
   // Build grid cells for the current view month
-  const { cells, weeks } = useMemo(() => {
+  const cells = useMemo(() => {
     const firstDay = new Date(viewYear, viewMonth, 1);
     const lastDay = new Date(viewYear, viewMonth + 1, 0);
     const startOffset = firstDay.getDay(); // 0=Sun
@@ -133,20 +136,27 @@ export default function AvailabilityCalendar({ hotelId, rooms, onDateSelect, sel
     for (let d = 1; d <= lastDay.getDate(); d++) {
       const date = new Date(viewYear, viewMonth, d);
       const dateStr = toDateStr(date);
-      days.push({ date, dateStr, bookedCount: bookedMap[dateStr] ?? 0, totalRooms });
+      days.push({
+        date,
+        dateStr,
+        bookedCount: bookedMap[dateStr] ?? 0,
+        totalRooms,
+        isBlocked: blockedSet.has(dateStr),
+      });
     }
 
     // Pad to full rows of 7
     while (days.length % 7 !== 0) days.push(null);
-
-    const w: (DayInfo | null)[][] = [];
-    for (let i = 0; i < days.length; i += 7) w.push(days.slice(i, i + 7));
-    return { cells: days, weeks: w };
-  }, [viewYear, viewMonth, bookedMap, totalRooms]);
+    return days;
+  }, [viewYear, viewMonth, bookedMap, totalRooms, blockedSet]);
 
   function getAvailability(day: DayInfo): Availability {
     if (day.dateStr < today) return 'past';
-    if (day.totalRooms === 0) return 'available';
+    if (day.isBlocked) return 'blocked';
+    // A property with no inventory is neither wide open (what this used to
+    // claim) nor sold out. Guests get an explicit notice instead of a grid; in
+    // manager mode the grid stays usable so dates can still be blocked.
+    if (day.totalRooms === 0) return isManagerMode ? 'available' : 'full';
     const ratio = day.bookedCount / day.totalRooms;
     if (ratio >= 1) return 'full';
     if (ratio >= 0.5) return 'limited';
@@ -170,14 +180,20 @@ export default function AvailabilityCalendar({ hotelId, rooms, onDateSelect, sel
 
   function handleDayClick(day: DayInfo) {
     const avail = getAvailability(day);
-    if (avail === 'past' || avail === 'full') return;
+    if (avail === 'past') return;
+    if (isManagerMode) {
+      onToggleBlocked!(day.dateStr);
+      return;
+    }
+    if (avail === 'full' || avail === 'blocked') return;
     onDateSelect?.(day.dateStr);
   }
 
   const cellStyles: Record<Availability, string> = {
     available: 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 cursor-pointer border border-emerald-200',
     limited:   'bg-amber-50 text-amber-800 hover:bg-amber-100 cursor-pointer border border-amber-200',
-    full:      'bg-red-50 text-red-400 cursor-not-allowed border border-red-100 opacity-70',
+    full:      'bg-red-50 text-red-400 border border-red-100 opacity-70',
+    blocked:   'bg-stone-800 text-stone-200 border border-stone-700',
     past:      'bg-stone-50 text-stone-300 cursor-default border border-stone-100',
     empty:     '',
   };
@@ -186,9 +202,17 @@ export default function AvailabilityCalendar({ hotelId, rooms, onDateSelect, sel
     available: 'bg-emerald-400',
     limited:   'bg-amber-400',
     full:      'bg-red-400',
+    blocked:   'bg-stone-400',
     past:      'hidden',
     empty:     'hidden',
   };
+
+  const legend: { avail: Availability; label: string }[] = [
+    { avail: 'available', label: 'Available' },
+    { avail: 'limited', label: 'Limited' },
+    { avail: 'full', label: 'Fully Booked' },
+    { avail: 'blocked', label: 'Blocked' },
+  ];
 
   return (
     <div className="bg-white rounded-3xl border border-stone-200 shadow-sm overflow-hidden">
@@ -196,10 +220,13 @@ export default function AvailabilityCalendar({ hotelId, rooms, onDateSelect, sel
       <div className="flex items-center justify-between px-8 py-6 border-b border-stone-100">
         <div>
           <h3 className="text-xl font-serif text-stone-900">Availability</h3>
-          <p className="text-sm text-stone-500 mt-0.5">Select a check-in date</p>
+          <p className="text-sm text-stone-500 mt-0.5">
+            {isManagerMode ? 'Click a date to block or unblock it' : 'Select a check-in date'}
+          </p>
         </div>
         <div className="flex items-center gap-3">
           <button
+            type="button"
             onClick={prevMonth}
             disabled={isPrevDisabled}
             className="p-2 rounded-full hover:bg-stone-100 transition disabled:opacity-30 disabled:cursor-not-allowed"
@@ -211,6 +238,7 @@ export default function AvailabilityCalendar({ hotelId, rooms, onDateSelect, sel
             {MONTH_NAMES[viewMonth]} {viewYear}
           </span>
           <button
+            type="button"
             onClick={nextMonth}
             className="p-2 rounded-full hover:bg-stone-100 transition"
             aria-label="Next month"
@@ -223,6 +251,11 @@ export default function AvailabilityCalendar({ hotelId, rooms, onDateSelect, sel
       {loading ? (
         <div className="flex items-center justify-center py-16">
           <div className="h-7 w-7 animate-spin rounded-full border-4 border-stone-200 border-t-stone-700" />
+        </div>
+      ) : totalRooms === 0 && !isManagerMode ? (
+        <div className="px-8 py-12 text-center">
+          <p className="text-stone-500">This property has not published its room availability yet.</p>
+          <p className="text-sm text-stone-400 mt-1">Contact them directly to check dates.</p>
         </div>
       ) : (
         <div className="px-6 py-6">
@@ -241,12 +274,17 @@ export default function AvailabilityCalendar({ hotelId, rooms, onDateSelect, sel
               if (!day) return <div key={`empty-${idx}`} />;
               const avail = getAvailability(day);
               const isToday = day.dateStr === today;
+              // In manager mode every future day stays clickable, including
+              // sold-out ones, so a date can always be taken off sale.
+              const disabled = avail === 'past' || (!isManagerMode && (avail === 'full' || avail === 'blocked'));
               return (
                 <button
                   key={day.dateStr}
+                  type="button"
                   onClick={() => handleDayClick(day)}
-                  disabled={avail === 'past' || avail === 'full'}
+                  disabled={disabled}
                   title={
+                    avail === 'blocked'   ? 'Blocked by the property' :
                     avail === 'available' ? 'Rooms available' :
                     avail === 'limited'   ? 'Limited availability' :
                     avail === 'full'      ? 'Fully booked' :
@@ -256,11 +294,16 @@ export default function AvailabilityCalendar({ hotelId, rooms, onDateSelect, sel
                     relative flex flex-col items-center justify-center
                     rounded-xl py-2 px-1 text-sm font-medium transition
                     ${cellStyles[avail]}
+                    ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}
                     ${isToday ? 'ring-2 ring-stone-400 ring-offset-1' : ''}
                   `}
                 >
                   <span>{day.date.getDate()}</span>
-                  <span className={`mt-1 h-1.5 w-1.5 rounded-full ${dotStyles[avail]}`} />
+                  {avail === 'blocked' ? (
+                    <Lock className="mt-1 h-2.5 w-2.5" />
+                  ) : (
+                    <span className={`mt-1 h-1.5 w-1.5 rounded-full ${dotStyles[avail]}`} />
+                  )}
                 </button>
               );
             })}
@@ -269,13 +312,9 @@ export default function AvailabilityCalendar({ hotelId, rooms, onDateSelect, sel
           {/* Legend */}
           <div className="flex items-center gap-6 mt-6 pt-4 border-t border-stone-100 flex-wrap">
             <span className="text-xs font-semibold text-stone-400 uppercase tracking-wider">Legend</span>
-            {[
-              { avail: 'available' as Availability, label: 'Available' },
-              { avail: 'limited'   as Availability, label: 'Limited' },
-              { avail: 'full'      as Availability, label: 'Fully Booked' },
-            ].map(({ avail, label }) => (
+            {legend.map(({ avail, label }) => (
               <div key={avail} className="flex items-center gap-1.5">
-                <span className={`h-2.5 w-2.5 rounded-full ${dotStyles[avail]}`} />
+                <span className={`h-2.5 w-2.5 rounded-full ${avail === 'blocked' ? 'bg-stone-800' : dotStyles[avail]}`} />
                 <span className="text-xs text-stone-500">{label}</span>
               </div>
             ))}

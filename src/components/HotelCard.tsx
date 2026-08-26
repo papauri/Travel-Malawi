@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Star } from 'lucide-react';
 import { Hotel } from '../types';
 import SmartImage from './SmartImage';
 import { getHotelImages } from '../lib/images';
@@ -14,9 +14,13 @@ interface HotelCardProps {
     guests?: number;
   };
   index: number;
+  /** Nightly rate of the cheapest room that matches the search, if known. */
+  priceFrom?: number | null;
+  /** Combined rating across imported and guest-written reviews. */
+  rating?: { average: number; count: number } | null;
 }
 
-export default function HotelCard({ hotel, searchParams, index }: HotelCardProps) {
+export default function HotelCard({ hotel, searchParams, index, priceFrom, rating }: HotelCardProps) {
   const [currentImageIdx, setCurrentImageIdx] = useState(0);
 
   // Resolved centrally: drops empty/dead URLs and falls back to bundled
@@ -35,15 +39,17 @@ export default function HotelCard({ hotel, searchParams, index }: HotelCardProps
     setCurrentImageIdx((prev) => (prev - 1 + allImages.length) % allImages.length);
   };
 
-  const searchQuery = new URLSearchParams({
-    checkIn: searchParams.checkIn || '',
-    checkOut: searchParams.checkOut || '',
-    guests: searchParams.guests ? String(searchParams.guests) : '',
-  }).toString();
+  const searchQuery = new URLSearchParams(
+    Object.entries({
+      checkIn: searchParams.checkIn || '',
+      checkOut: searchParams.checkOut || '',
+      guests: searchParams.guests ? String(searchParams.guests) : '',
+    }).filter(([, value]) => value !== '')
+  ).toString();
 
   return (
     <Link
-      to={`/hotel/${hotel.id}?${searchQuery}`}
+      to={searchQuery ? `/hotel/${hotel.id}?${searchQuery}` : `/hotel/${hotel.id}`}
       className="group flex flex-col gap-4 w-full"
     >
       <motion.div 
@@ -116,6 +122,23 @@ export default function HotelCard({ hotel, searchParams, index }: HotelCardProps
         <h3 className="font-serif text-2xl text-stone-900 truncate group-hover:text-emerald-700 transition-colors duration-300 pr-2">
           {hotel.name}
         </h3>
+        <div className="flex items-center justify-between mt-1">
+          {priceFrom ? (
+            <p className="text-sm text-stone-600">
+              <span className="font-semibold text-stone-900">${priceFrom.toLocaleString()}</span>
+              <span className="text-stone-400"> / night</span>
+            </p>
+          ) : (
+            <span className="text-sm text-stone-400">Rates on request</span>
+          )}
+          {rating && (
+            <span className="flex items-center gap-1 text-sm text-stone-600">
+              <Star className="w-3.5 h-3.5 fill-stone-900 text-stone-900" />
+              <span className="font-semibold text-stone-900">{rating.average.toFixed(1)}</span>
+              <span className="text-stone-400">({rating.count})</span>
+            </span>
+          )}
+        </div>
       </div>
     </Link>
   );

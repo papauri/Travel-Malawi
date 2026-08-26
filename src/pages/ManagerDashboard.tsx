@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { collection, query, where, getDocs, addDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Hotel } from '../types';
-import { Building2, Plus, ChevronRight, Loader2 } from 'lucide-react';
+import { Building2, Plus, ChevronRight, Loader2, Clock, CheckCircle2, XCircle } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
@@ -101,6 +101,7 @@ export default function ManagerDashboard() {
       
       setShowAddForm(false);
       setNewHotel({ name: '', description: '', location: '', imageUrl: '', coordinates: null });
+      toast.success('Property submitted. It goes live once our team approves it.');
     } catch (error) {
       console.error("Error adding hotel:", error);
       toast.error('Failed to add property.');
@@ -226,6 +227,17 @@ export default function ManagerDashboard() {
                   alt={hotel.name}
                   className="w-full h-full object-cover group-hover:scale-105 transition duration-700 ease-out"
                 />
+                {/* Moderation status was previously only visible to admins, so a
+                    manager had no way to tell whether their listing was live. */}
+                <span className={`absolute top-4 left-4 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[0.65rem] font-bold uppercase tracking-wider shadow-sm ${
+                  hotel.status === 'pending' ? 'bg-amber-100 text-amber-800' :
+                  hotel.status === 'rejected' ? 'bg-red-100 text-red-700' :
+                  'bg-emerald-100 text-emerald-700'
+                }`}>
+                  {hotel.status === 'pending' ? <><Clock className="h-3 w-3" /> Awaiting approval</>
+                    : hotel.status === 'rejected' ? <><XCircle className="h-3 w-3" /> Not published</>
+                    : <><CheckCircle2 className="h-3 w-3" /> Live</>}
+                </span>
               </div>
               <div className="p-8 flex-1 flex flex-col">
                 <div className="flex justify-between items-start mb-6">

@@ -39,6 +39,16 @@ const LOCAL_HOTEL_IMAGES: Record<string, string[]> = {
 export const DECORATIVE_IMAGE = '/hotels/rosalyn_main.jpg';
 
 /**
+ * The home page hero.
+ *
+ * This was a stock Unsplash photograph of a modern white villa — with a
+ * construction crane in the frame — which had nothing to do with Malawi and
+ * depended on a third-party host. Kaya Mawa on Likoma Island is bundled with
+ * the app, loads instantly, and is actually one of the listings.
+ */
+export const HERO_IMAGE = '/hotels/kaya_main.jpg';
+
+/**
  * URLs confirmed dead (verified 404) that still exist in stored records,
  * mapped to a working equivalent. Matched on a distinctive substring so the
  * surrounding query string does not matter.
