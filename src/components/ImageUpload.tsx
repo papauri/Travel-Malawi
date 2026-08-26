@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Upload, Link as LinkIcon, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { uploadImage } from '../lib/uploadImage';
 import toast from 'react-hot-toast';
+import SmartImage from './SmartImage';
 
 interface Props {
   value: string;
@@ -134,7 +135,7 @@ export default function ImageUpload({ value, onChange, label = 'Image', folder =
       
       {value && mode === 'upload' && !isUploading && (
         <div className="mt-3 relative rounded-xl overflow-hidden h-32 bg-stone-100 border border-stone-200">
-          <img src={value} alt="Preview" className="w-full h-full object-cover" />
+          <SmartImage src={value} alt="Preview" className="w-full h-full object-cover" />
         </div>
       )}
     </div>

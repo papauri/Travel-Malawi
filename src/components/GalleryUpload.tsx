@@ -2,6 +2,7 @@ import React, { useState, useRef } from "react";
 import { Upload, Link as LinkIcon, Image as ImageIcon, Loader2, X, GripVertical } from "lucide-react";
 import { uploadImage } from "../lib/uploadImage";
 import toast from "react-hot-toast";
+import SmartImage from "./SmartImage";
 
 interface Props {
   value: string[];
@@ -134,7 +135,7 @@ export default function GalleryUpload({ value = [], onChange, label = "Gallery I
               onDragOver={(e) => handleDragOver(e, idx)}
               className="relative aspect-video rounded-xl overflow-hidden group cursor-move bg-stone-100 border border-stone-200"
             >
-              <img src={url} alt={`Gallery ${idx + 1}`} className="w-full h-full object-cover pointer-events-none" />
+              <SmartImage src={url} alt={`Gallery ${idx + 1}`} className="w-full h-full object-cover pointer-events-none" />
               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
                 <GripVertical className="text-white h-8 w-8" />
               </div>

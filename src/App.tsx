@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation, Link } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
@@ -11,6 +11,22 @@ import MyBookings from './pages/MyBookings';
 import AdminDashboard from './pages/AdminDashboard';
 import { Toaster } from 'react-hot-toast';
 import Lenis from 'lenis';
+
+// Without this, an unmatched URL rendered an empty page with no way back.
+function NotFound() {
+  return (
+    <div className="min-h-[60vh] flex flex-col items-center justify-center text-center px-6">
+      <p className="text-xs font-bold tracking-[0.2em] text-stone-400 uppercase mb-4">Error 404</p>
+      <h1 className="text-4xl md:text-5xl font-serif text-stone-900 mb-4 tracking-tight">Page not found</h1>
+      <p className="text-stone-500 text-lg max-w-md mb-8">
+        The page you are looking for does not exist or has been moved.
+      </p>
+      <Link to="/" className="bg-stone-900 text-white px-8 py-3 rounded-full font-medium hover:bg-stone-800 transition">
+        Back to home
+      </Link>
+    </div>
+  );
+}
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -62,6 +78,7 @@ export default function App() {
               <Route path="/dashboard/hotel/:id" element={<ManageHotel />} />
               <Route path="/my-bookings" element={<MyBookings />} />
               <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="*" element={<NotFound />} />
             </Routes>
           </main>
           <Footer />

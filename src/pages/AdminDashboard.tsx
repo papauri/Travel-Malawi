@@ -6,6 +6,8 @@ import { Hotel, User } from '../types';
 import { Shield, Building2, CheckCircle, XCircle, Clock, MapPin, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import SmartImage from '../components/SmartImage';
+import { getHotelImage } from '../lib/images';
 
 export default function AdminDashboard() {
   const { user, loading: authLoading } = useAuth();
@@ -52,7 +54,11 @@ export default function AdminDashboard() {
     }
   }, [user, authLoading, navigate]);
 
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+
   const handleUpdateStatus = async (hotelId: string, newStatus: 'approved' | 'rejected' | 'pending') => {
+    if (updatingId) return;
+    setUpdatingId(hotelId);
     try {
       const hotelRef = doc(db, 'hotels', hotelId);
       await updateDoc(hotelRef, { status: newStatus });
@@ -61,6 +67,8 @@ export default function AdminDashboard() {
     } catch (error) {
       console.error("Error updating status:", error);
       toast.error('Failed to update hotel status');
+    } finally {
+      setUpdatingId(null);
     }
   };
 
@@ -95,13 +103,7 @@ export default function AdminDashboard() {
             {hotels.map(hotel => (
               <div key={hotel.id} className="bg-white rounded-3xl p-6 shadow-sm border border-stone-200 flex flex-col md:flex-row gap-6">
                 <div className="h-48 w-full md:w-64 bg-stone-100 rounded-2xl overflow-hidden shrink-0">
-                  {hotel.imageUrl ? (
-                    <img src={hotel.imageUrl} alt={hotel.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Building2 className="h-12 w-12 text-stone-300" />
-                    </div>
-                  )}
+                  <SmartImage src={getHotelImage(hotel)} alt={hotel.name} className="w-full h-full object-cover" />
                 </div>
                 
                 <div className="flex-1 flex flex-col justify-between">

@@ -2,12 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { Search, MapPin, Calendar, Users, Star, LocateFixed, ChevronDown, Plus, Minus, ShieldCheck, MessageCircle, Smartphone } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { collection, getDocs, addDoc, deleteDoc, doc } from 'firebase/firestore';
+import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Hotel } from '../types';
 import { Link } from 'react-router-dom';
 import HotelCard from '../components/HotelCard';
-import { useAuth } from '../contexts/AuthContext';
+import SmartImage from '../components/SmartImage';
+import { DECORATIVE_IMAGE, getHotelImage } from '../lib/images';
 
 function getDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371; // Radius of the earth in km
@@ -22,10 +23,8 @@ function getDistance(lat1: number, lon1: number, lat2: number, lon2: number): nu
 }
 
 export default function Home() {
-  const { user, signIn, isSigningIn } = useAuth();
   const [hotels, setHotels] = useState<Hotel[]>([]);
   const [loading, setLoading] = useState(true);
-  const [seeding, setSeeding] = useState(false);
   const [activeCategory, setActiveCategory] = useState('All');
 
   const [searchLocation, setSearchLocation] = useState('');
@@ -67,147 +66,6 @@ export default function Home() {
   useEffect(() => {
     fetchHotels();
   }, []);
-
-  const seedData = async () => {
-    setSeeding(true);
-    const managerId = user?.uid || 'demo_manager_123';
-    const testHotels = [
-        {
-          name: "Pumulani Lodge",
-          location: "Lake Malawi National Park",
-          coordinates: { lat: -14.0152, lng: 34.8258 },
-          description: "Situated on the lush hills of the Nankumba Peninsula, Pumulani offers luxurious villas with stunning views over Lake Malawi. The ultimate in elegant, sustainable luxury.",
-          imageUrl: "https://www.robinpopesafaris.net/wp-content/uploads/camporlodge-pumulani-lodge-84.jpg",
-          categories: ["Lake & Beach", "Luxury", "Romantic Escape"],
-          galleryUrls: [
-            "https://www.robinpopesafaris.net/wp-content/uploads/safari-safari-october-21-1000x563.jpg",
-            "https://www.robinpopesafaris.net/wp-content/uploads/Pumulani004reduced-1000x563.jpg"
-          ],
-          reviews: [
-            { author: "Sarah M.", rating: 5, text: "Paradise on Lake Malawi! Spectacular location and views. The villas are incredibly spacious and the staff goes above and beyond.", source: "TripAdvisor", date: "Oct 2023" },
-            { author: "David K.", rating: 5, text: "Most relaxing place we've ever been. The sunset cruise on the traditional dhow was unforgettable.", source: "TripAdvisor", date: "Sep 2023" }
-          ]
-        },
-        {
-          name: "Kaya Mawa",
-          location: "Likoma Island, Lake Malawi",
-          coordinates: { lat: -12.0939, lng: 34.7044 },
-          description: "An award-winning luxury eco-lodge offering exclusive accommodation on a beautiful crescent beach on Likoma Island. Voted one of the most romantic places on earth.",
-          imageUrl: "https://greensafaris.com/img/processed/kaya-new/kaya-mawa-lodge-dinner-on-the-deck.jpg",
-          categories: ["Lake & Beach", "Luxury", "Romantic Escape"],
-          galleryUrls: [
-            "https://greensafaris.com/img/processed/kaya-new/kaya-mawa-lodge-madimba-pool.jpg",
-            "https://greensafaris.com/img/processed/kaya-new/kaya-mawa-lodge-reviews.jpg"
-          ],
-          reviews: [
-            { author: "Jessica T.", rating: 5, text: "A slice of heaven. The rooms are stunning and right on the beach. You can literally walk out of your room into the crystal clear water.", source: "TripAdvisor", date: "Aug 2023" },
-            { author: "Mark R.", rating: 5, text: "The perfect honeymoon destination. Private, romantic, and the food is Michelin-star quality.", source: "TripAdvisor", date: "Jul 2023" }
-          ]
-        },
-        {
-          name: "Sunbird Ku Chawe",
-          location: "Zomba Plateau",
-          coordinates: { lat: -15.3524, lng: 35.3023 },
-          description: "Perched on the edge of the Zomba Plateau, this premier mountain resort offers breathtaking panoramic views of southern Malawi and serene forest walks.",
-          imageUrl: "https://upload.wikimedia.org/wikipedia/commons/1/15/Mulunguzi_dam_on_Zomba_Plateau.jpg",
-          categories: ["Adventure", "Family"],
-          galleryUrls: [
-            "https://images.unsplash.com/photo-1542314831-c6a4d1409e1c?q=80&w=2865&auto=format&fit=crop",
-            "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?q=80&w=2940&auto=format&fit=crop"
-          ],
-          reviews: [
-            { author: "Emily B.", rating: 4, text: "The view from the restaurant terrace is unmatched. A great base for hiking the plateau.", source: "TripAdvisor", date: "Nov 2023" },
-            { author: "James W.", rating: 4, text: "Beautiful location in the clouds. Very peaceful, especially sitting by the log fire in the evenings.", source: "TripAdvisor", date: "Aug 2023" }
-          ]
-        },
-        {
-          name: "Blue Zebra Island Lodge",
-          location: "Nankoma Island",
-          coordinates: { lat: -13.8862, lng: 34.6085 },
-          description: "A wild paradise on a private island, part of the UNESCO World Heritage Site, offering safari tents and chalets hidden in the pristine wilderness.",
-          imageUrl: "https://bluezebra.mw/wp-content/uploads/2020/03/blue-zebra-lodge-accomodation-bookings-malawi-lodge-accomodation-activites-nature-pool-drinks-1.jpg",
-          categories: ["Safari & Wildlife", "Lake & Beach", "Adventure"],
-          galleryUrls: [
-            "https://bluezebra.mw/wp-content/uploads/2020/05/WETU-1.jpg",
-            "https://bluezebra.mw/wp-content/uploads/2025/06/10-Blue-Zebra-Island-Lodge-Dry-season-Michael-Wendel-scaled.jpg"
-          ],
-          reviews: [
-            { author: "Oliver C.", rating: 5, text: "Incredible snorkeling right off the island. We saw so many colorful cichlid fish. A true eco-lodge.", source: "TripAdvisor", date: "Dec 2023" },
-            { author: "Anna S.", rating: 5, text: "Felt like we were on our own private island. The birdlife is spectacular.", source: "TripAdvisor", date: "Oct 2023" }
-          ]
-        },
-        {
-          name: "Mvuu Camp & Lodge",
-          location: "Liwonde National Park",
-          coordinates: { lat: -14.8398, lng: 35.2974 },
-          description: "Nestled along the banks of the Shire River, this lodge offers unparalleled wildlife viewing and incredible river safaris with elephants and hippos.",
-          imageUrl: "https://upload.wikimedia.org/wikipedia/commons/4/4e/Liwonde_National_Park.jpg",
-          categories: ["Safari & Wildlife", "Family", "Adventure"],
-          galleryUrls: [
-            "https://images.unsplash.com/photo-1516426122078-c23e76319801?q=80&w=2936&auto=format&fit=crop",
-            "https://images.unsplash.com/photo-1614531341773-3bff8b7cb3fc?q=80&w=2932&auto=format&fit=crop"
-          ],
-          reviews: [
-            { author: "Robert T.", rating: 5, text: "The boat safari on the Shire river is an absolute must! Saw hundreds of hippos and elephants bathing.", source: "TripAdvisor", date: "Jan 2024" },
-            { author: "Linda P.", rating: 5, text: "Authentic wilderness experience. Waking up to the sound of hippos outside our tent was incredible.", source: "TripAdvisor", date: "Nov 2023" }
-          ]
-        }
-      ];
-
-    try {
-      const existingHotels = await getDocs(collection(db, 'hotels'));
-      for (const h of existingHotels.docs) {
-        await deleteDoc(doc(db, 'hotels', h.id));
-      }
-      const existingRooms = await getDocs(collection(db, 'room_types'));
-      for (const r of existingRooms.docs) {
-        await deleteDoc(doc(db, 'room_types', r.id));
-      }
-
-      for (const h of testHotels) {
-        const hotelDocRef = await addDoc(collection(db, 'hotels'), {
-          managerId: managerId,
-          name: h.name,
-          description: h.description,
-          location: h.location,
-          coordinates: h.coordinates,
-          imageUrl: h.imageUrl,
-          galleryUrls: h.galleryUrls,
-          reviews: h.reviews,
-          amenities: ["WiFi", "Pool", "Restaurant", "Lake Access"],
-          categories: h.categories,
-          createdAt: Date.now()
-        });
-
-        await addDoc(collection(db, 'room_types'), {
-          hotelId: hotelDocRef.id,
-          name: "Standard Suite",
-          description: "Comfortable suite with beautiful surrounding views.",
-          price: 250,
-          maxGuests: 2,
-          quantity: 10,
-          amenities: ["Air Conditioning", "En-suite Bathroom"],
-          imageUrl: "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?q=80&w=2940&auto=format&fit=crop"
-        });
-
-        await addDoc(collection(db, 'room_types'), {
-          hotelId: hotelDocRef.id,
-          name: "Luxury Villa",
-          description: "Spacious private villa with premium amenities and uninterrupted views.",
-          price: 550,
-          maxGuests: 4,
-          quantity: 3,
-          amenities: ["Private Deck", "Minibar"],
-          imageUrl: "https://images.unsplash.com/photo-1618773928121-c32242e63f39?q=80&w=2940&auto=format&fit=crop"
-        });
-      }
-      await fetchHotels();
-    } catch (error) {
-      console.error("Error seeding data:", error);
-    } finally {
-      setSeeding(false);
-    }
-  };
 
   const handleSearch = () => {
     setAppliedSearch({ location: searchLocation, checkIn: searchCheckIn, checkOut: searchCheckOut, guests: totalGuests, coords: null, proximity: searchProximity });
@@ -257,14 +115,21 @@ export default function Home() {
       {/* Hero Section */}
       <section className="relative h-screen w-full flex flex-col items-center justify-center overflow-hidden bg-stone-900">
         <div className="absolute inset-0 bg-gradient-to-b from-stone-900/60 via-stone-900/40 to-stone-900/70 z-10" />
-        <motion.img 
+        <motion.div
           initial={{ scale: 1 }}
           animate={{ scale: 1.1 }}
           transition={{ duration: 20, repeat: Infinity, repeatType: "reverse", ease: "linear" }}
-          src="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?q=80&w=2940&auto=format&fit=crop"
-          alt="Luxury Resort"
-          className="absolute inset-0 w-full h-full object-cover object-center z-0"
-        />
+          className="absolute inset-0 z-0"
+        >
+          <SmartImage
+            src="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?q=80&w=2940&auto=format&fit=crop"
+            fallbacks={[DECORATIVE_IMAGE]}
+            alt="Luxury Resort"
+            loading="eager"
+            showSkeleton={false}
+            className="w-full h-full object-cover object-center"
+          />
+        </motion.div>
         
         <div className="relative z-20 w-full max-w-7xl px-6 lg:px-8 flex flex-col items-center text-center mt-12">
           <motion.h1 
@@ -492,8 +357,8 @@ export default function Home() {
                   <Link key={hotel.id} to={`/hotel/${hotel.id}`} className="group block">
                     <div className="bg-white rounded-3xl overflow-hidden border border-stone-200 hover:shadow-xl transition-all duration-300 transform group-hover:-translate-y-1">
                       <div className="aspect-[4/3] overflow-hidden relative">
-                        <img 
-                          src={hotel.galleryUrls?.[0] || 'https://images.unsplash.com/photo-1542314831-c6a4d1409e1c?q=80&w=2865&auto=format&fit=crop'} 
+                        <SmartImage
+                          src={getHotelImage(hotel)}
                           alt={hotel.name}
                           className="w-full h-full object-cover transition duration-700 group-hover:scale-105"
                         />
@@ -573,7 +438,16 @@ export default function Home() {
         ) : hotels.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 gap-y-10">
             {filteredHotels.length > 0 ? filteredHotels.map((hotel, index) => (
-              <HotelCard key={hotel.id} hotel={hotel} index={index} searchParams={appliedSearch} />
+              <HotelCard
+                key={hotel.id}
+                hotel={hotel}
+                index={index}
+                searchParams={{
+                  checkIn: appliedSearch.checkIn,
+                  checkOut: appliedSearch.checkOut,
+                  guests: appliedSearch.guests || undefined,
+                }}
+              />
             )) : (
               <div className="col-span-full py-20 flex flex-col items-center justify-center text-center">
                 <div className="w-20 h-20 bg-stone-100 rounded-full flex items-center justify-center mb-6">
@@ -614,7 +488,7 @@ export default function Home() {
       {/* List Your Property CTA */}
       <section className="bg-stone-900 text-white py-32 relative overflow-hidden">
         <div className="absolute inset-0 opacity-10">
-          <img src="https://images.unsplash.com/photo-1542314831-c6a4d1409e1c?q=80&w=2865&auto=format&fit=crop" alt="Malawi" className="w-full h-full object-cover" />
+          <SmartImage src={DECORATIVE_IMAGE} alt="" aria-hidden="true" showSkeleton={false} className="w-full h-full object-cover" />
         </div>
         <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
@@ -622,7 +496,7 @@ export default function Home() {
               <h2 className="text-5xl md:text-6xl font-serif mb-8 leading-tight tracking-tight">Own a hotel, lodge, resort, or suite?</h2>
               <p className="text-emerald-100 text-xl mb-8 leading-relaxed max-w-lg">Get more bookings with Travel-Malawi. No setup fees, no monthly fees, and instant WhatsApp confirmations.</p>
               <div className="flex flex-col sm:flex-row gap-4">
-                <Link to="/manage" className="bg-white text-emerald-900 px-8 py-4 rounded-xl font-bold text-lg hover:bg-stone-100 transition shadow-xl text-center">
+                <Link to="/dashboard" className="bg-white text-emerald-900 px-8 py-4 rounded-xl font-bold text-lg hover:bg-stone-100 transition shadow-xl text-center">
                   List Your Property
                 </Link>
               </div>

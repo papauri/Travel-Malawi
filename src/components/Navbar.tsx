@@ -38,6 +38,8 @@ export default function Navbar() {
       });
       return () => unsubscribe();
     }
+    // Otherwise clear any count left over from a previous session.
+    setPendingCount(0);
   }, [user]);
 
   const resetForm = () => {
@@ -135,6 +137,14 @@ export default function Navbar() {
                       )}
                     </Link>
                   )}
+                  {user.role === 'admin' && (
+                    <Link
+                      to="/admin"
+                      className="text-sm font-medium text-stone-600 hover:text-stone-900 transition relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-stone-900 after:transition-all hover:after:w-full"
+                    >
+                      Admin
+                    </Link>
+                  )}
                   {user.role === 'traveller' && (
                     <Link
                       to="/my-bookings"
@@ -167,7 +177,7 @@ export default function Navbar() {
                         <div className="px-4 py-3 border-b border-stone-100">
                           <p className="text-xs text-stone-400 uppercase tracking-wider font-semibold mb-0.5">Signed in as</p>
                           <p className="text-sm font-medium text-stone-900 truncate">{user.email}</p>
-                          <p className="text-xs text-stone-500 capitalize mt-0.5">{user.role === 'hotel_manager' ? 'Hotel Manager' : 'Traveller'}</p>
+                          <p className="text-xs text-stone-500 capitalize mt-0.5">{user.role === 'hotel_manager' ? 'Hotel Manager' : user.role === 'admin' ? 'Administrator' : 'Traveller'}</p>
                         </div>
                         <button
                           onClick={() => { logOut(); setShowUserMenu(false); }}

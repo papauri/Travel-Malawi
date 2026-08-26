@@ -2,44 +2,102 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper functions
+    // ---- Helpers ----
     function isAuthenticated() {
       return request.auth != null;
     }
-    
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function hotelManagerId(hotelId) {
+      return get(/databases/$(database)/documents/hotels/$(hotelId)).data.managerId;
+    }
+
     function isManager(hotelId) {
-      return isAuthenticated() && 
-        get(/databases/$(database)/documents/hotels/$(hotelId)).data.managerId == request.auth.uid;
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/hotels/$(hotelId)) &&
+        hotelManagerId(hotelId) == request.auth.uid;
     }
 
     match /users/{userId} {
-      allow read: if true;
-      allow write: if isAuthenticated() && request.auth.uid == userId;
+      // Profiles carry email addresses, so they are no longer world-readable.
+      // The admin dashboard lists managers, so admins keep collection access.
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow create: if isAuthenticated() && request.auth.uid == userId
+                    && request.resource.data.uid == userId
+                    // A user must not be able to make themselves an admin.
+                    && request.resource.data.role in ['traveller', 'hotel_manager'];
+      allow update: if isAuthenticated() && request.auth.uid == userId
+                    // Role changes are an admin-only operation.
+                    && request.resource.data.role == resource.data.role;
+      allow delete: if isAdmin();
     }
 
     match /hotels/{hotelId} {
       allow read: if true;
-      allow create: if true;
-      allow update, delete: if isManager(hotelId);
+      // Was `if true`, which let anyone create listings anonymously.
+      allow create: if isAuthenticated()
+                    && request.resource.data.managerId == request.auth.uid
+                    && request.resource.data.status == 'pending';
+      // Admins moderate listings (approve/reject), so they need write access
+      // here — the previous rules only allowed the owning manager, which meant
+      // the admin dashboard's approve/reject silently failed.
+      allow update: if isManager(hotelId) || isAdmin();
+      allow delete: if isManager(hotelId) || isAdmin();
     }
 
     match /room_types/{roomId} {
       allow read: if true;
-      allow create: if true;
-      allow update, delete: if isAuthenticated() && resource.data.hotelId != null &&
-        get(/databases/$(database)/documents/hotels/$(resource.data.hotelId)).data.managerId == request.auth.uid;
+      allow create: if isAuthenticated()
+                    && request.resource.data.hotelId is string
+                    && (isManager(request.resource.data.hotelId) || isAdmin());
+      allow update, delete: if resource.data.hotelId is string
+                            && (isManager(resource.data.hotelId) || isAdmin());
     }
 
     match /bookings/{bookingId} {
-      // Allow public read so the AvailabilityCalendar can show blocked dates
+      // NOTE: this remains public because the availability calendar and the
+      // pre-booking availability check both run for signed-out guests, and
+      // Firestore rules cannot restrict a read to a subset of fields. That
+      // means guest contact details are world-readable. See SECURITY.md for
+      // the recommended fix (a derived, non-PII availability collection).
       allow read: if true;
-      // Allow public create so guests can book without logging in
-      allow create: if true;
+
+      // Guest checkout works without an account, so creation stays open — but
+      // the payload is now constrained instead of arbitrary.
+      allow create: if request.resource.data.status == 'pending'
+                    && request.resource.data.hotelId is string
+                    && request.resource.data.roomTypeId is string
+                    && request.resource.data.checkIn is string
+                    && request.resource.data.checkOut is string
+                    && request.resource.data.checkIn < request.resource.data.checkOut
+                    && request.resource.data.guestName is string
+                    && request.resource.data.guestName.size() > 0
+                    && request.resource.data.guests is int
+                    && request.resource.data.guests > 0
+                    && request.resource.data.quantity is int
+                    && request.resource.data.quantity > 0
+                    && request.resource.data.total is number
+                    && request.resource.data.total >= 0
+                    && request.resource.data.createdAt is number
+                    // An authenticated booker must not be able to file a
+                    // booking under someone else's account.
+                    && (request.auth == null
+                        ? request.resource.data.guestId == 'anonymous'
+                        : request.resource.data.guestId == request.auth.uid);
+
+      // The guest may cancel; the owning manager may confirm or reject.
       allow update: if isAuthenticated() && (
-        resource.data.guestId == request.auth.uid || 
-        get(/databases/$(database)/documents/hotels/$(resource.data.hotelId)).data.managerId == request.auth.uid
-      );
-      allow delete: if isAuthenticated() && resource.data.guestId == request.auth.uid;
+                      resource.data.guestId == request.auth.uid ||
+                      isManager(resource.data.hotelId) ||
+                      isAdmin()
+                    );
+      allow delete: if isAuthenticated() &&
+                    (resource.data.guestId == request.auth.uid || isAdmin());
     }
   }
 }

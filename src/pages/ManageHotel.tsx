@@ -8,6 +8,7 @@ import { Building2, Plus, ChevronLeft, ChevronDown, CheckCircle2, XCircle, Clock
 import ImageUpload from '../components/ImageUpload';
 import GalleryUpload from '../components/GalleryUpload';
 import ConfirmDialog from '../components/ConfirmDialog';
+import SmartImage from '../components/SmartImage';
 import toast from 'react-hot-toast';
 
 type Tab = 'details' | 'rooms' | 'bookings';
@@ -268,13 +269,13 @@ export default function ManageHotel() {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     {editHotelData.imageUrl && (
                       <div className="relative aspect-video rounded-xl overflow-hidden border-2 border-emerald-400">
-                        <img src={editHotelData.imageUrl} alt="Main" className="w-full h-full object-cover" />
+                        <SmartImage src={editHotelData.imageUrl} alt="Main" className="w-full h-full object-cover" />
                         <span className="absolute top-2 left-2 bg-emerald-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">Main</span>
                       </div>
                     )}
                     {(editHotelData.galleryUrls || []).map((url, idx) => (
                       <div key={`gal-${idx}`} className="relative aspect-video rounded-xl overflow-hidden border border-stone-200">
-                        <img src={url} alt={`Gallery ${idx + 1}`} className="w-full h-full object-cover" />
+                        <SmartImage src={url} alt={`Gallery ${idx + 1}`} className="w-full h-full object-cover" />
                         <span className="absolute top-2 left-2 bg-stone-900/70 text-white text-[10px] px-2 py-0.5 rounded-full">Gallery</span>
                       </div>
                     ))}
@@ -289,7 +290,7 @@ export default function ManageHotel() {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     {rooms.filter(r => r.imageUrl).map(room => (
                       <div key={`room-${room.id}`} className="relative aspect-video rounded-xl overflow-hidden border border-blue-200">
-                        <img src={room.imageUrl} alt={room.name} className="w-full h-full object-cover" />
+                        <SmartImage src={room.imageUrl} alt={room.name} className="w-full h-full object-cover" />
                         <span className="absolute top-2 left-2 bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">{room.name}</span>
                       </div>
                     ))}
@@ -502,11 +503,7 @@ export default function ManageHotel() {
           {!editingRoomId && rooms.map(room => (
             <div key={room.id} className={`bg-white border p-6 rounded-3xl flex flex-col md:flex-row gap-6 items-center shadow-sm transition ${room.quantity === 0 ? 'border-red-200 bg-red-50/30' : 'border-stone-200'}`}>
               <div className="w-full md:w-48 h-32 bg-stone-100 rounded-2xl overflow-hidden shrink-0">
-                {room.imageUrl ? (
-                  <img src={room.imageUrl} alt={room.name} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-stone-400 text-sm">No Image</div>
-                )}
+                <SmartImage src={room.imageUrl} alt={room.name} className="w-full h-full object-cover" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex justify-between items-start mb-2">

@@ -32,13 +32,19 @@ const MONTH_NAMES = [
 ];
 
 function toDateStr(date: Date): string {
-  return date.toISOString().slice(0, 10);
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${date.getFullYear()}-${month}-${day}`;
 }
 
+// Stepped entirely in UTC so the result never depends on the viewer's
+// offset or on a DST transition falling inside the range.
 function addDays(dateStr: string, days: number): string {
-  const d = new Date(dateStr);
-  d.setDate(d.getDate() + days);
-  return toDateStr(d);
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const stepped = new Date(Date.UTC(y, m - 1, d) + days * 86400000);
+  const month = String(stepped.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(stepped.getUTCDate()).padStart(2, '0');
+  return `${stepped.getUTCFullYear()}-${month}-${day}`;
 }
 
 export default function AvailabilityCalendar({ hotelId, rooms, onDateSelect, selectedRoom }: Props) {
@@ -90,12 +96,14 @@ export default function AvailabilityCalendar({ hotelId, rooms, onDateSelect, sel
 
         snap.docs.forEach(doc => {
           const data = doc.data();
-          const { checkIn, checkOut, quantity = 1 } = data as {
+          const { checkIn, checkOut, quantity = 1, status } = data as {
             checkIn: string;
             checkOut: string;
             quantity?: number;
+            status?: string;
           };
-          if (!checkIn || !checkOut || (data.status !== "pending" && data.status !== "confirmed")) return;
+          // Cancelled and rejected bookings must not consume inventory.
+          if (!checkIn || !checkOut || (status !== "pending" && status !== "confirmed")) return;
           let cursor = checkIn;
           while (cursor < checkOut) {
             map[cursor] = (map[cursor] ?? 0) + quantity;

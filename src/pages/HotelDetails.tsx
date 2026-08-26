@@ -4,10 +4,111 @@ import { doc, getDoc, collection, query, where, getDocs, addDoc } from 'firebase
 import { db } from '../lib/firebase';
 import { Hotel, RoomType } from '../types';
 import { useAuth } from '../contexts/AuthContext';
-import { MapPin, Calendar, Users, Star, CheckCircle2, ChevronRight, Info } from 'lucide-react';
+import { MapPin, Calendar, Users, Star, CheckCircle2, ChevronRight, Info, Plus, Minus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import AvailabilityCalendar from '../components/AvailabilityCalendar';
 import { motion } from 'motion/react';
+import SmartImage from '../components/SmartImage';
+import { getHotelImages, getRoomImage } from '../lib/images';
+
+function toLocalDateStr(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function parseDateUTC(dateStr: string): number {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return Date.UTC(y, (m || 1) - 1, d || 1);
+}
+
+function addDaysUTC(dateStr: string, days: number): string {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const ms = Date.UTC(y, m - 1, d) + days * 86400000;
+  const dt = new Date(ms);
+  return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}-${String(dt.getUTCDate()).padStart(2, '0')}`;
+}
+
+// Whole nights between two 'YYYY-MM-DD' calendar-date strings, computed
+// entirely in UTC so local timezone / DST never causes drift.
+function computeNights(checkIn: string, checkOut: string): number {
+  if (!checkIn || !checkOut) return 0;
+  const diff = Math.round((parseDateUTC(checkOut) - parseDateUTC(checkIn)) / 86400000);
+  return diff > 0 ? diff : 0;
+}
+
+// Single source of truth for pricing math, used both for the on-screen
+// price breakdown and for the amount actually written to Firestore, so
+// the two can never diverge.
+function computeBookingPricing(
+  room: RoomType,
+  checkIn: string,
+  checkOut: string,
+  guests: number,
+  quantity: number,
+  packageIds: string[]
+) {
+  const nights = computeNights(checkIn, checkOut);
+  const basePrice = room.price || 0;
+  const extraGuestFee = room.extraGuestFee || 0;
+  const baseGuests = room.baseGuests || room.maxGuests || 2;
+  const extraGuestsCount = Math.max(0, guests - baseGuests);
+  const extraGuestTotal = extraGuestsCount * extraGuestFee * nights * quantity;
+  const accommodationTotal = basePrice * nights * quantity + extraGuestTotal;
+
+  let packagesTotal = 0;
+  if (room.packages) {
+    room.packages.forEach(pkg => {
+      if (packageIds.includes(pkg.id)) {
+        if (pkg.type === 'per_person') packagesTotal += pkg.price * guests * nights;
+        else if (pkg.type === 'per_room') packagesTotal += pkg.price * nights * quantity;
+        else packagesTotal += pkg.price;
+      }
+    });
+  }
+
+  return {
+    nights,
+    basePrice,
+    extraGuestFee,
+    baseGuests,
+    extraGuestsCount,
+    extraGuestTotal,
+    accommodationTotal,
+    packagesTotal,
+    total: accommodationTotal + packagesTotal,
+  };
+}
+
+// Re-verifies availability against live Firestore data immediately before
+// writing a booking, so two guests racing for the last room can't both win.
+async function checkRoomAvailability(
+  room: RoomType,
+  checkIn: string,
+  checkOut: string,
+  quantity: number
+): Promise<boolean> {
+  if (room.blockedDates && room.blockedDates.length > 0) {
+    let cursor = checkIn;
+    while (cursor < checkOut) {
+      if (room.blockedDates.includes(cursor)) return false;
+      cursor = addDaysUTC(cursor, 1);
+    }
+  }
+
+  const q = query(collection(db, 'bookings'), where('roomTypeId', '==', room.id));
+  const snap = await getDocs(q);
+  let bookedQuantity = 0;
+  snap.docs.forEach(d => {
+    const b = d.data() as { checkIn?: string; checkOut?: string; quantity?: number; status?: string };
+    if (b.status === 'cancelled' || b.status === 'rejected') return;
+    if (!b.checkIn || !b.checkOut) return;
+    // Overlap check: checkout day is free for re-booking.
+    if (b.checkIn < checkOut && b.checkOut > checkIn) {
+      bookedQuantity += b.quantity ?? 1;
+    }
+  });
+
+  return bookedQuantity + quantity <= (room.quantity ?? 0);
+}
 
 export default function HotelDetails() {
   const { id } = useParams<{ id: string }>();
@@ -15,7 +116,7 @@ export default function HotelDetails() {
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
   
-  const today = new Date().toISOString().split('T')[0];
+  const today = toLocalDateStr(new Date());
   const [hotel, setHotel] = useState<Hotel | null>(null);
   const [rooms, setRooms] = useState<RoomType[]>([]);
   const [loading, setLoading] = useState(true);
@@ -77,94 +178,78 @@ export default function HotelDetails() {
 
   const handleManualBook = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedRoom) return;
-    if (!guestName || !guestEmail || !guestPhone) {
+    if (!selectedRoom || saving) return;
+
+    if (!guestName.trim() || !guestEmail.trim() || !guestPhone.trim()) {
       toast.error("Please provide your name, email, and phone number.");
       return;
     }
-    
-    const checkInDate = new Date(checkIn);
-    const checkOutDate = new Date(checkOut);
-    const nights = checkIn && checkOut && checkOutDate > checkInDate 
-      ? Math.round((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 3600 * 24)) 
-      : 0;
-      
-    if (nights <= 0) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guestEmail.trim())) {
+      toast.error("Please enter a valid email address.");
+      return;
+    }
+    if (computeNights(checkIn, checkOut) <= 0) {
       toast.error("Please select valid check-in and check-out dates.");
       return;
     }
-    
-    setBookingStatus(`Submitting manual booking for ${selectedRoom.name}...`);
+    if (checkIn < today) {
+      toast.error("Check-in cannot be in the past.");
+      return;
+    }
+    if (guestsCount < 1 || guestsCount > selectedRoom.maxGuests) {
+      toast.error(`This room accommodates between 1 and ${selectedRoom.maxGuests} guests.`);
+      return;
+    }
+
+    setSaving(true);
+    setBookingStatus(`Submitting booking request for ${selectedRoom.name}...`);
     try {
+      // Availability may have changed while the form was open, so it is
+      // re-checked against live data rather than trusting the render-time view.
+      const isAvailable = await checkRoomAvailability(selectedRoom, checkIn, checkOut, 1);
+      if (!isAvailable) {
+        toast.error("Sorry, that room was just taken for these dates. Please try different dates.");
+        return;
+      }
+
+      // Same helper that renders the on-screen breakdown, so the stored total
+      // can never disagree with the price the guest was shown.
+      const pricing = computeBookingPricing(selectedRoom, checkIn, checkOut, guestsCount, 1, selectedPackages);
+
       await addDoc(collection(db, 'bookings'), {
         hotelId: hotel?.id,
-        managerId: hotel?.managerId,
+        managerId: hotel?.managerId ?? null,
         roomTypeId: selectedRoom.id,
         guestId: user?.uid || 'anonymous',
-        guestName: guestName,
-        guestEmail: guestEmail,
-        guestPhone: guestPhone,
-        guestWhatsapp: guestWhatsapp,
-        checkIn: checkIn,
-        checkOut: checkOut,
-        specialRequests: specialRequests,
+        guestName: guestName.trim(),
+        guestEmail: guestEmail.trim(),
+        guestPhone: guestPhone.trim(),
+        guestWhatsapp: guestWhatsapp.trim(),
+        checkIn,
+        checkOut,
+        specialRequests: specialRequests.trim(),
         guests: guestsCount,
         quantity: 1,
-        total: (() => {
-            const checkInDate = new Date(checkIn);
-            const checkOutDate = new Date(checkOut);
-            const nights = checkIn && checkOut && checkOutDate > checkInDate 
-              ? Math.round((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 3600 * 24)) 
-              : 0;
-            const basePrice = selectedRoom.price || 0;
-            const extraGuestFee = selectedRoom.extraGuestFee || 0;
-            const baseGuests = selectedRoom.baseGuests || selectedRoom.maxGuests || 2;
-            const extraGuestsCount = Math.max(0, guestsCount - baseGuests);
-            const accommodationTotal = (basePrice + (extraGuestsCount * extraGuestFee)) * nights;
-            let packagesTotal = 0;
-            if (selectedRoom.packages) {
-              selectedRoom.packages.forEach(pkg => {
-                if (selectedPackages.includes(pkg.id)) {
-                   if (pkg.type === "per_person") packagesTotal += pkg.price * guestsCount * nights;
-                   else if (pkg.type === "per_room") packagesTotal += pkg.price * nights;
-                   else packagesTotal += pkg.price;
-                }
-              });
-            }
-            return accommodationTotal + packagesTotal;
-          })(),
-          packageIds: selectedPackages,
-          extraGuestTotal: Math.max(0, guestsCount - (selectedRoom.baseGuests || selectedRoom.maxGuests || 2)) * (selectedRoom.extraGuestFee || 0),
-          packagesTotal: (() => {
-            const checkInDate = new Date(checkIn);
-            const checkOutDate = new Date(checkOut);
-            const nights = checkIn && checkOut && checkOutDate > checkInDate 
-              ? Math.round((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 3600 * 24)) 
-              : 0;
-            let pTotal = 0;
-            if (selectedRoom.packages) {
-              selectedRoom.packages.forEach(pkg => {
-                if (selectedPackages.includes(pkg.id)) {
-                   if (pkg.type === "per_person") pTotal += pkg.price * guestsCount * nights;
-                   else if (pkg.type === "per_room") pTotal += pkg.price * nights;
-                   else pTotal += pkg.price;
-                }
-              });
-            }
-            return pTotal;
-          })(),
+        total: pricing.total,
+        packageIds: selectedPackages,
+        extraGuestTotal: pricing.extraGuestTotal,
+        packagesTotal: pricing.packagesTotal,
         currency: selectedRoom.currency || 'USD',
         status: 'pending',
         createdAt: Date.now()
       });
-      setSaving(false);
-      toast.success('Manual booking requested! Manager will review.');
+
+      toast.success('Booking requested! The property will review and confirm.');
       setSelectedRoom(null);
-      navigate('/my-bookings');
+      // A guest booking without an account has nothing to show on the bookings
+      // page, which is traveller-only.
+      if (user) navigate('/my-bookings');
     } catch (error) {
       console.error("Booking error:", error);
-      setSaving(false);
       toast.error('Failed to submit booking.');
+    } finally {
+      setSaving(false);
+      setBookingStatus(null);
     }
   };
 
@@ -175,6 +260,9 @@ export default function HotelDetails() {
   );
   if (!hotel) return <div className="p-20 text-center text-xl font-serif">Property not found.</div>;
 
+  // Falls back to bundled photography when the record has no usable images.
+  const hotelImages = getHotelImages(hotel);
+
   return (
     <div className="min-h-screen bg-white pb-24">
       {/* Cinematic Header Image & Gallery */}
@@ -182,7 +270,7 @@ export default function HotelDetails() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 md:h-[70vh]">
           {/* Main Hero Image */}
           <div className="md:col-span-2 md:row-span-2 relative rounded-2xl overflow-hidden h-[40vh] md:h-full">
-            <img src={hotel.imageUrl} alt={hotel.name} className="w-full h-full object-cover" />
+            <SmartImage src={hotelImages[0]} alt={hotel.name} loading="eager" className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
             <div className="absolute bottom-0 left-0 w-full p-8 md:p-12">
               <motion.h1 
@@ -205,21 +293,16 @@ export default function HotelDetails() {
           </div>
           
           {/* Secondary Gallery Images */}
-          {hotel.galleryUrls && hotel.galleryUrls.map((url, index) => (
-            <div key={index} className={`relative rounded-2xl overflow-hidden hidden md:block ${index === 0 ? 'md:col-span-2 md:row-span-1' : 'md:col-span-2 md:row-span-1'}`}>
-              <img src={url} alt={`${hotel.name} surroundings ${index + 1}`} className="w-full h-full object-cover hover:scale-105 transition duration-700 ease-out" />
+          {hotelImages.slice(1, 3).map((url, index) => (
+            <div key={url} className="relative rounded-2xl overflow-hidden hidden md:block md:col-span-2 md:row-span-1">
+              <SmartImage src={url} alt={`${hotel.name} surroundings ${index + 1}`} className="w-full h-full object-cover hover:scale-105 transition duration-700 ease-out" />
             </div>
           ))}
-          {!hotel.galleryUrls && (
-            <>
-              <div className="relative rounded-2xl overflow-hidden hidden md:block md:col-span-2 md:row-span-1 bg-stone-100 flex items-center justify-center">
-                <span className="text-stone-400">No additional photo</span>
-              </div>
-              <div className="relative rounded-3xl overflow-hidden hidden md:block md:col-span-2 md:row-span-1 bg-stone-100 flex items-center justify-center">
-                <span className="text-stone-400">No additional photo</span>
-              </div>
-            </>
-          )}
+          {Array.from({ length: Math.max(0, 3 - hotelImages.length) }).map((_, index) => (
+            <div key={`gallery-empty-${index}`} className="relative rounded-2xl overflow-hidden hidden md:flex items-center justify-center bg-stone-100 md:col-span-2 md:row-span-1">
+              <span className="text-stone-400">No additional photo</span>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -305,11 +388,11 @@ export default function HotelDetails() {
                   className={`flex flex-col ${idx % 2 === 1 ? 'lg:flex-row-reverse' : 'lg:flex-row'} gap-10 lg:gap-20 items-center`}
                 >
                   <div className="w-full lg:w-1/2 aspect-[4/3] lg:aspect-[4/5] overflow-hidden rounded-2xl relative shadow-xl">
-                    {room.imageUrl ? (
-                      <img src={room.imageUrl} alt={room.name} className="w-full h-full object-cover hover:scale-105 transition-transform duration-1000" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-stone-100 text-stone-400 font-serif">No Photo</div>
-                    )}
+                    <SmartImage
+                      src={getRoomImage(room, hotel)}
+                      alt={room.name}
+                      className="w-full h-full object-cover hover:scale-105 transition-transform duration-1000"
+                    />
                   </div>
                   
                   <div className="w-full lg:w-1/2 flex flex-col justify-center py-6">
@@ -442,39 +525,51 @@ export default function HotelDetails() {
                 </div>
               </div>
               <div>
+                <label className="block text-sm font-bold text-stone-700 mb-2 uppercase tracking-wide">Guests</label>
+                <div className="flex items-center justify-between bg-stone-50 border border-stone-200 p-3 rounded-xl">
+                  <span className="text-sm text-stone-600">
+                    {guestsCount} guest{guestsCount !== 1 ? 's' : ''}
+                    <span className="text-stone-400"> &middot; max {selectedRoom.maxGuests}</span>
+                  </span>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      aria-label="Fewer guests"
+                      disabled={guestsCount <= 1}
+                      onClick={() => setGuestsCount(Math.max(1, guestsCount - 1))}
+                      className="p-1.5 rounded-full border border-stone-300 text-stone-600 hover:border-stone-500 disabled:opacity-40 transition"
+                    >
+                      <Minus className="w-4 h-4" />
+                    </button>
+                    <span className="w-5 text-center text-sm font-medium">{guestsCount}</span>
+                    <button
+                      type="button"
+                      aria-label="More guests"
+                      disabled={guestsCount >= selectedRoom.maxGuests}
+                      onClick={() => setGuestsCount(Math.min(selectedRoom.maxGuests, guestsCount + 1))}
+                      className="p-1.5 rounded-full border border-stone-300 text-stone-600 hover:border-stone-500 disabled:opacity-40 transition"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div>
                 <label className="block text-sm font-bold text-stone-700 mb-2 uppercase tracking-wide">Special Requests</label>
                 <textarea value={specialRequests} onChange={e => setSpecialRequests(e.target.value)} placeholder="E.g., early check-in, dietary requirements..." className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition resize-none h-24" />
               </div>
               
               {/* DYNAMIC PRICING AND PACKAGES SECTION */}
                 {(() => {
-                  const checkInDate = new Date(checkIn);
-                  const checkOutDate = new Date(checkOut);
-                  const nights = checkIn && checkOut && checkOutDate > checkInDate 
-                    ? Math.round((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 3600 * 24)) 
-                    : 0;
-                  
-                  const basePrice = selectedRoom.price || 0;
-                  const extraGuestFee = selectedRoom.extraGuestFee || 0;
-                  const baseGuests = selectedRoom.baseGuests || selectedRoom.maxGuests || 2;
-                  const extraGuestsCount = Math.max(0, guestsCount - baseGuests);
-                  
-                  const roomTotalPerNight = basePrice + (extraGuestsCount * extraGuestFee);
-                  const accommodationTotal = roomTotalPerNight * nights;
-                  
-                  let packagesTotal = 0;
-                  if (selectedRoom.packages) {
-                    selectedRoom.packages.forEach(pkg => {
-                      if (selectedPackages.includes(pkg.id)) {
-                         if (pkg.type === "per_person") packagesTotal += pkg.price * guestsCount * nights;
-                         else if (pkg.type === "per_room") packagesTotal += pkg.price * nights;
-                         else packagesTotal += pkg.price;
-                      }
-                    });
-                  }
-                  
-                  const grandTotal = accommodationTotal + packagesTotal;
-                  
+                  const {
+                    nights,
+                    basePrice,
+                    extraGuestFee,
+                    extraGuestsCount,
+                    packagesTotal,
+                    total: grandTotal,
+                  } = computeBookingPricing(selectedRoom, checkIn, checkOut, guestsCount, 1, selectedPackages);
+
                   return (
                     <div className="space-y-4">
                       {selectedRoom.packages && selectedRoom.packages.length > 0 && (
@@ -546,8 +641,8 @@ export default function HotelDetails() {
                 <button type="button" onClick={() => setSelectedRoom(null)} className="flex-1 bg-stone-100 text-stone-900 px-6 py-3 rounded-full font-medium hover:bg-stone-200 transition">
                   Cancel
                 </button>
-                <button type="submit" className="flex-1 bg-stone-900 text-white px-6 py-3 rounded-full font-medium hover:bg-stone-800 transition">
-                  Submit Request
+                <button type="submit" disabled={saving} className="flex-1 bg-stone-900 text-white px-6 py-3 rounded-full font-medium hover:bg-stone-800 transition disabled:opacity-60 disabled:cursor-not-allowed">
+                  {saving ? 'Submitting...' : 'Submit Request'}
                 </button>
               </div>
             </form>

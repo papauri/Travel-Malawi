@@ -8,6 +8,8 @@ import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
 import ImageUpload from '../components/ImageUpload';
+import SmartImage from '../components/SmartImage';
+import { getHotelImage } from '../lib/images';
 
 export default function ManagerDashboard() {
   const { user, loading: authLoading } = useAuth();
@@ -62,15 +64,20 @@ export default function ManagerDashboard() {
     e.preventDefault();
     if (!user) return;
     
+    if (!newHotel.name.trim() || !newHotel.location.trim()) {
+      toast.error('Please provide a property name and location.');
+      return;
+    }
+
     setSaving(true);
     
     try {
       const docRef = await addDoc(collection(db, 'hotels'), {
         managerId: user.uid,
         status: 'pending',
-        name: newHotel.name,
-        description: newHotel.description,
-        location: newHotel.location,
+        name: newHotel.name.trim(),
+        description: newHotel.description.trim(),
+        location: newHotel.location.trim(),
         coordinates: newHotel.coordinates,
         imageUrl: newHotel.imageUrl,
         amenities: [],
@@ -85,6 +92,7 @@ export default function ManagerDashboard() {
         name: newHotel.name,
         description: newHotel.description,
         location: newHotel.location,
+        coordinates: newHotel.coordinates ?? undefined,
         imageUrl: newHotel.imageUrl,
         amenities: [],
         categories: [],
@@ -92,7 +100,7 @@ export default function ManagerDashboard() {
       }]);
       
       setShowAddForm(false);
-      setNewHotel({ name: '', description: '', location: '', imageUrl: '' });
+      setNewHotel({ name: '', description: '', location: '', imageUrl: '', coordinates: null });
     } catch (error) {
       console.error("Error adding hotel:", error);
       toast.error('Failed to add property.');
@@ -206,20 +214,18 @@ export default function ManagerDashboard() {
             <Building2 className="h-16 w-16 text-stone-300 mx-auto mb-6" />
             <h3 className="text-2xl font-serif text-stone-900 mb-3">No properties yet</h3>
             <p className="text-stone-500 text-lg max-w-md mx-auto mb-8">
-              Get started by adding your first property or loading test accommodations from the homepage to see how it works.
+              Get started by adding your first property.
             </p>
           </div>
         ) : (
           hotels.map(hotel => (
             <Link key={hotel.id} to={`/dashboard/hotel/${hotel.id}`} className="group bg-white rounded-3xl shadow-sm border border-stone-200 overflow-hidden flex flex-col hover:border-stone-400 transition duration-300">
               <div className="h-56 bg-stone-100 relative">
-                {hotel.imageUrl ? (
-                  <img src={hotel.imageUrl} alt={hotel.name} className="w-full h-full object-cover group-hover:scale-105 transition duration-700 ease-out" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <Building2 className="h-12 w-12 text-stone-300" />
-                  </div>
-                )}
+                <SmartImage
+                  src={getHotelImage(hotel)}
+                  alt={hotel.name}
+                  className="w-full h-full object-cover group-hover:scale-105 transition duration-700 ease-out"
+                />
               </div>
               <div className="p-8 flex-1 flex flex-col">
                 <div className="flex justify-between items-start mb-6">

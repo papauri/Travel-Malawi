@@ -5,14 +5,17 @@ import { db } from '../lib/firebase';
 import { Booking, Hotel, RoomType } from '../types';
 import { Calendar, MapPin, ExternalLink, Clock, CheckCircle2, XCircle } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
+import SmartImage from '../components/SmartImage';
+import { getHotelImage } from '../lib/images';
 
 export default function MyBookings() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [bookings, setBookings] = useState<(Booking & { hotel?: Hotel, room?: RoomType })[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (authLoading) return;
     if (!user || user.role !== 'traveller') {
       navigate('/');
       return;
@@ -45,9 +48,9 @@ export default function MyBookings() {
       }
     }
     fetchBookings();
-  }, [user, navigate]);
+  }, [user, authLoading, navigate]);
 
-  if (loading) return (
+  if (authLoading || loading) return (
     <div className="min-h-screen flex items-center justify-center bg-stone-50">
       <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-600 border-t-transparent"></div>
     </div>
@@ -101,7 +104,7 @@ export default function MyBookings() {
               <div key={booking.id} className="group flex flex-col md:flex-row bg-white border border-stone-200 rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                 <div className="md:w-72 h-56 md:h-auto bg-stone-100 relative overflow-hidden">
                   {booking.hotel?.imageUrl ? (
-                    <img src={booking.hotel?.imageUrl} alt={booking.hotel?.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                    <SmartImage src={booking.hotel ? getHotelImage(booking.hotel) : undefined} alt={booking.hotel?.name || 'Property'} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-stone-400">No Image</div>
                   )}
@@ -149,7 +152,7 @@ export default function MyBookings() {
                           Waiting for property confirmation. Payment on arrival.
                         </p>
                       )}
-                      {(booking.status === 'confirmed' || booking.status === 'approved') && (
+                      {booking.status === 'confirmed' && (
                         <p className="text-xs font-medium text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100">
                           Your stay is confirmed! Payment on arrival.
                         </p>
