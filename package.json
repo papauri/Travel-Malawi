@@ -11,7 +11,8 @@
     "lint": "tsc --noEmit",
     "data:inspect": "node scripts/inspect-data.mjs",
     "data:seed-accounts": "node scripts/seed-accounts.mjs",
-    "data:repair": "node scripts/repair-data.mjs"
+    "data:repair": "node scripts/repair-data.mjs",
+    "data:seed-restaurants": "node scripts/seed-restaurants.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

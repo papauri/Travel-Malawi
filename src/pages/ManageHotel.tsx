@@ -2,23 +2,27 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { doc, getDoc, collection, query, where, getDocs, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { Hotel, RoomType, Booking, CurrencyCode, PriceMap } from '../types';
+import { Hotel, RoomType, Booking, CurrencyCode, PriceMap, Restaurant, WeeklyHours } from '../types';
 import { useAuth } from '../contexts/AuthContext';
-import { Plus, CheckCircle2, XCircle, Clock, Save, Edit2, Trash2, Users, Calendar, Check, X, Building, BedDouble, Loader2, Download, TrendingUp, Percent, Wallet } from 'lucide-react';
+import { Plus, CheckCircle2, XCircle, Clock, Save, Edit2, Trash2, Users, Calendar, Check, X, Building, BedDouble, Loader2, Download, TrendingUp, Percent, Wallet, UtensilsCrossed, Eye } from 'lucide-react';
 import ImageUpload from '../components/ImageUpload';
 import GalleryUpload from '../components/GalleryUpload';
 import ConfirmDialog from '../components/ConfirmDialog';
 import Modal from '../components/Modal';
 import SmartImage from '../components/SmartImage';
 import AvailabilityCalendar from '../components/AvailabilityCalendar';
+import OpeningHoursEditor from '../components/OpeningHoursEditor';
+import MenuEditor, { emptyRestaurant } from '../components/MenuEditor';
+import MenuTemplateView from '../components/MenuTemplates';
 import toast from 'react-hot-toast';
 import { addDays, formatDateStr, isValidDateStr, nightsBetween, nightsInRange, todayStr } from '../lib/dates';
 import { isRoomAvailable } from '../lib/availability';
 import { formatMoney } from '../lib/booking';
-import { CURRENCIES, CURRENCY_CODES, roomCurrencies, roomPrice } from '../lib/currency';
+import { CURRENCIES, CURRENCY_CODES, currenciesForRooms, roomCurrencies, roomPrice } from '../lib/currency';
+import { defaultWeek } from '../lib/hours';
 import { isHotelManager } from '../lib/roles';
 
-type Tab = 'details' | 'rooms' | 'bookings';
+type Tab = 'details' | 'rooms' | 'restaurant' | 'bookings';
 
 /** Fields that describe the listing itself and are never edited from this form. */
 const HOTEL_READONLY_FIELDS = ['id', 'managerId', 'status', 'createdAt', 'name', 'reviews'] as const;
@@ -45,6 +49,8 @@ export default function ManageHotel() {
   const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
   const [editRoomData, setEditRoomData] = useState<Partial<RoomType>>({});
   const [bookingFilter, setBookingFilter] = useState<'all' | 'pending' | 'confirmed' | 'cancelled'>('all');
+  const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
+  const [savingRestaurant, setSavingRestaurant] = useState(false);
 
   useEffect(() => {
     if (authLoading) return;
@@ -63,6 +69,7 @@ export default function ManageHotel() {
           const hData = { id: docSnap.id, ...docSnap.data() } as Hotel;
           setHotel(hData);
           setEditHotelData(hData);
+          setRestaurant(hData.restaurant ?? null);
         } else {
           navigate('/dashboard');
           return;
@@ -216,6 +223,8 @@ export default function ManageHotel() {
         amenities: amenities || [],
         galleryUrls: galleryUrls || [],
       };
+      // The restaurant has its own save button, so it is never written from here.
+      delete updateData.restaurant;
       // The document id, the owner and the moderation status are not editable
       // here. Previously the whole edit object was written back, which stored a
       // redundant `id` field inside the document and would have let a stale
@@ -230,6 +239,49 @@ export default function ManageHotel() {
       toast.error('Failed to update property details.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  /** Currencies the property's rooms are sold in, reused for menu prices. */
+  const propertyCurrencies = useMemo(() => {
+    const offered = currenciesForRooms(rooms);
+    return offered.length > 0 ? offered : (['USD'] as CurrencyCode[]);
+  }, [rooms]);
+
+  const handleSaveRestaurant = async () => {
+    if (!id || !hotel || !restaurant) return;
+    setSavingRestaurant(true);
+    try {
+      // Blank dishes are dropped rather than published as empty rows.
+      const cleaned: Restaurant = {
+        ...restaurant,
+        sections: restaurant.sections
+          .map(section => ({
+            ...section,
+            name: section.name.trim() || 'Untitled section',
+            items: section.items
+              .filter(item => item.name.trim().length > 0)
+              .map(item => ({
+                ...item,
+                name: item.name.trim(),
+                description: item.description?.trim() || '',
+                prices: Object.fromEntries(
+                  Object.entries(item.prices ?? {}).filter(([, amount]) => Number(amount) > 0)
+                ),
+              })),
+          }))
+          .filter(section => section.items.length > 0 || section.name.trim().length > 0),
+      };
+
+      await updateDoc(doc(db, 'hotels', id), { restaurant: cleaned });
+      setHotel({ ...hotel, restaurant: cleaned });
+      setRestaurant(cleaned);
+      toast.success(cleaned.enabled ? 'Menu saved and published.' : 'Menu saved. The tab is hidden from guests.');
+    } catch (error) {
+      console.error('Error saving restaurant:', error);
+      toast.error('Could not save the menu.');
+    } finally {
+      setSavingRestaurant(false);
     }
   };
 
@@ -615,6 +667,15 @@ export default function ManageHotel() {
           <BedDouble className="h-4 w-4" /> Rooms & Pricing
         </button>
         <button
+          onClick={() => setActiveTab('restaurant')}
+          className={`flex items-center gap-2 px-6 py-3 border-b-2 font-medium transition ${activeTab === 'restaurant' ? 'border-stone-900 text-stone-900' : 'border-transparent text-stone-500 hover:text-stone-700'}`}
+        >
+          <UtensilsCrossed className="h-4 w-4" /> Restaurant
+          {hotel.restaurant?.enabled && (
+            <span className="bg-emerald-100 text-emerald-700 text-[0.6rem] font-bold px-1.5 py-0.5 rounded-full uppercase">Live</span>
+          )}
+        </button>
+        <button
           onClick={() => setActiveTab('bookings')}
           className={`flex items-center gap-2 px-6 py-3 border-b-2 font-medium transition ${activeTab === 'bookings' ? 'border-stone-900 text-stone-900' : 'border-transparent text-stone-500 hover:text-stone-700'}`}
         >
@@ -725,6 +786,36 @@ export default function ManageHotel() {
               <div className="md:col-span-2">
                 <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Amenities (comma separated)</label>
                 <input type="text" value={Array.isArray(editHotelData.amenities) ? editHotelData.amenities.join(', ') : editHotelData.amenities || ''} onChange={e => setEditHotelData({...editHotelData, amenities: e.target.value as any})} className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition" placeholder="WiFi, Pool, Spa..." />
+              </div>
+
+              {/* These were hard-coded as "From 14:00" and "Until 11:00" on
+                  every listing, whatever the property actually did. */}
+              <div>
+                <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Check-in from</label>
+                <input
+                  type="time"
+                  value={editHotelData.checkInTime ?? '14:00'}
+                  onChange={e => setEditHotelData({ ...editHotelData, checkInTime: e.target.value })}
+                  className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Check-out until</label>
+                <input
+                  type="time"
+                  value={editHotelData.checkOutTime ?? '11:00'}
+                  onChange={e => setEditHotelData({ ...editHotelData, checkOutTime: e.target.value })}
+                  className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition"
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <OpeningHoursEditor
+                  value={editHotelData.hours}
+                  onChange={hours => setEditHotelData({ ...editHotelData, hours })}
+                  label="Reception / property hours"
+                  hint="Shown to guests on your listing. Leave unset to publish no hours."
+                />
               </div>
             </div>
             <div className="pt-4 flex justify-end">
@@ -1037,6 +1128,68 @@ export default function ManageHotel() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* TAB CONTENT: RESTAURANT */}
+      {activeTab === 'restaurant' && (
+        <div className="space-y-8">
+          {!restaurant ? (
+            <div className="bg-white rounded-3xl border border-stone-200 p-12 text-center">
+              <UtensilsCrossed className="h-10 w-10 mx-auto mb-4 text-stone-300" />
+              <h3 className="text-2xl font-serif text-stone-900 mb-2">No restaurant yet</h3>
+              <p className="text-stone-500 max-w-md mx-auto mb-8">
+                Add one to publish a menu on your listing. Guests get a Menu tab with the
+                design you choose, priced in the same currencies as your rooms.
+              </p>
+              <button
+                onClick={() => setRestaurant(emptyRestaurant())}
+                className="bg-stone-900 text-white px-8 py-3 rounded-full font-medium hover:bg-stone-800 transition"
+              >
+                Add a restaurant
+              </button>
+            </div>
+          ) : (
+            <>
+              <MenuEditor
+                value={restaurant}
+                onChange={setRestaurant}
+                currencies={propertyCurrencies}
+              />
+
+              <div className="flex flex-wrap items-center justify-end gap-3">
+                <button
+                  onClick={() => setRestaurant(hotel.restaurant ?? null)}
+                  className="px-6 py-3 rounded-xl font-medium text-stone-600 hover:bg-stone-100 transition"
+                >
+                  Discard changes
+                </button>
+                <button
+                  onClick={handleSaveRestaurant}
+                  disabled={savingRestaurant}
+                  className="flex items-center gap-2 bg-stone-900 text-white px-8 py-3 rounded-xl font-medium hover:bg-stone-800 transition disabled:opacity-50"
+                >
+                  {savingRestaurant ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  {savingRestaurant ? 'Saving…' : 'Save menu'}
+                </button>
+              </div>
+
+              {restaurant.enabled && (
+                <div>
+                  <div className="flex items-center gap-2 mb-4 text-stone-500">
+                    <Eye className="h-4 w-4" />
+                    <h3 className="text-xs font-bold uppercase tracking-wider">
+                      Preview — {propertyCurrencies[0]} prices, as guests see it
+                    </h3>
+                  </div>
+                  <MenuTemplateView
+                    restaurant={restaurant}
+                    currency={propertyCurrencies[0]}
+                  />
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
 

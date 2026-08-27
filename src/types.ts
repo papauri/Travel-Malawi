@@ -1,5 +1,12 @@
 export type Role = 'traveller' | 'hotel_manager' | 'admin';
 
+/** Currencies the platform sells in. */
+export type CurrencyCode = 'USD' | 'MWK';
+
+/** An amount authored per currency. A missing entry means "not sold in this". */
+export type PriceMap = Partial<Record<CurrencyCode, number>>;
+
+
 export interface User {
   uid: string;
   email: string | null;
@@ -19,6 +26,56 @@ export interface User {
   createdAt: number;
 }
 
+/** One day's trading hours. Times are 'HH:MM' in the property's local time. */
+export interface DayHours {
+  closed: boolean;
+  open: string;
+  close: string;
+}
+
+/** Seven entries, index 0 = Sunday, matching Date.getDay(). */
+export type WeeklyHours = DayHours[];
+
+export interface MenuItem {
+  id: string;
+  name: string;
+  description?: string;
+  /** Priced per currency, exactly like rooms. */
+  prices?: PriceMap;
+  /** Marks such as "v" or "gf"; free text so a kitchen can use its own. */
+  tags?: string[];
+}
+
+export interface MenuSection {
+  id: string;
+  name: string;
+  description?: string;
+  items: MenuItem[];
+}
+
+/** The six layouts a manager can present their menu in. */
+export type MenuTemplate = 'classic' | 'elegant' | 'minimal' | 'bistro' | 'modern' | 'heritage';
+
+export interface Restaurant {
+  /** Controls whether the Menu tab appears on the property page at all. */
+  enabled: boolean;
+  name?: string;
+  tagline?: string;
+  description?: string;
+  hours?: WeeklyHours;
+  template: MenuTemplate;
+  /**
+   * Show only the logo at the head of the menu, with no name or tagline —
+   * for properties whose logo already carries the wordmark.
+   */
+  logoOnly?: boolean;
+  /** Best as a transparent PNG; templates place it on their own background. */
+  logoUrl?: string;
+  sections: MenuSection[];
+  /** Free text under the menu: allergens, service charge, sittings. */
+  footnote?: string;
+}
+
 export interface Hotel {
   id?: string;
   status?: 'pending' | 'approved' | 'rejected';
@@ -34,14 +91,15 @@ export interface Hotel {
    *  live in the `reviews` collection instead — see `Review`. */
   reviews?: { author: string; rating: number; text: string; source: string; date: string }[];
   imageUrl: string;
+  /** Reception / property trading hours. Absent means not published. */
+  hours?: WeeklyHours;
+  /** Check-in and check-out times, shown in the Policies card. */
+  checkInTime?: string;
+  checkOutTime?: string;
+  /** Absent, or `enabled: false`, means the property has no restaurant. */
+  restaurant?: Restaurant;
   createdAt: number;
 }
-
-/** Currencies the platform sells in. */
-export type CurrencyCode = 'USD' | 'MWK';
-
-/** An amount authored per currency. A missing entry means "not sold in this". */
-export type PriceMap = Partial<Record<CurrencyCode, number>>;
 
 export interface RoomType {
   id?: string;

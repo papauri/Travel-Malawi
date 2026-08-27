@@ -4,13 +4,15 @@ import { doc, getDoc, collection, query, where, getDocs, addDoc } from 'firebase
 import { db } from '../lib/firebase';
 import { Hotel, RoomType, Review, CurrencyCode } from '../types';
 import { useAuth } from '../contexts/AuthContext';
-import { MapPin, Calendar, Users, Star, CheckCircle2, ChevronRight, Info, Plus, Minus, ShieldCheck, AlertTriangle } from 'lucide-react';
+import { MapPin, Calendar, Users, Star, CheckCircle2, ChevronRight, Info, Plus, Minus, ShieldCheck, AlertTriangle, UtensilsCrossed, Clock, BedDouble } from 'lucide-react';
 import toast from 'react-hot-toast';
 import AvailabilityCalendar from '../components/AvailabilityCalendar';
 import { motion } from 'motion/react';
 import SmartImage from '../components/SmartImage';
 import { getHotelImages, getRoomImage } from '../lib/images';
 import { formatDateStr, nightsBetween, todayStr } from '../lib/dates';
+import { formatTime, hasPublishedHours, isOpenAt, summariseHours } from '../lib/hours';
+import MenuTemplateView from '../components/MenuTemplates';
 import { BookingLike, isRoomAvailable, unitsRemaining } from '../lib/availability';
 import { computeBookingPricing, formatMoney, makeBookingReference } from '../lib/booking';
 import { isTraveller } from '../lib/roles';
@@ -48,6 +50,7 @@ export default function HotelDetails() {
   const [specialRequests, setSpecialRequests] = useState('');
   const [selectedPackages, setSelectedPackages] = useState<string[]>([]);
   const [currency, setCurrency] = useState<CurrencyCode>(() => readStoredCurrency() ?? 'USD');
+  const [activeTab, setActiveTab] = useState<'stay' | 'menu'>('stay');
 
   // The property and its rooms are what the page is for; each secondary read
   // is issued separately and swallowed on failure. Bundling them into one
@@ -111,6 +114,9 @@ export default function HotelDetails() {
   }, [checkIn, checkOut]);
 
   const isBookable = !hotel?.status || hotel.status === 'approved';
+
+  /** The Menu tab only exists when the property has published a restaurant. */
+  const restaurant = hotel?.restaurant?.enabled ? hotel.restaurant : null;
 
   /** Currencies this property sells in, across all its rooms. */
   const offeredCurrencies = useMemo(() => currenciesForRooms(rooms), [rooms]);
@@ -463,13 +469,14 @@ export default function HotelDetails() {
                 <CheckCircle2 className="h-5 w-5" /> Policies
               </h3>
               <ul className="space-y-4 text-stone-600">
+                {/* Set by the property; these were hard-coded on every listing. */}
                 <li className="flex justify-between border-b border-stone-200 pb-2">
                   <span className="font-medium">Check-in</span>
-                  <span>From 14:00</span>
+                  <span>From {formatTime(hotel.checkInTime ?? '14:00')}</span>
                 </li>
                 <li className="flex justify-between border-b border-stone-200 pb-2">
                   <span className="font-medium">Check-out</span>
-                  <span>Until 11:00</span>
+                  <span>Until {formatTime(hotel.checkOutTime ?? '11:00')}</span>
                 </li>
                 <li className="flex justify-between border-b border-stone-200 pb-2">
                   <span className="font-medium">Cancellation</span>
@@ -480,11 +487,93 @@ export default function HotelDetails() {
                   <span>Pay at property</span>
                 </li>
               </ul>
+
+              {hasPublishedHours(hotel.hours) && (
+                <div className="mt-6 pt-5 border-t border-stone-200">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Clock className="h-4 w-4 text-stone-400" />
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-stone-500">Reception hours</h4>
+                    {isOpenAt(hotel.hours) === true && (
+                      <span className="text-[0.65rem] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+                        Open now
+                      </span>
+                    )}
+                    {isOpenAt(hotel.hours) === false && (
+                      <span className="text-[0.65rem] font-bold uppercase tracking-wider text-stone-500 bg-stone-100 px-2 py-0.5 rounded-full">
+                        Closed now
+                      </span>
+                    )}
+                  </div>
+                  <ul className="space-y-1.5 text-sm">
+                    {summariseHours(hotel.hours!).map(row => (
+                      <li key={row.label} className="flex justify-between gap-4">
+                        <span className="text-stone-500">{row.label}</span>
+                        <span className="text-stone-800 font-medium">{row.hours}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           </div>
 
+          {/* Stay / Menu tabs. The Menu tab is absent unless the property
+              has a restaurant enabled, so a lodge without one is unaffected. */}
+          {restaurant && (
+            <div className="flex gap-2 border-b border-stone-200 mb-12">
+              <button
+                onClick={() => setActiveTab('stay')}
+                className={`flex items-center gap-2 px-6 py-3.5 border-b-2 font-medium transition ${
+                  activeTab === 'stay'
+                    ? 'border-stone-900 text-stone-900'
+                    : 'border-transparent text-stone-500 hover:text-stone-800'
+                }`}
+              >
+                <BedDouble className="h-4 w-4" /> Rooms &amp; availability
+              </button>
+              <button
+                onClick={() => setActiveTab('menu')}
+                className={`flex items-center gap-2 px-6 py-3.5 border-b-2 font-medium transition ${
+                  activeTab === 'menu'
+                    ? 'border-stone-900 text-stone-900'
+                    : 'border-transparent text-stone-500 hover:text-stone-800'
+                }`}
+              >
+                <UtensilsCrossed className="h-4 w-4" /> Menu
+              </button>
+            </div>
+          )}
+
+          {restaurant && activeTab === 'menu' && (
+            <div className="mb-24">
+              {hasPublishedHours(restaurant.hours) && (
+                <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mb-8 text-sm">
+                  <span className="flex items-center gap-2 text-stone-500">
+                    <Clock className="h-4 w-4" />
+                    <span className="font-semibold text-stone-700">Kitchen</span>
+                  </span>
+                  {summariseHours(restaurant.hours!).map(row => (
+                    <span key={row.label} className="text-stone-600">
+                      <span className="text-stone-400">{row.label}</span> {row.hours}
+                    </span>
+                  ))}
+                  {isOpenAt(restaurant.hours) === true && (
+                    <span className="text-[0.65rem] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2 py-1 rounded-full">
+                      Serving now
+                    </span>
+                  )}
+                </div>
+              )}
+
+              <MenuTemplateView
+                restaurant={restaurant}
+                currency={currency}
+              />
+            </div>
+          )}
+
           {/* Availability Calendar */}
-          <div className="mb-16">
+          <div className={`mb-16 ${restaurant && activeTab !== 'stay' ? 'hidden' : ''}`}>
             <AvailabilityCalendar
               hotelId={id!}
               rooms={rooms}
@@ -495,8 +584,15 @@ export default function HotelDetails() {
             />
           </div>
 
-          <h2 id="rooms-section" className="text-4xl md:text-5xl font-serif text-stone-900 mb-10 tracking-tight">Available Rooms</h2>
-          {rooms.length === 0 ? (
+          <h2
+            id="rooms-section"
+            className={`text-4xl md:text-5xl font-serif text-stone-900 mb-10 tracking-tight ${
+              restaurant && activeTab !== 'stay' ? 'hidden' : ''
+            }`}
+          >
+            Available Rooms
+          </h2>
+          {restaurant && activeTab !== 'stay' ? null : rooms.length === 0 ? (
             <p className="text-stone-500 italic">No rooms available at the moment.</p>
           ) : (
             <div className="flex flex-col gap-20 mb-24">
