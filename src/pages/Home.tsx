@@ -765,7 +765,7 @@ export default function Home() {
   return (
     <div className="flex flex-col min-h-screen">
       {/* Hero */}
-      <section className="relative min-h-[82svh] md:min-h-[86svh] w-full flex flex-col justify-center overflow-hidden bg-stone-950">
+      <section className="relative min-h-[82svh] md:min-h-[86svh] w-full flex flex-col justify-center overflow-hidden bg-white">
         <motion.div
           initial={{ scale: 1.06 }}
           animate={{ scale: 1.16 }}
@@ -784,8 +784,8 @@ export default function Home() {
 
         {/* Scrims run left-to-right now that the type is anchored left, so the
             photograph stays visible on the side the text does not occupy. */}
-        <div className="absolute inset-0 z-10 bg-gradient-to-r from-stone-950 via-stone-950/85 to-stone-950/45" />
-        <div className="absolute inset-0 z-10 bg-gradient-to-t from-stone-950 via-stone-950/25 to-stone-950/65" />
+        <div className="absolute inset-0 z-10 bg-gradient-to-r from-white/95 via-white/80 to-transparent" />
+        <div className="absolute inset-0 z-10 bg-gradient-to-t from-white/90 via-white/40 to-transparent" />
 
         <div className="relative z-20 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16 md:pt-24 md:pb-20">
           <motion.div
@@ -794,8 +794,8 @@ export default function Home() {
             transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
             className="flex items-center gap-3 mb-5"
           >
-            <span className="h-px w-8 bg-emerald-300/40" />
-            <span className="text-[0.65rem] md:text-[0.7rem] font-semibold tracking-[0.26em] text-emerald-200/70 uppercase">
+            <span className="h-px w-8 bg-emerald-600/40" />
+            <span className="text-[0.65rem] md:text-[0.7rem] font-semibold tracking-[0.26em] text-emerald-700/90 uppercase">
               Booked direct with Malawian hosts
             </span>
           </motion.div>
@@ -804,11 +804,11 @@ export default function Home() {
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.05, ease: [0.16, 1, 0.3, 1] }}
-            className="font-serif text-white max-w-4xl tracking-[-0.035em] leading-[1.02]
+            className="font-serif text-stone-900 max-w-4xl tracking-[-0.035em] leading-[1.02]
                        text-[clamp(2.5rem,7vw,5.25rem)] mb-5"
           >
             <span className="block">Wake up on</span>
-            <span className="relative block h-[1.12em] overflow-hidden text-emerald-200/85">
+            <span className="relative block h-[1.12em] overflow-hidden text-emerald-600">
               <AnimatePresence mode="popLayout">
                 <motion.span
                   key={heroIndex}
@@ -828,7 +828,7 @@ export default function Home() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.12, ease: [0.16, 1, 0.3, 1] }}
-            className="max-w-xl text-base md:text-lg text-white/70 leading-relaxed mb-8"
+            className="max-w-xl text-base md:text-lg text-stone-700 leading-relaxed mb-8"
           >
             Lodges, camps and guesthouses run by the families who own them. Ask the host
             anything, agree the details between you, and pay when you arrive.
@@ -840,7 +840,7 @@ export default function Home() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
             className={`relative mt-10 bg-white/95 backdrop-blur-xl rounded-3xl p-3 lg:p-2.5
-                       shadow-2xl shadow-stone-950/40 ring-1 ring-white/50
+                       shadow-2xl shadow-stone-900/10 ring-1 ring-stone-900/5
                        flex flex-col lg:flex-row lg:items-stretch gap-2 lg:gap-0 w-full max-w-4xl text-left transition-all ${
                          showRecentSearches || showGuestDropdown ? 'z-40' : 'z-20'
                        }`}
