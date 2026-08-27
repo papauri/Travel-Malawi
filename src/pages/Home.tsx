@@ -765,7 +765,7 @@ export default function Home() {
   return (
     <div className="flex flex-col min-h-screen">
       {/* Hero */}
-      <section className="relative min-h-[82svh] md:min-h-[86svh] w-full flex flex-col justify-center overflow-hidden bg-stone-950">
+      <section className="relative min-h-[92svh] md:min-h-[96svh] w-full flex flex-col justify-center overflow-hidden bg-stone-950">
         <motion.div
           initial={{ scale: 1.06 }}
           animate={{ scale: 1.16 }}
@@ -809,20 +809,20 @@ export default function Home() {
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className={`relative mt-10 bg-white/95 backdrop-blur-xl rounded-3xl p-3 lg:p-2.5
-                       shadow-2xl shadow-stone-900/10 ring-1 ring-stone-900/5
-                       flex flex-col lg:flex-row lg:items-stretch gap-2 lg:gap-0 w-full max-w-4xl text-left transition-all ${
+            className={`relative mt-8 bg-white/95 backdrop-blur-xl rounded-2xl lg:rounded-full p-1.5 md:p-2
+                       shadow-xl shadow-stone-900/10 ring-1 ring-stone-900/5
+                       flex flex-col lg:flex-row lg:items-center gap-1 w-full max-w-[56rem] text-left transition-all ${
                          showRecentSearches || showGuestDropdown ? 'z-40' : 'z-20'
                        }`}
           >
             {/* Where */}
             <div
               ref={locationSearchRef}
-              className={`relative flex-[1.5] min-w-0 rounded-2xl px-4 lg:px-5 py-4 lg:py-3 hover:bg-stone-50 transition group bg-white lg:bg-transparent shadow-sm lg:shadow-none ring-1 ring-stone-100 lg:ring-0 ${
+              className={`relative flex-[1.5] min-w-0 rounded-2xl px-3 lg:px-5 py-2.5 lg:py-2 hover:bg-stone-50 transition group bg-white lg:bg-transparent shadow-sm lg:shadow-none ring-1 ring-stone-100 lg:ring-0 ${
                 showRecentSearches ? 'z-50' : 'z-20'
               }`}
             >
-              <label htmlFor="search-where" className="block text-[0.68rem] font-bold text-stone-900 uppercase tracking-[0.14em] mb-1">
+              <label htmlFor="search-where" className="block text-[0.6rem] font-bold text-stone-900 uppercase tracking-[0.1em] mb-0.5">
                 Where to
               </label>
               <div className="flex items-center gap-2">
@@ -992,7 +992,7 @@ export default function Home() {
 
             {/* When */}
             <div className="shrink-0 rounded-2xl px-4 py-3 hover:bg-stone-50 transition">
-              <span className="block text-[0.68rem] font-bold text-stone-900 uppercase tracking-[0.14em] mb-1">
+              <span className="block text-[0.6rem] font-bold text-stone-900 uppercase tracking-[0.1em] mb-0.5">
                 Nights
               </span>
               <div className="flex items-center gap-2">
@@ -1022,7 +1022,7 @@ export default function Home() {
             {/* Who */}
             <div
               ref={guestSelectorRef}
-              className={`relative flex-[1.05] rounded-2xl px-4 lg:px-5 py-4 lg:py-3 hover:bg-stone-50 transition bg-white lg:bg-transparent shadow-sm lg:shadow-none ring-1 ring-stone-100 lg:ring-0 ${
+              className={`relative flex-[1.05] rounded-2xl px-3 lg:px-5 py-2.5 lg:py-2 hover:bg-stone-50 transition bg-white lg:bg-transparent shadow-sm lg:shadow-none ring-1 ring-stone-100 lg:ring-0 ${
                 showGuestDropdown ? 'z-50' : 'z-20'
               }`}
             >
@@ -1032,7 +1032,7 @@ export default function Home() {
                 aria-expanded={showGuestDropdown}
                 className="w-full text-left"
               >
-                <span className="block text-[0.68rem] font-bold text-stone-900 uppercase tracking-[0.14em] mb-1">
+                <span className="block text-[0.6rem] font-bold text-stone-900 uppercase tracking-[0.1em] mb-0.5">
                   Party
                 </span>
                 <span className="flex items-center gap-2">
@@ -1089,7 +1089,7 @@ export default function Home() {
               onClick={handleSearch}
               disabled={searching}
               className="shrink-0 flex items-center justify-center gap-2 bg-stone-900 text-white
-                         rounded-2xl h-12 lg:h-auto lg:w-auto lg:my-1 lg:mr-1 lg:px-7
+                         rounded-xl lg:rounded-full h-10 lg:h-auto lg:w-auto lg:my-0.5 lg:mr-0.5 lg:px-5 lg:py-2
                          font-semibold text-sm hover:bg-stone-800 transition disabled:opacity-60"
             >
               {searching
@@ -2050,3 +2050,6 @@ export default function Home() {
     </div>
   );
 }
+
+
+
