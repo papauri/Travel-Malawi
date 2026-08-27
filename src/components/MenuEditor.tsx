@@ -270,7 +270,7 @@ export default function MenuEditor({ value, onChange, currencies }: Props) {
                           value={item.description ?? ''}
                           onChange={e => patchItem(section.id, item.id, { description: e.target.value })}
                           placeholder="Description — optional"
-                          className={`${inputClass} bg-white text-stone-600`}
+                          className={`${inputClass} bg-white`}
                         />
 
                         <div className="flex flex-wrap gap-3">

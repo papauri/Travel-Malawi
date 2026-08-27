@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { collection, query, where, getDocs, addDoc } from 'firebase/firestore';
+import { Booking, RoomType } from '../types';
 import { db } from '../lib/firebase';
 import { Hotel } from '../types';
-import { Building2, Plus, ChevronRight, Loader2, Clock, CheckCircle2, XCircle } from 'lucide-react';
+import { Building2, Plus, ChevronRight, Loader2, Clock, CheckCircle2, XCircle, BedDouble, CalendarCheck } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
@@ -16,6 +17,8 @@ export default function ManagerDashboard() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [hotels, setHotels] = useState<Hotel[]>([]);
+  const [rooms, setRooms] = useState<RoomType[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   
   const [showAddForm, setShowAddForm] = useState(false);
@@ -42,6 +45,21 @@ export default function ManagerDashboard() {
         ...doc.data()
       })) as Hotel[];
       setHotels(hotelsData);
+
+      // A dashboard that only lists names cannot tell you which property needs
+      // you today, so each card carries its room count and pending requests.
+      const ids = hotelsData.map(h => h.id).filter(Boolean) as string[];
+      if (ids.length > 0) {
+        // `in` takes at most 30 values per query, which is far more properties
+        // than one manager will have, but the slice keeps it honest.
+        const batch = ids.slice(0, 30);
+        const [roomSnap, bookingSnap] = await Promise.all([
+          getDocs(query(collection(db, 'room_types'), where('hotelId', 'in', batch))),
+          getDocs(query(collection(db, 'bookings'), where('hotelId', 'in', batch))),
+        ]);
+        setRooms(roomSnap.docs.map(d => ({ id: d.id, ...d.data() } as RoomType)));
+        setBookings(bookingSnap.docs.map(d => ({ id: d.id, ...d.data() } as Booking)));
+      }
     } catch (error) {
       console.error("Error fetching hotels:", error);
     } finally {
@@ -60,6 +78,21 @@ export default function ManagerDashboard() {
   }, [user, authLoading, navigate]);
 
   const [saving, setSaving] = useState(false);
+
+  /** Room count and outstanding requests, per property. */
+  const summaryByHotel = useMemo(() => {
+    const map = new Map<string, { rooms: number; pending: number }>();
+    for (const hotel of hotels) {
+      if (!hotel.id) continue;
+      map.set(hotel.id, {
+        rooms: rooms.filter(r => r.hotelId === hotel.id).length,
+        pending: bookings.filter(b => b.hotelId === hotel.id && b.status === 'pending').length,
+      });
+    }
+    return map;
+  }, [hotels, rooms, bookings]);
+
+  const totalPending = bookings.filter(b => b.status === 'pending').length;
 
   const handleAddHotel = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -124,7 +157,11 @@ export default function ManagerDashboard() {
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-12 gap-4">
         <div>
           <h1 className="text-4xl font-serif font-bold text-stone-900">Dashboard</h1>
-          <p className="text-stone-500 mt-2 text-lg">Manage your properties, rooms, and bookings.</p>
+          <p className="text-stone-500 mt-2 text-lg">
+            {totalPending > 0
+              ? `${totalPending} booking request${totalPending === 1 ? '' : 's'} waiting for your reply.`
+              : 'Manage your properties, rooms, and bookings.'}
+          </p>
         </div>
         <div className="flex items-center gap-4">
           <button 
@@ -216,12 +253,29 @@ export default function ManagerDashboard() {
             <Building2 className="h-16 w-16 text-stone-300 mx-auto mb-6" />
             <h3 className="text-2xl font-serif text-stone-900 mb-3">No properties yet</h3>
             <p className="text-stone-500 text-lg max-w-md mx-auto mb-8">
-              Get started by adding your first property.
+              Add your first property to start taking bookings. You can add rooms,
+              photos and a menu once it exists.
             </p>
+            <button
+              onClick={() => setShowAddForm(true)}
+              className="bg-stone-900 text-white px-8 py-3 rounded-full font-medium hover:bg-stone-800 transition"
+            >
+              Add your first property
+            </button>
           </div>
         ) : (
           hotels.map(hotel => (
-            <Link key={hotel.id} to={`/dashboard/hotel/${hotel.id}`} className="group bg-white rounded-3xl shadow-sm border border-stone-200 overflow-hidden flex flex-col hover:border-stone-400 transition duration-300">
+            <Link
+              key={hotel.id}
+              to={
+                (summaryByHotel.get(hotel.id!)?.pending ?? 0) > 0
+                  ? `/dashboard/hotel/${hotel.id}?tab=bookings`
+                  : (summaryByHotel.get(hotel.id!)?.rooms ?? 0) === 0
+                    ? `/dashboard/hotel/${hotel.id}?tab=rooms`
+                    : `/dashboard/hotel/${hotel.id}`
+              }
+              className="group bg-white rounded-3xl shadow-sm border border-stone-200 overflow-hidden flex flex-col hover:border-stone-400 transition duration-300"
+            >
               <div className="h-56 bg-stone-100 relative">
                 <SmartImage
                   src={getHotelImage(hotel)}
@@ -241,14 +295,36 @@ export default function ManagerDashboard() {
                 </span>
               </div>
               <div className="p-8 flex-1 flex flex-col">
-                <div className="flex justify-between items-start mb-6">
-                  <div>
-                    <h3 className="text-2xl font-serif font-bold text-stone-900 mb-2">{hotel.name}</h3>
-                    <p className="text-stone-500">{hotel.location}</p>
-                  </div>
+                <h3 className="text-2xl font-serif font-bold text-stone-900 mb-2">{hotel.name}</h3>
+                <p className="text-stone-500 mb-5">{hotel.location}</p>
+
+                <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
+                  <span className="flex items-center gap-1.5 text-stone-600">
+                    <BedDouble className="h-4 w-4 text-stone-400" />
+                    {summaryByHotel.get(hotel.id!)?.rooms ?? 0} room type{(summaryByHotel.get(hotel.id!)?.rooms ?? 0) === 1 ? '' : 's'}
+                  </span>
+                  {(summaryByHotel.get(hotel.id!)?.pending ?? 0) > 0 ? (
+                    <span className="flex items-center gap-1.5 font-semibold text-amber-700">
+                      <CalendarCheck className="h-4 w-4" />
+                      {summaryByHotel.get(hotel.id!)!.pending} awaiting reply
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1.5 text-stone-400">
+                      <CalendarCheck className="h-4 w-4" /> No pending requests
+                    </span>
+                  )}
                 </div>
+
+                {(summaryByHotel.get(hotel.id!)?.rooms ?? 0) === 0 && (
+                  // Without a room a listing cannot take a single booking, so
+                  // this is the one thing worth saying loudly.
+                  <p className="mt-4 text-sm bg-amber-50 border border-amber-200 text-amber-900 rounded-xl px-3 py-2">
+                    Add a room before this property can take bookings.
+                  </p>
+                )}
+
                 <div className="mt-auto pt-6 border-t border-stone-100 flex items-center justify-between text-stone-900 font-medium">
-                  <span>Manage Property</span>
+                  <span>Manage property</span>
                   <ChevronRight className="h-5 w-5 text-stone-400 group-hover:text-stone-900 transition" />
                 </div>
               </div>

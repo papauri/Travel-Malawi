@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { doc, getDoc, collection, query, where, getDocs, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Hotel, RoomType, Booking, CurrencyCode, PriceMap, Restaurant, WeeklyHours } from '../types';
 import { useAuth } from '../contexts/AuthContext';
-import { Plus, CheckCircle2, XCircle, Clock, Save, Edit2, Trash2, Users, Calendar, Check, X, Building, BedDouble, Loader2, Download, TrendingUp, Percent, Wallet, UtensilsCrossed, Eye } from 'lucide-react';
+import { Plus, CheckCircle2, XCircle, Clock, Save, Edit2, Trash2, Users, Calendar, Check, X, Building, BedDouble, Loader2, Download, TrendingUp, Percent, Wallet, UtensilsCrossed, Eye, ChevronLeft, ExternalLink } from 'lucide-react';
 import ImageUpload from '../components/ImageUpload';
 import GalleryUpload from '../components/GalleryUpload';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -24,6 +24,28 @@ import { isHotelManager } from '../lib/roles';
 
 type Tab = 'details' | 'rooms' | 'restaurant' | 'bookings';
 
+const TABS: Tab[] = ['details', 'rooms', 'restaurant', 'bookings'];
+
+const isTab = (value: string | null): value is Tab => !!value && (TABS as string[]).includes(value);
+
+/** Compares only what the details form can actually change. */
+function hotelFormSnapshot(data: Partial<Hotel>): string {
+  const amenities = Array.isArray(data.amenities)
+    ? data.amenities
+    : String(data.amenities ?? '').split(',').map(s => s.trim()).filter(Boolean);
+  return JSON.stringify({
+    description: data.description ?? '',
+    location: data.location ?? '',
+    coordinates: data.coordinates ?? null,
+    imageUrl: data.imageUrl ?? '',
+    galleryUrls: data.galleryUrls ?? [],
+    amenities,
+    checkInTime: data.checkInTime ?? '',
+    checkOutTime: data.checkOutTime ?? '',
+    hours: data.hours ?? null,
+  });
+}
+
 /** Fields that describe the listing itself and are never edited from this form. */
 const HOTEL_READONLY_FIELDS = ['id', 'managerId', 'status', 'createdAt', 'name', 'reviews'] as const;
 
@@ -32,7 +54,11 @@ export default function ManageHotel() {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<Tab>('details');
+  // The tab lives in the query string, so a reload, a shared link and the
+  // browser's back button all land where the manager expects.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab: Tab = isTab(searchParams.get('tab')) ? (searchParams.get('tab') as Tab) : 'details';
+  const [pendingTab, setPendingTab] = useState<Tab | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [confirmModalBooking, setConfirmModalBooking] = useState<string | null>(null);
@@ -241,6 +267,50 @@ export default function ManageHotel() {
       setSaving(false);
     }
   };
+
+  /** Unsaved work, per tab. Each editor holds local state until it is saved. */
+  const hotelDirty = !!hotel && hotelFormSnapshot(editHotelData) !== hotelFormSnapshot(hotel);
+  const restaurantDirty =
+    JSON.stringify(restaurant ?? null) !== JSON.stringify(hotel?.restaurant ?? null);
+  const roomDirty = editingRoomId !== null;
+
+  const dirtyOn = (tab: Tab) =>
+    tab === 'details' ? hotelDirty : tab === 'rooms' ? roomDirty : tab === 'restaurant' ? restaurantDirty : false;
+
+  const goToTab = (tab: Tab) => {
+    setSearchParams(tab === 'details' ? {} : { tab }, { replace: false });
+  };
+
+  /** Switching away from unsaved work asks first rather than discarding it. */
+  const requestTab = (tab: Tab) => {
+    if (tab === activeTab) return;
+    if (dirtyOn(activeTab)) {
+      setPendingTab(tab);
+      return;
+    }
+    goToTab(tab);
+  };
+
+  const discardAndSwitch = () => {
+    if (!pendingTab || !hotel) return;
+    if (activeTab === 'details') setEditHotelData(hotel);
+    if (activeTab === 'restaurant') setRestaurant(hotel.restaurant ?? null);
+    if (activeTab === 'rooms') { setEditingRoomId(null); setShowAddRoom(false); }
+    goToTab(pendingTab);
+    setPendingTab(null);
+  };
+
+  // Closing or reloading the tab with unsaved work gets the browser's own
+  // warning; nothing here can be recovered once the page is gone.
+  useEffect(() => {
+    if (!hotelDirty && !restaurantDirty && !roomDirty) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [hotelDirty, restaurantDirty, roomDirty]);
 
   /** Currencies the property's rooms are sold in, reused for menu prices. */
   const propertyCurrencies = useMemo(() => {
@@ -572,10 +642,29 @@ export default function ManageHotel() {
 
   return (
     <div className="max-w-6xl mx-auto px-6 lg:px-8 py-12">
+      {/* There was no route back: a manager with several properties had to use
+          the browser's back button to reach their dashboard again. */}
+      <Link
+        to="/dashboard"
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-stone-500 hover:text-stone-900 transition mb-6"
+      >
+        <ChevronLeft className="h-4 w-4" /> All properties
+      </Link>
+
       <div className="mb-8 flex flex-col md:flex-row md:items-start md:justify-between gap-4">
         <div>
           <h1 className="text-4xl font-serif font-bold text-stone-900">{hotel.name}</h1>
-          <p className="text-stone-500 mt-2 text-lg">Manage your property details, rooms, and bookings.</p>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-2">
+            <p className="text-stone-500 text-lg">{hotel.location}</p>
+            <a
+              href={`/hotel/${hotel.id}`}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-stone-600 hover:text-emerald-700 transition"
+            >
+              View live listing <ExternalLink className="h-3.5 w-3.5" />
+            </a>
+          </div>
         </div>
         {/* A manager could previously not tell whether their listing was live;
             the status was only ever visible on the admin dashboard. */}
@@ -652,40 +741,40 @@ export default function ManageHotel() {
         </div>
       </div>
 
-      {/* TABS */}
-      <div className="flex space-x-2 border-b border-stone-200 mb-8">
-        <button
-          onClick={() => setActiveTab('details')}
-          className={`flex items-center gap-2 px-6 py-3 border-b-2 font-medium transition ${activeTab === 'details' ? 'border-stone-900 text-stone-900' : 'border-transparent text-stone-500 hover:text-stone-700'}`}
-        >
-          <Building className="h-4 w-4" /> Property Details
-        </button>
-        <button
-          onClick={() => setActiveTab('rooms')}
-          className={`flex items-center gap-2 px-6 py-3 border-b-2 font-medium transition ${activeTab === 'rooms' ? 'border-stone-900 text-stone-900' : 'border-transparent text-stone-500 hover:text-stone-700'}`}
-        >
-          <BedDouble className="h-4 w-4" /> Rooms & Pricing
-        </button>
-        <button
-          onClick={() => setActiveTab('restaurant')}
-          className={`flex items-center gap-2 px-6 py-3 border-b-2 font-medium transition ${activeTab === 'restaurant' ? 'border-stone-900 text-stone-900' : 'border-transparent text-stone-500 hover:text-stone-700'}`}
-        >
-          <UtensilsCrossed className="h-4 w-4" /> Restaurant
-          {hotel.restaurant?.enabled && (
-            <span className="bg-emerald-100 text-emerald-700 text-[0.6rem] font-bold px-1.5 py-0.5 rounded-full uppercase">Live</span>
-          )}
-        </button>
-        <button
-          onClick={() => setActiveTab('bookings')}
-          className={`flex items-center gap-2 px-6 py-3 border-b-2 font-medium transition ${activeTab === 'bookings' ? 'border-stone-900 text-stone-900' : 'border-transparent text-stone-500 hover:text-stone-700'}`}
-        >
-          <Calendar className="h-4 w-4" /> Bookings
-          {bookings.filter(b => b.status === 'pending').length > 0 && (
-            <span className="bg-emerald-500 text-white text-xs px-2 py-0.5 rounded-full ml-1">
-              {bookings.filter(b => b.status === 'pending').length}
-            </span>
-          )}
-        </button>
+      {/* Tabs scroll rather than wrap: four of them at this size overflowed a
+          phone with no way to reach the last one. A dot marks unsaved work. */}
+      <div className="flex gap-1 border-b border-stone-200 mb-8 overflow-x-auto scrollbar-hide -mx-6 px-6 lg:mx-0 lg:px-0">
+        {([
+          { id: 'details' as Tab, label: 'Property details', icon: Building },
+          { id: 'rooms' as Tab, label: 'Rooms & pricing', icon: BedDouble },
+          { id: 'restaurant' as Tab, label: 'Restaurant', icon: UtensilsCrossed },
+          { id: 'bookings' as Tab, label: 'Bookings', icon: Calendar },
+        ]).map(tab => {
+          const Icon = tab.icon;
+          const pendingCount = tab.id === 'bookings' ? bookings.filter(b => b.status === 'pending').length : 0;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => requestTab(tab.id)}
+              className={`flex items-center gap-2 px-5 py-3 border-b-2 font-medium whitespace-nowrap transition ${
+                activeTab === tab.id
+                  ? 'border-stone-900 text-stone-900'
+                  : 'border-transparent text-stone-500 hover:text-stone-700'
+              }`}
+            >
+              <Icon className="h-4 w-4 shrink-0" /> {tab.label}
+              {dirtyOn(tab.id) && (
+                <span title="Unsaved changes" className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
+              )}
+              {tab.id === 'restaurant' && hotel.restaurant?.enabled && (
+                <span className="bg-emerald-100 text-emerald-700 text-[0.6rem] font-bold px-1.5 py-0.5 rounded-full uppercase">Live</span>
+              )}
+              {pendingCount > 0 && (
+                <span className="bg-emerald-500 text-white text-xs px-2 py-0.5 rounded-full">{pendingCount}</span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* TAB CONTENT: DETAILS */}
@@ -694,7 +783,7 @@ export default function ManageHotel() {
           {/* LIVE PREVIEW: How your images look to guests */}
           {(editHotelData.imageUrl || (editHotelData.galleryUrls && editHotelData.galleryUrls.length > 0) || rooms.some(r => r.imageUrl)) && (
             <div className="bg-white rounded-3xl border border-stone-200 p-8 shadow-sm">
-              <h3 className="text-lg font-serif font-bold text-stone-900 mb-6">📸 Live Image Preview</h3>
+              <h3 className="text-lg font-serif font-bold text-stone-900 mb-6">How your photos look to guests</h3>
               
               {/* Hotel Gallery */}
               {(editHotelData.imageUrl || (editHotelData.galleryUrls && editHotelData.galleryUrls.length > 0)) && (
@@ -818,11 +907,31 @@ export default function ManageHotel() {
                 />
               </div>
             </div>
-            <div className="pt-4 flex justify-end">
-              <button type="submit" disabled={saving} className="flex items-center gap-2 bg-stone-900 text-white px-8 py-3 rounded-xl font-medium hover:bg-stone-800 transition disabled:opacity-50">
-                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                {saving ? 'Saving...' : 'Save Details'}
-              </button>
+            {/* Pinned: this form is long enough that the save button used to
+                sit well below the fold with no sign it was there. */}
+            <div className="sticky bottom-0 -mx-8 -mb-8 px-8 py-4 bg-white/95 backdrop-blur border-t border-stone-100 flex items-center justify-between gap-4 rounded-b-3xl">
+              <p className="text-sm text-stone-500">
+                {hotelDirty ? 'Unsaved changes' : 'Everything is saved'}
+              </p>
+              <div className="flex items-center gap-3">
+                {hotelDirty && (
+                  <button
+                    type="button"
+                    onClick={() => setEditHotelData(hotel)}
+                    className="px-5 py-3 rounded-xl font-medium text-stone-600 hover:bg-stone-100 transition"
+                  >
+                    Discard
+                  </button>
+                )}
+                <button
+                  type="submit"
+                  disabled={saving || !hotelDirty}
+                  className="flex items-center gap-2 bg-stone-900 text-white px-8 py-3 rounded-xl font-medium hover:bg-stone-800 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  {saving ? 'Saving…' : 'Save details'}
+                </button>
+              </div>
             </div>
           </form>
         </div>
@@ -1062,11 +1171,15 @@ export default function ManageHotel() {
                   )}
                 </div>
 
-                <div className="pt-4 flex justify-end gap-3">
-                  <button type="button" onClick={cancelEditRoom} className="px-6 py-3 rounded-xl font-medium text-stone-600 hover:bg-stone-100 transition">Cancel</button>
+                {/* The room form runs past a packages list and a month
+                    calendar, so its actions are pinned to the viewport. */}
+                <div className="sticky bottom-0 -mx-8 -mb-8 px-8 py-4 bg-white/95 backdrop-blur border-t border-stone-100 flex items-center justify-end gap-3 rounded-b-3xl">
+                  <button type="button" onClick={cancelEditRoom} className="px-6 py-3 rounded-xl font-medium text-stone-600 hover:bg-stone-100 transition">
+                    Cancel
+                  </button>
                   <button type="submit" disabled={saving} className="flex items-center gap-2 bg-stone-900 text-white px-8 py-3 rounded-xl font-medium hover:bg-stone-800 transition disabled:opacity-50">
                     {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                    {saving ? 'Saving...' : 'Save Room'}
+                    {saving ? 'Saving…' : editingRoomId === 'new' ? 'Add room' : 'Save room'}
                   </button>
                 </div>
               </form>
@@ -1157,21 +1270,28 @@ export default function ManageHotel() {
                 currencies={propertyCurrencies}
               />
 
-              <div className="flex flex-wrap items-center justify-end gap-3">
-                <button
-                  onClick={() => setRestaurant(hotel.restaurant ?? null)}
-                  className="px-6 py-3 rounded-xl font-medium text-stone-600 hover:bg-stone-100 transition"
-                >
-                  Discard changes
-                </button>
-                <button
-                  onClick={handleSaveRestaurant}
-                  disabled={savingRestaurant}
-                  className="flex items-center gap-2 bg-stone-900 text-white px-8 py-3 rounded-xl font-medium hover:bg-stone-800 transition disabled:opacity-50"
-                >
-                  {savingRestaurant ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                  {savingRestaurant ? 'Saving…' : 'Save menu'}
-                </button>
+              <div className="sticky bottom-4 z-10 bg-white/95 backdrop-blur border border-stone-200 shadow-lg rounded-2xl px-5 py-4 flex flex-wrap items-center justify-between gap-3">
+                <p className="text-sm text-stone-500">
+                  {restaurantDirty ? 'Unsaved changes to your menu' : 'Menu is saved'}
+                </p>
+                <div className="flex items-center gap-3">
+                  {restaurantDirty && (
+                    <button
+                      onClick={() => setRestaurant(hotel.restaurant ?? null)}
+                      className="px-5 py-2.5 rounded-xl font-medium text-stone-600 hover:bg-stone-100 transition"
+                    >
+                      Discard
+                    </button>
+                  )}
+                  <button
+                    onClick={handleSaveRestaurant}
+                    disabled={savingRestaurant || !restaurantDirty}
+                    className="flex items-center gap-2 bg-stone-900 text-white px-7 py-2.5 rounded-xl font-medium hover:bg-stone-800 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {savingRestaurant ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    {savingRestaurant ? 'Saving…' : 'Save menu'}
+                  </button>
+                </div>
               </div>
 
               {restaurant.enabled && (
@@ -1402,6 +1522,17 @@ export default function ManageHotel() {
           </Modal>
         );
       })()}
+
+      <ConfirmDialog
+        isOpen={!!pendingTab}
+        title="Leave without saving?"
+        message="You have changes on this tab that have not been saved. Leaving now discards them."
+        confirmText="Discard changes"
+        cancelText="Stay here"
+        isDestructive
+        onConfirm={discardAndSwitch}
+        onCancel={() => setPendingTab(null)}
+      />
 
       <ConfirmDialog
         isOpen={!!bookingToDelete}
