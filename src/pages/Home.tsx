@@ -765,21 +765,27 @@ export default function Home() {
   return (
     <div className="flex flex-col min-h-screen">
       {/* Hero */}
-      <section className="relative min-h-[100svh] md:min-h-[100svh] w-full flex flex-col justify-center overflow-hidden bg-stone-950">
+      <section className="relative min-h-[100svh] md:min-h-[100svh] w-full flex flex-col justify-end pb-8 md:pb-16 pt-32 overflow-hidden bg-stone-950">
         <motion.div
-          initial={{ scale: 1.06 }}
-          animate={{ scale: 1.16 }}
-          transition={{ duration: 26, repeat: Infinity, repeatType: 'reverse', ease: 'linear' }}
+          initial={{ opacity: 0, scale: 1.08, filter: 'blur(10px)' }}
+          animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+          transition={{ duration: 1.8, ease: [0.16, 1, 0.3, 1] }}
           className="absolute inset-0 z-0"
         >
-          <SmartImage
-            src={HERO_IMAGE}
-            fallbacks={[DECORATIVE_IMAGE]}
-            alt=""
-            aria-hidden="true"
-            loading="eager"
-            className="w-full h-full object-cover object-center"
-          />
+          <motion.div
+            animate={{ scale: [1, 1.08, 1] }}
+            transition={{ duration: 40, repeat: Infinity, ease: 'linear' }}
+            className="w-full h-full"
+          >
+            <SmartImage
+              src={HERO_IMAGE}
+              fallbacks={[DECORATIVE_IMAGE]}
+              alt=""
+              aria-hidden="true"
+              loading="eager"
+              className="w-full h-full object-cover object-center"
+            />
+          </motion.div>
         </motion.div>
 
         {/* Scrims run left-to-right now that the type is anchored left, so the
@@ -787,11 +793,11 @@ export default function Home() {
         <div className="absolute inset-0 z-10 bg-gradient-to-r from-stone-950/80 via-stone-950/40 to-transparent" />
         <div className="absolute inset-0 z-10 bg-gradient-to-t from-stone-950/70 via-stone-950/30 to-transparent" />
 
-        <div className="relative z-20 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16 md:pt-32 md:pb-24">
+        <div className="relative z-20 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-auto">
           <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.05, ease: [0.16, 1, 0.3, 1] }}
+            initial={{ opacity: 0, y: 40, filter: "blur(8px)" }}
+            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+            transition={{ duration: 1.2, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
             className="mb-8 md:mb-12 flex flex-col items-center"
           >
             <h1 className="font-sans flex flex-col gap-2 md:gap-3 items-center text-center">
@@ -806,9 +812,9 @@ export default function Home() {
 
           {/* Search */}
           <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            initial={{ opacity: 0, y: 40, filter: "blur(8px)" }}
+            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+            transition={{ duration: 1.2, delay: 0.6, ease: [0.16, 1, 0.3, 1] }}
             className={`relative mt-8 mx-auto bg-white rounded-2xl lg:rounded-full p-1.5
                        shadow-2xl shadow-black/20 ring-1 ring-stone-900/5
                        flex flex-col lg:flex-row lg:items-center gap-1 w-full max-w-3xl text-left transition-all ${
