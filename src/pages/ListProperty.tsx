@@ -1,0 +1,760 @@
+/**
+ * "List your property", end to end.
+ *
+ * What used to happen: every host entry point pointed at `/dashboard`, which
+ * redirects anyone without the `hotel_manager` role straight back to the home
+ * page. A signed-out visitor, and a signed-in one who had joined to book a
+ * stay, both clicked "List your property" and simply landed back where they
+ * started with nothing said. Anyone who did get through met a four-field form
+ * that wrote a listing with no category, no gallery and no hours, and then
+ * dropped them on a dashboard that did not mention the rooms a listing needs
+ * before it can take a booking.
+ *
+ * This page owns the whole path instead: sign in or create an account, add the
+ * host role to an existing account, fill in the listing over four reviewable
+ * steps, and land on the room editor for the property that was just created.
+ */
+
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
+import {
+  ArrowLeft, ArrowRight, BadgeCheck, Building2, Check, ChevronRight, Clock,
+  Images, Loader2, LocateFixed, MapPin, MessageCircle, Plus, Send, Sparkles, Wallet, X,
+} from 'lucide-react';
+
+import { useAuth } from '../contexts/AuthContext';
+import { useAuthDialog } from '../contexts/AuthDialogContext';
+import { isHotelManager } from '../lib/roles';
+import ImageUpload from '../components/ImageUpload';
+import GalleryUpload from '../components/GalleryUpload';
+import SmartImage from '../components/SmartImage';
+import { DECORATIVE_IMAGE, getHotelImage } from '../lib/images';
+import {
+  CATEGORY_HINTS, COMMON_AMENITIES, DESCRIPTION_MAX, DESCRIPTION_MIN, ListingDraft,
+  MALAWI_LOCATIONS, NAME_MAX, PROPERTY_CATEGORIES, PropertyCategory, createListing,
+  emptyDraft, errorsForStep, hasDuplicateListing, isStepComplete, validateDraft,
+} from '../lib/listing';
+
+const DRAFT_KEY = 'listingDraft';
+
+const STEPS = [
+  { title: 'The basics', blurb: 'What it is called, and where it is.' },
+  { title: 'The place', blurb: 'What a guest should know before booking.' },
+  { title: 'Photographs', blurb: 'The pictures that do the selling.' },
+  { title: 'Check it over', blurb: 'One last look before it goes for review.' },
+];
+
+/** Survives the round trip through a Google sign-in popup. */
+function readDraft(): ListingDraft {
+  try {
+    const stored = localStorage.getItem(DRAFT_KEY);
+    if (stored) return { ...emptyDraft(), ...JSON.parse(stored) };
+  } catch {
+    // A corrupt draft is not worth reporting; start clean.
+  }
+  return emptyDraft();
+}
+
+const fieldClass =
+  'w-full rounded-2xl border border-stone-200 bg-white px-4 py-3.5 text-stone-900 outline-none ' +
+  'transition placeholder:text-stone-400 focus:border-stone-900 focus:ring-4 focus:ring-stone-900/5';
+
+const labelClass = 'block text-xs font-bold uppercase tracking-[0.14em] text-stone-500 mb-2';
+
+function FieldError({ message }: { message?: string }) {
+  if (!message) return null;
+  return <p className="mt-2 text-sm font-medium text-red-600">{message}</p>;
+}
+
+export default function ListProperty() {
+  const { user, loading: authLoading, becomeHost } = useAuth();
+  const { openAuth } = useAuthDialog();
+  const navigate = useNavigate();
+
+  const [draft, setDraft] = useState<ListingDraft>(readDraft);
+  const [step, setStep] = useState(0);
+  const [showErrors, setShowErrors] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [enabling, setEnabling] = useState(false);
+  const [amenityInput, setAmenityInput] = useState('');
+
+  const isHost = isHotelManager(user);
+
+  // Nothing typed is lost to a sign-in, a refresh, or a mis-click on Back.
+  useEffect(() => {
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    } catch {
+      // Private browsing; the draft simply will not persist.
+    }
+  }, [draft]);
+
+  const set = useCallback(<K extends keyof ListingDraft>(key: K, value: ListingDraft[K]) => {
+    setDraft(current => ({ ...current, [key]: value }));
+  }, []);
+
+  const stepErrors = useMemo(() => errorsForStep(draft, step), [draft, step]);
+  const allErrors = useMemo(() => validateDraft(draft), [draft]);
+  const visible = showErrors ? stepErrors : {};
+
+  const goNext = () => {
+    if (!isStepComplete(draft, step)) {
+      setShowErrors(true);
+      return;
+    }
+    setShowErrors(false);
+    setStep(s => Math.min(STEPS.length - 1, s + 1));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const goBack = () => {
+    setShowErrors(false);
+    setStep(s => Math.max(0, s - 1));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const toggleAmenity = (amenity: string) => {
+    const has = draft.amenities.includes(amenity);
+    set('amenities', has ? draft.amenities.filter(a => a !== amenity) : [...draft.amenities, amenity]);
+  };
+
+  const addTypedAmenity = () => {
+    const value = amenityInput.trim();
+    if (!value) return;
+    if (!draft.amenities.some(a => a.toLowerCase() === value.toLowerCase())) {
+      set('amenities', [...draft.amenities, value]);
+    }
+    setAmenityInput('');
+  };
+
+  const useMyLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error('Your browser will not share a location.');
+      return;
+    }
+    toast.loading('Finding you…', { id: 'geo' });
+    navigator.geolocation.getCurrentPosition(
+      position => {
+        toast.success('Pin dropped at your current position.', { id: 'geo' });
+        set('coordinates', { lat: position.coords.latitude, lng: position.coords.longitude });
+      },
+      () => toast.error('Could not read your location. Check browser permissions.', { id: 'geo' })
+    );
+  };
+
+  const handleEnableHosting = async () => {
+    setEnabling(true);
+    try {
+      await becomeHost();
+      toast.success('Hosting is on. Let us get your property up.');
+    } catch (error: any) {
+      console.error('Could not enable hosting:', error);
+      toast.error(error?.message ?? 'Could not switch your account to hosting.');
+    } finally {
+      setEnabling(false);
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!user) {
+      openAuth('host');
+      return;
+    }
+    // The final guard is the whole draft, not just this step: a host can jump
+    // back and empty a field they already passed.
+    if (Object.keys(allErrors).length > 0) {
+      const firstBadStep = [0, 1, 2].find(s => !isStepComplete(draft, s)) ?? 0;
+      setStep(firstBadStep);
+      setShowErrors(true);
+      toast.error('Something above still needs filling in.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      // Guards against a double submit creating two copies of the property,
+      // which then had to be moderated and deleted by hand.
+      if (await hasDuplicateListing(user.uid, draft.name)) {
+        toast.error('You already have a property listed under that name.');
+        setStep(0);
+        setShowErrors(true);
+        return;
+      }
+
+      const id = await createListing(draft, user.uid);
+      try {
+        localStorage.removeItem(DRAFT_KEY);
+      } catch {
+        // Nothing to do; the draft is replaced on the next listing anyway.
+      }
+      setDraft(emptyDraft());
+      toast.success('Submitted for review. Now add a room so it can take bookings.', { duration: 6000 });
+      // A listing with no room cannot take a single booking, so the room
+      // editor — not the dashboard — is where this ends.
+      navigate(`/dashboard/hotel/${id}?tab=rooms`);
+    } catch (error: any) {
+      console.error('Could not create listing:', error);
+      toast.error(
+        error?.code === 'permission-denied'
+          ? 'Your account is not allowed to publish listings yet.'
+          : 'Could not submit the property. Please try again.'
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (authLoading) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <Loader2 className="h-7 w-7 animate-spin text-stone-400" />
+      </div>
+    );
+  }
+
+  // ---- Gate: no account, or an account that does not host yet ----
+  if (!user || !isHost) {
+    return <HostIntro user={user} enabling={enabling} onEnable={handleEnableHosting} onSignUp={() => openAuth('host')} />;
+  }
+
+  // ---- The wizard ----
+  return (
+    <div className="bg-stone-50">
+      <div className="mx-auto w-full max-w-5xl px-6 lg:px-8 py-14">
+        <button
+          onClick={() => navigate('/dashboard')}
+          className="mb-8 inline-flex items-center gap-2 text-sm font-semibold text-stone-500 transition hover:text-stone-900"
+        >
+          <ArrowLeft className="h-4 w-4" /> Back to your dashboard
+        </button>
+
+        <header className="mb-10">
+          <p className="mb-3 text-[0.7rem] font-bold uppercase tracking-[0.22em] text-emerald-700">
+            Step {step + 1} of {STEPS.length}
+          </p>
+          <h1 className="font-serif text-4xl tracking-tight text-stone-900 md:text-5xl">{STEPS[step].title}</h1>
+          <p className="mt-3 text-lg text-stone-500">{STEPS[step].blurb}</p>
+        </header>
+
+        {/* Progress. Each completed step stays clickable so a host can go back
+            and correct something without losing the rest. */}
+        <ol className="mb-10 grid grid-cols-4 gap-2">
+          {STEPS.map((s, index) => {
+            const done = index < step && isStepComplete(draft, index);
+            const active = index === step;
+            const reachable = index <= step || [0, 1, 2].slice(0, index).every(i => isStepComplete(draft, i));
+            return (
+              <li key={s.title}>
+                <button
+                  type="button"
+                  disabled={!reachable}
+                  onClick={() => { if (reachable) { setShowErrors(false); setStep(index); } }}
+                  className="w-full text-left disabled:cursor-not-allowed"
+                >
+                  <span
+                    className={`block h-1.5 rounded-full transition ${
+                      active ? 'bg-stone-900' : done ? 'bg-emerald-500' : 'bg-stone-200'
+                    }`}
+                  />
+                  <span
+                    className={`mt-2 hidden text-xs font-semibold sm:block ${
+                      active ? 'text-stone-900' : done ? 'text-emerald-700' : 'text-stone-400'
+                    }`}
+                  >
+                    {s.title}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ol>
+
+        <div className="rounded-3xl border border-stone-200 bg-white p-7 shadow-sm md:p-10">
+          {step === 0 && (
+            <div className="space-y-8">
+              <div>
+                <label className={labelClass} htmlFor="listing-name">Property name</label>
+                <input
+                  id="listing-name"
+                  type="text"
+                  maxLength={NAME_MAX}
+                  value={draft.name}
+                  onChange={e => set('name', e.target.value)}
+                  placeholder="e.g. Nkhata Bay Beach Lodge"
+                  className={fieldClass}
+                />
+                <p className="mt-2 text-xs text-stone-400">
+                  This is fixed once the listing is created — an admin can change it later if you need.
+                </p>
+                <FieldError message={visible.name} />
+              </div>
+
+              <div>
+                <span className={labelClass}>Which category fits best?</span>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {PROPERTY_CATEGORIES.map(category => {
+                    const selected = draft.category === category;
+                    return (
+                      <button
+                        key={category}
+                        type="button"
+                        aria-pressed={selected}
+                        onClick={() => set('category', category as PropertyCategory)}
+                        className={`relative rounded-2xl border p-4 text-left transition ${
+                          selected
+                            ? 'border-stone-900 bg-stone-900 text-white'
+                            : 'border-stone-200 bg-stone-50 hover:border-stone-400'
+                        }`}
+                      >
+                        <span className="block text-sm font-bold">{category}</span>
+                        <span className={`mt-1 block text-xs ${selected ? 'text-white/70' : 'text-stone-500'}`}>
+                          {CATEGORY_HINTS[category]}
+                        </span>
+                        {selected && <Check className="absolute right-4 top-4 h-4 w-4" />}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="mt-2 text-xs text-stone-400">
+                  Guests filter by this on the home page, so a listing without one is much harder to find.
+                </p>
+                <FieldError message={visible.category} />
+              </div>
+
+              <div>
+                <label className={labelClass} htmlFor="listing-location">Town or area</label>
+                <input
+                  id="listing-location"
+                  type="text"
+                  list="malawi-locations"
+                  value={draft.location}
+                  onChange={e => set('location', e.target.value)}
+                  placeholder="e.g. Cape Maclear"
+                  className={fieldClass}
+                />
+                <datalist id="malawi-locations">
+                  {MALAWI_LOCATIONS.map(location => <option key={location} value={location} />)}
+                </datalist>
+                <FieldError message={visible.location} />
+              </div>
+
+              <div>
+                <label className={labelClass} htmlFor="listing-notes">Finding the place <span className="font-medium normal-case tracking-normal text-stone-400">(optional)</span></label>
+                <textarea
+                  id="listing-notes"
+                  rows={2}
+                  value={draft.locationNotes}
+                  onChange={e => set('locationNotes', e.target.value)}
+                  placeholder="Turn off the M5 at the mission, 400 m of dirt road, gate on the left."
+                  className={fieldClass}
+                />
+              </div>
+
+              <div className="rounded-2xl border border-stone-200 bg-stone-50 p-5">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div>
+                    <p className="flex items-center gap-2 text-sm font-bold text-stone-900">
+                      <MapPin className="h-4 w-4 text-emerald-600" /> Drop a map pin
+                    </p>
+                    <p className="mt-1 text-sm text-stone-500">
+                      {draft.coordinates
+                        ? `Saved: ${draft.coordinates.lat.toFixed(4)}, ${draft.coordinates.lng.toFixed(4)}`
+                        : 'Optional, but it puts you in "near me" searches.'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {draft.coordinates && (
+                      <button
+                        type="button"
+                        onClick={() => set('coordinates', null)}
+                        className="rounded-full px-3 py-2 text-sm font-semibold text-stone-500 transition hover:text-stone-900"
+                      >
+                        Clear
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={useMyLocation}
+                      className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-stone-700 ring-1 ring-stone-200 transition hover:ring-stone-400"
+                    >
+                      <LocateFixed className="h-4 w-4" /> Use my position
+                    </button>
+                  </div>
+                </div>
+                <p className="mt-3 text-xs text-stone-400">
+                  Stand at the property when you tap this — it saves wherever your device is now.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {step === 1 && (
+            <div className="space-y-8">
+              <div>
+                <label className={labelClass} htmlFor="listing-description">Describe the stay</label>
+                <textarea
+                  id="listing-description"
+                  rows={7}
+                  maxLength={DESCRIPTION_MAX}
+                  value={draft.description}
+                  onChange={e => set('description', e.target.value)}
+                  placeholder="Ten chalets under the fig trees, right on the sand. Breakfast on the deck, boats to the island at nine, and the fire lit every evening."
+                  className={fieldClass}
+                />
+                <div className="mt-2 flex items-center justify-between text-xs">
+                  <span className="text-stone-400">
+                    What is the view, the food, the walk to the water? Skip the sales talk.
+                  </span>
+                  <span className={draft.description.trim().length < DESCRIPTION_MIN ? 'text-stone-400' : 'text-emerald-600'}>
+                    {draft.description.trim().length} / {DESCRIPTION_MAX}
+                  </span>
+                </div>
+                <FieldError message={visible.description} />
+              </div>
+
+              <div>
+                <span className={labelClass}>What is on offer?</span>
+                <div className="flex flex-wrap gap-2">
+                  {COMMON_AMENITIES.map(amenity => {
+                    const selected = draft.amenities.includes(amenity);
+                    return (
+                      <button
+                        key={amenity}
+                        type="button"
+                        aria-pressed={selected}
+                        onClick={() => toggleAmenity(amenity)}
+                        className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
+                          selected
+                            ? 'border-stone-900 bg-stone-900 text-white'
+                            : 'border-stone-200 bg-white text-stone-600 hover:border-stone-400'
+                        }`}
+                      >
+                        {amenity}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="mt-4 flex gap-2">
+                  <input
+                    type="text"
+                    value={amenityInput}
+                    onChange={e => setAmenityInput(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addTypedAmenity();
+                      }
+                    }}
+                    placeholder="Anything else — kayaks, curio shop, chapel…"
+                    className={fieldClass}
+                  />
+                  <button
+                    type="button"
+                    onClick={addTypedAmenity}
+                    className="inline-flex shrink-0 items-center gap-2 rounded-2xl bg-stone-900 px-5 text-sm font-semibold text-white transition hover:bg-stone-800"
+                  >
+                    <Plus className="h-4 w-4" /> Add
+                  </button>
+                </div>
+
+                {draft.amenities.length > 0 && (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {draft.amenities.map(amenity => (
+                      <span
+                        key={amenity}
+                        className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-800"
+                      >
+                        {amenity}
+                        <button
+                          type="button"
+                          aria-label={`Remove ${amenity}`}
+                          onClick={() => toggleAmenity(amenity)}
+                          className="text-emerald-600 transition hover:text-emerald-900"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {step === 2 && (
+            <div className="space-y-8">
+              <ImageUpload
+                label="Main photograph"
+                value={draft.imageUrl}
+                onChange={url => set('imageUrl', url)}
+                folder="hotels"
+              />
+              <FieldError message={visible.imageUrl} />
+
+              <div className="border-t border-stone-100 pt-8">
+                <GalleryUpload
+                  value={draft.galleryUrls}
+                  onChange={urls => set('galleryUrls', urls)}
+                  label="More photographs"
+                  folder="gallery"
+                />
+                <p className="mt-2 text-xs text-stone-400">
+                  Rooms, the view, the food, the bathroom. Six or more is where bookings start.
+                </p>
+              </div>
+
+              <div className="grid gap-6 border-t border-stone-100 pt-8 sm:grid-cols-2">
+                <div>
+                  <label className={labelClass} htmlFor="listing-checkin">Check-in from</label>
+                  <input
+                    id="listing-checkin"
+                    type="time"
+                    value={draft.checkInTime}
+                    onChange={e => set('checkInTime', e.target.value)}
+                    className={fieldClass}
+                  />
+                  <FieldError message={visible.checkInTime} />
+                </div>
+                <div>
+                  <label className={labelClass} htmlFor="listing-checkout">Check-out until</label>
+                  <input
+                    id="listing-checkout"
+                    type="time"
+                    value={draft.checkOutTime}
+                    onChange={e => set('checkOutTime', e.target.value)}
+                    className={fieldClass}
+                  />
+                  <FieldError message={visible.checkOutTime} />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {step === 3 && (
+            <div className="space-y-8">
+              <div className="overflow-hidden rounded-2xl border border-stone-200">
+                <div className="relative h-64 bg-stone-100">
+                  <SmartImage
+                    src={getHotelImage({ name: draft.name, imageUrl: draft.imageUrl, galleryUrls: draft.galleryUrls })}
+                    alt={draft.name || 'Your property'}
+                    className="h-full w-full object-cover"
+                  />
+                  <span className="absolute left-4 top-4 rounded-full bg-white/95 px-3 py-1.5 text-[0.65rem] font-bold uppercase tracking-[0.12em] text-stone-900">
+                    {draft.category || 'Uncategorised'}
+                  </span>
+                </div>
+                <div className="p-6">
+                  <p className="text-[0.65rem] font-bold uppercase tracking-[0.2em] text-stone-500">{draft.location}</p>
+                  <h2 className="mt-1 font-serif text-3xl text-stone-900">{draft.name}</h2>
+                  <p className="mt-4 whitespace-pre-line text-stone-600">{draft.description}</p>
+
+                  {draft.amenities.length > 0 && (
+                    <div className="mt-6 flex flex-wrap gap-2">
+                      {draft.amenities.map(amenity => (
+                        <span key={amenity} className="rounded-full bg-stone-100 px-3 py-1.5 text-sm text-stone-700">
+                          {amenity}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  <dl className="mt-6 grid gap-4 border-t border-stone-100 pt-6 text-sm sm:grid-cols-3">
+                    <div>
+                      <dt className="font-semibold text-stone-400">Check-in</dt>
+                      <dd className="text-stone-900">From {draft.checkInTime}</dd>
+                    </div>
+                    <div>
+                      <dt className="font-semibold text-stone-400">Check-out</dt>
+                      <dd className="text-stone-900">Until {draft.checkOutTime}</dd>
+                    </div>
+                    <div>
+                      <dt className="font-semibold text-stone-400">Photographs</dt>
+                      <dd className="text-stone-900">{1 + draft.galleryUrls.length}</dd>
+                    </div>
+                  </dl>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
+                <p className="flex items-center gap-2 font-bold text-amber-900">
+                  <Clock className="h-4 w-4" /> What happens next
+                </p>
+                <ol className="mt-3 space-y-2 text-sm text-amber-900/90">
+                  <li>1. You add at least one room type, with its rate and how many you have.</li>
+                  <li>2. Our team checks the listing — usually within a day.</li>
+                  <li>3. It appears in search, and booking requests come to your dashboard.</li>
+                </ol>
+              </div>
+
+              {Object.keys(allErrors).length > 0 && (
+                <div className="rounded-2xl border border-red-200 bg-red-50 p-5 text-sm text-red-700">
+                  <p className="font-bold">Not quite ready to send:</p>
+                  <ul className="mt-2 list-inside list-disc space-y-1">
+                    {Object.values(allErrors).map(message => <li key={message}>{message}</li>)}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Navigation */}
+        <div className="mt-8 flex items-center justify-between gap-4">
+          <button
+            type="button"
+            onClick={goBack}
+            disabled={step === 0}
+            className="inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold text-stone-500 transition hover:text-stone-900 disabled:opacity-0"
+          >
+            <ArrowLeft className="h-4 w-4" /> Back
+          </button>
+
+          {step < STEPS.length - 1 ? (
+            <button
+              type="button"
+              onClick={goNext}
+              className="inline-flex items-center gap-2 rounded-full bg-stone-900 px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-stone-800"
+            >
+              Continue <ArrowRight className="h-4 w-4" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={submitting}
+              className="inline-flex items-center gap-2 rounded-full bg-emerald-700 px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-emerald-800 disabled:opacity-60"
+            >
+              {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              {submitting ? 'Sending…' : 'Submit for review'}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+
+const SELLING_POINTS = [
+  {
+    icon: Wallet,
+    title: 'You keep the rate you set',
+    body: 'No commission taken off the top, no listing fee, no monthly charge. Guests pay you at the property, in kwacha or dollars.',
+  },
+  {
+    icon: MessageCircle,
+    title: 'Guests reach you directly',
+    body: 'Requests land in your dashboard and confirmations go out over WhatsApp. No call centre in between.',
+  },
+  {
+    icon: BadgeCheck,
+    title: 'Checked before it goes live',
+    body: 'Every listing is reviewed by our team, so the properties on Travel Malawi are ones guests can trust.',
+  },
+];
+
+/**
+ * The gate. Same page for a signed-out visitor and for someone signed in who
+ * has not hosted before — only the button at the end differs, because those
+ * are two different problems: no account at all, versus an account without the
+ * host role.
+ */
+function HostIntro({
+  user, enabling, onEnable, onSignUp,
+}: {
+  user: unknown;
+  enabling: boolean;
+  onEnable: () => void;
+  onSignUp: () => void;
+}) {
+  return (
+    <div className="bg-white">
+      <section className="relative overflow-hidden bg-stone-950 text-white">
+        <div className="absolute inset-0 opacity-30">
+          <SmartImage src={DECORATIVE_IMAGE} alt="" aria-hidden="true" className="h-full w-full object-cover" />
+        </div>
+        <div className="absolute inset-0 bg-gradient-to-r from-stone-950 via-stone-950/85 to-stone-950/40" />
+
+        <div className="relative mx-auto w-full max-w-6xl px-6 py-24 lg:px-8 lg:py-32">
+          <p className="mb-6 text-[0.7rem] font-bold uppercase tracking-[0.26em] text-emerald-400">
+            For Malawian hosts
+          </p>
+          <h1 className="max-w-3xl font-serif text-[clamp(2.5rem,6vw,4.5rem)] leading-[1.05] tracking-[-0.03em]">
+            Your lodge. Your rates.
+            <br />
+            Your guests.
+          </h1>
+          <p className="mt-6 max-w-xl text-lg leading-relaxed text-white/70">
+            Put your property in front of travellers looking for the real Malawi — and let them book it
+            without an agency taking a cut.
+          </p>
+
+          <div className="mt-10 flex flex-col gap-4 sm:flex-row sm:items-center">
+            {user ? (
+              <button
+                onClick={onEnable}
+                disabled={enabling}
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-8 py-4 text-base font-bold text-stone-900 transition hover:bg-stone-100 disabled:opacity-60"
+              >
+                {enabling ? <Loader2 className="h-4 w-4 animate-spin" /> : <Building2 className="h-4 w-4" />}
+                {enabling ? 'Setting you up…' : 'Start hosting on this account'}
+              </button>
+            ) : (
+              <button
+                onClick={onSignUp}
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-8 py-4 text-base font-bold text-stone-900 transition hover:bg-stone-100"
+              >
+                <Sparkles className="h-4 w-4" /> Create your host account
+              </button>
+            )}
+            <p className="text-sm text-white/50">
+              {user
+                ? 'Keeps everything you have already booked — same login, one extra hat.'
+                : 'Free to list. Nothing to pay, ever.'}
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section className="mx-auto w-full max-w-6xl px-6 py-20 lg:px-8">
+        <div className="grid gap-10 md:grid-cols-3">
+          {SELLING_POINTS.map(point => (
+            <div key={point.title}>
+              <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700">
+                <point.icon className="h-5 w-5" />
+              </div>
+              <h2 className="mb-2 font-serif text-2xl text-stone-900">{point.title}</h2>
+              <p className="leading-relaxed text-stone-500">{point.body}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="border-t border-stone-200 bg-stone-50">
+        <div className="mx-auto w-full max-w-6xl px-6 py-20 lg:px-8">
+          <h2 className="mb-12 font-serif text-4xl tracking-tight text-stone-900">Four steps, one sitting</h2>
+          <ol className="grid gap-8 md:grid-cols-4">
+            {[
+              { icon: Building2, title: 'The basics', body: 'Name, category and where in Malawi to find you.' },
+              { icon: MessageCircle, title: 'The place', body: 'What the stay is actually like, and what is included.' },
+              { icon: Images, title: 'Photographs', body: 'One main shot, then as many more as you have.' },
+              { icon: ChevronRight, title: 'Rooms and rates', body: 'Add a room type, set the price, open for bookings.' },
+            ].map((item, index) => (
+              <li key={item.title} className="rounded-3xl border border-stone-200 bg-white p-7">
+                <span className="mb-4 block text-xs font-bold uppercase tracking-[0.2em] text-stone-400">
+                  0{index + 1}
+                </span>
+                <item.icon className="mb-4 h-5 w-5 text-emerald-700" />
+                <h3 className="mb-2 font-serif text-xl text-stone-900">{item.title}</h3>
+                <p className="text-sm leading-relaxed text-stone-500">{item.body}</p>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+    </div>
+  );
+}

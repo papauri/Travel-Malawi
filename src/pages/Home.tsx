@@ -1,18 +1,19 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import Pagination from '../components/Pagination';
-import { Search, MapPin, Calendar, Users, Star, LocateFixed, ChevronDown, Plus, Minus, ShieldCheck, MessageCircle, Smartphone, X, History, Clock } from 'lucide-react';
+import { Search, MapPin, Calendar, Users, Star, LocateFixed, ChevronDown, Plus, Minus, ShieldCheck, MessageCircle, Smartphone, X, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Hotel, RoomType, Review, CurrencyCode } from '../types';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import HotelCard from '../components/HotelCard';
 import SmartImage from '../components/SmartImage';
 import { DECORATIVE_IMAGE, HERO_IMAGE, getHotelImage } from '../lib/images';
 import { BookingLike, lowestPrice, roomsMatching } from '../lib/availability';
 import { todayStr } from '../lib/dates';
 import { CURRENCY_CODES, CURRENCIES, currenciesForRooms, formatMoney, readStoredCurrency, storeCurrency } from '../lib/currency';
+import { PROPERTY_CATEGORIES } from '../lib/listing';
 
 function getDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371; // Radius of the earth in km
@@ -56,6 +57,24 @@ const NO_SEARCH: AppliedSearch = {
   location: '', checkIn: '', checkOut: '', guests: '', coords: null, proximity: 50,
 };
 
+/**
+ * The rotating half of the headline.
+ *
+ * It used to cycle four verbs — "Discover / Experience / Support / Connect
+ * with" — in front of the brand name, which told a first-time visitor nothing
+ * about the country or what was for sale. Naming real places does both.
+ */
+const HERO_PLACES = [
+  'Lake Malawi.',
+  'Likoma Island.',
+  'the Zomba Plateau.',
+  'a Liwonde riverbank.',
+  'the Mulanje foothills.',
+];
+
+/** Shown only until the real listings load and supply their own locations. */
+const FALLBACK_DESTINATIONS = ['Lake Malawi', 'Likoma', 'Zomba', 'Liwonde', 'Lilongwe'];
+
 export default function Home() {
   const today = todayStr();
 
@@ -67,6 +86,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
   const [activeCategory, setActiveCategory] = useState('All');
+  const [searchParams] = useSearchParams();
   const [sortKey, setSortKey] = useState<SortKey>('recommended');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6;
@@ -99,15 +119,34 @@ export default function Home() {
   const [showRecentSearches, setShowRecentSearches] = useState(false);
   const locationSearchRef = useRef<HTMLDivElement>(null);
 
-  const heroWords = ["Discover", "Experience", "Support", "Connect with"];
   const [heroIndex, setHeroIndex] = useState(0);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setHeroIndex(prev => (prev + 1) % heroWords.length);
-    }, 3000);
+      setHeroIndex(prev => (prev + 1) % HERO_PLACES.length);
+    }, 3200);
     return () => clearInterval(interval);
   }, []);
+
+  /**
+   * `?category=` preselects the filter, so a link from anywhere else on the
+   * site can land on the stays it promised. The footer's category links used
+   * to point at the bare home page and filter nothing at all.
+   */
+  useEffect(() => {
+    const requested = searchParams.get('category');
+    if (requested && (PROPERTY_CATEGORIES as readonly string[]).includes(requested)) {
+      setActiveCategory(requested);
+      setCurrentPage(1);
+      // The route's own scroll-to-top runs on arrival, so the `#search-results`
+      // fragment alone leaves the visitor at the top of the hero instead.
+      const timer = setTimeout(
+        () => document.getElementById('search-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+        250
+      );
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -346,6 +385,26 @@ export default function Home() {
 
   const hasSearch = !!(appliedSearch.location || appliedSearch.coords || appliedSearch.checkIn || appliedSearch.guests);
 
+  /**
+   * The one-tap destinations under the search bar. Taken from the listings
+   * that actually exist, most-listed first, so a chip always has something
+   * behind it — a hard-coded list would send visitors to an empty page as soon
+   * as it drifted from the data.
+   */
+  const popularDestinations = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const hotel of hotels) {
+      const location = hotel.location?.trim();
+      // Some imported records hold a coordinate pair where the place name
+      // should be. `14°6'11"S 34°51'43"E` is not something to offer as a
+      // one-tap destination, and searching it matches nothing else.
+      if (!location || !/^[A-Za-z][A-Za-z\s'&.,-]{2,}$/.test(location)) continue;
+      counts.set(location, (counts.get(location) ?? 0) + 1);
+    }
+    const ranked = [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([location]) => location);
+    return ranked.length > 0 ? ranked.slice(0, 6) : FALLBACK_DESTINATIONS;
+  }, [hotels]);
+
 
   /**
    * Search results. Dates and party size used to be collected and then
@@ -421,12 +480,17 @@ export default function Home() {
 
   return (
     <div className="flex flex-col min-h-screen">
-      {/* Hero */}
-      <section className="relative min-h-[92svh] w-full flex flex-col justify-center overflow-hidden bg-stone-950">
+      {/* Hero.
+          Was a centred stack over a full-bleed image: a rotating verb in front
+          of the brand name, a sentence of positioning copy, and a search pill.
+          It read like a slogan and said nothing about where a visitor could
+          actually go. This one is anchored left, names real places, and puts
+          one-tap destinations directly under the search. */}
+      <section className="relative min-h-[94svh] w-full flex flex-col justify-center overflow-hidden bg-stone-950">
         <motion.div
-          initial={{ scale: 1.04 }}
-          animate={{ scale: 1.14 }}
-          transition={{ duration: 24, repeat: Infinity, repeatType: 'reverse', ease: 'linear' }}
+          initial={{ scale: 1.06 }}
+          animate={{ scale: 1.16 }}
+          transition={{ duration: 26, repeat: Infinity, repeatType: 'reverse', ease: 'linear' }}
           className="absolute inset-0 z-0"
         >
           <SmartImage
@@ -439,55 +503,56 @@ export default function Home() {
           />
         </motion.div>
 
-        {/* Global centered scrims for a more expansive, inclusive feel */}
-        <div className="absolute inset-0 z-10 bg-stone-950/40" />
-        <div className="absolute inset-0 z-10 bg-gradient-to-t from-stone-950 via-transparent to-stone-950/60" />
+        {/* Scrims run left-to-right now that the type is anchored left, so the
+            photograph stays visible on the side the text does not occupy. */}
+        <div className="absolute inset-0 z-10 bg-gradient-to-r from-stone-950 via-stone-950/75 to-stone-950/25" />
+        <div className="absolute inset-0 z-10 bg-gradient-to-t from-stone-950 via-transparent to-stone-950/50" />
 
-        <div className="relative z-20 w-full max-w-5xl mx-auto px-6 lg:px-8 pt-32 pb-40 flex flex-col items-center text-center">
+        <div className="relative z-20 w-full max-w-6xl mx-auto px-6 lg:px-8 pt-28 pb-28">
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-            className="flex items-center justify-center gap-4 mb-8"
+            className="flex items-center gap-3 mb-7"
           >
-            <span className="h-px w-8 lg:w-12 bg-white/40" />
-            <span className="text-[0.65rem] md:text-[0.7rem] font-semibold tracking-[0.28em] text-white/90 uppercase">
-              A Globally Inclusive Community
+            <span className="h-px w-8 bg-emerald-400/70" />
+            <span className="text-[0.65rem] md:text-[0.7rem] font-semibold tracking-[0.26em] text-emerald-300 uppercase">
+              Booked direct with Malawian hosts
             </span>
-            <span className="h-px w-8 lg:w-12 bg-white/40" />
           </motion.div>
 
           <motion.h1
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.05, ease: [0.16, 1, 0.3, 1] }}
-            className="font-serif text-white max-w-4xl tracking-[-0.03em] leading-[1.05]
-                       text-[clamp(2.8rem,7vw,5.5rem)] mb-6 flex flex-col items-center"
+            className="font-serif text-white max-w-4xl tracking-[-0.035em] leading-[1.02]
+                       text-[clamp(2.6rem,7.5vw,5.75rem)] mb-7"
           >
-            <div className="h-[1.1em] overflow-hidden flex items-center relative min-w-[300px] justify-center text-emerald-400">
+            <span className="block">Wake up on</span>
+            <span className="relative block h-[1.12em] overflow-hidden text-emerald-400">
               <AnimatePresence mode="popLayout">
                 <motion.span
                   key={heroIndex}
-                  initial={{ opacity: 0, y: 40 }}
+                  initial={{ opacity: 0, y: '100%' }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -40 }}
+                  exit={{ opacity: 0, y: '-100%' }}
                   transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-                  className="absolute block"
+                  className="absolute left-0 top-0 whitespace-nowrap"
                 >
-                  {heroWords[heroIndex]}
+                  {HERO_PLACES[heroIndex]}
                 </motion.span>
               </AnimatePresence>
-            </div>
-            <span>Travel Malawi.</span>
+            </span>
           </motion.h1>
 
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.12, ease: [0.16, 1, 0.3, 1] }}
-            className="max-w-2xl text-lg md:text-xl text-white/80 leading-relaxed font-medium"
+            className="max-w-xl text-lg md:text-xl text-white/75 leading-relaxed"
           >
-            Empowering travelers from every corner of the world to experience the warm heart of Africa—booking directly with independent local hosts.
+            Lodges, camps and guesthouses run by the families who own them. Ask the host
+            anything, agree the details between you, and pay when you arrive.
           </motion.p>
 
           {/* Search */}
@@ -495,14 +560,14 @@ export default function Home() {
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className="mt-10 bg-white/95 backdrop-blur-xl rounded-3xl lg:rounded-full p-3 lg:p-2
-                       shadow-2xl shadow-stone-950/30 ring-1 ring-white/60
+            className="mt-10 bg-white/95 backdrop-blur-xl rounded-3xl p-3 lg:p-2.5
+                       shadow-2xl shadow-stone-950/40 ring-1 ring-white/50
                        flex flex-col lg:flex-row lg:items-stretch gap-2 lg:gap-0 w-full max-w-4xl text-left"
           >
             {/* Where */}
-            <div ref={locationSearchRef} className="relative flex-[1.5] min-w-0 rounded-2xl lg:rounded-full px-4 lg:px-5 py-4 lg:py-3 hover:bg-stone-50 transition group bg-white lg:bg-transparent shadow-sm lg:shadow-none ring-1 ring-stone-100 lg:ring-0">
+            <div ref={locationSearchRef} className="relative flex-[1.5] min-w-0 rounded-2xl px-4 lg:px-5 py-4 lg:py-3 hover:bg-stone-50 transition group bg-white lg:bg-transparent shadow-sm lg:shadow-none ring-1 ring-stone-100 lg:ring-0">
               <label htmlFor="search-where" className="block text-[0.68rem] font-bold text-stone-900 uppercase tracking-[0.14em] mb-1">
-                Where
+                Where to
               </label>
               <div className="flex items-center gap-2">
                 <MapPin className="h-4 w-4 text-stone-400 shrink-0" />
@@ -513,11 +578,10 @@ export default function Home() {
                   onChange={e => setSearchLocation(e.target.value)}
                   onFocus={() => setShowRecentSearches(true)}
                   onKeyDown={e => { if (e.key === 'Enter') handleSearch(); }}
-                  placeholder="Search Malawi"
+                  placeholder="Lake, park, town or lodge"
                   autoComplete="off"
                   className="bg-transparent border-none p-0 text-stone-800 text-sm w-full outline-none placeholder:text-stone-400"
                 />
-                
               </div>
 
               {/* Recent Searches Dropdown */}
@@ -562,7 +626,7 @@ export default function Home() {
                       </>
                     ) : !searchLocation.trim() && recentSearches.length > 0 ? (
                       <>
-                        <h4 className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-2 px-3">Recent Searches</h4>
+                        <h4 className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-2 px-3">Recent searches</h4>
                         <ul className="space-y-1">
                           {recentSearches.map((rs, i) => (
                             <li key={i}>
@@ -583,7 +647,7 @@ export default function Home() {
                                 <div className="flex-1 min-w-0">
                                   <div className="font-semibold text-stone-700 text-sm truncate">{rs.location}</div>
                                   <div className="text-xs text-stone-400 truncate">
-                                    {rs.adults + rs.children} Guest{rs.adults + rs.children !== 1 ? 's' : ''}
+                                    {rs.adults + rs.children} guest{rs.adults + rs.children !== 1 ? 's' : ''}
                                   </div>
                                 </div>
                               </button>
@@ -595,17 +659,14 @@ export default function Home() {
                   </div>
                 </div>
               )}
-
-              
             </div>
 
             <div className="hidden lg:block w-px self-center h-10 bg-stone-200" />
-            {/* Mobile dividers removed for pill look */}
 
             {/* When */}
-            <div className="shrink-0 rounded-2xl lg:rounded-full px-4 py-3 hover:bg-stone-50 transition">
+            <div className="shrink-0 rounded-2xl px-4 py-3 hover:bg-stone-50 transition">
               <span className="block text-[0.68rem] font-bold text-stone-900 uppercase tracking-[0.14em] mb-1">
-                When
+                Nights
               </span>
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-stone-400 shrink-0" />
@@ -630,10 +691,9 @@ export default function Home() {
             </div>
 
             <div className="hidden lg:block w-px self-center h-10 bg-stone-200" />
-            {/* Mobile dividers removed for pill look */}
 
             {/* Who */}
-            <div ref={guestSelectorRef} className="relative flex-[1.05] rounded-2xl lg:rounded-full px-4 lg:px-5 py-4 lg:py-3 hover:bg-stone-50 transition bg-white lg:bg-transparent shadow-sm lg:shadow-none ring-1 ring-stone-100 lg:ring-0">
+            <div ref={guestSelectorRef} className="relative flex-[1.05] rounded-2xl px-4 lg:px-5 py-4 lg:py-3 hover:bg-stone-50 transition bg-white lg:bg-transparent shadow-sm lg:shadow-none ring-1 ring-stone-100 lg:ring-0">
               <button
                 type="button"
                 onClick={() => setShowGuestDropdown(v => !v)}
@@ -641,7 +701,7 @@ export default function Home() {
                 className="w-full text-left"
               >
                 <span className="block text-[0.68rem] font-bold text-stone-900 uppercase tracking-[0.14em] mb-1">
-                  Who
+                  Party
                 </span>
                 <span className="flex items-center gap-2">
                   <Users className="h-4 w-4 text-stone-400 shrink-0" />
@@ -697,26 +757,67 @@ export default function Home() {
               onClick={handleSearch}
               disabled={searching}
               className="shrink-0 flex items-center justify-center gap-2 bg-stone-900 text-white
-                         rounded-2xl lg:rounded-full h-12 lg:h-auto lg:w-auto lg:my-1 lg:mr-1 lg:px-7
+                         rounded-2xl h-12 lg:h-auto lg:w-auto lg:my-1 lg:mr-1 lg:px-7
                          font-semibold text-sm hover:bg-stone-800 transition disabled:opacity-60"
             >
               {searching
                 ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
                 : <Search className="h-4 w-4" />}
-              <span className="lg:hidden">Search</span>
-              <span className="hidden lg:inline">Search</span>
+              Search
+            </button>
+          </motion.div>
+
+          {/* One-tap destinations. "Near me" was written and then left out of
+              the markup entirely, so the geolocation search was unreachable. */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.8, delay: 0.3 }}
+            className="mt-6 flex flex-wrap items-center gap-2"
+          >
+            <span className="text-xs font-semibold uppercase tracking-[0.16em] text-white/40 mr-1">
+              Popular
+            </span>
+            {popularDestinations.map(destination => (
+              <button
+                key={destination}
+                type="button"
+                onClick={() => {
+                  setSearchLocation(destination);
+                  applySearch({
+                    location: destination,
+                    checkIn: searchCheckIn,
+                    checkOut: searchCheckOut,
+                    guests: totalGuests,
+                    coords: null,
+                    proximity: searchProximity,
+                  });
+                }}
+                className="rounded-full border border-white/25 bg-white/10 px-4 py-2 text-sm font-medium text-white/90
+                           backdrop-blur-sm transition hover:border-white/60 hover:bg-white/20"
+              >
+                {destination}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={handleNearMe}
+              className="flex items-center gap-2 rounded-full border border-emerald-400/40 bg-emerald-400/10 px-4 py-2
+                         text-sm font-semibold text-emerald-200 backdrop-blur-sm transition hover:bg-emerald-400/20"
+            >
+              <LocateFixed className="h-3.5 w-3.5" /> Near me
             </button>
           </motion.div>
 
           <motion.ul
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.8, delay: 0.35 }}
-            className="mt-8 flex flex-wrap items-center gap-x-7 gap-y-2 text-sm text-white/60"
+            transition={{ duration: 0.8, delay: 0.4 }}
+            className="mt-10 flex flex-wrap items-center gap-x-8 gap-y-3 text-sm text-white/60"
           >
-            <li className="flex items-center gap-2"><ShieldCheck className="h-4 w-4" /> No booking fees</li>
-            <li className="flex items-center gap-2"><MessageCircle className="h-4 w-4" /> Confirmed by WhatsApp</li>
-            <li className="flex items-center gap-2"><Smartphone className="h-4 w-4" /> Pay at the property</li>
+            <li className="flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-emerald-400" /> No booking fee, ever</li>
+            <li className="flex items-center gap-2"><MessageCircle className="h-4 w-4 text-emerald-400" /> You hear from the host, not a call centre</li>
+            <li className="flex items-center gap-2"><Smartphone className="h-4 w-4 text-emerald-400" /> Settle up at the property</li>
           </motion.ul>
         </div>
 
@@ -725,7 +826,7 @@ export default function Home() {
           className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 hidden md:flex flex-col items-center gap-2
                      text-white/50 hover:text-white transition"
         >
-          <span className="text-[0.65rem] font-semibold uppercase tracking-[0.2em]">Explore stays</span>
+          <span className="text-[0.65rem] font-semibold uppercase tracking-[0.2em]">See where you could stay</span>
           <ChevronDown className="h-4 w-4 animate-bounce" />
         </a>
       </section>
@@ -740,17 +841,17 @@ export default function Home() {
               <div className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-4">
                 <div>
                   <p className="text-[0.7rem] font-semibold tracking-[0.22em] text-stone-400 uppercase mb-3">
-                    Hand-picked
+                    Rated by people who stayed
                   </p>
                   <h2 className="text-4xl md:text-5xl font-serif text-stone-900 tracking-tight">
-                    Featured stays
+                    The ones guests go back to
                   </h2>
                 </div>
                 <button
                   onClick={() => document.getElementById('search-results')?.scrollIntoView({ behavior: 'smooth' })}
                   className="text-sm font-semibold text-stone-900 hover:text-emerald-700 transition self-start md:self-auto border-b border-stone-300 hover:border-emerald-700 pb-0.5"
                 >
-                  View all properties
+                  See everywhere
                 </button>
               </div>
 
@@ -765,7 +866,7 @@ export default function Home() {
                       />
                       {index === 0 && (
                         <span className="absolute top-4 left-4 bg-white/95 backdrop-blur text-stone-900 text-[0.65rem] font-bold px-3 py-1.5 rounded-full uppercase tracking-[0.12em]">
-                          Top choice
+                          Best rated
                         </span>
                       )}
                     </div>
@@ -781,10 +882,10 @@ export default function Home() {
                         {entry.priceFrom ? (
                           <p className="text-sm text-stone-600">
                             <span className="font-semibold text-stone-900">{formatMoney(entry.priceFrom, currency)}</span>
-                            <span className="text-stone-400"> / night</span>
+                            <span className="text-stone-400"> a night</span>
                           </p>
                         ) : (
-                          <span className="text-sm text-stone-400">Rates on request</span>
+                          <span className="text-sm text-stone-400">Ask the host for rates</span>
                         )}
                         {entry.rating && (
                           <span className="flex items-center gap-1 text-sm text-stone-600">
@@ -805,7 +906,7 @@ export default function Home() {
       <section id="search-results" className="border-b border-stone-200 bg-white">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <div className="flex items-center gap-10 overflow-x-auto py-6 scrollbar-hide text-sm font-medium text-stone-500">
-            {['All', 'Lake & Beach', 'Safari & Wildlife', 'Romantic Escape', 'Family', 'Adventure', 'Luxury'].map((category) => (
+            {(['All', ...PROPERTY_CATEGORIES] as string[]).map((category) => (
               <button 
                 key={category} 
                 onClick={() => setActiveCategory(category)}
@@ -823,12 +924,12 @@ export default function Home() {
         <div className="mb-12 flex flex-col lg:flex-row lg:items-end justify-between gap-6">
           <div>
             <h2 className="text-4xl md:text-5xl font-serif text-stone-900 mb-4 tracking-tight">
-              {hasSearch ? 'Search Results' : 'Exceptional Stays'}
+              {hasSearch ? 'What matched' : 'Every stay in Malawi'}
             </h2>
             <p className="text-stone-500 text-lg">
               {hasSearch
-                ? `${filteredHotels.length} propert${filteredHotels.length === 1 ? 'y' : 'ies'} match your search.`
-                : 'Curated properties offering the best of Malawi.'}
+                ? `${filteredHotels.length} propert${filteredHotels.length === 1 ? 'y' : 'ies'} can take you.`
+                : 'Independent lodges, camps and guesthouses — every one booked direct with its owner.'}
             </p>
             {hasSearch && (
               <div className="flex flex-wrap items-center gap-2 mt-4">
@@ -932,15 +1033,16 @@ export default function Home() {
                   <div className="w-20 h-20 bg-stone-100 rounded-full flex items-center justify-center mb-6">
                     <Search className="w-8 h-8 text-stone-400" />
                   </div>
-                  <h3 className="text-2xl font-serif font-bold text-stone-900 mb-2">No properties found</h3>
+                  <h3 className="text-2xl font-serif font-bold text-stone-900 mb-2">Nothing free on those terms</h3>
                   <p className="text-stone-500 text-lg max-w-md mb-8">
-                    We couldn't find any places matching your exact search criteria. Try adjusting your dates, location, or guest count.
+                    Try a wider stretch of dates, a smaller party, or somewhere else along the lake —
+                    most properties have more room midweek.
                   </p>
                   <button
                     onClick={clearFilters}
                     className="bg-stone-900 text-white px-8 py-3 rounded-full font-medium hover:bg-stone-800 transition"
                   >
-                    Clear all filters
+                    Start the search over
                   </button>
                 </div>
               )}
@@ -959,46 +1061,72 @@ export default function Home() {
              <div className="w-20 h-20 bg-stone-100 rounded-full flex items-center justify-center mb-6">
                 <MapPin className="w-8 h-8 text-stone-400" />
              </div>
-             <h3 className="text-2xl font-serif font-bold text-stone-900 mb-2">No properties available</h3>
-             <p className="text-stone-500 text-lg max-w-md">
-               There are no properties listed at the moment. Please check back later!
+             <h3 className="text-2xl font-serif font-bold text-stone-900 mb-2">Nothing listed yet</h3>
+             <p className="text-stone-500 text-lg max-w-md mb-8">
+               The first listings are on their way. If you run a property in Malawi, yours could be
+               the one people find here.
              </p>
+             <Link
+               to="/list-your-property"
+               className="bg-stone-900 text-white px-8 py-3 rounded-full font-medium hover:bg-stone-800 transition"
+             >
+               List your property
+             </Link>
           </div>
         )}
       </section>
 
-      {/* List Your Property CTA */}
-      <section className="bg-stone-900 text-white py-32 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-10">
-          <SmartImage src={DECORATIVE_IMAGE} alt="" aria-hidden="true" className="w-full h-full object-cover" />
+      {/* Host call to action.
+          The button pointed at /dashboard, which redirects anyone without the
+          manager role straight back here — so for every visitor who was not
+          already a host, the one thing this section asked them to do did
+          nothing at all. */}
+      <section className="relative overflow-hidden bg-stone-900 py-28 text-white">
+        <div className="absolute inset-0 opacity-[0.12]">
+          <SmartImage src={DECORATIVE_IMAGE} alt="" aria-hidden="true" className="h-full w-full object-cover" />
         </div>
-        <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+        <div className="absolute inset-0 bg-gradient-to-br from-stone-900 via-stone-900/90 to-emerald-950/60" />
+
+        <div className="relative z-10 mx-auto max-w-7xl px-6 lg:px-8">
+          <div className="grid grid-cols-1 items-center gap-16 lg:grid-cols-[1.1fr_0.9fr]">
             <div>
-              <h2 className="text-5xl md:text-6xl font-serif mb-8 leading-tight tracking-tight">Own a hotel, lodge, resort, or suite?</h2>
-              <p className="text-emerald-100 text-xl mb-8 leading-relaxed max-w-lg">Get more bookings with Travel-Malawi. No setup fees, no monthly fees, and instant WhatsApp confirmations.</p>
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Link to="/dashboard" className="bg-white text-emerald-900 px-8 py-4 rounded-xl font-bold text-lg hover:bg-stone-100 transition shadow-xl text-center">
-                  List Your Property
+              <p className="mb-6 text-[0.7rem] font-bold uppercase tracking-[0.26em] text-emerald-400">
+                Run a place of your own?
+              </p>
+              <h2 className="mb-7 font-serif text-5xl leading-[1.05] tracking-tight md:text-6xl">
+                Your lodge. Your rates.
+                <br />
+                Your guests.
+              </h2>
+              <p className="mb-9 max-w-lg text-lg leading-relaxed text-white/70">
+                Travellers find you, message you, and book with you — no agency in the middle and
+                nothing taken off your rate. Listing takes one sitting.
+              </p>
+
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                <Link
+                  to="/list-your-property"
+                  className="rounded-full bg-white px-8 py-4 text-center text-base font-bold text-stone-900 shadow-xl transition hover:bg-stone-100"
+                >
+                  List your property
                 </Link>
+                <span className="text-sm text-white/50">Free to list · Reviewed within a day</span>
               </div>
             </div>
-            <div className="hidden lg:grid grid-cols-2 gap-6">
-              <div className="bg-white/10 backdrop-blur-sm p-6 rounded-2xl border border-white/20">
-                <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mb-4">
-                  <Star className="w-6 h-6 text-white" />
+
+            <dl className="grid gap-4 sm:grid-cols-2">
+              {[
+                { term: 'No commission', detail: 'You keep the full nightly rate you set.' },
+                { term: 'Paid on arrival', detail: 'Guests settle with you, in kwacha or dollars.' },
+                { term: 'One dashboard', detail: 'Rooms, rates, blocked dates and every request.' },
+                { term: 'WhatsApp built in', detail: 'Confirmations reach guests where they read.' },
+              ].map(item => (
+                <div key={item.term} className="rounded-2xl border border-white/15 bg-white/[0.07] p-6 backdrop-blur-sm">
+                  <dt className="mb-1.5 font-bold">{item.term}</dt>
+                  <dd className="text-sm leading-relaxed text-white/60">{item.detail}</dd>
                 </div>
-                <h3 className="text-lg font-bold mb-2">Free Listing</h3>
-                <p className="text-emerald-100 text-sm">List your property at absolutely no upfront cost.</p>
-              </div>
-              <div className="bg-white/10 backdrop-blur-sm p-6 rounded-2xl border border-white/20 mt-12">
-                <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mb-4">
-                  <MessageCircle className="w-6 h-6 text-white" />
-                </div>
-                <h3 className="text-lg font-bold mb-2">Instant Bookings</h3>
-                <p className="text-emerald-100 text-sm">Guests receive automatic WhatsApp confirmations.</p>
-              </div>
-            </div>
+              ))}
+            </dl>
           </div>
         </div>
       </section>

@@ -1,12 +1,14 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useLocation, Link } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import { AuthDialogProvider } from './contexts/AuthDialogContext';
 import Navbar from './components/Navbar';
 import MobileNav from './components/MobileNav';
 import Footer from './components/Footer';
 import Home from './pages/Home';
 import ManagerDashboard from './pages/ManagerDashboard';
 import ManageHotel from './pages/ManageHotel';
+import ListProperty from './pages/ListProperty';
 import HotelDetails from './pages/HotelDetails';
 import MyBookings from './pages/MyBookings';
 import AdminDashboard from './pages/AdminDashboard';
@@ -59,34 +61,37 @@ export default function App() {
     <AuthProvider>
       <BrowserRouter>
         <ScrollToTop />
-        <div className="min-h-screen bg-stone-50 flex flex-col font-sans">
-          <Navbar />
-          <Toaster 
-            position="bottom-center"
-            toastOptions={{
-              style: {
-                background: '#1c1917',
-                color: '#fff',
-                borderRadius: '16px',
-                padding: '16px 24px',
-              }
-            }} 
-          />
-          <BookingNotificationListener />
-          <main className="flex-1 pb-16 md:pb-0">
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/hotel/:id" element={<HotelDetails />} />
-              <Route path="/dashboard" element={<ManagerDashboard />} />
-              <Route path="/dashboard/hotel/:id" element={<ManageHotel />} />
-              <Route path="/my-bookings" element={<MyBookings />} />
-              <Route path="/admin" element={<AdminDashboard />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </main>
-          <Footer />
-          <MobileNav />
-        </div>
+        <AuthDialogProvider>
+          <div className="min-h-screen bg-stone-50 flex flex-col font-sans">
+            <Navbar />
+            <Toaster 
+              position="bottom-center"
+              toastOptions={{
+                style: {
+                  background: '#1c1917',
+                  color: '#fff',
+                  borderRadius: '16px',
+                  padding: '16px 24px',
+                }
+              }} 
+            />
+            <BookingNotificationListener />
+            <main className="flex-1 pb-16 md:pb-0">
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/hotel/:id" element={<HotelDetails />} />
+                <Route path="/list-your-property" element={<ListProperty />} />
+                <Route path="/dashboard" element={<ManagerDashboard />} />
+                <Route path="/dashboard/hotel/:id" element={<ManageHotel />} />
+                <Route path="/my-bookings" element={<MyBookings />} />
+                <Route path="/admin" element={<AdminDashboard />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </main>
+            <Footer />
+            <MobileNav />
+          </div>
+        </AuthDialogProvider>
       </BrowserRouter>
     </AuthProvider>
   );

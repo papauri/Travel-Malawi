@@ -17,7 +17,7 @@ import {
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db, googleProvider } from '../lib/firebase';
 import { User, Role } from '../types';
-import { toRoleFields } from '../lib/roles';
+import { isHotelManager, toRoleFields, userRoles } from '../lib/roles';
 
 interface AuthContextType {
   user: User | null;
@@ -26,6 +26,8 @@ interface AuthContextType {
   signUp: (email: string, password: string, displayName: string, roles: Role[]) => Promise<void>;
   signInWithGoogle: (roles?: Role[]) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
+  /** Adds the hotel_manager role to the signed-in account. */
+  becomeHost: () => Promise<void>;
   logOut: () => Promise<void>;
 }
 
@@ -36,6 +38,7 @@ const AuthContext = createContext<AuthContextType>({
   signUp: async () => {},
   signInWithGoogle: async () => {},
   resetPassword: async () => {},
+  becomeHost: async () => {},
   logOut: async () => {},
 });
 
@@ -124,13 +127,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await sendPasswordResetEmail(auth, email);
   };
 
+  /**
+   * Turns an existing account into a host account.
+   *
+   * The role could only ever be chosen at sign-up, so someone who had already
+   * joined to book a stay had no route to listing a property at all: every
+   * host entry point either redirected them home or was hidden from them. The
+   * grant is deliberately limited to `hotel_manager`, which is self-assignable
+   * at sign-up anyway, so this hands out nothing new — `admin` stays
+   * admin-granted, in the security rules as well as here.
+   */
+  const becomeHost = async () => {
+    if (!user) throw new Error('Sign in before listing a property.');
+    if (isHotelManager(user)) return;
+    const roleFields = toRoleFields([...userRoles(user), 'hotel_manager']);
+    await setDoc(doc(db, 'users', user.uid), roleFields, { merge: true });
+    setUser({ ...user, ...roleFields });
+  };
+
   const logOut = async () => {
     await signOut(auth);
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signUp, signInWithGoogle, resetPassword, logOut }}>
+    <AuthContext.Provider value={{ user, loading, signIn, signUp, signInWithGoogle, resetPassword, becomeHost, logOut }}>
       {children}
     </AuthContext.Provider>
   );

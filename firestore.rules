@@ -50,13 +50,28 @@ service cloud.firestore {
                        && request.resource.data.get('roles', ['traveller']).hasOnly(['traveller', 'hotel_manager']))
                       || request.auth.token.email == 'johnpaulchirwa@gmail.com'
                     );
-      // Granting a role is an admin-only operation; a user may edit everything
+      // Granting `admin` is an admin-only operation; a user may edit everything
       // else about their own profile.
+      //
+      // The one role a user may give themselves is `hotel_manager`, which is
+      // already self-assignable at sign-up — without this, an account created
+      // to book a stay could never go on to list a property, because the
+      // profile write behind "become a host" was refused. `hasOnly` keeps the
+      // resulting set inside the two self-assignable roles, and an account
+      // that already holds `admin` cannot take this path at all, so the
+      // privileged role can be neither gained nor quietly dropped here.
       allow update: if isAdmin() || (
                       isAuthenticated() && request.auth.uid == userId
                       && (
                         (request.resource.data.role == resource.data.role
                          && request.resource.data.get('roles', []) == resource.data.get('roles', []))
+                        || (
+                          request.resource.data.role in ['traveller', 'hotel_manager']
+                          && request.resource.data.get('roles', ['traveller'])
+                             .hasOnly(['traveller', 'hotel_manager'])
+                          && resource.data.get('role', 'traveller') != 'admin'
+                          && !resource.data.get('roles', []).hasAny(['admin'])
+                        )
                         || request.auth.token.email == 'johnpaulchirwa@gmail.com'
                       )
                     );

@@ -26,6 +26,7 @@ import { CURRENCIES, CURRENCY_CODES, currenciesForRooms, roomCurrencies, roomPri
 import { defaultWeek } from '../lib/hours';
 import { SPAM_REASON_LABELS } from '../lib/spam';
 import { isHotelManager, isAdmin } from '../lib/roles';
+import { PROPERTY_CATEGORIES } from '../lib/listing';
 
 type Tab = 'details' | 'rooms' | 'restaurant' | 'bookings' | 'inquiries';
 
@@ -40,6 +41,7 @@ function hotelFormSnapshot(data: Partial<Hotel>): string {
     : String(data.amenities ?? '').split(',').map(s => s.trim()).filter(Boolean);
   return JSON.stringify({
     description: data.description ?? '',
+    categories: data.categories ?? [],
     location: data.location ?? '',
     coordinates: data.coordinates ?? null,
     imageUrl: data.imageUrl ?? '',
@@ -890,6 +892,38 @@ export default function ManageHotel() {
                   label="Hotel Gallery"
                   folder="gallery"
                 />
+              </div>
+              {/* The category decides which home-page filter the listing shows
+                  under. It could be set nowhere at all, so every property
+                  created through the app was unreachable from the filter row. */}
+              <div className="md:col-span-2">
+                <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Category</label>
+                <div className="flex flex-wrap gap-2">
+                  {PROPERTY_CATEGORIES.map(category => {
+                    const selected = (editHotelData.categories ?? []).includes(category);
+                    return (
+                      <button
+                        key={category}
+                        type="button"
+                        aria-pressed={selected}
+                        onClick={() => setEditHotelData({
+                          ...editHotelData,
+                          categories: selected
+                            ? (editHotelData.categories ?? []).filter(c => c !== category)
+                            : [...(editHotelData.categories ?? []), category],
+                        })}
+                        className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
+                          selected
+                            ? 'border-stone-900 bg-stone-900 text-white'
+                            : 'border-stone-200 bg-white text-stone-600 hover:border-stone-400'
+                        }`}
+                      >
+                        {category}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-stone-400 mt-2">Guests filter by this. Pick every one that genuinely fits.</p>
               </div>
               <div className="md:col-span-2">
                 <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Amenities (comma separated)</label>
