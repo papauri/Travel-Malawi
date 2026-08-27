@@ -4,13 +4,14 @@ import { Search, MapPin, Calendar, Users, Star, LocateFixed, ChevronDown, Plus, 
 import toast from 'react-hot-toast';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { Hotel, RoomType, Review } from '../types';
+import { Hotel, RoomType, Review, CurrencyCode } from '../types';
 import { Link } from 'react-router-dom';
 import HotelCard from '../components/HotelCard';
 import SmartImage from '../components/SmartImage';
 import { DECORATIVE_IMAGE, HERO_IMAGE, getHotelImage } from '../lib/images';
 import { BookingLike, lowestPrice, roomsMatching } from '../lib/availability';
 import { todayStr } from '../lib/dates';
+import { CURRENCY_CODES, CURRENCIES, currenciesForRooms, formatMoney, readStoredCurrency, storeCurrency } from '../lib/currency';
 
 function getDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371; // Radius of the earth in km
@@ -58,6 +59,7 @@ export default function Home() {
   const [searching, setSearching] = useState(false);
   const [activeCategory, setActiveCategory] = useState('All');
   const [sortKey, setSortKey] = useState<SortKey>('recommended');
+  const [currency, setCurrency] = useState<CurrencyCode>(() => readStoredCurrency() ?? 'USD');
 
   const [searchLocation, setSearchLocation] = useState('');
   const [searchCheckIn, setSearchCheckIn] = useState('');
@@ -113,6 +115,17 @@ export default function Home() {
     document.addEventListener('mousedown', onPointerDown);
     return () => document.removeEventListener('mousedown', onPointerDown);
   }, [showGuestDropdown]);
+
+  /** Currencies any listing is sold in, so the switch only offers real ones. */
+  const offeredCurrencies = useMemo(() => {
+    const offered = currenciesForRooms(rooms);
+    return offered.length > 0 ? offered : CURRENCY_CODES;
+  }, [rooms]);
+
+  const chooseCurrency = (code: CurrencyCode) => {
+    setCurrency(code);
+    storeCurrency(code);
+  };
 
   const roomsByHotel = useMemo(() => {
     const map = new Map<string, RoomType[]>();
@@ -257,8 +270,9 @@ export default function Home() {
           hotel,
           matching,
           // Listings with no rooms loaded yet keep their headline price blank
-          // rather than advertising a misleading zero.
-          priceFrom: lowestPrice(matching.length ? matching : hotelRooms),
+          // rather than advertising a misleading zero. A listing not sold in the
+          // chosen currency shows "rates on request" instead of a converted one.
+          priceFrom: lowestPrice(matching.length ? matching : hotelRooms, currency),
           rating: ratingByHotel.get(hotel.id ?? '') ?? null,
           hasRooms: hotelRooms.length > 0,
         };
@@ -292,20 +306,20 @@ export default function Home() {
       sorted.sort((a, b) => (b.rating?.average ?? 0) - (a.rating?.average ?? 0));
     }
     return sorted;
-  }, [hotels, roomsByHotel, bookings, ratingByHotel, activeCategory, appliedSearch, sortKey]);
+  }, [hotels, roomsByHotel, bookings, ratingByHotel, activeCategory, appliedSearch, sortKey, currency]);
 
   /** The three properties shown above the fold when nothing is being searched. */
   const featuredHotels = useMemo(() => {
     const enriched = hotels.map(hotel => ({
       hotel,
-      priceFrom: lowestPrice(roomsByHotel.get(hotel.id ?? '') ?? []),
+      priceFrom: lowestPrice(roomsByHotel.get(hotel.id ?? '') ?? [], currency),
       rating: ratingByHotel.get(hotel.id ?? '') ?? null,
     }));
     // Best-rated first, so "featured" means something; ties keep source order.
     return [...enriched]
       .sort((a, b) => (b.rating?.average ?? 0) - (a.rating?.average ?? 0))
       .slice(0, 3);
-  }, [hotels, roomsByHotel, ratingByHotel]);
+  }, [hotels, roomsByHotel, ratingByHotel, currency]);
   
 
   return (
@@ -634,7 +648,7 @@ export default function Home() {
                       <div className="flex items-center justify-between mt-1">
                         {entry.priceFrom ? (
                           <p className="text-sm text-stone-600">
-                            <span className="font-semibold text-stone-900">${entry.priceFrom.toLocaleString()}</span>
+                            <span className="font-semibold text-stone-900">{formatMoney(entry.priceFrom, currency)}</span>
                             <span className="text-stone-400"> / night</span>
                           </p>
                         ) : (
@@ -715,6 +729,30 @@ export default function Home() {
               </div>
             )}
           </div>
+          <div className="flex items-center gap-6 shrink-0 flex-wrap">
+            {offeredCurrencies.length > 1 && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-stone-400 uppercase tracking-wider">Currency</span>
+                <div className="flex gap-1">
+                  {offeredCurrencies.map(code => (
+                    <button
+                      key={code}
+                      type="button"
+                      onClick={() => chooseCurrency(code)}
+                      aria-pressed={currency === code}
+                      title={CURRENCIES[code].label}
+                      className={`px-3 py-2 rounded-full text-sm font-semibold transition ${
+                        currency === code
+                          ? 'bg-stone-900 text-white'
+                          : 'bg-white text-stone-600 border border-stone-200 hover:border-stone-400'
+                      }`}
+                    >
+                      {code}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           <label className="flex items-center gap-3 shrink-0">
             <span className="text-xs font-bold text-stone-400 uppercase tracking-wider">Sort by</span>
             <select
@@ -727,6 +765,7 @@ export default function Home() {
               ))}
             </select>
           </label>
+          </div>
         </div>
         
         {loading ? (
@@ -747,6 +786,7 @@ export default function Home() {
                 hotel={entry.hotel}
                 index={index}
                 priceFrom={entry.priceFrom}
+                priceCurrency={currency}
                 rating={entry.rating}
                 searchParams={{
                   checkIn: appliedSearch.checkIn,

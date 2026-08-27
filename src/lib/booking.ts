@@ -6,10 +6,12 @@
  * cannot drift apart.
  */
 
-import { Booking, RoomType } from '../types';
+import { Booking, CurrencyCode, RoomType } from '../types';
 import { DateStr, daysUntil, nightsBetween } from './dates';
+import { packagePrice, roomExtraGuestFee, roomPrice, roomPrimaryCurrency, resolveCurrency } from './currency';
 
 export interface BookingPricing {
+  currency: CurrencyCode;
   nights: number;
   basePrice: number;
   extraGuestFee: number;
@@ -19,33 +21,52 @@ export interface BookingPricing {
   accommodationTotal: number;
   packagesTotal: number;
   total: number;
+  /** Packages that carry no price in this currency, so cannot be sold in it. */
+  unavailablePackageIds: string[];
 }
 
+/**
+ * Every amount is read in one currency and added up in that currency. Nothing
+ * is converted: a package the property never priced in kwacha is excluded from
+ * a kwacha booking rather than being given a made-up price.
+ */
 export function computeBookingPricing(
   room: RoomType,
   checkIn: DateStr,
   checkOut: DateStr,
   guests: number,
   quantity: number,
-  packageIds: string[]
+  packageIds: string[],
+  requestedCurrency?: CurrencyCode
 ): BookingPricing {
+  const currency = resolveCurrency(room, requestedCurrency);
+  const primary = roomPrimaryCurrency(room);
+
   const nights = nightsBetween(checkIn, checkOut);
-  const basePrice = room.price || 0;
-  const extraGuestFee = room.extraGuestFee || 0;
+  const basePrice = roomPrice(room, currency) ?? 0;
+  const extraGuestFee = roomExtraGuestFee(room, currency);
   const baseGuests = room.baseGuests || room.maxGuests || 2;
   const extraGuestsCount = Math.max(0, guests - baseGuests);
   const extraGuestTotal = extraGuestsCount * extraGuestFee * nights * quantity;
   const accommodationTotal = basePrice * nights * quantity + extraGuestTotal;
 
   let packagesTotal = 0;
+  const unavailablePackageIds: string[] = [];
+
   for (const pkg of room.packages ?? []) {
     if (!packageIds.includes(pkg.id)) continue;
-    if (pkg.type === 'per_person') packagesTotal += pkg.price * guests * nights;
-    else if (pkg.type === 'per_room') packagesTotal += pkg.price * nights * quantity;
-    else packagesTotal += pkg.price;
+    const price = packagePrice(pkg, currency, primary);
+    if (price === null) {
+      unavailablePackageIds.push(pkg.id);
+      continue;
+    }
+    if (pkg.type === 'per_person') packagesTotal += price * guests * nights;
+    else if (pkg.type === 'per_room') packagesTotal += price * nights * quantity;
+    else packagesTotal += price;
   }
 
   return {
+    currency,
     nights,
     basePrice,
     extraGuestFee,
@@ -55,6 +76,7 @@ export function computeBookingPricing(
     accommodationTotal,
     packagesTotal,
     total: accommodationTotal + packagesTotal,
+    unavailablePackageIds,
   };
 }
 
@@ -105,8 +127,6 @@ export function makeBookingReference(): string {
   return `TM-${body}`;
 }
 
-/** Formats a money amount for display, without inventing sub-unit precision. */
-export function formatMoney(amount: number, currency = 'USD'): string {
-  const rounded = Math.round(amount);
-  return currency === 'MWK' ? `MWK ${rounded.toLocaleString()}` : `$${rounded.toLocaleString()}`;
-}
+// `formatMoney` now lives in lib/currency alongside the symbols and precision
+// rules; re-exported here so existing imports keep working.
+export { formatMoney } from './currency';

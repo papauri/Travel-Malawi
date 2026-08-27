@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { doc, getDoc, collection, query, where, getDocs, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { Hotel, RoomType, Booking } from '../types';
+import { Hotel, RoomType, Booking, CurrencyCode, PriceMap } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { Plus, CheckCircle2, XCircle, Clock, Save, Edit2, Trash2, Users, Calendar, Check, X, Building, BedDouble, Loader2, Download, TrendingUp, Percent, Wallet } from 'lucide-react';
 import ImageUpload from '../components/ImageUpload';
@@ -15,6 +15,7 @@ import toast from 'react-hot-toast';
 import { addDays, formatDateStr, isValidDateStr, nightsBetween, nightsInRange, todayStr } from '../lib/dates';
 import { isRoomAvailable } from '../lib/availability';
 import { formatMoney } from '../lib/booking';
+import { CURRENCIES, CURRENCY_CODES, roomCurrencies, roomPrice } from '../lib/currency';
 import { isHotelManager } from '../lib/roles';
 
 type Tab = 'details' | 'rooms' | 'bookings';
@@ -110,10 +111,21 @@ export default function ManageHotel() {
     }
 
     const availableNights = totalUnits * 30;
-    const upcomingRevenue = confirmed
-      .filter(b => b.checkOut >= today)
-      .reduce((sum, b) => sum + (b.total ?? 0), 0);
-    const allTimeRevenue = confirmed.reduce((sum, b) => sum + (b.total ?? 0), 0);
+
+    // Totals are kept per currency. Adding a kwacha booking to a dollar one
+    // produces a number that means nothing, which is what a single running
+    // total did once a property could sell in more than one currency.
+    const sumByCurrency = (rows: Booking[]) => {
+      const totals = new Map<string, number>();
+      for (const b of rows) {
+        const code = b.currency || 'USD';
+        totals.set(code, (totals.get(code) ?? 0) + (b.total ?? 0));
+      }
+      return [...totals.entries()].sort((a, b) => b[1] - a[1]);
+    };
+
+    const upcomingRevenue = sumByCurrency(confirmed.filter(b => b.checkOut >= today));
+    const allTimeRevenue = sumByCurrency(confirmed);
     const averageStay = confirmed.length
       ? confirmed.reduce((sum, b) => sum + nightsBetween(b.checkIn, b.checkOut), 0) / confirmed.length
       : 0;
@@ -228,7 +240,8 @@ export default function ManageHotel() {
 
     // Validated before the write: the booking maths divides by and multiplies
     // these, and a room with zero capacity or a negative price is unsellable.
-    const price = Number(editRoomData.price ?? 0);
+    const currencies = (editRoomData.currencies ?? []).filter(c => CURRENCY_CODES.includes(c));
+    const prices = editRoomData.prices ?? {};
     const maxGuests = Number(editRoomData.maxGuests ?? 0);
     const quantity = Number(editRoomData.quantity ?? 0);
     const baseGuests = Number(editRoomData.baseGuests ?? maxGuests);
@@ -237,8 +250,13 @@ export default function ManageHotel() {
       toast.error('Please give the room a name.');
       return;
     }
-    if (!(price >= 0) || !Number.isFinite(price)) {
-      toast.error('Price must be a positive number.');
+    if (currencies.length === 0) {
+      toast.error('Choose at least one currency to sell this room in.');
+      return;
+    }
+    const missing = currencies.find(code => !(Number(prices[code]) > 0));
+    if (missing) {
+      toast.error(`Set a nightly rate in ${CURRENCIES[missing].label}, or remove that currency.`);
       return;
     }
     if (!Number.isInteger(maxGuests) || maxGuests < 1) {
@@ -271,15 +289,39 @@ export default function ManageHotel() {
         amenities = (amenities as string).split(',').map(s => s.trim()).filter(Boolean);
       }
 
+      // Only the chosen currencies are stored, so removing one actually
+      // withdraws the price rather than leaving a stale amount behind.
+      const keep = (map: PriceMap | undefined): PriceMap =>
+        Object.fromEntries(
+          currencies
+            .map(code => [code, Number(map?.[code] ?? 0)])
+            .filter(([, value]) => Number(value) > 0)
+        );
+
+      const priceMap = keep(prices);
+      const primary = currencies[0];
+
       const roomPayload = {
         ...editRoomData,
         hotelId: id,
-        price,
+        currencies,
+        prices: priceMap,
+        extraGuestFees: keep(editRoomData.extraGuestFees),
+        packages: (editRoomData.packages ?? []).map(pkg => ({
+          ...pkg,
+          prices: keep(pkg.prices),
+          // Legacy mirror, in the primary currency.
+          price: Number(pkg.prices?.[primary] ?? pkg.price ?? 0),
+        })),
         maxGuests,
         quantity,
         baseGuests,
-        extraGuestFee: Number(editRoomData.extraGuestFee ?? 0),
-        priceMWK: Number(editRoomData.priceMWK ?? 0),
+        currency: primary,
+        // Legacy mirrors so anything still reading the old fields is correct.
+        price: Number(priceMap[primary] ?? 0),
+        priceMWK: Number(priceMap.MWK ?? 0),
+        showDualCurrency: currencies.length > 1,
+        extraGuestFee: Number(editRoomData.extraGuestFees?.[primary] ?? 0),
         amenities: amenities || [],
         blockedDates: [...new Set(blockedDates ?? [])].sort(),
       } as Record<string, unknown>;
@@ -304,8 +346,22 @@ export default function ManageHotel() {
   };
 
   const startEditRoom = (room: RoomType) => {
+    // Legacy rooms have no `prices` map, so it is derived from whatever they do
+    // have; the editor then only ever deals in the map.
+    const currencies = roomCurrencies(room);
     setEditRoomData({
       ...room,
+      currencies,
+      prices: Object.fromEntries(
+        currencies.map(code => [code, roomPrice(room, code) ?? 0])
+      ),
+      extraGuestFees: room.extraGuestFees ?? (
+        room.extraGuestFee ? { [currencies[0]]: room.extraGuestFee } : {}
+      ),
+      packages: (room.packages ?? []).map(pkg => ({
+        ...pkg,
+        prices: pkg.prices ?? { [currencies[0]]: pkg.price ?? 0 },
+      })),
       amenities: room.amenities?.join(', ') as any,
       // Kept as an array so the calendar can toggle entries directly.
       blockedDates: [...(room.blockedDates ?? [])],
@@ -317,12 +373,12 @@ export default function ManageHotel() {
     setEditRoomData({
       name: '',
       description: '',
+      currencies: ['USD'],
+      prices: { USD: 0 },
+      extraGuestFees: {},
       price: 0,
-      priceMWK: 0,
-      showDualCurrency: false,
       maxGuests: 2,
       baseGuests: 2,
-      extraGuestFee: 0,
       quantity: 5,
       currency: 'USD',
       imageUrl: '',
@@ -338,6 +394,45 @@ export default function ManageHotel() {
     setEditingRoomId(null);
     setShowAddRoom(false);
   };
+
+  /** Sets one currency's amount on one of the room's price maps. */
+  const setPriceField = (field: 'prices' | 'extraGuestFees', code: CurrencyCode, value: number) => {
+    setEditRoomData(prev => ({ ...prev, [field]: { ...(prev[field] ?? {}), [code]: value } }));
+  };
+
+  /**
+   * Adding a currency seeds an empty amount so the field appears; removing one
+   * drops its amounts, since a currency you no longer sell in should not keep
+   * a price sitting behind it.
+   */
+  const toggleCurrency = (code: CurrencyCode) => {
+    setEditRoomData(prev => {
+      const current = prev.currencies ?? [];
+      if (current.includes(code)) {
+        if (current.length === 1) return prev; // one currency must remain
+        const drop = (map: PriceMap | undefined) => {
+          const next = { ...(map ?? {}) };
+          delete next[code];
+          return next;
+        };
+        return {
+          ...prev,
+          currencies: current.filter(c => c !== code),
+          prices: drop(prev.prices),
+          extraGuestFees: drop(prev.extraGuestFees),
+          packages: (prev.packages ?? []).map(pkg => ({ ...pkg, prices: drop(pkg.prices) })),
+        };
+      }
+      return {
+        ...prev,
+        currencies: CURRENCY_CODES.filter(c => current.includes(c) || c === code),
+        prices: { ...(prev.prices ?? {}), [code]: 0 },
+      };
+    });
+  };
+
+  /** Currencies currently selected for the room being edited, in a fixed order. */
+  const editingCurrencies = CURRENCY_CODES.filter(c => (editRoomData.currencies ?? []).includes(c));
 
   /** Adds or removes one date from the room being edited. */
   const toggleBlockedDate = (date: string) => {
@@ -472,7 +567,13 @@ export default function ManageHotel() {
             <Wallet className="h-4 w-4" />
             <span className="text-xs font-bold uppercase tracking-wider">Upcoming revenue</span>
           </div>
-          <p className="text-3xl font-serif font-bold text-stone-900">{formatMoney(stats.upcomingRevenue)}</p>
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            {stats.upcomingRevenue.length === 0
+              ? <p className="text-3xl font-serif font-bold text-stone-900">&mdash;</p>
+              : stats.upcomingRevenue.map(([code, total]) => (
+                  <p key={code} className="text-3xl font-serif font-bold text-stone-900">{formatMoney(total, code)}</p>
+                ))}
+          </div>
           <p className="text-xs text-stone-400 mt-1">Confirmed stays not yet completed</p>
         </div>
         <div className="bg-white border border-stone-200 rounded-2xl p-5 shadow-sm">
@@ -480,7 +581,13 @@ export default function ManageHotel() {
             <TrendingUp className="h-4 w-4" />
             <span className="text-xs font-bold uppercase tracking-wider">All-time revenue</span>
           </div>
-          <p className="text-3xl font-serif font-bold text-stone-900">{formatMoney(stats.allTimeRevenue)}</p>
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            {stats.allTimeRevenue.length === 0
+              ? <p className="text-3xl font-serif font-bold text-stone-900">&mdash;</p>
+              : stats.allTimeRevenue.map(([code, total]) => (
+                  <p key={code} className="text-3xl font-serif font-bold text-stone-900">{formatMoney(total, code)}</p>
+                ))}
+          </div>
           <p className="text-xs text-stone-400 mt-1">{stats.confirmedCount} confirmed booking{stats.confirmedCount === 1 ? '' : 's'}</p>
         </div>
         <div className="bg-white border border-stone-200 rounded-2xl p-5 shadow-sm">
@@ -668,20 +775,76 @@ export default function ManageHotel() {
                         folder="rooms"
                       />
                     </div>
-                  <div>
-                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Price in USD ($)</label>
-                    <input type="number" min="0" step="0.01" required value={editRoomData.price || 0} onChange={e => setEditRoomData({...editRoomData, price: Number(e.target.value)})} className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition" placeholder="e.g. 150" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Price in MWK (Kwacha)</label>
-                    <input type="number" min="0" step="1" value={editRoomData.priceMWK || 0} onChange={e => setEditRoomData({...editRoomData, priceMWK: Number(e.target.value)})} className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition" placeholder="e.g. 250000" />
-                  </div>
                   <div className="md:col-span-2">
-                    <label className="flex items-center gap-3 cursor-pointer">
-                      <input type="checkbox" checked={editRoomData.showDualCurrency || false} onChange={e => setEditRoomData({...editRoomData, showDualCurrency: e.target.checked})} className="w-5 h-5 rounded text-stone-900 border-stone-300" />
-                      <span className="text-sm font-medium text-stone-700">Show both USD and MWK prices to guests</span>
-                    </label>
+                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Currencies you sell this room in</label>
+                    <div className="flex flex-wrap gap-2 mb-1">
+                      {CURRENCY_CODES.map(code => {
+                        const selected = editingCurrencies.includes(code);
+                        return (
+                          <button
+                            key={code}
+                            type="button"
+                            aria-pressed={selected}
+                            onClick={() => toggleCurrency(code)}
+                            className={`px-4 py-2 rounded-full text-sm font-semibold border transition ${
+                              selected
+                                ? 'border-stone-900 bg-stone-900 text-white'
+                                : 'border-stone-200 bg-stone-50 text-stone-600 hover:border-stone-400'
+                            }`}
+                          >
+                            {CURRENCIES[code].symbol} {CURRENCIES[code].label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p className="text-xs text-stone-400">
+                      Set your own price in each. Nothing is converted &mdash; guests pay the
+                      amount you enter, in the currency they choose.
+                      {editingCurrencies.length > 1 && ` ${CURRENCIES[editingCurrencies[0]].label} is shown by default.`}
+                    </p>
                   </div>
+
+                  {editingCurrencies.map(code => (
+                    <React.Fragment key={code}>
+                      <div>
+                        <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">
+                          Nightly rate &middot; {CURRENCIES[code].label}
+                        </label>
+                        <div className="relative">
+                          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400 text-sm font-medium pointer-events-none">
+                            {CURRENCIES[code].symbol}
+                          </span>
+                          <input
+                            type="number"
+                            min="0"
+                            step={CURRENCIES[code].step}
+                            required
+                            value={editRoomData.prices?.[code] ?? 0}
+                            onChange={e => setPriceField('prices', code, Number(e.target.value))}
+                            className="w-full bg-stone-50 border border-stone-200 p-3 pl-10 rounded-xl outline-none focus:border-stone-900 transition"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">
+                          Extra guest / night &middot; {CURRENCIES[code].label}
+                        </label>
+                        <div className="relative">
+                          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400 text-sm font-medium pointer-events-none">
+                            {CURRENCIES[code].symbol}
+                          </span>
+                          <input
+                            type="number"
+                            min="0"
+                            step={CURRENCIES[code].step}
+                            value={editRoomData.extraGuestFees?.[code] ?? 0}
+                            onChange={e => setPriceField('extraGuestFees', code, Number(e.target.value))}
+                            className="w-full bg-stone-50 border border-stone-200 p-3 pl-10 rounded-xl outline-none focus:border-stone-900 transition"
+                          />
+                        </div>
+                      </div>
+                    </React.Fragment>
+                  ))}
                   <div>
                     <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Max Guests</label>
                     <input type="number" required value={editRoomData.maxGuests || 2} onChange={e => setEditRoomData({...editRoomData, maxGuests: Number(e.target.value)})} className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition" />
@@ -707,7 +870,10 @@ export default function ManageHotel() {
                     ].filter(p => !(editRoomData.packages || []).some(ep => ep.name === p.name)).map(p => (
                       <button key={p.name} type="button" onClick={() => {
                         const pkgs = editRoomData.packages || [];
-                        setEditRoomData({...editRoomData, packages: [...pkgs, { id: Date.now().toString(), ...p }]});
+                        // The preset amounts are dollars; other currencies start
+                        // blank for the manager to fill in.
+                        const prices = editingCurrencies.includes('USD') ? { USD: p.price } : {};
+                        setEditRoomData({...editRoomData, packages: [...pkgs, { id: Date.now().toString(), ...p, prices }]});
                       }} className="px-3 py-1.5 bg-stone-100 text-stone-700 rounded-full text-xs font-medium hover:bg-stone-200 transition border border-stone-200">
                         + {p.name}
                       </button>
@@ -716,15 +882,29 @@ export default function ManageHotel() {
                   {editRoomData.packages && editRoomData.packages.length > 0 && (
                     <div className="space-y-3">
                       {editRoomData.packages.map(pkg => (
-                        <div key={pkg.id} className="flex items-center gap-3 bg-stone-50 p-3 rounded-xl border border-stone-100">
-                          <span className="flex-1 font-medium text-sm">{pkg.name}</span>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-stone-500">$</span>
-                            <input type="number" value={pkg.price} onChange={e => {
-                              const updated = editRoomData.packages!.map(p => p.id === pkg.id ? {...p, price: Number(e.target.value)} : p);
-                              setEditRoomData({...editRoomData, packages: updated});
-                            }} className="w-16 bg-white border border-stone-200 p-1.5 rounded-lg text-sm text-center outline-none focus:border-stone-900" />
-                          </div>
+                        <div key={pkg.id} className="flex items-center gap-3 bg-stone-50 p-3 rounded-xl border border-stone-100 flex-wrap">
+                          <span className="flex-1 min-w-[8rem] font-medium text-sm">{pkg.name}</span>
+                          {/* One field per currency: a package left at zero in a
+                              currency is simply not offered to guests paying in it. */}
+                          {editingCurrencies.map(code => (
+                            <div key={code} className="flex items-center gap-1.5">
+                              <span className="text-xs text-stone-500 w-6 text-right">{CURRENCIES[code].symbol}</span>
+                              <input
+                                type="number"
+                                min="0"
+                                step={CURRENCIES[code].step}
+                                value={pkg.prices?.[code] ?? 0}
+                                onChange={e => {
+                                  const value = Number(e.target.value);
+                                  const updated = editRoomData.packages!.map(p =>
+                                    p.id === pkg.id ? { ...p, prices: { ...(p.prices ?? {}), [code]: value } } : p
+                                  );
+                                  setEditRoomData({ ...editRoomData, packages: updated });
+                                }}
+                                className="w-24 bg-white border border-stone-200 p-1.5 rounded-lg text-sm text-center outline-none focus:border-stone-900"
+                              />
+                            </div>
+                          ))}
                           <select value={pkg.type} onChange={e => {
                             const updated = editRoomData.packages!.map(p => p.id === pkg.id ? {...p, type: e.target.value as any} : p);
                             setEditRoomData({...editRoomData, packages: updated});
@@ -817,8 +997,16 @@ export default function ManageHotel() {
                 <div className="flex justify-between items-start mb-2">
                   <h4 className="text-xl font-serif font-bold text-stone-900 truncate pr-4">{room.name}</h4>
                   <div className="text-right">
-                    <div className="text-xl font-serif font-bold text-stone-900 whitespace-nowrap">${room.price}</div>
-                    {room.showDualCurrency && room.priceMWK ? <div className="text-sm text-stone-500 font-medium">MWK {room.priceMWK?.toLocaleString()}</div> : null}
+                    {roomCurrencies(room).map((code, i) => (
+                      <div
+                        key={code}
+                        className={i === 0
+                          ? 'text-xl font-serif font-bold text-stone-900 whitespace-nowrap'
+                          : 'text-sm text-stone-500 font-medium whitespace-nowrap'}
+                      >
+                        {formatMoney(roomPrice(room, code) ?? 0, code)}
+                      </div>
+                    ))}
                   </div>
                 </div>
                 <p className="text-stone-500 text-sm mb-4 line-clamp-2">{room.description}</p>

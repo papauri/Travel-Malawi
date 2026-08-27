@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { doc, getDoc, collection, query, where, getDocs, addDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { Hotel, RoomType, Review } from '../types';
+import { Hotel, RoomType, Review, CurrencyCode } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { MapPin, Calendar, Users, Star, CheckCircle2, ChevronRight, Info, Plus, Minus, ShieldCheck, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -14,6 +14,10 @@ import { formatDateStr, nightsBetween, todayStr } from '../lib/dates';
 import { BookingLike, isRoomAvailable, unitsRemaining } from '../lib/availability';
 import { computeBookingPricing, formatMoney, makeBookingReference } from '../lib/booking';
 import { isTraveller } from '../lib/roles';
+import {
+  CURRENCIES, currenciesForRooms, packagePrice, readStoredCurrency, resolveCurrency,
+  roomCurrencies, roomPrice, roomPrimaryCurrency, storeCurrency,
+} from '../lib/currency';
 import Modal, { fieldClass, labelClass } from '../components/Modal';
 
 export default function HotelDetails() {
@@ -43,6 +47,7 @@ export default function HotelDetails() {
   const [guestWhatsapp, setGuestWhatsapp] = useState('');
   const [specialRequests, setSpecialRequests] = useState('');
   const [selectedPackages, setSelectedPackages] = useState<string[]>([]);
+  const [currency, setCurrency] = useState<CurrencyCode>(() => readStoredCurrency() ?? 'USD');
 
   // The property and its rooms are what the page is for; each secondary read
   // is issued separately and swallowed on failure. Bundling them into one
@@ -106,6 +111,21 @@ export default function HotelDetails() {
   }, [checkIn, checkOut]);
 
   const isBookable = !hotel?.status || hotel.status === 'approved';
+
+  /** Currencies this property sells in, across all its rooms. */
+  const offeredCurrencies = useMemo(() => currenciesForRooms(rooms), [rooms]);
+
+  // Fall back if the remembered choice is not one this property accepts.
+  useEffect(() => {
+    if (offeredCurrencies.length > 0 && !offeredCurrencies.includes(currency)) {
+      setCurrency(offeredCurrencies[0]);
+    }
+  }, [offeredCurrencies, currency]);
+
+  const chooseCurrency = (code: CurrencyCode) => {
+    setCurrency(code);
+    storeCurrency(code);
+  };
 
   /** Remaining inventory per room for the dates currently selected. */
   const roomAvailability = useMemo(() => {
@@ -254,7 +274,9 @@ export default function HotelDetails() {
 
       // Same helper that renders the on-screen breakdown, so the stored total
       // can never disagree with the price the guest was shown.
-      const pricing = computeBookingPricing(selectedRoom, checkIn, checkOut, guestsCount, 1, selectedPackages);
+      const pricing = computeBookingPricing(
+        selectedRoom, checkIn, checkOut, guestsCount, 1, selectedPackages, currency
+      );
       const reference = makeBookingReference();
 
       await addDoc(collection(db, 'bookings'), {
@@ -276,7 +298,7 @@ export default function HotelDetails() {
         packageIds: selectedPackages,
         extraGuestTotal: pricing.extraGuestTotal,
         packagesTotal: pricing.packagesTotal,
-        currency: selectedRoom.currency || 'USD',
+        currency: pricing.currency,
         status: 'pending',
         createdAt: Date.now()
       });
@@ -372,6 +394,27 @@ export default function HotelDetails() {
           </div>
         )}
 
+        {offeredCurrencies.length > 1 && (
+          <div className="mt-6 flex items-center gap-2">
+            <span className="text-xs font-semibold text-stone-400 uppercase tracking-wider mr-1">Prices in</span>
+            {offeredCurrencies.map(code => (
+              <button
+                key={code}
+                type="button"
+                onClick={() => chooseCurrency(code)}
+                aria-pressed={currency === code}
+                className={`px-3.5 py-1.5 rounded-full text-sm font-semibold border transition ${
+                  currency === code
+                    ? 'border-stone-900 bg-stone-900 text-white'
+                    : 'border-stone-200 text-stone-600 hover:border-stone-400'
+                }`}
+              >
+                {code}
+              </button>
+            ))}
+          </div>
+        )}
+
         {ratingSummary && (
           <div className="mt-6 flex items-center gap-3">
             <div className="flex items-center gap-1.5 bg-stone-900 text-white px-4 py-2 rounded-full">
@@ -459,6 +502,7 @@ export default function HotelDetails() {
             <div className="flex flex-col gap-20 mb-24">
               {rooms.map((room, idx) => {
                 const status = room.id ? roomAvailability[room.id] : undefined;
+                const roomDisplayCurrency = resolveCurrency(room, currency);
                 const isSoldOut = status ? !status.available : (room.quantity ?? 0) <= 0;
                 const hasDates = !!checkIn && !!checkOut && checkIn < checkOut;
                 return (
@@ -510,7 +554,11 @@ export default function HotelDetails() {
                       <div className="flex flex-wrap gap-3 mb-10">
                         {room.packages.map(pkg => (
                           <span key={pkg.id} className="px-4 py-2 bg-stone-100 text-stone-700 rounded-full text-sm font-medium tracking-wide">
-                            + {pkg.name}{pkg.price > 0 ? ` ($${pkg.price})` : ''}
+                            + {pkg.name}
+                            {(() => {
+                              const amount = packagePrice(pkg, roomDisplayCurrency, roomPrimaryCurrency(room));
+                              return amount && amount > 0 ? ` (${formatMoney(amount, roomDisplayCurrency)})` : '';
+                            })()}
                           </span>
                         ))}
                       </div>
@@ -518,11 +566,18 @@ export default function HotelDetails() {
                     
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mt-auto">
                       <div>
-                        <span className="text-4xl font-serif text-stone-900">${room.price}</span>
+                        {/* Shown in the currency the guest picked when the room
+                            is sold in it, with any other authored price beneath
+                            — never a converted figure. */}
+                        <span className="text-4xl font-serif text-stone-900">
+                          {formatMoney(roomPrice(room, roomDisplayCurrency) ?? 0, roomDisplayCurrency)}
+                        </span>
                         <span className="text-stone-500 ml-2 tracking-widest uppercase text-xs font-bold">/ night</span>
-                        {room.showDualCurrency && room.priceMWK ? (
-                          <div className="text-sm text-stone-400 mt-1">MWK {room.priceMWK?.toLocaleString()} / night</div>
-                        ) : null}
+                        {roomCurrencies(room).filter(c => c !== roomDisplayCurrency).map(code => (
+                          <div key={code} className="text-sm text-stone-400 mt-1">
+                            or {formatMoney(roomPrice(room, code) ?? 0, code)} / night
+                          </div>
+                        ))}
                       </div>
                       <button
                         onClick={() => initiateBooking(room)}
@@ -604,8 +659,14 @@ export default function HotelDetails() {
       
       {/* Booking request */}
       {selectedRoom && (() => {
-        const pricing = computeBookingPricing(selectedRoom, checkIn, checkOut, guestsCount, 1, selectedPackages);
-        const { nights, basePrice, extraGuestFee, extraGuestsCount, packagesTotal, total: grandTotal } = pricing;
+        const pricing = computeBookingPricing(
+          selectedRoom, checkIn, checkOut, guestsCount, 1, selectedPackages, currency
+        );
+        const {
+          nights, basePrice, extraGuestFee, extraGuestsCount, packagesTotal,
+          total: grandTotal, currency: bookingCurrency,
+        } = pricing;
+        const roomPrimary = roomPrimaryCurrency(selectedRoom);
         const canSubmit = nights > 0 && !saving;
 
         return (
@@ -622,7 +683,7 @@ export default function HotelDetails() {
                     {nights > 0 ? `Total · ${nights} night${nights === 1 ? '' : 's'}` : 'Total'}
                   </p>
                   <p className="font-serif text-2xl font-semibold text-stone-900 leading-tight">
-                    {formatMoney(grandTotal, selectedRoom.currency)}
+                    {formatMoney(grandTotal, bookingCurrency)}
                   </p>
                 </div>
                 <button
@@ -716,19 +777,27 @@ export default function HotelDetails() {
                   <div className="grid gap-2">
                     {selectedRoom.packages.map(pkg => {
                       const checked = selectedPackages.includes(pkg.id);
+                      const amount = packagePrice(pkg, bookingCurrency, roomPrimary);
+                      // A package the property never priced in this currency
+                      // cannot be sold in it, so it is offered as unavailable
+                      // rather than converted at a rate nobody set.
+                      const unavailable = amount === null;
                       return (
                         <label
                           key={pkg.id}
-                          className={`flex items-center gap-3 rounded-xl border px-4 py-3 cursor-pointer transition ${
-                            checked
-                              ? 'border-stone-900 bg-stone-50'
-                              : 'border-stone-200 hover:border-stone-300 hover:bg-stone-50/60'
+                          className={`flex items-center gap-3 rounded-xl border px-4 py-3 transition ${
+                            unavailable
+                              ? 'border-stone-200 bg-stone-50/60 opacity-60 cursor-not-allowed'
+                              : checked
+                                ? 'border-stone-900 bg-stone-50 cursor-pointer'
+                                : 'border-stone-200 hover:border-stone-300 hover:bg-stone-50/60 cursor-pointer'
                           }`}
                         >
                           <input
                             type="checkbox"
                             className="w-4 h-4 rounded border-stone-300 text-stone-900 focus:ring-stone-900"
-                            checked={checked}
+                            checked={checked && !unavailable}
+                            disabled={unavailable}
                             onChange={e => {
                               if (e.target.checked) setSelectedPackages([...selectedPackages, pkg.id]);
                               else setSelectedPackages(selectedPackages.filter(id => id !== pkg.id));
@@ -737,8 +806,12 @@ export default function HotelDetails() {
                           <span className="flex-1 min-w-0">
                             <span className="block text-sm font-semibold text-stone-900">{pkg.name}</span>
                             <span className="block text-xs text-stone-500">
-                              {pkg.price > 0 ? `+$${pkg.price}` : 'Included'}
-                              {pkg.type === 'per_person' ? ' per person, per night' : pkg.type === 'per_room' ? ' per room, per night' : ' per stay'}
+                              {unavailable
+                                ? `Not available in ${bookingCurrency}`
+                                : <>
+                                    {amount > 0 ? `+${formatMoney(amount, bookingCurrency)}` : 'Included'}
+                                    {pkg.type === 'per_person' ? ' per person, per night' : pkg.type === 'per_room' ? ' per room, per night' : ' per stay'}
+                                  </>}
                             </span>
                           </span>
                         </label>
@@ -749,12 +822,35 @@ export default function HotelDetails() {
               )}
 
               <div className="rounded-2xl border border-stone-200 bg-stone-50/70 p-5">
-                <div className="flex items-baseline justify-between border-b border-stone-200 pb-3 mb-4">
-                  <h3 className="text-xs font-semibold text-stone-500 uppercase tracking-wider">Price breakdown</h3>
-                  {nights > 0 && (
-                    <p className="text-xs text-stone-400">
-                      {formatDateStr(checkIn, { month: 'short', day: 'numeric' })} &rarr; {formatDateStr(checkOut, { month: 'short', day: 'numeric' })}
-                    </p>
+                <div className="border-b border-stone-200 pb-3 mb-4">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <h3 className="text-xs font-semibold text-stone-500 uppercase tracking-wider">Price breakdown</h3>
+                    {nights > 0 && (
+                      <p className="text-xs text-stone-400">
+                        {formatDateStr(checkIn, { month: 'short', day: 'numeric' })} &rarr; {formatDateStr(checkOut, { month: 'short', day: 'numeric' })}
+                      </p>
+                    )}
+                  </div>
+                  {/* Switching here re-prices from the amounts the property
+                      authored in that currency, not by converting this total. */}
+                  {roomCurrencies(selectedRoom).length > 1 && (
+                    <div className="flex gap-1 mt-3">
+                      {roomCurrencies(selectedRoom).map(code => (
+                        <button
+                          key={code}
+                          type="button"
+                          onClick={() => chooseCurrency(code)}
+                          aria-pressed={bookingCurrency === code}
+                          className={`px-2.5 py-1 rounded-full text-xs font-semibold transition ${
+                            bookingCurrency === code
+                              ? 'bg-stone-900 text-white'
+                              : 'bg-white text-stone-500 border border-stone-200 hover:border-stone-400'
+                          }`}
+                        >
+                          {code}
+                        </button>
+                      ))}
+                    </div>
                   )}
                 </div>
 
@@ -763,21 +859,21 @@ export default function HotelDetails() {
                 ) : (
                   <div className="space-y-2.5 text-sm">
                     <div className="flex justify-between text-stone-600">
-                      <span>${basePrice} &times; {nights} night{nights === 1 ? '' : 's'}</span>
-                      <span className="text-stone-900 tabular-nums">${(basePrice * nights).toLocaleString()}</span>
+                      <span>{formatMoney(basePrice, bookingCurrency)} &times; {nights} night{nights === 1 ? '' : 's'}</span>
+                      <span className="text-stone-900 tabular-nums">{formatMoney(basePrice * nights, bookingCurrency)}</span>
                     </div>
 
-                    {extraGuestsCount > 0 && (
+                    {extraGuestsCount > 0 && extraGuestFee > 0 && (
                       <div className="flex justify-between text-stone-600">
-                        <span>Extra guests ({extraGuestsCount} &times; ${extraGuestFee} &times; {nights}n)</span>
-                        <span className="text-stone-900 tabular-nums">${(extraGuestsCount * extraGuestFee * nights).toLocaleString()}</span>
+                        <span>Extra guests ({extraGuestsCount} &times; {formatMoney(extraGuestFee, bookingCurrency)} &times; {nights}n)</span>
+                        <span className="text-stone-900 tabular-nums">{formatMoney(extraGuestsCount * extraGuestFee * nights, bookingCurrency)}</span>
                       </div>
                     )}
 
                     {packagesTotal > 0 && (
                       <div className="flex justify-between text-emerald-700">
                         <span>Selected packages</span>
-                        <span className="tabular-nums">+${packagesTotal.toLocaleString()}</span>
+                        <span className="tabular-nums">+{formatMoney(packagesTotal, bookingCurrency)}</span>
                       </div>
                     )}
 
@@ -785,15 +881,11 @@ export default function HotelDetails() {
                       <span className="font-semibold text-stone-900">Total</span>
                       <div className="text-right">
                         <div className="font-serif text-xl font-semibold text-stone-900 tabular-nums">
-                          {formatMoney(grandTotal, selectedRoom.currency)}
+                          {formatMoney(grandTotal, bookingCurrency)}
                         </div>
-                        {selectedRoom.showDualCurrency && selectedRoom.priceMWK && selectedRoom.price ? (
-                          <div className="text-xs text-stone-500 mt-0.5 tabular-nums">
-                            {/* Rounded: the implied rate produces fractional
-                                kwacha, which is not a real amount. */}
-                            MWK {Math.round(grandTotal * (selectedRoom.priceMWK / selectedRoom.price)).toLocaleString()}
-                          </div>
-                        ) : null}
+                        <div className="text-xs text-stone-500 mt-0.5">
+                          Payable in {CURRENCIES[bookingCurrency].label}
+                        </div>
                       </div>
                     </div>
                   </div>

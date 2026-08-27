@@ -5,6 +5,8 @@ import { ChevronLeft, ChevronRight, Star } from 'lucide-react';
 import { Hotel } from '../types';
 import SmartImage from './SmartImage';
 import { getHotelImages } from '../lib/images';
+import { formatMoney } from '../lib/currency';
+import { CurrencyCode } from '../types';
 
 interface HotelCardProps {
   hotel: Hotel;
@@ -16,11 +18,13 @@ interface HotelCardProps {
   index: number;
   /** Nightly rate of the cheapest room that matches the search, if known. */
   priceFrom?: number | null;
+  /** The currency `priceFrom` is denominated in. */
+  priceCurrency?: CurrencyCode;
   /** Combined rating across imported and guest-written reviews. */
   rating?: { average: number; count: number } | null;
 }
 
-export default function HotelCard({ hotel, searchParams, index, priceFrom, rating }: HotelCardProps) {
+export default function HotelCard({ hotel, searchParams, index, priceFrom, priceCurrency = 'USD', rating }: HotelCardProps) {
   const [currentImageIdx, setCurrentImageIdx] = useState(0);
 
   // Resolved centrally: drops empty/dead URLs and falls back to bundled
@@ -125,7 +129,7 @@ export default function HotelCard({ hotel, searchParams, index, priceFrom, ratin
         <div className="flex items-center justify-between mt-1">
           {priceFrom ? (
             <p className="text-sm text-stone-600">
-              <span className="font-semibold text-stone-900">${priceFrom.toLocaleString()}</span>
+              <span className="font-semibold text-stone-900">{formatMoney(priceFrom, priceCurrency)}</span>
               <span className="text-stone-400"> / night</span>
             </p>
           ) : (

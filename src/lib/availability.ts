@@ -7,7 +7,8 @@
  * account for every unit. Cancelled and rejected bookings release their units.
  */
 
-import { RoomType } from '../types';
+import { CurrencyCode, RoomType } from '../types';
+import { roomPrice } from './currency';
 import { DateStr, addDays, nightsInRange, rangesOverlap } from './dates';
 
 /** Booking statuses that hold inventory. */
@@ -104,9 +105,14 @@ export function roomsMatching(
   });
 }
 
-/** Nightly rate of the cheapest matching room, or null when nothing matches. */
-export function lowestPrice(rooms: RoomType[]): number | null {
-  const prices = rooms.map(r => r.price ?? 0).filter(p => p > 0);
+/**
+ * Nightly rate of the cheapest room priced in `currency`, or null when none is.
+ * Rooms not sold in that currency are skipped rather than converted.
+ */
+export function lowestPrice(rooms: RoomType[], currency: CurrencyCode = 'USD'): number | null {
+  const prices = rooms
+    .map(room => roomPrice(room, currency))
+    .filter((price): price is number => price !== null && price > 0);
   return prices.length ? Math.min(...prices) : null;
 }
 
