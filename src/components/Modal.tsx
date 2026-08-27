@@ -80,9 +80,15 @@ export default function Modal({
 
   if (!open) return null;
 
+  // z-[100] puts the dialog above the page's own fixed furniture — the floating
+  // chat button, the mobile nav, the booking status pill — all of which sit at
+  // z-50. Sharing that level meant the later element in the DOM won, which on a
+  // phone put the chat button squarely on top of this dialog's submit button:
+  // `items-end` pins the panel to the bottom of the screen, exactly where that
+  // button floats.
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4"
+      className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby={titleId}

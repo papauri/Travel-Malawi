@@ -75,6 +75,13 @@ export default function HotelDetails() {
   // is issued separately and swallowed on failure. Bundling them into one
   // Promise.all means any single denied collection blanks the whole page —
   // which is exactly what a `bookings` read denied by undeployed rules did.
+  /**
+   * Any dialog on this page. The page's fixed furniture — the floating chat
+   * button, the booking status pill — hides while one is open, so nothing
+   * floats over a form the visitor is filling in.
+   */
+  const anyDialogOpen = !!selectedRoom || !!activeGalleryRoom || showHotelGallery;
+
   useEffect(() => {
     async function fetchHotelDetails() {
       if (!id) return;
@@ -1189,14 +1196,16 @@ export default function HotelDetails() {
         );
       })()}
 
-      {bookingStatus && (
+      {bookingStatus && !anyDialogOpen && (
         <div className="fixed bottom-24 right-6 bg-stone-900 text-white px-8 py-4 rounded-full shadow-2xl font-medium z-50">
           {bookingStatus}
         </div>
       )}
       
-      {/* Floating Chat Button */}
-      {hotel.chatEnabled !== false && (
+      {/* Floating Chat Button.
+          Hidden whenever a dialog is up: it is page furniture, and a "Contact
+          Host" button hovering over a booking form is noise at best. */}
+      {hotel.chatEnabled !== false && !anyDialogOpen && (
         <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
           {!showChat ? (
             <button
