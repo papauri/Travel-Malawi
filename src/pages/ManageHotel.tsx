@@ -1068,12 +1068,15 @@ export default function ManageHotel() {
                         folder="rooms"
                       />
                     </div>
+                  {/* `room_gallery` was not one of the folders the storage rules
+                      allow, so every room-gallery upload was refused outright.
+                      Room photographs belong with the room's main image. */}
                   <div className="md:col-span-2">
-                    <GalleryUpload 
-                      value={editRoomData.galleryUrls || []} 
-                      onChange={(urls) => setEditRoomData({ ...editRoomData, galleryUrls: urls })} 
+                    <GalleryUpload
+                      value={editRoomData.galleryUrls || []}
+                      onChange={(urls) => setEditRoomData({ ...editRoomData, galleryUrls: urls })}
                       label="Room Gallery"
-                      folder="room_gallery"
+                      folder="rooms"
                     />
                   </div>
                   <div className="md:col-span-2">
