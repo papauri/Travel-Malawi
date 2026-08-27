@@ -6,7 +6,7 @@ import { Hotel, RoomType, Review, CurrencyCode } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import PhoneInput from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
-import { MapPin, Calendar, Users, Star, CheckCircle2, ChevronRight, Info, Plus, Minus, ShieldCheck, AlertTriangle, UtensilsCrossed, Clock, BedDouble, MessageSquare, Images } from 'lucide-react';
+import { MapPin, Calendar, Users, Star, CheckCircle2, ChevronRight, Info, Plus, Minus, ShieldCheck, AlertTriangle, UtensilsCrossed, Clock, BedDouble, MessageSquare, MessageCircle, Images, Mail, PhoneCall } from 'lucide-react';
 import toast from 'react-hot-toast';
 import AvailabilityCalendar from '../components/AvailabilityCalendar';
 import { motion } from 'motion/react';
@@ -18,6 +18,7 @@ import { formatDateStr, nightsBetween, todayStr } from '../lib/dates';
 import { formatTime, hasPublishedHours, isOpenAt, summariseHours } from '../lib/hours';
 import MenuTemplateView from '../components/MenuTemplates';
 import { BookingLike, isRoomAvailable, unitsRemaining } from '../lib/availability';
+import { hasAnyContact, mailtoLink, telLink, whatsappLink } from '../lib/contact';
 import DatePicker from '../components/DatePicker';
 import { computeBookingPricing, formatMoney, makeBookingReference } from '../lib/booking';
 import { isTraveller } from '../lib/roles';
@@ -567,6 +568,50 @@ export default function HotelDetails() {
               )}
             </div>
           </div>
+
+          {/* Reaching the property.
+              The page told guests the host "confirms by phone or WhatsApp"
+              while carrying neither, so a question before booking, or an
+              arrival gone wrong, had nowhere to go. Absent on listings that
+              predate the fields rather than rendering an empty card. */}
+          {hasAnyContact(hotel) && (
+            <div className="mb-16 rounded-3xl border border-stone-200/50 bg-stone-50 p-8">
+              <h3 className="text-xl font-serif text-stone-900 mb-1 flex items-center gap-2">
+                <PhoneCall className="h-5 w-5" /> Reach the property
+              </h3>
+              <p className="text-stone-500 text-sm mb-6">
+                Talk to {hotel.name} directly — there is nobody in between.
+              </p>
+              <div className="flex flex-wrap gap-3">
+                {telLink(hotel.contactPhone) && (
+                  <a
+                    href={telLink(hotel.contactPhone)!}
+                    className="inline-flex items-center gap-2 rounded-full bg-stone-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-stone-800"
+                  >
+                    <PhoneCall className="h-4 w-4" /> {hotel.contactPhone}
+                  </a>
+                )}
+                {whatsappLink(hotel.contactWhatsapp || hotel.contactPhone, `Hello ${hotel.name}, I have a question about staying with you.`) && (
+                  <a
+                    href={whatsappLink(hotel.contactWhatsapp || hotel.contactPhone, `Hello ${hotel.name}, I have a question about staying with you.`)!}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700"
+                  >
+                    <MessageCircle className="h-4 w-4" /> WhatsApp
+                  </a>
+                )}
+                {mailtoLink(hotel.contactEmail, `Enquiry about ${hotel.name}`) && (
+                  <a
+                    href={mailtoLink(hotel.contactEmail, `Enquiry about ${hotel.name}`)!}
+                    className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-semibold text-stone-700 ring-1 ring-stone-200 transition hover:ring-stone-400"
+                  >
+                    <Mail className="h-4 w-4" /> {hotel.contactEmail}
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Stay / Menu tabs. The Menu tab is absent unless the property
               has a restaurant enabled, so a lodge without one is unaffected. */}

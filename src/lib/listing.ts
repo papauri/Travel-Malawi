@@ -17,6 +17,7 @@ import { db } from './firebase';
 import { Hotel } from '../types';
 import { defaultWeek } from './hours';
 import { normalizeImageUrl } from './images';
+import { emailProblem, phoneProblem } from './contact';
 
 /**
  * The categories the home page filters on. Kept here rather than inline in the
@@ -104,6 +105,10 @@ export interface ListingDraft {
   coordinates: { lat: number; lng: number } | null;
   checkInTime: string;
   checkOutTime: string;
+  /** How guests reach the property once they have booked — or before. */
+  contactEmail: string;
+  contactPhone: string;
+  contactWhatsapp: string;
 }
 
 export function emptyDraft(): ListingDraft {
@@ -119,6 +124,9 @@ export function emptyDraft(): ListingDraft {
     coordinates: null,
     checkInTime: '14:00',
     checkOutTime: '11:00',
+    contactEmail: '',
+    contactPhone: '',
+    contactWhatsapp: '',
   };
 }
 
@@ -136,7 +144,8 @@ export type DraftErrors = Partial<Record<keyof ListingDraft, string>>;
 export const STEP_FIELDS: (keyof ListingDraft)[][] = [
   ['name', 'category', 'location'],
   ['description', 'amenities'],
-  ['imageUrl', 'galleryUrls', 'checkInTime', 'checkOutTime'],
+  ['imageUrl', 'galleryUrls'],
+  ['contactEmail', 'contactPhone', 'contactWhatsapp', 'checkInTime', 'checkOutTime'],
   [],
 ];
 
@@ -178,6 +187,16 @@ export function validateDraft(draft: ListingDraft): DraftErrors {
 
   if (!isTime(draft.checkInTime)) errors.checkInTime = 'Use a 24-hour time, e.g. 14:00.';
   if (!isTime(draft.checkOutTime)) errors.checkOutTime = 'Use a 24-hour time, e.g. 11:00.';
+
+  // A booking request is only the start of a conversation: the property has to
+  // be reachable for it to become a stay. Both are required for that reason;
+  // WhatsApp is not, since most properties use one number for both.
+  const email = emailProblem(draft.contactEmail, 'A booking email', true);
+  if (email) errors.contactEmail = email;
+  const phone = phoneProblem(draft.contactPhone, 'A phone number', true);
+  if (phone) errors.contactPhone = phone;
+  const whatsapp = phoneProblem(draft.contactWhatsapp, 'The WhatsApp number', false);
+  if (whatsapp) errors.contactWhatsapp = whatsapp;
 
   return errors;
 }
@@ -234,6 +253,11 @@ export function draftToHotel(draft: ListingDraft, managerId: string): Omit<Hotel
     categories: draft.category ? [draft.category] : [],
     checkInTime: draft.checkInTime,
     checkOutTime: draft.checkOutTime,
+    contactEmail: draft.contactEmail.trim(),
+    contactPhone: draft.contactPhone.trim(),
+    // Falls back to the phone number, so a property that uses one number for
+    // both does not have to type it twice.
+    contactWhatsapp: draft.contactWhatsapp.trim() || draft.contactPhone.trim(),
     // Starting points the host can change later, rather than absent fields
     // that show as "not published" on the property page.
     hours: defaultWeek(),

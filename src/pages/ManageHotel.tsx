@@ -27,6 +27,7 @@ import { defaultWeek } from '../lib/hours';
 import { SPAM_REASON_LABELS } from '../lib/spam';
 import { isHotelManager, isAdmin } from '../lib/roles';
 import { PROPERTY_CATEGORIES } from '../lib/listing';
+import { emailProblem, phoneProblem } from '../lib/contact';
 
 type Tab = 'details' | 'rooms' | 'restaurant' | 'bookings' | 'inquiries';
 
@@ -49,6 +50,9 @@ function hotelFormSnapshot(data: Partial<Hotel>): string {
     amenities,
     checkInTime: data.checkInTime ?? '',
     checkOutTime: data.checkOutTime ?? '',
+    contactEmail: data.contactEmail ?? '',
+    contactPhone: data.contactPhone ?? '',
+    contactWhatsapp: data.contactWhatsapp ?? '',
     hours: data.hours ?? null,
   });
 }
@@ -253,6 +257,10 @@ export default function ManageHotel() {
   const handleSaveHotel = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!id || !hotel) return;
+    if (hasContactProblem) {
+      toast.error('Check the contact details before saving.');
+      return;
+    }
     setSaving(true);
     try {
       // Amenities and the gallery are typed as comma-separated text in the UI
@@ -290,6 +298,22 @@ export default function ManageHotel() {
       setSaving(false);
     }
   };
+
+  /**
+   * Format problems with the contact fields, if any.
+   *
+   * These are checked but not required here, unlike in the listing wizard:
+   * listings created before contact details existed have none, and refusing to
+   * save would trap their owners out of editing anything else. A malformed
+   * value is still refused — a number nobody can dial is worse than a blank.
+   */
+  const contactProblems = useMemo(() => ({
+    contactEmail: emailProblem(editHotelData.contactEmail ?? '', 'The booking email', false) ?? '',
+    contactPhone: phoneProblem(editHotelData.contactPhone ?? '', 'The phone number', false) ?? '',
+    contactWhatsapp: phoneProblem(editHotelData.contactWhatsapp ?? '', 'The WhatsApp number', false) ?? '',
+  }), [editHotelData.contactEmail, editHotelData.contactPhone, editHotelData.contactWhatsapp]);
+
+  const hasContactProblem = Object.values(contactProblems).some(Boolean);
 
   /** Unsaved work, per tab. Each editor holds local state until it is saved. */
   const hotelDirty = !!hotel && hotelFormSnapshot(editHotelData) !== hotelFormSnapshot(hotel);
@@ -928,6 +952,57 @@ export default function ManageHotel() {
               <div className="md:col-span-2">
                 <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Amenities (comma separated)</label>
                 <input type="text" value={Array.isArray(editHotelData.amenities) ? editHotelData.amenities.join(', ') : editHotelData.amenities || ''} onChange={e => setEditHotelData({...editHotelData, amenities: e.target.value as any})} className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition" placeholder="WiFi, Pool, Spa..." />
+              </div>
+
+              {/* A listing held no way of reaching the property at all, so the
+                  page promised a host who confirms "by phone or WhatsApp"
+                  without carrying either. */}
+              <div className="md:col-span-2 pt-6 border-t border-stone-100">
+                <h4 className="font-serif font-bold text-stone-900 mb-1">How guests reach you</h4>
+                <p className="text-sm text-stone-500 mb-5">
+                  Shown on your listing and quoted back on every booking request.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div>
+                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Booking email</label>
+                    <input
+                      type="email"
+                      value={editHotelData.contactEmail ?? ''}
+                      onChange={e => setEditHotelData({ ...editHotelData, contactEmail: e.target.value })}
+                      className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition"
+                      placeholder="reservations@yourlodge.mw"
+                    />
+                    {contactProblems.contactEmail && (
+                      <p className="text-xs text-red-600 mt-1.5">{contactProblems.contactEmail}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Phone</label>
+                    <input
+                      type="tel"
+                      value={editHotelData.contactPhone ?? ''}
+                      onChange={e => setEditHotelData({ ...editHotelData, contactPhone: e.target.value })}
+                      className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition"
+                      placeholder="+265 991 234 567"
+                    />
+                    {contactProblems.contactPhone && (
+                      <p className="text-xs text-red-600 mt-1.5">{contactProblems.contactPhone}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">WhatsApp</label>
+                    <input
+                      type="tel"
+                      value={editHotelData.contactWhatsapp ?? ''}
+                      onChange={e => setEditHotelData({ ...editHotelData, contactWhatsapp: e.target.value })}
+                      className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition"
+                      placeholder="Same as phone"
+                    />
+                    {contactProblems.contactWhatsapp && (
+                      <p className="text-xs text-red-600 mt-1.5">{contactProblems.contactWhatsapp}</p>
+                    )}
+                  </div>
+                </div>
               </div>
 
               {/* These were hard-coded as "From 14:00" and "Until 11:00" on

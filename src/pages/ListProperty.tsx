@@ -11,7 +11,7 @@
  * before it can take a booking.
  *
  * This page owns the whole path instead: sign in or create an account, add the
- * host role to an existing account, fill in the listing over four reviewable
+ * host role to an existing account, fill in the listing over five reviewable
  * steps, and land on the room editor for the property that was just created.
  */
 
@@ -20,7 +20,8 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
   ArrowLeft, ArrowRight, BadgeCheck, Building2, Check, ChevronRight, Clock,
-  Images, Loader2, LocateFixed, MapPin, MessageCircle, Plus, Send, Sparkles, Wallet, X,
+  Images, Loader2, LocateFixed, Mail, MapPin, MessageCircle, Phone, Plus, Send,
+  Sparkles, Wallet, X,
 } from 'lucide-react';
 
 import { useAuth } from '../contexts/AuthContext';
@@ -42,8 +43,12 @@ const STEPS = [
   { title: 'The basics', blurb: 'What it is called, and where it is.' },
   { title: 'The place', blurb: 'What a guest should know before booking.' },
   { title: 'Photographs', blurb: 'The pictures that do the selling.' },
+  { title: 'Reaching you', blurb: 'How guests get hold of you, and your hours.' },
   { title: 'Check it over', blurb: 'One last look before it goes for review.' },
 ];
+
+/** Every step that carries fields — used to find the first one still wrong. */
+const FIELD_STEPS = [0, 1, 2, 3];
 
 /** Survives the round trip through a Google sign-in popup. */
 function readDraft(): ListingDraft {
@@ -164,7 +169,7 @@ export default function ListProperty() {
     // The final guard is the whole draft, not just this step: a host can jump
     // back and empty a field they already passed.
     if (Object.keys(allErrors).length > 0) {
-      const firstBadStep = [0, 1, 2].find(s => !isStepComplete(draft, s)) ?? 0;
+      const firstBadStep = FIELD_STEPS.find(s => !isStepComplete(draft, s)) ?? 0;
       setStep(firstBadStep);
       setShowErrors(true);
       toast.error('Something above still needs filling in.');
@@ -239,11 +244,11 @@ export default function ListProperty() {
 
         {/* Progress. Each completed step stays clickable so a host can go back
             and correct something without losing the rest. */}
-        <ol className="mb-10 grid grid-cols-4 gap-2">
+        <ol className="mb-10 grid grid-cols-5 gap-2">
           {STEPS.map((s, index) => {
             const done = index < step && isStepComplete(draft, index);
             const active = index === step;
-            const reachable = index <= step || [0, 1, 2].slice(0, index).every(i => isStepComplete(draft, i));
+            const reachable = index <= step || FIELD_STEPS.slice(0, index).every(i => isStepComplete(draft, i));
             return (
               <li key={s.title}>
                 <button
@@ -505,6 +510,79 @@ export default function ListProperty() {
                 </p>
               </div>
 
+            </div>
+          )}
+
+          {step === 3 && (
+            <div className="space-y-8">
+              <div className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-5">
+                <p className="text-sm leading-relaxed text-emerald-900">
+                  Guests see these on your listing, and a booking request quotes them back so
+                  nobody has to hunt for a number when they are already on the road.
+                </p>
+              </div>
+
+              <div>
+                <label className={labelClass} htmlFor="listing-email">Booking email</label>
+                <div className="relative">
+                  <Mail className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+                  <input
+                    id="listing-email"
+                    type="email"
+                    autoComplete="email"
+                    value={draft.contactEmail}
+                    onChange={e => set('contactEmail', e.target.value)}
+                    placeholder="reservations@yourlodge.mw"
+                    className={`${fieldClass} pl-11`}
+                  />
+                </div>
+                <p className="mt-2 text-xs text-stone-400">
+                  Where booking requests should reach you. It can differ from your sign-in address.
+                </p>
+                <FieldError message={visible.contactEmail} />
+              </div>
+
+              <div>
+                <label className={labelClass} htmlFor="listing-phone">Phone number</label>
+                <div className="relative">
+                  <Phone className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+                  <input
+                    id="listing-phone"
+                    type="tel"
+                    autoComplete="tel"
+                    value={draft.contactPhone}
+                    onChange={e => set('contactPhone', e.target.value)}
+                    placeholder="+265 991 234 567"
+                    className={`${fieldClass} pl-11`}
+                  />
+                </div>
+                <p className="mt-2 text-xs text-stone-400">
+                  Include the country code so guests abroad can dial it.
+                </p>
+                <FieldError message={visible.contactPhone} />
+              </div>
+
+              <div>
+                <label className={labelClass} htmlFor="listing-whatsapp">
+                  WhatsApp <span className="font-medium normal-case tracking-normal text-stone-400">(optional)</span>
+                </label>
+                <div className="relative">
+                  <MessageCircle className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+                  <input
+                    id="listing-whatsapp"
+                    type="tel"
+                    value={draft.contactWhatsapp}
+                    onChange={e => set('contactWhatsapp', e.target.value)}
+                    placeholder="Same as the phone number"
+                    className={`${fieldClass} pl-11`}
+                  />
+                </div>
+                <p className="mt-2 text-xs text-stone-400">
+                  Leave it blank if it is the same number — we will use the phone number above.
+                </p>
+                <FieldError message={visible.contactWhatsapp} />
+              </div>
+
               <div className="grid gap-6 border-t border-stone-100 pt-8 sm:grid-cols-2">
                 <div>
                   <label className={labelClass} htmlFor="listing-checkin">Check-in from</label>
@@ -532,7 +610,7 @@ export default function ListProperty() {
             </div>
           )}
 
-          {step === 3 && (
+          {step === 4 && (
             <div className="space-y-8">
               <div className="overflow-hidden rounded-2xl border border-stone-200">
                 <div className="relative h-64 bg-stone-100">
@@ -572,6 +650,23 @@ export default function ListProperty() {
                     <div>
                       <dt className="font-semibold text-stone-400">Photographs</dt>
                       <dd className="text-stone-900">{1 + draft.galleryUrls.length}</dd>
+                    </div>
+                  </dl>
+
+                  <dl className="mt-4 grid gap-4 border-t border-stone-100 pt-6 text-sm sm:grid-cols-3">
+                    <div className="min-w-0">
+                      <dt className="font-semibold text-stone-400">Email</dt>
+                      <dd className="truncate text-stone-900">{draft.contactEmail}</dd>
+                    </div>
+                    <div>
+                      <dt className="font-semibold text-stone-400">Phone</dt>
+                      <dd className="text-stone-900">{draft.contactPhone}</dd>
+                    </div>
+                    <div>
+                      <dt className="font-semibold text-stone-400">WhatsApp</dt>
+                      <dd className="text-stone-900">
+                        {draft.contactWhatsapp.trim() || `${draft.contactPhone} (same)`}
+                      </dd>
                     </div>
                   </dl>
                 </div>
@@ -676,10 +771,10 @@ function HostIntro({
         <div className="absolute inset-0 opacity-30">
           <SmartImage src={DECORATIVE_IMAGE} alt="" aria-hidden="true" className="h-full w-full object-cover" />
         </div>
-        <div className="absolute inset-0 bg-gradient-to-r from-stone-950 via-stone-950/85 to-stone-950/40" />
+        <div className="absolute inset-0 bg-gradient-to-r from-stone-950 via-stone-950/85 to-stone-950/45" />
 
         <div className="relative mx-auto w-full max-w-6xl px-6 py-24 lg:px-8 lg:py-32">
-          <p className="mb-6 text-[0.7rem] font-bold uppercase tracking-[0.26em] text-emerald-400">
+          <p className="mb-6 text-[0.7rem] font-bold uppercase tracking-[0.26em] text-emerald-200/70">
             For Malawian hosts
           </p>
           <h1 className="max-w-3xl font-serif text-[clamp(2.5rem,6vw,4.5rem)] leading-[1.05] tracking-[-0.03em]">

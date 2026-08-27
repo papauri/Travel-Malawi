@@ -85,6 +85,15 @@ export interface Hotel {
   location: string;
   locationNotes?: string;
   coordinates?: { lat: number; lng: number };
+  /**
+   * How a guest reaches the property directly. A listing carried none of
+   * these, so the promise that the host confirms "by phone or WhatsApp" had
+   * no number behind it and a guest with a question had nowhere to go.
+   */
+  contactEmail?: string;
+  contactPhone?: string;
+  /** Optional; falls back to `contactPhone` when the property uses one number. */
+  contactWhatsapp?: string;
   amenities: string[];
   categories?: string[];
   galleryUrls?: string[];

@@ -505,8 +505,8 @@ export default function Home() {
 
         {/* Scrims run left-to-right now that the type is anchored left, so the
             photograph stays visible on the side the text does not occupy. */}
-        <div className="absolute inset-0 z-10 bg-gradient-to-r from-stone-950 via-stone-950/75 to-stone-950/25" />
-        <div className="absolute inset-0 z-10 bg-gradient-to-t from-stone-950 via-transparent to-stone-950/50" />
+        <div className="absolute inset-0 z-10 bg-gradient-to-r from-stone-950 via-stone-950/85 to-stone-950/45" />
+        <div className="absolute inset-0 z-10 bg-gradient-to-t from-stone-950 via-stone-950/25 to-stone-950/65" />
 
         <div className="relative z-20 w-full max-w-6xl mx-auto px-6 lg:px-8 pt-28 pb-28">
           <motion.div
@@ -515,8 +515,8 @@ export default function Home() {
             transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
             className="flex items-center gap-3 mb-7"
           >
-            <span className="h-px w-8 bg-emerald-400/70" />
-            <span className="text-[0.65rem] md:text-[0.7rem] font-semibold tracking-[0.26em] text-emerald-300 uppercase">
+            <span className="h-px w-8 bg-emerald-300/40" />
+            <span className="text-[0.65rem] md:text-[0.7rem] font-semibold tracking-[0.26em] text-emerald-200/70 uppercase">
               Booked direct with Malawian hosts
             </span>
           </motion.div>
@@ -529,7 +529,7 @@ export default function Home() {
                        text-[clamp(2.6rem,7.5vw,5.75rem)] mb-7"
           >
             <span className="block">Wake up on</span>
-            <span className="relative block h-[1.12em] overflow-hidden text-emerald-400">
+            <span className="relative block h-[1.12em] overflow-hidden text-emerald-200/85">
               <AnimatePresence mode="popLayout">
                 <motion.span
                   key={heroIndex}
@@ -549,7 +549,7 @@ export default function Home() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.12, ease: [0.16, 1, 0.3, 1] }}
-            className="max-w-xl text-lg md:text-xl text-white/75 leading-relaxed"
+            className="max-w-xl text-lg md:text-xl text-white/70 leading-relaxed"
           >
             Lodges, camps and guesthouses run by the families who own them. Ask the host
             anything, agree the details between you, and pay when you arrive.
@@ -793,8 +793,8 @@ export default function Home() {
                     proximity: searchProximity,
                   });
                 }}
-                className="rounded-full border border-white/25 bg-white/10 px-4 py-2 text-sm font-medium text-white/90
-                           backdrop-blur-sm transition hover:border-white/60 hover:bg-white/20"
+                className="rounded-full border border-white/20 bg-white/[0.07] px-4 py-2 text-sm font-medium text-white/80
+                           backdrop-blur-sm transition hover:border-white/40 hover:bg-white/15 hover:text-white"
               >
                 {destination}
               </button>
@@ -802,8 +802,8 @@ export default function Home() {
             <button
               type="button"
               onClick={handleNearMe}
-              className="flex items-center gap-2 rounded-full border border-emerald-400/40 bg-emerald-400/10 px-4 py-2
-                         text-sm font-semibold text-emerald-200 backdrop-blur-sm transition hover:bg-emerald-400/20"
+              className="flex items-center gap-2 rounded-full border border-emerald-300/25 bg-emerald-300/[0.07] px-4 py-2
+                         text-sm font-semibold text-emerald-100/80 backdrop-blur-sm transition hover:bg-emerald-300/15"
             >
               <LocateFixed className="h-3.5 w-3.5" /> Near me
             </button>
@@ -813,11 +813,11 @@ export default function Home() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.8, delay: 0.4 }}
-            className="mt-10 flex flex-wrap items-center gap-x-8 gap-y-3 text-sm text-white/60"
+            className="mt-10 flex flex-wrap items-center gap-x-8 gap-y-3 text-sm text-white/55"
           >
-            <li className="flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-emerald-400" /> No booking fee, ever</li>
-            <li className="flex items-center gap-2"><MessageCircle className="h-4 w-4 text-emerald-400" /> You hear from the host, not a call centre</li>
-            <li className="flex items-center gap-2"><Smartphone className="h-4 w-4 text-emerald-400" /> Settle up at the property</li>
+            <li className="flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-emerald-300/60" /> No booking fee, ever</li>
+            <li className="flex items-center gap-2"><MessageCircle className="h-4 w-4 text-emerald-300/60" /> You hear from the host, not a call centre</li>
+            <li className="flex items-center gap-2"><Smartphone className="h-4 w-4 text-emerald-300/60" /> Settle up at the property</li>
           </motion.ul>
         </div>
 

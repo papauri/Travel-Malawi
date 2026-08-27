@@ -9,7 +9,7 @@
 
 import { RoomType } from '../types';
 import { DateStr, daysUntil, isValidDateStr, nightsBetween, todayStr } from './dates';
-import { normalisePhone } from './spam';
+import { EMAIL_PATTERN, phoneProblem } from './contact';
 
 export type BookingField =
   | 'guestName' | 'guestEmail' | 'guestPhone' | 'guestWhatsapp'
@@ -40,19 +40,8 @@ export const MAX_DAYS_AHEAD = 730;
 export const MAX_SPECIAL_REQUESTS = 1000;
 export const MAX_NAME_LENGTH = 100;
 
-// Deliberately permissive: the aim is to catch a typo, not to adjudicate the
-// RFC. Anything stricter starts rejecting real addresses.
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i;
-
-function phoneError(value: string, label: string, required: boolean): string | null {
-  const trimmed = (value ?? '').trim();
-  if (!trimmed) return required ? `${label} is required.` : null;
-  const digits = normalisePhone(trimmed);
-  if (digits.length < 7) return `${label} is too short to be a real number.`;
-  if (digits.length > 15) return `${label} is too long — check for extra digits.`;
-  if (/[^\d\s+()\-.]/.test(trimmed)) return `${label} contains characters that are not part of a phone number.`;
-  return null;
-}
+/** Kept as a local alias so the call sites below read unchanged. */
+const phoneError = phoneProblem;
 
 /**
  * Every problem with a submission, in the order the fields appear. An empty
