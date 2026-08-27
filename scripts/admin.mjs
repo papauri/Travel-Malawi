@@ -15,11 +15,17 @@
 import { initializeApp, cert, applicationDefault } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
+import dotenv from 'dotenv';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const repoRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+
+// Test-account passwords live in .env, which is gitignored. Without this the
+// seed script generates a fresh password on every run, so the accounts would
+// change credentials each time they were re-seeded.
+dotenv.config({ path: path.join(repoRoot, '.env'), quiet: true });
 
 const appletConfig = JSON.parse(
   fs.readFileSync(path.join(repoRoot, 'firebase-applet-config.json'), 'utf-8')
