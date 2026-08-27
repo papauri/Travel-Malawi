@@ -16,6 +16,7 @@ import Modal, { fieldClass, labelClass } from '../components/Modal';
 import { getHotelImage } from '../lib/images';
 import { formatDateStr, daysUntil, nightsBetween } from '../lib/dates';
 import { cancellationTerms, formatMoney, isStayComplete, FREE_CANCELLATION_DAYS } from '../lib/booking';
+import { isTraveller } from '../lib/roles';
 
 type EnrichedBooking = Booking & { hotel?: Hotel; room?: RoomType };
 type Filter = 'upcoming' | 'past' | 'cancelled';
@@ -33,7 +34,7 @@ export default function MyBookings() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user || user.role !== 'traveller') {
+    if (!user || !isTraveller(user)) {
       navigate('/');
       return;
     }

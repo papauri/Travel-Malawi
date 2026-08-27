@@ -15,6 +15,7 @@ import toast from 'react-hot-toast';
 import { addDays, formatDateStr, isValidDateStr, nightsBetween, nightsInRange, todayStr } from '../lib/dates';
 import { isRoomAvailable } from '../lib/availability';
 import { formatMoney } from '../lib/booking';
+import { isHotelManager } from '../lib/roles';
 
 type Tab = 'details' | 'rooms' | 'bookings';
 
@@ -47,7 +48,7 @@ export default function ManageHotel() {
   useEffect(() => {
     if (authLoading) return;
 
-    if (!user || user.role !== 'hotel_manager') {
+    if (!user || !isHotelManager(user)) {
       navigate('/');
       return;
     }

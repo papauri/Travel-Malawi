@@ -6,6 +6,7 @@
  *  1. Five of the six listings are owned by `demo_manager_123`, which is not a
  *     real Auth uid. Nobody can sign in as that owner, so those listings cannot
  *     be edited and their booking requests can never be confirmed or declined.
+ *     They are handed to real accounts per OWNERSHIP below.
  *
  *  2. Two legacy bookings have `managerId: undefined`. The navbar's pending
  *     badge queries `where('managerId','==',uid)`, so a property owner is never
@@ -28,22 +29,51 @@
 import { db, auth, APPLY, heading, plan, summarise } from './admin.mjs';
 
 const PLACEHOLDER_MANAGER = 'demo_manager_123';
-/** The account the orphaned listings are handed to. */
-const REAL_MANAGER_EMAIL = 'manager@malawiscapes.com';
 const DELETE_UNDATEABLE = process.argv.includes('--delete-undateable');
+
+/**
+ * Who ends up owning which listing, matched on the listing name.
+ *
+ * The project owner takes the three properties with the strongest photography,
+ * including Blue Zebra, which carries the end-to-end test booking — so the
+ * confirm and decline flow can be exercised from a real dashboard. The rest go
+ * to a second manager, so the platform has more than one owner to test with.
+ */
+const OWNERSHIP = [
+  {
+    email: 'johnpaulchirwa@gmail.com',
+    listings: ['Blue Zebra Island Lodge', 'Kaya Mawa', 'Pumulani Lodge'],
+  },
+  {
+    email: 'manager@malawiscapes.com',
+    listings: ['Sunbird Ku Chawe', 'Mvuu Camp & Lodge'],
+  },
+];
+
+/** Anything still orphaned after the map above goes here. */
+const FALLBACK_OWNER_EMAIL = 'manager@malawiscapes.com';
 
 let changes = 0;
 
-const manager = await auth.getUserByEmail(REAL_MANAGER_EMAIL).catch(() => null);
-if (!manager) {
+async function requireAccount(email) {
+  const account = await auth.getUserByEmail(email).catch(() => null);
+  if (account) return account;
   console.error(
-    `\nNo Auth account for ${REAL_MANAGER_EMAIL}.\n` +
+    `\nNo Auth account for ${email}.\n` +
     'Run `node scripts/seed-accounts.mjs --apply` first — it creates the test\n' +
     'accounts and their profile documents.\n'
   );
   process.exit(1);
 }
-console.log(`Reassigning orphaned listings to ${REAL_MANAGER_EMAIL} (${manager.uid})`);
+
+// Every email is resolved up front, so a typo fails before anything is written.
+const ownerByListing = new Map();
+for (const { email, listings } of OWNERSHIP) {
+  const account = await requireAccount(email);
+  console.log(`${email} -> ${account.uid}  (${listings.length} listing(s))`);
+  for (const name of listings) ownerByListing.set(name, { uid: account.uid, email });
+}
+const fallbackOwner = await requireAccount(FALLBACK_OWNER_EMAIL);
 
 // --- 1. Listings owned by a uid that does not exist -------------------------
 heading('Listings with an unreachable owner');
@@ -53,10 +83,13 @@ const hotelsById = new Map(hotels.docs.map(d => [d.id, d.data()]));
 for (const doc of hotels.docs) {
   const hotel = doc.data();
   if (hotel.managerId !== PLACEHOLDER_MANAGER) continue;
-  plan(`reassign ${doc.id} "${hotel.name}" -> ${manager.uid}`);
+
+  const owner = ownerByListing.get(hotel.name)
+    ?? { uid: fallbackOwner.uid, email: FALLBACK_OWNER_EMAIL };
+  plan(`reassign "${hotel.name}" (${doc.id}) -> ${owner.email}`);
   changes++;
-  if (APPLY) await doc.ref.update({ managerId: manager.uid });
-  hotelsById.set(doc.id, { ...hotel, managerId: manager.uid });
+  if (APPLY) await doc.ref.update({ managerId: owner.uid });
+  hotelsById.set(doc.id, { ...hotel, managerId: owner.uid });
 }
 
 // --- 2. Listings with no moderation status ----------------------------------

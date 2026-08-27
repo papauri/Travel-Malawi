@@ -7,10 +7,20 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isAdmin() {
+    function profile(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data;
+    }
+
+    // An account can hold several roles at once. `roles` is the list; `role`
+    // is the first entry, kept for documents written before multi-role support.
+    function hasRole(uid, role) {
       return isAuthenticated() &&
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+        exists(/databases/$(database)/documents/users/$(uid)) &&
+        (profile(uid).get('role', '') == role || role in profile(uid).get('roles', []));
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && hasRole(request.auth.uid, 'admin');
     }
 
     function hotelManagerId(hotelId) {
@@ -31,13 +41,20 @@ service cloud.firestore {
       // Profiles carry email addresses, so they are no longer world-readable.
       // The admin dashboard lists managers, so admins keep collection access.
       allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      // A user must not be able to make themselves an admin, through either
+      // the legacy `role` field or the `roles` list.
       allow create: if isAuthenticated() && request.auth.uid == userId
                     && request.resource.data.uid == userId
-                    // A user must not be able to make themselves an admin.
-                    && request.resource.data.role in ['traveller', 'hotel_manager'];
-      allow update: if isAuthenticated() && request.auth.uid == userId
-                    // Role changes are an admin-only operation.
-                    && request.resource.data.role == resource.data.role;
+                    && request.resource.data.role in ['traveller', 'hotel_manager']
+                    && request.resource.data.get('roles', ['traveller'])
+                         .hasOnly(['traveller', 'hotel_manager']);
+      // Granting a role is an admin-only operation; a user may edit everything
+      // else about their own profile.
+      allow update: if isAdmin() || (
+                      isAuthenticated() && request.auth.uid == userId
+                      && request.resource.data.role == resource.data.role
+                      && request.resource.data.get('roles', []) == resource.data.get('roles', [])
+                    );
       allow delete: if isAdmin();
     }
 

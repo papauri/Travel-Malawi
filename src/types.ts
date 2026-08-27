@@ -4,7 +4,18 @@ export interface User {
   uid: string;
   email: string | null;
   displayName: string | null;
+  /**
+   * Primary role. Retained as the first entry of `roles` so documents written
+   * before multi-role support are still readable, and so anything reading only
+   * this field keeps working.
+   */
   role: Role;
+  /**
+   * Every role the account holds. An account is commonly both a traveller and
+   * a hotel manager. Read it through `userRoles()` in lib/roles, which falls
+   * back to `role` for older records.
+   */
+  roles?: Role[];
   createdAt: number;
 }
 

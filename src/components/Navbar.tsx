@@ -6,19 +6,21 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogOut, User as UserIcon, Palmtree, Mail, Lock, ChevronDown } from 'lucide-react';
+import { LogOut, User as UserIcon, Palmtree, Mail, Lock, ChevronDown, Check } from 'lucide-react';
 import Modal, { fieldClass, labelClass } from './Modal';
+import { Role } from '../types';
+import { SELF_ASSIGNABLE_ROLES, ROLE_LABELS, describeRoles, isAdmin, isHotelManager, isTraveller } from '../lib/roles';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
 type AuthMode = 'signin' | 'signup' | 'reset';
-type RoleChoice = 'traveller' | 'hotel_manager';
+
 
 export default function Navbar() {
   const { user, signIn, signUp, signInWithGoogle, resetPassword, logOut } = useAuth();
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [mode, setMode] = useState<AuthMode>('signin');
-  const [role, setRole] = useState<RoleChoice>('traveller');
+  const [roles, setRoles] = useState<Role[]>(['traveller']);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
@@ -29,7 +31,7 @@ export default function Navbar() {
   const [notice, setNotice] = useState('');
 
   useEffect(() => {
-    if (user?.role === 'hotel_manager') {
+    if (isHotelManager(user)) {
       const q = query(
         collection(db, 'bookings'),
         where('managerId', '==', user.uid),
@@ -51,7 +53,7 @@ export default function Navbar() {
     setError('');
     setNotice('');
     setMode('signin');
-    setRole('traveller');
+    setRoles(['traveller']);
   };
 
   /**
@@ -63,7 +65,8 @@ export default function Navbar() {
     resetForm();
     if (intent === 'host') {
       setMode('signup');
-      setRole('hotel_manager');
+      // Hosts travel too, so the traveller role stays selected alongside.
+      setRoles(['traveller', 'hotel_manager']);
     }
     setShowLoginModal(true);
   };
@@ -89,7 +92,7 @@ export default function Navbar() {
       if (mode === 'signin') {
         await signIn(email, password);
       } else {
-        await signUp(email, password, displayName, role);
+        await signUp(email, password, displayName, roles);
       }
       closeModal();
     } catch (err: any) {
@@ -118,7 +121,7 @@ export default function Navbar() {
     setIsSubmitting(true);
     setError('');
     try {
-      await signInWithGoogle(role);
+      await signInWithGoogle(roles);
       closeModal();
     } catch (err: any) {
       setError(err?.message ?? 'Google sign-in failed. Please try again.');
@@ -152,7 +155,7 @@ export default function Navbar() {
             <div className="flex items-center space-x-4">
               {user ? (
                 <div className="flex items-center space-x-5">
-                  {user.role === 'hotel_manager' && (
+                  {isHotelManager(user) && (
                     <Link
                       to="/dashboard"
                       className="text-sm font-medium text-stone-600 hover:text-stone-900 transition flex items-center gap-1"
@@ -165,7 +168,7 @@ export default function Navbar() {
                       )}
                     </Link>
                   )}
-                  {user.role === 'admin' && (
+                  {isAdmin(user) && (
                     <Link
                       to="/admin"
                       className="text-sm font-medium text-stone-600 hover:text-stone-900 transition relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-stone-900 after:transition-all hover:after:w-full"
@@ -173,7 +176,7 @@ export default function Navbar() {
                       Admin
                     </Link>
                   )}
-                  {user.role === 'traveller' && (
+                  {isTraveller(user) && (
                     <Link
                       to="/my-bookings"
                       className="text-sm font-medium text-stone-600 hover:text-stone-900 transition relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-stone-900 after:transition-all hover:after:w-full"
@@ -205,7 +208,7 @@ export default function Navbar() {
                         <div className="px-4 py-3 border-b border-stone-100">
                           <p className="text-xs text-stone-400 uppercase tracking-wider font-semibold mb-0.5">Signed in as</p>
                           <p className="text-sm font-medium text-stone-900 truncate">{user.email}</p>
-                          <p className="text-xs text-stone-500 capitalize mt-0.5">{user.role === 'hotel_manager' ? 'Hotel Manager' : user.role === 'admin' ? 'Administrator' : 'Traveller'}</p>
+                          <p className="text-xs text-stone-500 mt-0.5">{describeRoles(user)}</p>
                         </div>
                         <button
                           onClick={() => { logOut(); setShowUserMenu(false); }}
@@ -248,14 +251,14 @@ export default function Navbar() {
           mode === 'reset'
             ? 'Reset your password'
             : mode === 'signup'
-              ? role === 'hotel_manager' ? 'List your property' : 'Create your account'
+              ? roles.includes('hotel_manager') ? 'List your property' : 'Create your account'
               : 'Welcome back'
         }
         description={
           mode === 'reset'
             ? "We'll email you a link to choose a new one."
             : mode === 'signup'
-              ? role === 'hotel_manager'
+              ? roles.includes('hotel_manager')
                 ? 'Set up a host account to publish rooms and take bookings.'
                 : 'Save your trips and manage bookings in one place.'
               : 'Sign in to pick up where you left off.'
@@ -377,24 +380,44 @@ export default function Navbar() {
 
           {mode === 'signup' && (
             <div>
-              <label className={labelClass}>I am a…</label>
+              <label className={labelClass}>I want to…</label>
+              {/* Both can be selected: running a lodge and booking stays are
+                  not mutually exclusive, and picking one used to give up the
+                  other for good. */}
               <div className="grid grid-cols-2 gap-3">
-                {(['traveller', 'hotel_manager'] as RoleChoice[]).map(r => (
-                  <button
-                    key={r}
-                    type="button"
-                    onClick={() => setRole(r)}
-                    className={`py-3 px-4 rounded-xl border text-sm font-semibold transition text-left ${
-                      role === r
-                        ? 'border-stone-900 bg-stone-900 text-white'
-                        : 'border-stone-200 bg-stone-50 text-stone-600 hover:border-stone-400'
-                    }`}
-                  >
-                    <span className="block text-base leading-none mb-1.5">{r === 'traveller' ? '✈️' : '🏨'}</span>
-                    {r === 'traveller' ? 'Traveller' : 'Hotel manager'}
-                  </button>
-                ))}
+                {SELF_ASSIGNABLE_ROLES.map(r => {
+                  const selected = roles.includes(r);
+                  return (
+                    <button
+                      key={r}
+                      type="button"
+                      aria-pressed={selected}
+                      onClick={() =>
+                        setRoles(current =>
+                          current.includes(r)
+                            // At least one role has to remain selected.
+                            ? (current.length > 1 ? current.filter(x => x !== r) : current)
+                            : [...current, r]
+                        )
+                      }
+                      className={`py-3 px-4 rounded-xl border text-sm font-semibold transition text-left relative ${
+                        selected
+                          ? 'border-stone-900 bg-stone-900 text-white'
+                          : 'border-stone-200 bg-stone-50 text-stone-600 hover:border-stone-400'
+                      }`}
+                    >
+                      <span className="block text-base leading-none mb-1.5">{r === 'traveller' ? '✈️' : '🏨'}</span>
+                      {r === 'traveller' ? 'Book stays' : 'List a property'}
+                      {selected && <Check className="absolute top-3 right-3 h-4 w-4" />}
+                    </button>
+                  );
+                })}
               </div>
+              <p className="text-xs text-stone-400 mt-2">
+                {roles.length > 1
+                  ? `You'll join as ${ROLE_LABELS.traveller.toLowerCase()} and ${ROLE_LABELS.hotel_manager.toLowerCase()}. Pick both or just one — you can hold both.`
+                  : 'Select both if you want to do both.'}
+              </p>
             </div>
           )}
         </form>

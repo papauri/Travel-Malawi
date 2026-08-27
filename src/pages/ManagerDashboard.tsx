@@ -10,6 +10,7 @@ import toast from 'react-hot-toast';
 import ImageUpload from '../components/ImageUpload';
 import SmartImage from '../components/SmartImage';
 import { getHotelImage } from '../lib/images';
+import { isHotelManager } from '../lib/roles';
 
 export default function ManagerDashboard() {
   const { user, loading: authLoading } = useAuth();
@@ -50,7 +51,7 @@ export default function ManagerDashboard() {
 
   useEffect(() => {
     if (!authLoading) {
-      if (!user || user.role !== 'hotel_manager') {
+      if (!user || !isHotelManager(user)) {
         navigate('/');
         return;
       }

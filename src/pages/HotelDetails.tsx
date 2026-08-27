@@ -13,6 +13,7 @@ import { getHotelImages, getRoomImage } from '../lib/images';
 import { formatDateStr, nightsBetween, todayStr } from '../lib/dates';
 import { BookingLike, isRoomAvailable, unitsRemaining } from '../lib/availability';
 import { computeBookingPricing, formatMoney, makeBookingReference } from '../lib/booking';
+import { isTraveller } from '../lib/roles';
 import Modal, { fieldClass, labelClass } from '../components/Modal';
 
 export default function HotelDetails() {
@@ -180,8 +181,10 @@ export default function HotelDetails() {
   }
 
   const initiateBooking = (room: RoomType) => {
-    if (user && user.role !== 'traveller') {
-      toast.error("Only guests and travellers can book rooms.");
+    // Signed-out visitors book as guests; a signed-in account needs the
+    // traveller role, which a hotel manager can hold at the same time.
+    if (user && !isTraveller(user)) {
+      toast.error("This account cannot book rooms. Add a traveller role to book.");
       return;
     }
     if (!isBookable) {

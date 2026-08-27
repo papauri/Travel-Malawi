@@ -17,13 +17,14 @@ import {
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db, googleProvider } from '../lib/firebase';
 import { User, Role } from '../types';
+import { toRoleFields } from '../lib/roles';
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, displayName: string, role: Role) => Promise<void>;
-  signInWithGoogle: (role?: Role) => Promise<void>;
+  signUp: (email: string, password: string, displayName: string, roles: Role[]) => Promise<void>;
+  signInWithGoogle: (roles?: Role[]) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   logOut: () => Promise<void>;
 }
@@ -40,7 +41,10 @@ const AuthContext = createContext<AuthContextType>({
 
 export const useAuth = () => useContext(AuthContext);
 
-async function loadOrCreateUser(firebaseUser: FirebaseUser, defaultRole: Role = 'traveller'): Promise<User> {
+async function loadOrCreateUser(
+  firebaseUser: FirebaseUser,
+  defaultRoles: Role[] = ['traveller']
+): Promise<User> {
   const userDocRef = doc(db, 'users', firebaseUser.uid);
   const userDoc = await getDoc(userDocRef);
   if (userDoc.exists()) {
@@ -50,7 +54,7 @@ async function loadOrCreateUser(firebaseUser: FirebaseUser, defaultRole: Role = 
     uid: firebaseUser.uid,
     email: firebaseUser.email,
     displayName: firebaseUser.displayName,
-    role: defaultRole,
+    ...toRoleFields(defaultRoles),
     createdAt: Date.now(),
   };
   await setDoc(userDocRef, newUser);
@@ -80,23 +84,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(appUser);
   };
 
-  const signUp = async (email: string, password: string, displayName: string, role: Role) => {
+  const signUp = async (email: string, password: string, displayName: string, roles: Role[]) => {
     const result = await createUserWithEmailAndPassword(auth, email, password);
     await updateProfile(result.user, { displayName });
     const newUser: User = {
       uid: result.user.uid,
       email: result.user.email,
       displayName,
-      role,
+      ...toRoleFields(roles),
       createdAt: Date.now(),
     };
     await setDoc(doc(db, 'users', result.user.uid), newUser);
     setUser(newUser);
   };
 
-  const signInWithGoogle = async (role: Role = 'traveller') => {
+  const signInWithGoogle = async (roles: Role[] = ['traveller']) => {
     const result = await signInWithPopup(auth, googleProvider);
-    const appUser = await loadOrCreateUser(result.user, role);
+    const appUser = await loadOrCreateUser(result.user, roles);
     setUser(appUser);
   };
 

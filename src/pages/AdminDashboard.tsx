@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import SmartImage from '../components/SmartImage';
 import { getHotelImage } from '../lib/images';
+import { isAdmin, isHotelManager, describeRoles } from '../lib/roles';
 
 export default function AdminDashboard() {
   const { user, loading: authLoading } = useAuth();
@@ -34,7 +35,7 @@ export default function AdminDashboard() {
         ...doc.data()
       })) as User[];
       
-      const pendingManagers = usersData.filter(u => u.role === 'hotel_manager');
+      const pendingManagers = usersData.filter(isHotelManager);
       setManagers(pendingManagers);
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -46,7 +47,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (!authLoading) {
-      if (!user || user.role !== 'admin') {
+      if (!user || !isAdmin(user)) {
         navigate('/');
         return;
       }
@@ -204,7 +205,7 @@ export default function AdminDashboard() {
                       Joined: {new Date(manager.createdAt).toLocaleDateString()}
                     </span>
                     <span className="bg-stone-100 text-stone-600 px-2 py-1 rounded text-xs font-medium">
-                      Manager
+                      {describeRoles(manager)}
                     </span>
                   </div>
                 </div>

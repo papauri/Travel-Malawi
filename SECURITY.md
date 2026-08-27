@@ -80,6 +80,20 @@ dates, and that a guest booking submits.
 - **Managers cannot approve their own listing.** The `hotels` update rule now
   pins `status` and `managerId` for non-admins.
 
+## Roles are a set, not a single value
+
+An account holds a list of roles in `roles`, with `role` retained as the first
+entry so documents written before this still work. Read through `userRoles()` in
+`src/lib/roles.ts` rather than either field directly.
+
+Rules enforce two things:
+
+- A user may not grant themselves a role. `create` restricts the self-assignable
+  set to `traveller` and `hotel_manager`; `update` requires `role` and `roles`
+  to be unchanged unless the caller is an admin.
+- `admin` can only be written out of band — from `scripts/seed-accounts.mjs`,
+  which uses the Admin SDK and bypasses rules, or by hand in the console.
+
 ## Fixed in the current rules
 
 - `hotels` and `room_types` allowed `create: if true`, so anyone could create

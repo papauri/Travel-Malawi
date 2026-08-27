@@ -30,12 +30,27 @@ import { db, auth, APPLY, heading, plan, summarise } from './admin.mjs';
  * the admin dashboard is unreachable.
  */
 const ROSTER = [
-  { email: 'manager@malawiscapes.com', displayName: 'Demo Manager', role: 'hotel_manager', passwordEnv: 'MANAGER_PASSWORD' },
-  { email: 'traveller@malawiscapes.com', displayName: 'Demo Traveller', role: 'traveller', passwordEnv: 'TRAVELLER_PASSWORD' },
-  { email: 'manager@example.com', displayName: 'Example Manager', role: 'hotel_manager' },
-  { email: 'traveller@example.com', displayName: 'Example Traveller', role: 'traveller' },
-  { email: 'johnpaulchirwa@gmail.com', displayName: 'John Paul Chirwa', role: 'admin' },
+  { email: 'manager@malawiscapes.com', displayName: 'Demo Manager', roles: ['hotel_manager'], passwordEnv: 'MANAGER_PASSWORD' },
+  { email: 'traveller@malawiscapes.com', displayName: 'Demo Traveller', roles: ['traveller'], passwordEnv: 'TRAVELLER_PASSWORD' },
+  { email: 'manager@example.com', displayName: 'Example Manager', roles: ['hotel_manager'] },
+  { email: 'traveller@example.com', displayName: 'Example Traveller', roles: ['traveller'] },
+  // The project owner runs the platform and books on it, so they hold both.
+  // Add 'admin' here (or pass --grant-admin) to reach the admin dashboard.
+  { email: 'johnpaulchirwa@gmail.com', displayName: 'John Paul Chirwa', roles: ['traveller', 'hotel_manager'] },
 ];
+
+const GRANT_ADMIN = process.argv.includes('--grant-admin');
+
+/** Ordered, de-duplicated, never empty — matches toRoleFields in src/lib/roles. */
+const ROLE_ORDER = ['traveller', 'hotel_manager', 'admin'];
+function normaliseRoles(roles) {
+  const ordered = ROLE_ORDER.filter(r => roles.includes(r));
+  return ordered.length ? ordered : ['traveller'];
+}
+
+function sameRoles(a = [], b = []) {
+  return a.length === b.length && a.every((r, i) => r === b[i]);
+}
 
 /** Long, random, and shown once — never written to a file in the repo. */
 function generatePassword() {
@@ -45,14 +60,22 @@ function generatePassword() {
 let changes = 0;
 const generated = [];
 
-for (const entry of ROSTER) {
-  heading(entry.email);
+for (const rosterEntry of ROSTER) {
+  const entry = {
+    ...rosterEntry,
+    roles: normaliseRoles(
+      GRANT_ADMIN && rosterEntry.email === 'johnpaulchirwa@gmail.com'
+        ? [...rosterEntry.roles, 'admin']
+        : rosterEntry.roles
+    ),
+  };
+  heading(`${entry.email}  [${entry.roles.join(', ')}]`);
 
   let user = await auth.getUserByEmail(entry.email).catch(() => null);
 
   if (!user) {
     const password = (entry.passwordEnv && process.env[entry.passwordEnv]) || generatePassword();
-    plan(`create Auth account (${entry.role})`);
+    plan(`create Auth account (${entry.roles.join(', ')})`);
     changes++;
     if (APPLY) {
       user = await auth.createUser({
@@ -78,24 +101,29 @@ for (const entry of ROSTER) {
   const snap = await ref.get();
   const existing = snap.exists ? snap.data() : null;
 
+  // `role` is written alongside `roles` as the first entry, so anything still
+  // reading the old single field keeps working.
+  const roleFields = { role: entry.roles[0], roles: entry.roles };
+
   if (!existing) {
-    plan(`create users/${user.uid} with role="${entry.role}"`);
+    plan(`create users/${user.uid} with roles=[${entry.roles.join(', ')}]`);
     changes++;
     if (APPLY) {
       await ref.set({
         uid: user.uid,
         email: entry.email,
         displayName: entry.displayName,
-        role: entry.role,
+        ...roleFields,
         createdAt: Date.now(),
       });
     }
-  } else if (existing.role !== entry.role) {
-    plan(`change role "${existing.role}" -> "${entry.role}" on users/${user.uid}`);
+  } else if (!sameRoles(normaliseRoles(existing.roles ?? [existing.role]), entry.roles)) {
+    const before = existing.roles?.join(', ') ?? existing.role;
+    plan(`change roles [${before}] -> [${entry.roles.join(', ')}] on users/${user.uid}`);
     changes++;
-    if (APPLY) await ref.update({ role: entry.role, uid: user.uid, email: entry.email });
+    if (APPLY) await ref.update({ ...roleFields, uid: user.uid, email: entry.email });
   } else {
-    console.log(`  profile ok (role=${existing.role})`);
+    console.log(`  profile ok (roles=${entry.roles.join(', ')})`);
   }
 }
 
