@@ -765,7 +765,7 @@ export default function Home() {
   return (
     <div className="flex flex-col min-h-screen">
       {/* Hero */}
-      <section className="relative min-h-[100svh] md:min-h-[100svh] w-full flex flex-col justify-center overflow-hidden bg-stone-950">
+      <section className="relative min-h-[100svh] md:min-h-[100svh] w-full flex flex-col justify-end pb-32 md:pb-40 pt-32 overflow-hidden bg-stone-950">
         <motion.div
           initial={{ opacity: 0, scale: 1.08, filter: 'blur(10px)' }}
           animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
@@ -793,7 +793,7 @@ export default function Home() {
         <div className="absolute inset-0 z-10 bg-gradient-to-r from-stone-950/80 via-stone-950/40 to-transparent" />
         <div className="absolute inset-0 z-10 bg-gradient-to-t from-stone-950/70 via-stone-950/30 to-transparent" />
 
-        <div className="relative z-20 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-20 md:pt-32 md:pb-28">
+        <div className="relative z-20 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-auto">
           <motion.div
             initial={{ opacity: 0, y: 40, filter: "blur(8px)" }}
             animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
@@ -817,22 +817,22 @@ export default function Home() {
             transition={{ duration: 1.2, delay: 0.6, ease: [0.16, 1, 0.3, 1] }}
             className={`relative mt-8 mx-auto bg-white rounded-2xl lg:rounded-full p-1.5
                        shadow-2xl shadow-black/20 ring-1 ring-stone-900/5
-                       flex flex-col lg:flex-row lg:items-center gap-1 w-full max-w-3xl text-left transition-all ${
+                       flex flex-col lg:flex-row lg:items-center gap-1 w-full max-w-2xl text-left transition-all ${
                          showRecentSearches || showGuestDropdown ? 'z-40' : 'z-20'
                        }`}
           >
             {/* Where */}
             <div
               ref={locationSearchRef}
-              className={`relative flex-[1.5] min-w-0 rounded-2xl px-3 lg:px-5 py-2.5 lg:py-2 hover:bg-stone-50 transition group bg-white lg:bg-transparent shadow-sm lg:shadow-none ring-1 ring-stone-100 lg:ring-0 ${
+              className={`relative flex-[1.5] min-w-0 rounded-2xl px-3 lg:px-4 py-2 lg:py-1.5 hover:bg-stone-50 transition group bg-white lg:bg-transparent shadow-sm lg:shadow-none ring-1 ring-stone-100 lg:ring-0 ${
                 showRecentSearches ? 'z-50' : 'z-20'
               }`}
             >
-              <label htmlFor="search-where" className="block text-[0.65rem] font-bold text-stone-900 uppercase tracking-[0.1em] mb-0.5">
+              <label htmlFor="search-where" className="block text-[0.55rem] font-bold text-stone-900 uppercase tracking-[0.1em] mb-0.5">
                 Where to
               </label>
               <div className="flex items-center gap-2">
-                <MapPin className="h-4 w-4 text-stone-400 shrink-0" />
+                <MapPin className="h-3.5 w-3.5 text-stone-400 shrink-0" />
                 <input
                   id="search-where"
                   type="text"
@@ -842,7 +842,7 @@ export default function Home() {
                   onKeyDown={e => { if (e.key === 'Enter') handleSearch(); }}
                   placeholder="Lake, park, town or lodge"
                   autoComplete="off"
-                  className="bg-transparent border-none p-0 text-stone-900 text-sm w-full outline-none placeholder:text-stone-400"
+                  className="bg-transparent border-none p-0 text-stone-900 text-xs w-full outline-none placeholder:text-stone-400"
                 />
               </div>
 
@@ -997,19 +997,19 @@ export default function Home() {
             <div className="hidden lg:block w-px self-center h-10 bg-stone-200" />
 
             {/* When */}
-            <div className="flex-[1.25] min-w-0 rounded-2xl px-3 lg:px-5 py-2.5 lg:py-2 hover:bg-stone-50 transition">
-              <span className="block text-[0.65rem] font-bold text-stone-900 uppercase tracking-[0.1em] mb-0.5">
+            <div className="flex-[1.25] min-w-0 rounded-2xl px-3 lg:px-4 py-2 lg:py-1.5 hover:bg-stone-50 transition">
+              <span className="block text-[0.55rem] font-bold text-stone-900 uppercase tracking-[0.1em] mb-0.5">
                 Nights
               </span>
               <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-stone-400 shrink-0" />
+                <Calendar className="h-3.5 w-3.5 text-stone-400 shrink-0" />
                 <input
                   type="date"
                   aria-label="Check in"
                   min={today}
                   value={searchCheckIn}
                   onChange={e => setSearchCheckIn(e.target.value)}
-                  className="bg-transparent border-none p-0 text-stone-900 text-sm w-full outline-none min-w-0"
+                  className="bg-transparent border-none p-0 text-stone-900 text-xs w-full outline-none min-w-0"
                 />
                 <span className="text-stone-300 shrink-0">&ndash;</span>
                 <input
@@ -1018,7 +1018,7 @@ export default function Home() {
                   min={searchCheckIn || today}
                   value={searchCheckOut}
                   onChange={e => setSearchCheckOut(e.target.value)}
-                  className="bg-transparent border-none p-0 text-stone-900 text-sm w-full outline-none min-w-0"
+                  className="bg-transparent border-none p-0 text-stone-900 text-xs w-full outline-none min-w-0"
                 />
               </div>
             </div>
@@ -1028,7 +1028,7 @@ export default function Home() {
             {/* Who */}
             <div
               ref={guestSelectorRef}
-              className={`relative flex-[1.05] rounded-2xl px-3 lg:px-5 py-2.5 lg:py-2 hover:bg-stone-50 transition bg-white lg:bg-transparent shadow-sm lg:shadow-none ring-1 ring-stone-100 lg:ring-0 ${
+              className={`relative flex-[1.05] rounded-2xl px-3 lg:px-4 py-2 lg:py-1.5 hover:bg-stone-50 transition bg-white lg:bg-transparent shadow-sm lg:shadow-none ring-1 ring-stone-100 lg:ring-0 ${
                 showGuestDropdown ? 'z-50' : 'z-20'
               }`}
             >
@@ -1038,11 +1038,11 @@ export default function Home() {
                 aria-expanded={showGuestDropdown}
                 className="w-full text-left"
               >
-                <span className="block text-[0.65rem] font-bold text-stone-900 uppercase tracking-[0.1em] mb-0.5">
+                <span className="block text-[0.55rem] font-bold text-stone-900 uppercase tracking-[0.1em] mb-0.5">
                   Party
                 </span>
                 <span className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-stone-400 shrink-0" />
+                  <Users className="h-3.5 w-3.5 text-stone-400 shrink-0" />
                   <span className="text-sm text-stone-800 truncate">
                     {totalGuests === 0
                       ? 'Add guests'
@@ -1074,7 +1074,7 @@ export default function Home() {
                         >
                           <Minus className="w-3.5 h-3.5" />
                         </button>
-                        <span className="w-5 text-center text-sm font-semibold tabular-nums">{row.value}</span>
+                        <span className="w-5 text-center text-xs font-semibold tabular-nums">{row.value}</span>
                         <button
                           type="button"
                           aria-label={`More ${row.label.toLowerCase()}`}
@@ -1094,7 +1094,7 @@ export default function Home() {
             <button
               onClick={handleSearch}
               disabled={searching}
-              className="shrink-0 flex items-center justify-center gap-2 bg-emerald-600 text-white rounded-xl lg:rounded-full h-12 lg:h-12 lg:w-auto lg:my-0 lg:mr-0 lg:px-6 font-bold text-sm hover:bg-emerald-700 transition shadow-md disabled:opacity-60"
+              className="shrink-0 flex items-center justify-center gap-2 bg-emerald-600 text-white rounded-xl lg:rounded-full h-10 lg:h-9 lg:w-auto lg:my-0 lg:mr-0 lg:px-5 font-bold text-xs hover:bg-emerald-700 transition shadow-sm disabled:opacity-60"
             >
               {searching
                 ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
@@ -1105,7 +1105,27 @@ export default function Home() {
 
           {/* One-tap destinations */}
         </div>
-      </section>
+
+          <motion.ul
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.8, delay: 0.8 }}
+            className="absolute bottom-16 left-0 right-0 hidden md:flex items-center justify-center gap-10 text-[11px] text-white/55 z-20 pointer-events-none"
+          >
+            <li className="flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5 text-emerald-300/60" /> No booking fee, ever</li>
+            <li className="flex items-center gap-1.5"><MessageCircle className="h-3.5 w-3.5 text-emerald-300/60" /> You hear from the host, not a call centre</li>
+            <li className="flex items-center gap-1.5"><Smartphone className="h-3.5 w-3.5 text-emerald-300/60" /> Settle up at the property</li>
+          </motion.ul>
+
+          <a
+            href="#search-results"
+            className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 hidden md:flex flex-col items-center gap-1
+                       text-white/50 hover:text-white transition"
+          >
+            <span className="text-[10px] font-semibold uppercase tracking-[0.2em]">See where you could stay</span>
+            <ChevronDown className="h-3 w-3 animate-bounce" />
+          </a>
+        </section>
 
       {/* Popular Destinations */}
       <section className="bg-white py-6 md:py-8 border-b border-stone-200">
