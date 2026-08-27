@@ -787,52 +787,19 @@ export default function Home() {
         <div className="absolute inset-0 z-10 bg-gradient-to-r from-white/95 via-white/80 to-transparent" />
         <div className="absolute inset-0 z-10 bg-gradient-to-t from-white/90 via-white/40 to-transparent" />
 
-        <div className="relative z-20 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16 md:pt-24 md:pb-20">
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-            className="flex items-center gap-3 mb-5"
-          >
-            <span className="h-px w-8 bg-emerald-600/40" />
-            <span className="text-[0.65rem] md:text-[0.7rem] font-semibold tracking-[0.26em] text-emerald-700/90 uppercase">
-              Booked direct with Malawian hosts
-            </span>
-          </motion.div>
-
+        <div className="relative z-20 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16 md:pt-32 md:pb-24">
           <motion.h1
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.05, ease: [0.16, 1, 0.3, 1] }}
-            className="font-serif text-stone-900 max-w-4xl tracking-[-0.035em] leading-[1.02]
-                       text-[clamp(2.5rem,7vw,5.25rem)] mb-5"
+            className="font-sans text-stone-900 max-w-4xl tracking-tight leading-[1.05]
+                       text-[clamp(2.5rem,7vw,5rem)] mb-8"
           >
-            <span className="block">Wake up on</span>
-            <span className="relative block h-[1.12em] overflow-hidden text-emerald-600">
-              <AnimatePresence mode="popLayout">
-                <motion.span
-                  key={heroIndex}
-                  initial={{ opacity: 0, y: '100%' }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: '-100%' }}
-                  transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-                  className="absolute left-0 top-0 whitespace-nowrap"
-                >
-                  {HERO_PLACES[heroIndex]}
-                </motion.span>
-              </AnimatePresence>
+            <span className="block font-light text-stone-500">Welcome to Malawi.</span>
+            <span className="block font-semibold">
+              Find your perfect stay.
             </span>
           </motion.h1>
-
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.12, ease: [0.16, 1, 0.3, 1] }}
-            className="max-w-xl text-base md:text-lg text-stone-700 leading-relaxed mb-8"
-          >
-            Lodges, camps and guesthouses run by the families who own them. Ask the host
-            anything, agree the details between you, and pay when you arrive.
-          </motion.p>
 
           {/* Search */}
           <motion.div
