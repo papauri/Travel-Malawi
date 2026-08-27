@@ -80,6 +80,49 @@ dates, and that a guest booking submits.
 - **Managers cannot approve their own listing.** The `hotels` update rule now
   pins `status` and `managerId` for non-admins.
 
+## Firebase Storage is not enabled
+
+Verified on 2026-08-27: the project has **no storage buckets at all**. The app
+has always uploaded to `promanaged-it.firebasestorage.app`, so every photo
+upload — property images, galleries, room photos, menu logos — has failed since
+the feature was written.
+
+Enabling it is one click that needs an account with permission to turn on
+Google Cloud APIs (the Admin service account does not have it):
+
+1. Firebase Console -> Build -> Storage -> **Get started**, accepting the
+   default bucket name.
+2. Then, from this repo:
+
+```
+node scripts/provision-storage.mjs --apply   # no-op if the console did it
+npx firebase deploy --only storage           # publishes storage.rules
+```
+
+`storage.rules` allows public reads (every image is on a public listing) and
+restricts writes to signed-in users, image content types, files under 8 MB, and
+the five folders the app actually uses.
+
+Until Storage is enabled the upload UI now says so explicitly rather than
+reporting "Failed to upload image".
+
+## Spam and abuse on the booking form
+
+Guest checkout is open to anyone with the URL and writes straight to Firestore,
+so `src/lib/spam.ts` scores each submission. Signals a person cannot trip by
+accident — a filled honeypot, a web address in the guest name, injected markup
+— block the write. Softer signals — a submission completed in under three
+seconds, a throwaway email domain, marketing wording, a placeholder phone
+number, several bookings from one browser in ten minutes — let the booking
+through but set `flagged`, `flagReasons` and `flagScore` on it so the property
+sees why to look twice.
+
+Blocking is deliberately narrow: a false positive costs a real guest their
+booking, which is worse than a manager reading one junk request.
+
+The rules enforce the same bounds as `src/lib/validateBooking.ts`, since anyone
+can post to the collection directly without going through the form.
+
 ## Roles are a set, not a single value
 
 An account holds a list of roles in `roles`, with `role` retained as the first

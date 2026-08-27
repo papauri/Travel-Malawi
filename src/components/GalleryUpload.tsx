@@ -1,6 +1,6 @@
 import React, { useState, useRef } from "react";
 import { Upload, Link as LinkIcon, Image as ImageIcon, Loader2, X, GripVertical } from "lucide-react";
-import { uploadImage } from "../lib/uploadImage";
+import { uploadImage, uploadErrorMessage, validateImage, IMAGE_ACCEPT_ATTR } from "../lib/uploadImage";
 import toast from "react-hot-toast";
 import SmartImage from "./SmartImage";
 
@@ -15,6 +15,7 @@ export default function GalleryUpload({ value = [], onChange, label = "Gallery I
   const [mode, setMode] = useState<"url" | "upload">("url");
   const [urlInput, setUrlInput] = useState("");
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Drag and Drop state
@@ -37,43 +38,55 @@ export default function GalleryUpload({ value = [], onChange, label = "Gallery I
     const files = e.dataTransfer.files;
     if (!files || files.length === 0) return;
     
+    await uploadAll(files);
+  };
+
+  /**
+   * Uploads a batch, keeping whatever succeeded. A single bad file in a
+   * selection of ten used to abandon the other nine.
+   */
+  const uploadAll = async (files: FileList) => {
+    const chosen = Array.from(files);
+    const rejected: string[] = [];
+    const accepted = chosen.filter(file => {
+      const problem = validateImage(file);
+      if (problem) rejected.push(`${file.name}: ${problem}`);
+      return !problem;
+    });
+
+    for (const message of rejected.slice(0, 3)) toast.error(message, { duration: 6000 });
+    if (accepted.length === 0) return;
+
     setIsUploading(true);
-    try {
-      const newUrls = [...value];
-      for (let i = 0; i < files.length; i++) {
-        const url = await uploadImage(files[i], folder);
-        newUrls.push(url);
+    const uploaded: string[] = [];
+    let failed = 0;
+
+    for (const [index, file] of accepted.entries()) {
+      setUploadStatus(`Uploading ${index + 1} of ${accepted.length}…`);
+      try {
+        uploaded.push(await uploadImage(file, folder));
+      } catch (error) {
+        failed++;
+        console.error("Error uploading image:", error);
+        // Reported once rather than once per file in a failing batch.
+        if (failed === 1) toast.error(uploadErrorMessage(error), { duration: 7000 });
       }
-      onChange(newUrls);
-    } catch (error) {
-      console.error("Error uploading images:", error);
-      toast.error("Failed to upload image(s).");
-    } finally {
-      setIsUploading(false);
     }
+
+    if (uploaded.length > 0) {
+      onChange([...value, ...uploaded]);
+      toast.success(`Added ${uploaded.length} image${uploaded.length === 1 ? '' : 's'}.`);
+    }
+
+    setIsUploading(false);
+    setUploadStatus("");
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
-
-    setIsUploading(true);
-    try {
-      const newUrls = [...value];
-      for (let i = 0; i < files.length; i++) {
-        const url = await uploadImage(files[i], folder);
-        newUrls.push(url);
-      }
-      onChange(newUrls);
-    } catch (error) {
-      console.error("Error uploading images:", error);
-      toast.error("Failed to upload image(s).");
-    } finally {
-      setIsUploading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
-    }
+    await uploadAll(files);
   };
 
   const handleAddUrl = () => {
@@ -218,7 +231,7 @@ export default function GalleryUpload({ value = [], onChange, label = "Gallery I
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
+              accept={IMAGE_ACCEPT_ATTR}
               multiple
               className="hidden"
               onChange={handleFileChange}

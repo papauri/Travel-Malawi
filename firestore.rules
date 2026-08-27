@@ -100,20 +100,31 @@ service cloud.firestore {
 
       // Guest checkout works without an account, so creation stays open — but
       // the payload is now constrained instead of arbitrary.
+      // Bounds mirror lib/validateBooking. The client enforces them for the
+      // guest's benefit; these enforce them for everyone else's, since anyone
+      // can post to this collection directly.
       allow create: if request.resource.data.status == 'pending'
                     && request.resource.data.hotelId is string
                     && request.resource.data.roomTypeId is string
                     && request.resource.data.checkIn is string
                     && request.resource.data.checkOut is string
+                    && request.resource.data.checkIn.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+                    && request.resource.data.checkOut.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
                     && request.resource.data.checkIn < request.resource.data.checkOut
                     && request.resource.data.guestName is string
-                    && request.resource.data.guestName.size() > 0
+                    && request.resource.data.guestName.size() > 1
+                    && request.resource.data.guestName.size() <= 100
+                    && request.resource.data.guestEmail is string
+                    && request.resource.data.guestEmail.matches('^[^@ ]+@[^@ ]+[.][^@ ]+$')
                     && request.resource.data.guests is int
                     && request.resource.data.guests > 0
+                    && request.resource.data.guests <= 30
                     && request.resource.data.quantity is int
                     && request.resource.data.quantity > 0
+                    && request.resource.data.quantity <= 20
                     && request.resource.data.total is number
                     && request.resource.data.total >= 0
+                    && request.resource.data.get('specialRequests', '').size() <= 1000
                     && request.resource.data.createdAt is number
                     // An authenticated booker must not be able to file a
                     // booking under someone else's account.

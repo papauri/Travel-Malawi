@@ -180,6 +180,13 @@ export interface Booking {
   updatedAt?: number;
   cancelledAt?: number;
   cancelledBy?: 'guest' | 'manager';
+  /**
+   * Set when the spam checks found something worth a second look. The booking
+   * is still accepted — this only tells the property why to be careful.
+   */
+  flagged?: boolean;
+  flagReasons?: string[];
+  flagScore?: number;
 }
 
 /** A review written by a guest who actually completed a stay. */

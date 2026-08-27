@@ -4,7 +4,7 @@ import { doc, getDoc, collection, query, where, getDocs, addDoc, updateDoc, dele
 import { db } from '../lib/firebase';
 import { Hotel, RoomType, Booking, CurrencyCode, PriceMap, Restaurant, WeeklyHours } from '../types';
 import { useAuth } from '../contexts/AuthContext';
-import { Plus, CheckCircle2, XCircle, Clock, Save, Edit2, Trash2, Users, Calendar, Check, X, Building, BedDouble, Loader2, Download, TrendingUp, Percent, Wallet, UtensilsCrossed, Eye, ChevronLeft, ExternalLink } from 'lucide-react';
+import { Plus, CheckCircle2, XCircle, Clock, Save, Edit2, Trash2, Users, Calendar, Check, X, Building, BedDouble, Loader2, Download, TrendingUp, Percent, Wallet, UtensilsCrossed, Eye, ChevronLeft, ExternalLink, AlertTriangle } from 'lucide-react';
 import ImageUpload from '../components/ImageUpload';
 import GalleryUpload from '../components/GalleryUpload';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -20,6 +20,7 @@ import { isRoomAvailable } from '../lib/availability';
 import { formatMoney } from '../lib/booking';
 import { CURRENCIES, CURRENCY_CODES, currenciesForRooms, roomCurrencies, roomPrice } from '../lib/currency';
 import { defaultWeek } from '../lib/hours';
+import { SPAM_REASON_LABELS } from '../lib/spam';
 import { isHotelManager } from '../lib/roles';
 
 type Tab = 'details' | 'rooms' | 'restaurant' | 'bookings';
@@ -1376,6 +1377,16 @@ export default function ManageHotel() {
                         {booking.reference && (
                           <span className="text-xs font-mono font-semibold text-stone-400">{booking.reference}</span>
                         )}
+                        {/* Accepted, but the spam checks found something. The
+                            property decides; this only says why to look. */}
+                        {booking.flagged && (
+                          <span
+                            title={(booking.flagReasons ?? []).join(', ')}
+                            className="inline-flex items-center gap-1 bg-amber-100 text-amber-800 text-[0.65rem] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider"
+                          >
+                            <AlertTriangle className="h-3 w-3" /> Check this one
+                          </span>
+                        )}
                       </div>
                       {(booking.guestEmail || booking.guestPhone || booking.guestWhatsapp) && (
                         <div className="text-sm text-stone-500 mb-2 flex gap-4 flex-wrap">
@@ -1409,6 +1420,17 @@ export default function ManageHotel() {
                     </div>
                   </div>
                   
+                  {booking.flagged && (booking.flagReasons ?? []).length > 0 && (
+                    <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-900">
+                      <span className="font-semibold block mb-1">Why this was flagged</span>
+                      <ul className="list-disc list-inside space-y-0.5">
+                        {(booking.flagReasons ?? []).map(reason => (
+                          <li key={reason}>{SPAM_REASON_LABELS[reason] ?? reason}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
                   {booking.specialRequests && (
                     <div className="mb-4 bg-stone-100 rounded-xl p-4 text-sm text-stone-600">
                       <span className="font-semibold block mb-1">Special Requests:</span>

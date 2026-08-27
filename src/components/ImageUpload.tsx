@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Upload, Link as LinkIcon, Image as ImageIcon, Loader2 } from 'lucide-react';
-import { uploadImage } from '../lib/uploadImage';
+import { uploadImage, uploadErrorMessage, validateImage, IMAGE_ACCEPT_ATTR } from '../lib/uploadImage';
 import toast from 'react-hot-toast';
 import SmartImage from './SmartImage';
 
@@ -14,6 +14,7 @@ interface Props {
 export default function ImageUpload({ value, onChange, label = 'Image', folder = 'uploads' }: Props) {
   const [mode, setMode] = useState<'url' | 'upload'>('url');
   const [isUploading, setIsUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [isDraggingFile, setIsDraggingFile] = useState(false);
@@ -34,37 +35,41 @@ export default function ImageUpload({ value, onChange, label = 'Image', folder =
     const file = e.dataTransfer.files?.[0];
     if (!file) return;
     
+    await upload(file);
+  };
+
+  /** One path for both the drop zone and the file picker. */
+  const upload = async (file: File) => {
+    // Checked before the network call, so a wrong file type or an oversized
+    // photo is reported immediately rather than after a failed round trip.
+    const problem = validateImage(file);
+    if (problem) {
+      toast.error(problem);
+      return;
+    }
+
     setIsUploading(true);
+    setProgress(0);
     try {
-      const url = await uploadImage(file, folder);
+      const url = await uploadImage(file, folder, { onProgress: setProgress });
       onChange(url);
       setMode('url');
+      toast.success('Image uploaded.');
     } catch (error) {
       console.error("Error uploading image:", error);
-      toast.error('Failed to upload image.');
+      toast.error(uploadErrorMessage(error), { duration: 7000 });
     } finally {
       setIsUploading(false);
+      setProgress(0);
     }
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    // Reset first, so picking the same file twice still fires a change event.
+    e.target.value = '';
     if (!file) return;
-
-    setIsUploading(true);
-    try {
-      const url = await uploadImage(file, folder);
-      onChange(url);
-      setMode('url');
-    } catch (error) {
-      console.error("Error uploading image:", error);
-      toast.error('Failed to upload image.');
-    } finally {
-      setIsUploading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    }
+    await upload(file);
   };
 
   return (
@@ -125,7 +130,7 @@ export default function ImageUpload({ value, onChange, label = 'Image', folder =
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*"
+            accept={IMAGE_ACCEPT_ATTR}
             className="hidden"
             onChange={handleFileChange}
             disabled={isUploading}

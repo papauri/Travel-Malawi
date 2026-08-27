@@ -16,6 +16,8 @@ import MenuTemplateView from '../components/MenuTemplates';
 import { BookingLike, isRoomAvailable, unitsRemaining } from '../lib/availability';
 import { computeBookingPricing, formatMoney, makeBookingReference } from '../lib/booking';
 import { isTraveller } from '../lib/roles';
+import { validateBooking, errorsByField, BookingField, MAX_SPECIAL_REQUESTS } from '../lib/validateBooking';
+import { assessBooking, readSubmissionLog, recordSubmission } from '../lib/spam';
 import {
   CURRENCIES, currenciesForRooms, packagePrice, readStoredCurrency, resolveCurrency,
   roomCurrencies, roomPrice, roomPrimaryCurrency, storeCurrency,
@@ -51,6 +53,12 @@ export default function HotelDetails() {
   const [selectedPackages, setSelectedPackages] = useState<string[]>([]);
   const [currency, setCurrency] = useState<CurrencyCode>(() => readStoredCurrency() ?? 'USD');
   const [activeTab, setActiveTab] = useState<'stay' | 'menu'>('stay');
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<BookingField, string>>>({});
+  // A field positioned off-screen and hidden from assistive technology. No
+  // person can fill it in; something submitting the form blindly will.
+  const [honeypot, setHoneypot] = useState('');
+  // When the booking form was opened, for the "filled impossibly fast" check.
+  const [formOpenedAt, setFormOpenedAt] = useState<number>(() => Date.now());
 
   // The property and its rooms are what the page is for; each secondary read
   // is issued separately and swallowed on failure. Bundling them into one
@@ -234,36 +242,46 @@ export default function HotelDetails() {
     }
     setSelectedRoom(room);
     setSelectedPackages([]);
+    setFieldErrors({});
+    setHoneypot('');
+    setFormOpenedAt(Date.now());
   };
 
   const handleManualBook = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedRoom || saving) return;
 
-    if (!guestName.trim() || !guestEmail.trim() || !guestPhone.trim()) {
-      toast.error("Please provide your name, email, and phone number.");
+    // One validator, so the field hints and the submit check cannot disagree.
+    const problems = validateBooking(
+      {
+        guestName, guestEmail, guestPhone, guestWhatsapp,
+        checkIn, checkOut, guests: guestsCount, specialRequests,
+      },
+      selectedRoom
+    );
+
+    if (problems.length > 0) {
+      setFieldErrors(errorsByField(problems));
+      toast.error(problems[0].message);
       return;
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guestEmail.trim())) {
-      toast.error("Please enter a valid email address.");
-      return;
-    }
-    // At least seven digits, so a placeholder cannot be saved as the only way
-    // the property has to reach the guest.
-    if (guestPhone.replace(/\D/g, '').length < 7) {
-      toast.error("Please enter a valid phone number, including country code.");
-      return;
-    }
-    if (nightsBetween(checkIn, checkOut) <= 0) {
-      toast.error("Please select valid check-in and check-out dates.");
-      return;
-    }
-    if (checkIn < today) {
-      toast.error("Check-in cannot be in the past.");
-      return;
-    }
-    if (guestsCount < 1 || guestsCount > selectedRoom.maxGuests) {
-      toast.error(`This room accommodates between 1 and ${selectedRoom.maxGuests} guests.`);
+    setFieldErrors({});
+
+    // Spam scoring. Blocking is reserved for signals a person cannot trip by
+    // accident; anything softer is accepted and flagged for the property.
+    const assessment = assessBooking({
+      guestName, guestEmail, guestPhone, guestWhatsapp, specialRequests,
+      honeypot,
+      elapsedMs: Date.now() - formOpenedAt,
+      recentSubmissionTimes: readSubmissionLog(),
+    });
+
+    if (assessment.verdict === 'block') {
+      console.warn('Booking blocked as spam:', assessment.codes);
+      toast.error(
+        'This request could not be submitted. If you are a guest, please contact the property directly.',
+        { duration: 8000 }
+      );
       return;
     }
 
@@ -306,8 +324,15 @@ export default function HotelDetails() {
         packagesTotal: pricing.packagesTotal,
         currency: pricing.currency,
         status: 'pending',
+        // Written only when something actually tripped, so the manager sees a
+        // warning on the booking rather than having to guess.
+        ...(assessment.verdict === 'review'
+          ? { flagged: true, flagReasons: assessment.codes, flagScore: assessment.score }
+          : {}),
         createdAt: Date.now()
       });
+
+      recordSubmission();
 
       // The reference is the only handle a signed-out guest has on the booking,
       // so it is surfaced rather than only stored.
@@ -793,42 +818,106 @@ export default function HotelDetails() {
               </div>
             }
           >
-            <form id="booking-form" onSubmit={handleManualBook} className="space-y-5">
+            <form id="booking-form" onSubmit={handleManualBook} className="space-y-5" noValidate>
+              {/* Hidden from sight and from screen readers, and never focusable.
+                  Anything that fills it in is not a person. */}
+              <div aria-hidden="true" className="absolute -left-[9999px] top-auto h-px w-px overflow-hidden">
+                <label htmlFor="company-website">Do not fill this in</label>
+                <input
+                  id="company-website"
+                  name="company-website"
+                  type="text"
+                  tabIndex={-1}
+                  autoComplete="off"
+                  value={honeypot}
+                  onChange={e => setHoneypot(e.target.value)}
+                />
+              </div>
               <div>
                 <label className={labelClass}>Guest name</label>
-                <input type="text" required value={guestName} onChange={e => setGuestName(e.target.value)} className={fieldClass} placeholder="Full name" />
+                <input
+                  type="text"
+                  value={guestName}
+                  onChange={e => setGuestName(e.target.value)}
+                  aria-invalid={!!fieldErrors.guestName}
+                  className={`${fieldClass} ${fieldErrors.guestName ? 'border-red-400 focus:border-red-500' : ''}`}
+                  placeholder="Full name"
+                />
+                {fieldErrors.guestName && <p className="text-xs text-red-600 mt-1.5">{fieldErrors.guestName}</p>}
               </div>
 
               <div>
                 <label className={labelClass}>Email</label>
-                <input type="email" required value={guestEmail} onChange={e => setGuestEmail(e.target.value)} className={fieldClass} placeholder="you@example.com" />
+                <input
+                  type="email"
+                  value={guestEmail}
+                  onChange={e => setGuestEmail(e.target.value)}
+                  aria-invalid={!!fieldErrors.guestEmail}
+                  className={`${fieldClass} ${fieldErrors.guestEmail ? 'border-red-400 focus:border-red-500' : ''}`}
+                  placeholder="you@example.com"
+                />
+                {fieldErrors.guestEmail && <p className="text-xs text-red-600 mt-1.5">{fieldErrors.guestEmail}</p>}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className={labelClass}>Phone number</label>
-                  <input type="tel" required value={guestPhone} onChange={e => setGuestPhone(e.target.value)} className={fieldClass} placeholder="+265 …" />
+                  <input
+                    type="tel"
+                    value={guestPhone}
+                    onChange={e => setGuestPhone(e.target.value)}
+                    aria-invalid={!!fieldErrors.guestPhone}
+                    className={`${fieldClass} ${fieldErrors.guestPhone ? 'border-red-400 focus:border-red-500' : ''}`}
+                    placeholder="+265 …"
+                  />
+                  {fieldErrors.guestPhone && <p className="text-xs text-red-600 mt-1.5">{fieldErrors.guestPhone}</p>}
                 </div>
                 <div>
                   <label className={labelClass}>WhatsApp <span className="text-stone-400 font-normal">· optional</span></label>
-                  <input type="tel" value={guestWhatsapp} onChange={e => setGuestWhatsapp(e.target.value)} className={fieldClass} placeholder="+265 …" />
+                  <input
+                    type="tel"
+                    value={guestWhatsapp}
+                    onChange={e => setGuestWhatsapp(e.target.value)}
+                    aria-invalid={!!fieldErrors.guestWhatsapp}
+                    className={`${fieldClass} ${fieldErrors.guestWhatsapp ? 'border-red-400 focus:border-red-500' : ''}`}
+                    placeholder="+265 …"
+                  />
+                  {fieldErrors.guestWhatsapp && <p className="text-xs text-red-600 mt-1.5">{fieldErrors.guestWhatsapp}</p>}
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className={labelClass}>Check in</label>
-                  <input type="date" required min={today} value={checkIn} onChange={e => setCheckIn(e.target.value)} className={fieldClass} />
+                  <input
+                    type="date"
+                    min={today}
+                    value={checkIn}
+                    onChange={e => setCheckIn(e.target.value)}
+                    aria-invalid={!!fieldErrors.checkIn}
+                    className={`${fieldClass} ${fieldErrors.checkIn ? 'border-red-400 focus:border-red-500' : ''}`}
+                  />
+                  {fieldErrors.checkIn && <p className="text-xs text-red-600 mt-1.5">{fieldErrors.checkIn}</p>}
                 </div>
                 <div>
                   <label className={labelClass}>Check out</label>
-                  <input type="date" required min={checkIn || today} value={checkOut} onChange={e => setCheckOut(e.target.value)} className={fieldClass} />
+                  <input
+                    type="date"
+                    min={checkIn || today}
+                    value={checkOut}
+                    onChange={e => setCheckOut(e.target.value)}
+                    aria-invalid={!!fieldErrors.checkOut}
+                    className={`${fieldClass} ${fieldErrors.checkOut ? 'border-red-400 focus:border-red-500' : ''}`}
+                  />
+                  {fieldErrors.checkOut && <p className="text-xs text-red-600 mt-1.5">{fieldErrors.checkOut}</p>}
                 </div>
               </div>
 
               <div>
                 <label className={labelClass}>Guests</label>
-                <div className="flex items-center justify-between bg-stone-50 border border-stone-200 rounded-xl px-4 py-2.5">
+                <div className={`flex items-center justify-between bg-stone-50 border rounded-xl px-4 py-2.5 ${
+                  fieldErrors.guests ? 'border-red-400' : 'border-stone-200'
+                }`}>
                   <span className="text-sm text-stone-600">
                     {guestsCount} guest{guestsCount !== 1 ? 's' : ''}
                     <span className="text-stone-400"> · sleeps {selectedRoom.maxGuests}</span>
@@ -862,9 +951,18 @@ export default function HotelDetails() {
                 <textarea
                   value={specialRequests}
                   onChange={e => setSpecialRequests(e.target.value)}
+                  maxLength={MAX_SPECIAL_REQUESTS}
                   placeholder="Early check-in, dietary requirements, an occasion we should know about…"
-                  className={`${fieldClass} resize-none h-24`}
+                  className={`${fieldClass} resize-none h-24 ${fieldErrors.specialRequests ? 'border-red-400' : ''}`}
                 />
+                <div className="flex justify-between mt-1.5">
+                  <span className="text-xs text-red-600">{fieldErrors.specialRequests ?? ''}</span>
+                  {specialRequests.length > MAX_SPECIAL_REQUESTS * 0.8 && (
+                    <span className="text-xs text-stone-400 tabular-nums">
+                      {specialRequests.length}/{MAX_SPECIAL_REQUESTS}
+                    </span>
+                  )}
+                </div>
               </div>
 
               {selectedRoom.packages && selectedRoom.packages.length > 0 && (
