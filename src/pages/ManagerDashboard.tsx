@@ -13,6 +13,8 @@ import SmartImage from '../components/SmartImage';
 import { getHotelImage } from '../lib/images';
 import { isHotelManager } from '../lib/roles';
 
+import Pagination from '../components/Pagination';
+
 export default function ManagerDashboard() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -20,18 +22,22 @@ export default function ManagerDashboard() {
   const [rooms, setRooms] = useState<RoomType[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
   
   const [showAddForm, setShowAddForm] = useState(false);
   const [newHotel, setNewHotel] = useState<{
     name: string;
     description: string;
     location: string;
+    locationNotes?: string;
     imageUrl: string;
     coordinates: { lat: number; lng: number } | null;
   }>({
     name: '',
     description: '',
     location: '',
+    locationNotes: '',
     imageUrl: '',
     coordinates: null
   });
@@ -112,6 +118,7 @@ export default function ManagerDashboard() {
         name: newHotel.name.trim(),
         description: newHotel.description.trim(),
         location: newHotel.location.trim(),
+        locationNotes: newHotel.locationNotes?.trim() || '',
         coordinates: newHotel.coordinates,
         imageUrl: newHotel.imageUrl,
         amenities: [],
@@ -126,6 +133,7 @@ export default function ManagerDashboard() {
         name: newHotel.name,
         description: newHotel.description,
         location: newHotel.location,
+        locationNotes: newHotel.locationNotes,
         coordinates: newHotel.coordinates ?? undefined,
         imageUrl: newHotel.imageUrl,
         amenities: [],
@@ -134,7 +142,7 @@ export default function ManagerDashboard() {
       }]);
       
       setShowAddForm(false);
-      setNewHotel({ name: '', description: '', location: '', imageUrl: '', coordinates: null });
+      setNewHotel({ name: '', description: '', location: '', locationNotes: '', imageUrl: '', coordinates: null });
       toast.success('Property submitted. It goes live once our team approves it.');
     } catch (error) {
       console.error("Error adding hotel:", error);
@@ -218,6 +226,16 @@ export default function ManagerDashboard() {
                 <p className="text-xs text-stone-500 mt-2">Saved coordinates: {newHotel.coordinates.lat.toFixed(4)}, {newHotel.coordinates.lng.toFixed(4)}</p>
               )}
             </div>
+            <div>
+              <label className="block text-sm font-bold text-stone-700 mb-2 uppercase tracking-wide">Location Notes / Directions</label>
+              <textarea 
+                rows={2}
+                value={newHotel.locationNotes || ''}
+                onChange={e => setNewHotel({...newHotel, locationNotes: e.target.value})}
+                className="w-full rounded-xl border-stone-200 border bg-stone-50 p-4 focus:ring-2 focus:ring-stone-900 focus:border-transparent outline-none transition"
+                placeholder="Any extra directions or notes to help guests find the property (optional)."
+              />
+            </div>
             <ImageUpload 
               label="Property Main Image"
               value={newHotel.imageUrl}
@@ -264,7 +282,7 @@ export default function ManagerDashboard() {
             </button>
           </div>
         ) : (
-          hotels.map(hotel => (
+          hotels.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map(hotel => (
             <Link
               key={hotel.id}
               to={
@@ -332,6 +350,13 @@ export default function ManagerDashboard() {
           ))
         )}
       </div>
+      {hotels.length > itemsPerPage && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={Math.ceil(hotels.length / itemsPerPage)}
+          onPageChange={setCurrentPage}
+        />
+      )}
     </div>
   );
 }

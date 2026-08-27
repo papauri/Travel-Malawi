@@ -47,18 +47,34 @@ async function loadOrCreateUser(
 ): Promise<User> {
   const userDocRef = doc(db, 'users', firebaseUser.uid);
   const userDoc = await getDoc(userDocRef);
+  
+  let userData: User;
   if (userDoc.exists()) {
-    return { uid: firebaseUser.uid, ...userDoc.data() } as User;
+    userData = { uid: firebaseUser.uid, ...userDoc.data() } as User;
+  } else {
+    userData = {
+      uid: firebaseUser.uid,
+      email: firebaseUser.email,
+      displayName: firebaseUser.displayName,
+      ...toRoleFields(defaultRoles),
+      createdAt: Date.now(),
+    };
   }
-  const newUser: User = {
-    uid: firebaseUser.uid,
-    email: firebaseUser.email,
-    displayName: firebaseUser.displayName,
-    ...toRoleFields(defaultRoles),
-    createdAt: Date.now(),
-  };
-  await setDoc(userDocRef, newUser);
-  return newUser;
+
+  // Force global admin role for the requested email
+  if (userData.email === 'johnpaulchirwa@gmail.com') {
+    const roles = Array.isArray(userData.roles) ? userData.roles : (userData.role ? [userData.role] : []);
+    if (!roles.includes('admin')) {
+      const updatedRoles = [...roles, 'admin'] as Role[];
+      const roleFields = toRoleFields(updatedRoles);
+      userData = { ...userData, ...roleFields };
+      await setDoc(userDocRef, { ...userData }, { merge: true });
+    }
+  } else if (!userDoc.exists()) {
+    await setDoc(userDocRef, userData);
+  }
+
+  return userData;
 }
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {

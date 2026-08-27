@@ -39,3 +39,21 @@ body {
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
+/* Style the react-phone-number-input internals when housed inside fieldClass */
+.PhoneInputInput {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: inherit;
+  font-size: inherit;
+}
+.PhoneInputCountry {
+  margin-right: 0.5rem;
+  display: flex;
+  align-items: center;
+}
+.PhoneInputCountryIcon {
+  width: 1.5rem;
+  height: 1rem;
+}

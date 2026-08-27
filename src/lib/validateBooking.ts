@@ -72,9 +72,7 @@ export function validateBooking(input: BookingInput, room: RoomType | null): Fie
   }
 
   const email = (input.guestEmail ?? '').trim();
-  if (!email) {
-    errors.push({ field: 'guestEmail', message: 'An email address is required to confirm the booking.' });
-  } else if (!EMAIL_PATTERN.test(email)) {
+  if (email && !EMAIL_PATTERN.test(email)) {
     errors.push({ field: 'guestEmail', message: 'That does not look like a valid email address.' });
   }
 

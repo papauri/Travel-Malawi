@@ -147,7 +147,7 @@ export default function Navbar() {
                 <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-emerald-500" />
               </div>
               <span className="text-2xl font-serif font-bold tracking-tight text-stone-900 group-hover:text-stone-700 transition">
-                MalawiScapes
+                Travel Malawi
               </span>
             </Link>
 
@@ -158,7 +158,7 @@ export default function Navbar() {
                   {isHotelManager(user) && (
                     <Link
                       to="/dashboard"
-                      className="text-sm font-medium text-stone-600 hover:text-stone-900 transition flex items-center gap-1"
+                      className="hidden md:flex text-sm font-medium text-stone-600 hover:text-stone-900 transition items-center gap-1"
                     >
                       Dashboard
                       {pendingCount > 0 && (
@@ -171,7 +171,7 @@ export default function Navbar() {
                   {isAdmin(user) && (
                     <Link
                       to="/admin"
-                      className="text-sm font-medium text-stone-600 hover:text-stone-900 transition relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-stone-900 after:transition-all hover:after:w-full"
+                      className="hidden md:block text-sm font-medium text-stone-600 hover:text-stone-900 transition relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-stone-900 after:transition-all hover:after:w-full"
                     >
                       Admin
                     </Link>
@@ -179,7 +179,7 @@ export default function Navbar() {
                   {isTraveller(user) && (
                     <Link
                       to="/my-bookings"
-                      className="text-sm font-medium text-stone-600 hover:text-stone-900 transition relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-stone-900 after:transition-all hover:after:w-full"
+                      className="hidden md:block text-sm font-medium text-stone-600 hover:text-stone-900 transition relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-stone-900 after:transition-all hover:after:w-full"
                     >
                       My Bookings
                     </Link>

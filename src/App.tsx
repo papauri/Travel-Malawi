@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useLocation, Link } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import Navbar from './components/Navbar';
+import MobileNav from './components/MobileNav';
 import Footer from './components/Footer';
 import Home from './pages/Home';
 import ManagerDashboard from './pages/ManagerDashboard';
@@ -9,6 +10,7 @@ import ManageHotel from './pages/ManageHotel';
 import HotelDetails from './pages/HotelDetails';
 import MyBookings from './pages/MyBookings';
 import AdminDashboard from './pages/AdminDashboard';
+import BookingNotificationListener from './components/BookingNotificationListener';
 import { Toaster } from 'react-hot-toast';
 import Lenis from 'lenis';
 
@@ -70,7 +72,8 @@ export default function App() {
               }
             }} 
           />
-          <main className="flex-1">
+          <BookingNotificationListener />
+          <main className="flex-1 pb-16 md:pb-0">
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/hotel/:id" element={<HotelDetails />} />
@@ -82,6 +85,7 @@ export default function App() {
             </Routes>
           </main>
           <Footer />
+          <MobileNav />
         </div>
       </BrowserRouter>
     </AuthProvider>

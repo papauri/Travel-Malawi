@@ -83,6 +83,7 @@ export interface Hotel {
   name: string;
   description: string;
   location: string;
+  locationNotes?: string;
   coordinates?: { lat: number; lng: number };
   amenities: string[];
   categories?: string[];
@@ -96,6 +97,9 @@ export interface Hotel {
   /** Check-in and check-out times, shown in the Policies card. */
   checkInTime?: string;
   checkOutTime?: string;
+  chatEnabled?: boolean;
+  isOnline?: boolean;
+  outOfOfficeMessage?: string;
   /** Absent, or `enabled: false`, means the property has no restaurant. */
   restaurant?: Restaurant;
   createdAt: number;
@@ -138,6 +142,7 @@ export interface RoomType {
   previousQuantity?: number;
   amenities: string[];
   imageUrl: string;
+  galleryUrls?: string[];
   packages?: {
     id: string;
     name: string;
@@ -148,6 +153,18 @@ export interface RoomType {
     prices?: PriceMap;
   }[];
   blockedDates?: string[]; // Array of 'YYYY-MM-DD'
+}
+
+export interface Message {
+  id?: string;
+  bookingId: string;
+  hotelId: string;
+  managerId: string;
+  guestId: string;
+  senderId: string;
+  senderName: string;
+  text: string;
+  createdAt: number;
 }
 
 export type BookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'rejected';

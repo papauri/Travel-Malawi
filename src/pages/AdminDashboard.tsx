@@ -1,22 +1,26 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Hotel, User } from '../types';
-import { Shield, Building2, CheckCircle, XCircle, Clock, MapPin, Users } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Shield, Building2, CheckCircle, XCircle, Clock, MapPin, Users, Edit2, Key, Trash2 } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import Pagination from '../components/Pagination';
 import toast from 'react-hot-toast';
 import SmartImage from '../components/SmartImage';
 import { getHotelImage } from '../lib/images';
 import { isAdmin, isHotelManager, describeRoles } from '../lib/roles';
 
 export default function AdminDashboard() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, resetPassword } = useAuth();
   const navigate = useNavigate();
   
   const [hotels, setHotels] = useState<Hotel[]>([]);
   const [managers, setManagers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentHotelPage, setCurrentHotelPage] = useState(1);
+  const [currentManagerPage, setCurrentManagerPage] = useState(1);
+  const itemsPerPage = 5;
 
   const fetchData = async () => {
     try {
@@ -56,6 +60,18 @@ export default function AdminDashboard() {
   }, [user, authLoading, navigate]);
 
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+
+  const handleDeleteHotel = async (hotelId: string) => {
+    if (!window.confirm("Are you sure you want to completely delete this hotel listing? This cannot be undone.")) return;
+    try {
+      await deleteDoc(doc(db, 'hotels', hotelId));
+      toast.success('Listing deleted');
+      fetchData();
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to delete listing');
+    }
+  };
 
   const handleUpdateStatus = async (hotelId: string, newStatus: 'approved' | 'rejected' | 'pending') => {
     if (updatingId) return;
@@ -101,7 +117,7 @@ export default function AdminDashboard() {
           </h2>
           
           <div className="space-y-6">
-            {hotels.map(hotel => (
+            {hotels.slice((currentHotelPage - 1) * itemsPerPage, currentHotelPage * itemsPerPage).map(hotel => (
               <div key={hotel.id} className="bg-white rounded-3xl p-6 shadow-sm border border-stone-200 flex flex-col md:flex-row gap-6">
                 <div className="h-48 w-full md:w-64 bg-stone-100 rounded-2xl overflow-hidden shrink-0">
                   <SmartImage src={getHotelImage(hotel)} alt={hotel.name} className="w-full h-full object-cover" />
@@ -174,6 +190,20 @@ export default function AdminDashboard() {
                         Approve
                       </button>
                     )}
+
+                    <Link 
+                      to={`/dashboard/hotel/${hotel.id}`}
+                      className="bg-stone-900 text-white px-5 py-2 rounded-xl text-sm font-medium hover:bg-stone-800 transition flex items-center gap-2 ml-auto"
+                    >
+                      <Edit2 className="h-4 w-4" /> Edit
+                    </Link>
+                    <button
+                      onClick={() => handleDeleteHotel(hotel.id!)}
+                      className="bg-red-100 text-red-700 p-2 rounded-xl hover:bg-red-200 transition ml-2"
+                      title="Delete Listing"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
                   </div>
                 </div>
               </div>
@@ -183,6 +213,13 @@ export default function AdminDashboard() {
               <div className="bg-stone-50 rounded-3xl p-12 text-center text-stone-500">
                 No hotel listings found in the database.
               </div>
+            )}
+            {hotels.length > itemsPerPage && (
+              <Pagination
+                currentPage={currentHotelPage}
+                totalPages={Math.ceil(hotels.length / itemsPerPage)}
+                onPageChange={setCurrentHotelPage}
+              />
             )}
           </div>
         </div>
@@ -196,23 +233,47 @@ export default function AdminDashboard() {
           
           <div className="bg-white rounded-3xl p-6 shadow-sm border border-stone-200">
             <div className="space-y-4">
-              {managers.map((manager, idx) => (
+              {managers.slice((currentManagerPage - 1) * itemsPerPage, currentManagerPage * itemsPerPage).map((manager, idx) => (
                 <div key={manager.uid} className={`pb-4 ${idx !== managers.length - 1 ? 'border-b border-stone-100' : ''}`}>
                   <p className="font-bold text-stone-900 mb-1">{manager.displayName || 'No Name'}</p>
                   <p className="text-sm text-stone-500 mb-2">{manager.email}</p>
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs text-stone-400">
-                      Joined: {new Date(manager.createdAt).toLocaleDateString()}
-                    </span>
-                    <span className="bg-stone-100 text-stone-600 px-2 py-1 rounded text-xs font-medium">
-                      {describeRoles(manager)}
-                    </span>
+                  <div className="flex justify-between items-center mt-3">
+                    <div className="flex gap-2 items-center">
+                      <span className="text-xs text-stone-400">
+                        Joined: {new Date(manager.createdAt).toLocaleDateString()}
+                      </span>
+                      <span className="bg-stone-100 text-stone-600 px-2 py-1 rounded text-xs font-medium">
+                        {describeRoles(manager)}
+                      </span>
+                    </div>
+                    {manager.email && (
+                      <button
+                        onClick={async () => {
+                          try {
+                            await resetPassword(manager.email!);
+                            toast.success(`Reset link sent to ${manager.email}`);
+                          } catch (err) {
+                            toast.error('Failed to send reset link');
+                          }
+                        }}
+                        className="text-stone-500 hover:text-stone-900 transition flex items-center gap-1 text-xs font-bold uppercase tracking-wider bg-stone-100 hover:bg-stone-200 px-3 py-1.5 rounded-lg"
+                      >
+                        <Key className="h-3 w-3" /> Reset Password
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
               
               {managers.length === 0 && (
                 <p className="text-stone-500 text-sm text-center py-4">No hotel managers registered.</p>
+              )}
+              {managers.length > itemsPerPage && (
+                <Pagination
+                  currentPage={currentManagerPage}
+                  totalPages={Math.ceil(managers.length / itemsPerPage)}
+                  onPageChange={setCurrentManagerPage}
+                />
               )}
             </div>
           </div>

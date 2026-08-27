@@ -4,16 +4,21 @@ import { doc, getDoc, collection, query, where, getDocs, addDoc } from 'firebase
 import { db } from '../lib/firebase';
 import { Hotel, RoomType, Review, CurrencyCode } from '../types';
 import { useAuth } from '../contexts/AuthContext';
-import { MapPin, Calendar, Users, Star, CheckCircle2, ChevronRight, Info, Plus, Minus, ShieldCheck, AlertTriangle, UtensilsCrossed, Clock, BedDouble } from 'lucide-react';
+import PhoneInput from 'react-phone-number-input';
+import 'react-phone-number-input/style.css';
+import { MapPin, Calendar, Users, Star, CheckCircle2, ChevronRight, Info, Plus, Minus, ShieldCheck, AlertTriangle, UtensilsCrossed, Clock, BedDouble, MessageSquare, Images } from 'lucide-react';
 import toast from 'react-hot-toast';
 import AvailabilityCalendar from '../components/AvailabilityCalendar';
 import { motion } from 'motion/react';
+import Pagination from '../components/Pagination';
+import PropertyChat from '../components/PropertyChat';
 import SmartImage from '../components/SmartImage';
 import { getHotelImages, getRoomImage } from '../lib/images';
 import { formatDateStr, nightsBetween, todayStr } from '../lib/dates';
 import { formatTime, hasPublishedHours, isOpenAt, summariseHours } from '../lib/hours';
 import MenuTemplateView from '../components/MenuTemplates';
 import { BookingLike, isRoomAvailable, unitsRemaining } from '../lib/availability';
+import DatePicker from '../components/DatePicker';
 import { computeBookingPricing, formatMoney, makeBookingReference } from '../lib/booking';
 import { isTraveller } from '../lib/roles';
 import { validateBooking, errorsByField, BookingField, MAX_SPECIAL_REQUESTS } from '../lib/validateBooking';
@@ -38,6 +43,9 @@ export default function HotelDetails() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [bookingStatus, setBookingStatus] = useState<string | null>(null);
+  const [showChat, setShowChat] = useState(false);
+  const [activeGalleryRoom, setActiveGalleryRoom] = useState<RoomType | null>(null);
+  const [showHotelGallery, setShowHotelGallery] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState<RoomType | null>(null);
   const [checkIn, setCheckIn] = useState(searchParams.get('checkIn') || '');
   const [checkOut, setCheckOut] = useState(searchParams.get('checkOut') || '');
@@ -50,6 +58,8 @@ export default function HotelDetails() {
   const [guestPhone, setGuestPhone] = useState('');
   const [guestWhatsapp, setGuestWhatsapp] = useState('');
   const [specialRequests, setSpecialRequests] = useState('');
+  const [currentReviewPage, setCurrentReviewPage] = useState(1);
+  const reviewsPerPage = 5;
   const [selectedPackages, setSelectedPackages] = useState<string[]>([]);
   const [currency, setCurrency] = useState<CurrencyCode>(() => readStoredCurrency() ?? 'USD');
   const [activeTab, setActiveTab] = useState<'stay' | 'menu'>('stay');
@@ -311,8 +321,8 @@ export default function HotelDetails() {
         guestId: user?.uid || 'anonymous',
         guestName: guestName.trim(),
         guestEmail: guestEmail.trim(),
-        guestPhone: guestPhone.trim(),
-        guestWhatsapp: guestWhatsapp.trim(),
+        guestPhone: (guestPhone || '').trim(),
+        guestWhatsapp: (guestWhatsapp || '').trim(),
         checkIn,
         checkOut,
         specialRequests: specialRequests.trim(),
@@ -373,33 +383,49 @@ export default function HotelDetails() {
       <div className="w-full max-w-[90rem] mx-auto px-4 lg:px-12 mt-4">
         <div className={`grid gap-3 md:h-[68vh] ${hasGallery ? 'grid-cols-1 md:grid-cols-4' : 'grid-cols-1'}`}>
           {/* Main image */}
-          <div className={`relative rounded-3xl overflow-hidden h-[46vh] md:h-full ${hasGallery ? 'md:col-span-2 md:row-span-2' : ''}`}>
-            <SmartImage src={hotelImages[0]} alt={hotel.name} loading="eager" className="w-full h-full object-cover" />
+          <div className={`relative rounded-3xl overflow-hidden h-[46vh] md:h-full group cursor-pointer ${hasGallery ? 'md:col-span-2 md:row-span-2' : ''}`} onClick={() => setShowHotelGallery(true)}>
+            <SmartImage src={hotelImages[0]} alt={hotel.name} loading="eager" className="w-full h-full object-cover transition duration-700 ease-out group-hover:scale-[1.04]" />
             <div className="absolute inset-0 bg-gradient-to-t from-stone-950/80 via-stone-950/10 to-transparent" />
-            <div className="absolute bottom-0 left-0 w-full p-7 md:p-10">
-              <motion.p
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="flex items-center gap-1.5 text-white/80 text-sm font-medium mb-3"
+            <div className="absolute bottom-0 left-0 w-full p-7 md:p-10 flex justify-between items-end">
+              <div>
+                <motion.p
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex items-center gap-1.5 text-white/80 text-sm font-medium mb-3"
+                >
+                  <MapPin className="h-4 w-4" />
+                  {hotel.location}
+                </motion.p>
+                <motion.h1
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.05 }}
+                  className={`font-serif font-medium tracking-[-0.02em] text-white leading-[0.95] max-w-3xl
+                    ${hasGallery ? 'text-[clamp(2rem,4.5vw,3.75rem)]' : 'text-[clamp(2.25rem,5.5vw,5rem)]'}`}
+                >
+                  {hotel.name}
+                </motion.h1>
+              </div>
+              
+              <button 
+                className="hidden md:flex bg-white/20 hover:bg-white/30 backdrop-blur text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg items-center gap-2 transition-all opacity-0 group-hover:opacity-100"
               >
-                <MapPin className="h-4 w-4" />
-                {hotel.location}
-              </motion.p>
-              <motion.h1
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.05 }}
-                className={`font-serif font-medium tracking-[-0.02em] text-white leading-[0.95] max-w-3xl
-                  ${hasGallery ? 'text-[clamp(2rem,4.5vw,3.75rem)]' : 'text-[clamp(2.25rem,5.5vw,5rem)]'}`}
-              >
-                {hotel.name}
-              </motion.h1>
+                <Images className="h-4 w-4" />
+                {hotelImages.length} Photos
+              </button>
             </div>
+            
+            <button 
+              className="md:hidden absolute top-4 right-4 bg-white/20 hover:bg-white/30 backdrop-blur text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg flex items-center gap-2 transition-all"
+            >
+              <Images className="h-4 w-4" />
+              {hotelImages.length}
+            </button>
           </div>
 
           {/* Supporting photographs, only when they exist */}
           {galleryImages.map((url, index) => (
-            <div key={url} className="relative rounded-3xl overflow-hidden hidden md:block md:col-span-2 md:row-span-1 group">
+            <div key={url} className="relative rounded-3xl overflow-hidden hidden md:block md:col-span-2 md:row-span-1 group cursor-pointer" onClick={() => setShowHotelGallery(true)}>
               <SmartImage
                 src={url}
                 alt={`${hotel.name} — photograph ${index + 2}`}
@@ -470,22 +496,22 @@ export default function HotelDetails() {
                 <MapPin className="h-5 w-5" /> Location
               </h3>
               <p className="text-stone-600 leading-relaxed mb-4">{hotel.location}</p>
+              {hotel.locationNotes && (
+                <div className="mb-6 p-4 bg-amber-50/50 border border-amber-100 rounded-2xl">
+                  <h4 className="text-xs font-bold text-amber-900 uppercase tracking-wider mb-1">Directions & Notes</h4>
+                  <p className="text-amber-800/80 text-sm leading-relaxed">{hotel.locationNotes}</p>
+                </div>
+              )}
               <div className="w-full h-48 bg-stone-200 rounded-2xl overflow-hidden relative">
-                {hotel.coordinates ? (
-                  <iframe
-                    width="100%"
-                    height="100%"
-                    style={{ border: 0 }}
-                    loading="lazy"
-                    allowFullScreen
-                    referrerPolicy="no-referrer-when-downgrade"
-                    src={`https://maps.google.com/maps?q=${hotel.coordinates.lat},${hotel.coordinates.lng}&z=14&output=embed`}
-                  ></iframe>
-                ) : (
-                  <div className="absolute inset-0 flex items-center justify-center bg-stone-300">
-                    <span className="text-stone-500 font-medium text-sm">No map coordinates available</span>
-                  </div>
-                )}
+                <iframe
+                  width="100%"
+                  height="100%"
+                  style={{ border: 0 }}
+                  loading="lazy"
+                  allowFullScreen
+                  referrerPolicy="no-referrer-when-downgrade"
+                  src={`https://maps.google.com/maps?q=${encodeURIComponent(hotel.location)}&z=14&output=embed`}
+                ></iframe>
               </div>
             </div>
             
@@ -635,12 +661,21 @@ export default function HotelDetails() {
                   transition={{ duration: 0.7, ease: "easeOut" }}
                   className={`flex flex-col ${idx % 2 === 1 ? 'lg:flex-row-reverse' : 'lg:flex-row'} gap-10 lg:gap-20 items-center`}
                 >
-                  <div className="w-full lg:w-1/2 aspect-[4/3] lg:aspect-[4/5] overflow-hidden rounded-2xl relative shadow-xl">
+                  <div className="w-full lg:w-1/2 aspect-[4/3] lg:aspect-[4/5] overflow-hidden rounded-2xl relative shadow-xl group">
                     <SmartImage
                       src={getRoomImage(room, hotel)}
                       alt={room.name}
                       className="w-full h-full object-cover hover:scale-105 transition-transform duration-1000"
                     />
+                    {(room.galleryUrls && room.galleryUrls.length > 0) && (
+                      <button 
+                        onClick={() => setActiveGalleryRoom(room)}
+                        className="absolute bottom-4 right-4 bg-white/90 backdrop-blur text-stone-900 text-xs font-bold px-4 py-2 rounded-full shadow-lg flex items-center gap-2 hover:bg-white hover:scale-105 transition-all opacity-0 group-hover:opacity-100 sm:opacity-100"
+                      >
+                        <Images className="h-4 w-4" />
+                        {room.galleryUrls.length} Photos
+                      </button>
+                    )}
                   </div>
                   
                   <div className="w-full lg:w-1/2 flex flex-col justify-center py-6">
@@ -725,7 +760,7 @@ export default function HotelDetails() {
                 )}
               </div>
               <div className="grid grid-cols-1 gap-6">
-                {allReviews.map(review => (
+                {allReviews.slice((currentReviewPage - 1) * reviewsPerPage, currentReviewPage * reviewsPerPage).map(review => (
                   <div key={review.key} className="bg-white p-8 rounded-3xl border border-stone-200 shadow-sm">
                     <div className="flex justify-between items-start mb-4">
                       <div className="flex items-center gap-4">
@@ -758,6 +793,13 @@ export default function HotelDetails() {
                   </div>
                 ))}
               </div>
+              {allReviews.length > reviewsPerPage && (
+                <Pagination
+                  currentPage={currentReviewPage}
+                  totalPages={Math.ceil(allReviews.length / reviewsPerPage)}
+                  onPageChange={setCurrentReviewPage}
+                />
+              )}
             </div>
           )}
         </div>
@@ -854,7 +896,7 @@ export default function HotelDetails() {
               </div>
 
               <div>
-                <label className={labelClass}>Email</label>
+                <label className={labelClass}>Email <span className="text-stone-400 font-normal">· optional</span></label>
                 <input
                   type="email"
                   value={guestEmail}
@@ -869,56 +911,56 @@ export default function HotelDetails() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className={labelClass}>Phone number</label>
-                  <input
-                    type="tel"
+                  <PhoneInput
+                    international
+                    defaultCountry="MW"
                     value={guestPhone}
-                    onChange={e => setGuestPhone(e.target.value)}
-                    aria-invalid={!!fieldErrors.guestPhone}
-                    className={`${fieldClass} ${fieldErrors.guestPhone ? 'border-red-400 focus:border-red-500' : ''}`}
-                    placeholder="+265 …"
+                    onChange={(val) => setGuestPhone(val || '')}
+                    className={`${fieldClass} ${fieldErrors.guestPhone ? 'border-red-400 focus:border-red-500' : ''} !flex items-center`}
                   />
                   {fieldErrors.guestPhone && <p className="text-xs text-red-600 mt-1.5">{fieldErrors.guestPhone}</p>}
                 </div>
                 <div>
                   <label className={labelClass}>WhatsApp <span className="text-stone-400 font-normal">· optional</span></label>
-                  <input
-                    type="tel"
+                  <PhoneInput
+                    international
+                    defaultCountry="MW"
                     value={guestWhatsapp}
-                    onChange={e => setGuestWhatsapp(e.target.value)}
-                    aria-invalid={!!fieldErrors.guestWhatsapp}
-                    className={`${fieldClass} ${fieldErrors.guestWhatsapp ? 'border-red-400 focus:border-red-500' : ''}`}
-                    placeholder="+265 …"
+                    onChange={(val) => setGuestWhatsapp(val || '')}
+                    className={`${fieldClass} ${fieldErrors.guestWhatsapp ? 'border-red-400 focus:border-red-500' : ''} !flex items-center`}
                   />
                   {fieldErrors.guestWhatsapp && <p className="text-xs text-red-600 mt-1.5">{fieldErrors.guestWhatsapp}</p>}
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className={labelClass}>Check in</label>
-                  <input
-                    type="date"
-                    min={today}
-                    value={checkIn}
-                    onChange={e => setCheckIn(e.target.value)}
-                    aria-invalid={!!fieldErrors.checkIn}
-                    className={`${fieldClass} ${fieldErrors.checkIn ? 'border-red-400 focus:border-red-500' : ''}`}
+              <div className="mb-4">
+                  <label className={labelClass}>Stay Dates</label>
+                  <DatePicker
+                    checkIn={checkIn}
+                    checkOut={checkOut}
+                    isDateBlocked={(dateStr) => {
+                      if (!selectedRoom) return false;
+                      const nextDay = new Date(dateStr);
+                      nextDay.setDate(nextDay.getDate() + 1);
+                      const nextDayStr = nextDay.toISOString().split('T')[0];
+                      return unitsRemaining(selectedRoom, bookings, dateStr, nextDayStr) === 0;
+                    }}
+                    onSelect={(inDate, outDate) => {
+                      setCheckIn(inDate);
+                      setCheckOut(outDate);
+                      setFieldErrors(prev => {
+                        const next = {...prev};
+                        delete next.checkIn;
+                        delete next.checkOut;
+                        return next;
+                      });
+                    }}
+                    
                   />
-                  {fieldErrors.checkIn && <p className="text-xs text-red-600 mt-1.5">{fieldErrors.checkIn}</p>}
+                  {(fieldErrors.checkIn || fieldErrors.checkOut) && (
+                    <p className="text-xs text-red-600 mt-1.5">{fieldErrors.checkIn || fieldErrors.checkOut}</p>
+                  )}
                 </div>
-                <div>
-                  <label className={labelClass}>Check out</label>
-                  <input
-                    type="date"
-                    min={checkIn || today}
-                    value={checkOut}
-                    onChange={e => setCheckOut(e.target.value)}
-                    aria-invalid={!!fieldErrors.checkOut}
-                    className={`${fieldClass} ${fieldErrors.checkOut ? 'border-red-400 focus:border-red-500' : ''}`}
-                  />
-                  {fieldErrors.checkOut && <p className="text-xs text-red-600 mt-1.5">{fieldErrors.checkOut}</p>}
-                </div>
-              </div>
 
               <div>
                 <label className={labelClass}>Guests</label>
@@ -1103,9 +1145,76 @@ export default function HotelDetails() {
       })()}
 
       {bookingStatus && (
-        <div className="fixed bottom-6 right-6 bg-stone-900 text-white px-8 py-4 rounded-full shadow-2xl font-medium z-50">
+        <div className="fixed bottom-24 right-6 bg-stone-900 text-white px-8 py-4 rounded-full shadow-2xl font-medium z-50">
           {bookingStatus}
         </div>
+      )}
+      
+      {/* Floating Chat Button */}
+      {hotel.chatEnabled !== false && (
+        <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
+          {!showChat ? (
+            <button
+              onClick={() => setShowChat(true)}
+              className="bg-stone-900 text-white px-6 py-4 rounded-full shadow-2xl hover:bg-stone-800 transition-all hover:scale-105 flex items-center gap-3"
+            >
+              <MessageSquare className="w-5 h-5" />
+              <span className="font-semibold whitespace-nowrap">
+                Contact Host
+              </span>
+            </button>
+          ) : (
+            <div className="w-[350px] sm:w-[400px] shadow-2xl rounded-2xl overflow-hidden mt-4 origin-bottom-right">
+              <PropertyChat 
+                hotel={hotel} 
+                currentUser={user} 
+                onClose={() => setShowChat(false)} 
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Room Gallery Modal */}
+      {activeGalleryRoom && (
+        <Modal
+          open={!!activeGalleryRoom}
+          onClose={() => setActiveGalleryRoom(null)}
+          title={`${activeGalleryRoom.name} Gallery`}
+          size="lg"
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="md:col-span-2 aspect-[21/9] rounded-2xl overflow-hidden relative shadow-md">
+              <SmartImage src={activeGalleryRoom.imageUrl} alt={`${activeGalleryRoom.name} main`} className="w-full h-full object-cover" />
+            </div>
+            {activeGalleryRoom.galleryUrls?.map((url, i) => (
+              <div key={i} className={`aspect-video rounded-2xl overflow-hidden relative shadow-md ${i % 3 === 2 ? 'md:col-span-2 aspect-[21/9]' : ''}`}>
+                <SmartImage src={url} alt={`${activeGalleryRoom.name} gallery ${i + 1}`} className="w-full h-full object-cover" />
+              </div>
+            ))}
+          </div>
+        </Modal>
+      )}
+
+      {/* Hotel Gallery Modal */}
+      {showHotelGallery && (
+        <Modal
+          open={showHotelGallery}
+          onClose={() => setShowHotelGallery(false)}
+          title={`${hotel.name} Gallery`}
+          size="lg"
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="md:col-span-2 aspect-[21/9] rounded-2xl overflow-hidden relative shadow-md">
+              <SmartImage src={hotelImages[0]} alt={`${hotel.name} main`} className="w-full h-full object-cover" />
+            </div>
+            {hotelImages.slice(1).map((url, i) => (
+              <div key={i} className={`aspect-video rounded-2xl overflow-hidden relative shadow-md ${i % 3 === 2 ? 'md:col-span-2 aspect-[21/9]' : ''}`}>
+                <SmartImage src={url} alt={`${hotel.name} gallery ${i + 1}`} className="w-full h-full object-cover" />
+              </div>
+            ))}
+          </div>
+        </Modal>
       )}
     </div>
   );

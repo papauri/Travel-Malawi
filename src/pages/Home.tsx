@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { motion } from 'motion/react';
-import { Search, MapPin, Calendar, Users, Star, LocateFixed, ChevronDown, Plus, Minus, ShieldCheck, MessageCircle, Smartphone, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import Pagination from '../components/Pagination';
+import { Search, MapPin, Calendar, Users, Star, LocateFixed, ChevronDown, Plus, Minus, ShieldCheck, MessageCircle, Smartphone, X, History, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -43,6 +44,14 @@ interface AppliedSearch {
   proximity: number;
 }
 
+interface RecentSearch {
+  location: string;
+  adults: number;
+  children: number;
+  roomsWanted: number;
+  timestamp: number;
+}
+
 const NO_SEARCH: AppliedSearch = {
   location: '', checkIn: '', checkOut: '', guests: '', coords: null, proximity: 50,
 };
@@ -59,6 +68,8 @@ export default function Home() {
   const [searching, setSearching] = useState(false);
   const [activeCategory, setActiveCategory] = useState('All');
   const [sortKey, setSortKey] = useState<SortKey>('recommended');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
   const [currency, setCurrency] = useState<CurrencyCode>(() => readStoredCurrency() ?? 'USD');
 
   const [searchLocation, setSearchLocation] = useState('');
@@ -75,6 +86,56 @@ export default function Home() {
 
   const [searchProximity, setSearchProximity] = useState(50);
   const [appliedSearch, setAppliedSearch] = useState<AppliedSearch>(NO_SEARCH);
+
+  const [recentSearches, setRecentSearches] = useState<RecentSearch[]>(() => {
+    try {
+      const stored = localStorage.getItem('recentSearches');
+      if (stored) return JSON.parse(stored);
+    } catch (e) {
+      console.error('Failed to parse recent searches', e);
+    }
+    return [];
+  });
+  const [showRecentSearches, setShowRecentSearches] = useState(false);
+  const locationSearchRef = useRef<HTMLDivElement>(null);
+
+  const heroWords = ["Discover", "Experience", "Support", "Connect with"];
+  const [heroIndex, setHeroIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setHeroIndex(prev => (prev + 1) % heroWords.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (locationSearchRef.current && !locationSearchRef.current.contains(event.target as Node)) {
+        setShowRecentSearches(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const saveRecentSearch = (search: RecentSearch) => {
+    if (!search.location.trim() || search.location === 'Near Me') return;
+    setRecentSearches(prev => {
+      const filtered = prev.filter(s => 
+        s.location.toLowerCase() !== search.location.toLowerCase() || 
+        s.adults !== search.adults || 
+        s.children !== search.children
+      );
+      const updated = [search, ...filtered].slice(0, 5);
+      try {
+        localStorage.setItem('recentSearches', JSON.stringify(updated));
+      } catch (e) {
+        console.error('Failed to save recent searches', e);
+      }
+      return updated;
+    });
+  };
 
   useEffect(() => {
     async function fetchListings() {
@@ -190,11 +251,24 @@ export default function Home() {
       }
     }
     setAppliedSearch(next);
+    setCurrentPage(1);
     document.getElementById('search-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   const handleSearch = () => {
     setShowGuestDropdown(false);
+    setShowRecentSearches(false);
+
+    if (searchLocation.trim() && searchLocation !== 'Near Me') {
+      saveRecentSearch({
+        location: searchLocation.trim(),
+        adults,
+        children,
+        roomsWanted,
+        timestamp: Date.now()
+      });
+    }
+
     applySearch({
       location: searchLocation,
       checkIn: searchCheckIn,
@@ -243,7 +317,35 @@ export default function Home() {
     setRoomsWanted(1);
   };
 
+  
+  const searchSuggestions = useMemo(() => {
+    if (!searchLocation.trim()) return [];
+    
+    const query = searchLocation.toLowerCase().trim();
+    const suggestions = [];
+    
+    // Extract unique locations
+    const locations = Array.from(new Set(hotels.map(h => h.location.trim()))).filter(loc => loc.toLowerCase().includes(query));
+    
+    locations.forEach(loc => {
+      suggestions.push({ type: 'location', text: loc });
+    });
+    
+    // Extract hotels
+    const matchingHotels = hotels.filter(h => 
+      h.name.toLowerCase().includes(query) || 
+      (h.locationNotes && h.locationNotes.toLowerCase().includes(query))
+    );
+    
+    matchingHotels.forEach(h => {
+      suggestions.push({ type: 'hotel', text: h.name, id: h.id, subtitle: h.location });
+    });
+    
+    return suggestions.slice(0, 8); // Limit to top 8 suggestions
+  }, [searchLocation, hotels]);
+
   const hasSearch = !!(appliedSearch.location || appliedSearch.coords || appliedSearch.checkIn || appliedSearch.guests);
+
 
   /**
    * Search results. Dates and party size used to be collected and then
@@ -278,16 +380,11 @@ export default function Home() {
         };
       })
       .filter(entry => {
-        if (appliedSearch.coords) {
-          if (!entry.hotel.coordinates) return false;
-          const dist = getDistance(
-            appliedSearch.coords.lat, appliedSearch.coords.lng,
-            entry.hotel.coordinates.lat, entry.hotel.coordinates.lng
-          );
-          if (dist > appliedSearch.proximity) return false;
-        } else if (appliedSearch.location) {
+        if (appliedSearch.location && appliedSearch.location !== 'Near Me') {
           const q = appliedSearch.location.toLowerCase();
-          if (!entry.hotel.name.toLowerCase().includes(q) && !entry.hotel.location.toLowerCase().includes(q)) {
+          if (!entry.hotel.name.toLowerCase().includes(q) && 
+              !entry.hotel.location.toLowerCase().includes(q) && 
+              !entry.hotel.locationNotes?.toLowerCase().includes(q)) {
             return false;
           }
         }
@@ -338,52 +435,59 @@ export default function Home() {
             alt=""
             aria-hidden="true"
             loading="eager"
-            showSkeleton={false}
             className="w-full h-full object-cover object-center"
           />
         </motion.div>
 
-        {/* Layered scrims rather than one flat wash: the old single overlay
-            greyed the whole photograph out to keep the text legible. These keep
-            contrast where the type sits and leave the image alone elsewhere. */}
-        <div className="absolute inset-0 z-10 bg-gradient-to-b from-stone-950/45 via-transparent to-stone-950/75" />
-        {/* The type is left-aligned over a bright sunset, so the heavier scrim
-            runs left-to-right and clears by the middle of the frame — the old
-            full-bleed wash greyed out the whole photograph to no benefit. */}
-        <div className="absolute inset-0 z-10 bg-[linear-gradient(to_right,rgba(12,10,9,0.8)_0%,rgba(12,10,9,0.45)_35%,transparent_65%)]" />
+        {/* Global centered scrims for a more expansive, inclusive feel */}
+        <div className="absolute inset-0 z-10 bg-stone-950/40" />
+        <div className="absolute inset-0 z-10 bg-gradient-to-t from-stone-950 via-transparent to-stone-950/60" />
 
-        <div className="relative z-20 w-full max-w-6xl mx-auto px-6 lg:px-8 pt-28 pb-32">
+        <div className="relative z-20 w-full max-w-5xl mx-auto px-6 lg:px-8 pt-32 pb-40 flex flex-col items-center text-center">
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-            className="flex items-center gap-3 mb-7"
+            className="flex items-center justify-center gap-4 mb-8"
           >
-            <span className="h-px w-10 bg-white/40" />
-            <span className="text-[0.7rem] font-semibold tracking-[0.28em] text-white/70 uppercase">
-              Lodges &amp; camps across Malawi
+            <span className="h-px w-8 lg:w-12 bg-white/40" />
+            <span className="text-[0.65rem] md:text-[0.7rem] font-semibold tracking-[0.28em] text-white/90 uppercase">
+              A Globally Inclusive Community
             </span>
+            <span className="h-px w-8 lg:w-12 bg-white/40" />
           </motion.div>
 
           <motion.h1
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.05, ease: [0.16, 1, 0.3, 1] }}
-            className="font-serif text-white max-w-3xl tracking-[-0.03em] leading-[0.95]
-                       text-[clamp(2.75rem,7vw,5.5rem)]"
+            className="font-serif text-white max-w-4xl tracking-[-0.03em] leading-[1.05]
+                       text-[clamp(2.8rem,7vw,5.5rem)] mb-6 flex flex-col items-center"
           >
-            Discover the warm
-            <br className="hidden sm:block" /> heart of Africa.
+            <div className="h-[1.1em] overflow-hidden flex items-center relative min-w-[300px] justify-center text-emerald-400">
+              <AnimatePresence mode="popLayout">
+                <motion.span
+                  key={heroIndex}
+                  initial={{ opacity: 0, y: 40 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -40 }}
+                  transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                  className="absolute block"
+                >
+                  {heroWords[heroIndex]}
+                </motion.span>
+              </AnimatePresence>
+            </div>
+            <span>Travel Malawi.</span>
           </motion.h1>
 
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.12, ease: [0.16, 1, 0.3, 1] }}
-            className="mt-6 max-w-lg text-lg text-white/70 leading-relaxed"
+            className="max-w-2xl text-lg md:text-xl text-white/80 leading-relaxed font-medium"
           >
-            Island retreats on the lake, camps in the bush, and quiet places in between —
-            booked directly with the people who run them.
+            Empowering travelers from every corner of the world to experience the warm heart of Africa—booking directly with independent local hosts.
           </motion.p>
 
           {/* Search */}
@@ -391,12 +495,12 @@ export default function Home() {
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className="mt-12 bg-white/95 backdrop-blur-xl rounded-3xl lg:rounded-full p-2
+            className="mt-10 bg-white/95 backdrop-blur-xl rounded-3xl lg:rounded-full p-3 lg:p-2
                        shadow-2xl shadow-stone-950/30 ring-1 ring-white/60
-                       flex flex-col lg:flex-row lg:items-stretch gap-1 lg:gap-0 max-w-4xl"
+                       flex flex-col lg:flex-row lg:items-stretch gap-2 lg:gap-0 w-full max-w-4xl text-left"
           >
             {/* Where */}
-            <div className="relative flex-[1.5] min-w-0 rounded-2xl lg:rounded-full px-5 py-3 hover:bg-stone-50 transition group">
+            <div ref={locationSearchRef} className="relative flex-[1.5] min-w-0 rounded-2xl lg:rounded-full px-4 lg:px-5 py-4 lg:py-3 hover:bg-stone-50 transition group bg-white lg:bg-transparent shadow-sm lg:shadow-none ring-1 ring-stone-100 lg:ring-0">
               <label htmlFor="search-where" className="block text-[0.68rem] font-bold text-stone-900 uppercase tracking-[0.14em] mb-1">
                 Where
               </label>
@@ -407,68 +511,96 @@ export default function Home() {
                   type="text"
                   value={searchLocation}
                   onChange={e => setSearchLocation(e.target.value)}
+                  onFocus={() => setShowRecentSearches(true)}
                   onKeyDown={e => { if (e.key === 'Enter') handleSearch(); }}
                   placeholder="Search Malawi"
-                  list="malawi-cities"
+                  autoComplete="off"
                   className="bg-transparent border-none p-0 text-stone-800 text-sm w-full outline-none placeholder:text-stone-400"
                 />
-                <datalist id="malawi-cities">
-                  <option value="Lilongwe" />
-                  <option value="Blantyre" />
-                  <option value="Mzuzu" />
-                  <option value="Zomba" />
-                  <option value="Mangochi" />
-                  <option value="Salima" />
-                  <option value="Cape Maclear" />
-                  <option value="Likoma Island" />
-                  <option value="Nkhata Bay" />
-                </datalist>
-                <button
-                  type="button"
-                  title="Search near me"
-                  aria-label="Search near me"
-                  onClick={handleNearMe}
-                  className={`shrink-0 h-7 w-7 grid place-items-center rounded-full transition ${
-                    appliedSearch.coords
-                      ? 'bg-emerald-100 text-emerald-700'
-                      : 'text-stone-400 hover:bg-stone-200 hover:text-stone-700'
-                  }`}
-                >
-                  <LocateFixed className="w-3.5 h-3.5" />
-                </button>
+                
               </div>
 
-              {/* Radius, anchored under the field instead of floating over the
-                  input row where it used to cover the dates. */}
-              {appliedSearch.coords && (
-                <div className="absolute top-full left-2 right-2 mt-2 bg-white rounded-2xl shadow-xl ring-1 ring-stone-200 p-4 z-50">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-sm font-semibold text-stone-900">Search radius</span>
-                    <span className="text-sm font-semibold text-emerald-600 tabular-nums">{searchProximity} km</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="5"
-                    max="200"
-                    step="5"
-                    value={searchProximity}
-                    onChange={e => {
-                      const proximity = Number(e.target.value);
-                      setSearchProximity(proximity);
-                      setAppliedSearch(prev => ({ ...prev, proximity }));
-                    }}
-                    className="w-full accent-emerald-600 cursor-pointer"
-                  />
-                  <div className="flex justify-between text-xs text-stone-400 mt-1.5 font-medium">
-                    <span>5 km</span>
-                    <span>200 km</span>
+              {/* Recent Searches Dropdown */}
+              {showRecentSearches && (searchSuggestions.length > 0 || (!searchLocation.trim() && recentSearches.length > 0)) && (
+                <div className="absolute left-0 top-full mt-2 w-full min-w-[280px] bg-white rounded-2xl shadow-xl ring-1 ring-stone-950/5 overflow-hidden z-50">
+                  <div className="p-3">
+                    {searchLocation.trim() && searchSuggestions.length > 0 ? (
+                      <>
+                        <h4 className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-2 px-3">Suggestions</h4>
+                        <ul className="space-y-1">
+                          {searchSuggestions.map((suggestion, i) => (
+                            <li key={i}>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSearchLocation(suggestion.text);
+                                  setShowRecentSearches(false);
+                                  applySearch({
+                                    location: suggestion.text,
+                                    checkIn: searchCheckIn,
+                                    checkOut: searchCheckOut,
+                                    guests: totalGuests,
+                                    coords: null,
+                                    proximity: searchProximity,
+                                  });
+                                }}
+                                className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-stone-50 transition flex items-center gap-3 group/item"
+                              >
+                                <div className="h-8 w-8 rounded-full bg-stone-100 flex items-center justify-center shrink-0 group-hover/item:bg-white group-hover/item:shadow-sm transition">
+                                  {suggestion.type === 'location' ? <MapPin className="w-4 h-4 text-stone-400" /> : <Search className="w-4 h-4 text-stone-400" />}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="font-semibold text-stone-700 text-sm truncate">{suggestion.text}</div>
+                                  {suggestion.subtitle && (
+                                    <div className="text-xs text-stone-400 truncate">{suggestion.subtitle}</div>
+                                  )}
+                                </div>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </>
+                    ) : !searchLocation.trim() && recentSearches.length > 0 ? (
+                      <>
+                        <h4 className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-2 px-3">Recent Searches</h4>
+                        <ul className="space-y-1">
+                          {recentSearches.map((rs, i) => (
+                            <li key={i}>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSearchLocation(rs.location);
+                                  setAdults(rs.adults);
+                                  setChildren(rs.children);
+                                  setRoomsWanted(rs.roomsWanted);
+                                  setShowRecentSearches(false);
+                                }}
+                                className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-stone-50 transition flex items-center gap-3 group/item"
+                              >
+                                <div className="h-8 w-8 rounded-full bg-stone-100 flex items-center justify-center shrink-0 group-hover/item:bg-white group-hover/item:shadow-sm transition">
+                                  <Clock className="w-4 h-4 text-stone-400" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="font-semibold text-stone-700 text-sm truncate">{rs.location}</div>
+                                  <div className="text-xs text-stone-400 truncate">
+                                    {rs.adults + rs.children} Guest{rs.adults + rs.children !== 1 ? 's' : ''}
+                                  </div>
+                                </div>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </>
+                    ) : null}
                   </div>
                 </div>
               )}
+
+              
             </div>
 
             <div className="hidden lg:block w-px self-center h-10 bg-stone-200" />
-            <div className="lg:hidden h-px mx-4 bg-stone-100" />
+            {/* Mobile dividers removed for pill look */}
 
             {/* When */}
             <div className="shrink-0 rounded-2xl lg:rounded-full px-4 py-3 hover:bg-stone-50 transition">
@@ -498,10 +630,10 @@ export default function Home() {
             </div>
 
             <div className="hidden lg:block w-px self-center h-10 bg-stone-200" />
-            <div className="lg:hidden h-px mx-4 bg-stone-100" />
+            {/* Mobile dividers removed for pill look */}
 
             {/* Who */}
-            <div ref={guestSelectorRef} className="relative flex-[1.05] rounded-2xl lg:rounded-full px-5 py-3 hover:bg-stone-50 transition">
+            <div ref={guestSelectorRef} className="relative flex-[1.05] rounded-2xl lg:rounded-full px-4 lg:px-5 py-4 lg:py-3 hover:bg-stone-50 transition bg-white lg:bg-transparent shadow-sm lg:shadow-none ring-1 ring-stone-100 lg:ring-0">
               <button
                 type="button"
                 onClick={() => setShowGuestDropdown(v => !v)}
@@ -779,37 +911,47 @@ export default function Home() {
             ))}
           </div>
         ) : hotels.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 gap-y-10">
-            {filteredHotels.length > 0 ? filteredHotels.map((entry, index) => (
-              <HotelCard
-                key={entry.hotel.id}
-                hotel={entry.hotel}
-                index={index}
-                priceFrom={entry.priceFrom}
-                priceCurrency={currency}
-                rating={entry.rating}
-                searchParams={{
-                  checkIn: appliedSearch.checkIn,
-                  checkOut: appliedSearch.checkOut,
-                  guests: appliedSearch.guests || undefined,
-                }}
-              />
-            )) : (
-              <div className="col-span-full py-20 flex flex-col items-center justify-center text-center">
-                <div className="w-20 h-20 bg-stone-100 rounded-full flex items-center justify-center mb-6">
-                  <Search className="w-8 h-8 text-stone-400" />
+          <div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 gap-y-10">
+              {filteredHotels.length > 0 ? filteredHotels.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((entry, index) => (
+                <HotelCard
+                  key={entry.hotel.id}
+                  hotel={entry.hotel}
+                  index={index}
+                  priceFrom={entry.priceFrom}
+                  priceCurrency={currency}
+                  rating={entry.rating}
+                  searchParams={{
+                    checkIn: appliedSearch.checkIn,
+                    checkOut: appliedSearch.checkOut,
+                    guests: appliedSearch.guests || undefined,
+                  }}
+                />
+              )) : (
+                <div className="col-span-full py-20 flex flex-col items-center justify-center text-center">
+                  <div className="w-20 h-20 bg-stone-100 rounded-full flex items-center justify-center mb-6">
+                    <Search className="w-8 h-8 text-stone-400" />
+                  </div>
+                  <h3 className="text-2xl font-serif font-bold text-stone-900 mb-2">No properties found</h3>
+                  <p className="text-stone-500 text-lg max-w-md mb-8">
+                    We couldn't find any places matching your exact search criteria. Try adjusting your dates, location, or guest count.
+                  </p>
+                  <button
+                    onClick={clearFilters}
+                    className="bg-stone-900 text-white px-8 py-3 rounded-full font-medium hover:bg-stone-800 transition"
+                  >
+                    Clear all filters
+                  </button>
                 </div>
-                <h3 className="text-2xl font-serif font-bold text-stone-900 mb-2">No properties found</h3>
-                <p className="text-stone-500 text-lg max-w-md mb-8">
-                  We couldn't find any places matching your exact search criteria. Try adjusting your dates, location, or guest count.
-                </p>
-                <button
-                  onClick={clearFilters}
-                  className="bg-stone-900 text-white px-8 py-3 rounded-full font-medium hover:bg-stone-800 transition"
-                >
-                  Clear all filters
-                </button>
-              </div>
+              )}
+            </div>
+            
+            {filteredHotels.length > itemsPerPage && (
+              <Pagination
+                currentPage={currentPage}
+                totalPages={Math.ceil(filteredHotels.length / itemsPerPage)}
+                onPageChange={setCurrentPage}
+              />
             )}
           </div>
         ) : (
@@ -828,7 +970,7 @@ export default function Home() {
       {/* List Your Property CTA */}
       <section className="bg-stone-900 text-white py-32 relative overflow-hidden">
         <div className="absolute inset-0 opacity-10">
-          <SmartImage src={DECORATIVE_IMAGE} alt="" aria-hidden="true" showSkeleton={false} className="w-full h-full object-cover" />
+          <SmartImage src={DECORATIVE_IMAGE} alt="" aria-hidden="true" className="w-full h-full object-cover" />
         </div>
         <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">

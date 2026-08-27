@@ -65,7 +65,6 @@ function Masthead({
         <SmartImage
           src={logo}
           alt={restaurant.name ? `${restaurant.name} logo` : 'Restaurant logo'}
-          showSkeleton={false}
           className="h-16 w-auto max-w-[12rem] object-contain"
         />
       )}

@@ -150,6 +150,7 @@ export default function Modal({
 export const fieldClass =
   'w-full bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 text-sm text-stone-900 ' +
   'placeholder:text-stone-400 outline-none transition ' +
-  'focus:bg-white focus:border-stone-900 focus:ring-4 focus:ring-stone-900/5';
+  'focus:bg-white focus:border-stone-900 focus:ring-4 focus:ring-stone-900/5 ' +
+  'focus-within:bg-white focus-within:border-stone-900 focus-within:ring-4 focus-within:ring-stone-900/5';
 
 export const labelClass = 'block text-xs font-semibold text-stone-500 tracking-wide mb-1.5';

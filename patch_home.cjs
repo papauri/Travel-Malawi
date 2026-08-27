@@ -1,74 +1,49 @@
 const fs = require('fs');
-let code = fs.readFileSync('src/pages/Home.tsx', 'utf-8');
-code = code.replace(/\r\n/g, '\n');
+let content = fs.readFileSync('src/pages/Home.tsx', 'utf8');
 
-// 1. Remove Trust Strip section
-const trustStart = code.indexOf('{/* Trust Strip */}');
-if (trustStart > -1) {
-  // Find the closing </motion.div> for this section
-  let depth = 0;
-  let i = code.indexOf('<motion.div', trustStart);
-  let end = -1;
-  for (let j = i; j < code.length; j++) {
-    if (code.substring(j, j + 11) === '<motion.div') depth++;
-    if (code.substring(j, j + 13) === '</motion.div>') {
-      depth--;
-      if (depth === 0) {
-        end = j + 13;
-        break;
-      }
-    }
-  }
-  if (end > -1) {
-    // Remove from the comment to the end of the motion.div
-    code = code.substring(0, trustStart) + code.substring(end);
-    console.log('1. Trust strip removed');
-  }
-} else {
-  console.log('1. Trust strip already removed or not found');
-}
+// Update Hero Heading sizes
+content = content.replace(
+  `className="font-serif text-white max-w-3xl tracking-[-0.03em] leading-[0.95]
+                       text-[clamp(2.75rem,7vw,5.5rem)]"`,
+  `className="font-serif text-white max-w-3xl tracking-[-0.03em] leading-[0.95]
+                       text-[clamp(3.2rem,8vw,6rem)]"`
+);
 
-// 2. Filter hotels for approved status on the homepage
-// Find where hotels are fetched from Firestore and displayed
-// Look for the hotel cards rendering
-const filterSearch = 'hotels.filter(h =>';
-const hotelFilterIdx = code.indexOf(filterSearch);
-if (hotelFilterIdx === -1) {
-  // Look for how hotels are mapped/rendered
-  const mapIdx = code.indexOf('.map((hotel');
-  if (mapIdx > -1) {
-    // Find which variable is being mapped
-    const lineStart = code.lastIndexOf('\n', mapIdx);
-    const line = code.substring(lineStart, mapIdx + 20);
-    console.log('2. Hotels map context: ' + line.trim());
-  }
-}
+// Update Search Bar Container for mobile
+content = content.replace(
+  `className="mt-12 bg-white/95 backdrop-blur-xl rounded-3xl lg:rounded-full p-2
+                       shadow-2xl shadow-stone-950/30 ring-1 ring-white/60
+                       flex flex-col lg:flex-row lg:items-stretch gap-1 lg:gap-0 max-w-4xl"`,
+  `className="mt-10 bg-white/95 backdrop-blur-xl rounded-3xl lg:rounded-full p-3 lg:p-2
+                       shadow-2xl shadow-stone-950/30 ring-1 ring-white/60
+                       flex flex-col lg:flex-row lg:items-stretch gap-2 lg:gap-0 max-w-4xl"`
+);
 
-// Find where filteredHotels is used - check if there's a filter already
-const filteredIdx = code.indexOf('filteredHotels');
-if (filteredIdx > -1) {
-  console.log('2. filteredHotels found in code');
-  // Add approved status filter to the existing filter logic
-  const filterDef = code.indexOf('const filteredHotels');
-  if (filterDef > -1) {
-    const filterEnd = code.indexOf(';', filterDef);
-    const existing = code.substring(filterDef, filterEnd + 1);
-    console.log('   Existing filter: ' + existing.substring(0, 100) + '...');
-    
-    // Add .filter for approved status after the existing filter chain
-    if (!existing.includes('status')) {
-      // Insert .filter(h => !h.status || h.status === 'approved') 
-      const newFilter = existing.replace(
-        /\.filter\(/,
-        '.filter(h => !h.status || h.status === \'approved\').filter('
-      );
-      code = code.replace(existing, newFilter);
-      console.log('2. Added approved status filter');
-    }
-  }
-} else {
-  console.log('2. No filteredHotels found, checking for hotels rendering...');
-}
+// Make Search Where pill have more padding on mobile
+content = content.replace(
+  `className="relative flex-[1.5] min-w-0 rounded-2xl lg:rounded-full px-5 py-3 hover:bg-stone-50 transition group"`,
+  `className="relative flex-[1.5] min-w-0 rounded-2xl lg:rounded-full px-4 lg:px-5 py-4 lg:py-3 hover:bg-stone-50 transition group bg-white lg:bg-transparent shadow-sm lg:shadow-none ring-1 ring-stone-100 lg:ring-0"`
+);
 
-fs.writeFileSync('src/pages/Home.tsx', code, 'utf-8');
-console.log('\nHome.tsx patches applied!');
+// Do the same for Dates and Who
+content = content.replace(
+  `className="relative flex-[1.5] min-w-0 rounded-2xl lg:rounded-full px-5 py-3 hover:bg-stone-50 transition"`,
+  `className="relative flex-[1.5] min-w-0 rounded-2xl lg:rounded-full px-4 lg:px-5 py-4 lg:py-3 hover:bg-stone-50 transition bg-white lg:bg-transparent shadow-sm lg:shadow-none ring-1 ring-stone-100 lg:ring-0"`
+);
+
+content = content.replace(
+  `className="relative flex-[1.05] rounded-2xl lg:rounded-full px-5 py-3 hover:bg-stone-50 transition"`,
+  `className="relative flex-[1.05] rounded-2xl lg:rounded-full px-4 lg:px-5 py-4 lg:py-3 hover:bg-stone-50 transition bg-white lg:bg-transparent shadow-sm lg:shadow-none ring-1 ring-stone-100 lg:ring-0"`
+);
+
+// Remove the mobile divider since we now have distinct "pills" on mobile inside the container
+content = content.replace(
+  `<div className="lg:hidden h-px mx-4 bg-stone-100" />`,
+  `{/* Mobile dividers removed for pill look */}`
+);
+content = content.replace(
+  `<div className="lg:hidden h-px mx-4 bg-stone-100" />`,
+  `{/* Mobile dividers removed for pill look */}`
+);
+
+fs.writeFileSync('src/pages/Home.tsx', content);

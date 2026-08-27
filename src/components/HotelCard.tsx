@@ -31,16 +31,24 @@ export default function HotelCard({ hotel, searchParams, index, priceFrom, price
   // photography, so this is always at least one usable image.
   const allImages = getHotelImages(hotel);
 
-  const handleNextImage = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const nextImage = () => {
     setCurrentImageIdx((prev) => (prev + 1) % allImages.length);
   };
 
-  const handlePrevImage = (e: React.MouseEvent) => {
+  const prevImage = () => {
+    setCurrentImageIdx((prev) => (prev - 1 + allImages.length) % allImages.length);
+  };
+
+  const handleNextImage = (e: React.SyntheticEvent | Event) => {
     e.preventDefault();
     e.stopPropagation();
-    setCurrentImageIdx((prev) => (prev - 1 + allImages.length) % allImages.length);
+    nextImage();
+  };
+
+  const handlePrevImage = (e: React.SyntheticEvent | Event) => {
+    e.preventDefault();
+    e.stopPropagation();
+    prevImage();
   };
 
   const searchQuery = new URLSearchParams(
@@ -71,6 +79,17 @@ export default function HotelCard({ hotel, searchParams, index, priceFrom, price
             exit={{ opacity: 0 }}
             transition={{ duration: 0.4 }}
             className="absolute inset-0"
+            drag="x"
+            dragConstraints={{ left: 0, right: 0 }}
+            dragElastic={1}
+            onDragEnd={(e, { offset, velocity }) => {
+              const swipe = offset.x;
+              if (swipe < -50) {
+                nextImage();
+              } else if (swipe > 50) {
+                prevImage();
+              }
+            }}
           >
             <SmartImage
               src={allImages[currentImageIdx]}

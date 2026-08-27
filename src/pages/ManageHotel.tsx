@@ -9,6 +9,10 @@ import ImageUpload from '../components/ImageUpload';
 import GalleryUpload from '../components/GalleryUpload';
 import ConfirmDialog from '../components/ConfirmDialog';
 import Modal from '../components/Modal';
+import Pagination from '../components/Pagination';
+import BookingChat from '../components/BookingChat';
+import PropertyChat from '../components/PropertyChat';
+import { MessageSquare } from 'lucide-react';
 import SmartImage from '../components/SmartImage';
 import AvailabilityCalendar from '../components/AvailabilityCalendar';
 import OpeningHoursEditor from '../components/OpeningHoursEditor';
@@ -21,11 +25,11 @@ import { formatMoney } from '../lib/booking';
 import { CURRENCIES, CURRENCY_CODES, currenciesForRooms, roomCurrencies, roomPrice } from '../lib/currency';
 import { defaultWeek } from '../lib/hours';
 import { SPAM_REASON_LABELS } from '../lib/spam';
-import { isHotelManager } from '../lib/roles';
+import { isHotelManager, isAdmin } from '../lib/roles';
 
-type Tab = 'details' | 'rooms' | 'restaurant' | 'bookings';
+type Tab = 'details' | 'rooms' | 'restaurant' | 'bookings' | 'inquiries';
 
-const TABS: Tab[] = ['details', 'rooms', 'restaurant', 'bookings'];
+const TABS: Tab[] = ['details', 'rooms', 'restaurant', 'bookings', 'inquiries'];
 
 const isTab = (value: string | null): value is Tab => !!value && (TABS as string[]).includes(value);
 
@@ -69,6 +73,7 @@ export default function ManageHotel() {
   const [hotel, setHotel] = useState<Hotel | null>(null);
   const [rooms, setRooms] = useState<RoomType[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [inquiries, setInquiries] = useState<any[]>([]);
 
   // Edit states
   const [editHotelData, setEditHotelData] = useState<Partial<Hotel>>({});
@@ -76,13 +81,17 @@ export default function ManageHotel() {
   const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
   const [editRoomData, setEditRoomData] = useState<Partial<RoomType>>({});
   const [bookingFilter, setBookingFilter] = useState<'all' | 'pending' | 'confirmed' | 'cancelled'>('all');
+  const [currentBookingPage, setCurrentBookingPage] = useState(1);
+  const bookingsPerPage = 5;
+  const [chatTarget, setChatTarget] = useState<Booking | null>(null);
+  const [inquiryChatTarget, setInquiryChatTarget] = useState<any | null>(null);
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [savingRestaurant, setSavingRestaurant] = useState(false);
 
   useEffect(() => {
     if (authLoading) return;
 
-    if (!user || !isHotelManager(user)) {
+    if (!user || (!isHotelManager(user) && !isAdmin(user))) {
       navigate('/');
       return;
     }
@@ -92,7 +101,7 @@ export default function ManageHotel() {
       try {
         const docRef = doc(db, 'hotels', id);
         const docSnap = await getDoc(docRef);
-        if (docSnap.exists() && docSnap.data().managerId === user?.uid) {
+        if (docSnap.exists() && (docSnap.data().managerId === user?.uid || isAdmin(user))) {
           const hData = { id: docSnap.id, ...docSnap.data() } as Hotel;
           setHotel(hData);
           setEditHotelData(hData);
@@ -114,6 +123,13 @@ export default function ManageHotel() {
         } catch (bookingsError) {
           console.error('Could not load bookings for this property:', bookingsError);
           toast.error('Bookings could not be loaded. Property and room editing still work.');
+        }
+
+        try {
+          const inquiriesDocs = await getDocs(query(collection(db, 'hotel_chats'), where('managerId', '==', user?.uid), where('hotelId', '==', id)));
+          setInquiries(inquiriesDocs.docs.map(d => ({ id: d.id, ...d.data() })));
+        } catch (inquiriesError) {
+          console.error('Could not load inquiries:', inquiriesError);
         }
 
       } catch (error) {
@@ -186,6 +202,8 @@ export default function ManageHotel() {
     return [...filtered].sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
   }, [bookings, bookingFilter]);
 
+  const canSeeFinancials = hotel?.managerId === user?.uid;
+
   /** Downloads the property's bookings as CSV for accounting or a spreadsheet. */
   const exportBookingsCsv = () => {
     if (!bookings.length) {
@@ -194,7 +212,9 @@ export default function ManageHotel() {
     }
     const columns = [
       'Reference', 'Status', 'Guest', 'Email', 'Phone', 'Room',
-      'Check-in', 'Check-out', 'Nights', 'Guests', 'Rooms', 'Currency', 'Total', 'Booked on',
+      'Check-in', 'Check-out', 'Nights', 'Guests', 'Rooms', 'Currency',
+      ...(canSeeFinancials ? ['Total'] : []),
+      'Booked on',
     ];
     // Quoted and doubled per RFC 4180 so a comma or quote in a name or a
     // special request cannot shift every later column.
@@ -213,7 +233,7 @@ export default function ManageHotel() {
       b.guests,
       b.quantity ?? 1,
       b.currency ?? 'USD',
-      b.total ?? 0,
+      ...(canSeeFinancials ? [b.total ?? 0] : []),
       b.createdAt ? new Date(b.createdAt).toISOString().slice(0, 10) : '',
     ].map(escape).join(','));
 
@@ -412,6 +432,11 @@ export default function ManageHotel() {
         amenities = (amenities as string).split(',').map(s => s.trim()).filter(Boolean);
       }
 
+      let galleryUrls = editRoomData.galleryUrls;
+      if (typeof galleryUrls === 'string') {
+        galleryUrls = (galleryUrls as string).split(',').map(s => s.trim()).filter(Boolean);
+      }
+
       // Only the chosen currencies are stored, so removing one actually
       // withdraws the price rather than leaving a stale amount behind.
       const keep = (map: PriceMap | undefined): PriceMap =>
@@ -446,6 +471,7 @@ export default function ManageHotel() {
         showDualCurrency: currencies.length > 1,
         extraGuestFee: Number(editRoomData.extraGuestFees?.[primary] ?? 0),
         amenities: amenities || [],
+        galleryUrls: galleryUrls || [],
         blockedDates: [...new Set(blockedDates ?? [])].sort(),
       } as Record<string, unknown>;
       delete roomPayload.id;
@@ -505,6 +531,7 @@ export default function ManageHotel() {
       quantity: 5,
       currency: 'USD',
       imageUrl: '',
+      galleryUrls: [],
       amenities: '' as any,
       blockedDates: [],
       packages: []
@@ -695,61 +722,65 @@ export default function ManageHotel() {
       )}
 
       {/* Performance snapshot */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
-        <div className="bg-white border border-stone-200 rounded-2xl p-5 shadow-sm">
-          <div className="flex items-center gap-2 text-stone-400 mb-2">
-            <Percent className="h-4 w-4" />
-            <span className="text-xs font-bold uppercase tracking-wider">Occupancy · 30d</span>
+      {user?.uid === hotel.managerId && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+          <div className="bg-white border border-stone-200 rounded-2xl p-5 shadow-sm">
+            <div className="flex items-center gap-2 text-stone-400 mb-2">
+              <Percent className="h-4 w-4" />
+              <span className="text-xs font-bold uppercase tracking-wider">Occupancy · 30d</span>
+            </div>
+            <p className="text-3xl font-serif font-bold text-stone-900">{stats.occupancy.toFixed(0)}%</p>
+            <p className="text-xs text-stone-400 mt-1">{stats.occupiedNights} of {stats.availableNights} room-nights</p>
           </div>
-          <p className="text-3xl font-serif font-bold text-stone-900">{stats.occupancy.toFixed(0)}%</p>
-          <p className="text-xs text-stone-400 mt-1">{stats.occupiedNights} of {stats.availableNights} room-nights</p>
+          {canSeeFinancials && (
+            <>
+              <div className="bg-white border border-stone-200 rounded-2xl p-5 shadow-sm">
+                <div className="flex items-center gap-2 text-stone-400 mb-2">
+                  <Wallet className="h-4 w-4" />
+                  <span className="text-xs font-bold uppercase tracking-wider">Upcoming revenue</span>
+                </div>
+                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                  {stats.upcomingRevenue.length === 0
+                    ? <p className="text-3xl font-serif font-bold text-stone-900">&mdash;</p>
+                    : stats.upcomingRevenue.map(([code, total]) => (
+                        <p key={code} className="text-3xl font-serif font-bold text-stone-900">{formatMoney(total, code)}</p>
+                      ))}
+                </div>
+                <p className="text-xs text-stone-400 mt-1">Confirmed stays not yet completed</p>
+              </div>
+              <div className="bg-white border border-stone-200 rounded-2xl p-5 shadow-sm">
+                <div className="flex items-center gap-2 text-stone-400 mb-2">
+                  <TrendingUp className="h-4 w-4" />
+                  <span className="text-xs font-bold uppercase tracking-wider">All-time revenue</span>
+                </div>
+                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                  {stats.allTimeRevenue.length === 0
+                    ? <p className="text-3xl font-serif font-bold text-stone-900">&mdash;</p>
+                    : stats.allTimeRevenue.map(([code, total]) => (
+                        <p key={code} className="text-3xl font-serif font-bold text-stone-900">{formatMoney(total, code)}</p>
+                      ))}
+                </div>
+                <p className="text-xs text-stone-400 mt-1">{stats.confirmedCount} confirmed booking{stats.confirmedCount === 1 ? '' : 's'}</p>
+              </div>
+            </>
+          )}
+          <div className="bg-white border border-stone-200 rounded-2xl p-5 shadow-sm">
+            <div className="flex items-center gap-2 text-stone-400 mb-2">
+              <Clock className="h-4 w-4" />
+              <span className="text-xs font-bold uppercase tracking-wider">Awaiting reply</span>
+            </div>
+            <p className="text-3xl font-serif font-bold text-stone-900">{stats.pending}</p>
+            <p className="text-xs text-stone-400 mt-1">Avg stay {stats.averageStay.toFixed(1)} nights</p>
+          </div>
         </div>
-        <div className="bg-white border border-stone-200 rounded-2xl p-5 shadow-sm">
-          <div className="flex items-center gap-2 text-stone-400 mb-2">
-            <Wallet className="h-4 w-4" />
-            <span className="text-xs font-bold uppercase tracking-wider">Upcoming revenue</span>
-          </div>
-          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-            {stats.upcomingRevenue.length === 0
-              ? <p className="text-3xl font-serif font-bold text-stone-900">&mdash;</p>
-              : stats.upcomingRevenue.map(([code, total]) => (
-                  <p key={code} className="text-3xl font-serif font-bold text-stone-900">{formatMoney(total, code)}</p>
-                ))}
-          </div>
-          <p className="text-xs text-stone-400 mt-1">Confirmed stays not yet completed</p>
-        </div>
-        <div className="bg-white border border-stone-200 rounded-2xl p-5 shadow-sm">
-          <div className="flex items-center gap-2 text-stone-400 mb-2">
-            <TrendingUp className="h-4 w-4" />
-            <span className="text-xs font-bold uppercase tracking-wider">All-time revenue</span>
-          </div>
-          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-            {stats.allTimeRevenue.length === 0
-              ? <p className="text-3xl font-serif font-bold text-stone-900">&mdash;</p>
-              : stats.allTimeRevenue.map(([code, total]) => (
-                  <p key={code} className="text-3xl font-serif font-bold text-stone-900">{formatMoney(total, code)}</p>
-                ))}
-          </div>
-          <p className="text-xs text-stone-400 mt-1">{stats.confirmedCount} confirmed booking{stats.confirmedCount === 1 ? '' : 's'}</p>
-        </div>
-        <div className="bg-white border border-stone-200 rounded-2xl p-5 shadow-sm">
-          <div className="flex items-center gap-2 text-stone-400 mb-2">
-            <Clock className="h-4 w-4" />
-            <span className="text-xs font-bold uppercase tracking-wider">Awaiting reply</span>
-          </div>
-          <p className="text-3xl font-serif font-bold text-stone-900">{stats.pending}</p>
-          <p className="text-xs text-stone-400 mt-1">Avg stay {stats.averageStay.toFixed(1)} nights</p>
-        </div>
-      </div>
-
-      {/* Tabs scroll rather than wrap: four of them at this size overflowed a
-          phone with no way to reach the last one. A dot marks unsaved work. */}
+      )}
       <div className="flex gap-1 border-b border-stone-200 mb-8 overflow-x-auto scrollbar-hide -mx-6 px-6 lg:mx-0 lg:px-0">
         {([
           { id: 'details' as Tab, label: 'Property details', icon: Building },
           { id: 'rooms' as Tab, label: 'Rooms & pricing', icon: BedDouble },
           { id: 'restaurant' as Tab, label: 'Restaurant', icon: UtensilsCrossed },
           { id: 'bookings' as Tab, label: 'Bookings', icon: Calendar },
+          { id: 'inquiries' as Tab, label: 'Inquiries', icon: MessageSquare },
         ]).map(tab => {
           const Icon = tab.icon;
           const pendingCount = tab.id === 'bookings' ? bookings.filter(b => b.status === 'pending').length : 0;
@@ -839,25 +870,12 @@ export default function ManageHotel() {
               <div>
                 <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Location</label>
                 <div className="flex gap-2">
-                  <input type="text" required value={editHotelData.location || ''} onChange={e => setEditHotelData({...editHotelData, location: e.target.value})} className="flex-1 bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition" />
-                  <button 
-                    type="button"
-                    onClick={() => {
-                      if (navigator.geolocation) {
-                        navigator.geolocation.getCurrentPosition((position) => {
-                          setEditHotelData({...editHotelData, coordinates: { lat: position.coords.latitude, lng: position.coords.longitude }});
-                          toast.success('Coordinates updated!');
-                        }, () => toast.error('Failed to get location'));
-                      }
-                    }}
-                    className="bg-stone-200 text-stone-700 px-4 rounded-xl hover:bg-stone-300 transition font-medium whitespace-nowrap"
-                  >
-                    📍 Get Coords
-                  </button>
+                  <input type="text" required value={editHotelData.location || ''} onChange={e => setEditHotelData({...editHotelData, location: e.target.value})} className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition" placeholder="e.g. Area 43, Lilongwe" />
                 </div>
-                {editHotelData.coordinates && (
-                  <p className="text-xs text-stone-500 mt-2">Saved coordinates: {editHotelData.coordinates.lat.toFixed(4)}, {editHotelData.coordinates.lng.toFixed(4)}</p>
-                )}
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Location Notes / Directions</label>
+                <textarea rows={2} value={editHotelData.locationNotes || ''} onChange={e => setEditHotelData({...editHotelData, locationNotes: e.target.value})} className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition" placeholder="Any extra directions or notes to help guests find the property (optional)." />
               </div>
               <ImageUpload
                 label="Main Property Image"
@@ -899,7 +917,47 @@ export default function ManageHotel() {
                 />
               </div>
 
-              <div className="md:col-span-2">
+              <div className="md:col-span-2 pt-6 border-t border-stone-100">
+                <h4 className="font-serif font-bold text-stone-900 mb-4">Guest Messaging</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="flex items-center gap-3 cursor-pointer mb-6">
+                      <input 
+                        type="checkbox" 
+                        checked={editHotelData.chatEnabled !== false} 
+                        onChange={(e) => setEditHotelData({...editHotelData, chatEnabled: e.target.checked})}
+                        className="w-5 h-5 text-stone-900 border-stone-300 rounded focus:ring-stone-900"
+                      />
+                      <span className="font-medium text-stone-700">Enable Pre-booking Chat</span>
+                    </label>
+                    
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        checked={editHotelData.isOnline ?? true} 
+                        onChange={(e) => setEditHotelData({...editHotelData, isOnline: e.target.checked})}
+                        className="w-5 h-5 text-emerald-600 border-stone-300 rounded focus:ring-emerald-600"
+                        disabled={editHotelData.chatEnabled === false}
+                      />
+                      <span className={`font-medium ${editHotelData.chatEnabled === false ? 'text-stone-400' : 'text-stone-700'}`}>Show as "Online"</span>
+                    </label>
+                    <p className="text-xs text-stone-500 mt-2 ml-8">When offline, your out-of-office message is shown.</p>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Out of office message</label>
+                    <textarea 
+                      value={editHotelData.outOfOfficeMessage || ''} 
+                      onChange={e => setEditHotelData({...editHotelData, outOfOfficeMessage: e.target.value})}
+                      disabled={editHotelData.chatEnabled === false || editHotelData.isOnline === true}
+                      className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition h-24 resize-none disabled:opacity-50"
+                      placeholder="We're currently away. Leave a message and we'll reply soon!" 
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="md:col-span-2 pt-6 border-t border-stone-100">
                 <OpeningHoursEditor
                   value={editHotelData.hours}
                   onChange={hours => setEditHotelData({ ...editHotelData, hours })}
@@ -970,12 +1028,20 @@ export default function ManageHotel() {
                   </div>
                     <div className="md:col-span-2">
                       <ImageUpload
-                        label="Room Image"
+                        label="Room Main Image"
                         value={editRoomData.imageUrl || ''}
                         onChange={(url) => setEditRoomData({...editRoomData, imageUrl: url})}
                         folder="rooms"
                       />
                     </div>
+                  <div className="md:col-span-2">
+                    <GalleryUpload 
+                      value={editRoomData.galleryUrls || []} 
+                      onChange={(urls) => setEditRoomData({ ...editRoomData, galleryUrls: urls })} 
+                      label="Room Gallery"
+                      folder="room_gallery"
+                    />
+                  </div>
                   <div className="md:col-span-2">
                     <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Currencies you sell this room in</label>
                     <div className="flex flex-wrap gap-2 mb-1">
@@ -1327,7 +1393,10 @@ export default function ManageHotel() {
               ] as const).map(tab => (
                 <button
                   key={tab.key}
-                  onClick={() => setBookingFilter(tab.key)}
+                  onClick={() => {
+                  setBookingFilter(tab.key);
+                  setCurrentBookingPage(1);
+                }}
                   className={`px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition ${
                     bookingFilter === tab.key
                       ? 'bg-stone-900 text-white'
@@ -1360,12 +1429,21 @@ export default function ManageHotel() {
             </div>
           ) : (
             <ul className="divide-y divide-stone-100">
-              {visibleBookings.map(booking => (
+              {visibleBookings.slice((currentBookingPage - 1) * bookingsPerPage, currentBookingPage * bookingsPerPage).map(booking => (
                 <li key={booking.id} className="p-6 md:p-8 hover:bg-stone-50 transition">
                   <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-4">
                     <div>
                       <div className="flex items-center gap-3 mb-1 flex-wrap">
                         <span className="font-bold text-stone-900 text-lg">{booking.guestName}</span>
+                        {booking.status !== 'cancelled' && booking.status !== 'rejected' && (
+                          <button
+                            type="button"
+                            onClick={() => setChatTarget(booking)}
+                            className="ml-2 text-xs font-semibold text-stone-900 border-2 border-stone-900 bg-white px-3 py-1.5 rounded-lg hover:bg-stone-900 hover:text-white transition inline-flex items-center gap-1"
+                          >
+                            <MessageSquare className="w-3.5 h-3.5" /> Message
+                          </button>
+                        )}
                         <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider ${
                           booking.status === 'confirmed' ? 'bg-emerald-100 text-emerald-700' :
                           booking.status === 'rejected' ? 'bg-red-100 text-red-700' :
@@ -1411,7 +1489,9 @@ export default function ManageHotel() {
                     </div>
                     
                     <div className="text-right flex flex-col items-end">
-                      <span className="font-serif font-bold text-2xl text-stone-900 mb-2">{formatMoney(booking.total ?? 0, booking.currency)}</span>
+                      {canSeeFinancials && (
+                        <span className="font-serif font-bold text-2xl text-stone-900 mb-2">{formatMoney(booking.total ?? 0, booking.currency)}</span>
+                      )}
                       <div className="flex gap-2">
                         <button onClick={() => setBookingToDelete(booking.id!)} className="text-stone-400 hover:text-red-500 transition p-2">
                           <Trash2 className="h-5 w-5" />
@@ -1471,6 +1551,46 @@ export default function ManageHotel() {
               ))}
             </ul>
           )}
+          {visibleBookings.length > bookingsPerPage && (
+            <Pagination
+              currentPage={currentBookingPage}
+              totalPages={Math.ceil(visibleBookings.length / bookingsPerPage)}
+              onPageChange={setCurrentBookingPage}
+            />
+          )}
+        </div>
+      )}
+
+      {/* TAB CONTENT: INQUIRIES */}
+      {activeTab === 'inquiries' && (
+        <div className="bg-white rounded-3xl border border-stone-200 overflow-hidden shadow-sm p-6 md:p-8">
+          <h3 className="text-xl font-serif text-stone-900 mb-6">Guest Inquiries</h3>
+          
+          {inquiries.length === 0 ? (
+            <div className="text-center py-12 text-stone-500">
+              <MessageSquare className="w-12 h-12 mx-auto mb-4 text-stone-300" />
+              <p>No inquiries yet.</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-stone-100">
+              {inquiries.map((inquiry) => (
+                <div key={inquiry.id} className="py-4 flex items-center justify-between group">
+                  <div>
+                    <h4 className="font-bold text-stone-900">{inquiry.guestName || 'Guest'}</h4>
+                    <p className="text-sm text-stone-500">
+                      Last updated: {new Date(inquiry.updatedAt).toLocaleDateString()} at {new Date(inquiry.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setInquiryChatTarget(inquiry)}
+                    className="flex items-center gap-2 px-4 py-2 bg-stone-100 text-stone-700 hover:bg-stone-900 hover:text-white rounded-xl transition font-medium text-sm"
+                  >
+                    <MessageSquare className="w-4 h-4" /> Open Chat
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -1519,10 +1639,12 @@ export default function ManageHotel() {
                       {nightsBetween(booking.checkIn, booking.checkOut)} night{nightsBetween(booking.checkIn, booking.checkOut) === 1 ? '' : 's'} · {booking.guests} guest{booking.guests === 1 ? '' : 's'}
                     </span>
                   </div>
-                  <div className="flex justify-between px-4 py-3">
-                    <span className="text-stone-500">Total</span>
-                    <span className="font-semibold text-stone-900 tabular-nums">{formatMoney(booking.total ?? 0, booking.currency)}</span>
-                  </div>
+                  {canSeeFinancials && (
+                    <div className="flex justify-between px-4 py-3">
+                      <span className="text-stone-500">Total</span>
+                      <span className="font-semibold text-stone-900 tabular-nums">{formatMoney(booking.total ?? 0, booking.currency)}</span>
+                    </div>
+                  )}
                   {booking.guestPhone && (
                     <div className="flex justify-between px-4 py-3">
                       <span className="text-stone-500">Phone</span>
@@ -1556,6 +1678,32 @@ export default function ManageHotel() {
         onCancel={() => setPendingTab(null)}
       />
 
+            {chatTarget && user && (
+        <Modal
+          open={true}
+          onClose={() => setChatTarget(null)}
+          title={"Message " + (chatTarget.guestName || 'Guest')}
+          description={"Reference: " + (chatTarget.reference || 'N/A')}
+        >
+          <div className="mt-2 h-[500px]">
+             <BookingChat booking={chatTarget} currentUser={user} />
+          </div>
+        </Modal>
+      )}
+
+      {inquiryChatTarget && user && hotel && (
+        <div className="fixed inset-0 bg-stone-900/50 z-[100] flex items-center justify-center p-4">
+          <div className="w-full max-w-lg bg-transparent">
+            <PropertyChat 
+              hotel={hotel}
+              currentUser={user}
+              guestId={inquiryChatTarget.guestId}
+              guestName={inquiryChatTarget.guestName}
+              onClose={() => setInquiryChatTarget(null)}
+            />
+          </div>
+        </div>
+      )}
       <ConfirmDialog
         isOpen={!!bookingToDelete}
         title="Delete Booking"

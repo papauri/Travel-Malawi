@@ -13,6 +13,9 @@ import toast from 'react-hot-toast';
 import SmartImage from '../components/SmartImage';
 import ConfirmDialog from '../components/ConfirmDialog';
 import Modal, { fieldClass, labelClass } from '../components/Modal';
+import Pagination from '../components/Pagination';
+import BookingChat from '../components/BookingChat';
+import { MessageSquare } from 'lucide-react';
 import { getHotelImage } from '../lib/images';
 import { formatDateStr, daysUntil, nightsBetween } from '../lib/dates';
 import { cancellationTerms, formatMoney, isStayComplete, FREE_CANCELLATION_DAYS } from '../lib/booking';
@@ -31,6 +34,9 @@ export default function MyBookings() {
   const [reviewTarget, setReviewTarget] = useState<EnrichedBooking | null>(null);
   const [reviewedBookingIds, setReviewedBookingIds] = useState<Set<string>>(new Set());
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [chatTarget, setChatTarget] = useState<EnrichedBooking | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
 
   useEffect(() => {
     if (authLoading) return;
@@ -188,7 +194,7 @@ export default function MyBookings() {
           {tabs.map(tab => (
             <button
               key={tab.key}
-              onClick={() => setFilter(tab.key)}
+              onClick={() => { setFilter(tab.key); setCurrentPage(1); }}
               className={`px-5 py-3 text-sm font-semibold border-b-2 transition ${
                 filter === tab.key
                   ? 'border-stone-900 text-stone-900'
@@ -222,7 +228,7 @@ export default function MyBookings() {
           </div>
         ) : (
           <div className="space-y-6">
-            {visible.map(booking => {
+            {visible.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map(booking => {
               const terms = cancellationTerms(booking);
               const nights = nightsBetween(booking.checkIn, booking.checkOut);
               const canReview = isStayComplete(booking) && booking.id && !reviewedBookingIds.has(booking.id);
@@ -297,7 +303,16 @@ export default function MyBookings() {
 
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mt-auto">
                     <div className="space-y-3">
-                      {booking.status === 'pending' && (
+                      {booking.status !== 'cancelled' && booking.status !== 'rejected' && (
+                          <button
+                            type="button"
+                            onClick={() => setChatTarget(booking)}
+                            className="text-xs font-semibold text-stone-900 border-2 border-stone-900 bg-white px-4 py-2 rounded-xl hover:bg-stone-900 hover:text-white transition flex items-center gap-1.5"
+                          >
+                            <MessageSquare className="w-4 h-4" /> Contact host
+                          </button>
+                        )}
+                        {booking.status === 'pending' && (
                         <p className="text-xs font-medium text-amber-600 bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-100">
                           Waiting for property confirmation. Payment on arrival.
                         </p>
@@ -350,6 +365,14 @@ export default function MyBookings() {
             })}
           </div>
         )}
+        
+        {visible.length > itemsPerPage && (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={Math.ceil(visible.length / itemsPerPage)}
+            onPageChange={setCurrentPage}
+          />
+        )}
       </div>
 
       <ConfirmDialog
@@ -369,6 +392,18 @@ export default function MyBookings() {
         onCancel={() => setCancelTarget(null)}
       />
 
+      {chatTarget && user && (
+        <Modal
+          open={true}
+          onClose={() => setChatTarget(null)}
+          title={"Message " + (chatTarget.hotel?.name || 'Property')}
+          description={"Reference: " + (chatTarget.reference || 'N/A')}
+        >
+          <div className="mt-2 h-[500px]">
+             <BookingChat booking={chatTarget} currentUser={user} />
+          </div>
+        </Modal>
+      )}
       {reviewTarget && (
         <ReviewDialog
           booking={reviewTarget}

@@ -6,8 +6,6 @@ interface Props extends Omit<React.ImgHTMLAttributes<HTMLImageElement>, 'src' | 
   alt: string;
   /** Tried in order if `src` fails, before falling back to the placeholder. */
   fallbacks?: string[];
-  /** Tints the element and pulses until the image decodes. */
-  showSkeleton?: boolean;
 }
 
 /**
@@ -25,7 +23,6 @@ export default function SmartImage({
   src,
   alt,
   fallbacks = [],
-  showSkeleton = true,
   className = '',
   ...imgProps
 }: Props) {
@@ -61,7 +58,7 @@ export default function SmartImage({
       // placeholder, so this settles rather than looping.
       onError={() => setIndex(prev => (prev < candidates.length - 1 ? prev + 1 : prev))}
       onLoad={() => setLoaded(true)}
-      className={`${showSkeleton && !loaded ? 'bg-stone-200 animate-pulse' : ''} ${className}`.trim()}
+      className={className}
     />
   );
 }
