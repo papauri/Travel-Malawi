@@ -14,18 +14,7 @@ import { BookingLike, lowestPrice, roomsMatching } from '../lib/availability';
 import { todayStr } from '../lib/dates';
 import { CURRENCY_CODES, CURRENCIES, currenciesForRooms, formatMoney, readStoredCurrency, storeCurrency } from '../lib/currency';
 import { PROPERTY_CATEGORIES } from '../lib/listing';
-
-function getDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371; // Radius of the earth in km
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a =
-    Math.sin(dLat/2) * Math.sin(dLat/2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLon/2) * Math.sin(dLon/2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  return R * c; // Distance in km
-}
+import { distanceKm, isValidLatLng } from '../lib/geo';
 
 type SortKey = 'recommended' | 'price_asc' | 'price_desc' | 'rating';
 
@@ -427,9 +416,16 @@ export default function Home() {
           checkOut: appliedSearch.checkOut || undefined,
           guests,
         });
+        const coordinates = hotel.coordinates;
+        const distance =
+          appliedSearch.coords && isValidLatLng(coordinates)
+            ? distanceKm(appliedSearch.coords, coordinates)
+            : null;
+
         return {
           hotel,
           matching,
+          distance,
           // Listings with no rooms loaded yet keep their headline price blank
           // rather than advertising a misleading zero. A listing not sold in the
           // chosen currency shows "rates on request" instead of a converted one.
@@ -439,6 +435,12 @@ export default function Home() {
         };
       })
       .filter(entry => {
+        // A radius search is meaningless for a listing with no pin, so those
+        // are left out rather than silently included at an unknown distance.
+        if (appliedSearch.coords) {
+          if (entry.distance === null) return false;
+          if (entry.distance > appliedSearch.proximity) return false;
+        }
         if (appliedSearch.location && appliedSearch.location !== 'Near Me') {
           const q = appliedSearch.location.toLowerCase();
           if (!entry.hotel.name.toLowerCase().includes(q) && 
@@ -454,7 +456,9 @@ export default function Home() {
       });
 
     const sorted = [...matched];
-    if (sortKey === 'price_asc') {
+    if (appliedSearch.coords && sortKey === 'recommended') {
+      sorted.sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
+    } else if (sortKey === 'price_asc') {
       sorted.sort((a, b) => (a.priceFrom ?? Infinity) - (b.priceFrom ?? Infinity));
     } else if (sortKey === 'price_desc') {
       sorted.sort((a, b) => (b.priceFrom ?? -Infinity) - (a.priceFrom ?? -Infinity));

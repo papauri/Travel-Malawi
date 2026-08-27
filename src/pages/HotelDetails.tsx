@@ -20,6 +20,7 @@ import { formatTime, hasPublishedHours, isOpenAt, summariseHours } from '../lib/
 import MenuTemplateView from '../components/MenuTemplates';
 import { BookingLike, isRoomAvailable, unitsRemaining } from '../lib/availability';
 import { hasAnyContact, mailtoLink, telLink, whatsappLink } from '../lib/contact';
+import { mapEmbedUrl, mapLinkUrl } from '../lib/geo';
 import DatePicker from '../components/DatePicker';
 import { computeBookingPricing, formatMoney, makeBookingReference } from '../lib/booking';
 import { isTraveller } from '../lib/roles';
@@ -514,17 +515,30 @@ export default function HotelDetails() {
                   <p className="text-amber-800/80 text-sm leading-relaxed">{hotel.locationNotes}</p>
                 </div>
               )}
+              {/* The map searched Google for the location *text* even when the
+                  property had been pinned, so an exact pin was thrown away in
+                  favour of a fuzzy match on "Area 43, Lilongwe". */}
               <div className="w-full h-48 bg-stone-200 rounded-2xl overflow-hidden relative">
                 <iframe
+                  title={`Map of ${hotel.name}`}
                   width="100%"
                   height="100%"
                   style={{ border: 0 }}
                   loading="lazy"
                   allowFullScreen
                   referrerPolicy="no-referrer-when-downgrade"
-                  src={`https://maps.google.com/maps?q=${encodeURIComponent(hotel.location)}&z=14&output=embed`}
+                  src={mapEmbedUrl(hotel)}
                 ></iframe>
               </div>
+              <a
+                href={mapLinkUrl(hotel)}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-stone-600 hover:text-stone-900 transition"
+              >
+                <MapPin className="h-3.5 w-3.5" />
+                {hotel.coordinates ? 'Open the pin in Maps' : 'Find it in Maps'}
+              </a>
             </div>
             
             <div className="bg-stone-50 rounded-3xl p-8 border border-stone-200/50">

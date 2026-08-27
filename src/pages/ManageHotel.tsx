@@ -15,6 +15,7 @@ import PropertyChat from '../components/PropertyChat';
 import { MessageSquare } from 'lucide-react';
 import SmartImage from '../components/SmartImage';
 import { useBreadcrumbLabel } from '../components/Breadcrumbs';
+import LocationPicker from '../components/LocationPicker';
 import AvailabilityCalendar from '../components/AvailabilityCalendar';
 import OpeningHoursEditor from '../components/OpeningHoursEditor';
 import MenuEditor, { emptyRestaurant } from '../components/MenuEditor';
@@ -895,6 +896,16 @@ export default function ManageHotel() {
                   <input type="text" required value={editHotelData.location || ''} onChange={e => setEditHotelData({...editHotelData, location: e.target.value})} className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition" placeholder="e.g. Area 43, Lilongwe" />
                   <FieldError message={detailProblems.location} />
                 </div>
+              </div>
+              {/* Nothing could edit a pin once a listing existed — it could
+                  only be dropped at creation, by standing at the property. An
+                  admin correcting someone else's listing had no way in at all. */}
+              <div className="md:col-span-2">
+                <LocationPicker
+                  value={editHotelData.coordinates ?? null}
+                  onChange={coordinates => setEditHotelData({ ...editHotelData, coordinates: coordinates ?? undefined })}
+                  locationText={editHotelData.location}
+                />
               </div>
               <div>
                 <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Location Notes / Directions</label>

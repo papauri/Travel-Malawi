@@ -1,11 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { collection, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Hotel, User } from '../types';
-import { Shield, Building2, CheckCircle, XCircle, Clock, MapPin, Users, Edit2, Key, Trash2, Star } from 'lucide-react';
+import { Shield, Building2, CheckCircle, XCircle, Clock, MapPin, MapPinOff, Users, Edit2, Key, Trash2, Star, ExternalLink } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import Pagination from '../components/Pagination';
+import { PIN_PROBLEM_LABELS, mapLinkUrl, pinProblem } from '../lib/geo';
 import toast from 'react-hot-toast';
 import SmartImage from '../components/SmartImage';
 import { getHotelImage } from '../lib/images';
@@ -19,6 +20,7 @@ export default function AdminDashboard() {
   const [managers, setManagers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentHotelPage, setCurrentHotelPage] = useState(1);
+  const [onlyBadPins, setOnlyBadPins] = useState(false);
   const [currentManagerPage, setCurrentManagerPage] = useState(1);
   const itemsPerPage = 5;
 
@@ -99,6 +101,14 @@ export default function AdminDashboard() {
     }
   };
 
+  /** Listings whose pin is missing, unusable, swapped or outside Malawi. */
+  const badPinCount = useMemo(() => hotels.filter(h => pinProblem(h.coordinates)).length, [hotels]);
+
+  const visibleHotels = useMemo(
+    () => (onlyBadPins ? hotels.filter(h => pinProblem(h.coordinates)) : hotels),
+    [hotels, onlyBadPins]
+  );
+
   const handleUpdateStatus = async (hotelId: string, newStatus: 'approved' | 'rejected' | 'pending') => {
     if (updatingId) return;
     setUpdatingId(hotelId);
@@ -137,13 +147,31 @@ export default function AdminDashboard() {
         
         {/* Left Column: Hotels */}
         <div className="lg:col-span-2">
-          <h2 className="text-2xl font-serif font-bold text-stone-900 mb-6 flex items-center gap-2">
-            <Building2 className="h-6 w-6" />
-            Hotel Listings ({hotels.length})
-          </h2>
-          
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-2xl font-serif font-bold text-stone-900 flex items-center gap-2">
+              <Building2 className="h-6 w-6" />
+              Hotel Listings ({visibleHotels.length}{onlyBadPins ? ` of ${hotels.length}` : ''})
+            </h2>
+            {/* A missing or wrong pin is invisible until somebody looks for it,
+                so the count is stated and filterable rather than buried. */}
+            {badPinCount > 0 && (
+              <button
+                onClick={() => { setOnlyBadPins(v => !v); setCurrentHotelPage(1); }}
+                aria-pressed={onlyBadPins}
+                className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition ${
+                  onlyBadPins
+                    ? 'bg-amber-500 text-white hover:bg-amber-600'
+                    : 'bg-amber-100 text-amber-800 hover:bg-amber-200'
+                }`}
+              >
+                <MapPinOff className="h-4 w-4" />
+                {badPinCount} needing a map pin
+              </button>
+            )}
+          </div>
+
           <div className="space-y-6">
-            {hotels.slice((currentHotelPage - 1) * itemsPerPage, currentHotelPage * itemsPerPage).map(hotel => (
+            {visibleHotels.slice((currentHotelPage - 1) * itemsPerPage, currentHotelPage * itemsPerPage).map(hotel => (
               <div key={hotel.id} className="bg-white rounded-3xl p-6 shadow-sm border border-stone-200 flex flex-col md:flex-row gap-6">
                 <div className="h-48 w-full md:w-64 bg-stone-100 rounded-2xl overflow-hidden shrink-0">
                   <SmartImage src={getHotelImage(hotel)} alt={hotel.name} className="w-full h-full object-cover" />
@@ -182,6 +210,25 @@ export default function AdminDashboard() {
                       <p className="text-stone-500 text-sm flex items-center gap-2">
                         <MapPin className="h-4 w-4" /> {hotel.location}
                       </p>
+                      {(() => {
+                        const problem = pinProblem(hotel.coordinates);
+                        return problem ? (
+                          <p className="text-amber-700 text-sm flex items-center gap-2 font-medium">
+                            <MapPinOff className="h-4 w-4" /> {PIN_PROBLEM_LABELS[problem]}
+                          </p>
+                        ) : (
+                          <a
+                            href={mapLinkUrl(hotel)}
+                            target="_blank"
+                            rel="noreferrer noopener"
+                            className="text-stone-500 text-sm flex items-center gap-2 hover:text-stone-900 transition w-fit"
+                          >
+                            <MapPin className="h-4 w-4 text-emerald-600" />
+                            {hotel.coordinates!.lat.toFixed(4)}, {hotel.coordinates!.lng.toFixed(4)}
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                        );
+                      })()}
                       <p className="text-stone-500 text-sm flex items-center gap-2">
                         <Users className="h-4 w-4" /> Manager ID: {hotel.managerId}
                       </p>
@@ -254,15 +301,15 @@ export default function AdminDashboard() {
               </div>
             ))}
             
-            {hotels.length === 0 && (
+            {visibleHotels.length === 0 && (
               <div className="bg-stone-50 rounded-3xl p-12 text-center text-stone-500">
                 No hotel listings found in the database.
               </div>
             )}
-            {hotels.length > itemsPerPage && (
+            {visibleHotels.length > itemsPerPage && (
               <Pagination
                 currentPage={currentHotelPage}
-                totalPages={Math.ceil(hotels.length / itemsPerPage)}
+                totalPages={Math.ceil(visibleHotels.length / itemsPerPage)}
                 onPageChange={setCurrentHotelPage}
               />
             )}

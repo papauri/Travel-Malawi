@@ -14,6 +14,9 @@ import { validateRoom } from '../src/lib/validateRoom';
 import { validateProperty } from '../src/lib/listing';
 import { emailProblem, phoneProblem, telLink, whatsappLink } from '../src/lib/contact';
 import { newChimeState, shouldChime } from '../src/lib/notificationSound';
+import {
+  distanceKm, isWithinMalawi, looksSwapped, mapEmbedUrl, parseCoordinates, pinProblem,
+} from '../src/lib/geo';
 
 let failures = 0;
 
@@ -146,6 +149,52 @@ check('silent for a message you sent yourself', shouldChime(mine, 'me', state), 
 const theirs = [...mine, { id: '4', senderId: 'them' }];
 check('sounds for a message from the other party', shouldChime(theirs, 'me', state), true);
 check('a repeated snapshot does not sound again', shouldChime(theirs, 'me', state), false);
+
+
+/* ----------------------------------------------------------------- geo -- */
+
+// Nobody types coordinates; they paste a link off a phone. Each of these shapes
+// comes out of a real Google Maps copy, and a parser that quietly returns null
+// for one of them leaves the pin unset with no error anywhere.
+console.log('\n- Map pins -');
+
+const kayaMawa = { lat: -12.0699, lng: 34.7239 };
+
+check('a bare pair', parseCoordinates('-13.98, 33.78'), { lat: -13.98, lng: 33.78 });
+check('a pair separated by a space', parseCoordinates('-13.98 33.78'), { lat: -13.98, lng: 33.78 });
+check('an @lat,lng map URL', parseCoordinates('https://www.google.com/maps/place/Lilongwe/@-13.9626,33.7741,13z'), { lat: -13.9626, lng: 33.7741 });
+check('a ?q= link', parseCoordinates('https://maps.google.com/maps?q=-13.9626,33.7741&z=15'), { lat: -13.9626, lng: 33.7741 });
+check('the !3d!4d place form wins over @', parseCoordinates('https://www.google.com/maps/place/X/@-13.0,33.0,17z/data=!3m1!4b1!3d-13.9626!4d33.7741'), { lat: -13.9626, lng: 33.7741 });
+check('prose is not a coordinate', parseCoordinates('Near the mission, turn left'), null);
+check('empty input', parseCoordinates(''), null);
+check('an out-of-range pair is refused', parseCoordinates('-913.98, 33.78'), null);
+
+check('a Malawian pin is inside', isWithinMalawi(kayaMawa), true);
+check('London is not', isWithinMalawi({ lat: 51.5, lng: -0.12 }), false);
+check('a swapped pair is spotted', looksSwapped({ lat: 34.7239, lng: -12.0699 }), true);
+check('a correct pair is not called swapped', looksSwapped(kayaMawa), false);
+
+check('no pin reports missing', pinProblem(undefined), 'missing');
+check('a good pin reports nothing', pinProblem(kayaMawa), null);
+check('a swapped pin is named', pinProblem({ lat: 34.7239, lng: -12.0699 }), 'swapped');
+check('a foreign pin is named', pinProblem({ lat: 51.5, lng: -0.12 }), 'outside');
+check('rubbish is named', pinProblem({ lat: 'x', lng: 3 }), 'invalid');
+
+// A real record: "Lilongwe Grand" was pinned at 53.298, -7.558 — the middle of
+// Ireland — by someone tapping "use my position" from the wrong continent. It
+// is not a swapped pair (swapping lands it in the Indian Ocean), so it has to
+// report as outside rather than be silently "corrected".
+check('a pin on the wrong continent', pinProblem({ lat: 53.29815, lng: -7.55821 }), 'outside');
+check('...and is not mistaken for a swap', looksSwapped({ lat: 53.29815, lng: -7.55821 }), false);
+
+// Lilongwe to Blantyre is about 300 km by air.
+const lilongwe = { lat: -13.9626, lng: 33.7741 };
+const blantyre = { lat: -15.7861, lng: 35.0058 };
+check('distance is in a sane range', Math.round(distanceKm(lilongwe, blantyre) / 10) * 10, 240);
+check('distance to self is zero', Math.round(distanceKm(lilongwe, lilongwe)), 0);
+
+check('the embed uses the pin when there is one', mapEmbedUrl({ location: 'Somewhere', coordinates: kayaMawa }).includes('-12.0699,34.7239'), true);
+check('the embed falls back to the text', mapEmbedUrl({ location: 'Cape Maclear', coordinates: null }).includes('Cape%20Maclear'), true);
 
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILED`);
