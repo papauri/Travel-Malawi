@@ -9,6 +9,8 @@
  * through here first.
  */
 
+import { resolveShareUrl } from './shareLinks';
+
 /** Inline SVG so the last-resort fallback can never itself fail to load. */
 export const PLACEHOLDER_IMAGE =
   'data:image/svg+xml;charset=utf-8,' +
@@ -80,7 +82,11 @@ export function normalizeImageUrl(url: unknown): string | null {
   for (const { match, replacement } of DEAD_URL_REWRITES) {
     if (trimmed.includes(match)) return replacement;
   }
-  return trimmed;
+
+  // A OneDrive, Drive or Dropbox share link points at a viewer page rather than
+  // at the image. Rewriting here means links already saved in Firestore start
+  // rendering too, without anyone having to re-enter them.
+  return resolveShareUrl(trimmed).url;
 }
 
 /** Local photography for a hotel, matched on its name. Empty if none matches. */

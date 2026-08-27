@@ -1,6 +1,7 @@
 import React, { useState, useRef } from "react";
 import { Upload, Link as LinkIcon, Image as ImageIcon, Loader2, X, GripVertical } from "lucide-react";
 import { uploadImage, uploadErrorMessage, validateImage, IMAGE_ACCEPT_ATTR } from "../lib/uploadImage";
+import { resolveShareUrl, SHARE_PROVIDER_NAMES } from "../lib/shareLinks";
 import toast from "react-hot-toast";
 import SmartImage from "./SmartImage";
 
@@ -90,8 +91,17 @@ export default function GalleryUpload({ value = [], onChange, label = "Gallery I
   };
 
   const handleAddUrl = () => {
-    if (!urlInput.trim()) return;
-    onChange([...value, urlInput.trim()]);
+    const entered = urlInput.trim();
+    if (!entered) return;
+    // A OneDrive, Drive or Dropbox share link points at a viewer page, so it is
+    // converted to its direct form before being stored.
+    const { url, provider } = resolveShareUrl(entered);
+    if (value.includes(url)) {
+      toast.error("That image is already in the gallery.");
+      return;
+    }
+    onChange([...value, url]);
+    if (provider) toast.success(`Added from ${SHARE_PROVIDER_NAMES[provider]}.`);
     setUrlInput("");
   };
 
@@ -196,7 +206,7 @@ export default function GalleryUpload({ value = [], onChange, label = "Gallery I
               onChange={e => setUrlInput(e.target.value)}
               onKeyDown={e => e.key === "Enter" && (e.preventDefault(), handleAddUrl())}
               className="flex-1 rounded-xl border-stone-200 border bg-white p-3 text-sm focus:ring-2 focus:ring-stone-900 outline-none transition"
-              placeholder="https://images.unsplash.com/..."
+              placeholder="Image address, or a OneDrive / Drive / Dropbox share link"
             />
             <button
               type="button"

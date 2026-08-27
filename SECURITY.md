@@ -106,6 +106,26 @@ the five folders the app actually uses.
 Until Storage is enabled the upload UI now says so explicitly rather than
 reporting "Failed to upload image".
 
+### Working without Storage: pasted share links
+
+`src/lib/shareLinks.ts` converts OneDrive, SharePoint, Google Drive and Dropbox
+share links into their direct-content form, and `normalizeImageUrl` applies it
+everywhere an image is resolved — so links already saved in Firestore start
+rendering without anyone re-entering them.
+
+This keeps the product usable with no paid plan, but it is a workaround, not a
+substitute for object storage:
+
+- The file must be shared as **anyone with the link**, or guests see a broken
+  image. Nothing in the app can detect that; it fails silently at render time.
+- These URL forms are conventions, not documented APIs. They have worked for
+  years, but they belong to Microsoft, Google and Dropbox to change.
+- None of them is a CDN, and none is close to Malawi. Expect slow first loads.
+- Managers cannot upload this way — someone has to put the file in a drive and
+  paste a link. The upload button still needs Storage, or a third-party
+  uploader such as Cloudinary's free tier.
+
+
 ## Spam and abuse on the booking form
 
 Guest checkout is open to anyone with the URL and writes straight to Firestore,
