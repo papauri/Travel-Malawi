@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { doc, getDoc, collection, query, where, getDocs, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Hotel, RoomType, Booking, CurrencyCode, PriceMap, Restaurant, WeeklyHours } from '../types';
 import { useAuth } from '../contexts/AuthContext';
@@ -49,6 +49,7 @@ function hotelFormSnapshot(data: Partial<Hotel>): string {
     description: data.description ?? '',
     categories: data.categories ?? [],
     location: data.location ?? '',
+    locationNotes: data.locationNotes ?? '',
     coordinates: data.coordinates ?? null,
     imageUrl: data.imageUrl ?? '',
     galleryUrls: data.galleryUrls ?? [],
@@ -59,6 +60,9 @@ function hotelFormSnapshot(data: Partial<Hotel>): string {
     contactPhone: data.contactPhone ?? '',
     contactWhatsapp: data.contactWhatsapp ?? '',
     hours: data.hours ?? null,
+    chatEnabled: data.chatEnabled !== false,
+    isOnline: data.isOnline ?? true,
+    outOfOfficeMessage: data.outOfOfficeMessage ?? '',
   });
 }
 
@@ -87,6 +91,8 @@ export default function ManageHotel() {
   const [rooms, setRooms] = useState<RoomType[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [inquiries, setInquiries] = useState<any[]>([]);
+  const [inquiryToDelete, setInquiryToDelete] = useState<string | null>(null);
+  const [deletingInquiry, setDeletingInquiry] = useState(false);
 
   // Edit states
   const [editHotelData, setEditHotelData] = useState<Partial<Hotel>>({});
@@ -101,6 +107,51 @@ export default function ManageHotel() {
   const [inquiryChatTarget, setInquiryChatTarget] = useState<any | null>(null);
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [savingRestaurant, setSavingRestaurant] = useState(false);
+  const [togglingStatus, setTogglingStatus] = useState(false);
+
+  const deleteInquiryChat = async (chatId: string) => {
+    if (!chatId || deletingInquiry) return;
+    setDeletingInquiry(true);
+    try {
+      // Delete messages subcollection
+      const messagesRef = collection(db, 'hotel_chats', chatId, 'messages');
+      const messagesSnap = await getDocs(messagesRef);
+      const deletePromises = messagesSnap.docs.map(mDoc => deleteDoc(mDoc.ref));
+      await Promise.all(deletePromises);
+
+      // Delete the chat document
+      await deleteDoc(doc(db, 'hotel_chats', chatId));
+
+      setInquiryToDelete(null);
+      toast.success('Chat history deleted successfully.');
+    } catch (error) {
+      console.error('Error deleting inquiry chat history:', error);
+      toast.error('Failed to delete chat history.');
+    } finally {
+      setDeletingInquiry(false);
+    }
+  };
+
+  const handleToggleOnlineStatus = async () => {
+    if (!id || !hotel || togglingStatus) return;
+    const newStatus = hotel.isOnline === false ? true : false;
+    setTogglingStatus(true);
+    try {
+      await updateDoc(doc(db, 'hotels', id), { isOnline: newStatus });
+      setHotel(prev => prev ? { ...prev, isOnline: newStatus } : null);
+      setEditHotelData(prev => ({ ...prev, isOnline: newStatus }));
+      if (newStatus) {
+        toast.success(`${hotel.name} is now ONLINE! Guests will see you as available for live chat.`);
+      } else {
+        toast(`${hotel.name} is now OFFLINE. Out-of-office message is active.`, { icon: '🌙' });
+      }
+    } catch (err) {
+      console.error('Error toggling online status:', err);
+      toast.error('Failed to change online status.');
+    } finally {
+      setTogglingStatus(false);
+    }
+  };
 
   // Fills the last crumb with the property's name once it has loaded.
   useBreadcrumbLabel(hotel?.name);
@@ -112,6 +163,8 @@ export default function ManageHotel() {
       navigate('/');
       return;
     }
+
+    let unsubInquiries: (() => void) | undefined;
 
     async function fetchData() {
       if (!id) return;
@@ -143,10 +196,19 @@ export default function ManageHotel() {
         }
 
         try {
-          const inquiriesDocs = await getDocs(query(collection(db, 'hotel_chats'), where('managerId', '==', user?.uid), where('hotelId', '==', id)));
-          setInquiries(inquiriesDocs.docs.map(d => ({ id: d.id, ...d.data() })));
+          const inquiriesQuery = query(
+            collection(db, 'hotel_chats'),
+            where('hotelId', '==', id)
+          );
+          unsubInquiries = onSnapshot(inquiriesQuery, (snap) => {
+            const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            docs.sort((a: any, b: any) => (b.updatedAt || 0) - (a.updatedAt || 0));
+            setInquiries(docs);
+          }, (err) => {
+            console.error('Error listening to inquiries:', err);
+          });
         } catch (inquiriesError) {
-          console.error('Could not load inquiries:', inquiriesError);
+          console.error('Could not setup inquiries listener:', inquiriesError);
         }
 
       } catch (error) {
@@ -156,6 +218,10 @@ export default function ManageHotel() {
       }
     }
     fetchData();
+
+    return () => {
+      if (unsubInquiries) unsubInquiries();
+    };
   }, [id, user, authLoading, navigate]);
 
   // --- PERFORMANCE ---
@@ -716,9 +782,24 @@ export default function ManageHotel() {
             </a>
           </div>
         </div>
-        {/* A manager could previously not tell whether their listing was live;
-            the status was only ever visible on the admin dashboard. */}
-        <div className="shrink-0">
+        <div className="flex flex-wrap items-center gap-3 shrink-0">
+          {/* 1-Click Live Status Switch */}
+          <button
+            type="button"
+            onClick={handleToggleOnlineStatus}
+            disabled={togglingStatus}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider border transition shadow-xs ${
+              hotel.isOnline !== false
+                ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
+                : 'bg-stone-100 text-stone-700 border-stone-300 hover:bg-stone-200'
+            }`}
+            title="Toggle whether guests see you as Online or Away"
+          >
+            <span className={`h-2.5 w-2.5 rounded-full ${hotel.isOnline !== false ? 'bg-emerald-500 animate-pulse' : 'bg-stone-400'}`} />
+            <span>{hotel.isOnline !== false ? 'Host Online' : 'Host Offline (Away)'}</span>
+            <span className="text-[10px] font-semibold text-stone-500 bg-white/80 px-1.5 py-0.5 rounded-full ml-1">Toggle</span>
+          </button>
+
           {hotel.status === 'pending' ? (
             <span className="inline-flex items-center gap-1.5 bg-amber-100 text-amber-800 px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider">
               <Clock className="h-3.5 w-3.5" /> Awaiting approval
@@ -806,6 +887,7 @@ export default function ManageHotel() {
         ]).map(tab => {
           const Icon = tab.icon;
           const pendingCount = tab.id === 'bookings' ? bookings.filter(b => b.status === 'pending').length : 0;
+          const inquiryCount = tab.id === 'inquiries' ? inquiries.length : 0;
           return (
             <button
               key={tab.id}
@@ -825,6 +907,9 @@ export default function ManageHotel() {
               )}
               {pendingCount > 0 && (
                 <span className="bg-emerald-500 text-white text-xs px-2 py-0.5 rounded-full">{pendingCount}</span>
+              )}
+              {inquiryCount > 0 && (
+                <span className="bg-stone-800 text-white text-xs px-2 py-0.5 rounded-full">{inquiryCount}</span>
               )}
             </button>
           );
@@ -905,6 +990,14 @@ export default function ManageHotel() {
                   value={editHotelData.coordinates ?? null}
                   onChange={coordinates => setEditHotelData({ ...editHotelData, coordinates: coordinates ?? undefined })}
                   locationText={editHotelData.location}
+                  onLocationSelect={info => {
+                    if (info.location) {
+                      setEditHotelData(prev => ({
+                        ...prev,
+                        location: prev.location || info.location || prev.location,
+                      }));
+                    }
+                  }}
                 />
               </div>
               <div>
@@ -1692,34 +1785,144 @@ export default function ManageHotel() {
 
       {/* TAB CONTENT: INQUIRIES */}
       {activeTab === 'inquiries' && (
-        <div className="bg-white rounded-3xl border border-stone-200 overflow-hidden shadow-sm p-6 md:p-8">
-          <h3 className="text-xl font-serif text-stone-900 mb-6">Guest Inquiries</h3>
-          
-          {inquiries.length === 0 ? (
-            <div className="text-center py-12 text-stone-500">
-              <MessageSquare className="w-12 h-12 mx-auto mb-4 text-stone-300" />
-              <p>No inquiries yet.</p>
+        <div className="space-y-6">
+          {/* Host Status & Overview Card */}
+          <div className="bg-white rounded-3xl border border-stone-200 p-6 md:p-8 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-3">
+                <span className={`h-3 w-3 rounded-full ${hotel.isOnline !== false ? 'bg-emerald-500 animate-pulse' : 'bg-stone-400'}`} />
+                <h3 className="text-xl font-serif font-bold text-stone-900">
+                  {hotel.isOnline !== false ? 'You are Online' : 'You are Offline (Away)'}
+                </h3>
+              </div>
+              <p className="text-sm text-stone-500 mt-1">
+                {hotel.isOnline !== false
+                  ? 'Guests can see you are ready for instant inquiries.'
+                  : `Out-of-office message active: "${hotel.outOfOfficeMessage || "We're currently away. Leave a message and we'll reply soon!"}"`}
+              </p>
             </div>
-          ) : (
-            <div className="divide-y divide-stone-100">
-              {inquiries.map((inquiry) => (
-                <div key={inquiry.id} className="py-4 flex items-center justify-between group">
-                  <div>
-                    <h4 className="font-bold text-stone-900">{inquiry.guestName || 'Guest'}</h4>
-                    <p className="text-sm text-stone-500">
-                      Last updated: {new Date(inquiry.updatedAt).toLocaleDateString()} at {new Date(inquiry.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setInquiryChatTarget(inquiry)}
-                    className="flex items-center gap-2 px-4 py-2 bg-stone-100 text-stone-700 hover:bg-stone-900 hover:text-white rounded-xl transition font-medium text-sm"
-                  >
-                    <MessageSquare className="w-4 h-4" /> Open Chat
-                  </button>
+            <button
+              onClick={handleToggleOnlineStatus}
+              disabled={togglingStatus}
+              className={`px-5 py-2.5 rounded-xl font-semibold text-xs uppercase tracking-wider transition ${
+                hotel.isOnline !== false
+                  ? 'bg-stone-100 hover:bg-stone-200 text-stone-800 border border-stone-300'
+                  : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs'
+              }`}
+            >
+              {hotel.isOnline !== false ? 'Go Offline / Set Away' : 'Turn Online Now'}
+            </button>
+          </div>
+
+          <div className="bg-white rounded-3xl border border-stone-200 overflow-hidden shadow-xs p-6 md:p-8">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-serif font-bold text-stone-900">Guest Messages & Inquiries</h3>
+              <span className="text-xs font-semibold text-stone-500 bg-stone-100 px-3 py-1 rounded-full">
+                {inquiries.length} conversation{inquiries.length === 1 ? '' : 's'}
+              </span>
+            </div>
+            
+            {inquiries.length === 0 ? (
+              <div className="text-center py-16 text-stone-500">
+                <div className="w-14 h-14 bg-stone-100 rounded-2xl flex items-center justify-center mx-auto mb-4 text-stone-400">
+                  <MessageSquare className="w-7 h-7" />
                 </div>
-              ))}
-            </div>
-          )}
+                <h4 className="font-serif font-bold text-stone-800 text-lg">No inquiries yet</h4>
+                <p className="text-sm text-stone-500 max-w-sm mx-auto mt-1">
+                  When potential guests send a message from your property page, their inquiries will appear here with real-time updates and notification chimes.
+                </p>
+              </div>
+            ) : (
+              <div className="divide-y divide-stone-100">
+                {inquiries.map((inquiry) => {
+                  const guestInitial = (inquiry.guestName || 'Guest').charAt(0).toUpperCase();
+                  const updatedDate = inquiry.updatedAt ? new Date(inquiry.updatedAt) : new Date();
+                  const isEnded = inquiry.status === 'ended';
+                  const isGuestTyping = Boolean(inquiry.guestTyping && (Date.now() - (inquiry.guestTypingAt || 0) < 5000));
+                  const isGuestInChat = Boolean(inquiry.guestInChat);
+
+                  return (
+                    <div key={inquiry.id} className="py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 group hover:bg-stone-50/60 -mx-6 px-6 transition rounded-2xl">
+                      <div className="flex items-start gap-4">
+                        <div className="relative">
+                          <div className="w-11 h-11 rounded-2xl bg-stone-900 text-white font-bold text-base flex items-center justify-center shrink-0 shadow-xs">
+                            {guestInitial}
+                          </div>
+                          {/* Live Presence indicator dot on guest avatar */}
+                          <span 
+                            className={`absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full ring-2 ring-white ${
+                              isGuestInChat ? 'bg-emerald-400 animate-pulse' : 'bg-stone-300'
+                            }`}
+                          />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h4 className="font-bold text-stone-900">{inquiry.guestName || 'Guest'}</h4>
+                            <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                              Inquiry
+                            </span>
+
+                            {isGuestTyping ? (
+                              <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600 bg-emerald-100/90 border border-emerald-300 px-2 py-0.5 rounded-full flex items-center gap-1 animate-pulse">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+                                Typing...
+                              </span>
+                            ) : isGuestInChat ? (
+                              <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                <Eye className="w-3 h-3 text-emerald-600 animate-pulse" />
+                                In Chat Now
+                              </span>
+                            ) : isEnded ? (
+                              <span className="text-[10px] font-semibold uppercase tracking-wider text-stone-500 bg-stone-100 border border-stone-200 px-2 py-0.5 rounded-full">
+                                Ended
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600 bg-emerald-50/80 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                Active
+                              </span>
+                            )}
+                          </div>
+                          {inquiry.lastMessage && (
+                            <p className="text-sm text-stone-600 mt-1 line-clamp-1 italic">
+                              "{inquiry.lastMessage}"
+                            </p>
+                          )}
+                          <div className="flex items-center gap-2 mt-1 text-xs text-stone-400">
+                            <span>
+                              Last activity: {updatedDate.toLocaleDateString()} at {updatedDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                            {inquiry.guestLastOpenedAt && (
+                              <span className="text-stone-400">
+                                • Opened by guest: {new Date(inquiry.guestLastOpenedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 self-end sm:self-center">
+                        <button
+                          type="button"
+                          onClick={() => setInquiryChatTarget(inquiry)}
+                          className="flex items-center gap-2 px-4 py-2.5 bg-stone-900 text-white hover:bg-stone-800 rounded-xl transition font-semibold text-xs shadow-xs"
+                        >
+                          <MessageSquare className="w-4 h-4" /> Open Chat
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setInquiryToDelete(inquiry.id)}
+                          className="p-2.5 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition border border-stone-200 hover:border-red-200 shadow-2xs"
+                          title="Delete Chat History"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -1838,11 +2041,24 @@ export default function ManageHotel() {
         title="Delete Booking"
         message="Are you sure you want to permanently delete this booking? This action cannot be undone."
         confirmText="Delete"
+        cancelText="Cancel"
         isDestructive={true}
         onConfirm={() => {
           if (bookingToDelete) deleteBooking(bookingToDelete);
         }}
         onCancel={() => setBookingToDelete(null)}
+      />
+      <ConfirmDialog
+        isOpen={!!inquiryToDelete}
+        title="Delete Inquiry & Chat History"
+        message="Are you sure you want to permanently delete this inquiry and all conversation messages? This action cannot be undone."
+        confirmText="Delete History"
+        cancelText="Cancel"
+        isDestructive={true}
+        onConfirm={() => {
+          if (inquiryToDelete) deleteInquiryChat(inquiryToDelete);
+        }}
+        onCancel={() => setInquiryToDelete(null)}
       />
     </div>
   );

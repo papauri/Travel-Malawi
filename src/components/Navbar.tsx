@@ -47,7 +47,7 @@ export default function Navbar() {
   const hosting = isHotelManager(user);
 
   return (
-    <nav className="sticky top-0 z-50 w-full bg-gradient-to-b from-white to-stone-50/80 backdrop-blur-md border-b border-stone-200/60 shadow-sm">
+    <nav className="sticky top-0 z-[100] w-full bg-white/95 backdrop-blur-md border-b border-stone-200/60 shadow-xs">
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         <div className="flex h-20 items-center justify-between">
           {/* Logo */}

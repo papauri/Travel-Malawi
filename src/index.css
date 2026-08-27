@@ -5,9 +5,17 @@
   --font-serif: "Playfair Display", serif;
 }
 
+html {
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+  scroll-behavior: smooth;
+}
+
 body {
   font-family: var(--font-sans);
   background-color: #FAFAFA;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: auto;
 }
 
 /* The scroll area inside a dialog. The platform scrollbar is a heavy grey
@@ -38,6 +46,30 @@ body {
 }
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
+}
+
+/* Custom Leaflet Marker & Popup Enhancements */
+.leaflet-popup-content-wrapper {
+  padding: 0 !important;
+  border-radius: 1.25rem !important;
+  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1) !important;
+  border: 1px solid rgba(231, 229, 228, 0.8) !important;
+  overflow: hidden !important;
+}
+
+.leaflet-popup-content {
+  margin: 0 !important;
+  line-height: inherit !important;
+}
+
+.leaflet-popup-tip {
+  background: white !important;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1) !important;
+}
+
+.custom-cluster-marker, .custom-lodge-marker, .custom-leaflet-marker, .custom-leaflet-origin-marker {
+  background: transparent !important;
+  border: none !important;
 }
 
 /* Style the react-phone-number-input internals when housed inside fieldClass */

@@ -31,6 +31,7 @@ import ImageUpload from '../components/ImageUpload';
 import GalleryUpload from '../components/GalleryUpload';
 import SmartImage from '../components/SmartImage';
 import FieldError from '../components/FieldError';
+import LocationPicker from '../components/LocationPicker';
 import { DECORATIVE_IMAGE, getHotelImage } from '../lib/images';
 import {
   CATEGORY_HINTS, COMMON_AMENITIES, DESCRIPTION_MAX, DESCRIPTION_MIN, ListingDraft,
@@ -352,40 +353,18 @@ export default function ListProperty() {
                 />
               </div>
 
-              <div className="rounded-2xl border border-stone-200 bg-stone-50 p-5">
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                  <div>
-                    <p className="flex items-center gap-2 text-sm font-bold text-stone-900">
-                      <MapPin className="h-4 w-4 text-emerald-600" /> Drop a map pin
-                    </p>
-                    <p className="mt-1 text-sm text-stone-500">
-                      {draft.coordinates
-                        ? `Saved: ${draft.coordinates.lat.toFixed(4)}, ${draft.coordinates.lng.toFixed(4)}`
-                        : 'Optional, but it puts you in "near me" searches.'}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {draft.coordinates && (
-                      <button
-                        type="button"
-                        onClick={() => set('coordinates', null)}
-                        className="rounded-full px-3 py-2 text-sm font-semibold text-stone-500 transition hover:text-stone-900"
-                      >
-                        Clear
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={useMyLocation}
-                      className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-stone-700 ring-1 ring-stone-200 transition hover:ring-stone-400"
-                    >
-                      <LocateFixed className="h-4 w-4" /> Use my position
-                    </button>
-                  </div>
-                </div>
-                <p className="mt-3 text-xs text-stone-400">
-                  Stand at the property when you tap this — it saves wherever your device is now.
-                </p>
+              <div>
+                <LocationPicker
+                  value={draft.coordinates}
+                  onChange={coords => set('coordinates', coords)}
+                  locationText={draft.location || draft.name}
+                  label="Search & Pin Exact Location"
+                  onLocationSelect={info => {
+                    if (info.location && !draft.location) {
+                      set('location', info.location);
+                    }
+                  }}
+                />
               </div>
             </div>
           )}

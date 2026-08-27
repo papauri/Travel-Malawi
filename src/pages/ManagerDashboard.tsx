@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/firestore';
 import { Booking, RoomType } from '../types';
 import { db } from '../lib/firebase';
 import { Hotel } from '../types';
 import { Building2, Plus, ChevronRight, Clock, CheckCircle2, XCircle, BedDouble, CalendarCheck } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
+import toast from 'react-hot-toast';
 
 import SmartImage from '../components/SmartImage';
 import { getHotelImage } from '../lib/images';
@@ -21,7 +22,30 @@ export default function ManagerDashboard() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
+  const [togglingHotelId, setTogglingHotelId] = useState<string | null>(null);
   const itemsPerPage = 6;
+
+  const handleToggleHotelOnline = async (e: React.MouseEvent, hotel: Hotel) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!hotel.id || togglingHotelId) return;
+    const newStatus = hotel.isOnline === false ? true : false;
+    setTogglingHotelId(hotel.id);
+    try {
+      await updateDoc(doc(db, 'hotels', hotel.id), { isOnline: newStatus });
+      setHotels(prev => prev.map(h => h.id === hotel.id ? { ...h, isOnline: newStatus } : h));
+      if (newStatus) {
+        toast.success(`${hotel.name} is now ONLINE (Accepting guest chats)`);
+      } else {
+        toast(`${hotel.name} is now OFFLINE (Away)`, { icon: '🌙' });
+      }
+    } catch (err) {
+      console.error('Error toggling online status:', err);
+      toast.error('Failed to change online status.');
+    } finally {
+      setTogglingHotelId(null);
+    }
+  };
   
 
   const fetchMyHotels = async () => {
@@ -161,6 +185,22 @@ export default function ManagerDashboard() {
                     : hotel.status === 'rejected' ? <><XCircle className="h-3 w-3" /> Not published</>
                     : <><CheckCircle2 className="h-3 w-3" /> Live</>}
                 </span>
+
+                {/* 1-Click Online/Offline Toggle */}
+                <button
+                  type="button"
+                  onClick={(e) => handleToggleHotelOnline(e, hotel)}
+                  disabled={togglingHotelId === hotel.id}
+                  className={`absolute top-4 right-4 z-10 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[0.65rem] font-bold uppercase tracking-wider shadow-sm backdrop-blur-md transition ${
+                    hotel.isOnline !== false
+                      ? 'bg-emerald-950/80 text-emerald-300 hover:bg-emerald-900 border border-emerald-500/40'
+                      : 'bg-stone-900/80 text-stone-300 hover:bg-stone-800 border border-stone-700/60'
+                  }`}
+                  title="Click to toggle Host Online/Offline Status"
+                >
+                  <span className={`h-2 w-2 rounded-full ${hotel.isOnline !== false ? 'bg-emerald-400 animate-pulse' : 'bg-stone-400'}`} />
+                  <span>{hotel.isOnline !== false ? 'Online' : 'Offline'}</span>
+                </button>
               </div>
               <div className="p-8 flex-1 flex flex-col">
                 <h3 className="text-2xl font-serif font-bold text-stone-900 mb-2">{hotel.name}</h3>

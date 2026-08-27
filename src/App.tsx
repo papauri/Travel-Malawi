@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useLocation, Link } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { AuthDialogProvider } from './contexts/AuthDialogContext';
+import { ChatModalProvider } from './contexts/ChatModalContext';
 import Breadcrumbs, { BreadcrumbProvider } from './components/Breadcrumbs';
 import Navbar from './components/Navbar';
 import MobileNav from './components/MobileNav';
@@ -13,7 +14,7 @@ import ListProperty from './pages/ListProperty';
 import HotelDetails from './pages/HotelDetails';
 import MyBookings from './pages/MyBookings';
 import AdminDashboard from './pages/AdminDashboard';
-import BookingNotificationListener from './components/BookingNotificationListener';
+import GlobalNotificationManager from './components/GlobalNotificationManager';
 import { Toaster } from 'react-hot-toast';
 import Lenis from 'lenis';
 
@@ -43,19 +44,33 @@ function ScrollToTop() {
 
 export default function App() {
   useEffect(() => {
+    // Preserve native hardware-accelerated momentum scrolling on touch devices
+    const isTouchDevice =
+      typeof window !== 'undefined' &&
+      (('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || window.matchMedia('(pointer: coarse)').matches);
+
+    if (isTouchDevice) {
+      return;
+    }
+
     const lenis = new Lenis({
-      duration: 1.2,
+      duration: 1.1,
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)), // smooth ease-out
-      touchMultiplier: 2,
+      touchMultiplier: 0,
+      syncTouch: false,
     });
 
+    let animationFrameId: number;
     function raf(time: number) {
       lenis.raf(time);
-      requestAnimationFrame(raf);
+      animationFrameId = requestAnimationFrame(raf);
     }
-    requestAnimationFrame(raf);
+    animationFrameId = requestAnimationFrame(raf);
 
-    return () => lenis.destroy();
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+      lenis.destroy();
+    };
   }, []);
 
   return (
@@ -63,38 +78,40 @@ export default function App() {
       <BrowserRouter>
         <ScrollToTop />
         <AuthDialogProvider>
-          <BreadcrumbProvider>
-          <div className="min-h-screen bg-stone-50 flex flex-col font-sans">
-            <Navbar />
-            <Breadcrumbs />
-            <Toaster 
-              position="bottom-center"
-              toastOptions={{
-                style: {
-                  background: '#1c1917',
-                  color: '#fff',
-                  borderRadius: '16px',
-                  padding: '16px 24px',
-                }
-              }} 
-            />
-            <BookingNotificationListener />
-            <main className="flex-1 pb-16 md:pb-0">
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/hotel/:id" element={<HotelDetails />} />
-                <Route path="/list-your-property" element={<ListProperty />} />
-                <Route path="/dashboard" element={<ManagerDashboard />} />
-                <Route path="/dashboard/hotel/:id" element={<ManageHotel />} />
-                <Route path="/my-bookings" element={<MyBookings />} />
-                <Route path="/admin" element={<AdminDashboard />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </main>
-            <Footer />
-            <MobileNav />
-          </div>
-          </BreadcrumbProvider>
+          <ChatModalProvider>
+            <BreadcrumbProvider>
+            <div className="min-h-screen bg-stone-50 flex flex-col font-sans">
+              <Navbar />
+              <Breadcrumbs />
+              <Toaster 
+                position="bottom-center"
+                toastOptions={{
+                  style: {
+                    background: '#1c1917',
+                    color: '#fff',
+                    borderRadius: '16px',
+                    padding: '16px 24px',
+                  }
+                }} 
+              />
+              <GlobalNotificationManager />
+              <main className="flex-1 pb-16 md:pb-0">
+                <Routes>
+                  <Route path="/" element={<Home />} />
+                  <Route path="/hotel/:id" element={<HotelDetails />} />
+                  <Route path="/list-your-property" element={<ListProperty />} />
+                  <Route path="/dashboard" element={<ManagerDashboard />} />
+                  <Route path="/dashboard/hotel/:id" element={<ManageHotel />} />
+                  <Route path="/my-bookings" element={<MyBookings />} />
+                  <Route path="/admin" element={<AdminDashboard />} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </main>
+              <Footer />
+              <MobileNav />
+            </div>
+            </BreadcrumbProvider>
+          </ChatModalProvider>
         </AuthDialogProvider>
       </BrowserRouter>
     </AuthProvider>

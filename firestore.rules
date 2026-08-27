@@ -127,6 +127,24 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    match /bookings/{bookingId}/presence/{presenceId} {
+      allow read: if isAuthenticated() && (
+        bookingDoc(bookingId).guestId == request.auth.uid ||
+        bookingDoc(bookingId).managerId == request.auth.uid ||
+        isAdmin()
+      );
+      allow create, update: if isAuthenticated() && (
+        bookingDoc(bookingId).guestId == request.auth.uid ||
+        bookingDoc(bookingId).managerId == request.auth.uid ||
+        isAdmin()
+      );
+      allow delete: if isAuthenticated() && (
+        bookingDoc(bookingId).guestId == request.auth.uid ||
+        bookingDoc(bookingId).managerId == request.auth.uid ||
+        isAdmin()
+      );
+    }
+
     match /bookings/{bookingId} {
       // NOTE: this remains public because the availability calendar and the
       // pre-booking availability check both run for signed-out guests, and
@@ -222,7 +240,12 @@ service cloud.firestore {
         resource.data.managerId == request.auth.uid ||
         isAdmin()
       );
-      allow delete: if isAdmin();
+      allow delete: if isAuthenticated() && (
+        resource.data.managerId == request.auth.uid ||
+        resource.data.guestId == request.auth.uid ||
+        isManager(resource.data.hotelId) ||
+        isAdmin()
+      );
     }
     match /hotel_chats/{chatId}/messages/{messageId} {
       allow read: if isAuthenticated() && (
@@ -231,6 +254,7 @@ service cloud.firestore {
           get(/databases/$(database)/documents/hotel_chats/$(chatId)).data.managerId == request.auth.uid
         )) ||
         chatId.matches(".*_" + request.auth.uid) ||
+        chatId.matches(request.auth.uid + "_.*") ||
         isAdmin()
       );
       allow create: if isAuthenticated() && (
@@ -243,7 +267,17 @@ service cloud.firestore {
       && request.resource.data.createdAt is number
       && request.resource.data.senderName is string
       && request.resource.data.senderName.size() <= 100;
-      allow update, delete: if false;
+      allow update: if isAuthenticated() && (
+        resource.data.senderId == request.auth.uid ||
+        isAdmin()
+      );
+      allow delete: if isAuthenticated() && (
+        resource.data.senderId == request.auth.uid ||
+        resource.data.managerId == request.auth.uid ||
+        resource.data.guestId == request.auth.uid ||
+        isManager(resource.data.hotelId) ||
+        isAdmin()
+      );
     }
 
     match /reviews/{reviewId} {

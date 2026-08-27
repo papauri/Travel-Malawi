@@ -150,11 +150,19 @@ export function shouldChime(
   return incoming.some(m => m.senderId && m.senderId !== currentUserId);
 }
 
-/** Chimes for a message somebody else just sent. */
+/** Chimes for a message somebody else just sent, only when not already actively looking at the open foreground tab. */
 export function chimeForIncoming(
   messages: { id?: string; senderId?: string }[],
   currentUserId: string | undefined,
   seen: React.MutableRefObject<ChimeState>
 ): void {
+  // If the user is actively viewing this tab with the chat open, no notification noise needed
+  if (typeof document !== 'undefined' && !document.hidden && document.hasFocus?.()) {
+    if (messages.length > 0) {
+      for (const message of messages) if (message.id) seen.current.ids.add(message.id);
+      seen.current.primed = true;
+    }
+    return;
+  }
   if (shouldChime(messages, currentUserId, seen.current)) playChime();
 }

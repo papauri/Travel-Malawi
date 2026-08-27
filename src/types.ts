@@ -173,7 +173,8 @@ export interface RoomType {
 
 export interface Message {
   id?: string;
-  bookingId: string;
+  bookingId?: string;
+  chatId?: string;
   hotelId: string;
   managerId: string;
   guestId: string;
@@ -181,6 +182,51 @@ export interface Message {
   senderName: string;
   text: string;
   createdAt: number;
+}
+
+export interface HotelChat {
+  id?: string;
+  hotelId: string;
+  hotelName: string;
+  guestId: string;
+  guestName: string;
+  managerId: string;
+  status?: 'active' | 'ended';
+  endedAt?: number | null;
+  endedBy?: 'guest' | 'manager' | null;
+  endedByName?: string | null;
+  lastMessage?: string;
+  lastSenderId?: string;
+  lastSenderName?: string;
+  createdAt?: number;
+  updatedAt?: number;
+  
+  // Real-time typing indicators
+  guestTyping?: boolean;
+  guestTypingAt?: number;
+  managerTyping?: boolean;
+  managerTypingAt?: number;
+  
+  // Real-time presence & read / opened receipts
+  guestInChat?: boolean;
+  guestLastOpenedAt?: number;
+  guestLastSeenAt?: number;
+  managerInChat?: boolean;
+  managerLastOpenedAt?: number;
+  managerLastSeenAt?: number;
+}
+
+export interface ChatPresenceState {
+  guestTyping?: boolean;
+  guestTypingAt?: number;
+  managerTyping?: boolean;
+  managerTypingAt?: number;
+  guestInChat?: boolean;
+  guestLastOpenedAt?: number;
+  guestLastSeenAt?: number;
+  managerInChat?: boolean;
+  managerLastOpenedAt?: number;
+  managerLastSeenAt?: number;
 }
 
 export type BookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'rejected';
