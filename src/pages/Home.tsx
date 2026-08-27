@@ -788,18 +788,21 @@ export default function Home() {
         <div className="absolute inset-0 z-10 bg-gradient-to-t from-stone-950/70 via-stone-950/30 to-transparent" />
 
         <div className="relative z-20 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16 md:pt-32 md:pb-24">
-          <motion.h1
+          <motion.div
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.05, ease: [0.16, 1, 0.3, 1] }}
-            className="font-sans text-white max-w-4xl tracking-tight leading-[1.05]
-                       text-[clamp(2.5rem,7vw,5rem)] mb-8"
+            className="mb-8 md:mb-12"
           >
-            <span className="block font-light text-white/80">Welcome to Malawi.</span>
-            <span className="block font-semibold">
-              Find your perfect stay.
-            </span>
-          </motion.h1>
+            <h1 className="font-sans flex flex-col gap-2 md:gap-3">
+              <span className="text-xs sm:text-sm font-semibold tracking-[0.2em] text-white/90 uppercase ml-0.5 md:ml-1">
+                Welcome to Malawi
+              </span>
+              <span className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-semibold text-white tracking-tight leading-[1.15] md:leading-[1.1]">
+                Find your perfect stay.
+              </span>
+            </h1>
+          </motion.div>
 
           {/* Search */}
           <motion.div
