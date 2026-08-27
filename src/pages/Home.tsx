@@ -765,7 +765,7 @@ export default function Home() {
   return (
     <div className="flex flex-col min-h-screen">
       {/* Hero */}
-      <section className="relative min-h-[82svh] md:min-h-[86svh] w-full flex flex-col justify-center overflow-hidden bg-white">
+      <section className="relative min-h-[82svh] md:min-h-[86svh] w-full flex flex-col justify-center overflow-hidden bg-stone-950">
         <motion.div
           initial={{ scale: 1.06 }}
           animate={{ scale: 1.16 }}
@@ -784,18 +784,18 @@ export default function Home() {
 
         {/* Scrims run left-to-right now that the type is anchored left, so the
             photograph stays visible on the side the text does not occupy. */}
-        <div className="absolute inset-0 z-10 bg-gradient-to-r from-white/95 via-white/80 to-transparent" />
-        <div className="absolute inset-0 z-10 bg-gradient-to-t from-white/90 via-white/40 to-transparent" />
+        <div className="absolute inset-0 z-10 bg-gradient-to-r from-stone-950/80 via-stone-950/40 to-transparent" />
+        <div className="absolute inset-0 z-10 bg-gradient-to-t from-stone-950/70 via-stone-950/30 to-transparent" />
 
         <div className="relative z-20 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16 md:pt-32 md:pb-24">
           <motion.h1
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.05, ease: [0.16, 1, 0.3, 1] }}
-            className="font-sans text-stone-900 max-w-4xl tracking-tight leading-[1.05]
+            className="font-sans text-white max-w-4xl tracking-tight leading-[1.05]
                        text-[clamp(2.5rem,7vw,5rem)] mb-8"
           >
-            <span className="block font-light text-stone-500">Welcome to Malawi.</span>
+            <span className="block font-light text-white/80">Welcome to Malawi.</span>
             <span className="block font-semibold">
               Find your perfect stay.
             </span>

@@ -48,7 +48,7 @@ export const DECORATIVE_IMAGE = '/hotels/rosalyn_main.jpg';
  * depended on a third-party host. Kaya Mawa on Likoma Island is bundled with
  * the app, loads instantly, and is actually one of the listings.
  */
-export const HERO_IMAGE = 'https://images.unsplash.com/photo-1582719508461-905c673771fd?auto=format&fit=crop&q=80&w=2000';
+export const HERO_IMAGE = 'https://images.unsplash.com/photo-1518182170546-076616fd46fa?auto=format&fit=crop&q=80&w=2000';
 
 /**
  * URLs confirmed dead (verified 404) that still exist in stored records,
