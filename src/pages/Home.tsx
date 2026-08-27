@@ -792,9 +792,9 @@ export default function Home() {
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.05, ease: [0.16, 1, 0.3, 1] }}
-            className="mb-8 md:mb-12"
+            className="mb-8 md:mb-12 flex flex-col items-center"
           >
-            <h1 className="font-sans flex flex-col gap-2 md:gap-3">
+            <h1 className="font-sans flex flex-col gap-2 md:gap-3 items-center text-center">
               <span className="text-xs sm:text-sm font-semibold tracking-[0.2em] text-white/90 uppercase ml-0.5 md:ml-1">
                 Welcome to Malawi
               </span>
@@ -809,24 +809,24 @@ export default function Home() {
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className={`relative mt-8 bg-white/10 backdrop-blur-2xl rounded-2xl lg:rounded-full p-1.5 lg:p-1.5
-                       shadow-2xl shadow-black/30 ring-1 ring-white/30
-                       flex flex-col lg:flex-row lg:items-center gap-1 w-full max-w-[56rem] text-left transition-all ${
+            className={`relative mt-8 mx-auto bg-white rounded-2xl lg:rounded-full p-1.5
+                       shadow-2xl shadow-black/20 ring-1 ring-stone-900/5
+                       flex flex-col lg:flex-row lg:items-center gap-1 w-full max-w-3xl text-left transition-all ${
                          showRecentSearches || showGuestDropdown ? 'z-40' : 'z-20'
                        }`}
           >
             {/* Where */}
             <div
               ref={locationSearchRef}
-              className={`relative flex-[1.5] min-w-0 rounded-2xl px-3 lg:px-5 py-2.5 lg:py-2 hover:bg-white/10 transition group bg-white/5 lg:bg-transparent shadow-sm lg:shadow-none ring-1 ring-white/10 lg:ring-0 ${
+              className={`relative flex-[1.5] min-w-0 rounded-2xl px-3 lg:px-5 py-2.5 lg:py-2 hover:bg-stone-50 transition group bg-white lg:bg-transparent shadow-sm lg:shadow-none ring-1 ring-stone-100 lg:ring-0 ${
                 showRecentSearches ? 'z-50' : 'z-20'
               }`}
             >
-              <label htmlFor="search-where" className="block text-[0.6rem] font-bold text-white/80 uppercase tracking-[0.1em] mb-0.5">
+              <label htmlFor="search-where" className="block text-[0.65rem] font-bold text-stone-900 uppercase tracking-[0.1em] mb-0.5">
                 Where to
               </label>
               <div className="flex items-center gap-2">
-                <MapPin className="h-4 w-4 text-white/60 shrink-0" />
+                <MapPin className="h-4 w-4 text-stone-400 shrink-0" />
                 <input
                   id="search-where"
                   type="text"
@@ -836,7 +836,7 @@ export default function Home() {
                   onKeyDown={e => { if (e.key === 'Enter') handleSearch(); }}
                   placeholder="Lake, park, town or lodge"
                   autoComplete="off"
-                  className="bg-transparent border-none p-0 text-white text-sm w-full outline-none placeholder:text-white/50"
+                  className="bg-transparent border-none p-0 text-stone-900 text-sm w-full outline-none placeholder:text-stone-400"
                 />
               </div>
 
@@ -992,18 +992,18 @@ export default function Home() {
 
             {/* When */}
             <div className="shrink-0 rounded-2xl px-4 py-3 hover:bg-stone-50 transition">
-              <span className="block text-[0.6rem] font-bold text-white/80 uppercase tracking-[0.1em] mb-0.5">
+              <span className="block text-[0.65rem] font-bold text-stone-900 uppercase tracking-[0.1em] mb-0.5">
                 Nights
               </span>
               <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-white/60 shrink-0" />
+                <Calendar className="h-4 w-4 text-stone-400 shrink-0" />
                 <input
                   type="date"
                   aria-label="Check in"
                   min={today}
                   value={searchCheckIn}
                   onChange={e => setSearchCheckIn(e.target.value)}
-                  className="bg-transparent border-none p-0 text-stone-800 text-sm w-full outline-none min-w-0"
+                  className="bg-transparent border-none p-0 text-stone-900 text-sm w-full outline-none min-w-0"
                 />
                 <span className="text-stone-300 shrink-0">&ndash;</span>
                 <input
@@ -1012,7 +1012,7 @@ export default function Home() {
                   min={searchCheckIn || today}
                   value={searchCheckOut}
                   onChange={e => setSearchCheckOut(e.target.value)}
-                  className="bg-transparent border-none p-0 text-stone-800 text-sm w-full outline-none min-w-0"
+                  className="bg-transparent border-none p-0 text-stone-900 text-sm w-full outline-none min-w-0"
                 />
               </div>
             </div>
@@ -1032,17 +1032,17 @@ export default function Home() {
                 aria-expanded={showGuestDropdown}
                 className="w-full text-left"
               >
-                <span className="block text-[0.6rem] font-bold text-white/80 uppercase tracking-[0.1em] mb-0.5">
+                <span className="block text-[0.65rem] font-bold text-stone-900 uppercase tracking-[0.1em] mb-0.5">
                   Party
                 </span>
                 <span className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-white/60 shrink-0" />
+                  <Users className="h-4 w-4 text-stone-400 shrink-0" />
                   <span className="text-sm text-stone-800 truncate">
                     {totalGuests === 0
                       ? 'Add guests'
                       : `${totalGuests} guest${totalGuests > 1 ? 's' : ''}, ${roomsWanted} room${roomsWanted > 1 ? 's' : ''}`}
                   </span>
-                  <ChevronDown className={`h-3.5 w-3.5 text-white/60 shrink-0 ml-auto transition ${showGuestDropdown ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`h-3.5 w-3.5 text-stone-400 shrink-0 ml-auto transition ${showGuestDropdown ? 'rotate-180' : ''}`} />
                 </span>
               </button>
 
@@ -1088,7 +1088,7 @@ export default function Home() {
             <button
               onClick={handleSearch}
               disabled={searching}
-              className="shrink-0 flex items-center justify-center gap-2 bg-white text-stone-900 rounded-xl lg:rounded-full h-10 lg:h-auto lg:w-auto lg:my-0.5 lg:mr-0.5 lg:px-6 lg:py-2 font-bold text-sm hover:bg-stone-100 transition shadow-lg shadow-white/10 disabled:opacity-60"
+              className="shrink-0 flex items-center justify-center gap-2 bg-emerald-600 text-white rounded-xl lg:rounded-full h-12 lg:h-12 lg:w-auto lg:my-0 lg:mr-0 lg:px-6 font-bold text-sm hover:bg-emerald-700 transition shadow-md disabled:opacity-60"
             >
               {searching
                 ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
@@ -2042,6 +2042,7 @@ export default function Home() {
     </div>
   );
 }
+
 
 
 
