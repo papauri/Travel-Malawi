@@ -34,14 +34,18 @@ const DELETE_UNDATEABLE = process.argv.includes('--delete-undateable');
 /**
  * Who ends up owning which listing, matched on the listing name.
  *
- * The project owner takes the three properties with the strongest photography,
- * including Blue Zebra, which carries the end-to-end test booking — so the
- * confirm and decline flow can be exercised from a real dashboard. The rest go
- * to a second manager, so the platform has more than one owner to test with.
+ * Everything here is a test account — no personal account owns platform data.
+ *
+ * host@malawiscapes.com holds both roles, so signing in as it exercises the
+ * case this platform is actually built for: someone who lists a property and
+ * also books stays. It takes Blue Zebra, which carries the end-to-end test
+ * booking, so confirm and decline can be driven from a real dashboard. The
+ * rest go to a manager-only account, so there is more than one owner to test
+ * against.
  */
 const OWNERSHIP = [
   {
-    email: 'johnpaulchirwa@gmail.com',
+    email: 'host@malawiscapes.com',
     listings: ['Blue Zebra Island Lodge', 'Kaya Mawa', 'Pumulani Lodge'],
   },
   {

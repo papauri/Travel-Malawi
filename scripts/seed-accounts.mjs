@@ -19,27 +19,31 @@
  *   node scripts/seed-accounts.mjs            # dry run
  *   node scripts/seed-accounts.mjs --apply
  *
- * Optional: MANAGER_PASSWORD / TRAVELLER_PASSWORD env vars.
+ * Optional password overrides, otherwise one is generated and printed once:
+ *   HOST_PASSWORD, MANAGER_PASSWORD, TRAVELLER_PASSWORD, ADMIN_PASSWORD
  */
 import crypto from 'node:crypto';
 import { db, auth, APPLY, heading, plan, summarise } from './admin.mjs';
 
 /**
- * `admin` is only ever granted here. The Firestore rules refuse to let an
- * account promote itself, so the project owner needs it written out of band or
- * the admin dashboard is unreachable.
+ * Test accounts only. No personal account is touched by this script.
+ *
+ * `admin` is granted here or nowhere: the rules refuse to let an account
+ * promote itself, so without this the admin dashboard is unreachable.
  */
 const ROSTER = [
+  // Holds both roles, and owns listings. This is the account to sign in as when
+  // exercising the dual-role behaviour: it can list a property and book a stay
+  // somewhere else, which is the normal case for a small operator.
+  { email: 'host@malawiscapes.com', displayName: 'Demo Host & Guest', roles: ['traveller', 'hotel_manager'], passwordEnv: 'HOST_PASSWORD' },
   { email: 'manager@malawiscapes.com', displayName: 'Demo Manager', roles: ['hotel_manager'], passwordEnv: 'MANAGER_PASSWORD' },
   { email: 'traveller@malawiscapes.com', displayName: 'Demo Traveller', roles: ['traveller'], passwordEnv: 'TRAVELLER_PASSWORD' },
+  { email: 'admin@malawiscapes.com', displayName: 'Demo Admin', roles: ['admin'], passwordEnv: 'ADMIN_PASSWORD' },
+  // Pre-existing accounts from the original import, kept so their data still
+  // resolves to a real owner.
   { email: 'manager@example.com', displayName: 'Example Manager', roles: ['hotel_manager'] },
   { email: 'traveller@example.com', displayName: 'Example Traveller', roles: ['traveller'] },
-  // The project owner runs the platform and books on it, so they hold both.
-  // Add 'admin' here (or pass --grant-admin) to reach the admin dashboard.
-  { email: 'johnpaulchirwa@gmail.com', displayName: 'John Paul Chirwa', roles: ['traveller', 'hotel_manager'] },
 ];
-
-const GRANT_ADMIN = process.argv.includes('--grant-admin');
 
 /** Ordered, de-duplicated, never empty — matches toRoleFields in src/lib/roles. */
 const ROLE_ORDER = ['traveller', 'hotel_manager', 'admin'];
@@ -61,14 +65,7 @@ let changes = 0;
 const generated = [];
 
 for (const rosterEntry of ROSTER) {
-  const entry = {
-    ...rosterEntry,
-    roles: normaliseRoles(
-      GRANT_ADMIN && rosterEntry.email === 'johnpaulchirwa@gmail.com'
-        ? [...rosterEntry.roles, 'admin']
-        : rosterEntry.roles
-    ),
-  };
+  const entry = { ...rosterEntry, roles: normaliseRoles(rosterEntry.roles) };
   heading(`${entry.email}  [${entry.roles.join(', ')}]`);
 
   let user = await auth.getUserByEmail(entry.email).catch(() => null);
