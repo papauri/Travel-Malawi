@@ -28,6 +28,9 @@ import { SPAM_REASON_LABELS } from '../lib/spam';
 import { isHotelManager, isAdmin } from '../lib/roles';
 import { PROPERTY_CATEGORIES } from '../lib/listing';
 import { emailProblem, phoneProblem } from '../lib/contact';
+import { validateProperty } from '../lib/listing';
+import { RoomErrors, firstError, hasErrors, validateRoom } from '../lib/validateRoom';
+import FieldError from '../components/FieldError';
 
 type Tab = 'details' | 'rooms' | 'restaurant' | 'bookings' | 'inquiries';
 
@@ -86,6 +89,7 @@ export default function ManageHotel() {
   const [showAddRoom, setShowAddRoom] = useState(false);
   const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
   const [editRoomData, setEditRoomData] = useState<Partial<RoomType>>({});
+  const [roomErrors, setRoomErrors] = useState<RoomErrors>({});
   const [bookingFilter, setBookingFilter] = useState<'all' | 'pending' | 'confirmed' | 'cancelled'>('all');
   const [currentBookingPage, setCurrentBookingPage] = useState(1);
   const bookingsPerPage = 5;
@@ -257,8 +261,8 @@ export default function ManageHotel() {
   const handleSaveHotel = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!id || !hotel) return;
-    if (hasContactProblem) {
-      toast.error('Check the contact details before saving.');
+    if (hasDetailProblem) {
+      toast.error(Object.values(detailProblems).find(Boolean) ?? 'Check the highlighted fields.');
       return;
     }
     setSaving(true);
@@ -299,21 +303,27 @@ export default function ManageHotel() {
     }
   };
 
-  /**
-   * Format problems with the contact fields, if any.
-   *
-   * These are checked but not required here, unlike in the listing wizard:
-   * listings created before contact details existed have none, and refusing to
-   * save would trap their owners out of editing anything else. A malformed
-   * value is still refused — a number nobody can dial is worse than a blank.
-   */
-  const contactProblems = useMemo(() => ({
-    contactEmail: emailProblem(editHotelData.contactEmail ?? '', 'The booking email', false) ?? '',
-    contactPhone: phoneProblem(editHotelData.contactPhone ?? '', 'The phone number', false) ?? '',
-    contactWhatsapp: phoneProblem(editHotelData.contactWhatsapp ?? '', 'The WhatsApp number', false) ?? '',
-  }), [editHotelData.contactEmail, editHotelData.contactPhone, editHotelData.contactWhatsapp]);
+  // Once a save has been refused, the messages follow the fields as they are
+  // corrected, rather than waiting for another rejected submit to catch up.
+  useEffect(() => {
+    setRoomErrors(current => (hasErrors(current) ? validateRoom(editRoomData as any) : current));
+  }, [editRoomData]);
 
-  const hasContactProblem = Object.values(contactProblems).some(Boolean);
+  /**
+   * The same rules the listing wizard applies, in `edit` mode — which drops
+   * the minimums a listing might legitimately predate (an imported two-line
+   * description, or no contact details at all) while still refusing anything
+   * actually malformed. Refusing to save on a minimum would trap the owner of
+   * an older listing out of changing anything at all.
+   */
+  const detailProblems = useMemo(
+    () => validateProperty(editHotelData as any, 'edit'),
+    [editHotelData]
+  );
+
+  const hasDetailProblem = Object.values(detailProblems).some(Boolean);
+  /** Kept as a name for the contact block below, which reads better for it. */
+  const contactProblems = detailProblems;
 
   /** Unsaved work, per tab. Each editor holds local state until it is saved. */
   const hotelDirty = !!hotel && hotelFormSnapshot(editHotelData) !== hotelFormSnapshot(hotel);
@@ -407,50 +417,26 @@ export default function ManageHotel() {
     e.preventDefault();
     if (!id) return;
 
-    // Validated before the write: the booking maths divides by and multiplies
-    // these, and a room with zero capacity or a negative price is unsellable.
+    // Every problem at once, keyed by field, rather than a run of early
+    // returns that each fired a toast and stopped at the first one.
+    const problems = validateRoom(editRoomData as any);
+    if (hasErrors(problems)) {
+      setRoomErrors(problems);
+      toast.error(firstError(problems) ?? 'Check the highlighted fields.');
+      return;
+    }
+    setRoomErrors({});
+
     const currencies = (editRoomData.currencies ?? []).filter(c => CURRENCY_CODES.includes(c));
-    const prices = editRoomData.prices ?? {};
     const maxGuests = Number(editRoomData.maxGuests ?? 0);
     const quantity = Number(editRoomData.quantity ?? 0);
     const baseGuests = Number(editRoomData.baseGuests ?? maxGuests);
-
-    if (!editRoomData.name?.trim()) {
-      toast.error('Please give the room a name.');
-      return;
-    }
-    if (currencies.length === 0) {
-      toast.error('Choose at least one currency to sell this room in.');
-      return;
-    }
-    const missing = currencies.find(code => !(Number(prices[code]) > 0));
-    if (missing) {
-      toast.error(`Set a nightly rate in ${CURRENCIES[missing].label}, or remove that currency.`);
-      return;
-    }
-    if (!Number.isInteger(maxGuests) || maxGuests < 1) {
-      toast.error('Max guests must be at least 1.');
-      return;
-    }
-    if (!Number.isInteger(quantity) || quantity < 0) {
-      toast.error('Total rooms available must be zero or more.');
-      return;
-    }
-    if (baseGuests > maxGuests) {
-      toast.error('Guests included in the base price cannot exceed max guests.');
-      return;
-    }
+    const prices = editRoomData.prices ?? {};
 
     let blockedDates = editRoomData.blockedDates;
     if (typeof blockedDates === 'string') {
       blockedDates = (blockedDates as string).split(',').map(s => s.trim()).filter(Boolean);
     }
-    const invalidDate = (blockedDates ?? []).find(d => !isValidDateStr(d));
-    if (invalidDate) {
-      toast.error(`"${invalidDate}" is not a valid date. Use YYYY-MM-DD.`);
-      return;
-    }
-
     setSaving(true);
     try {
       let amenities = editRoomData.amenities;
@@ -521,6 +507,7 @@ export default function ManageHotel() {
   };
 
   const startEditRoom = (room: RoomType) => {
+    setRoomErrors({});
     // Legacy rooms have no `prices` map, so it is derived from whatever they do
     // have; the editor then only ever deals in the map.
     const currencies = roomCurrencies(room);
@@ -545,6 +532,7 @@ export default function ManageHotel() {
   };
 
   const startNewRoom = () => {
+    setRoomErrors({});
     setEditRoomData({
       name: '',
       description: '',
@@ -567,6 +555,7 @@ export default function ManageHotel() {
   };
 
   const cancelEditRoom = () => {
+    setRoomErrors({});
     setEditingRoomId(null);
     setShowAddRoom(false);
   };
@@ -882,7 +871,7 @@ export default function ManageHotel() {
           )}
 
           <div className="bg-white rounded-3xl border border-stone-200 p-8 shadow-sm">
-          <form onSubmit={handleSaveHotel} className="space-y-6">
+          <form onSubmit={handleSaveHotel} className="space-y-6" noValidate>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="md:col-span-2">
                 <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Property Name</label>
@@ -892,23 +881,28 @@ export default function ManageHotel() {
               <div className="md:col-span-2">
                 <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Description</label>
                 <textarea required rows={4} value={editHotelData.description || ''} onChange={e => setEditHotelData({...editHotelData, description: e.target.value})} className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition" />
+                <FieldError message={detailProblems.description} />
               </div>
               <div>
                 <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Location</label>
                 <div className="flex gap-2">
                   <input type="text" required value={editHotelData.location || ''} onChange={e => setEditHotelData({...editHotelData, location: e.target.value})} className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition" placeholder="e.g. Area 43, Lilongwe" />
+                  <FieldError message={detailProblems.location} />
                 </div>
               </div>
               <div>
                 <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Location Notes / Directions</label>
                 <textarea rows={2} value={editHotelData.locationNotes || ''} onChange={e => setEditHotelData({...editHotelData, locationNotes: e.target.value})} className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition" placeholder="Any extra directions or notes to help guests find the property (optional)." />
               </div>
-              <ImageUpload
-                label="Main Property Image"
-                value={editHotelData.imageUrl || ''}
-                onChange={(url) => setEditHotelData({ ...editHotelData, imageUrl: url })}
-                folder="hotels"
-              />
+              <div>
+                <ImageUpload
+                  label="Main Property Image"
+                  value={editHotelData.imageUrl || ''}
+                  onChange={(url) => setEditHotelData({ ...editHotelData, imageUrl: url })}
+                  folder="hotels"
+                />
+                <FieldError message={detailProblems.imageUrl} />
+              </div>
               <div className="md:col-span-2">
                 <GalleryUpload 
                   value={editHotelData.galleryUrls || []} 
@@ -948,6 +942,7 @@ export default function ManageHotel() {
                   })}
                 </div>
                 <p className="text-xs text-stone-400 mt-2">Guests filter by this. Pick every one that genuinely fits.</p>
+                <FieldError message={detailProblems.category} />
               </div>
               <div className="md:col-span-2">
                 <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Amenities (comma separated)</label>
@@ -972,9 +967,7 @@ export default function ManageHotel() {
                       className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition"
                       placeholder="reservations@yourlodge.mw"
                     />
-                    {contactProblems.contactEmail && (
-                      <p className="text-xs text-red-600 mt-1.5">{contactProblems.contactEmail}</p>
-                    )}
+                    <FieldError message={contactProblems.contactEmail} />
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Phone</label>
@@ -985,9 +978,7 @@ export default function ManageHotel() {
                       className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition"
                       placeholder="+265 991 234 567"
                     />
-                    {contactProblems.contactPhone && (
-                      <p className="text-xs text-red-600 mt-1.5">{contactProblems.contactPhone}</p>
-                    )}
+                    <FieldError message={contactProblems.contactPhone} />
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">WhatsApp</label>
@@ -998,9 +989,7 @@ export default function ManageHotel() {
                       className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition"
                       placeholder="Same as phone"
                     />
-                    {contactProblems.contactWhatsapp && (
-                      <p className="text-xs text-red-600 mt-1.5">{contactProblems.contactWhatsapp}</p>
-                    )}
+                    <FieldError message={contactProblems.contactWhatsapp} />
                   </div>
                 </div>
               </div>
@@ -1015,6 +1004,7 @@ export default function ManageHotel() {
                   onChange={e => setEditHotelData({ ...editHotelData, checkInTime: e.target.value })}
                   className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition"
                 />
+                <FieldError message={detailProblems.checkInTime} />
               </div>
               <div>
                 <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Check-out until</label>
@@ -1024,6 +1014,7 @@ export default function ManageHotel() {
                   onChange={e => setEditHotelData({ ...editHotelData, checkOutTime: e.target.value })}
                   className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition"
                 />
+                <FieldError message={detailProblems.checkOutTime} />
               </div>
 
               <div className="md:col-span-2 pt-6 border-t border-stone-100">
@@ -1125,15 +1116,17 @@ export default function ManageHotel() {
                 <button onClick={cancelEditRoom} className="p-2 text-stone-400 hover:bg-stone-100 rounded-full transition"><X className="h-5 w-5" /></button>
               </div>
               
-              <form onSubmit={handleSaveRoom} className="space-y-6">
+              <form onSubmit={handleSaveRoom} className="space-y-6" noValidate>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="md:col-span-2">
                     <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Room Name</label>
-                    <input type="text" required value={editRoomData.name || ''} onChange={e => setEditRoomData({...editRoomData, name: e.target.value})} className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition" />
+                    <input type="text" required value={editRoomData.name || ''} onChange={e => setEditRoomData({...editRoomData, name: e.target.value})} className={`w-full bg-stone-50 border p-3 rounded-xl outline-none transition ${roomErrors.name ? 'border-red-300 focus:border-red-500' : 'border-stone-200 focus:border-stone-900'}`} />
+                    <FieldError message={roomErrors.name} />
                   </div>
                   <div className="md:col-span-2">
                     <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Description</label>
                     <textarea required rows={3} value={editRoomData.description || ''} onChange={e => setEditRoomData({...editRoomData, description: e.target.value})} className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition" />
+                    <FieldError message={roomErrors.description} />
                   </div>
                     <div className="md:col-span-2">
                       <ImageUpload
@@ -1156,6 +1149,9 @@ export default function ManageHotel() {
                   </div>
                   <div className="md:col-span-2">
                     <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Currencies you sell this room in</label>
+                    <FieldError message={roomErrors.currencies} />
+                    <FieldError message={roomErrors.prices} />
+                    <FieldError message={roomErrors.extraGuestFees} />
                     <div className="flex flex-wrap gap-2 mb-1">
                       {CURRENCY_CODES.map(code => {
                         const selected = editingCurrencies.includes(code);
@@ -1226,17 +1222,21 @@ export default function ManageHotel() {
                   ))}
                   <div>
                     <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Max Guests</label>
-                    <input type="number" required value={editRoomData.maxGuests || 2} onChange={e => setEditRoomData({...editRoomData, maxGuests: Number(e.target.value)})} className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition" />
+                    <input type="number" required min={1} value={editRoomData.maxGuests || 2} onChange={e => setEditRoomData({...editRoomData, maxGuests: Number(e.target.value)})} className={`w-full bg-stone-50 border p-3 rounded-xl outline-none transition ${roomErrors.maxGuests ? 'border-red-300 focus:border-red-500' : 'border-stone-200 focus:border-stone-900'}`} />
+                    <FieldError message={roomErrors.maxGuests} />
+                    <FieldError message={roomErrors.baseGuests} />
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Total Rooms Available</label>
-                    <input type="number" required value={editRoomData.quantity || 1} onChange={e => setEditRoomData({...editRoomData, quantity: Number(e.target.value)})} className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition" />
+                    <input type="number" required min={0} value={editRoomData.quantity || 1} onChange={e => setEditRoomData({...editRoomData, quantity: Number(e.target.value)})} className={`w-full bg-stone-50 border p-3 rounded-xl outline-none transition ${roomErrors.quantity ? 'border-red-300 focus:border-red-500' : 'border-stone-200 focus:border-stone-900'}`} />
+                    <FieldError message={roomErrors.quantity} />
                   </div>
                 </div>
 
                 {/* PACKAGES & INCLUSIONS */}
                 <div className="border-t border-stone-200 pt-6">
                   <h4 className="text-sm font-bold text-stone-800 uppercase tracking-wider mb-4">Room Packages & Inclusions</h4>
+                  <FieldError message={roomErrors.packages} />
                   <div className="flex flex-wrap gap-2 mb-4">
                     {[
                       { name: "Breakfast Included", price: 15, type: "per_person" as const },

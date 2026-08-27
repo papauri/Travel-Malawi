@@ -153,27 +153,62 @@ function isTime(value: string): boolean {
   return /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
 }
 
-export function validateDraft(draft: ListingDraft): DraftErrors {
-  const errors: DraftErrors = {};
+/**
+ * The subset of a listing the property editor can change. The wizard's draft
+ * satisfies this too, so both go through the same rules below.
+ */
+export interface PropertyDetails {
+  name?: string;
+  category?: string;
+  categories?: string[];
+  location?: string;
+  description?: string;
+  imageUrl?: string;
+  checkInTime?: string;
+  checkOutTime?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  contactWhatsapp?: string;
+}
 
-  const name = draft.name.trim();
+/**
+ * `publish` is what a new listing must satisfy before it goes for review.
+ * `edit` drops the minimums a listing might legitimately predate — a property
+ * imported with a two-line description, or created before contact details
+ * existed, must still be editable, or its owner is locked out of changing
+ * anything else. Both modes reject a value that is actually malformed: a
+ * number nobody can dial helps nobody.
+ */
+export type ValidationMode = 'publish' | 'edit';
+
+export function validateProperty(
+  data: PropertyDetails,
+  mode: ValidationMode = 'publish'
+): DraftErrors {
+  const errors: DraftErrors = {};
+  const strict = mode === 'publish';
+
+  const name = (data.name ?? '').trim();
   if (!name) errors.name = 'Give your property its name.';
   else if (name.length < 3) errors.name = 'That looks too short to be a name.';
   else if (name.length > NAME_MAX) errors.name = 'Keep the name under ' + NAME_MAX + ' characters.';
 
-  if (!draft.category) errors.category = 'Pick the category guests would look under.';
-  else if (!(PROPERTY_CATEGORIES as readonly string[]).includes(draft.category)) {
-    errors.category = 'Pick one of the listed categories.';
+  // The editor works in `categories`; the wizard in a single `category`.
+  const categories = data.categories ?? (data.category ? [data.category] : []);
+  const unknown = categories.find(c => !(PROPERTY_CATEGORIES as readonly string[]).includes(c));
+  if (unknown) errors.category = `"${unknown}" is not one of the listed categories.`;
+  else if (strict && categories.length === 0) {
+    errors.category = 'Pick the category guests would look under.';
   }
 
-  const location = draft.location.trim();
+  const location = (data.location ?? '').trim();
   if (!location) errors.location = 'Where is it? A town or area is enough.';
   else if (location.length < 3) errors.location = 'Give a town, area or landmark.';
 
-  const description = draft.description.trim();
+  const description = (data.description ?? '').trim();
   const short = DESCRIPTION_MIN - description.length;
   if (!description) errors.description = 'Tell guests what staying here is like.';
-  else if (short > 0) {
+  else if (strict && short > 0) {
     errors.description = 'A little more — ' + short + ' more character' + (short === 1 ? '' : 's') + ' to go.';
   } else if (description.length > DESCRIPTION_MAX) {
     errors.description = 'That is over the ' + DESCRIPTION_MAX + ' character limit.';
@@ -181,24 +216,28 @@ export function validateDraft(draft: ListingDraft): DraftErrors {
 
   // A listing with no photo falls back to a grey placeholder in every grid on
   // the site, which serves the host worse than not being listed at all.
-  if (!normalizeImageUrl(draft.imageUrl)) {
+  if (!normalizeImageUrl(data.imageUrl ?? '')) {
     errors.imageUrl = 'Add one main photo — it is the first thing guests see.';
   }
 
-  if (!isTime(draft.checkInTime)) errors.checkInTime = 'Use a 24-hour time, e.g. 14:00.';
-  if (!isTime(draft.checkOutTime)) errors.checkOutTime = 'Use a 24-hour time, e.g. 11:00.';
+  if (!isTime(data.checkInTime ?? '')) errors.checkInTime = 'Use a 24-hour time, e.g. 14:00.';
+  if (!isTime(data.checkOutTime ?? '')) errors.checkOutTime = 'Use a 24-hour time, e.g. 11:00.';
 
   // A booking request is only the start of a conversation: the property has to
-  // be reachable for it to become a stay. Both are required for that reason;
-  // WhatsApp is not, since most properties use one number for both.
-  const email = emailProblem(draft.contactEmail, 'A booking email', true);
+  // be reachable for it to become a stay. Required to publish for that reason;
+  // WhatsApp never is, since most properties use one number for both.
+  const email = emailProblem(data.contactEmail ?? '', 'A booking email', strict);
   if (email) errors.contactEmail = email;
-  const phone = phoneProblem(draft.contactPhone, 'A phone number', true);
+  const phone = phoneProblem(data.contactPhone ?? '', 'A phone number', strict);
   if (phone) errors.contactPhone = phone;
-  const whatsapp = phoneProblem(draft.contactWhatsapp, 'The WhatsApp number', false);
+  const whatsapp = phoneProblem(data.contactWhatsapp ?? '', 'The WhatsApp number', false);
   if (whatsapp) errors.contactWhatsapp = whatsapp;
 
   return errors;
+}
+
+export function validateDraft(draft: ListingDraft): DraftErrors {
+  return validateProperty(draft, 'publish');
 }
 
 /** Only the errors belonging to one step of the wizard. */

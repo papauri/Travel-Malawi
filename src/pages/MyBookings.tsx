@@ -14,6 +14,7 @@ import SmartImage from '../components/SmartImage';
 import ConfirmDialog from '../components/ConfirmDialog';
 import Modal, { fieldClass, labelClass } from '../components/Modal';
 import Pagination from '../components/Pagination';
+import FieldError from '../components/FieldError';
 import BookingChat from '../components/BookingChat';
 import { MessageSquare } from 'lucide-react';
 import { getHotelImage } from '../lib/images';
@@ -422,6 +423,10 @@ export default function MyBookings() {
  * Review composer. Only reachable from a confirmed booking whose check-out has
  * passed, which is what lets the property page mark the result a verified stay.
  */
+/** Mirrors the bounds the reviews security rule enforces on write. */
+const REVIEW_MIN = 10;
+const REVIEW_MAX = 1500;
+
 function ReviewDialog({
   booking,
   onClose,
@@ -435,12 +440,27 @@ function ReviewDialog({
   const [rating, setRating] = useState(5);
   const [text, setText] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [showErrors, setShowErrors] = useState(false);
+
+  // The rules the security rules also enforce, said here so a rejected write
+  // is never how a guest first learns their review was too short.
+  const trimmed = text.trim();
+  const problem =
+    !trimmed
+      ? 'Write a line or two about your stay.'
+      : trimmed.length < REVIEW_MIN
+        ? `A little more — ${REVIEW_MIN - trimmed.length} more character${REVIEW_MIN - trimmed.length === 1 ? '' : 's'} to go.`
+        : trimmed.length > REVIEW_MAX
+          ? `That is over the ${REVIEW_MAX} character limit.`
+          : rating < 1 || rating > 5
+            ? 'Pick a rating from one to five stars.'
+            : '';
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !booking.id || submitting) return;
-    if (text.trim().length < 10) {
-      toast.error('Please write at least a sentence about your stay.');
+    if (problem) {
+      setShowErrors(true);
       return;
     }
     setSubmitting(true);
@@ -493,7 +513,7 @@ function ReviewDialog({
         </div>
       }
     >
-      <form id="review-form" onSubmit={submit} className="space-y-6">
+      <form id="review-form" onSubmit={submit} className="space-y-6" noValidate>
         <div>
           <label className={labelClass}>Rating</label>
           <div className="flex items-center gap-1">
@@ -520,11 +540,12 @@ function ReviewDialog({
             value={text}
             onChange={e => setText(e.target.value)}
             rows={6}
-            maxLength={1500}
+            maxLength={REVIEW_MAX}
             placeholder="What stood out? Rooms, food, staff, the setting…"
             className={`${fieldClass} resize-none`}
           />
-          <p className="text-xs text-stone-400 mt-1.5 text-right tabular-nums">{text.trim().length}/1500</p>
+          <p className="text-xs text-stone-400 mt-1.5 text-right tabular-nums">{trimmed.length}/{REVIEW_MAX}</p>
+          <FieldError message={showErrors ? problem : ''} />
         </div>
       </form>
     </Modal>

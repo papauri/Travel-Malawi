@@ -30,6 +30,7 @@ import { isHotelManager } from '../lib/roles';
 import ImageUpload from '../components/ImageUpload';
 import GalleryUpload from '../components/GalleryUpload';
 import SmartImage from '../components/SmartImage';
+import FieldError from '../components/FieldError';
 import { DECORATIVE_IMAGE, getHotelImage } from '../lib/images';
 import {
   CATEGORY_HINTS, COMMON_AMENITIES, DESCRIPTION_MAX, DESCRIPTION_MIN, ListingDraft,
@@ -66,11 +67,6 @@ const fieldClass =
   'transition placeholder:text-stone-400 focus:border-stone-900 focus:ring-4 focus:ring-stone-900/5';
 
 const labelClass = 'block text-xs font-bold uppercase tracking-[0.14em] text-stone-500 mb-2';
-
-function FieldError({ message }: { message?: string }) {
-  if (!message) return null;
-  return <p className="mt-2 text-sm font-medium text-red-600">{message}</p>;
-}
 
 export default function ListProperty() {
   const { user, loading: authLoading, becomeHost } = useAuth();

@@ -13,6 +13,8 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Mail, Lock, User as UserIcon, Check } from 'lucide-react';
 import Modal, { fieldClass, labelClass } from './Modal';
+import FieldError from './FieldError';
+import { emailProblem } from '../lib/contact';
 import { Role } from '../types';
 import { ROLE_LABELS, SELF_ASSIGNABLE_ROLES } from '../lib/roles';
 
@@ -46,6 +48,7 @@ export default function AuthDialog({ open, intent, onClose, onAuthenticated }: P
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [showErrors, setShowErrors] = useState(false);
 
   // Re-arm the form each time it opens, for the intent it was opened with.
   useEffect(() => {
@@ -55,6 +58,7 @@ export default function AuthDialog({ open, intent, onClose, onAuthenticated }: P
     setDisplayName('');
     setError('');
     setNotice('');
+    setShowErrors(false);
     if (intent === 'host') {
       setMode('signup');
       // Hosts travel too, so the traveller role stays selected alongside.
@@ -67,8 +71,42 @@ export default function AuthDialog({ open, intent, onClose, onAuthenticated }: P
 
   const hosting = roles.includes('hotel_manager');
 
+  /**
+   * Checked here rather than left to Firebase.
+   *
+   * The form submitted whatever was typed and waited for the server to object,
+   * so a mistyped address cost a round trip to be told "invalid credential",
+   * and a five-character password was only refused after the account creation
+   * had already been attempted. Firebase's own errors still surface — these
+   * only catch what can be known without asking it.
+   */
+  const problems = {
+    displayName:
+      mode === 'signup' && !displayName.trim()
+        ? 'Tell us what to call you.'
+        : mode === 'signup' && displayName.trim().length > 100
+          ? 'That name is too long.'
+          : '',
+    email: emailProblem(email, 'An email address', true) ?? '',
+    // Firebase's own minimum. Saying so up front beats a rejected sign-up.
+    password:
+      mode === 'reset'
+        ? ''
+        : !password
+          ? 'Enter your password.'
+          : mode === 'signup' && password.length < 6
+            ? 'Passwords need at least 6 characters.'
+            : '',
+  };
+
+  const hasProblem = Object.values(problems).some(Boolean);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (hasProblem) {
+      setShowErrors(true);
+      return;
+    }
     setIsSubmitting(true);
     setError('');
     setNotice('');
@@ -110,6 +148,8 @@ export default function AuthDialog({ open, intent, onClose, onAuthenticated }: P
   };
 
   const handleGoogleSignIn = async () => {
+    // Deliberately not gated on `problems`: Google supplies the address and
+    // the password, so an empty form is the normal case here.
     setIsSubmitting(true);
     setError('');
     try {
@@ -172,7 +212,7 @@ export default function AuthDialog({ open, intent, onClose, onAuthenticated }: P
             <button
               key={m}
               type="button"
-              onClick={() => { setMode(m); setError(''); setNotice(''); }}
+              onClick={() => { setMode(m); setError(''); setNotice(''); setShowErrors(false); }}
               className={`flex-1 py-2 rounded-full text-sm font-semibold transition ${
                 mode === m ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-700'
               }`}
@@ -195,7 +235,7 @@ export default function AuthDialog({ open, intent, onClose, onAuthenticated }: P
         </div>
       )}
 
-      <form id="auth-form" onSubmit={handleSubmit} className="space-y-4">
+      <form id="auth-form" onSubmit={handleSubmit} className="space-y-4" noValidate>
         {mode === 'signup' && (
           <div>
             <label className={labelClass}>Full name</label>
@@ -210,6 +250,7 @@ export default function AuthDialog({ open, intent, onClose, onAuthenticated }: P
                 className={`${fieldClass} pl-10`}
               />
             </div>
+            <FieldError message={showErrors ? problems.displayName : ''} />
           </div>
         )}
 
@@ -226,6 +267,7 @@ export default function AuthDialog({ open, intent, onClose, onAuthenticated }: P
               className={`${fieldClass} pl-10`}
             />
           </div>
+          <FieldError message={showErrors ? problems.email : ''} />
         </div>
 
         {mode !== 'reset' && (
@@ -253,6 +295,7 @@ export default function AuthDialog({ open, intent, onClose, onAuthenticated }: P
                 className={`${fieldClass} pl-10`}
               />
             </div>
+            <FieldError message={showErrors ? problems.password : ''} />
           </div>
         )}
 

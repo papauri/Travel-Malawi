@@ -13,7 +13,8 @@
     "data:seed-accounts": "node scripts/seed-accounts.mjs",
     "data:repair": "node scripts/repair-data.mjs",
     "data:seed-restaurants": "node scripts/seed-restaurants.mjs",
-    "data:provision-storage": "node scripts/provision-storage.mjs"
+    "data:provision-storage": "node scripts/provision-storage.mjs",
+    "check:validation": "tsx scripts/check-validation.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
