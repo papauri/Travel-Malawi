@@ -19,6 +19,10 @@
  *   node scripts/seed-accounts.mjs            # dry run
  *   node scripts/seed-accounts.mjs --apply
  *
+ * `--reset-passwords` also forces existing accounts to the values in .env.
+ * Without it a password is only ever set at account creation, so an account
+ * that already existed keeps a password nobody has a record of.
+ *
  * Optional password overrides, otherwise one is generated and printed once:
  *   HOST_PASSWORD, MANAGER_PASSWORD, TRAVELLER_PASSWORD, ADMIN_PASSWORD
  */
@@ -61,6 +65,14 @@ function generatePassword() {
   return crypto.randomBytes(18).toString('base64url');
 }
 
+/**
+ * A password is only set when an account is created, so an account that already
+ * existed keeps whatever it was given originally — which for the accounts from
+ * the first import is a password nobody recorded. `--reset-passwords` makes
+ * .env authoritative for every account in the roster that has one set.
+ */
+const RESET_PASSWORDS = process.argv.includes('--reset-passwords');
+
 let changes = 0;
 const generated = [];
 
@@ -88,6 +100,16 @@ for (const rosterEntry of ROSTER) {
     if (!user.displayName && APPLY) {
       await auth.updateUser(user.uid, { displayName: entry.displayName });
       console.log('  set displayName');
+    }
+
+    const desired = entry.passwordEnv && process.env[entry.passwordEnv];
+    if (RESET_PASSWORDS && desired) {
+      plan(`reset password from ${entry.passwordEnv}`);
+      changes++;
+      if (APPLY) await auth.updateUser(user.uid, { password: desired });
+    } else if (desired) {
+      // Saying so matters: the value sitting in .env is not the one in force.
+      console.log(`  password unchanged (pass --reset-passwords to apply ${entry.passwordEnv})`);
     }
   }
 
