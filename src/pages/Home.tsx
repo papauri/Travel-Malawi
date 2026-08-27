@@ -765,7 +765,7 @@ export default function Home() {
   return (
     <div className="flex flex-col min-h-screen">
       {/* Hero */}
-      <section className="relative min-h-[100svh] md:min-h-[100svh] w-full flex flex-col justify-end pb-8 md:pb-16 pt-32 overflow-hidden bg-stone-950">
+      <section className="relative min-h-[100svh] md:min-h-[100svh] w-full flex flex-col justify-center overflow-hidden bg-stone-950">
         <motion.div
           initial={{ opacity: 0, scale: 1.08, filter: 'blur(10px)' }}
           animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
@@ -793,7 +793,7 @@ export default function Home() {
         <div className="absolute inset-0 z-10 bg-gradient-to-r from-stone-950/80 via-stone-950/40 to-transparent" />
         <div className="absolute inset-0 z-10 bg-gradient-to-t from-stone-950/70 via-stone-950/30 to-transparent" />
 
-        <div className="relative z-20 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-auto">
+        <div className="relative z-20 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-20 md:pt-32 md:pb-28">
           <motion.div
             initial={{ opacity: 0, y: 40, filter: "blur(8px)" }}
             animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
@@ -1105,15 +1105,7 @@ export default function Home() {
 
           {/* One-tap destinations */}
         </div>
-
-        <a
-          href="#search-results"
-          className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 hidden md:flex flex-col items-center gap-2
-                     text-white/50 hover:text-white transition"
-        >
-          <span className="text-[0.65rem] font-semibold uppercase tracking-[0.2em]">See where you could stay</span>
-          <ChevronDown className="h-4 w-4 animate-bounce" />
-        </a>      </section>
+      </section>
 
       {/* Popular Destinations */}
       <section className="bg-white py-6 md:py-8 border-b border-stone-200">
