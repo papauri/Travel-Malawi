@@ -8,9 +8,11 @@
  *     be edited and their booking requests can never be confirmed or declined.
  *     They are handed to real accounts per OWNERSHIP below.
  *
- *  2. Two legacy bookings have `managerId: undefined`. The navbar's pending
- *     badge queries `where('managerId','==',uid)`, so a property owner is never
- *     told those requests exist.
+ *  2. Bookings carry a `managerId` stamped when they were created, so it goes
+ *     stale as soon as a listing changes hands — and reassigning the orphaned
+ *     listings does exactly that. Two legacy bookings had no `managerId` at
+ *     all. Either way the navbar's pending badge, which queries
+ *     `where('managerId','==',uid)`, never tells the owner the request exists.
  *
  *  3. One of those bookings has no `checkIn` at all, which makes it undateable:
  *     it cannot be placed on a calendar or counted against inventory.
@@ -108,18 +110,24 @@ for (const doc of hotels.docs) {
 }
 
 // --- 3. Bookings that no manager can see ------------------------------------
-heading('Bookings with a missing managerId');
+// A booking stamps `managerId` at the moment it is created, so it goes stale
+// the instant a listing changes hands — and reassigning the orphaned listings
+// above does exactly that. Anything that disagrees with its listing is
+// re-pointed, not just the ones missing the field entirely.
+heading('Bookings whose managerId does not match their listing');
 const bookings = await db.collection('bookings').get();
 
 for (const doc of bookings.docs) {
   const booking = doc.data();
-  if (booking.managerId) continue;
   const hotel = hotelsById.get(booking.hotelId);
   if (!hotel) {
     console.log(`  skip ${doc.id}: hotel ${booking.hotelId} no longer exists`);
     continue;
   }
-  plan(`backfill managerId=${hotel.managerId} on ${booking.reference ?? doc.id}`);
+  if (booking.managerId === hotel.managerId) continue;
+
+  const from = booking.managerId ?? 'missing';
+  plan(`${booking.reference ?? doc.id}: managerId ${from} -> ${hotel.managerId}`);
   changes++;
   if (APPLY) await doc.ref.update({ managerId: hotel.managerId });
 }
