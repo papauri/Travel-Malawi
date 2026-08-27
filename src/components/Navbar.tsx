@@ -7,7 +7,8 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useAuthDialog } from '../contexts/AuthDialogContext';
-import { LogOut, Palmtree, ChevronDown, LayoutDashboard, Briefcase, ShieldCheck, Building2 } from 'lucide-react';
+import { LogOut, Palmtree, ChevronDown, LayoutDashboard, Briefcase, ShieldCheck, Building2, Volume2, VolumeX } from 'lucide-react';
+import { isSoundEnabled, onSoundPreferenceChange, setSoundEnabled } from '../lib/notificationSound';
 import { describeRoles, isAdmin, isHotelManager, isTraveller } from '../lib/roles';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -17,6 +18,10 @@ export default function Navbar() {
   const { openAuth } = useAuthDialog();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
+  const [soundOn, setSoundOn] = useState(isSoundEnabled);
+
+  // Kept in step with anything else that changes the preference.
+  useEffect(() => onSoundPreferenceChange(setSoundOn), []);
 
   useEffect(() => {
     if (isHotelManager(user)) {
@@ -158,9 +163,33 @@ export default function Navbar() {
                         )}
                       </div>
 
+                      {/* Chat notification sound. Off until asked for: a page
+                          that starts making noise on its own is worse than a
+                          quiet one, and the click that turns it on is also the
+                          gesture browsers require before audio may play. */}
+                      <button
+                        onClick={() => setSoundEnabled(!soundOn)}
+                        role="switch"
+                        aria-checked={soundOn}
+                        className="w-full flex items-center justify-between gap-2.5 px-4 py-2.5 text-sm text-stone-600 hover:bg-stone-50 hover:text-stone-900 transition"
+                      >
+                        <span className="flex items-center gap-2.5">
+                          {soundOn ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+                          Message sounds
+                        </span>
+                        <span
+                          aria-hidden="true"
+                          className={`relative h-5 w-9 shrink-0 rounded-full transition ${soundOn ? 'bg-emerald-600' : 'bg-stone-300'}`}
+                        >
+                          <span
+                            className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${soundOn ? 'left-[1.125rem]' : 'left-0.5'}`}
+                          />
+                        </span>
+                      </button>
+
                       <button
                         onClick={() => { logOut(); setShowUserMenu(false); }}
-                        className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-stone-600 hover:bg-stone-50 hover:text-stone-900 transition"
+                        className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-stone-600 hover:bg-stone-50 hover:text-stone-900 transition border-t border-stone-100"
                       >
                         <LogOut className="h-4 w-4" />
                         Sign out

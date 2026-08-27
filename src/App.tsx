@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useLocation, Link } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { AuthDialogProvider } from './contexts/AuthDialogContext';
+import Breadcrumbs, { BreadcrumbProvider } from './components/Breadcrumbs';
 import Navbar from './components/Navbar';
 import MobileNav from './components/MobileNav';
 import Footer from './components/Footer';
@@ -62,8 +63,10 @@ export default function App() {
       <BrowserRouter>
         <ScrollToTop />
         <AuthDialogProvider>
+          <BreadcrumbProvider>
           <div className="min-h-screen bg-stone-50 flex flex-col font-sans">
             <Navbar />
+            <Breadcrumbs />
             <Toaster 
               position="bottom-center"
               toastOptions={{
@@ -91,6 +94,7 @@ export default function App() {
             <Footer />
             <MobileNav />
           </div>
+          </BreadcrumbProvider>
         </AuthDialogProvider>
       </BrowserRouter>
     </AuthProvider>

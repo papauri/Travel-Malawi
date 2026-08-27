@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { collection, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Hotel, User } from '../types';
-import { Shield, Building2, CheckCircle, XCircle, Clock, MapPin, Users, Edit2, Key, Trash2 } from 'lucide-react';
+import { Shield, Building2, CheckCircle, XCircle, Clock, MapPin, Users, Edit2, Key, Trash2, Star } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import Pagination from '../components/Pagination';
 import toast from 'react-hot-toast';
@@ -73,6 +73,32 @@ export default function AdminDashboard() {
     }
   };
 
+  /**
+   * Promotes a listing onto the home page's featured row. Admin-only: the
+   * security rules hold `featured` immutable for the owning manager, or every
+   * property would feature itself.
+   */
+  const handleToggleFeatured = async (hotel: Hotel) => {
+    const next = !hotel.featured;
+    if (next && !hotel.status) {
+      // A listing with no status is a legacy import, treated as approved.
+    } else if (next && hotel.status !== 'approved') {
+      toast.error('Approve the listing before featuring it.');
+      return;
+    }
+    try {
+      await updateDoc(doc(db, 'hotels', hotel.id!), {
+        featured: next,
+        featuredAt: next ? Date.now() : null,
+      });
+      setHotels(hotels.map(h => (h.id === hotel.id ? { ...h, featured: next, featuredAt: next ? Date.now() : undefined } : h)));
+      toast.success(next ? `${hotel.name} is now featured.` : `${hotel.name} is no longer featured.`);
+    } catch (error) {
+      console.error('Error updating featured flag:', error);
+      toast.error('Could not change the featured status.');
+    }
+  };
+
   const handleUpdateStatus = async (hotelId: string, newStatus: 'approved' | 'rejected' | 'pending') => {
     if (updatingId) return;
     setUpdatingId(hotelId);
@@ -125,8 +151,14 @@ export default function AdminDashboard() {
                 
                 <div className="flex-1 flex flex-col justify-between">
                   <div>
-                    <div className="flex justify-between items-start mb-2">
+                    <div className="flex justify-between items-start mb-2 gap-3">
                       <h3 className="text-xl font-bold text-stone-900">{hotel.name}</h3>
+                      <div className="flex items-center gap-2 shrink-0">
+                      {hotel.featured && (
+                        <span className="inline-flex items-center gap-1 bg-amber-400/20 text-amber-800 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
+                          <Star className="h-3 w-3 fill-amber-500 text-amber-500" /> Featured
+                        </span>
+                      )}
                       
                       {(!hotel.status || hotel.status === 'approved') && (
                         <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
@@ -143,6 +175,7 @@ export default function AdminDashboard() {
                           <XCircle className="h-3 w-3" /> Rejected
                         </span>
                       )}
+                      </div>
                     </div>
                     
                     <div className="space-y-1 mb-4">
@@ -190,6 +223,18 @@ export default function AdminDashboard() {
                         Approve
                       </button>
                     )}
+
+                    <button
+                      onClick={() => handleToggleFeatured(hotel)}
+                      className={`px-5 py-2 rounded-xl text-sm font-medium transition flex items-center gap-2 ${
+                        hotel.featured
+                          ? 'bg-amber-500 text-white hover:bg-amber-600'
+                          : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
+                      }`}
+                    >
+                      <Star className={`h-4 w-4 ${hotel.featured ? 'fill-white' : ''}`} />
+                      {hotel.featured ? 'Featured' : 'Feature'}
+                    </button>
 
                     <Link 
                       to={`/dashboard/hotel/${hotel.id}`}

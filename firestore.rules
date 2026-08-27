@@ -75,16 +75,19 @@ service cloud.firestore {
       // Admins moderate listings (approve/reject), so they need write access
       // here — the previous rules only allowed the owning manager, which meant
       // the admin dashboard's approve/reject silently failed.
-      // A manager may edit their listing but not re-approve it or hand it to
-      // someone else; only an admin may change `status` or `managerId`.
+      // A manager may edit their listing but not re-approve it, promote it, or
+      // hand it to someone else; only an admin may change `status`,
+      // `featured` or `managerId`.
       // `get(field, default)` because listings imported before moderation
-      // existed have no `status` field, and reading a missing field would
-      // fail the rule outright.
+      // existed have no `status` field, and none has `featured` until an admin
+      // sets one — reading a missing field would fail the rule outright.
       allow update: if isAdmin() || (
                       isManager(hotelId)
                       && request.resource.data.managerId == resource.data.managerId
                       && request.resource.data.get('status', 'approved')
                          == resource.data.get('status', 'approved')
+                      && request.resource.data.get('featured', false)
+                         == resource.data.get('featured', false)
                     );
       allow delete: if isManager(hotelId) || isAdmin();
     }

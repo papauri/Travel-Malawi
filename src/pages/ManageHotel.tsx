@@ -14,6 +14,7 @@ import BookingChat from '../components/BookingChat';
 import PropertyChat from '../components/PropertyChat';
 import { MessageSquare } from 'lucide-react';
 import SmartImage from '../components/SmartImage';
+import { useBreadcrumbLabel } from '../components/Breadcrumbs';
 import AvailabilityCalendar from '../components/AvailabilityCalendar';
 import OpeningHoursEditor from '../components/OpeningHoursEditor';
 import MenuEditor, { emptyRestaurant } from '../components/MenuEditor';
@@ -61,7 +62,9 @@ function hotelFormSnapshot(data: Partial<Hotel>): string {
 }
 
 /** Fields that describe the listing itself and are never edited from this form. */
-const HOTEL_READONLY_FIELDS = ['id', 'managerId', 'status', 'createdAt', 'name', 'reviews'] as const;
+const HOTEL_READONLY_FIELDS = [
+  'id', 'managerId', 'status', 'featured', 'featuredAt', 'createdAt', 'name', 'reviews',
+] as const;
 
 export default function ManageHotel() {
   const { id } = useParams<{ id: string }>();
@@ -97,6 +100,9 @@ export default function ManageHotel() {
   const [inquiryChatTarget, setInquiryChatTarget] = useState<any | null>(null);
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [savingRestaurant, setSavingRestaurant] = useState(false);
+
+  // Fills the last crumb with the property's name once it has loaded.
+  useBreadcrumbLabel(hotel?.name);
 
   useEffect(() => {
     if (authLoading) return;

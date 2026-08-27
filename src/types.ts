@@ -94,6 +94,13 @@ export interface Hotel {
   contactPhone?: string;
   /** Optional; falls back to `contactPhone` when the property uses one number. */
   contactWhatsapp?: string;
+  /**
+   * Promoted onto the home page's featured row by an admin. Set only through
+   * the admin dashboard: the security rules hold it immutable for the owning
+   * manager, or every listing would feature itself.
+   */
+  featured?: boolean;
+  featuredAt?: number;
   amenities: string[];
   categories?: string[];
   galleryUrls?: string[];

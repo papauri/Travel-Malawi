@@ -4,6 +4,7 @@ import { db } from '../lib/firebase';
 import { Hotel, Message, User } from '../types';
 import { Send, Loader2, X, MessageSquare, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { chimeForIncoming, newChimeState } from '../lib/notificationSound';
 
 interface Props {
   hotel: Hotel;
@@ -19,6 +20,9 @@ export default function PropertyChat({ hotel, currentUser, onClose, guestId, gue
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  // Which messages have already been seen, so the chime fires for new arrivals
+  // and not for the conversation the chat opens with.
+  const seenMessages = useRef(newChimeState());
   const [chatId, setChatId] = useState<string | null>(null);
 
   const activeGuestId = guestId || currentUser?.uid;
@@ -63,6 +67,7 @@ export default function PropertyChat({ hotel, currentUser, onClose, guestId, gue
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const msgs = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as Message[];
       setMessages(msgs);
+      chimeForIncoming(msgs, currentUser?.uid, seenMessages);
       setLoading(false);
       setTimeout(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });

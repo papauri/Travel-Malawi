@@ -136,6 +136,11 @@ export default function HotelCard({ hotel, searchParams, index, priceFrom, price
       <div className="flex flex-col gap-1">
         <div className="flex justify-between items-start">
           <p className="text-[0.65rem] font-bold tracking-[0.2em] text-stone-500 uppercase">{hotel.location}</p>
+          {hotel.featured && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-amber-400/15 px-2.5 py-1 text-[0.65rem] font-bold uppercase tracking-[0.1em] text-amber-800">
+              <Star className="h-3 w-3 fill-amber-500 text-amber-500" /> Featured
+            </span>
+          )}
           {hotel.categories && hotel.categories.length > 0 && (
             <span className="text-[0.65rem] font-medium tracking-widest text-emerald-600 uppercase">
               {hotel.categories[0]}

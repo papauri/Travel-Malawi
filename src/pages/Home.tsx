@@ -464,18 +464,34 @@ export default function Home() {
     return sorted;
   }, [hotels, roomsByHotel, bookings, ratingByHotel, activeCategory, appliedSearch, sortKey, currency]);
 
-  /** The three properties shown above the fold when nothing is being searched. */
+  /**
+   * The three properties shown above the fold when nothing is being searched.
+   *
+   * An admin can promote a listing from the admin dashboard, and those come
+   * first, newest promotion first. Anything left over is filled by guest
+   * rating, so the row is never short and still means something when nobody
+   * has promoted anything.
+   */
   const featuredHotels = useMemo(() => {
     const enriched = hotels.map(hotel => ({
       hotel,
       priceFrom: lowestPrice(roomsByHotel.get(hotel.id ?? '') ?? [], currency),
       rating: ratingByHotel.get(hotel.id ?? '') ?? null,
     }));
-    // Best-rated first, so "featured" means something; ties keep source order.
-    return [...enriched]
-      .sort((a, b) => (b.rating?.average ?? 0) - (a.rating?.average ?? 0))
-      .slice(0, 3);
+
+    const promoted = enriched
+      .filter(entry => entry.hotel.featured)
+      .sort((a, b) => (b.hotel.featuredAt ?? 0) - (a.hotel.featuredAt ?? 0));
+
+    const rest = enriched
+      .filter(entry => !entry.hotel.featured)
+      .sort((a, b) => (b.rating?.average ?? 0) - (a.rating?.average ?? 0));
+
+    return [...promoted, ...rest].slice(0, 3);
   }, [hotels, roomsByHotel, ratingByHotel, currency]);
+
+  /** Whether the row above is a real editorial pick or just the best rated. */
+  const hasPromotedFeatures = useMemo(() => hotels.some(h => h.featured), [hotels]);
   
 
   return (
@@ -841,10 +857,10 @@ export default function Home() {
               <div className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-4">
                 <div>
                   <p className="text-[0.7rem] font-semibold tracking-[0.22em] text-stone-400 uppercase mb-3">
-                    Rated by people who stayed
+                    {hasPromotedFeatures ? 'Hand-picked by Travel Malawi' : 'Rated by people who stayed'}
                   </p>
                   <h2 className="text-4xl md:text-5xl font-serif text-stone-900 tracking-tight">
-                    The ones guests go back to
+                    {hasPromotedFeatures ? 'Featured stays' : 'The ones guests go back to'}
                   </h2>
                 </div>
                 <button
@@ -864,11 +880,15 @@ export default function Home() {
                         alt={entry.hotel.name}
                         className="absolute inset-0 w-full h-full object-cover transition duration-1000 ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:scale-105"
                       />
-                      {index === 0 && (
+                      {entry.hotel.featured ? (
+                        <span className="absolute top-4 left-4 flex items-center gap-1.5 bg-white/95 backdrop-blur text-stone-900 text-[0.65rem] font-bold px-3 py-1.5 rounded-full uppercase tracking-[0.12em]">
+                          <Star className="h-3 w-3 fill-amber-500 text-amber-500" /> Featured
+                        </span>
+                      ) : index === 0 && !hasPromotedFeatures ? (
                         <span className="absolute top-4 left-4 bg-white/95 backdrop-blur text-stone-900 text-[0.65rem] font-bold px-3 py-1.5 rounded-full uppercase tracking-[0.12em]">
                           Best rated
                         </span>
-                      )}
+                      ) : null}
                     </div>
 
                     <div className="flex flex-col gap-1">

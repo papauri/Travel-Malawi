@@ -13,6 +13,7 @@ import { motion } from 'motion/react';
 import Pagination from '../components/Pagination';
 import PropertyChat from '../components/PropertyChat';
 import SmartImage from '../components/SmartImage';
+import { useBreadcrumbLabel } from '../components/Breadcrumbs';
 import { getHotelImages, getRoomImage } from '../lib/images';
 import { formatDateStr, nightsBetween, todayStr } from '../lib/dates';
 import { formatTime, hasPublishedHours, isOpenAt, summariseHours } from '../lib/hours';
@@ -81,6 +82,9 @@ export default function HotelDetails() {
    * floats over a form the visitor is filling in.
    */
   const anyDialogOpen = !!selectedRoom || !!activeGalleryRoom || showHotelGallery;
+
+  // Fills the last crumb with the property's name once it has loaded.
+  useBreadcrumbLabel(hotel?.name);
 
   useEffect(() => {
     async function fetchHotelDetails() {

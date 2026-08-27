@@ -13,6 +13,7 @@
 import { validateRoom } from '../src/lib/validateRoom';
 import { validateProperty } from '../src/lib/listing';
 import { emailProblem, phoneProblem, telLink, whatsappLink } from '../src/lib/contact';
+import { newChimeState, shouldChime } from '../src/lib/notificationSound';
 
 let failures = 0;
 
@@ -125,6 +126,27 @@ check('the editor\'s categories array is read too', Object.keys(validateProperty
 check('a listing with no photo', !!validateProperty({ ...property, imageUrl: '' }, 'edit').imageUrl, true);
 check('an impossible check-in time', !!validateProperty({ ...property, checkInTime: '25:00' }, 'edit').checkInTime, true);
 check('an empty name', !!validateProperty({ ...property, name: '' }, 'edit').name, true);
+
+/* --------------------------------------------------------------- chime -- */
+
+// The chime's own sound needs a browser, but the decision of *whether* to make
+// one is pure: never for the backlog a chat opens with, never for a message you
+// sent yourself. Getting this wrong means a chat that pings once per existing
+// message the moment it is opened.
+console.log('\n- Chime gating -');
+
+const state = newChimeState();
+const backlog = [{ id: '1', senderId: 'them' }, { id: '2', senderId: 'me' }];
+
+check('silent on the conversation a chat opens with', shouldChime(backlog, 'me', state), false);
+
+const mine = [...backlog, { id: '3', senderId: 'me' }];
+check('silent for a message you sent yourself', shouldChime(mine, 'me', state), false);
+
+const theirs = [...mine, { id: '4', senderId: 'them' }];
+check('sounds for a message from the other party', shouldChime(theirs, 'me', state), true);
+check('a repeated snapshot does not sound again', shouldChime(theirs, 'me', state), false);
+
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILED`);
 process.exit(failures === 0 ? 0 : 1);
