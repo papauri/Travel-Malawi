@@ -788,7 +788,6 @@ export default function HotelDetails() {
           total: grandTotal, currency: bookingCurrency,
         } = pricing;
         const roomPrimary = roomPrimaryCurrency(selectedRoom);
-        const canSubmit = nights > 0 && !saving;
 
         return (
           <Modal
@@ -803,14 +802,22 @@ export default function HotelDetails() {
                   <p className="text-[0.7rem] font-semibold text-stone-400 uppercase tracking-wider">
                     {nights > 0 ? `Total · ${nights} night${nights === 1 ? '' : 's'}` : 'Total'}
                   </p>
-                  <p className="font-serif text-2xl font-semibold text-stone-900 leading-tight">
-                    {formatMoney(grandTotal, bookingCurrency)}
-                  </p>
+                  {nights > 0 ? (
+                    <p className="font-serif text-2xl font-semibold text-stone-900 leading-tight">
+                      {formatMoney(grandTotal, bookingCurrency)}
+                    </p>
+                  ) : (
+                    // A zero total reads as "free" rather than "not priced yet".
+                    <p className="text-sm text-stone-500 leading-tight mt-1">Choose your dates</p>
+                  )}
                 </div>
+                {/* Only disabled while the write is in flight. Disabling it for
+                    missing dates left a dead button with no explanation, and
+                    pre-empted the validation that would have said which field. */}
                 <button
                   type="submit"
                   form="booking-form"
-                  disabled={!canSubmit}
+                  disabled={saving}
                   className="shrink-0 bg-stone-900 text-white px-7 py-3.5 rounded-full font-semibold text-sm hover:bg-stone-800 transition disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   {saving ? 'Submitting…' : 'Request booking'}
