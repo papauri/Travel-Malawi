@@ -8,7 +8,10 @@
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "data:inspect": "node scripts/inspect-data.mjs",
+    "data:seed-accounts": "node scripts/seed-accounts.mjs",
+    "data:repair": "node scripts/repair-data.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
