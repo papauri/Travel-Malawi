@@ -997,7 +997,7 @@ export default function Home() {
             <div className="hidden lg:block w-px self-center h-10 bg-stone-200" />
 
             {/* When */}
-            <div className="shrink-0 rounded-2xl px-4 py-3 hover:bg-stone-50 transition">
+            <div className="flex-[1.25] min-w-0 rounded-2xl px-3 lg:px-5 py-2.5 lg:py-2 hover:bg-stone-50 transition">
               <span className="block text-[0.65rem] font-bold text-stone-900 uppercase tracking-[0.1em] mb-0.5">
                 Nights
               </span>
@@ -1104,17 +1104,6 @@ export default function Home() {
           </motion.div>
 
           {/* One-tap destinations */}
-
-          <motion.ul
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.8, delay: 0.4 }}
-            className="relative z-10 mt-10 flex flex-wrap items-center gap-x-8 gap-y-3 text-sm text-white/55"
-          >
-            <li className="flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-emerald-300/60" /> No booking fee, ever</li>
-            <li className="flex items-center gap-2"><MessageCircle className="h-4 w-4 text-emerald-300/60" /> You hear from the host, not a call centre</li>
-            <li className="flex items-center gap-2"><Smartphone className="h-4 w-4 text-emerald-300/60" /> Settle up at the property</li>
-          </motion.ul>
         </div>
 
         <a
@@ -2048,6 +2037,7 @@ export default function Home() {
     </div>
   );
 }
+
 
 
 
