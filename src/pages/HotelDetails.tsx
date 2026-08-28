@@ -7,7 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useChatModal } from '../contexts/ChatModalContext';
 import PhoneInput from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
-import { MapPin, Calendar, Users, Star, CheckCircle2, ChevronRight, Info, Plus, Minus, ShieldCheck, AlertTriangle, UtensilsCrossed, Clock, BedDouble, MessageSquare, MessageCircle, Images, Mail, PhoneCall, Navigation, CreditCard, LogIn, LogOut } from 'lucide-react';
+import { MapPin, Calendar, Users, Star, CheckCircle2, ChevronRight, Info, Plus, Minus, ShieldCheck, AlertTriangle, UtensilsCrossed, Clock, BedDouble, MessageSquare, MessageCircle, Images, Mail, PhoneCall, Navigation, CreditCard, LogIn, LogOut, Share2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import AvailabilityCalendar from '../components/AvailabilityCalendar';
 import { motion } from 'motion/react';
@@ -385,6 +385,27 @@ export default function HotelDetails() {
     }
   };
 
+  const handleShare = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const shareData = {
+      title: hotel?.name || 'Travel Malawi',
+      text: `Check out ${hotel?.name} in ${hotel?.location} on Travel Malawi!`,
+      url: window.location.href,
+    };
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(window.location.href);
+        toast.success('Link copied to clipboard!');
+      }
+    } catch (err) {
+      if (err instanceof Error && err.name !== 'AbortError') {
+        toast.error('Failed to share');
+      }
+    }
+  };
+
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center">
       <div className="h-8 w-8 animate-spin rounded-full border-4 border-stone-900 border-t-transparent"></div>
@@ -432,20 +453,37 @@ export default function HotelDetails() {
                 </motion.h1>
               </div>
               
-              <button 
-                className="hidden md:flex bg-white/20 hover:bg-white/30 backdrop-blur text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg items-center gap-2 transition-all opacity-0 group-hover:opacity-100"
-              >
-                <Images className="h-4 w-4" />
-                {hotelImages.length} Photos
-              </button>
+              <div className="hidden md:flex items-center gap-2 transition-all opacity-0 group-hover:opacity-100 pointer-events-auto">
+                <button 
+                  onClick={handleShare}
+                  className="bg-white/20 hover:bg-white/30 backdrop-blur text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg flex items-center gap-2 transition-all"
+                >
+                  <Share2 className="h-4 w-4" />
+                  Share
+                </button>
+                <button 
+                  className="bg-white/20 hover:bg-white/30 backdrop-blur text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg flex items-center gap-2 transition-all"
+                >
+                  <Images className="h-4 w-4" />
+                  {hotelImages.length} Photos
+                </button>
+              </div>
             </div>
             
-            <button 
-              className="md:hidden absolute top-4 right-4 bg-white/20 hover:bg-white/30 backdrop-blur text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg flex items-center gap-2 transition-all"
-            >
-              <Images className="h-4 w-4" />
-              {hotelImages.length}
-            </button>
+            <div className="md:hidden absolute top-4 right-4 flex items-center gap-2 z-10 pointer-events-auto">
+              <button 
+                onClick={handleShare}
+                className="bg-white/20 hover:bg-white/30 backdrop-blur text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg flex items-center gap-2 transition-all"
+              >
+                <Share2 className="h-4 w-4" />
+              </button>
+              <button 
+                className="bg-white/20 hover:bg-white/30 backdrop-blur text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg flex items-center gap-2 transition-all"
+              >
+                <Images className="h-4 w-4" />
+                {hotelImages.length}
+              </button>
+            </div>
           </div>
 
           {/* Supporting photographs, only when they exist */}
