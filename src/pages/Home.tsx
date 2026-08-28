@@ -765,12 +765,12 @@ export default function Home() {
   return (
     <div className="flex flex-col min-h-screen">
       {/* Hero */}
-      <section className="relative min-h-[100svh] md:min-h-[100svh] w-full flex flex-col justify-end pb-32 md:pb-40 pt-32 overflow-hidden bg-stone-950">
+      <section className="relative z-30 min-h-[100svh] md:min-h-[100svh] w-full flex flex-col justify-end pb-32 md:pb-40 pt-32 bg-stone-950">
         <motion.div
           initial={{ opacity: 0, scale: 1.08, filter: 'blur(10px)' }}
           animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
           transition={{ duration: 1.8, ease: [0.16, 1, 0.3, 1] }}
-          className="absolute inset-0 z-0"
+          className="absolute inset-0 z-0 overflow-hidden"
         >
           <motion.div
             animate={{ scale: [1, 1.08, 1] }}
