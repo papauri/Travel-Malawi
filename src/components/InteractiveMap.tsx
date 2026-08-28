@@ -461,7 +461,13 @@ export default function InteractiveMap({
           if (showLodgePopups) {
             marker.setPopupContent(createPopupHtml(lodge));
           }
-          marker.openPopup();
+          if (clusterGroupRef.current && typeof clusterGroupRef.current.zoomToShowLayer === 'function') {
+            clusterGroupRef.current.zoomToShowLayer(marker, () => {
+              marker.openPopup();
+            });
+          } else {
+            marker.openPopup();
+          }
         }
       }
     });
