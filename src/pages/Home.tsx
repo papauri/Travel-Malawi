@@ -1105,7 +1105,7 @@ export default function Home() {
             <button
               onClick={handleSearch}
               disabled={searching}
-              className="shrink-0 flex items-center justify-center gap-2 bg-emerald-600 text-white rounded-[20px] lg:rounded-full m-1.5 px-7 font-bold text-sm hover:bg-emerald-700 active:scale-95 transition shadow-md disabled:opacity-60"
+              className="shrink-0 flex items-center justify-center gap-2 bg-emerald-600 text-white rounded-[20px] lg:rounded-full m-1.5 py-3.5 lg:py-0 px-7 font-bold text-sm hover:bg-emerald-700 active:scale-95 transition shadow-md disabled:opacity-60"
             >
               {searching
                 ? <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/40 border-t-white" />
