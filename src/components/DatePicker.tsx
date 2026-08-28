@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { DayPicker, DateRange } from 'react-day-picker';
-import 'react-day-picker/dist/style.css';
+import 'react-day-picker/style.css';
 import { format, parse, isValid, addDays } from 'date-fns';
 import { Calendar } from 'lucide-react';
 

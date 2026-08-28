@@ -15,6 +15,7 @@ import Pagination from '../components/Pagination';
 import PropertyChat from '../components/PropertyChat';
 import SmartImage from '../components/SmartImage';
 import DirectionsPanel from '../components/DirectionsPanel';
+import { ReviewModal } from '../components/ReviewModal';
 import InteractiveMap from '../components/InteractiveMap';
 import { useBreadcrumbLabel } from '../components/Breadcrumbs';
 import { getHotelImages, getRoomImage } from '../lib/images';
@@ -35,6 +36,7 @@ import {
   roomCurrencies, roomPrice, roomPrimaryCurrency, storeCurrency,
 } from '../lib/currency';
 import Modal, { fieldClass, labelClass } from '../components/Modal';
+import Lightbox from '../components/Lightbox';
 
 export default function HotelDetails() {
   const { id } = useParams<{ id: string }>();
@@ -51,6 +53,7 @@ export default function HotelDetails() {
   const [loading, setLoading] = useState(() => !id || !getSingleCachedHotel(id));
   const [saving, setSaving] = useState(false);
   const [bookingStatus, setBookingStatus] = useState<string | null>(null);
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [activeGalleryRoom, setActiveGalleryRoom] = useState<RoomType | null>(null);
   const [showHotelGallery, setShowHotelGallery] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState<RoomType | null>(null);
@@ -66,14 +69,25 @@ export default function HotelDetails() {
   const [guestWhatsapp, setGuestWhatsapp] = useState('');
   const [specialRequests, setSpecialRequests] = useState('');
   const [currentReviewPage, setCurrentReviewPage] = useState(1);
+  const [reviewSort, setReviewSort] = useState<'recent' | 'highest'>('recent');
   const reviewsPerPage = 5;
   const [selectedPackages, setSelectedPackages] = useState<string[]>([]);
   const [currency, setCurrency] = useState<CurrencyCode>(() => readStoredCurrency() ?? 'USD');
-  const [activeTab, setActiveTab] = useState<'stay' | 'menu'>('stay');
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<BookingField, string>>>({});
   // A field positioned off-screen and hidden from assistive technology. No
   // person can fill it in; something submitting the form blindly will.
   const [honeypot, setHoneypot] = useState('');
+  const [isScrolledPastHero, setIsScrolledPastHero] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      // Show when scrolled past roughly the hero image
+      setIsScrolledPastHero(window.scrollY > 400);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   // When the booking form was opened, for the "filled impossibly fast" check.
   const [formOpenedAt, setFormOpenedAt] = useState<number>(() => Date.now());
 
@@ -371,7 +385,30 @@ export default function HotelDetails() {
 
       // The reference is the only handle a signed-out guest has on the booking,
       // so it is surfaced rather than only stored.
-      toast.success(`Booking requested — reference ${reference}. The property will review and confirm.`, { duration: 8000 });
+      toast.custom(
+        (t) => (
+          <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-sm w-full bg-stone-900 text-white shadow-2xl rounded-2xl pointer-events-auto flex flex-col p-4 border border-stone-800`}>
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-emerald-500/20 text-emerald-400 rounded-xl shrink-0 mt-0.5">
+                <CheckCircle2 className="w-5 h-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold uppercase tracking-wider text-emerald-400 mb-1">
+                  Booking Requested
+                </p>
+                <p className="text-sm font-medium text-stone-300 leading-relaxed mb-2">
+                  The property will review your stay request and notify you once it's confirmed.
+                </p>
+                <div className="inline-flex items-center gap-1.5 bg-stone-800/80 px-2.5 py-1 rounded-lg border border-stone-700/50">
+                  <span className="text-[10px] text-stone-400 font-medium uppercase tracking-wider">Ref</span>
+                  <span className="text-xs font-mono font-bold text-white">{reference}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        ),
+        { duration: 8000 }
+      );
       setSelectedRoom(null);
       // A guest booking without an account has nothing to show on the bookings
       // page, which is traveller-only.
@@ -421,15 +458,34 @@ export default function HotelDetails() {
 
   return (
     <div className="min-h-screen bg-white pb-24">
+      {/* Sticky Header when scrolled past hero */}
+      <div
+        className={`fixed top-20 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-b border-stone-200/60 shadow-xs transition-transform duration-300 ease-in-out ${
+          isScrolledPastHero ? 'translate-y-0' : '-translate-y-full opacity-0 pointer-events-none'
+        }`}
+      >
+        <div className="mx-auto max-w-7xl px-4 lg:px-8 h-16 flex items-center justify-between">
+          <h2 className="font-serif text-lg md:text-xl font-bold text-stone-900 tracking-tight truncate pr-4">{hotel.name}</h2>
+          <button
+            onClick={() => {
+              document.getElementById('rooms-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }}
+            className="bg-stone-900 text-white px-5 py-2.5 rounded-full text-xs font-bold uppercase tracking-widest shrink-0 hover:bg-emerald-700 active:scale-95 transition-all shadow-sm"
+          >
+            Book Now
+          </button>
+        </div>
+      </div>
+
       {/* Header image and gallery.
           The layout follows how many photographs a listing actually has.
           It used to be a fixed three-up grid padded with "No additional photo"
           boxes, so a listing with one image gave over half its header to two
           empty grey panels. */}
-      <div className="w-full max-w-[90rem] mx-auto px-4 lg:px-12 mt-4">
-        <div className={`grid gap-3 md:h-[68vh] ${hasGallery ? 'grid-cols-1 md:grid-cols-4' : 'grid-cols-1'}`}>
+      <div className="w-full">
+        <div className={`grid gap-0 md:h-[68vh] ${hasGallery ? 'grid-cols-1 md:grid-cols-4' : 'grid-cols-1'}`}>
           {/* Main image */}
-          <div className={`relative rounded-3xl overflow-hidden h-[46vh] md:h-full group cursor-pointer ${hasGallery ? 'md:col-span-2 md:row-span-2' : ''}`} onClick={() => setShowHotelGallery(true)}>
+          <div className={`relative rounded-none overflow-hidden h-[46vh] md:h-full group cursor-pointer ${hasGallery ? 'md:col-span-2 md:row-span-2' : ''}`} onClick={() => setShowHotelGallery(true)}>
             <SmartImage src={hotelImages[0]} alt={hotel.name} loading="eager" className="w-full h-full object-cover transition duration-700 ease-out group-hover:scale-[1.04]" />
             <div className="absolute inset-0 bg-gradient-to-t from-stone-950/80 via-stone-950/10 to-transparent" />
             <div className="absolute bottom-0 left-0 w-full p-7 md:p-10 flex justify-between items-end">
@@ -488,7 +544,7 @@ export default function HotelDetails() {
 
           {/* Supporting photographs, only when they exist */}
           {galleryImages.map((url, index) => (
-            <div key={url} className="relative rounded-3xl overflow-hidden hidden md:block md:col-span-2 md:row-span-1 group cursor-pointer" onClick={() => setShowHotelGallery(true)}>
+            <div key={url} className="relative rounded-none overflow-hidden hidden md:block md:col-span-2 md:row-span-1 group cursor-pointer" onClick={() => setShowHotelGallery(true)}>
               <SmartImage
                 src={url}
                 alt={`${hotel.name} — photograph ${index + 2}`}
@@ -554,6 +610,13 @@ export default function HotelDetails() {
           >
             <Navigation className="h-4 w-4 text-emerald-600" />
             <span>Get Directions Right Away</span>
+          </a>
+          <a
+            href="#reviews"
+            className="flex items-center gap-2 bg-stone-100 hover:bg-stone-200 text-stone-800 px-4 py-2 rounded-full text-sm font-semibold transition"
+          >
+            <Star className="h-4 w-4 text-emerald-600" />
+            <span>Skip to Reviews</span>
           </a>
         </div>
       </div>
@@ -786,35 +849,134 @@ export default function HotelDetails() {
             </div>
           )}
 
-          {/* Stay / Menu tabs. The Menu tab is absent unless the property
-              has a restaurant enabled, so a lodge without one is unaffected. */}
-          {restaurant && (
-            <div className="flex gap-2 border-b border-stone-200 mb-12">
-              <button
-                onClick={() => setActiveTab('stay')}
-                className={`flex items-center gap-2 px-6 py-3.5 border-b-2 font-medium transition ${
-                  activeTab === 'stay'
-                    ? 'border-stone-900 text-stone-900'
-                    : 'border-transparent text-stone-500 hover:text-stone-800'
-                }`}
-              >
-                <BedDouble className="h-4 w-4" /> Rooms &amp; availability
-              </button>
-              <button
-                onClick={() => setActiveTab('menu')}
-                className={`flex items-center gap-2 px-6 py-3.5 border-b-2 font-medium transition ${
-                  activeTab === 'menu'
-                    ? 'border-stone-900 text-stone-900'
-                    : 'border-transparent text-stone-500 hover:text-stone-800'
-                }`}
-              >
-                <UtensilsCrossed className="h-4 w-4" /> Menu
-              </button>
+          <h2
+            id="rooms-section"
+            className="text-4xl md:text-5xl font-serif text-stone-900 mb-10 tracking-tight"
+          >
+            Available Rooms
+          </h2>
+          {rooms.length === 0 ? (
+            <p className="text-stone-500 italic">No rooms available at the moment.</p>
+          ) : (
+            <div className="flex overflow-x-auto md:flex-col gap-4 md:gap-6 mb-24 pb-6 -mx-4 px-4 md:mx-0 md:px-0 snap-x snap-mandatory scrollbar-none">
+              {rooms.map((room) => {
+                const status = room.id ? roomAvailability[room.id] : undefined;
+                const roomDisplayCurrency = resolveCurrency(room, currency);
+                const isSoldOut = status ? !status.available : (room.quantity ?? 0) <= 0;
+                const hasDates = !!checkIn && !!checkOut && checkIn < checkOut;
+                return (
+                <motion.div
+                  key={room.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-50px" }}
+                  transition={{ duration: 0.5, ease: "easeOut" }}
+                  className="w-[85vw] sm:w-[400px] md:w-full shrink-0 snap-center flex flex-col md:flex-row md:items-start gap-5 p-4 bg-white border border-stone-200 rounded-[24px] shadow-sm hover:shadow-md transition-shadow duration-300"
+                >
+                  <div className="w-full md:w-2/5 lg:w-1/3 aspect-[4/3] overflow-hidden rounded-[16px] relative shrink-0 group">
+                    <div className="w-full h-full flex overflow-x-auto snap-x snap-mandatory scrollbar-none">
+                      {[getRoomImage(room, hotel), ...(room.galleryUrls || [])].map((imgUrl, i) => (
+                        <div key={i} className="min-w-full h-full shrink-0 snap-center relative">
+                          <SmartImage
+                            src={imgUrl}
+                            alt={`${room.name} photo ${i + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    
+                    {((room.galleryUrls || []).length > 0) && (
+                      <div className="absolute bottom-3 right-3 bg-stone-900/60 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-sm z-10 pointer-events-none">
+                        <Images className="h-3 w-3" />
+                        Swipe for more
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="w-full md:w-3/5 lg:w-2/3 flex flex-col justify-between py-1 pr-1 md:pr-2">
+                    <div>
+                      <div className="flex flex-wrap items-start justify-between gap-4 mb-3">
+                        <h3 className="text-2xl md:text-3xl font-serif text-stone-900 tracking-tight leading-none">{room.name}</h3>
+                        <div className="flex items-center gap-2 text-stone-700 bg-stone-50 px-3 py-1.5 rounded-full text-xs font-semibold border border-stone-200 shadow-xs">
+                          <Users className="h-3.5 w-3.5 text-emerald-600 shrink-0" /> 
+                          <span>Max {room.maxGuests}</span>
+                        </div>
+                      </div>
+                      
+                      <p className="text-stone-500 text-sm leading-relaxed mb-5 font-light line-clamp-3 md:line-clamp-4">{room.description}</p>
+                      
+                      <div className="flex flex-wrap items-center gap-2 mb-4">
+                        {isSoldOut ? (
+                          <div className="flex items-center gap-1.5 bg-red-50 text-red-700 px-3 py-1.5 rounded-full text-xs font-bold border border-red-100">
+                            <Info className="h-3.5 w-3.5" />
+                            <span>{hasDates ? 'Sold out for these dates' : 'Not available'}</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-800 px-3 py-1.5 rounded-full text-xs font-bold border border-emerald-100">
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                            <span>{status?.remaining != null ? status.remaining : room.quantity} Available</span>
+                          </div>
+                        )}
+                        {room.packages && room.packages.length > 0 && room.packages.map(pkg => (
+                          <span key={pkg.id} className="px-3 py-1.5 bg-stone-100 text-stone-700 rounded-full text-[11px] font-semibold tracking-wide border border-stone-200 flex items-center gap-1">
+                            <Plus className="w-3 h-3 text-stone-400" />
+                            {pkg.name}
+                            {(() => {
+                              const amount = packagePrice(pkg, roomDisplayCurrency, roomPrimaryCurrency(room));
+                              return amount && amount > 0 ? ` (${formatMoney(amount, roomDisplayCurrency)})` : '';
+                            })()}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mt-4 pt-4 border-t border-stone-100">
+                      <div>
+                        <span className="text-stone-400 tracking-widest uppercase text-[9px] font-bold block mb-1">From</span>
+                        <div className="flex items-baseline gap-1.5">
+                          <span className="text-3xl font-serif text-stone-900 tracking-tight">
+                            {formatMoney(roomPrice(room, roomDisplayCurrency) ?? 0, roomDisplayCurrency)}
+                          </span>
+                          <span className="text-stone-500 uppercase text-[10px] font-bold">/ night</span>
+                        </div>
+                        {roomCurrencies(room).filter(c => c !== roomDisplayCurrency).map(code => (
+                          <div key={code} className="text-xs text-stone-400 mt-1 font-medium">
+                            or {formatMoney(roomPrice(room, code) ?? 0, code)} / night
+                          </div>
+                        ))}
+                      </div>
+                      <button
+                        onClick={() => initiateBooking(room)}
+                        disabled={isSoldOut || !isBookable}
+                        className="bg-stone-900 text-white px-8 py-3 rounded-full font-bold uppercase tracking-widest text-xs hover:bg-emerald-700 active:scale-95 transition-all duration-300 disabled:bg-stone-300 disabled:hover:bg-stone-300 disabled:active:scale-100 disabled:cursor-not-allowed whitespace-nowrap shadow-sm"
+                      >
+                        {isSoldOut ? 'Unavailable' : 'Reserve'}
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+                );
+              })}
             </div>
           )}
 
-          {restaurant && activeTab === 'menu' && (
-            <div className="mb-24">
+          {/* Availability Calendar */}
+          <div className="mb-16">
+            <AvailabilityCalendar
+              hotelId={id!}
+              rooms={rooms}
+              onDateSelect={(date) => {
+                setCheckIn(date);
+                document.getElementById('rooms-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }}
+            />
+          </div>
+
+                    {/* Restaurant Menu */}
+          {restaurant && (
+            <div className="lg:col-span-3 mb-24 pt-8 border-t border-stone-200">
+              <h2 className="text-4xl md:text-5xl font-serif text-stone-900 mb-10 tracking-tight">Restaurant & Menu</h2>
               {hasPublishedHours(restaurant.hours) && (
                 <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mb-8 text-sm">
                   <span className="flex items-center gap-2 text-stone-500">
@@ -833,7 +995,6 @@ export default function HotelDetails() {
                   )}
                 </div>
               )}
-
               <MenuTemplateView
                 restaurant={restaurant}
                 currency={currency}
@@ -841,157 +1002,9 @@ export default function HotelDetails() {
             </div>
           )}
 
-          {/* Availability Calendar */}
-          <div className={`mb-16 ${restaurant && activeTab !== 'stay' ? 'hidden' : ''}`}>
-            <AvailabilityCalendar
-              hotelId={id!}
-              rooms={rooms}
-              onDateSelect={(date) => {
-                setCheckIn(date);
-                document.getElementById('rooms-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              }}
-            />
-          </div>
-
-          <h2
-            id="rooms-section"
-            className={`text-4xl md:text-5xl font-serif text-stone-900 mb-10 tracking-tight ${
-              restaurant && activeTab !== 'stay' ? 'hidden' : ''
-            }`}
-          >
-            Available Rooms
-          </h2>
-          {restaurant && activeTab !== 'stay' ? null : rooms.length === 0 ? (
-            <p className="text-stone-500 italic">No rooms available at the moment.</p>
-          ) : (
-            <div className="flex flex-col gap-20 mb-24">
-              {rooms.map((room, idx) => {
-                const status = room.id ? roomAvailability[room.id] : undefined;
-                const roomDisplayCurrency = resolveCurrency(room, currency);
-                const isSoldOut = status ? !status.available : (room.quantity ?? 0) <= 0;
-                const hasDates = !!checkIn && !!checkOut && checkIn < checkOut;
-                return (
-                <motion.div
-                  key={room.id}
-                  initial={{ opacity: 0, y: 40 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: "-100px" }}
-                  transition={{ duration: 0.7, ease: "easeOut" }}
-                  className={`flex flex-col ${idx % 2 === 1 ? 'lg:flex-row-reverse' : 'lg:flex-row'} gap-10 lg:gap-20 items-center`}
-                >
-                  <div className="w-full lg:w-1/2 aspect-[4/3] lg:aspect-[4/5] overflow-hidden rounded-[24px] relative shadow-xl group">
-                    <div className="w-full h-full flex overflow-x-auto snap-x snap-mandatory scrollbar-none">
-                      {[getRoomImage(room, hotel), ...(room.galleryUrls || [])].map((imgUrl, i) => (
-                        <div key={i} className="min-w-full h-full shrink-0 snap-center relative">
-                          <SmartImage
-                            src={imgUrl}
-                            alt={`${room.name} photo ${i + 1}`}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                      ))}
-                    </div>
-                    
-                    {((room.galleryUrls || []).length > 0) && (
-                      <div className="absolute bottom-4 right-4 bg-stone-900/60 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-sm z-10 pointer-events-none">
-                        <Images className="h-3 w-3" />
-                        Swipe for more
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="w-full lg:w-1/2 flex flex-col justify-center py-4 lg:py-6">
-                    <h3 className="text-3xl md:text-4xl lg:text-5xl font-serif text-stone-900 mb-3 md:mb-5 tracking-tight leading-none">{room.name}</h3>
-                    <p className="text-stone-500 text-sm md:text-base lg:text-lg leading-relaxed mb-6 md:mb-10 font-light">{room.description}</p>
-                    
-                    <div className="grid grid-cols-2 gap-4 md:gap-6 text-stone-900 mb-6 md:mb-10 border-y border-stone-200 py-6 md:py-8">
-                      <div className="flex items-center gap-3">
-                        <Users className="h-5 w-5 text-emerald-600" /> 
-                        <span className="font-serif text-lg">{room.maxGuests} Guests Max</span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        {isSoldOut ? (
-                          <>
-                            <Info className="h-5 w-5 text-red-500" />
-                            <span className="font-serif text-lg text-red-600">
-                              {hasDates ? 'Sold out for these dates' : 'Not available'}
-                            </span>
-                          </>
-                        ) : (
-                          <>
-                            <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-                            <span className="font-serif text-lg">
-                              {status?.remaining != null ? status.remaining : room.quantity} Available
-                            </span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                    
-                    {room.packages && room.packages.length > 0 && (
-                      <div className="flex flex-wrap gap-3 mb-10">
-                        {room.packages.map(pkg => (
-                          <span key={pkg.id} className="px-4 py-2 bg-stone-100 text-stone-700 rounded-full text-sm font-medium tracking-wide">
-                            + {pkg.name}
-                            {(() => {
-                              const amount = packagePrice(pkg, roomDisplayCurrency, roomPrimaryCurrency(room));
-                              return amount && amount > 0 ? ` (${formatMoney(amount, roomDisplayCurrency)})` : '';
-                            })()}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                    
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mt-auto">
-                      <div>
-                        {/* Shown in the currency the guest picked when the room
-                            is sold in it, with any other authored price beneath
-                            — never a converted figure. */}
-                        <span className="text-4xl font-serif text-stone-900">
-                          {formatMoney(roomPrice(room, roomDisplayCurrency) ?? 0, roomDisplayCurrency)}
-                        </span>
-                        <span className="text-stone-500 ml-2 tracking-widest uppercase text-xs font-bold">/ night</span>
-                        {roomCurrencies(room).filter(c => c !== roomDisplayCurrency).map(code => (
-                          <div key={code} className="text-sm text-stone-400 mt-1">
-                            or {formatMoney(roomPrice(room, code) ?? 0, code)} / night
-                          </div>
-                        ))}
-                      </div>
-                      <button
-                        onClick={() => initiateBooking(room)}
-                        disabled={isSoldOut || !isBookable}
-                        className="bg-stone-900 text-white px-10 py-4 rounded-full font-bold uppercase tracking-widest text-xs hover:bg-emerald-700 transition-colors duration-300 disabled:bg-stone-300 disabled:hover:bg-stone-300 disabled:cursor-not-allowed"
-                      >
-                        {isSoldOut ? 'Unavailable' : 'Reserve'}
-                      </button>
-                    </div>
-                  </div>
-                </motion.div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Full Directions & Navigation Panel for Guests */}
-          <div className="mb-24 pt-8 border-t border-stone-200">
-            <div className="mb-8">
-              <span className="text-[0.68rem] font-bold text-emerald-700 tracking-[0.16em] uppercase">Find Your Way</span>
-              <h2 className="text-3xl md:text-4xl font-serif text-stone-900 mt-1 tracking-tight">Location &amp; Driving Directions</h2>
-              <p className="text-stone-500 text-base mt-2">
-                Turn-by-turn navigation launchers, travel distance estimator, and interactive map for {hotel.name}.
-              </p>
-            </div>
-            <DirectionsPanel
-              hotelName={hotel.name}
-              location={hotel.location}
-              coordinates={hotel.coordinates}
-              locationNotes={hotel.locationNotes}
-            />
-          </div>
-
-          {allReviews.length > 0 && (
-            <div className="mt-8 border-t border-stone-200 pt-12">
-              <div className="flex flex-wrap items-baseline gap-4 mb-10">
+          <div id="reviews" className="mb-24 mt-8 border-t border-stone-200 pt-12">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-10">
+              <div className="flex flex-wrap items-baseline gap-4">
                 <h2 className="text-4xl md:text-5xl font-serif text-stone-900 tracking-tight">Guest Reviews</h2>
                 {ratingSummary && (
                   <span className="text-stone-500 text-lg">
@@ -999,49 +1012,63 @@ export default function HotelDetails() {
                   </span>
                 )}
               </div>
-              <div className="grid grid-cols-1 gap-6">
-                {allReviews.slice((currentReviewPage - 1) * reviewsPerPage, currentReviewPage * reviewsPerPage).map(review => (
-                  <div key={review.key} className="bg-white p-8 rounded-3xl border border-stone-200 shadow-sm">
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-stone-100 rounded-full flex items-center justify-center text-stone-600 font-serif font-bold text-lg">
-                          {review.author.charAt(0)}
-                        </div>
-                        <div>
-                          <p className="font-semibold text-stone-900">{review.author}</p>
-                          <p className="text-sm text-stone-500">{review.date}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1 bg-stone-50 px-3 py-1.5 rounded-full">
-                        <Star className="h-4 w-4 fill-current text-stone-900" />
-                        <span className="font-semibold text-stone-900">{review.rating.toFixed(1)}</span>
-                      </div>
-                    </div>
-                    <p className="text-stone-700 leading-relaxed italic">"{review.text}"</p>
-                    {/* Only a review written from a completed booking on this
-                        platform can claim a verified stay; imported ones say
-                        where they came from instead. */}
-                    {review.verified ? (
-                      <p className="text-xs text-emerald-700 mt-4 uppercase tracking-wider font-semibold flex items-center gap-1.5">
-                        <ShieldCheck className="h-4 w-4" /> Verified stay
-                      </p>
-                    ) : (
-                      <p className="text-xs text-stone-400 mt-4 uppercase tracking-wider font-semibold">
-                        Imported from {review.source}
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </div>
-              {allReviews.length > reviewsPerPage && (
-                <Pagination
-                  currentPage={currentReviewPage}
-                  totalPages={Math.ceil(allReviews.length / reviewsPerPage)}
-                  onPageChange={setCurrentReviewPage}
-                />
-              )}
+              <button
+                onClick={() => setIsReviewModalOpen(true)}
+                className="inline-flex items-center gap-2 bg-stone-900 hover:bg-stone-800 text-white px-5 py-2.5 rounded-full text-sm font-bold transition shadow-sm self-start sm:self-auto"
+              >
+                <Star className="h-4 w-4" />
+                Write a Review
+              </button>
             </div>
-          )}
+            
+            {allReviews.length === 0 ? (
+              <p className="text-stone-500 italic">No reviews yet. Be the first to review this property!</p>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 gap-6">
+                  {allReviews.slice((currentReviewPage - 1) * reviewsPerPage, currentReviewPage * reviewsPerPage).map(review => (
+                    <div key={review.key} className="bg-white p-8 rounded-3xl border border-stone-200 shadow-sm">
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 bg-stone-100 rounded-full flex items-center justify-center text-stone-600 font-serif font-bold text-lg">
+                            {review.author.charAt(0)}
+                          </div>
+                          <div>
+                            <p className="font-semibold text-stone-900">{review.author}</p>
+                            <p className="text-sm text-stone-500">{review.date}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 bg-stone-50 px-3 py-1.5 rounded-full">
+                          <Star className="h-4 w-4 fill-current text-stone-900" />
+                          <span className="font-semibold text-stone-900">{review.rating.toFixed(1)}</span>
+                        </div>
+                      </div>
+                      <p className="text-stone-700 leading-relaxed italic">"{review.text}"</p>
+                      {/* Only a review written from a completed booking on this
+                          platform can claim a verified stay; imported ones say
+                          where they came from instead. */}
+                      {review.verified ? (
+                        <p className="text-xs text-emerald-700 mt-4 uppercase tracking-wider font-semibold flex items-center gap-1.5">
+                          <ShieldCheck className="h-4 w-4" /> Verified stay
+                        </p>
+                      ) : (
+                        <p className="text-xs text-stone-400 mt-4 uppercase tracking-wider font-semibold">
+                          Imported from {review.source}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                {allReviews.length > reviewsPerPage && (
+                  <Pagination
+                    currentPage={currentReviewPage}
+                    totalPages={Math.ceil(allReviews.length / reviewsPerPage)}
+                    onPageChange={setCurrentReviewPage}
+                  />
+                )}
+              </>
+            )}
+          </div>
         </div>
         
         {/* Sticky Sidebar / Highlights */}
@@ -1067,6 +1094,23 @@ export default function HotelDetails() {
             </ul>
           </div>
         </div>
+          {/* Full Directions & Navigation Panel for Guests */}
+          <div className="lg:col-span-3 mb-24 pt-8 border-t border-stone-200">
+            <div className="mb-8">
+              <span className="text-[0.68rem] font-bold text-emerald-700 tracking-[0.16em] uppercase">Find Your Way</span>
+              <h2 className="text-3xl md:text-4xl font-serif text-stone-900 mt-1 tracking-tight">Location &amp; Driving Directions</h2>
+              <p className="text-stone-500 text-base mt-2">
+                Turn-by-turn navigation launchers, travel distance estimator, and interactive map for {hotel.name}.
+              </p>
+            </div>
+            <DirectionsPanel
+              hotelName={hotel.name}
+              location={hotel.location}
+              coordinates={hotel.coordinates}
+              locationNotes={hotel.locationNotes}
+            />
+          </div>
+
       </div>
       
       {/* Booking request */}
@@ -1429,46 +1473,34 @@ export default function HotelDetails() {
         </div>
       )}
 
+      {/* Review Modal */}
+      {hotel.id && (
+        <ReviewModal
+          hotelId={hotel.id}
+          open={isReviewModalOpen}
+          onClose={() => setIsReviewModalOpen(false)}
+          onReviewSubmitted={() => {
+            // Force a refresh of the page to show the new review, 
+            // since the reviews effect runs on mount/id change.
+            window.location.reload();
+          }}
+        />
+      )}
+
       {/* Room Gallery Modal */}
       {activeGalleryRoom && (
-        <Modal
-          open={!!activeGalleryRoom}
+        <Lightbox
+          images={[activeGalleryRoom.imageUrl, ...(activeGalleryRoom.galleryUrls || [])].filter(Boolean) as string[]}
           onClose={() => setActiveGalleryRoom(null)}
-          title={`${activeGalleryRoom.name} Gallery`}
-          size="lg"
-        >
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="md:col-span-2 aspect-[21/9] rounded-2xl overflow-hidden relative shadow-md">
-              <SmartImage src={activeGalleryRoom.imageUrl} alt={`${activeGalleryRoom.name} main`} className="w-full h-full object-cover" />
-            </div>
-            {activeGalleryRoom.galleryUrls?.map((url, i) => (
-              <div key={i} className={`aspect-video rounded-2xl overflow-hidden relative shadow-md ${i % 3 === 2 ? 'md:col-span-2 aspect-[21/9]' : ''}`}>
-                <SmartImage src={url} alt={`${activeGalleryRoom.name} gallery ${i + 1}`} className="w-full h-full object-cover" />
-              </div>
-            ))}
-          </div>
-        </Modal>
+        />
       )}
 
       {/* Hotel Gallery Modal */}
       {showHotelGallery && (
-        <Modal
-          open={showHotelGallery}
+        <Lightbox
+          images={hotelImages}
           onClose={() => setShowHotelGallery(false)}
-          title={`${hotel.name} Gallery`}
-          size="lg"
-        >
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="md:col-span-2 aspect-[21/9] rounded-2xl overflow-hidden relative shadow-md">
-              <SmartImage src={hotelImages[0]} alt={`${hotel.name} main`} className="w-full h-full object-cover" />
-            </div>
-            {hotelImages.slice(1).map((url, i) => (
-              <div key={i} className={`aspect-video rounded-2xl overflow-hidden relative shadow-md ${i % 3 === 2 ? 'md:col-span-2 aspect-[21/9]' : ''}`}>
-                <SmartImage src={url} alt={`${hotel.name} gallery ${i + 1}`} className="w-full h-full object-cover" />
-              </div>
-            ))}
-          </div>
-        </Modal>
+        />
       )}
     </div>
   );

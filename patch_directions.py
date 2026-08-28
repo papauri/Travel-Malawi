@@ -1,205 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import {
-  Compass,
-  Copy,
-  ExternalLink,
-  LocateFixed,
-  MapPin,
-  Navigation,
-  Share2,
-  Check,
-  Clock,
-  Car,
-  Plane,
-  AlertCircle,
-  Crosshair,
-} from 'lucide-react';
-import toast from 'react-hot-toast';
-import {
-  LatLng,
-  distanceKm,
-  estimateDriveDuration,
-  formatCoordinates,
-  getCompassBearing,
-  googleDirectionsUrl,
-  appleMapsDirectionsUrl,
-  wazeDirectionsUrl,
-  openStreetMapDirectionsUrl,
-  isValidLatLng,
-  MALAWI_KNOWN_PLACES,
-} from '../lib/geo';
-import InteractiveMap from './InteractiveMap';
+import re
 
-interface Props {
-  hotelName: string;
-  location: string;
-  coordinates?: LatLng | null;
-  locationNotes?: string;
-  className?: string;
-}
+with open("src/components/DirectionsPanel.tsx", "r") as f:
+    text = f.read()
 
-const COMMON_ORIGINS: { label: string; name: string; coords: LatLng; icon: 'plane' | 'car' }[] = [
-  {
-    label: 'Kamuzu Airport (LLW)',
-    name: 'Kamuzu International Airport, Lilongwe',
-    coords: { lat: -13.7829, lng: 33.781 },
-    icon: 'plane',
-  },
-  {
-    label: 'Chileka Airport (BLZ)',
-    name: 'Chileka International Airport, Blantyre',
-    coords: { lat: -15.6791, lng: 34.9642 },
-    icon: 'plane',
-  },
-  {
-    label: 'Lilongwe City',
-    name: 'Lilongwe City Centre',
-    coords: { lat: -13.9626, lng: 33.7741 },
-    icon: 'car',
-  },
-  {
-    label: 'Blantyre CBD',
-    name: 'Blantyre CBD',
-    coords: { lat: -15.7861, lng: 35.0058 },
-    icon: 'car',
-  },
-  {
-    label: 'Mzuzu Centre',
-    name: 'Mzuzu City Centre',
-    coords: { lat: -11.4583, lng: 34.0167 },
-    icon: 'car',
-  },
-];
+# Replace everything from `      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">` to the end of the file.
+start_idx = text.find('      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">')
+if start_idx == -1:
+    print("Cannot find start")
 
-export default function DirectionsPanel({
-  hotelName,
-  location,
-  coordinates,
-  locationNotes,
-  className = '',
-}: Props) {
-  const [guestLocation, setGuestLocation] = useState<LatLng | null>(null);
-  const [selectedOriginName, setSelectedOriginName] = useState<string | null>(null);
-  const [locating, setLocating] = useState(false);
-  const [copiedCoords, setCopiedCoords] = useState(false);
-
-  const hasCoords = isValidLatLng(coordinates);
-  const destCoords = hasCoords ? (coordinates as LatLng) : null;
-
-  // Request guest's live location
-  const handleGetGuestLocation = () => {
-    if (!navigator.geolocation) {
-      toast.error('Geolocation is not supported by your browser.');
-      return;
-    }
-    setLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      pos => {
-        setLocating(false);
-        const origin = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        setGuestLocation(origin);
-        setSelectedOriginName('Your Current GPS Position');
-        toast.success('Found your location! Calculated direct route.');
-      },
-      err => {
-        setLocating(false);
-        console.error('Geolocation error:', err);
-        toast.error('Could not determine your location. Please check browser permissions.');
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
-  };
-
-  const handleSelectPresetOrigin = (origin: (typeof COMMON_ORIGINS)[0]) => {
-    setGuestLocation(origin.coords);
-    setSelectedOriginName(origin.label);
-    toast.success(`Calculated route from ${origin.label}`);
-  };
-
-  const handleCopyCoordinates = () => {
-    if (!destCoords) return;
-    const text = formatCoordinates(destCoords, 5);
-    navigator.clipboard.writeText(text);
-    setCopiedCoords(true);
-    toast.success(`Copied coordinates: ${text}`);
-    setTimeout(() => setCopiedCoords(false), 3000);
-  };
-
-  const handleShareLocation = () => {
-    const dest = destCoords || location;
-    const url = googleDirectionsUrl(dest);
-    if (navigator.share) {
-      navigator
-        .share({
-          title: `Directions to ${hotelName}`,
-          text: `Here are directions to ${hotelName} in ${location}.`,
-          url,
-        })
-        .catch(() => {});
-    } else {
-      navigator.clipboard.writeText(url);
-      toast.success('Directions link copied to clipboard!');
-    }
-  };
-
-  // Route calculations
-  const routeStats =
-    destCoords && guestLocation
-      ? (() => {
-          const km = distanceKm(guestLocation, destCoords);
-          const miles = km * 0.621371;
-          const duration = estimateDriveDuration(km);
-          const bearing = getCompassBearing(guestLocation, destCoords);
-          return { km, miles, duration, bearing };
-        })()
-      : null;
-
-  return (
-    <div
-      id="directions"
-      className={`rounded-3xl border border-stone-200/90 bg-white p-6 md:p-8 shadow-sm isolate z-0 scroll-mt-28 ${className}`}
-    >
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="p-2 bg-emerald-50 text-emerald-700 rounded-xl">
-              <Navigation className="h-5 w-5" />
-            </span>
-            <h3 className="text-2xl font-serif text-stone-900">Get Directions</h3>
-          </div>
-          <p className="text-stone-500 text-sm mt-1">
-            Navigate to <strong className="text-stone-900">{hotelName}</strong> ({location})
-          </p>
-        </div>
-
-        {/* Quick Action Buttons */}
-        <div className="flex items-center gap-2">
-          {destCoords && (
-            <button
-              type="button"
-              onClick={handleCopyCoordinates}
-              className="inline-flex items-center gap-1.5 px-3 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl text-xs font-semibold transition"
-            >
-              {copiedCoords ? (
-                <Check className="h-3.5 w-3.5 text-emerald-600" />
-              ) : (
-                <Copy className="h-3.5 w-3.5 text-stone-500" />
-              )}
-              {copiedCoords ? 'Copied' : 'Copy GPS'}
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={handleShareLocation}
-            className="inline-flex items-center gap-1.5 px-3 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl text-xs font-semibold transition"
-          >
-            <Share2 className="h-3.5 w-3.5 text-stone-500" />
-            Share
-          </button>
-        </div>
-      </div>
-
-      {/* Primary Navigation Launchers */}
+new_layout = """      {/* Primary Navigation Launchers */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         <a
           href={googleDirectionsUrl(destCoords || location, guestLocation || undefined)}
@@ -407,3 +216,9 @@ export default function DirectionsPanel({
     </div>
   );
 }
+"""
+
+text = text[:start_idx] + new_layout
+with open("src/components/DirectionsPanel.tsx", "w") as f:
+    f.write(text)
+

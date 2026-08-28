@@ -80,6 +80,7 @@ export default function Home() {
   const [loading, setLoading] = useState(() => getCachedHotels().length === 0);
   const [searching, setSearching] = useState(false);
   const [activeCategory, setActiveCategory] = useState('All');
+  const [activeAmenities, setActiveAmenities] = useState<string[]>([]);
   const [searchParams] = useSearchParams();
   const [sortKey, setSortKey] = useState<SortKey>('recommended');
   const [currentPage, setCurrentPage] = useState(1);
@@ -110,6 +111,7 @@ export default function Home() {
   const [mapPriceRange, setMapPriceRange] = useState<'all' | 'budget' | 'moderate' | 'luxury'>('all');
   const [mapMinRating, setMapMinRating] = useState<number>(0);
   const [mapAmenityFilter, setMapAmenityFilter] = useState<string>('all');
+  const [mapRadius, setMapRadius] = useState<number | 'any'>('any');
   const [showMapFiltersModal, setShowMapFiltersModal] = useState(false);
 
   // User Current Live Location State
@@ -477,6 +479,7 @@ export default function Home() {
     setSearchCheckOut('');
     setSearchProximity(50);
     setActiveCategory('All');
+    setActiveAmenities([]);
     setSortKey('recommended');
     // Previously left untouched, so "clear all filters" silently kept the
     // party size that had caused the empty result in the first place.
@@ -498,9 +501,10 @@ export default function Home() {
     if (isPriceFiltered) count++;
     if (mapMinRating > 0) count++;
     if (mapAmenityFilter !== 'all') count++;
+    if (mapRadius !== 'any') count++;
     if (activeCategory !== 'All') count++;
     return count;
-  }, [mapSearchText, mapPriceRange, isPriceFiltered, mapMinRating, mapAmenityFilter, activeCategory]);
+  }, [mapSearchText, mapPriceRange, isPriceFiltered, mapMinRating, mapAmenityFilter, activeCategory, mapRadius]);
 
   const clearMapFilters = () => {
     setMapSearchText('');
@@ -509,7 +513,9 @@ export default function Home() {
     setIncludeUnpricedRooms(true);
     setMapMinRating(0);
     setMapAmenityFilter('all');
+    setMapRadius('any');
     setActiveCategory('All');
+    setActiveAmenities([]);
   };
 
   
@@ -647,6 +653,14 @@ export default function Home() {
           }
         }
 
+        // Amenities Filter
+        if (activeAmenities.length > 0) {
+          const hotelAmenities = entry.hotel.amenities || [];
+          if (!activeAmenities.every(amenity => hotelAmenities.includes(amenity))) {
+            return false;
+          }
+        }
+
         // Map Price filter
         if (mapPriceRange !== 'all') {
           const price = entry.priceFrom;
@@ -661,6 +675,11 @@ export default function Home() {
         if (mapMinRating > 0) {
           const avg = entry.rating?.average ?? 0;
           if (avg < mapMinRating) return false;
+        }
+
+        // Map Radius filter
+        if (showUserLocation && userLocation && mapRadius !== 'any') {
+          if (entry.userDistance === null || entry.userDistance > mapRadius) return false;
         }
 
         // Map Amenity filter
@@ -1247,20 +1266,49 @@ export default function Home() {
         {/* Categories */}
       <section id="search-results" className="scroll-mt-20 border-b border-stone-200 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-8 overflow-x-auto py-4 scrollbar-hide text-sm font-medium text-stone-500">
-            {(['All', ...PROPERTY_CATEGORIES] as string[]).map((category) => (
-              <button 
-                key={category} 
-                onClick={() => setActiveCategory(category)}
-                className={`whitespace-nowrap transition pb-1.5 text-xs sm:text-sm ${
-                  activeCategory === category 
-                    ? 'text-stone-900 font-bold border-b-2 border-stone-900' 
-                    : 'hover:text-stone-900 font-medium'
-                }`}
-              >
-                {category}
-              </button>
-            ))}
+          <div className="flex flex-col gap-4 py-4">
+            <div className="flex items-center gap-8 overflow-x-auto scrollbar-hide text-sm font-medium text-stone-500">
+              {(['All', ...PROPERTY_CATEGORIES] as string[]).map((category) => (
+                <button 
+                  key={category} 
+                  onClick={() => setActiveCategory(category)}
+                  className={`whitespace-nowrap transition pb-1.5 text-xs sm:text-sm ${
+                    activeCategory === category 
+                      ? 'text-stone-900 font-bold border-b-2 border-stone-900' 
+                      : 'hover:text-stone-900 font-medium'
+                  }`}
+                >
+                  {category}
+                </button>
+              ))}
+            </div>
+            
+            {/* Quick Filters / Amenities */}
+            <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-2">
+              {['Swimming Pool', 'Lakefront', 'Air Conditioning', 'Free WiFi', 'Restaurant', 'Spa', 'Bar', 'Room Service'].map(amenity => {
+                const isActive = activeAmenities.includes(amenity);
+                return (
+                  <button
+                    key={amenity}
+                    onClick={() => {
+                      setActiveAmenities(prev => 
+                        prev.includes(amenity) 
+                          ? prev.filter(a => a !== amenity)
+                          : [...prev, amenity]
+                      );
+                      setCurrentPage(1);
+                    }}
+                    className={`whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-semibold transition border ${
+                      isActive 
+                        ? 'bg-stone-900 text-white border-stone-900' 
+                        : 'bg-white text-stone-600 border-stone-200 hover:border-stone-300'
+                    }`}
+                  >
+                    {amenity}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       </section>
@@ -1415,48 +1463,11 @@ export default function Home() {
           />
         </div>
 
-        {/* Dedicated Tabbed Interface for List View vs Map View */}
+        {/* Header for results */}
         <div className="flex items-center justify-between border-b border-stone-200 pb-3 mb-6">
-          <div className="inline-flex items-center p-1 bg-stone-100 rounded-2xl border border-stone-200/80 shadow-2xs">
-            <button
-              type="button"
-              id="tab-list-view"
-              onClick={() => setViewMode('grid')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs md:text-sm font-bold transition-all duration-200 cursor-pointer ${
-                viewMode === 'grid'
-                  ? 'bg-white text-stone-900 shadow-xs'
-                  : 'text-stone-600 hover:text-stone-900 hover:bg-stone-200/50'
-              }`}
-            >
-              <LayoutGrid className={`w-4 h-4 ${viewMode === 'grid' ? 'text-emerald-700' : 'text-stone-500'}`} />
-              <span>List View</span>
-              <span className={`px-2 py-0.5 rounded-full text-[10px] md:text-xs font-black ${
-                viewMode === 'grid' ? 'bg-stone-900 text-white' : 'bg-stone-200 text-stone-700'
-              }`}>
-                {filteredHotels.length}
-              </span>
-            </button>
-
-            <button
-              type="button"
-              id="tab-map-view"
-              onClick={() => setViewMode('map')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs md:text-sm font-bold transition-all duration-200 cursor-pointer ${
-                viewMode === 'map'
-                  ? 'bg-white text-stone-900 shadow-xs'
-                  : 'text-stone-600 hover:text-stone-900 hover:bg-stone-200/50'
-              }`}
-            >
-              <MapIcon className={`w-4 h-4 ${viewMode === 'map' ? 'text-emerald-600' : 'text-stone-500'}`} />
-              <span>Map View</span>
-              <span className={`px-2 py-0.5 rounded-full text-[10px] md:text-xs font-black ${
-                viewMode === 'map' ? 'bg-emerald-800 text-white' : 'bg-stone-200 text-stone-700'
-              }`}>
-                {lodgeMarkers.length}
-              </span>
-            </button>
+          <div className="text-sm font-bold text-stone-900">
+            {viewMode === 'grid' ? `${filteredHotels.length} Stays Found` : `${lodgeMarkers.length} Stays on Map`}
           </div>
-
           <div className="text-xs text-stone-500 hidden sm:block">
             {viewMode === 'grid' 
               ? `Showing page ${currentPage} of ${Math.max(1, Math.ceil(filteredHotels.length / itemsPerPage))}`
@@ -2057,6 +2068,26 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* Floating View Toggle Button */}
+      <div className="fixed bottom-24 md:bottom-12 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
+        <button
+          onClick={() => setViewMode(viewMode === 'grid' ? 'map' : 'grid')}
+          className="pointer-events-auto flex items-center justify-center gap-2 bg-stone-900 text-white rounded-full px-5 py-3 shadow-[0_4px_24px_rgba(0,0,0,0.25)] hover:scale-105 hover:bg-stone-800 transition-all active:scale-95"
+        >
+          {viewMode === 'grid' ? (
+            <>
+              <span className="text-sm font-bold tracking-wide">Show Map</span>
+              <MapIcon className="w-4 h-4" />
+            </>
+          ) : (
+            <>
+              <span className="text-sm font-bold tracking-wide">Show List</span>
+              <LayoutGrid className="w-4 h-4" />
+            </>
+          )}
+        </button>
+      </div>
     </div>
   );
 }

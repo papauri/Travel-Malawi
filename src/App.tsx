@@ -13,6 +13,8 @@ import ManageHotel from './pages/ManageHotel';
 import ListProperty from './pages/ListProperty';
 import HotelDetails from './pages/HotelDetails';
 import MyBookings from './pages/MyBookings';
+import SavedProperties from './pages/SavedProperties';
+import Profile from './pages/Profile';
 import AdminDashboard from './pages/AdminDashboard';
 import GlobalNotificationManager from './components/GlobalNotificationManager';
 import { Toaster } from 'react-hot-toast';
@@ -103,6 +105,8 @@ export default function App() {
                   <Route path="/dashboard" element={<ManagerDashboard />} />
                   <Route path="/dashboard/hotel/:id" element={<ManageHotel />} />
                   <Route path="/my-bookings" element={<MyBookings />} />
+                  <Route path="/saved" element={<SavedProperties />} />
+                  <Route path="/profile" element={<Profile />} />
                   <Route path="/admin" element={<AdminDashboard />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>

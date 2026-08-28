@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useAuthDialog } from '../contexts/AuthDialogContext';
-import { Search, LogIn, User as UserIcon, Briefcase, Building2 } from 'lucide-react';
+import { Search, LogIn, User as UserIcon, Briefcase, Building2, Heart, UserCircle } from 'lucide-react';
 import { isHotelManager, isTraveller } from '../lib/roles';
 
 export default function MobileNav() {
@@ -26,15 +26,21 @@ export default function MobileNav() {
         </Link>
 
         {user && isTraveller(user) && (
-          <Link to="/my-bookings" className={itemClass(pathname === '/my-bookings')}>
-            <Briefcase className="w-5 h-5" />
-            <span className="text-[10px] font-medium tracking-wide">Trips</span>
-          </Link>
+          <>
+            <Link to="/saved" className={itemClass(pathname === '/saved')}>
+              <Heart className="w-5 h-5" />
+              <span className="text-[10px] font-medium tracking-wide">Saved</span>
+            </Link>
+            <Link to="/my-bookings" className={itemClass(pathname === '/my-bookings')}>
+              <Briefcase className="w-5 h-5" />
+              <span className="text-[10px] font-medium tracking-wide">Trips</span>
+            </Link>
+          </>
         )}
 
         {isManager ? (
           <Link to="/dashboard" className={itemClass(pathname.startsWith('/dashboard'))}>
-            <UserIcon className="w-5 h-5" />
+            <Building2 className="w-5 h-5" />
             <span className="text-[10px] font-medium tracking-wide">Manage</span>
           </Link>
         ) : (
@@ -46,7 +52,12 @@ export default function MobileNav() {
           </Link>
         )}
 
-        {!user && (
+        {user ? (
+          <Link to="/profile" className={itemClass(pathname === '/profile')}>
+            <UserIcon className="w-5 h-5" />
+            <span className="text-[10px] font-medium tracking-wide">Profile</span>
+          </Link>
+        ) : (
           <button onClick={() => openAuth('signin')} className={itemClass(false)}>
             <LogIn className="w-5 h-5" />
             <span className="text-[10px] font-medium tracking-wide">Sign in</span>

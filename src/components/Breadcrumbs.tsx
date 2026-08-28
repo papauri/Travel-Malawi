@@ -61,6 +61,8 @@ function trailFor(pathname: string, label: string): Crumb[] {
   if (pathname === '/dashboard') return [home, { label: 'Dashboard' }];
   if (pathname.startsWith('/hotel/')) return [home, { label: label || 'Property' }];
   if (pathname === '/my-bookings') return [home, { label: 'My bookings' }];
+  if (pathname === '/profile') return [home, { label: 'Profile' }];
+  if (pathname === '/saved') return [home, { label: 'Saved properties' }];
   if (pathname === '/admin') return [home, { label: 'Admin' }];
   if (pathname === '/list-your-property') return [home, { label: 'List your property' }];
 

@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronLeft, ChevronRight, Star } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Star, Heart } from 'lucide-react';
 import { Hotel } from '../types';
 import SmartImage from './SmartImage';
 import { getHotelImages } from '../lib/images';
 import { formatMoney } from '../lib/currency';
 import { CurrencyCode } from '../types';
+import { useWishlist } from '../hooks/useWishlist';
 
 interface HotelCardProps {
   hotel: Hotel;
@@ -26,6 +27,8 @@ interface HotelCardProps {
 
 export default function HotelCard({ hotel, searchParams, index, priceFrom, priceCurrency = 'USD', rating }: HotelCardProps) {
   const [currentImageIdx, setCurrentImageIdx] = useState(0);
+  const { savedHotelIds, toggleSave } = useWishlist();
+  const isSaved = hotel.id ? savedHotelIds.includes(hotel.id) : false;
 
   // Resolved centrally: drops empty/dead URLs and falls back to bundled
   // photography, so this is always at least one usable image.
@@ -71,6 +74,20 @@ export default function HotelCard({ hotel, searchParams, index, priceFrom, price
         transition={{ delay: index * 0.05, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
         className="relative w-full aspect-[4/5] overflow-hidden bg-stone-100"
       >
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (hotel.id) toggleSave(hotel.id);
+          }}
+          className="absolute top-4 right-4 z-20 p-2 hover:scale-110 transition-transform duration-200"
+        >
+          <Heart 
+            className={`w-6 h-6 drop-shadow-md ${isSaved ? 'fill-emerald-500 text-emerald-500' : 'fill-black/30 text-white'}`} 
+            strokeWidth={isSaved ? 0 : 2}
+          />
+        </button>
+
         <AnimatePresence initial={false} mode="wait">
           <motion.div
             key={currentImageIdx}

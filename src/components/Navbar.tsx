@@ -7,7 +7,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useAuthDialog } from '../contexts/AuthDialogContext';
-import { LogOut, Palmtree, ChevronDown, LayoutDashboard, Briefcase, ShieldCheck, Building2, Volume2, VolumeX } from 'lucide-react';
+import { LogOut, Palmtree, ChevronDown, LayoutDashboard, Briefcase, ShieldCheck, Building2, Volume2, VolumeX, Heart, UserCircle } from 'lucide-react';
 import { isSoundEnabled, onSoundPreferenceChange, setSoundEnabled } from '../lib/notificationSound';
 import { describeRoles, isAdmin, isHotelManager, isTraveller } from '../lib/roles';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
@@ -97,12 +97,20 @@ export default function Navbar() {
                   </Link>
                 )}
                 {isTraveller(user) && (
-                  <Link
-                    to="/my-bookings"
-                    className="hidden md:block text-sm font-medium text-stone-600 hover:text-stone-900 transition relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-stone-900 after:transition-all hover:after:w-full"
-                  >
-                    My Bookings
-                  </Link>
+                  <>
+                    <Link
+                      to="/saved"
+                      className="hidden md:block text-sm font-medium text-stone-600 hover:text-stone-900 transition relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-stone-900 after:transition-all hover:after:w-full"
+                    >
+                      Saved
+                    </Link>
+                    <Link
+                      to="/my-bookings"
+                      className="hidden md:block text-sm font-medium text-stone-600 hover:text-stone-900 transition relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-stone-900 after:transition-all hover:after:w-full"
+                    >
+                      My Bookings
+                    </Link>
+                  </>
                 )}
 
                 {/* User avatar + dropdown */}
@@ -136,13 +144,22 @@ export default function Navbar() {
                           nowhere but sign-out. */}
                       <div className="md:hidden py-1 border-b border-stone-100">
                         {isTraveller(user) && (
-                          <Link
-                            to="/my-bookings"
-                            onClick={() => setShowUserMenu(false)}
-                            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-stone-600 hover:bg-stone-50 hover:text-stone-900 transition"
-                          >
-                            <Briefcase className="h-4 w-4" /> My bookings
-                          </Link>
+                          <>
+                            <Link
+                              to="/saved"
+                              onClick={() => setShowUserMenu(false)}
+                              className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-stone-600 hover:bg-stone-50 hover:text-stone-900 transition"
+                            >
+                              <Heart className="h-4 w-4" /> Saved properties
+                            </Link>
+                            <Link
+                              to="/my-bookings"
+                              onClick={() => setShowUserMenu(false)}
+                              className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-stone-600 hover:bg-stone-50 hover:text-stone-900 transition"
+                            >
+                              <Briefcase className="h-4 w-4" /> My bookings
+                            </Link>
+                          </>
                         )}
                         <Link
                           to={hosting ? '/dashboard' : '/list-your-property'}
@@ -161,6 +178,16 @@ export default function Navbar() {
                             <ShieldCheck className="h-4 w-4" /> Admin
                           </Link>
                         )}
+                      </div>
+
+                      <div className="py-1 border-b border-stone-100">
+                        <Link
+                          to="/profile"
+                          onClick={() => setShowUserMenu(false)}
+                          className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-stone-600 hover:bg-stone-50 hover:text-stone-900 transition"
+                        >
+                          <UserCircle className="h-4 w-4" /> Profile Settings
+                        </Link>
                       </div>
 
                       {/* Chat notification sound. Off until asked for: a page

@@ -11,6 +11,8 @@ export interface User {
   uid: string;
   email: string | null;
   displayName: string | null;
+  phone?: string;
+  preferredCurrency?: CurrencyCode;
   /**
    * Primary role. Retained as the first entry of `roles` so documents written
    * before multi-role support are still readable, and so anything reading only
