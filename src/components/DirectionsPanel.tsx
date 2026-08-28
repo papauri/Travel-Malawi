@@ -200,41 +200,41 @@ export default function DirectionsPanel({
       </div>
 
       {/* Primary Navigation Launchers */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-3 mb-6">
         <a
           href={googleDirectionsUrl(destCoords || location, guestLocation || undefined)}
           target="_blank"
           rel="noreferrer noopener"
-          className="flex items-center justify-between p-4 bg-stone-900 text-white rounded-2xl hover:bg-emerald-800 transition shadow-sm group"
+          className="flex items-center justify-between p-4 bg-stone-900 text-white rounded-2xl hover:bg-emerald-800 transition shadow-sm group min-w-0"
         >
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 shrink-0 rounded-xl bg-white/10 flex items-center justify-center">
               <Navigation className="h-5 w-5 text-emerald-400 group-hover:rotate-45 transition-transform duration-300" />
             </div>
-            <div>
-              <p className="text-xs text-white/60 font-medium">Fast Turn-by-Turn</p>
-              <p className="text-sm font-bold text-white">Google Maps</p>
+            <div className="min-w-0">
+              <p className="text-xs text-white/60 font-medium truncate">Fast Turn-by-Turn</p>
+              <p className="text-sm font-bold text-white truncate">Google Maps</p>
             </div>
           </div>
-          <ExternalLink className="h-4 w-4 text-white/40 group-hover:text-white transition" />
+          <ExternalLink className="h-4 w-4 shrink-0 text-white/40 group-hover:text-white transition ml-3" />
         </a>
 
         <a
           href={appleMapsDirectionsUrl(destCoords || location, guestLocation || undefined)}
           target="_blank"
           rel="noreferrer noopener"
-          className="flex items-center justify-between p-4 bg-stone-100 hover:bg-stone-200 text-stone-900 rounded-2xl transition group"
+          className="flex items-center justify-between p-4 bg-stone-100 hover:bg-stone-200 text-stone-900 rounded-2xl transition group min-w-0"
         >
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center text-stone-700 shadow-xs">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 shrink-0 rounded-xl bg-white flex items-center justify-center text-stone-700 shadow-xs">
               <MapPin className="h-5 w-5 text-stone-800" />
             </div>
-            <div>
-              <p className="text-xs text-stone-500 font-medium">Apple Devices</p>
-              <p className="text-sm font-bold text-stone-900">Apple Maps</p>
+            <div className="min-w-0">
+              <p className="text-xs text-stone-500 font-medium truncate">Apple Devices</p>
+              <p className="text-sm font-bold text-stone-900 truncate">Apple Maps</p>
             </div>
           </div>
-          <ExternalLink className="h-4 w-4 text-stone-400 group-hover:text-stone-900 transition" />
+          <ExternalLink className="h-4 w-4 shrink-0 text-stone-400 group-hover:text-stone-900 transition ml-3" />
         </a>
 
         {destCoords && (
@@ -242,18 +242,18 @@ export default function DirectionsPanel({
             href={wazeDirectionsUrl(destCoords)}
             target="_blank"
             rel="noreferrer noopener"
-            className="flex items-center justify-between p-4 bg-stone-100 hover:bg-stone-200 text-stone-900 rounded-2xl transition group"
+            className="flex items-center justify-between p-4 bg-stone-100 hover:bg-stone-200 text-stone-900 rounded-2xl transition group min-w-0"
           >
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center text-blue-600 shadow-xs">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 shrink-0 rounded-xl bg-white flex items-center justify-center text-blue-600 shadow-xs">
                 <Car className="h-5 w-5 text-blue-600" />
               </div>
-              <div>
-                <p className="text-xs text-stone-500 font-medium">Traffic &amp; Hazards</p>
-                <p className="text-sm font-bold text-stone-900">Waze App</p>
+              <div className="min-w-0">
+                <p className="text-xs text-stone-500 font-medium truncate">Traffic &amp; Hazards</p>
+                <p className="text-sm font-bold text-stone-900 truncate">Waze App</p>
               </div>
             </div>
-            <ExternalLink className="h-4 w-4 text-stone-400 group-hover:text-stone-900 transition" />
+            <ExternalLink className="h-4 w-4 shrink-0 text-stone-400 group-hover:text-stone-900 transition ml-3" />
           </a>
         )}
 
@@ -262,18 +262,18 @@ export default function DirectionsPanel({
             href={openStreetMapDirectionsUrl(destCoords, guestLocation || undefined)}
             target="_blank"
             rel="noreferrer noopener"
-            className="flex items-center justify-between p-4 bg-stone-100 hover:bg-stone-200 text-stone-900 rounded-2xl transition group"
+            className="flex items-center justify-between p-4 bg-stone-100 hover:bg-stone-200 text-stone-900 rounded-2xl transition group min-w-0"
           >
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center text-emerald-600 shadow-xs">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 shrink-0 rounded-xl bg-white flex items-center justify-center text-emerald-600 shadow-xs">
                 <Compass className="h-5 w-5 text-emerald-600" />
               </div>
-              <div>
-                <p className="text-xs text-stone-500 font-medium">Open Source</p>
-                <p className="text-sm font-bold text-stone-900">OpenStreetMap</p>
+              <div className="min-w-0">
+                <p className="text-xs text-stone-500 font-medium truncate">Open Source</p>
+                <p className="text-sm font-bold text-stone-900 truncate">OpenStreetMap</p>
               </div>
             </div>
-            <ExternalLink className="h-4 w-4 text-stone-400 group-hover:text-stone-900 transition" />
+            <ExternalLink className="h-4 w-4 shrink-0 text-stone-400 group-hover:text-stone-900 transition ml-3" />
           </a>
         )}
       </div>
