@@ -817,7 +817,7 @@ export default function Home() {
             transition={{ duration: 1.2, delay: 0.6, ease: [0.16, 1, 0.3, 1] }}
             className={`relative mt-8 mx-auto bg-white rounded-[24px] lg:rounded-full p-2
                        shadow-2xl shadow-black/20 ring-1 ring-stone-900/5
-                       flex flex-col lg:flex-row lg:items-stretch gap-0 w-full max-w-5xl text-left transition-all ${
+                       flex flex-col lg:flex-row lg:items-stretch gap-1 lg:gap-0 w-full max-w-5xl text-left transition-all ${
                          showRecentSearches || showGuestDropdown ? 'z-40' : 'z-20'
                        }`}
           >
@@ -994,7 +994,7 @@ export default function Home() {
               )}
             </div>
 
-            <div className="hidden lg:block w-px self-stretch my-2 bg-stone-100" />
+            <div className="h-px w-auto lg:h-auto lg:w-px self-stretch mx-4 lg:mx-0 lg:my-2 bg-stone-100" />
 
             {/* Check In */}
             <div className="flex-1 min-w-0 rounded-[20px] px-5 lg:px-6 py-3 lg:py-3 hover:bg-stone-50 transition">
@@ -1014,7 +1014,7 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="hidden lg:block w-px self-stretch my-2 bg-stone-100" />
+            <div className="h-px w-auto lg:h-auto lg:w-px self-stretch mx-4 lg:mx-0 lg:my-2 bg-stone-100" />
 
             {/* Check Out */}
             <div className="flex-1 min-w-0 rounded-[20px] px-5 lg:px-6 py-3 lg:py-3 hover:bg-stone-50 transition">
@@ -1034,7 +1034,7 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="hidden lg:block w-px self-stretch my-2 bg-stone-100" />
+            <div className="h-px w-auto lg:h-auto lg:w-px self-stretch mx-4 lg:mx-0 lg:my-2 bg-stone-100" />
 
             {/* Who */}
             <div
@@ -1105,7 +1105,7 @@ export default function Home() {
             <button
               onClick={handleSearch}
               disabled={searching}
-              className="shrink-0 flex items-center justify-center gap-2 bg-emerald-600 text-white rounded-[20px] lg:rounded-full m-1.5 py-3.5 lg:py-0 px-7 font-bold text-sm hover:bg-emerald-700 active:scale-95 transition shadow-md disabled:opacity-60"
+              className="shrink-0 flex items-center justify-center gap-2 bg-emerald-600 text-white rounded-[20px] lg:rounded-full m-1.5 mt-2 lg:mt-1.5 py-3.5 lg:py-0 px-7 font-bold text-sm hover:bg-emerald-700 active:scale-95 transition shadow-md disabled:opacity-60"
             >
               {searching
                 ? <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/40 border-t-white" />
