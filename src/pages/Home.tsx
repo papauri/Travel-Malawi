@@ -815,21 +815,21 @@ export default function Home() {
             initial={{ opacity: 0, y: 40, filter: "blur(8px)" }}
             animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
             transition={{ duration: 1.2, delay: 0.6, ease: [0.16, 1, 0.3, 1] }}
-            className={`relative mt-8 mx-auto bg-white rounded-2xl lg:rounded-full p-2 lg:p-2.5
+            className={`relative mt-8 mx-auto bg-white rounded-[24px] lg:rounded-full p-2
                        shadow-2xl shadow-black/20 ring-1 ring-stone-900/5
-                       flex flex-col lg:flex-row lg:items-center gap-1 w-full max-w-4xl text-left transition-all ${
+                       flex flex-col lg:flex-row lg:items-stretch gap-0 w-full max-w-5xl text-left transition-all ${
                          showRecentSearches || showGuestDropdown ? 'z-40' : 'z-20'
                        }`}
           >
             {/* Where */}
             <div
               ref={locationSearchRef}
-              className={`relative flex-[1.2] min-w-0 rounded-2xl px-4 lg:px-7 py-3 lg:py-2.5 hover:bg-stone-50 transition group bg-white lg:bg-transparent shadow-sm lg:shadow-none ring-1 ring-stone-100 lg:ring-0 ${
+              className={`relative flex-[1.6] min-w-0 rounded-[20px] px-5 lg:px-6 py-3 lg:py-3 hover:bg-stone-50 transition group bg-white lg:bg-transparent shadow-sm lg:shadow-none ring-1 ring-stone-100 lg:ring-0 ${
                 showRecentSearches ? 'z-50' : 'z-20'
               }`}
             >
-              <label htmlFor="search-where" className="block text-xs font-bold text-stone-900 uppercase tracking-wider mb-0.5">
-                Where to
+              <label htmlFor="search-where" className="block text-[10px] font-bold text-stone-500 uppercase tracking-[0.15em] mb-1">
+                Where
               </label>
               <div className="flex items-center gap-2">
                 <MapPin className="h-4 w-4 text-stone-400 shrink-0" />
@@ -840,9 +840,9 @@ export default function Home() {
                   onChange={e => setSearchLocation(e.target.value)}
                   onFocus={() => setShowRecentSearches(true)}
                   onKeyDown={e => { if (e.key === 'Enter') handleSearch(); }}
-                  placeholder="Where are you going?"
+                  placeholder="Destination"
                   autoComplete="off"
-                  className="bg-transparent border-none p-0 text-stone-900 text-sm w-full outline-none placeholder:text-stone-400 bg-transparent"
+                  className="bg-transparent border-none p-0 text-stone-900 text-sm font-medium w-full outline-none placeholder:text-stone-400"
                 />
               </div>
 
@@ -994,12 +994,12 @@ export default function Home() {
               )}
             </div>
 
-            <div className="hidden lg:block w-px self-center h-10 bg-stone-200" />
+            <div className="hidden lg:block w-px self-stretch my-2 bg-stone-100" />
 
-            {/* When */}
-            <div className="flex-[1.5] min-w-0 rounded-2xl px-4 lg:px-7 py-3 lg:py-2.5 hover:bg-stone-50 transition">
-              <span className="block text-xs font-bold text-stone-900 uppercase tracking-wider mb-0.5">
-                Nights
+            {/* Check In */}
+            <div className="flex-1 min-w-0 rounded-[20px] px-5 lg:px-6 py-3 lg:py-3 hover:bg-stone-50 transition">
+              <span className="block text-[10px] font-bold text-stone-500 uppercase tracking-[0.15em] mb-1">
+                Check in
               </span>
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-stone-400 shrink-0" />
@@ -1009,26 +1009,37 @@ export default function Home() {
                   min={today}
                   value={searchCheckIn}
                   onChange={e => setSearchCheckIn(e.target.value)}
-                  className="bg-transparent border-none p-0 text-stone-900 text-sm w-full outline-none min-w-0 bg-transparent"
+                  className="bg-transparent border-none p-0 text-stone-900 text-sm font-medium w-full outline-none min-w-0"
                 />
-                <span className="text-stone-300 shrink-0">&ndash;</span>
+              </div>
+            </div>
+
+            <div className="hidden lg:block w-px self-stretch my-2 bg-stone-100" />
+
+            {/* Check Out */}
+            <div className="flex-1 min-w-0 rounded-[20px] px-5 lg:px-6 py-3 lg:py-3 hover:bg-stone-50 transition">
+              <span className="block text-[10px] font-bold text-stone-500 uppercase tracking-[0.15em] mb-1">
+                Check out
+              </span>
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-stone-400 shrink-0" />
                 <input
                   type="date"
                   aria-label="Check out"
                   min={searchCheckIn || today}
                   value={searchCheckOut}
                   onChange={e => setSearchCheckOut(e.target.value)}
-                  className="bg-transparent border-none p-0 text-stone-900 text-sm w-full outline-none min-w-0 bg-transparent"
+                  className="bg-transparent border-none p-0 text-stone-900 text-sm font-medium w-full outline-none min-w-0"
                 />
               </div>
             </div>
 
-            <div className="hidden lg:block w-px self-center h-10 bg-stone-200" />
+            <div className="hidden lg:block w-px self-stretch my-2 bg-stone-100" />
 
             {/* Who */}
             <div
               ref={guestSelectorRef}
-              className={`relative flex-1 min-w-0 rounded-2xl px-4 lg:px-7 py-3 lg:py-2.5 hover:bg-stone-50 transition bg-white lg:bg-transparent shadow-sm lg:shadow-none ring-1 ring-stone-100 lg:ring-0 ${
+              className={`relative flex-1 min-w-0 rounded-[20px] px-5 lg:px-6 py-3 lg:py-3 hover:bg-stone-50 transition bg-white lg:bg-transparent shadow-sm lg:shadow-none ring-1 ring-stone-100 lg:ring-0 ${
                 showGuestDropdown ? 'z-50' : 'z-20'
               }`}
             >
@@ -1038,12 +1049,12 @@ export default function Home() {
                 aria-expanded={showGuestDropdown}
                 className="w-full text-left"
               >
-                <span className="block text-xs font-bold text-stone-900 uppercase tracking-wider mb-0.5">
-                  Party
+                <span className="block text-[10px] font-bold text-stone-500 uppercase tracking-[0.15em] mb-1">
+                  Guests
                 </span>
                 <span className="flex items-center gap-2">
                   <Users className="h-4 w-4 text-stone-400 shrink-0" />
-                  <span className="text-sm text-stone-800 truncate">
+                  <span className="text-sm font-medium text-stone-900 truncate">
                     {totalGuests === 0
                       ? 'Add guests'
                       : `${totalGuests} guest${totalGuests > 1 ? 's' : ''}, ${roomsWanted} room${roomsWanted > 1 ? 's' : ''}`}
@@ -1094,12 +1105,12 @@ export default function Home() {
             <button
               onClick={handleSearch}
               disabled={searching}
-              className="shrink-0 flex items-center justify-center gap-2 bg-emerald-600 text-white rounded-xl lg:rounded-full h-12 lg:h-12 lg:w-auto lg:my-0 lg:mr-0 lg:px-8 font-bold text-base hover:bg-emerald-700 transition shadow-md disabled:opacity-60"
+              className="shrink-0 flex items-center justify-center gap-2 bg-emerald-600 text-white rounded-[20px] lg:rounded-full m-1.5 px-7 font-bold text-sm hover:bg-emerald-700 active:scale-95 transition shadow-md disabled:opacity-60"
             >
               {searching
-                ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-                : <Search className="h-4 w-4" />}
-              Search
+                ? <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                : <Search className="h-5 w-5" />}
+              <span>Search</span>
             </button>
           </motion.div>
 
