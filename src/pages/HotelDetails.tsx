@@ -841,28 +841,32 @@ export default function HotelDetails() {
                   transition={{ duration: 0.7, ease: "easeOut" }}
                   className={`flex flex-col ${idx % 2 === 1 ? 'lg:flex-row-reverse' : 'lg:flex-row'} gap-10 lg:gap-20 items-center`}
                 >
-                  <div className="w-full lg:w-1/2 aspect-[4/3] lg:aspect-[4/5] overflow-hidden rounded-2xl relative shadow-xl group">
-                    <SmartImage
-                      src={getRoomImage(room, hotel)}
-                      alt={room.name}
-                      className="w-full h-full object-cover hover:scale-105 transition-transform duration-1000"
-                    />
-                    {(room.galleryUrls && room.galleryUrls.length > 0) && (
-                      <button 
-                        onClick={() => setActiveGalleryRoom(room)}
-                        className="absolute bottom-4 right-4 bg-white/90 backdrop-blur text-stone-900 text-xs font-bold px-4 py-2 rounded-full shadow-lg flex items-center gap-2 hover:bg-white hover:scale-105 transition-all opacity-0 group-hover:opacity-100 sm:opacity-100"
-                      >
-                        <Images className="h-4 w-4" />
-                        {room.galleryUrls.length} Photos
-                      </button>
+                  <div className="w-full lg:w-1/2 aspect-[4/3] lg:aspect-[4/5] overflow-hidden rounded-[24px] relative shadow-xl group">
+                    <div className="w-full h-full flex overflow-x-auto snap-x snap-mandatory scrollbar-none">
+                      {[getRoomImage(room, hotel), ...(room.galleryUrls || [])].map((imgUrl, i) => (
+                        <div key={i} className="min-w-full h-full shrink-0 snap-center relative">
+                          <SmartImage
+                            src={imgUrl}
+                            alt={`${room.name} photo ${i + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    
+                    {((room.galleryUrls || []).length > 0) && (
+                      <div className="absolute bottom-4 right-4 bg-stone-900/60 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-sm z-10 pointer-events-none">
+                        <Images className="h-3 w-3" />
+                        Swipe for more
+                      </div>
                     )}
                   </div>
                   
-                  <div className="w-full lg:w-1/2 flex flex-col justify-center py-6">
-                    <h3 className="text-4xl md:text-5xl lg:text-6xl font-serif text-stone-900 mb-6 tracking-tight leading-none">{room.name}</h3>
-                    <p className="text-stone-500 text-lg md:text-xl leading-relaxed mb-10 font-light">{room.description}</p>
+                  <div className="w-full lg:w-1/2 flex flex-col justify-center py-4 lg:py-6">
+                    <h3 className="text-3xl md:text-4xl lg:text-5xl font-serif text-stone-900 mb-3 md:mb-5 tracking-tight leading-none">{room.name}</h3>
+                    <p className="text-stone-500 text-sm md:text-base lg:text-lg leading-relaxed mb-6 md:mb-10 font-light">{room.description}</p>
                     
-                    <div className="grid grid-cols-2 gap-6 text-stone-900 mb-10 border-y border-stone-200 py-8">
+                    <div className="grid grid-cols-2 gap-4 md:gap-6 text-stone-900 mb-6 md:mb-10 border-y border-stone-200 py-6 md:py-8">
                       <div className="flex items-center gap-3">
                         <Users className="h-5 w-5 text-emerald-600" /> 
                         <span className="font-serif text-lg">{room.maxGuests} Guests Max</span>
