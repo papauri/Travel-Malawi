@@ -554,70 +554,72 @@ export default function HotelDetails() {
           ))}
         </div>
 
-        {/* A listing awaiting moderation is reachable by direct link, so it says
-            plainly that it cannot be booked rather than failing at submit. */}
-        {!isBookable && (
-          <div className="mt-6 flex items-start gap-3 bg-amber-50 border border-amber-200 text-amber-900 rounded-2xl px-6 py-4">
-            <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
-            <div>
-              <p className="font-semibold">This property is not taking bookings yet</p>
-              <p className="text-sm text-amber-800/80 mt-0.5">
-                {hotel.status === 'rejected'
-                  ? 'The listing is not currently published on Travel-Malawi.'
-                  : 'The listing is awaiting review by our team. Check back shortly.'}
-              </p>
-            </div>
-          </div>
-        )}
-
-        {offeredCurrencies.length > 1 && (
-          <div className="mt-6 flex items-center gap-2">
-            <span className="text-xs font-semibold text-stone-400 uppercase tracking-wider mr-1">Prices in</span>
-            {offeredCurrencies.map(code => (
-              <button
-                key={code}
-                type="button"
-                onClick={() => chooseCurrency(code)}
-                aria-pressed={currency === code}
-                className={`px-3.5 py-1.5 rounded-full text-sm font-semibold border transition ${
-                  currency === code
-                    ? 'border-stone-900 bg-stone-900 text-white'
-                    : 'border-stone-200 text-stone-600 hover:border-stone-400'
-                }`}
-              >
-                {code}
-              </button>
-            ))}
-          </div>
-        )}
-
-        <div className="mt-6 flex flex-wrap items-center gap-3">
-          {ratingSummary && (
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5 bg-stone-900 text-white px-4 py-2 rounded-full">
-                <Star className="h-4 w-4 fill-current" />
-                <span className="font-semibold">{ratingSummary.average.toFixed(1)}</span>
+        <div className="max-w-[90rem] mx-auto px-4 lg:px-12">
+          {/* A listing awaiting moderation is reachable by direct link, so it says
+              plainly that it cannot be booked rather than failing at submit. */}
+          {!isBookable && (
+            <div className="mt-6 flex items-start gap-3 bg-amber-50 border border-amber-200 text-amber-900 rounded-2xl px-6 py-4">
+              <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold">This property is not taking bookings yet</p>
+                <p className="text-sm text-amber-800/80 mt-0.5">
+                  {hotel.status === 'rejected'
+                    ? 'The listing is not currently published on Travel-Malawi.'
+                    : 'The listing is awaiting review by our team. Check back shortly.'}
+                </p>
               </div>
-              <span className="text-stone-500 text-sm">
-                {ratingSummary.count} review{ratingSummary.count === 1 ? '' : 's'}
-              </span>
             </div>
           )}
 
-          <a
-            href="#directions"
-            className="flex items-center gap-2 bg-stone-100 hover:bg-stone-200 text-stone-800 px-4 py-2 rounded-full text-sm font-semibold transition"
-          >
-            <Navigation className="h-4 w-4 text-emerald-600" />
-            <span>Get Directions Right Away</span>
-          </a>
-          <a
-            href="#reviews"
-            className="flex items-center gap-2 bg-stone-100 hover:bg-stone-200 text-stone-800 px-4 py-2 rounded-full text-sm font-semibold transition"
-          >
-            <Star className="h-4 w-4 text-emerald-600" />
-            <span>Skip to Reviews</span>
-          </a>
+          {offeredCurrencies.length > 1 && (
+            <div className="mt-6 flex items-center gap-2">
+              <span className="text-xs font-semibold text-stone-400 uppercase tracking-wider mr-1">Prices in</span>
+              {offeredCurrencies.map(code => (
+                <button
+                  key={code}
+                  type="button"
+                  onClick={() => chooseCurrency(code)}
+                  aria-pressed={currency === code}
+                  className={`px-3.5 py-1.5 rounded-full text-sm font-semibold border transition ${
+                    currency === code
+                      ? 'border-stone-900 bg-stone-900 text-white'
+                      : 'border-stone-200 text-stone-600 hover:border-stone-400'
+                  }`}
+                >
+                  {code}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <div className="mt-6 flex flex-wrap items-center gap-3">
+            {ratingSummary && (
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5 bg-stone-900 text-white px-4 py-2 rounded-full">
+                  <Star className="h-4 w-4 fill-current" />
+                  <span className="font-semibold">{ratingSummary.average.toFixed(1)}</span>
+                </div>
+                <span className="text-stone-500 text-sm">
+                  {ratingSummary.count} review{ratingSummary.count === 1 ? '' : 's'}
+                </span>
+              </div>
+            )}
+
+            <a
+              href="#directions"
+              className="flex items-center gap-2 bg-stone-100 hover:bg-stone-200 text-stone-800 px-4 py-2 rounded-full text-sm font-semibold transition"
+            >
+              <Navigation className="h-4 w-4 text-emerald-600" />
+              <span>Get Directions Right Away</span>
+            </a>
+            <a
+              href="#reviews"
+              className="flex items-center gap-2 bg-stone-100 hover:bg-stone-200 text-stone-800 px-4 py-2 rounded-full text-sm font-semibold transition"
+            >
+              <Star className="h-4 w-4 text-emerald-600" />
+              <span>Skip to Reviews</span>
+            </a>
+          </div>
         </div>
       </div>
 
