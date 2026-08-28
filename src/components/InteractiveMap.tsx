@@ -167,6 +167,41 @@ const createLodgePinIcon = (lodge: LodgeMarker, isSelected: boolean) => {
   });
 };
 
+export const createPopupHtml = (lodge: LodgeMarker) => {
+  const priceLabel = lodge.priceFrom
+    ? `<span class="text-xs font-bold text-emerald-700">${lodge.priceCurrency === 'USD' ? '$' : 'MK '}${lodge.priceFrom.toLocaleString()}</span> <span class="text-[10px] text-stone-500">/ night</span>`
+    : `<span class="text-xs font-medium text-stone-500">Contact for rates</span>`;
+
+  const imageHtml = lodge.image
+    ? `<div class="h-28 w-full bg-stone-100 overflow-hidden relative">
+         <img src="${lodge.image}" alt="${lodge.name}" class="w-full h-full object-cover" />
+         ${lodge.category ? `<span class="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-stone-900/80 backdrop-blur-md text-[10px] font-bold text-white uppercase tracking-wider">${lodge.category}</span>` : ''}
+       </div>`
+    : '';
+
+  return `
+    <div class="w-64 overflow-hidden rounded-2xl bg-white text-stone-900 font-sans shadow-lg">
+      ${imageHtml}
+      <div class="p-3.5 space-y-2">
+        <div>
+          <div class="font-serif font-bold text-base text-stone-900 leading-snug line-clamp-1">${lodge.name}</div>
+          <div class="text-xs text-stone-500 flex items-center gap-1 mt-0.5 truncate">
+            <svg class="w-3.5 h-3.5 text-stone-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+            <span class="truncate">${lodge.location}</span>
+          </div>
+        </div>
+        <div class="flex items-center justify-between pt-2 border-t border-stone-100">
+          <div>${priceLabel}</div>
+          <a href="/hotel/${lodge.id}" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-stone-900 hover:bg-emerald-800 text-white text-xs font-bold transition shadow-xs">
+            <span>View</span>
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 12h14m-7-7 7 7-7 7"/></svg>
+          </a>
+        </div>
+      </div>
+    </div>
+  `;
+};
+
 export default function InteractiveMap({
   center,
   markerPosition,
@@ -389,40 +424,7 @@ export default function InteractiveMap({
 
       // Rich Card Popup
       if (showLodgePopups) {
-        const priceLabel = lodge.priceFrom
-          ? `<span class="text-xs font-bold text-emerald-700">${lodge.priceCurrency === 'USD' ? '$' : 'MK '}${lodge.priceFrom.toLocaleString()}</span> <span class="text-[10px] text-stone-500">/ night</span>`
-          : `<span class="text-xs font-medium text-stone-500">Contact for rates</span>`;
-
-        const imageHtml = lodge.image
-          ? `<div class="h-28 w-full bg-stone-100 overflow-hidden relative">
-               <img src="${lodge.image}" alt="${lodge.name}" class="w-full h-full object-cover" />
-               ${lodge.category ? `<span class="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-stone-900/80 backdrop-blur-md text-[10px] font-bold text-white uppercase tracking-wider">${lodge.category}</span>` : ''}
-             </div>`
-          : '';
-
-        const popupHtml = `
-          <div class="w-64 overflow-hidden rounded-2xl bg-white text-stone-900 font-sans shadow-lg">
-            ${imageHtml}
-            <div class="p-3.5 space-y-2">
-              <div>
-                <div class="font-serif font-bold text-base text-stone-900 leading-snug line-clamp-1">${lodge.name}</div>
-                <div class="text-xs text-stone-500 flex items-center gap-1 mt-0.5 truncate">
-                  <svg class="w-3.5 h-3.5 text-stone-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
-                  <span class="truncate">${lodge.location}</span>
-                </div>
-              </div>
-              <div class="flex items-center justify-between pt-2 border-t border-stone-100">
-                <div>${priceLabel}</div>
-                <a href="/hotel/${lodge.id}" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-stone-900 hover:bg-emerald-800 text-white text-xs font-bold transition shadow-xs">
-                  <span>View</span>
-                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 12h14m-7-7 7 7-7 7"/></svg>
-                </a>
-              </div>
-            </div>
-          </div>
-        `;
-
-        marker.bindPopup(popupHtml, {
+        marker.bindPopup(createPopupHtml(lodge), {
           closeButton: false,
           className: 'custom-lodge-popup',
         });
@@ -456,11 +458,14 @@ export default function InteractiveMap({
         const isSelected = selectedLodgeId === lodge.id;
         marker.setIcon(createLodgePinIcon(lodge, isSelected));
         if (isSelected) {
+          if (showLodgePopups) {
+            marker.setPopupContent(createPopupHtml(lodge));
+          }
           marker.openPopup();
         }
       }
     });
-  }, [selectedLodgeId, lodges]);
+  }, [selectedLodgeId, lodges, showLodgePopups]);
 
   // Update Destination / Property Marker (Single Pin Mode)
   useEffect(() => {
