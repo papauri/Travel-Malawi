@@ -12,3 +12,4 @@ coverage/
 service-account*.json
 *-firebase-adminsdk-*.json
 .firebase/
+dist/
