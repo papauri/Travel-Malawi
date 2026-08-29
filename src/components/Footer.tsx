@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Palmtree, Map, Mail, Phone, MapPin, Facebook, Instagram, Twitter } from 'lucide-react';
+import { useSystemSettings } from '../hooks/useSystemSettings';
 
 export default function Footer() {
   return (
@@ -29,14 +30,18 @@ export default function Footer() {
         <div>
           <h4 className="text-white font-serif font-semibold text-lg mb-6">Contact</h4>
           <ul className="space-y-4 text-sm">
-            <li className="flex items-center gap-3">
-              <Mail className="h-4 w-4 text-stone-500" />
-              <span>bookings@travelmalawi.com</span>
-            </li>
-            <li className="flex items-center gap-3">
-              <Phone className="h-4 w-4 text-stone-500" />
-              <span>+265 99 123 4567</span>
-            </li>
+            {settings.contactEmail && (
+              <li className="flex items-center gap-3">
+                <Mail className="h-4 w-4 text-stone-500" />
+                <span>{settings.contactEmail}</span>
+              </li>
+            )}
+            {settings.contactPhone && (
+              <li className="flex items-center gap-3">
+                <Phone className="h-4 w-4 text-stone-500" />
+                <span>{settings.contactPhone}</span>
+              </li>
+            )}
             <li className="flex items-center gap-3">
               <MapPin className="h-4 w-4 text-stone-500" />
               <span>Lilongwe, Malawi</span>

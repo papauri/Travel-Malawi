@@ -3,10 +3,11 @@ import { useAuth } from '../contexts/AuthContext';
 import { collection, getDocs, doc, updateDoc, deleteDoc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Hotel, User, Booking, Role } from '../types';
+import { SystemSettings } from '../hooks/useSystemSettings';
 import { 
   Shield, Building2, CheckCircle, XCircle, Clock, MapPin, 
   MapPinOff, Users, Edit2, Key, Trash2, Star, ExternalLink, 
-  MessageSquare, MessageSquareOff, LayoutDashboard, CalendarRange, 
+  MessageSquare, MessageSquareOff, LayoutDashboard, CalendarRange, FileText, 
   Search, Activity
 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
@@ -21,7 +22,7 @@ import { formatMoney } from '../lib/booking';
 import { Navigation, TrendingUp } from 'lucide-react';
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 
-type Tab = 'overview' | 'analytics' | 'properties' | 'users' | 'bookings' | 'destinations';
+type Tab = 'overview' | 'analytics' | 'properties' | 'users' | 'bookings' | 'destinations' | 'content';
 
 export default function AdminDashboard() {
   const { user, loading: authLoading, resetPassword } = useAuth();
@@ -49,6 +50,28 @@ export default function AdminDashboard() {
   const [manualDestinationsEnabled, setManualDestinationsEnabled] = useState(false);
   const [featuredMode, setFeaturedMode] = useState<'auto' | 'manual' | 'disabled'>('auto');
   const [savingFeaturedMode, setSavingFeaturedMode] = useState(false);
+  const [contentSettings, setContentSettings] = useState<SystemSettings>({});
+  const [savingContent, setSavingContent] = useState(false);
+
+  useEffect(() => {
+    if (activeTab === 'content') {
+      getDoc(doc(db, 'system', 'content')).then(snap => {
+        if(snap.exists()) setContentSettings(snap.data() as SystemSettings);
+      });
+    }
+  }, [activeTab]);
+
+  const handleSaveContent = async () => {
+    setSavingContent(true);
+    try {
+      await setDoc(doc(db, 'system', 'content'), contentSettings, { merge: true });
+      toast.success('Content saved successfully');
+    } catch(e) {
+      toast.error('Failed to save content');
+    } finally {
+      setSavingContent(false);
+    }
+  };
   const [confirmAction, setConfirmAction] = useState<{
     hotelId: string;
     hotelName: string;
