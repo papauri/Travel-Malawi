@@ -4,6 +4,7 @@ import { Palmtree, Map, Mail, Phone, MapPin, Facebook, Instagram, Twitter } from
 import { useSystemSettings } from '../hooks/useSystemSettings';
 
 export default function Footer() {
+  const { settings } = useSystemSettings();
   return (
     <footer className="bg-stone-900 text-stone-300 py-16 border-t border-stone-800 mt-auto">
       <div className="max-w-7xl mx-auto px-6 lg:px-8 grid grid-cols-1 md:grid-cols-4 gap-12">
