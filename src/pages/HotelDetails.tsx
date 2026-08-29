@@ -45,11 +45,11 @@ export default function HotelDetails() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
-  const managerPresence = useManagerPresence(hotel?.managerId);
   const { openInquiryChat, activeChat } = useChatModal();
 
   const today = todayStr();
   const [hotel, setHotel] = useState<Hotel | null>(() => (id ? getSingleCachedHotel(id) : null));
+  const managerPresence = useManagerPresence(hotel?.managerId);
   const [rooms, setRooms] = useState<RoomType[]>([]);
   const [bookings, setBookings] = useState<BookingLike[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
