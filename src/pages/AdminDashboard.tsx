@@ -1376,7 +1376,7 @@ export default function AdminDashboard() {
                       value={contentSettings.privacyPolicy || ''}
                       onChange={e => setContentSettings({...contentSettings, privacyPolicy: e.target.value})}
                       rows={6}
-                      placeholder="Leave blank to use default hardcoded text..."
+                      placeholder="Markdown supported (**bold**, 1. list, ## Heading). Leave blank to use default..."
                       className="w-full bg-stone-50 border border-stone-200 px-4 py-3 rounded-xl focus:outline-none focus:border-stone-900"
                     />
                   </div>
@@ -1386,7 +1386,7 @@ export default function AdminDashboard() {
                       value={contentSettings.termsOfService || ''}
                       onChange={e => setContentSettings({...contentSettings, termsOfService: e.target.value})}
                       rows={6}
-                      placeholder="Leave blank to use default hardcoded text..."
+                      placeholder="Markdown supported (**bold**, 1. list, ## Heading). Leave blank to use default..."
                       className="w-full bg-stone-50 border border-stone-200 px-4 py-3 rounded-xl focus:outline-none focus:border-stone-900"
                     />
                   </div>
@@ -1396,7 +1396,7 @@ export default function AdminDashboard() {
                       value={contentSettings.refundPolicy || ''}
                       onChange={e => setContentSettings({...contentSettings, refundPolicy: e.target.value})}
                       rows={6}
-                      placeholder="Leave blank to use default hardcoded text..."
+                      placeholder="Markdown supported (**bold**, 1. list, ## Heading). Leave blank to use default..."
                       className="w-full bg-stone-50 border border-stone-200 px-4 py-3 rounded-xl focus:outline-none focus:border-stone-900"
                     />
                   </div>

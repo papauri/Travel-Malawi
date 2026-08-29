@@ -2,6 +2,7 @@ import React from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Lock } from 'lucide-react';
 import { useSystemSettings } from '../hooks/useSystemSettings';
+import MarkdownContent from '../components/MarkdownContent';
 
 export default function Privacy() {
   const { settings } = useSystemSettings();
@@ -23,7 +24,7 @@ export default function Privacy() {
         
         <div className="space-y-6 text-stone-600 leading-relaxed">
           {settings.privacyPolicy ? (
-            <div className="whitespace-pre-wrap">{settings.privacyPolicy}</div>
+            <MarkdownContent content={settings.privacyPolicy} />
           ) : (
             <>
               <p>Your privacy is important to us. This policy outlines how we collect, use, and protect your personal information.</p>

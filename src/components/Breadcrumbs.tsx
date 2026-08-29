@@ -68,6 +68,9 @@ function trailFor(pathname: string, label: string): Crumb[] {
   if (pathname === '/saved') return [home, { label: 'Saved properties' }];
   if (pathname === '/admin') return [home, { label: 'Admin Dashboard' }];
   if (pathname === '/list-your-property') return [home, { label: 'List your property' }];
+  if (pathname === '/privacy') return [home, { label: 'Privacy Policy' }];
+  if (pathname === '/terms') return [home, { label: 'Terms of Service' }];
+  if (pathname === '/refunds') return [home, { label: 'Refunds & Cancellations' }];
 
   return [home, { label: 'Not found' }];
 }

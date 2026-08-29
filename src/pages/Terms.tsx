@@ -2,6 +2,7 @@ import React from 'react';
 import { Helmet } from 'react-helmet-async';
 import { FileText } from 'lucide-react';
 import { useSystemSettings } from '../hooks/useSystemSettings';
+import MarkdownContent from '../components/MarkdownContent';
 
 export default function Terms() {
   const { settings } = useSystemSettings();
@@ -23,7 +24,7 @@ export default function Terms() {
         
         <div className="space-y-6 text-stone-600 leading-relaxed">
           {settings.termsOfService ? (
-            <div className="whitespace-pre-wrap">{settings.termsOfService}</div>
+            <MarkdownContent content={settings.termsOfService} />
           ) : (
             <>
               <p>Welcome to our platform. By accessing or using our service, you agree to be bound by these terms.</p>

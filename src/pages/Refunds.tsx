@@ -2,6 +2,7 @@ import React from 'react';
 import { Helmet } from 'react-helmet-async';
 import { RefreshCcw } from 'lucide-react';
 import { useSystemSettings } from '../hooks/useSystemSettings';
+import MarkdownContent from '../components/MarkdownContent';
 
 export default function Refunds() {
   const { settings } = useSystemSettings();
@@ -23,7 +24,7 @@ export default function Refunds() {
         
         <div className="space-y-6 text-stone-600 leading-relaxed">
           {settings.refundPolicy ? (
-            <div className="whitespace-pre-wrap">{settings.refundPolicy}</div>
+            <MarkdownContent content={settings.refundPolicy} />
           ) : (
             <>
               <p>Because our platform does not process any online payments, our refund policy is entirely informational.</p>
