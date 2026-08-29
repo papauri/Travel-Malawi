@@ -19,10 +19,10 @@ export default function Footer() {
         <div>
           <h4 className="text-white font-serif font-semibold text-lg mb-6">Explore</h4>
           <ul className="space-y-4 text-sm">
-            <li><Link to="/" className="hover:text-white transition">Lake Malawi</Link></li>
-            <li><Link to="/" className="hover:text-white transition">Safari & Wildlife</Link></li>
-            <li><Link to="/" className="hover:text-white transition">Romantic Escapes</Link></li>
-            <li><Link to="/" className="hover:text-white transition">Family Adventures</Link></li>
+            <li><Link to="/?category=Lakefront" className="hover:text-white transition">Lake Malawi</Link></li>
+            <li><Link to="/?category=Safari Lodge" className="hover:text-white transition">Safari & Wildlife</Link></li>
+            <li><Link to="/?category=Boutique Hotel" className="hover:text-white transition">Romantic Escapes</Link></li>
+            <li><Link to="/?category=Eco Camp" className="hover:text-white transition">Family Adventures</Link></li>
           </ul>
         </div>
         
