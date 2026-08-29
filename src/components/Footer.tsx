@@ -9,7 +9,7 @@ export default function Footer() {
         <div className="space-y-6">
           <Link to="/" className="flex items-center gap-2 text-white">
             <Palmtree className="h-8 w-8 text-white" />
-            <span className="text-2xl font-serif font-bold tracking-tight">MalawiScapes</span>
+            <span className="text-2xl font-serif font-bold tracking-tight">Travel Malawi</span>
           </Link>
           <p className="text-stone-400 text-sm leading-relaxed">
             Discover the warm heart of Africa. We curate the finest luxury lodges, boutique hotels, and wilderness camps across Malawi for your perfect getaway.

@@ -458,7 +458,12 @@ export default function HotelDetails() {
   const hasGallery = galleryImages.length > 0;
 
   return (
-    <div className="min-h-screen bg-white pb-24">
+    <div className="min-h-screen bg-white pb-24"><Helmet>        <title>{hotel.name} - Travel Malawi</title>
+        <meta name="description" content={hotel.description.substring(0, 160)} />
+        <meta property="og:title" content={`${hotel.name} - Travel Malawi`} />
+        <meta property="og:description" content={hotel.description.substring(0, 160)} />
+        <meta property="og:image" content={hotel.imageUrl} />
+      </Helmet>
       {/* Sticky Header when scrolled past hero */}
       <div
         className={`fixed top-20 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-b border-stone-200/60 shadow-xs transition-transform duration-300 ease-in-out ${
