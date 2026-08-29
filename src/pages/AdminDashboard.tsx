@@ -14,6 +14,7 @@ import Pagination from '../components/Pagination';
 import { PIN_PROBLEM_LABELS, mapLinkUrl, pinProblem } from '../lib/geo';
 import toast from 'react-hot-toast';
 import SmartImage from '../components/SmartImage';
+import ConfirmDialog from '../components/ConfirmDialog';
 import { getHotelImage } from '../lib/images';
 import { isAdmin, isHotelManager, userRoles, toRoleFields } from '../lib/roles';
 import { formatMoney } from '../lib/booking';
@@ -48,6 +49,12 @@ export default function AdminDashboard() {
   const [manualDestinationsEnabled, setManualDestinationsEnabled] = useState(false);
   const [featuredMode, setFeaturedMode] = useState<'auto' | 'manual' | 'disabled'>('auto');
   const [savingFeaturedMode, setSavingFeaturedMode] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<{
+    hotelId: string;
+    hotelName: string;
+    newStatus: 'approved' | 'rejected' | 'pending';
+    actionName: string;
+  } | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [savingDestinations, setSavingDestinations] = useState(false);
   const [newDestination, setNewDestination] = useState('');

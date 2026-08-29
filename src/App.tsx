@@ -20,6 +20,7 @@ import Terms from './pages/Terms';
 import Privacy from './pages/Privacy';
 import Refunds from './pages/Refunds';
 import GlobalNotificationManager from './components/GlobalNotificationManager';
+import PageLoader from './components/PageLoader';
 import { Toaster } from 'react-hot-toast';
 import Lenis from 'lenis';
 
@@ -110,6 +111,7 @@ export default function App() {
                 }} 
               />
               <GlobalNotificationManager />
+              <PageLoader />
               <main className="flex-1 pb-16 md:pb-0">
                 <Routes>
                   <Route path="/" element={<Home />} />
