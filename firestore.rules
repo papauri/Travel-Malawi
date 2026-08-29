@@ -42,6 +42,11 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    match /presence/{userId} {
+      allow read: if true;
+      allow write: if isAuthenticated() && request.auth.uid == userId;
+    }
+
     match /users/{userId} {
       // Profiles carry email addresses, so they are no longer world-readable.
       // The admin dashboard lists managers, so admins keep collection access.

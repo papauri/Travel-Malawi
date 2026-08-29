@@ -6,6 +6,7 @@ import { Hotel, RoomType, Review, CurrencyCode } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { Helmet } from 'react-helmet-async';
 import { useChatModal } from '../contexts/ChatModalContext';
+import { useManagerPresence } from '../hooks/usePresence';
 import PhoneInput from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
 import { MapPin, Calendar, Users, Star, CheckCircle2, ChevronRight, Info, Plus, Minus, ShieldCheck, AlertTriangle, UtensilsCrossed, Clock, BedDouble, MessageSquare, MessageCircle, Images, Mail, PhoneCall, Navigation, CreditCard, LogIn, LogOut, Share2 } from 'lucide-react';
@@ -44,6 +45,7 @@ export default function HotelDetails() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
+  const managerPresence = useManagerPresence(hotel?.managerId);
   const { openInquiryChat, activeChat } = useChatModal();
 
   const today = todayStr();
@@ -939,8 +941,8 @@ export default function HotelDetails() {
                           : 'bg-stone-100 text-stone-600 border-stone-200'
                       }`}
                     >
-                      <span className={`w-1.5 h-1.5 rounded-full ${hotel.isOnline !== false ? 'bg-emerald-500 animate-pulse' : 'bg-stone-400'}`} />
-                      {hotel.isOnline !== false ? 'Host Online' : 'Host Away'}
+                      <span className={`w-1.5 h-1.5 rounded-full ${managerPresence?.status === 'online' ? 'bg-emerald-500 animate-pulse' : managerPresence?.status === 'away' ? 'bg-amber-400' : 'bg-stone-400'}`} />
+                      {managerPresence?.status === 'online' ? 'Host Online' : managerPresence?.status === 'away' ? 'Host Away' : 'Host Offline'}
                     </span>
                   </div>
                   <p className="text-stone-500 text-xs">
@@ -955,10 +957,10 @@ export default function HotelDetails() {
                       className="inline-flex items-center gap-2 rounded-xl bg-stone-900 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-stone-800 shadow-2xs cursor-pointer"
                     >
                       <MessageSquare className="h-3.5 w-3.5 text-emerald-400" />
-                      <span>{hotel.isOnline !== false ? 'Live Host Chat' : 'Leave a Message'}</span>
+                      <span>{managerPresence?.status === 'online' ? 'Live Host Chat' : 'Leave a Message'}</span>
                     </button>
                   )}
-                  {telLink(hotel.contactPhone) && (
+                  {telLink(hotel.contactPhone) && managerPresence?.status === "online" && (
                     <a
                       href={telLink(hotel.contactPhone)!}
                       className="inline-flex items-center gap-2 rounded-xl bg-stone-100 px-4 py-2.5 text-xs font-bold text-stone-800 border border-stone-200 transition hover:bg-stone-200 shadow-2xs"
@@ -1485,7 +1487,7 @@ export default function HotelDetails() {
               <MessageSquare className="w-5 h-5 text-emerald-400" />
               <span 
                 className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full ring-2 ring-stone-900 ${
-                  hotel.isOnline !== false ? 'bg-emerald-400 animate-pulse' : 'bg-stone-500'
+                  managerPresence?.status === 'online' ? 'bg-emerald-400 animate-pulse' : 'bg-stone-500'
                 }`} 
               />
             </div>
@@ -1494,7 +1496,7 @@ export default function HotelDetails() {
                 Contact Host
               </span>
               <span className="text-[10px] text-stone-300 block -mt-0.5 whitespace-nowrap">
-                {hotel.isOnline !== false ? 'Online now' : 'Leave a message'}
+                {managerPresence?.status === 'online' ? 'Online now' : 'Leave a message'}
               </span>
             </div>
           </button>

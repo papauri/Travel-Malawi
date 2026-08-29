@@ -10,12 +10,13 @@ import { useAuthDialog } from '../contexts/AuthDialogContext';
 import { LogOut, Palmtree, ChevronDown, LayoutDashboard, Briefcase, ShieldCheck, Building2, Volume2, VolumeX, Heart, UserCircle } from 'lucide-react';
 import { isSoundEnabled, onSoundPreferenceChange, setSoundEnabled } from '../lib/notificationSound';
 import { describeRoles, isAdmin, isHotelManager, isTraveller } from '../lib/roles';
+import { usePresence, PresenceStatus } from '../hooks/usePresence';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
 export default function Navbar() {
   const { user, logOut } = useAuth();
-  const { openAuth } = useAuthDialog();
+  const { openAuth } = useAuthDialog();`n  const { presence, setManualStatus } = usePresence();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const [soundOn, setSoundOn] = useState(isSoundEnabled);
