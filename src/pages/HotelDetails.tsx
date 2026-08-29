@@ -4,6 +4,7 @@ import { doc, getDoc, collection, query, where, getDocs, addDoc, onSnapshot } fr
 import { db } from '../lib/firebase';
 import { Hotel, RoomType, Review, CurrencyCode } from '../types';
 import { useAuth } from '../contexts/AuthContext';
+import { useAuthDialog } from '../contexts/AuthDialogContext';
 import { Helmet } from 'react-helmet-async';
 import { useChatModal } from '../contexts/ChatModalContext';
 import { useManagerPresence } from '../hooks/usePresence';
@@ -45,7 +46,17 @@ export default function HotelDetails() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
+  const { openAuth } = useAuthDialog();
   const { openInquiryChat, activeChat } = useChatModal();
+
+  const handleOpenChat = () => {
+    if (!hotel) return;
+    if (!user) {
+      openAuth();
+      return;
+    }
+    openInquiryChat(hotel);
+  };
 
   const today = todayStr();
   const [hotel, setHotel] = useState<Hotel | null>(() => (id ? getSingleCachedHotel(id) : null));
@@ -953,7 +964,7 @@ export default function HotelDetails() {
                   {(hotel.chatEnabled !== false && hotel.adminChatEnabled !== false && user?.uid !== hotel.managerId) && (
                     <button
                       type="button"
-                      onClick={() => openInquiryChat(hotel)}
+                      onClick={handleOpenChat}
                       className="inline-flex items-center gap-2 rounded-xl bg-stone-900 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-stone-800 shadow-2xs cursor-pointer"
                     >
                       <MessageSquare className="h-3.5 w-3.5 text-emerald-400" />
@@ -1480,7 +1491,7 @@ export default function HotelDetails() {
           <button
             type="button"
             id="btn-contact-host-floating"
-            onClick={() => openInquiryChat(hotel)}
+            onClick={handleOpenChat}
             className="bg-stone-900 text-white px-5 py-3.5 rounded-full shadow-2xl hover:bg-stone-800 transition-all hover:scale-105 flex items-center gap-2.5 border border-stone-700/60 cursor-pointer"
           >
             <div className="relative flex items-center justify-center">
