@@ -1331,6 +1331,42 @@ export default function AdminDashboard() {
               </div>
 
               <div>
+                <h3 className="text-lg font-bold text-stone-900 mb-4 border-b border-stone-100 pb-2">Social Media Links</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div>
+                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Facebook URL</label>
+                    <input
+                      type="url"
+                      value={contentSettings.socialFacebook || ''}
+                      onChange={e => setContentSettings({...contentSettings, socialFacebook: e.target.value})}
+                      placeholder="https://facebook.com/..."
+                      className="w-full bg-stone-50 border border-stone-200 px-4 py-3 rounded-xl focus:outline-none focus:border-stone-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Instagram URL</label>
+                    <input
+                      type="url"
+                      value={contentSettings.socialInstagram || ''}
+                      onChange={e => setContentSettings({...contentSettings, socialInstagram: e.target.value})}
+                      placeholder="https://instagram.com/..."
+                      className="w-full bg-stone-50 border border-stone-200 px-4 py-3 rounded-xl focus:outline-none focus:border-stone-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Twitter/X URL</label>
+                    <input
+                      type="url"
+                      value={contentSettings.socialTwitter || ''}
+                      onChange={e => setContentSettings({...contentSettings, socialTwitter: e.target.value})}
+                      placeholder="https://twitter.com/..."
+                      className="w-full bg-stone-50 border border-stone-200 px-4 py-3 rounded-xl focus:outline-none focus:border-stone-900"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div>
                 <h3 className="text-lg font-bold text-stone-900 mb-4 border-b border-stone-100 pb-2">Legal Documents</h3>
                 
                 <div className="space-y-6">

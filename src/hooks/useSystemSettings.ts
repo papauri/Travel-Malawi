@@ -8,6 +8,9 @@ export interface SystemSettings {
   privacyPolicy?: string;
   termsOfService?: string;
   refundPolicy?: string;
+  socialFacebook?: string;
+  socialInstagram?: string;
+  socialTwitter?: string;
 }
 
 export function useSystemSettings() {
