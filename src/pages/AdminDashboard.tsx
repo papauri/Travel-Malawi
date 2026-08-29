@@ -1295,6 +1295,107 @@ export default function AdminDashboard() {
             </div>
           </div>
         )}
+
+        {/* ===================== CONTENT TAB ===================== */}
+        {activeTab === 'content' && (
+          <div className="space-y-6 animate-in fade-in duration-300 pb-20">
+            <h2 className="text-3xl font-serif font-bold text-stone-900">Content & Legal</h2>
+            
+            <div className="bg-white rounded-3xl border border-stone-200 shadow-sm p-6 md:p-8 space-y-8">
+              <div>
+                <h3 className="text-lg font-bold text-stone-900 mb-4 border-b border-stone-100 pb-2">Global Signature (Website Footer)</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Contact Email</label>
+                    <input
+                      type="email"
+                      value={contentSettings.contactEmail || ''}
+                      onChange={e => setContentSettings({...contentSettings, contactEmail: e.target.value})}
+                      placeholder="bookings@travelmalawi.com"
+                      className="w-full bg-stone-50 border border-stone-200 px-4 py-3 rounded-xl focus:outline-none focus:border-stone-900"
+                    />
+                    <p className="text-xs text-stone-400 mt-1">Leave blank to hide from footer.</p>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Contact Phone</label>
+                    <input
+                      type="text"
+                      value={contentSettings.contactPhone || ''}
+                      onChange={e => setContentSettings({...contentSettings, contactPhone: e.target.value})}
+                      placeholder="+265 99 123 4567"
+                      className="w-full bg-stone-50 border border-stone-200 px-4 py-3 rounded-xl focus:outline-none focus:border-stone-900"
+                    />
+                    <p className="text-xs text-stone-400 mt-1">Leave blank to hide from footer.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-lg font-bold text-stone-900 mb-4 border-b border-stone-100 pb-2">Legal Documents</h3>
+                
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Privacy Policy</label>
+                    <textarea
+                      value={contentSettings.privacyPolicy || ''}
+                      onChange={e => setContentSettings({...contentSettings, privacyPolicy: e.target.value})}
+                      rows={6}
+                      placeholder="Leave blank to use default hardcoded text..."
+                      className="w-full bg-stone-50 border border-stone-200 px-4 py-3 rounded-xl focus:outline-none focus:border-stone-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Terms of Service</label>
+                    <textarea
+                      value={contentSettings.termsOfService || ''}
+                      onChange={e => setContentSettings({...contentSettings, termsOfService: e.target.value})}
+                      rows={6}
+                      placeholder="Leave blank to use default hardcoded text..."
+                      className="w-full bg-stone-50 border border-stone-200 px-4 py-3 rounded-xl focus:outline-none focus:border-stone-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Refund Policy</label>
+                    <textarea
+                      value={contentSettings.refundPolicy || ''}
+                      onChange={e => setContentSettings({...contentSettings, refundPolicy: e.target.value})}
+                      rows={6}
+                      placeholder="Leave blank to use default hardcoded text..."
+                      className="w-full bg-stone-50 border border-stone-200 px-4 py-3 rounded-xl focus:outline-none focus:border-stone-900"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-4">
+                <button
+                  onClick={handleSaveContent}
+                  disabled={savingContent}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-3 rounded-xl font-bold transition flex items-center gap-2 disabled:opacity-50"
+                >
+                  {savingContent ? 'Saving...' : 'Save Content'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <ConfirmDialog
+          isOpen={!!confirmAction}
+          title={`${confirmAction?.actionName} Property`}
+          message={`Are you sure you want to ${confirmAction?.actionName?.toLowerCase()} "${confirmAction?.hotelName}"?`}
+          confirmText={`Yes, ${confirmAction?.actionName?.toLowerCase()}`}
+          cancelText="Cancel"
+          isDestructive={confirmAction?.newStatus === 'rejected' || confirmAction?.newStatus === 'pending'}
+          onConfirm={() => {
+            if (confirmAction) {
+              handleUpdateStatus(confirmAction.hotelId, confirmAction.newStatus);
+              setConfirmAction(null);
+            }
+          }}
+          onCancel={() => setConfirmAction(null)}
+        />
+
       </div>
     </div>
   );
