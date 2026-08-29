@@ -462,8 +462,17 @@ export default function AdminDashboard() {
             }`}
           >
             <Navigation className="w-5 h-5" />
-            Destinations
-          </button>
+              Destinations
+            </button>
+            <button 
+              onClick={() => setActiveTab('content')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition ${
+                activeTab === 'content' ? 'bg-stone-900 text-white' : 'text-stone-600 hover:bg-stone-100'
+              }`}
+            >
+              <FileText className="w-5 h-5" />
+              Content & Legal
+            </button>
         </nav>
       </div>
 
