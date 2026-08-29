@@ -139,7 +139,7 @@ export default function ManagerDashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 md:gap-8">
         {hotels.length === 0 ? (
           <div className="col-span-full bg-white p-16 text-center rounded-3xl border border-stone-200 shadow-sm">
             <Building2 className="h-16 w-16 text-stone-300 mx-auto mb-6" />
@@ -168,7 +168,7 @@ export default function ManagerDashboard() {
               }
               className="group bg-white rounded-3xl shadow-sm border border-stone-200 overflow-hidden flex flex-col hover:border-stone-400 transition duration-300"
             >
-              <div className="h-56 bg-stone-100 relative">
+              <div className="w-full aspect-[4/3] sm:aspect-auto sm:h-56 md:h-60 bg-stone-100 relative shrink-0">
                 <SmartImage
                   src={getHotelImage(hotel)}
                   alt={hotel.name}
@@ -202,7 +202,7 @@ export default function ManagerDashboard() {
                   <span>{hotel.isOnline !== false ? 'Online' : 'Offline'}</span>
                 </button>
               </div>
-              <div className="p-8 flex-1 flex flex-col">
+              <div className="p-5 sm:p-6 md:p-8 flex-1 flex flex-col">
                 <h3 className="text-2xl font-serif font-bold text-stone-900 mb-2">{hotel.name}</h3>
                 <p className="text-stone-500 mb-5">{hotel.location}</p>
 
