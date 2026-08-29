@@ -146,7 +146,8 @@ export const STEP_FIELDS: (keyof ListingDraft)[][] = [
   ['description', 'amenities'],
   ['imageUrl', 'galleryUrls'],
   ['contactEmail', 'contactPhone', 'contactWhatsapp', 'checkInTime', 'checkOutTime'],
-  [],
+  [], // Plan & Pricing
+  [], // Review
 ];
 
 function isTime(value: string): boolean {

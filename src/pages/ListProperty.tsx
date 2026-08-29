@@ -33,6 +33,8 @@ import SmartImage from '../components/SmartImage';
 import FieldError from '../components/FieldError';
 import LocationPicker from '../components/LocationPicker';
 import { DECORATIVE_IMAGE, getHotelImage } from '../lib/images';
+import { db } from '../lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 import {
   CATEGORY_HINTS, COMMON_AMENITIES, DESCRIPTION_MAX, DESCRIPTION_MIN, ListingDraft,
   MALAWI_LOCATIONS, NAME_MAX, PROPERTY_CATEGORIES, PropertyCategory, createListing,
@@ -46,6 +48,7 @@ const STEPS = [
   { title: 'The place', blurb: 'What a guest should know before booking.' },
   { title: 'Photographs', blurb: 'The pictures that do the selling.' },
   { title: 'Reaching you', blurb: 'How guests get hold of you, and your hours.' },
+  { title: 'Plan & Pricing', blurb: 'Provisioning options.' },
   { title: 'Check it over', blurb: 'One last look before it goes for review.' },
 ];
 
@@ -80,8 +83,26 @@ export default function ListProperty() {
   const [submitting, setSubmitting] = useState(false);
   const [enabling, setEnabling] = useState(false);
   const [amenityInput, setAmenityInput] = useState('');
+  const [premiumEnabled, setPremiumEnabled] = useState(false);
+  const [checkingPremium, setCheckingPremium] = useState(true);
 
   const isHost = isHotelManager(user);
+
+  useEffect(() => {
+    const fetchPremiumStatus = async () => {
+      try {
+        const snap = await getDoc(doc(db, 'system', 'settings'));
+        if (snap.exists() && snap.data().premiumListingsEnabled) {
+          setPremiumEnabled(true);
+        }
+      } catch (err) {
+        console.warn('Could not fetch premium settings', err);
+      } finally {
+        setCheckingPremium(false);
+      }
+    };
+    fetchPremiumStatus();
+  }, []);
 
   // Nothing typed is lost to a sign-in, a refresh, or a mis-click on Back.
   useEffect(() => {
@@ -135,9 +156,14 @@ export default function ListProperty() {
       toast.error('Your browser will not share a location.');
       return;
     }
-    toast.loading('Finding you…', { id: 'geo' });
+    toast('Please allow location access to automatically place the pin. You can safely deny this and select it manually.', { 
+      icon: '📍', 
+      duration: 6000,
+      id: 'geo-permission' 
+    });
     navigator.geolocation.getCurrentPosition(
       position => {
+        toast.dismiss('geo-permission');
         toast.success('Pin dropped at your current position.', { id: 'geo' });
         set('coordinates', { lat: position.coords.latitude, lng: position.coords.longitude });
       },
@@ -586,6 +612,53 @@ export default function ListProperty() {
           )}
 
           {step === 4 && (
+            <div className="space-y-6">
+              {checkingPremium ? (
+                <div className="flex justify-center p-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-stone-300" />
+                </div>
+              ) : premiumEnabled ? (
+                <div className="rounded-2xl border border-stone-200 p-8 text-center bg-white shadow-sm">
+                  <Sparkles className="mx-auto h-12 w-12 text-blue-500 mb-4" />
+                  <h3 className="font-serif text-2xl text-stone-900 mb-2">Choose a Premium Plan</h3>
+                  <p className="text-stone-600 mb-6">Unlock powerful features to get more bookings.</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
+                    <div className="rounded-xl border border-stone-200 p-6">
+                      <h4 className="font-bold text-stone-900">Basic</h4>
+                      <p className="text-sm text-stone-500 mt-1 mb-4">Perfect for getting started.</p>
+                      <p className="text-2xl font-bold text-stone-900 mb-6">Free</p>
+                      <button className="w-full rounded-full bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-stone-800">
+                        Selected
+                      </button>
+                    </div>
+                    <div className="rounded-xl border-2 border-blue-500 bg-blue-50/30 p-6 relative">
+                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-blue-500 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+                        Recommended
+                      </div>
+                      <h4 className="font-bold text-stone-900">Premium</h4>
+                      <p className="text-sm text-stone-500 mt-1 mb-4">Maximum visibility and tools.</p>
+                      <p className="text-2xl font-bold text-stone-900 mb-6">$49<span className="text-sm text-stone-500 font-normal">/mo</span></p>
+                      <button className="w-full rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700">
+                        Upgrade
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-stone-200 bg-stone-50 p-8 text-center shadow-sm">
+                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-green-600 mb-4">
+                    <BadgeCheck className="h-8 w-8" />
+                  </div>
+                  <h3 className="font-serif text-2xl text-stone-900 mb-2">Listing is Free During Beta!</h3>
+                  <p className="text-stone-600 max-w-md mx-auto">
+                    Currently, there are no fees for listing your property. You get full access to all features at zero cost. Enjoy!
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {step === 5 && (
             <div className="space-y-8">
               <div className="overflow-hidden rounded-2xl border border-stone-200">
                 <div className="relative h-64 bg-stone-100">

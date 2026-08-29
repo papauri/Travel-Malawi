@@ -232,8 +232,14 @@ export default function LocationPicker({
       return;
     }
     setLocating(true);
+    toast('Please allow location access to automatically place the pin. You can safely deny this and drag the pin manually.', { 
+      icon: '📍', 
+      duration: 6000,
+      id: 'geo-permission' 
+    });
     navigator.geolocation.getCurrentPosition(
       position => {
+        toast.dismiss('geo-permission');
         setLocating(false);
         const coords = { lat: position.coords.latitude, lng: position.coords.longitude };
         onChange(coords);

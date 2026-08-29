@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Compass,
   Copy,
@@ -13,6 +13,8 @@ import {
   Plane,
   AlertCircle,
   Crosshair,
+  X,
+  RotateCcw,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -26,6 +28,7 @@ import {
   wazeDirectionsUrl,
   openStreetMapDirectionsUrl,
   isValidLatLng,
+  resolveHotelCoordinates,
   MALAWI_KNOWN_PLACES,
 } from '../lib/geo';
 import InteractiveMap from './InteractiveMap';
@@ -35,6 +38,7 @@ interface Props {
   location: string;
   coordinates?: LatLng | null;
   locationNotes?: string;
+  hotelImage?: string;
   className?: string;
 }
 
@@ -76,6 +80,7 @@ export default function DirectionsPanel({
   location,
   coordinates,
   locationNotes,
+  hotelImage,
   className = '',
 }: Props) {
   const [guestLocation, setGuestLocation] = useState<LatLng | null>(null);
@@ -83,18 +88,36 @@ export default function DirectionsPanel({
   const [locating, setLocating] = useState(false);
   const [copiedCoords, setCopiedCoords] = useState(false);
 
-  const hasCoords = isValidLatLng(coordinates);
-  const destCoords = hasCoords ? (coordinates as LatLng) : null;
+  // Always resolve valid coordinates so the stay and photo pin display by default
+  const destCoords = useMemo(() => {
+    if (isValidLatLng(coordinates)) return coordinates as LatLng;
+    return resolveHotelCoordinates({ name: hotelName, location, coordinates });
+  }, [coordinates, hotelName, location]);
 
-  // Request guest's live location
-  const handleGetGuestLocation = () => {
+  const isGpsActive = Boolean(guestLocation && selectedOriginName === 'Your Current GPS Position');
+
+  // Request or Toggle guest's live location
+  const handleToggleGuestLocation = () => {
+    if (isGpsActive) {
+      setGuestLocation(null);
+      setSelectedOriginName(null);
+      toast.success('Live GPS location switched off');
+      return;
+    }
+
     if (!navigator.geolocation) {
       toast.error('Geolocation is not supported by your browser.');
       return;
     }
     setLocating(true);
+    toast('Please allow location access to calculate the distance from your current position. You can safely deny this.', { 
+      icon: '📍', 
+      duration: 6000,
+      id: 'geo-permission' 
+    });
     navigator.geolocation.getCurrentPosition(
       pos => {
+        toast.dismiss('geo-permission');
         setLocating(false);
         const origin = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         setGuestLocation(origin);
@@ -111,9 +134,22 @@ export default function DirectionsPanel({
   };
 
   const handleSelectPresetOrigin = (origin: (typeof COMMON_ORIGINS)[0]) => {
+    if (selectedOriginName === origin.label) {
+      // Toggle off when clicking the active preset
+      setGuestLocation(null);
+      setSelectedOriginName(null);
+      toast.success('Origin cleared');
+      return;
+    }
     setGuestLocation(origin.coords);
     setSelectedOriginName(origin.label);
     toast.success(`Calculated route from ${origin.label}`);
+  };
+
+  const handleClearOrigin = () => {
+    setGuestLocation(null);
+    setSelectedOriginName(null);
+    toast.success('Origin cleared');
   };
 
   const handleCopyCoordinates = () => {
@@ -286,21 +322,44 @@ export default function DirectionsPanel({
               Calculate Travel Distance &amp; Estimated Driving Time
             </h4>
           </div>
-          <button
-            type="button"
-            onClick={handleGetGuestLocation}
-            disabled={locating}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-white hover:bg-stone-100 border border-stone-200 text-stone-800 rounded-full text-xs font-bold shadow-xs transition disabled:opacity-50"
-          >
-            {locating ? (
-              <Crosshair className="h-3.5 w-3.5 animate-pulse text-blue-600" />
-            ) : (
-              <LocateFixed className="h-3.5 w-3.5 text-blue-600" />
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleToggleGuestLocation}
+              disabled={locating}
+              className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition disabled:opacity-50 ${
+                isGpsActive
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm ring-2 ring-blue-300'
+                  : 'bg-white hover:bg-stone-100 border border-stone-200 text-stone-800 shadow-xs'
+              }`}
+              title={isGpsActive ? 'Click to turn off GPS' : 'Click to use your live location'}
+            >
+              {locating ? (
+                <Crosshair className="h-3.5 w-3.5 animate-pulse text-blue-600" />
+              ) : (
+                <LocateFixed className={`h-3.5 w-3.5 ${isGpsActive ? 'text-white' : 'text-blue-600'}`} />
+              )}
+              <span>{isGpsActive ? 'GPS Active' : 'Use My Current Location'}</span>
+              {isGpsActive && (
+                <span className="ml-0.5 px-1.5 py-0.5 bg-blue-700 hover:bg-blue-800 rounded-md text-[10px] uppercase font-bold text-blue-100">
+                  Turn Off ✕
+                </span>
+              )}
+            </button>
+
+            {guestLocation && (
+              <button
+                type="button"
+                onClick={handleClearOrigin}
+                className="inline-flex items-center gap-1 px-3 py-2 bg-stone-200 hover:bg-stone-300 text-stone-700 rounded-full text-xs font-semibold transition"
+                title="Clear route origin"
+              >
+                <X className="h-3.5 w-3.5" />
+                <span>Clear</span>
+              </button>
             )}
-            {guestLocation && selectedOriginName === 'Your Current GPS Position'
-              ? 'GPS Location Active'
-              : 'Use My Current Location'}
-          </button>
+          </div>
         </div>
 
         {/* Airport & City preset origins */}
@@ -315,16 +374,18 @@ export default function DirectionsPanel({
                 onClick={() => handleSelectPresetOrigin(origin)}
                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition ${
                   isSelected
-                    ? 'bg-stone-900 text-white shadow-xs'
+                    ? 'bg-stone-900 text-white shadow-xs ring-2 ring-stone-900/20'
                     : 'bg-white text-stone-600 border border-stone-200 hover:border-stone-400'
                 }`}
+                title={isSelected ? 'Click to remove this origin' : `Calculate route from ${origin.label}`}
               >
                 {origin.icon === 'plane' ? (
                   <Plane className="h-3 w-3" />
                 ) : (
                   <Car className="h-3 w-3" />
                 )}
-                {origin.label}
+                <span>{origin.label}</span>
+                {isSelected && <span className="text-[10px] text-stone-400">✕</span>}
               </button>
             );
           })}
@@ -384,6 +445,7 @@ export default function DirectionsPanel({
         <InteractiveMap
           center={destCoords}
           markerPosition={destCoords}
+          markerImage={hotelImage}
           origin={guestLocation}
           originLabel={selectedOriginName || 'Your Location'}
           interactive={false}

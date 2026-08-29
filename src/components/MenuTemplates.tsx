@@ -51,31 +51,31 @@ function Masthead({
   accentClass = 'text-stone-400',
   titleClass,
 }: Props & { align?: 'center' | 'left'; accentClass?: string; titleClass: string }) {
-  // Only a logo the property actually uploaded. Falling back to its main
-  // photograph put a cropped landscape where a wordmark belongs.
   const logo = restaurant.logoUrl;
-  // `logoOnly` with no logo would leave the menu with no heading at all.
   const showWordmark = !restaurant.logoOnly || !logo;
   const alignment = align === 'center' ? 'items-center text-center' : 'items-start text-left';
 
   return (
-    <header className={`flex flex-col ${alignment} gap-3 mb-10`}>
+    <header className={`flex flex-col ${alignment} gap-2.5 sm:gap-3 mb-8 sm:mb-10 md:mb-12`}>
       {logo && (
-        // Transparent PNGs are the intent, so nothing is drawn behind it.
         <SmartImage
           src={logo}
           alt={restaurant.name ? `${restaurant.name} logo` : 'Restaurant logo'}
-          className="h-16 w-auto max-w-[12rem] object-contain"
+          className="h-12 sm:h-16 w-auto max-w-[12rem] object-contain mb-1"
         />
       )}
       {showWordmark && (
         <>
           {restaurant.name && <h2 className={titleClass}>{restaurant.name}</h2>}
           {restaurant.tagline && (
-            <p className={`text-xs uppercase tracking-[0.28em] ${accentClass}`}>{restaurant.tagline}</p>
+            <p className={`text-[10px] sm:text-xs uppercase tracking-[0.22em] sm:tracking-[0.28em] font-medium ${accentClass}`}>
+              {restaurant.tagline}
+            </p>
           )}
           {restaurant.description && (
-            <p className="text-stone-600 leading-relaxed max-w-xl">{restaurant.description}</p>
+            <p className="text-stone-600 text-xs sm:text-sm md:text-base leading-relaxed max-w-xl">
+              {restaurant.description}
+            </p>
           )}
         </>
       )}
@@ -85,15 +85,22 @@ function Masthead({
 
 function Footnote({ text, className = '' }: { text?: string; className?: string }) {
   if (!text) return null;
-  return <p className={`text-xs text-stone-500 leading-relaxed mt-10 ${className}`}>{text}</p>;
+  return (
+    <div className={`mt-8 sm:mt-10 pt-4 border-t border-stone-200/60 ${className}`}>
+      <p className="text-xs text-stone-500 italic leading-relaxed">{text}</p>
+    </div>
+  );
 }
 
 function Tags({ tags }: { tags?: string[] }) {
   if (!tags?.length) return null;
   return (
-    <span className="ml-2 inline-flex gap-1 align-middle">
+    <span className="inline-flex flex-wrap gap-1 align-middle ml-1.5">
       {tags.map(tag => (
-        <span key={tag} className="text-[0.6rem] uppercase tracking-wider text-stone-400 border border-stone-200 rounded px-1 py-0.5">
+        <span
+          key={tag}
+          className="text-[9px] sm:text-[10px] uppercase font-semibold tracking-wider text-emerald-800 bg-emerald-50/90 border border-emerald-200/80 rounded-full px-2 py-0.5 whitespace-nowrap shadow-2xs"
+        >
           {tag}
         </span>
       ))}
@@ -107,29 +114,36 @@ const hasItems = (sections: MenuSection[]) => sections.some(s => s.items.length 
 function ClassicMenu(props: Props) {
   const { restaurant, currency } = props;
   return (
-    <div className="bg-white rounded-3xl border border-stone-200 p-8 md:p-14">
-      <Masthead {...props} titleClass="font-serif text-4xl text-stone-900 tracking-tight" />
-      <div className="space-y-12 max-w-2xl mx-auto">
+    <div className="bg-white rounded-3xl border border-stone-200 p-5 sm:p-8 md:p-12 lg:p-14 shadow-xs">
+      <Masthead {...props} titleClass="font-serif text-3xl sm:text-4xl md:text-5xl text-stone-900 tracking-tight" />
+      <div className="space-y-10 sm:space-y-12 max-w-2xl mx-auto">
         {restaurant.sections.map(section => (
           <section key={section.id}>
-            <h3 className="font-serif text-2xl text-stone-900 text-center mb-1">{section.name}</h3>
+            <h3 className="font-serif text-xl sm:text-2xl md:text-3xl text-stone-900 text-center mb-1">
+              {section.name}
+            </h3>
             {section.description && (
-              <p className="text-sm text-stone-500 text-center mb-6 italic">{section.description}</p>
+              <p className="text-xs sm:text-sm text-stone-500 text-center mb-5 sm:mb-6 italic max-w-md mx-auto">
+                {section.description}
+              </p>
             )}
-            <ul className="space-y-5 mt-6">
+            <ul className="space-y-4 sm:space-y-5 mt-4 sm:mt-6">
               {section.items.map(item => (
-                <li key={item.id}>
-                  <div className="flex items-baseline gap-2">
-                    <span className="font-medium text-stone-900">{item.name}<Tags tags={item.tags} /></span>
-                    {/* The dotted leader is a flexible spacer, so it stretches
-                        to whatever room is left on the line. */}
-                    <span className="flex-1 border-b border-dotted border-stone-300 translate-y-[-0.25rem]" />
-                    <span className="font-medium text-stone-900 tabular-nums">
+                <li key={item.id} className="group">
+                  <div className="flex items-baseline justify-between gap-2 sm:gap-4">
+                    <div className="font-serif font-medium text-stone-900 text-base sm:text-lg flex flex-wrap items-baseline gap-1.5 min-w-0">
+                      <span>{item.name}</span>
+                      <Tags tags={item.tags} />
+                    </div>
+                    <span className="hidden sm:inline-block flex-1 border-b border-dotted border-stone-300 translate-y-[-0.25rem] min-w-[20px]" />
+                    <span className="font-serif font-semibold text-stone-900 tabular-nums shrink-0 text-sm sm:text-base pl-2">
                       {priceLabel(item, currency) ?? '—'}
                     </span>
                   </div>
                   {item.description && (
-                    <p className="text-sm text-stone-500 mt-1 pr-16 leading-relaxed">{item.description}</p>
+                    <p className="text-xs sm:text-sm text-stone-500 mt-1 sm:pr-14 leading-relaxed">
+                      {item.description}
+                    </p>
                   )}
                 </li>
               ))}
@@ -146,24 +160,32 @@ function ClassicMenu(props: Props) {
 function ElegantMenu(props: Props) {
   const { restaurant, currency } = props;
   return (
-    <div className="bg-[#fbfaf8] rounded-3xl border border-stone-200 p-8 md:p-16">
-      <Masthead {...props} titleClass="font-serif text-5xl text-stone-900 tracking-tight font-light" />
-      <div className="space-y-14 max-w-xl mx-auto text-center">
+    <div className="bg-[#fbfaf8] rounded-3xl border border-stone-200 p-5 sm:p-8 md:p-12 lg:p-16 shadow-xs">
+      <Masthead {...props} titleClass="font-serif text-3xl sm:text-4xl md:text-5xl text-stone-900 tracking-tight font-light" />
+      <div className="space-y-10 sm:space-y-14 max-w-xl mx-auto text-center">
         {restaurant.sections.map(section => (
           <section key={section.id}>
-            <h3 className="text-[0.7rem] uppercase tracking-[0.35em] text-stone-400 mb-2">{section.name}</h3>
-            <span className="block w-10 h-px bg-stone-300 mx-auto mb-8" />
-            <ul className="space-y-8">
+            <h3 className="text-[10px] sm:text-xs uppercase tracking-[0.25em] sm:tracking-[0.35em] text-stone-500 font-semibold mb-2">
+              {section.name}
+            </h3>
+            <span className="block w-10 sm:w-12 h-px bg-stone-300 mx-auto mb-6 sm:mb-8" />
+            <ul className="space-y-6 sm:space-y-8">
               {section.items.map(item => (
-                <li key={item.id}>
-                  <p className="font-serif text-xl text-stone-900">{item.name}</p>
-                  {item.description && (
-                    <p className="text-sm text-stone-500 mt-1.5 leading-relaxed italic">{item.description}</p>
-                  )}
-                  <p className="text-sm text-stone-600 mt-2 tabular-nums tracking-wide">
-                    {priceLabel(item, currency) ?? ''}
-                    <Tags tags={item.tags} />
+                <li key={item.id} className="space-y-1">
+                  <p className="font-serif text-lg sm:text-xl md:text-2xl text-stone-900">
+                    {item.name}
                   </p>
+                  {item.description && (
+                    <p className="text-xs sm:text-sm text-stone-500 leading-relaxed italic max-w-md mx-auto">
+                      {item.description}
+                    </p>
+                  )}
+                  <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+                    <span className="text-xs sm:text-sm font-semibold text-stone-700 tabular-nums tracking-wide">
+                      {priceLabel(item, currency) ?? ''}
+                    </span>
+                    <Tags tags={item.tags} />
+                  </div>
                 </li>
               ))}
             </ul>
@@ -179,22 +201,29 @@ function ElegantMenu(props: Props) {
 function MinimalMenu(props: Props) {
   const { restaurant, currency } = props;
   return (
-    <div className="bg-white rounded-3xl border border-stone-200 p-8 md:p-14">
-      <Masthead {...props} align="left" titleClass="text-3xl font-semibold text-stone-900 tracking-tight" />
-      <div className="space-y-12 max-w-2xl">
+    <div className="bg-white rounded-3xl border border-stone-200 p-5 sm:p-8 md:p-12 lg:p-14 shadow-xs">
+      <Masthead {...props} align="left" titleClass="text-2xl sm:text-3xl md:text-4xl font-bold text-stone-900 tracking-tight" />
+      <div className="space-y-10 sm:space-y-12 max-w-2xl">
         {restaurant.sections.map(section => (
           <section key={section.id}>
-            <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-400 mb-6">{section.name}</h3>
-            <ul className="space-y-6">
+            <h3 className="text-xs sm:text-sm font-semibold uppercase tracking-[0.18em] text-stone-400 mb-4 sm:mb-6 pb-2 border-b border-stone-100">
+              {section.name}
+            </h3>
+            <ul className="space-y-5 sm:space-y-6">
               {section.items.map(item => (
-                <li key={item.id} className="flex justify-between gap-8">
+                <li key={item.id} className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-1 sm:gap-6 pb-3 border-b border-stone-50 last:border-b-0">
                   <div className="min-w-0">
-                    <p className="text-stone-900">{item.name}<Tags tags={item.tags} /></p>
+                    <div className="text-stone-900 font-medium text-sm sm:text-base flex flex-wrap items-baseline gap-1.5">
+                      <span>{item.name}</span>
+                      <Tags tags={item.tags} />
+                    </div>
                     {item.description && (
-                      <p className="text-sm text-stone-500 mt-1 leading-relaxed">{item.description}</p>
+                      <p className="text-xs sm:text-sm text-stone-500 mt-1 leading-relaxed">{item.description}</p>
                     )}
                   </div>
-                  <span className="text-stone-900 tabular-nums shrink-0">{priceLabel(item, currency) ?? '—'}</span>
+                  <span className="text-stone-900 font-semibold text-sm sm:text-base tabular-nums shrink-0">
+                    {priceLabel(item, currency) ?? '—'}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -210,25 +239,30 @@ function MinimalMenu(props: Props) {
 function BistroMenu(props: Props) {
   const { restaurant, currency } = props;
   return (
-    <div className="bg-[#f7f3ea] rounded-3xl border border-[#e6dcc8] p-8 md:p-12">
-      <Masthead {...props} accentClass="text-[#a98d5f]" titleClass="font-serif text-4xl text-[#3f3527] tracking-tight" />
-      <div className="grid md:grid-cols-2 gap-x-12 gap-y-10">
+    <div className="bg-[#f7f3ea] rounded-3xl border border-[#e6dcc8] p-5 sm:p-8 md:p-10 lg:p-12 shadow-xs">
+      <Masthead {...props} accentClass="text-[#a98d5f]" titleClass="font-serif text-3xl sm:text-4xl md:text-5xl text-[#3f3527] tracking-tight" />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 sm:gap-x-10 lg:gap-x-12 gap-y-8 sm:gap-y-10">
         {restaurant.sections.map(section => (
           <section key={section.id} className="break-inside-avoid">
-            <h3 className="font-serif text-xl text-[#3f3527] pb-2 mb-4 border-b-2 border-[#e6dcc8]">
+            <h3 className="font-serif text-lg sm:text-xl text-[#3f3527] pb-2 mb-3 sm:mb-4 border-b-2 border-[#e6dcc8] font-bold">
               {section.name}
             </h3>
-            {section.description && <p className="text-sm text-[#7a6a52] mb-4">{section.description}</p>}
-            <ul className="space-y-4">
+            {section.description && (
+              <p className="text-xs sm:text-sm text-[#7a6a52] mb-3 italic">{section.description}</p>
+            )}
+            <ul className="space-y-3.5 sm:space-y-4">
               {section.items.map(item => (
-                <li key={item.id} className="flex justify-between gap-4">
+                <li key={item.id} className="flex items-baseline justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="font-semibold text-[#3f3527]">{item.name}<Tags tags={item.tags} /></p>
+                    <div className="font-semibold text-[#3f3527] text-sm sm:text-base flex flex-wrap items-baseline gap-1.5">
+                      <span>{item.name}</span>
+                      <Tags tags={item.tags} />
+                    </div>
                     {item.description && (
-                      <p className="text-sm text-[#7a6a52] mt-0.5 leading-relaxed">{item.description}</p>
+                      <p className="text-xs sm:text-sm text-[#7a6a52] mt-0.5 leading-relaxed">{item.description}</p>
                     )}
                   </div>
-                  <span className="font-semibold text-[#3f3527] tabular-nums shrink-0">
+                  <span className="font-bold text-[#3f3527] tabular-nums shrink-0 text-sm sm:text-base">
                     {priceLabel(item, currency) ?? '—'}
                   </span>
                 </li>
@@ -246,29 +280,31 @@ function BistroMenu(props: Props) {
 function ModernMenu(props: Props) {
   const { restaurant, currency } = props;
   return (
-    <div className="bg-stone-50 rounded-3xl border border-stone-200 p-8 md:p-12">
-      <Masthead {...props} align="left" titleClass="text-4xl font-bold text-stone-900 tracking-tight" />
-      <div className="space-y-10">
+    <div className="bg-stone-50 rounded-3xl border border-stone-200 p-5 sm:p-8 md:p-10 lg:p-12 shadow-xs">
+      <Masthead {...props} align="left" titleClass="text-2xl sm:text-3xl md:text-4xl font-bold text-stone-900 tracking-tight" />
+      <div className="space-y-8 sm:space-y-10">
         {restaurant.sections.map(section => (
           <section key={section.id}>
-            <div className="flex items-baseline gap-3 mb-5">
-              <h3 className="text-lg font-bold text-stone-900">{section.name}</h3>
+            <div className="flex items-baseline gap-3 mb-4 sm:mb-5">
+              <h3 className="text-base sm:text-lg font-bold text-stone-900">{section.name}</h3>
               <span className="flex-1 h-px bg-stone-200" />
               <span className="text-xs text-stone-400 font-medium">{section.items.length} items</span>
             </div>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
               {section.items.map(item => (
-                <article key={item.id} className="bg-white rounded-2xl border border-stone-200 p-5 flex flex-col">
-                  <div className="flex items-start justify-between gap-3 mb-2">
-                    <h4 className="font-semibold text-stone-900 leading-snug">{item.name}</h4>
-                    <span className="shrink-0 bg-stone-900 text-white text-xs font-bold px-2.5 py-1 rounded-full tabular-nums">
-                      {priceLabel(item, currency) ?? '—'}
-                    </span>
+                <article key={item.id} className="bg-white rounded-2xl border border-stone-200/90 p-4 sm:p-5 flex flex-col justify-between shadow-2xs hover:shadow-xs transition-shadow">
+                  <div>
+                    <div className="flex items-start justify-between gap-2.5 mb-2">
+                      <h4 className="font-semibold text-stone-900 text-sm sm:text-base leading-snug">{item.name}</h4>
+                      <span className="shrink-0 bg-stone-900 text-white text-[11px] sm:text-xs font-bold px-2.5 py-1 rounded-full tabular-nums shadow-2xs">
+                        {priceLabel(item, currency) ?? '—'}
+                      </span>
+                    </div>
+                    {item.description && (
+                      <p className="text-xs sm:text-sm text-stone-500 leading-relaxed mb-3">{item.description}</p>
+                    )}
                   </div>
-                  {item.description && (
-                    <p className="text-sm text-stone-500 leading-relaxed">{item.description}</p>
-                  )}
-                  <div className="mt-auto pt-2"><Tags tags={item.tags} /></div>
+                  <div className="pt-1"><Tags tags={item.tags} /></div>
                 </article>
               ))}
             </div>
@@ -284,26 +320,29 @@ function ModernMenu(props: Props) {
 function HeritageMenu(props: Props) {
   const { restaurant, currency } = props;
   return (
-    <div className="bg-[#fdfcf9] rounded-3xl border border-stone-200 p-4 md:p-6">
-      <div className="border-2 border-double border-stone-300 rounded-2xl p-8 md:p-14">
-        <Masthead {...props} titleClass="font-serif text-4xl text-stone-900 tracking-[0.08em] uppercase" />
-        <div className="space-y-12 max-w-2xl mx-auto">
+    <div className="bg-[#fdfcf9] rounded-3xl border border-stone-200 p-3.5 sm:p-6 md:p-8 shadow-xs">
+      <div className="border-2 border-double border-stone-300 rounded-2xl p-5 sm:p-8 md:p-12 lg:p-14">
+        <Masthead {...props} titleClass="font-serif text-2xl sm:text-3xl md:text-4xl text-stone-900 tracking-[0.08em] uppercase" />
+        <div className="space-y-10 sm:space-y-12 max-w-2xl mx-auto">
           {restaurant.sections.map(section => (
             <section key={section.id}>
-              <div className="text-center mb-6">
-                <h3 className="font-serif text-sm uppercase tracking-[0.3em] text-stone-700">{section.name}</h3>
-                <span className="block w-24 h-px bg-stone-300 mx-auto mt-3" />
+              <div className="text-center mb-5 sm:mb-6">
+                <h3 className="font-serif text-xs sm:text-sm uppercase tracking-[0.25em] sm:tracking-[0.3em] text-stone-700 font-bold">
+                  {section.name}
+                </h3>
+                <span className="block w-20 sm:w-24 h-px bg-stone-300 mx-auto mt-2.5" />
               </div>
-              <ul className="space-y-6">
+              <ul className="space-y-5 sm:space-y-6">
                 {section.items.map(item => (
-                  <li key={item.id} className="text-center">
-                    <p className="font-serif text-lg text-stone-900 tracking-wide">
-                      {item.name}<Tags tags={item.tags} />
-                    </p>
+                  <li key={item.id} className="text-center space-y-1">
+                    <div className="font-serif text-base sm:text-lg text-stone-900 tracking-wide flex flex-wrap items-baseline justify-center gap-1.5">
+                      <span>{item.name}</span>
+                      <Tags tags={item.tags} />
+                    </div>
                     {item.description && (
-                      <p className="text-sm text-stone-500 mt-1 leading-relaxed max-w-md mx-auto">{item.description}</p>
+                      <p className="text-xs sm:text-sm text-stone-500 leading-relaxed max-w-md mx-auto italic">{item.description}</p>
                     )}
-                    <p className="font-serif text-stone-700 mt-1.5 tabular-nums">
+                    <p className="font-serif font-semibold text-stone-800 text-xs sm:text-sm mt-1 tabular-nums">
                       {priceLabel(item, currency) ?? ''}
                     </p>
                   </li>
@@ -333,12 +372,13 @@ export default function MenuTemplateView(props: Props) {
 
   if (!restaurant.sections?.length || !hasItems(restaurant.sections)) {
     return (
-      <div className="bg-white rounded-3xl border border-stone-200 p-12 text-center">
-        <p className="text-stone-500">This menu has not been published yet.</p>
-        <p className="text-sm text-stone-400 mt-1">Contact the property for today's dishes.</p>
+      <div className="bg-white rounded-3xl border border-stone-200 p-8 sm:p-12 text-center shadow-xs">
+        <p className="text-stone-600 font-medium">This menu has not been published yet.</p>
+        <p className="text-xs sm:text-sm text-stone-400 mt-1">Contact the property for today's dishes and daily specials.</p>
       </div>
     );
   }
 
   return <Renderer {...props} />;
 }
+

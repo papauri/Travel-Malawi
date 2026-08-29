@@ -29,11 +29,15 @@ import {
   Clock,
   Eye,
   Check,
-  CheckCheck
+  CheckCheck,
+  Phone,
+  Video
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { chimeForIncoming, newChimeState } from '../lib/notificationSound';
 import ConfirmDialog from './ConfirmDialog';
+import { useWebRTC } from '../lib/useWebRTC';
+import { CallModal } from './CallModal';
 
 interface Props {
   hotel: Hotel;
@@ -77,6 +81,26 @@ export default function PropertyChat({
   const isManager = guestId !== undefined || (currentUser && liveHotel.managerId === currentUser.uid);
   const effectiveManagerId = liveHotel.managerId || (isManager ? (currentUser?.uid || '') : '') || '';
   const otherParticipantName = isManager ? activeGuestName : (liveHotel.name || 'Host');
+
+  const {
+    activeCall,
+    incomingCall,
+    localVideoRef,
+    remoteVideoRef,
+    localStream,
+    remoteStream,
+    networkQuality,
+    startCall,
+    answerCall,
+    rejectCall,
+    endCall
+  } = useWebRTC(chatId || '', currentUser?.uid || '', isManager ? (liveHotel.name || 'Manager') : activeGuestName);
+
+  const handleStartCall = (video: boolean) => {
+    if (!currentUser) return;
+    const calleeId = isManager ? activeGuestId! : effectiveManagerId;
+    startCall(calleeId, video);
+  };
 
   // 1. Listen in real-time to the Hotel doc for live online/offline status & out of office message
   useEffect(() => {
@@ -145,6 +169,16 @@ export default function PropertyChat({
     };
     ensureChatDocAndSetPresence();
 
+    const presenceInterval = setInterval(() => {
+      if (computedChatId) {
+        const chatRef = doc(db, 'hotel_chats', computedChatId);
+        updateDoc(chatRef, {
+          [isManager ? 'managerInChat' : 'guestInChat']: true,
+          [isManager ? 'managerLastSeenAt' : 'guestLastSeenAt']: Date.now()
+        }).catch(() => {});
+      }
+    }, 10000);
+
     // Listen to chat metadata changes (e.g. status, typing, presence, seenAt)
     const unsubChatDoc = onSnapshot(doc(db, 'hotel_chats', computedChatId), (docSnap) => {
       if (docSnap.exists()) {
@@ -191,6 +225,7 @@ export default function PropertyChat({
     return () => {
       unsubChatDoc();
       unsubMessages();
+      clearInterval(presenceInterval);
 
       if (computedChatId) {
         updateDoc(doc(db, 'hotel_chats', computedChatId), {
@@ -258,9 +293,10 @@ export default function PropertyChat({
   const isOtherTyping = Boolean(otherIsTypingRaw && (Date.now() - otherTypingAt < 5000));
 
   // Determine if other participant has opened / is active in the chat
-  const otherInChat = isManager ? chatDocData?.guestInChat : chatDocData?.managerInChat;
   const otherLastOpenedAt = isManager ? chatDocData?.guestLastOpenedAt : chatDocData?.managerLastOpenedAt;
   const otherLastSeenAt = isManager ? chatDocData?.guestLastSeenAt : chatDocData?.managerLastSeenAt;
+  const otherInChatRaw = isManager ? chatDocData?.guestInChat : chatDocData?.managerInChat;
+  const otherInChat = Boolean(otherInChatRaw && (Date.now() - (otherLastSeenAt || 0) < 20000));
 
   // Format readable time for opened/seen receipts
   const formatReceiptTime = (timestamp?: number) => {
@@ -495,6 +531,26 @@ export default function PropertyChat({
 
         {/* Action Controls */}
         <div className="flex items-center gap-1 shrink-0">
+          {/* Call Buttons */}
+          {!isChatEnded && currentUser && (liveHotel.callsEnabled !== false) && (
+            <>
+              <button
+                onClick={() => handleStartCall(false)}
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-stone-300 hover:text-white hover:bg-stone-800 transition-colors"
+                title="Audio Call"
+              >
+                <Phone className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => handleStartCall(true)}
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-stone-300 hover:text-white hover:bg-stone-800 transition-colors"
+                title="Video Call"
+              >
+                <Video className="w-4 h-4" />
+              </button>
+            </>
+          )}
+
           {/* End Chat Button (Both Guest & Manager) */}
           {!isChatEnded && currentUser && (
             <button
@@ -783,6 +839,19 @@ export default function PropertyChat({
         isDestructive={true}
         onConfirm={handleDeleteChatHistory}
         onCancel={() => setShowDeleteConfirm(false)}
+      />
+
+      <CallModal
+        activeCall={activeCall}
+        incomingCall={incomingCall}
+        localVideoRef={localVideoRef}
+        remoteVideoRef={remoteVideoRef}
+        localStream={localStream}
+        remoteStream={remoteStream}
+        networkQuality={networkQuality}
+        onAnswer={answerCall}
+        onReject={rejectCall}
+        onEndCall={endCall}
       />
     </div>
   );

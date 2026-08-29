@@ -143,8 +143,15 @@ export default function Home() {
     setIsLocatingUser(true);
     setUserLocationError(null);
 
+    toast('Please allow location access to see your position on the map. You can safely deny this.', { 
+      icon: '📍', 
+      duration: 6000,
+      id: 'geo-permission' 
+    });
+
     navigator.geolocation.getCurrentPosition(
       (position) => {
+        toast.dismiss('geo-permission');
         const coords: LatLng = {
           lat: position.coords.latitude,
           lng: position.coords.longitude,
@@ -454,8 +461,16 @@ export default function Home() {
       toast.error("Geolocation is not supported by your browser.");
       return;
     }
+    
+    toast('Please allow location access to find places near you. You can safely deny this if you prefer to search manually.', { 
+      icon: '📍', 
+      duration: 6000,
+      id: 'geo-permission' 
+    });
+
     navigator.geolocation.getCurrentPosition(
       pos => {
+        toast.dismiss('geo-permission');
         setSearchLocation('Near Me');
         applySearch({
           location: 'Near Me',
@@ -784,7 +799,7 @@ export default function Home() {
   return (
     <div className="flex flex-col min-h-screen">
       {/* Hero */}
-      <section className="relative z-30 min-h-[100svh] md:min-h-[100svh] w-full flex flex-col justify-end pb-32 md:pb-40 pt-32 bg-stone-950">
+      <section className="relative z-20 min-h-[52svh] sm:min-h-[60svh] md:min-h-[72svh] lg:min-h-[88svh] xl:min-h-[92svh] 2xl:min-h-[95svh] w-full flex flex-col justify-center items-center pb-14 sm:pb-20 lg:pb-32 pt-24 sm:pt-28 lg:pt-36 bg-stone-950 overflow-hidden">
         <motion.div
           initial={{ opacity: 0, scale: 1.08, filter: 'blur(10px)' }}
           animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
@@ -807,51 +822,72 @@ export default function Home() {
           </motion.div>
         </motion.div>
 
-        {/* Scrims run left-to-right now that the type is anchored left, so the
-            photograph stays visible on the side the text does not occupy. */}
-        <div className="absolute inset-0 z-10 bg-gradient-to-r from-stone-950/80 via-stone-950/40 to-transparent" />
-        <div className="absolute inset-0 z-10 bg-gradient-to-t from-stone-950/70 via-stone-950/30 to-transparent" />
+        {/* Scrims for text legibility */}
+        <div className="absolute inset-0 z-10 bg-gradient-to-b from-stone-950/70 via-stone-950/40 to-stone-950/85" />
+        <div className="absolute inset-0 z-10 bg-radial-[at_center_center] from-transparent via-stone-950/30 to-stone-950/80" />
 
-        <div className="relative z-20 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-auto">
+        <div className="relative z-20 w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center my-auto">
           <motion.div
-            initial={{ opacity: 0, y: 40, filter: "blur(8px)" }}
+            initial={{ opacity: 0, y: 20, filter: "blur(6px)" }}
             animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-            transition={{ duration: 1.2, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
-            className="mb-8 md:mb-12 flex flex-col items-center"
+            transition={{ duration: 0.9, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            className="flex flex-col items-center max-w-2xl mx-auto"
           >
-            <h1 className="font-sans flex flex-col gap-2 md:gap-3 items-center text-center">
-              <span className="text-xs sm:text-sm font-semibold tracking-[0.2em] text-white/90 uppercase ml-0.5 md:ml-1">
-                Welcome to Malawi
-              </span>
-              <span className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-semibold text-white tracking-tight leading-[1.15] md:leading-[1.1]">
-                Find your perfect stay.
-              </span>
+            <h1 className="font-serif text-3xl sm:text-4xl md:text-5xl lg:text-5xl font-normal text-stone-100 tracking-tight leading-[1.18] text-balance">
+              Find your <span className="italic font-light text-amber-100/90">quiet escape.</span>
             </h1>
+            <p className="mt-3 text-xs sm:text-sm md:text-base text-stone-300/85 font-light max-w-lg leading-relaxed mx-auto text-balance">
+              Handpicked boutique lodges, serene lakefront retreats, and wild safari camps across the Warm Heart of Africa.
+            </p>
           </motion.div>
+        </div>
 
-          {/* Search */}
-          <motion.div
-            initial={{ opacity: 0, y: 40, filter: "blur(8px)" }}
-            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-            transition={{ duration: 1.2, delay: 0.6, ease: [0.16, 1, 0.3, 1] }}
-            className={`relative mt-8 mx-auto bg-white rounded-[24px] lg:rounded-full p-2
-                       shadow-2xl shadow-black/20 ring-1 ring-stone-900/5
-                       flex flex-col lg:flex-row lg:items-stretch gap-1 lg:gap-0 w-full max-w-5xl text-left transition-all ${
-                         showRecentSearches || showGuestDropdown ? 'z-40' : 'z-20'
-                       }`}
-          >
+        <motion.ul
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.5 }}
+          className="relative z-20 hidden lg:flex items-center justify-center gap-4 xl:gap-5 text-xs text-stone-300/90 mt-7 px-4"
+        >
+          <li className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-stone-900/50 backdrop-blur-md border border-stone-700/50 shadow-2xs">
+            <ShieldCheck className="h-3.5 w-3.5 text-stone-300" />
+            <span>Zero booking fees</span>
+          </li>
+          <li className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-stone-900/50 backdrop-blur-md border border-stone-700/50 shadow-2xs">
+            <MessageCircle className="h-3.5 w-3.5 text-stone-300" />
+            <span>Direct host communication</span>
+          </li>
+          <li className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-stone-900/50 backdrop-blur-md border border-stone-700/50 shadow-2xs">
+            <Smartphone className="h-3.5 w-3.5 text-stone-300" />
+            <span>Pay directly at property</span>
+          </li>
+        </motion.ul>
+      </section>
+
+      {/* Floating Compact Search Bar */}
+      <section className="relative z-30 -mt-7 sm:-mt-8 lg:-mt-9 px-3 sm:px-6 lg:px-8 max-w-4xl mx-auto w-full">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
+          className={`relative bg-[#FBF9F5]/98 backdrop-blur-xl rounded-2xl lg:rounded-full p-2 sm:p-2.5 lg:p-1.5
+                     shadow-[0_20px_45px_-12px_rgba(28,25,23,0.18)] border border-stone-200/90 ring-1 ring-stone-900/5
+                     w-full transition-all ${
+                       showRecentSearches || showGuestDropdown ? 'z-50' : 'z-30'
+                     }`}
+        >
+          <div className="grid grid-cols-2 lg:flex lg:flex-row lg:items-center gap-1.5 lg:gap-0 w-full text-left">
             {/* Where */}
             <div
               ref={locationSearchRef}
-              className={`relative flex-[1.6] min-w-0 rounded-[20px] px-5 lg:px-6 py-3 lg:py-3 hover:bg-stone-50 transition group bg-white lg:bg-transparent shadow-sm lg:shadow-none ring-1 ring-stone-100 lg:ring-0 ${
+              className={`col-span-2 lg:flex-[1.4] lg:min-w-0 relative rounded-xl lg:rounded-full px-3.5 py-2 lg:px-4 lg:py-2 hover:bg-stone-100/60 transition group bg-stone-100/40 lg:bg-transparent border border-stone-200/50 lg:border-none ${
                 showRecentSearches ? 'z-50' : 'z-20'
               }`}
             >
-              <label htmlFor="search-where" className="block text-[10px] font-bold text-stone-500 uppercase tracking-[0.15em] mb-1">
-                Where
+              <label htmlFor="search-where" className="block text-[9px] font-bold text-stone-500 uppercase tracking-[0.14em] mb-0.5">
+                Destination
               </label>
               <div className="flex items-center gap-2">
-                <MapPin className="h-4 w-4 text-stone-400 shrink-0" />
+                <MapPin className="h-3.5 w-3.5 text-stone-700 shrink-0" />
                 <input
                   id="search-where"
                   type="text"
@@ -859,21 +895,21 @@ export default function Home() {
                   onChange={e => setSearchLocation(e.target.value)}
                   onFocus={() => setShowRecentSearches(true)}
                   onKeyDown={e => { if (e.key === 'Enter') handleSearch(); }}
-                  placeholder="Destination"
+                  placeholder="Where in Malawi?"
                   autoComplete="off"
-                  className="bg-transparent border-none p-0 text-stone-900 text-sm font-medium w-full outline-none placeholder:text-stone-400"
+                  className="bg-transparent border-none p-0 text-stone-900 text-xs sm:text-sm font-medium w-full outline-none placeholder:text-stone-400 placeholder:font-normal"
                 />
               </div>
 
               {/* Where to Dropdown */}
               {showRecentSearches && (
-                <div className="absolute left-0 top-full mt-2 w-full min-w-[300px] md:min-w-[340px] bg-white rounded-2xl shadow-2xl border border-stone-200/90 overflow-hidden z-[100]">
+                <div className="absolute left-0 top-full mt-2 w-full min-w-[280px] sm:min-w-[340px] bg-[#FBF9F5] rounded-2xl shadow-2xl border border-stone-200/90 overflow-hidden z-[100]">
                   <div className="p-3 space-y-3">
                     {/* 1. Live Suggestions when typing */}
                     {searchLocation.trim() && searchSuggestions.length > 0 ? (
                       <div>
-                        <h4 className="text-[11px] font-bold text-stone-500 uppercase tracking-wider mb-2 px-2">Suggestions</h4>
-                        <ul className="space-y-1.5">
+                        <h4 className="text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-2 px-2">Suggestions</h4>
+                        <ul className="space-y-1">
                           {searchSuggestions.map((suggestion, i) => (
                             <li key={i}>
                               <button
@@ -890,15 +926,15 @@ export default function Home() {
                                     proximity: searchProximity,
                                   });
                                 }}
-                                className="w-full text-left px-3 py-2 rounded-xl bg-stone-50/70 hover:bg-emerald-50/80 border border-stone-100 hover:border-emerald-200/80 transition flex items-center gap-3 group/item"
+                                className="w-full text-left px-2.5 py-1.5 rounded-xl bg-stone-100/60 hover:bg-stone-200/60 border border-stone-200/40 hover:border-stone-300 transition flex items-center gap-2.5 group/item"
                               >
-                                <div className="h-8 w-8 rounded-lg bg-white border border-stone-200/80 flex items-center justify-center shrink-0 text-emerald-600 shadow-xs group-hover/item:border-emerald-300 transition">
-                                  {suggestion.type === 'location' ? <MapPin className="w-4 h-4 text-emerald-600" /> : <Search className="w-4 h-4 text-emerald-600" />}
+                                <div className="h-7 w-7 rounded-lg bg-white border border-stone-200/80 flex items-center justify-center shrink-0 text-stone-700 shadow-xs group-hover/item:border-stone-400 transition">
+                                  {suggestion.type === 'location' ? <MapPin className="w-3.5 h-3.5 text-stone-700" /> : <Search className="w-3.5 h-3.5 text-stone-700" />}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <div className="font-semibold text-stone-800 text-sm truncate group-hover/item:text-emerald-900">{suggestion.text}</div>
+                                  <div className="font-semibold text-stone-900 text-xs sm:text-sm truncate group-hover/item:text-stone-950">{suggestion.text}</div>
                                   {suggestion.subtitle && (
-                                    <div className="text-xs text-stone-500 truncate">{suggestion.subtitle}</div>
+                                    <div className="text-[11px] text-stone-500 truncate">{suggestion.subtitle}</div>
                                   )}
                                 </div>
                               </button>
@@ -916,14 +952,14 @@ export default function Home() {
                           setShowRecentSearches(false);
                           handleNearMe();
                         }}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl bg-emerald-50/80 hover:bg-emerald-100 border border-emerald-200/80 text-left transition group/geo"
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl bg-stone-100 hover:bg-stone-200/80 border border-stone-200/80 text-left transition group/geo"
                       >
-                        <div className="h-8 w-8 rounded-lg bg-white border border-emerald-200 flex items-center justify-center shrink-0 text-emerald-700 shadow-xs">
-                          <LocateFixed className="w-4 h-4" />
+                        <div className="h-7 w-7 rounded-lg bg-white border border-stone-300 flex items-center justify-center shrink-0 text-stone-800 shadow-xs">
+                          <LocateFixed className="w-3.5 h-3.5" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="font-semibold text-emerald-950 text-sm">Find stays near me</div>
-                          <div className="text-xs text-emerald-700/80">Use your current GPS location</div>
+                          <div className="font-semibold text-stone-900 text-xs sm:text-sm">Find stays near me</div>
+                          <div className="text-[11px] text-stone-500">Use your current GPS coordinates</div>
                         </div>
                       </button>
                     )}
@@ -931,17 +967,17 @@ export default function Home() {
                     {/* 3. Recent Searches */}
                     {!searchLocation.trim() && recentSearches.length > 0 && (
                       <div>
-                        <div className="flex items-center justify-between px-2 mb-1.5">
-                          <h4 className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">Recent searches</h4>
+                        <div className="flex items-center justify-between px-2 mb-1">
+                          <h4 className="text-[10px] font-bold text-stone-500 uppercase tracking-wider">Recent searches</h4>
                           <button
                             type="button"
                             onClick={clearRecentSearches}
-                            className="text-[11px] font-semibold text-stone-400 hover:text-red-600 transition"
+                            className="text-[10px] font-semibold text-stone-400 hover:text-stone-700 transition"
                           >
-                            Clear all
+                            Clear
                           </button>
                         </div>
-                        <ul className="space-y-1.5">
+                        <ul className="space-y-1">
                           {recentSearches.map((rs, i) => (
                             <li key={i}>
                               <button
@@ -961,14 +997,14 @@ export default function Home() {
                                     proximity: searchProximity,
                                   });
                                 }}
-                                className="w-full text-left px-3 py-2 rounded-xl bg-stone-50/70 hover:bg-stone-100 border border-stone-100 hover:border-stone-200 transition flex items-center gap-3 group/rs"
+                                className="w-full text-left px-2.5 py-1.5 rounded-xl bg-stone-100/60 hover:bg-stone-200/60 border border-stone-200/40 hover:border-stone-300 transition flex items-center gap-2.5 group/rs"
                               >
-                                <div className="h-8 w-8 rounded-lg bg-white border border-stone-200/80 flex items-center justify-center shrink-0 text-stone-500 shadow-xs">
-                                  <Clock className="w-4 h-4" />
+                                <div className="h-7 w-7 rounded-lg bg-white border border-stone-200/80 flex items-center justify-center shrink-0 text-stone-500 shadow-xs">
+                                  <Clock className="w-3.5 h-3.5" />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <div className="font-semibold text-stone-800 text-sm truncate group-hover/rs:text-stone-950">{rs.location}</div>
-                                  <div className="text-xs text-stone-500 truncate">
+                                  <div className="font-semibold text-stone-800 text-xs sm:text-sm truncate group-hover/rs:text-stone-950">{rs.location}</div>
+                                  <div className="text-[11px] text-stone-500 truncate">
                                     {rs.adults + rs.children} guest{rs.adults + rs.children !== 1 ? 's' : ''} • {rs.roomsWanted} room{rs.roomsWanted !== 1 ? 's' : ''}
                                   </div>
                                 </div>
@@ -981,9 +1017,9 @@ export default function Home() {
 
                     {/* 4. Popular Places in Malawi Chips inside Dropdown */}
                     {!searchLocation.trim() && (
-                      <div className="pt-1 border-t border-stone-100">
-                        <h4 className="text-[11px] font-bold text-stone-500 uppercase tracking-wider mb-2 px-2">Popular destinations</h4>
-                        <div className="flex flex-wrap gap-1.5 px-1">
+                      <div className="pt-2 border-t border-stone-200/60">
+                        <h4 className="text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1.5 px-2">Popular destinations</h4>
+                        <div className="flex flex-wrap gap-1 px-1">
                           {popularDestinations.map(dest => (
                             <button
                               key={`drop-${dest}`}
@@ -1000,7 +1036,7 @@ export default function Home() {
                                   proximity: searchProximity,
                                 });
                               }}
-                              className="px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-emerald-50 text-stone-700 hover:text-emerald-900 border border-stone-200/70 hover:border-emerald-200 text-xs font-semibold transition"
+                              className="px-2.5 py-1 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 hover:text-stone-900 border border-stone-200/70 hover:border-stone-300 text-[11px] font-medium transition"
                             >
                               {dest}
                             </button>
@@ -1013,52 +1049,52 @@ export default function Home() {
               )}
             </div>
 
-            <div className="h-px w-auto lg:h-auto lg:w-px self-stretch mx-4 lg:mx-0 lg:my-2 bg-stone-100" />
+            <div className="hidden lg:block h-6 w-px bg-stone-200/80 mx-1" />
 
             {/* Check In */}
-            <div className="flex-1 min-w-0 rounded-[20px] px-5 lg:px-6 py-3 lg:py-3 hover:bg-stone-50 transition">
-              <span className="block text-[10px] font-bold text-stone-500 uppercase tracking-[0.15em] mb-1">
+            <div className="col-span-1 lg:flex-1 lg:min-w-0 rounded-xl lg:rounded-full px-3 py-1.5 lg:px-3.5 lg:py-2 hover:bg-stone-100/60 transition bg-stone-100/40 lg:bg-transparent border border-stone-200/50 lg:border-none">
+              <span className="block text-[9px] font-bold text-stone-500 uppercase tracking-[0.14em] mb-0.5">
                 Check in
               </span>
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-stone-400 shrink-0" />
+              <div className="flex items-center gap-1.5">
+                <Calendar className="h-3.5 w-3.5 text-stone-400 shrink-0" />
                 <input
                   type="date"
                   aria-label="Check in"
                   min={today}
                   value={searchCheckIn}
                   onChange={e => setSearchCheckIn(e.target.value)}
-                  className="bg-transparent border-none p-0 text-stone-900 text-sm font-medium w-full outline-none min-w-0"
+                  className="bg-transparent border-none p-0 text-stone-900 text-xs sm:text-sm font-medium w-full outline-none min-w-0 cursor-pointer"
                 />
               </div>
             </div>
 
-            <div className="h-px w-auto lg:h-auto lg:w-px self-stretch mx-4 lg:mx-0 lg:my-2 bg-stone-100" />
+            <div className="hidden lg:block h-6 w-px bg-stone-200/80 mx-1" />
 
             {/* Check Out */}
-            <div className="flex-1 min-w-0 rounded-[20px] px-5 lg:px-6 py-3 lg:py-3 hover:bg-stone-50 transition">
-              <span className="block text-[10px] font-bold text-stone-500 uppercase tracking-[0.15em] mb-1">
+            <div className="col-span-1 lg:flex-1 lg:min-w-0 rounded-xl lg:rounded-full px-3 py-1.5 lg:px-3.5 lg:py-2 hover:bg-stone-100/60 transition bg-stone-100/40 lg:bg-transparent border border-stone-200/50 lg:border-none">
+              <span className="block text-[9px] font-bold text-stone-500 uppercase tracking-[0.14em] mb-0.5">
                 Check out
               </span>
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-stone-400 shrink-0" />
+              <div className="flex items-center gap-1.5">
+                <Calendar className="h-3.5 w-3.5 text-stone-400 shrink-0" />
                 <input
                   type="date"
                   aria-label="Check out"
                   min={searchCheckIn || today}
                   value={searchCheckOut}
                   onChange={e => setSearchCheckOut(e.target.value)}
-                  className="bg-transparent border-none p-0 text-stone-900 text-sm font-medium w-full outline-none min-w-0"
+                  className="bg-transparent border-none p-0 text-stone-900 text-xs sm:text-sm font-medium w-full outline-none min-w-0 cursor-pointer"
                 />
               </div>
             </div>
 
-            <div className="h-px w-auto lg:h-auto lg:w-px self-stretch mx-4 lg:mx-0 lg:my-2 bg-stone-100" />
+            <div className="hidden lg:block h-6 w-px bg-stone-200/80 mx-1" />
 
-            {/* Who */}
+            {/* Who / Guests */}
             <div
               ref={guestSelectorRef}
-              className={`relative flex-1 min-w-0 rounded-[20px] px-5 lg:px-6 py-3 lg:py-3 hover:bg-stone-50 transition bg-white lg:bg-transparent shadow-sm lg:shadow-none ring-1 ring-stone-100 lg:ring-0 ${
+              className={`col-span-1 lg:flex-1 lg:min-w-0 relative rounded-xl lg:rounded-full px-3 py-1.5 lg:px-3.5 lg:py-2 hover:bg-stone-100/60 transition bg-stone-100/40 lg:bg-transparent border border-stone-200/50 lg:border-none ${
                 showGuestDropdown ? 'z-50' : 'z-20'
               }`}
             >
@@ -1068,31 +1104,31 @@ export default function Home() {
                 aria-expanded={showGuestDropdown}
                 className="w-full text-left"
               >
-                <span className="block text-[10px] font-bold text-stone-500 uppercase tracking-[0.15em] mb-1">
+                <span className="block text-[9px] font-bold text-stone-500 uppercase tracking-[0.14em] mb-0.5">
                   Guests
                 </span>
-                <span className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-stone-400 shrink-0" />
-                  <span className="text-sm font-medium text-stone-900 truncate">
+                <span className="flex items-center gap-1.5">
+                  <Users className="h-3.5 w-3.5 text-stone-400 shrink-0" />
+                  <span className="text-xs sm:text-sm font-medium text-stone-900 truncate">
                     {totalGuests === 0
                       ? 'Add guests'
-                      : `${totalGuests} guest${totalGuests > 1 ? 's' : ''}, ${roomsWanted} room${roomsWanted > 1 ? 's' : ''}`}
+                      : `${totalGuests} guest${totalGuests > 1 ? 's' : ''}`}
                   </span>
-                  <ChevronDown className={`h-3.5 w-3.5 text-stone-400 shrink-0 ml-auto transition ${showGuestDropdown ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`h-3 w-3 text-stone-400 shrink-0 ml-auto transition ${showGuestDropdown ? 'rotate-180' : ''}`} />
                 </span>
               </button>
 
               {showGuestDropdown && (
-                <div className="absolute top-full left-2 right-2 lg:left-auto lg:right-0 lg:w-72 mt-2 bg-white rounded-2xl shadow-2xl ring-1 ring-stone-200 p-2 z-[100]">
+                <div className="absolute top-full left-0 right-0 sm:left-auto sm:right-0 sm:w-72 mt-2 bg-[#FBF9F5] rounded-2xl shadow-2xl ring-1 ring-stone-200 p-2 z-[100]">
                   {([
                     { label: 'Adults', hint: 'Ages 13 or above', value: adults, set: setAdults, min: 1, max: 16 },
                     { label: 'Children', hint: 'Ages 2–12', value: children, set: setChildren, min: 0, max: 16 },
                     { label: 'Rooms', hint: 'Up to 8', value: roomsWanted, set: setRoomsWanted, min: 1, max: 8 },
                   ] as const).map(row => (
-                    <div key={row.label} className="flex items-center justify-between px-3 py-3 rounded-xl hover:bg-stone-50">
+                    <div key={row.label} className="flex items-center justify-between px-2.5 py-2 rounded-xl hover:bg-stone-200/50">
                       <div>
-                        <span className="block text-sm font-semibold text-stone-900">{row.label}</span>
-                        <span className="text-xs text-stone-400">{row.hint}</span>
+                        <span className="block text-xs font-semibold text-stone-900">{row.label}</span>
+                        <span className="text-[10px] text-stone-500">{row.hint}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <button
@@ -1100,19 +1136,19 @@ export default function Home() {
                           aria-label={`Fewer ${row.label.toLowerCase()}`}
                           disabled={row.value <= row.min}
                           onClick={() => row.set(Math.max(row.min, row.value - 1))}
-                          className="h-8 w-8 grid place-items-center rounded-full border border-stone-300 text-stone-600 hover:border-stone-900 hover:text-stone-900 disabled:opacity-30 disabled:hover:border-stone-300 transition"
+                          className="h-7 w-7 grid place-items-center rounded-full border border-stone-300 text-stone-700 hover:border-stone-900 hover:text-stone-900 disabled:opacity-30 transition text-xs"
                         >
-                          <Minus className="w-3.5 h-3.5" />
+                          <Minus className="w-3 h-3" />
                         </button>
-                        <span className="w-5 text-center text-sm font-semibold tabular-nums">{row.value}</span>
+                        <span className="w-4 text-center text-xs font-semibold tabular-nums text-stone-800">{row.value}</span>
                         <button
                           type="button"
                           aria-label={`More ${row.label.toLowerCase()}`}
                           disabled={row.value >= row.max}
                           onClick={() => row.set(Math.min(row.max, row.value + 1))}
-                          className="h-8 w-8 grid place-items-center rounded-full border border-stone-300 text-stone-600 hover:border-stone-900 hover:text-stone-900 disabled:opacity-30 disabled:hover:border-stone-300 transition"
+                          className="h-7 w-7 grid place-items-center rounded-full border border-stone-300 text-stone-700 hover:border-stone-900 hover:text-stone-900 disabled:opacity-30 transition text-xs"
                         >
-                          <Plus className="w-3.5 h-3.5" />
+                          <Plus className="w-3 h-3" />
                         </button>
                       </div>
                     </div>
@@ -1121,41 +1157,22 @@ export default function Home() {
               )}
             </div>
 
-            <button
-              onClick={handleSearch}
-              disabled={searching}
-              className="shrink-0 flex items-center justify-center gap-2 bg-emerald-600 text-white rounded-[20px] lg:rounded-full m-1.5 mt-2 lg:mt-1.5 py-3.5 lg:py-0 px-7 font-bold text-sm hover:bg-emerald-700 active:scale-95 transition shadow-md disabled:opacity-60"
-            >
-              {searching
-                ? <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-                : <Search className="h-5 w-5" />}
-              <span>Search</span>
-            </button>
-          </motion.div>
-
-          {/* One-tap destinations */}
-        </div>
-
-          <motion.ul
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.8, delay: 0.8 }}
-            className="absolute bottom-16 left-0 right-0 hidden md:flex items-center justify-center gap-10 text-[11px] text-white/55 z-20 pointer-events-none"
-          >
-            <li className="flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5 text-emerald-300/60" /> No booking fee, ever</li>
-            <li className="flex items-center gap-1.5"><MessageCircle className="h-3.5 w-3.5 text-emerald-300/60" /> You hear from the host, not a call centre</li>
-            <li className="flex items-center gap-1.5"><Smartphone className="h-3.5 w-3.5 text-emerald-300/60" /> Settle up at the property</li>
-          </motion.ul>
-
-          <a
-            href="#search-results"
-            className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 hidden md:flex flex-col items-center gap-1
-                       text-white/50 hover:text-white transition"
-          >
-            <span className="text-[10px] font-semibold uppercase tracking-[0.2em]">See where you could stay</span>
-            <ChevronDown className="h-3 w-3 animate-bounce" />
-          </a>
-        </section>
+            {/* Search CTA button */}
+            <div className="col-span-1 lg:shrink-0 flex items-center p-0.5">
+              <button
+                onClick={handleSearch}
+                disabled={searching}
+                className="w-full lg:w-auto h-full flex items-center justify-center gap-2 bg-[#2D2A26] hover:bg-[#1F1D1A] active:scale-98 text-[#F5F2EB] rounded-xl lg:rounded-full px-5 lg:px-6 py-2.5 lg:py-2.5 font-medium text-xs sm:text-sm tracking-wide transition shadow-sm disabled:opacity-60"
+              >
+                {searching
+                  ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-stone-400 border-t-white" />
+                  : <Search className="h-3.5 w-3.5 text-amber-100" />}
+                <span>Search Stays</span>
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      </section>
 
       {/* Popular Destinations */}
       <section className="bg-white py-6 md:py-8 border-b border-stone-200">
@@ -2070,20 +2087,20 @@ export default function Home() {
       </section>
 
       {/* Floating View Toggle Button */}
-      <div className="fixed bottom-24 md:bottom-12 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
+      <div className="fixed bottom-24 md:bottom-12 right-6 md:right-12 z-50 pointer-events-none">
         <button
           onClick={() => setViewMode(viewMode === 'grid' ? 'map' : 'grid')}
-          className="pointer-events-auto flex items-center justify-center gap-2 bg-stone-900 text-white rounded-full px-5 py-3 shadow-[0_4px_24px_rgba(0,0,0,0.25)] hover:scale-105 hover:bg-stone-800 transition-all active:scale-95"
+          className="pointer-events-auto flex items-center justify-center gap-2 bg-stone-900/95 backdrop-blur-md text-white rounded-full px-4 py-3 sm:px-5 shadow-[0_4px_24px_rgba(0,0,0,0.25)] hover:scale-105 hover:bg-stone-800 transition-all active:scale-95 border border-stone-700/50"
         >
           {viewMode === 'grid' ? (
             <>
-              <span className="text-sm font-bold tracking-wide">Show Map</span>
-              <MapIcon className="w-4 h-4" />
+              <span className="hidden sm:inline text-sm font-bold tracking-wide">Show Map</span>
+              <MapIcon className="w-5 h-5 sm:w-4 sm:h-4" />
             </>
           ) : (
             <>
-              <span className="text-sm font-bold tracking-wide">Show List</span>
-              <LayoutGrid className="w-4 h-4" />
+              <span className="hidden sm:inline text-sm font-bold tracking-wide">Show List</span>
+              <LayoutGrid className="w-5 h-5 sm:w-4 sm:h-4" />
             </>
           )}
         </button>

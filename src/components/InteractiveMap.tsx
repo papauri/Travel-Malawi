@@ -28,6 +28,7 @@ export interface LodgeMarker {
 export interface InteractiveMapProps {
   center?: LatLng | null;
   markerPosition?: LatLng | null;
+  markerImage?: string;
   onMarkerChange?: (pos: LatLng) => void;
   interactive?: boolean;
   zoom?: number;
@@ -86,29 +87,54 @@ const createUserLiveLocationIcon = (label: string = 'You are here') => {
   });
 };
 
-// Custom SVG Pin for a single destination / property
-const createCustomPinIcon = (label?: string) => {
+// Custom SVG Pin for a single destination / property with photo thumbnail badge
+const createCustomPinIcon = (label?: string, image?: string) => {
   const html = `
-    <div class="relative flex items-center justify-center -translate-x-1/2 -translate-y-full">
-      <div class="relative flex items-center justify-center">
-        <div class="w-8 h-8 bg-stone-900 text-white rounded-full flex items-center justify-center shadow-2xl ring-4 ring-white border border-stone-800 animate-bounce-short">
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
-            <circle cx="12" cy="10" r="3"/>
-          </svg>
+    <div style="position: relative; width: 56px; height: 68px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; cursor: pointer; pointer-events: auto;">
+      ${label ? `
+        <div style="position: absolute; bottom: 70px; left: 50%; transform: translateX(-50%); padding: 5px 12px; background: #1c1917; color: #ffffff; font-size: 11px; font-weight: 700; border-radius: 9999px; box-shadow: 0 10px 25px rgba(0,0,0,0.4); white-space: nowrap; border: 1.5px solid rgba(255,255,255,0.35); pointer-events: none; display: flex; align-items: center; gap: 6px; max-width: 240px; z-index: 30;">
+          <span style="width: 8px; height: 8px; border-radius: 9999px; background: #10b981; flex-shrink: 0; box-shadow: 0 0 10px #10b981;"></span>
+          <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${label}</span>
         </div>
-        <div class="absolute -bottom-1 w-2 h-2 bg-stone-900 rotate-45"></div>
+      ` : ''}
+      
+      <div style="position: relative; width: 52px; height: 52px; margin-bottom: 6px; display: flex; align-items: center; justify-content: center;">
+        <!-- Glowing Beacon Radar Rings -->
+        <div style="position: absolute; width: 66px; height: 66px; border-radius: 9999px; background: rgba(16, 185, 129, 0.25); pointer-events: none; z-index: 1;"></div>
+        <div style="position: absolute; width: 58px; height: 58px; border-radius: 9999px; background: rgba(16, 185, 129, 0.4); pointer-events: none; z-index: 2;"></div>
+        
+        <!-- Circular Picture Frame with Stay Thumbnail -->
+        <div style="position: relative; width: 52px; height: 52px; border-radius: 9999px; background: #1c1917; border: 3.5px solid #ffffff; box-shadow: 0 12px 28px -4px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(0,0,0,0.15); overflow: hidden; display: flex; align-items: center; justify-content: center; z-index: 10;">
+          ${image ? `
+            <img src="${image}" alt="${label || 'Stay'}" style="width: 100%; height: 100%; object-fit: cover; display: block;" referrerpolicy="no-referrer" onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';" />
+            <div style="display: none; width: 100%; height: 100%; background: #1c1917; align-items: center; justify-content: center; color: #10b981;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+                <circle cx="12" cy="10" r="3"/>
+              </svg>
+            </div>
+          ` : `
+            <div style="width: 100%; height: 100%; background: #1c1917; display: flex; align-items: center; justify-content: center; color: #10b981;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+                <circle cx="12" cy="10" r="3"/>
+              </svg>
+            </div>
+          `}
+        </div>
+        
+        <!-- Bottom Pin Pointer Tip -->
+        <div style="position: absolute; bottom: -5px; left: 50%; transform: translateX(-50%) rotate(45deg); width: 13px; height: 13px; background: #1c1917; border-right: 3px solid #ffffff; border-bottom: 3px solid #ffffff; z-index: 5; box-shadow: 2px 2px 5px rgba(0,0,0,0.35);"></div>
       </div>
-      ${label ? `<div class="absolute top-full mt-1.5 px-2.5 py-1 bg-stone-900/90 backdrop-blur text-white text-[11px] font-bold rounded-lg shadow-lg whitespace-nowrap border border-stone-700 pointer-events-none">${label}</div>` : ''}
     </div>
   `;
 
   return L.divIcon({
     html,
     className: 'custom-leaflet-marker',
-    iconSize: [32, 32],
-    iconAnchor: [16, 32],
-    popupAnchor: [0, -32],
+    iconSize: [56, 68],
+    iconAnchor: [28, 68],
+    popupAnchor: [0, -68],
   });
 };
 
@@ -205,6 +231,7 @@ export const createPopupHtml = (lodge: LodgeMarker) => {
 export default function InteractiveMap({
   center,
   markerPosition,
+  markerImage,
   onMarkerChange,
   interactive = true,
   zoom = 13,
@@ -248,6 +275,7 @@ export default function InteractiveMap({
   const [isOverlayMinimized, setIsOverlayMinimized] = useState(false);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [isPrefetching, setIsPrefetching] = useState(false);
+  const [mapReady, setMapReady] = useState(false);
 
   useEffect(() => {
     const handleOnline = () => setIsOffline(false);
@@ -298,10 +326,10 @@ export default function InteractiveMap({
 
     if (isValidLatLng(markerPosition)) {
       initialPos = markerPosition;
-      initialZoom = zoom;
+      initialZoom = zoom || 13;
     } else if (isValidLatLng(center)) {
       initialPos = center;
-      initialZoom = zoom;
+      initialZoom = zoom || 13;
     } else if (lodges && lodges.length > 0 && isValidLatLng(lodges[0]?.coordinates)) {
       initialPos = lodges[0].coordinates;
       initialZoom = 7;
@@ -319,6 +347,21 @@ export default function InteractiveMap({
     streetLayer.addTo(map);
     tileLayerRef.current = streetLayer;
     mapInstanceRef.current = map;
+    setMapReady(true);
+
+    // Ensure map tiles and container geometry calculate correctly
+    const resizeTimer = setTimeout(() => {
+      map.invalidateSize();
+    }, 150);
+
+    // Watch for container resizes
+    let resizeObserver: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined' && containerRef.current) {
+      resizeObserver = new ResizeObserver(() => {
+        map.invalidateSize();
+      });
+      resizeObserver.observe(containerRef.current);
+    }
 
     // Handle map clicks in interactive single-pin mode
     if (interactive && onMarkerChange) {
@@ -329,6 +372,11 @@ export default function InteractiveMap({
     }
 
     return () => {
+      clearTimeout(resizeTimer);
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
+      setMapReady(false);
       map.remove();
       mapInstanceRef.current = null;
     };
@@ -337,7 +385,7 @@ export default function InteractiveMap({
   // Update Tile Layer when mapType changes
   useEffect(() => {
     const map = mapInstanceRef.current;
-    if (!map) return;
+    if (!map || !mapReady) return;
 
     if (tileLayerRef.current) {
       map.removeLayer(tileLayerRef.current);
@@ -352,12 +400,12 @@ export default function InteractiveMap({
       streetLayer.addTo(map);
       tileLayerRef.current = streetLayer;
     }
-  }, [mapType]);
+  }, [mapType, mapReady]);
 
   // Handle Multi-Lodge Clustering & Markers
   useEffect(() => {
     const map = mapInstanceRef.current;
-    if (!map) return;
+    if (!map || !mapReady) return;
 
     // Clean up previous cluster layer or lodge markers
     if (clusterGroupRef.current) {
@@ -447,7 +495,7 @@ export default function InteractiveMap({
     if (fitBoundsToLodges && validLodges.length > 0) {
       map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
     }
-  }, [lodges, enableClustering, showLodgePopups, fitBoundsToLodges]);
+  }, [mapReady, lodges, enableClustering, showLodgePopups, fitBoundsToLodges]);
 
   // Update marker icons when selectedLodgeId changes
   useEffect(() => {
@@ -476,17 +524,31 @@ export default function InteractiveMap({
   // Update Destination / Property Marker (Single Pin Mode)
   useEffect(() => {
     const map = mapInstanceRef.current;
-    if (!map) return;
+    if (!map || !mapReady) return;
 
     if (isValidLatLng(markerPosition)) {
       if (markerRef.current) {
         markerRef.current.setLatLng([markerPosition.lat, markerPosition.lng]);
-        markerRef.current.setIcon(createCustomPinIcon(popupText));
+        markerRef.current.setIcon(createCustomPinIcon(popupText, markerImage));
       } else {
         const marker = L.marker([markerPosition.lat, markerPosition.lng], {
-          icon: createCustomPinIcon(popupText),
+          icon: createCustomPinIcon(popupText, markerImage),
           draggable: interactive && !!onMarkerChange,
+          zIndexOffset: 600,
         });
+
+        if (popupText) {
+          marker.bindPopup(`
+            <div style="font-family: sans-serif; padding: 4px; text-align: center; max-width: 180px;">
+              ${markerImage ? `<img src="${markerImage}" alt="${popupText}" style="width: 100%; height: 75px; object-fit: cover; border-radius: 8px; margin-bottom: 6px;" />` : ''}
+              <div style="font-weight: 700; font-size: 13px; color: #1c1917; line-height: 1.2;">${popupText}</div>
+              <div style="font-size: 11px; color: #059669; font-weight: 600; margin-top: 3px;">📍 Exact Property Pinpoint</div>
+            </div>
+          `, {
+            closeButton: false,
+            className: 'custom-destination-popup',
+          });
+        }
 
         if (interactive && onMarkerChange) {
           marker.on('dragend', () => {
@@ -498,16 +560,21 @@ export default function InteractiveMap({
         marker.addTo(map);
         markerRef.current = marker;
       }
+
+      // If no route origin is active, center on the destination stay
+      if (!isValidLatLng(origin)) {
+        map.setView([markerPosition.lat, markerPosition.lng], zoom || 13, { animate: false });
+      }
     } else if (markerRef.current) {
       map.removeLayer(markerRef.current);
       markerRef.current = null;
     }
-  }, [markerPosition, interactive, onMarkerChange, popupText]);
+  }, [mapReady, markerPosition, interactive, onMarkerChange, popupText, markerImage, origin, zoom]);
 
   // Update Origin Marker and Route Line (if origin provided)
   useEffect(() => {
     const map = mapInstanceRef.current;
-    if (!map) return;
+    if (!map || !mapReady) return;
 
     if (isValidLatLng(origin)) {
       if (originMarkerRef.current) {
@@ -554,13 +621,17 @@ export default function InteractiveMap({
         map.removeLayer(polylineRef.current);
         polylineRef.current = null;
       }
+      // Re-center smoothly on property marker if origin was turned off
+      if (isValidLatLng(markerPosition)) {
+        map.setView([markerPosition.lat, markerPosition.lng], zoom || 13, { animate: true });
+      }
     }
-  }, [origin, markerPosition, originLabel]);
+  }, [mapReady, origin, markerPosition, originLabel, zoom]);
 
   // Update User Live Location Marker & Accuracy Circle
   useEffect(() => {
     const map = mapInstanceRef.current;
-    if (!map) return;
+    if (!map || !mapReady) return;
 
     if (showUserLocation && isValidLatLng(userLocation)) {
       // User marker
@@ -624,12 +695,12 @@ export default function InteractiveMap({
         userLocationCircleRef.current = null;
       }
     }
-  }, [userLocation, showUserLocation, userLocationAccuracy, selectedLodgeId]);
+  }, [mapReady, userLocation, showUserLocation, userLocationAccuracy, selectedLodgeId]);
 
   // Connect User Location to Selected Lodge with Route Polyline & Distance Badge
   useEffect(() => {
     const map = mapInstanceRef.current;
-    if (!map) return;
+    if (!map || !mapReady) return;
 
     if (showUserLocation && isValidLatLng(userLocation) && selectedLodge && isValidLatLng(selectedLodge.coordinates)) {
       const latlngs: [number, number][] = [

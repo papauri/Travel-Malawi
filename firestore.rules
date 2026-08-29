@@ -77,7 +77,7 @@ service cloud.firestore {
       // the admin dashboard's approve/reject silently failed.
       // A manager may edit their listing but not re-approve it, promote it, or
       // hand it to someone else; only an admin may change `status`,
-      // `featured` or `managerId`.
+      // `featured` or `managerId` or `adminChatEnabled`.
       // `get(field, default)` because listings imported before moderation
       // existed have no `status` field, and none has `featured` until an admin
       // sets one — reading a missing field would fail the rule outright.
@@ -88,6 +88,8 @@ service cloud.firestore {
                          == resource.data.get('status', 'approved')
                       && request.resource.data.get('featured', false)
                          == resource.data.get('featured', false)
+                      && request.resource.data.get('adminChatEnabled', true)
+                         == resource.data.get('adminChatEnabled', true)
                     );
       allow delete: if isManager(hotelId) || isAdmin();
     }
@@ -288,6 +290,40 @@ service cloud.firestore {
         isManager(resource.data.hotelId) ||
         isAdmin()
       );
+    }
+
+    match /hotel_chats/{chatId}/calls/{callId} {
+      allow read: if isAuthenticated() && (
+        (exists(/databases/$(database)/documents/hotel_chats/$(chatId)) && (
+          get(/databases/$(database)/documents/hotel_chats/$(chatId)).data.guestId == request.auth.uid ||
+          get(/databases/$(database)/documents/hotel_chats/$(chatId)).data.managerId == request.auth.uid
+        )) ||
+        chatId.matches(".*_" + request.auth.uid) ||
+        chatId.matches(request.auth.uid + "_.*") ||
+        isAdmin()
+      );
+      allow create, update: if isAuthenticated() && (
+        (exists(/databases/$(database)/documents/hotel_chats/$(chatId)) && (
+          get(/databases/$(database)/documents/hotel_chats/$(chatId)).data.guestId == request.auth.uid ||
+          get(/databases/$(database)/documents/hotel_chats/$(chatId)).data.managerId == request.auth.uid
+        )) ||
+        chatId.matches(".*_" + request.auth.uid) ||
+        chatId.matches(request.auth.uid + "_.*") ||
+        isAdmin()
+      );
+      allow delete: if isAdmin();
+      
+      match /{candidateType}/{candidateId} {
+        allow read, create, update, delete: if isAuthenticated() && (
+          (exists(/databases/$(database)/documents/hotel_chats/$(chatId)) && (
+            get(/databases/$(database)/documents/hotel_chats/$(chatId)).data.guestId == request.auth.uid ||
+            get(/databases/$(database)/documents/hotel_chats/$(chatId)).data.managerId == request.auth.uid
+          )) ||
+          chatId.matches(".*_" + request.auth.uid) ||
+          chatId.matches(request.auth.uid + "_.*") ||
+          isAdmin()
+        );
+      }
     }
 
     match /reviews/{reviewId} {

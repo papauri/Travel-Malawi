@@ -116,6 +116,8 @@ export interface Hotel {
   checkInTime?: string;
   checkOutTime?: string;
   chatEnabled?: boolean;
+  adminChatEnabled?: boolean;
+  callsEnabled?: boolean;
   isOnline?: boolean;
   outOfOfficeMessage?: string;
   /** Absent, or `enabled: false`, means the property has no restaurant. */
@@ -184,6 +186,28 @@ export interface Message {
   senderName: string;
   text: string;
   createdAt: number;
+}
+
+export interface CallCandidate {
+  candidate: string;
+  sdpMid: string;
+  sdpMLineIndex: number;
+  createdAt?: number;
+}
+
+export interface Call {
+  id?: string;
+  chatId: string;
+  callerId: string;
+  callerName: string;
+  calleeId: string;
+  status: 'ringing' | 'connected' | 'ended' | 'rejected' | 'missed';
+  type: 'audio' | 'video';
+  offer?: any;
+  answer?: any;
+  createdAt: number;
+  updatedAt: number;
+  endedAt?: number;
 }
 
 export interface HotelChat {

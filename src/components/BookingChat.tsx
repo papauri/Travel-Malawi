@@ -47,6 +47,14 @@ export default function BookingChat({ booking, currentUser }: Props) {
     };
     setInitialPresence();
 
+    const presenceInterval = setInterval(() => {
+      const payload = {
+        [isManager ? 'managerInChat' : 'guestInChat']: true,
+        [isManager ? 'managerLastSeenAt' : 'guestLastSeenAt']: Date.now()
+      };
+      setDoc(presenceDocRef, payload, { merge: true }).catch(() => {});
+    }, 10000);
+
     // Listen to presence updates (typing, opened, active)
     const unsubPresence = onSnapshot(presenceDocRef, (snap) => {
       if (snap.exists()) {
@@ -90,6 +98,7 @@ export default function BookingChat({ booking, currentUser }: Props) {
     return () => {
       unsubscribe();
       unsubPresence();
+      clearInterval(presenceInterval);
 
       // Clear presence on unmount
       updateDoc(presenceDocRef, {
@@ -154,9 +163,10 @@ export default function BookingChat({ booking, currentUser }: Props) {
   const otherTypingAt = isManager ? (presenceState?.guestTypingAt || 0) : (presenceState?.managerTypingAt || 0);
   const isOtherTyping = Boolean(otherIsTypingRaw && (Date.now() - otherTypingAt < 5000));
 
-  const otherInChat = isManager ? presenceState?.guestInChat : presenceState?.managerInChat;
   const otherLastOpenedAt = isManager ? presenceState?.guestLastOpenedAt : presenceState?.managerLastOpenedAt;
   const otherLastSeenAt = isManager ? presenceState?.guestLastSeenAt : presenceState?.managerLastSeenAt;
+  const otherInChatRaw = isManager ? presenceState?.guestInChat : presenceState?.managerInChat;
+  const otherInChat = Boolean(otherInChatRaw && (Date.now() - (otherLastSeenAt || 0) < 20000));
 
   const formatReceiptTime = (timestamp?: number) => {
     if (!timestamp) return '';

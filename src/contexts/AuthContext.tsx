@@ -87,8 +87,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        const appUser = await loadOrCreateUser(firebaseUser);
-        setUser(appUser);
+        try {
+          const appUser = await loadOrCreateUser(firebaseUser);
+          setUser(appUser);
+        } catch (err) {
+          console.error('Error loading user profile:', err);
+          // Fallback to basic user profile so UI loads seamlessly
+          setUser({
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            displayName: firebaseUser.displayName,
+            role: 'traveller',
+            roles: ['traveller'],
+            createdAt: Date.now(),
+          });
+        }
       } else {
         setUser(null);
       }
@@ -96,6 +109,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
     return unsubscribe;
   }, []);
+
 
   const signIn = async (email: string, password: string) => {
     const result = await signInWithEmailAndPassword(auth, email, password);

@@ -304,7 +304,7 @@ export default function MyBookings() {
 
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mt-auto">
                     <div className="space-y-3">
-                      {booking.status !== 'cancelled' && booking.status !== 'rejected' && (
+                      {(booking.status !== 'cancelled' && booking.status !== 'rejected') && (booking.hotel?.chatEnabled !== false && booking.hotel?.adminChatEnabled !== false) && (
                           <button
                             type="button"
                             onClick={() => setChatTarget(booking)}

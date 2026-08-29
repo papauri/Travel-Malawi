@@ -61,6 +61,7 @@ function hotelFormSnapshot(data: Partial<Hotel>): string {
     contactWhatsapp: data.contactWhatsapp ?? '',
     hours: data.hours ?? null,
     chatEnabled: data.chatEnabled !== false,
+    callsEnabled: data.callsEnabled !== false,
     isOnline: data.isOnline ?? true,
     outOfOfficeMessage: data.outOfOfficeMessage ?? '',
   });
@@ -887,7 +888,12 @@ export default function ManageHotel() {
         ]).map(tab => {
           const Icon = tab.icon;
           const pendingCount = tab.id === 'bookings' ? bookings.filter(b => b.status === 'pending').length : 0;
-          const inquiryCount = tab.id === 'inquiries' ? inquiries.length : 0;
+          const unreadInquiryCount = tab.id === 'inquiries' ? inquiries.filter(i => 
+            i.lastSenderId !== user?.uid && 
+            i.updatedAt && 
+            (!i.managerLastOpenedAt || i.updatedAt > i.managerLastOpenedAt)
+          ).length : 0;
+          
           return (
             <button
               key={tab.id}
@@ -908,8 +914,10 @@ export default function ManageHotel() {
               {pendingCount > 0 && (
                 <span className="bg-emerald-500 text-white text-xs px-2 py-0.5 rounded-full">{pendingCount}</span>
               )}
-              {inquiryCount > 0 && (
-                <span className="bg-stone-800 text-white text-xs px-2 py-0.5 rounded-full">{inquiryCount}</span>
+              {unreadInquiryCount > 0 && (
+                <span className="bg-blue-600 text-white text-xs px-2 py-0.5 rounded-full shadow-sm">
+                  {unreadInquiryCount} new
+                </span>
               )}
             </button>
           );
@@ -1131,25 +1139,42 @@ export default function ManageHotel() {
                 <h4 className="font-serif font-bold text-stone-900 mb-4">Guest Messaging</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
+                    {hotel?.adminChatEnabled === false && (
+                      <div className="mb-4 bg-amber-50 border border-amber-200 text-amber-800 p-3 rounded-lg text-sm">
+                        <strong>Premium Feature:</strong> Chat capabilities have been disabled for this listing by an administrator. Please contact support to upgrade or re-enable.
+                      </div>
+                    )}
                     <label className="flex items-center gap-3 cursor-pointer mb-6">
                       <input 
                         type="checkbox" 
                         checked={editHotelData.chatEnabled !== false} 
                         onChange={(e) => setEditHotelData({...editHotelData, chatEnabled: e.target.checked})}
-                        className="w-5 h-5 text-stone-900 border-stone-300 rounded focus:ring-stone-900"
+                        className="w-5 h-5 text-stone-900 border-stone-300 rounded focus:ring-stone-900 disabled:opacity-50"
+                        disabled={hotel?.adminChatEnabled === false}
                       />
-                      <span className="font-medium text-stone-700">Enable Pre-booking Chat</span>
+                      <span className={`font-medium ${hotel?.adminChatEnabled === false ? 'text-stone-400' : 'text-stone-700'}`}>Enable Pre-booking Chat</span>
                     </label>
                     
+                    <label className="flex items-center gap-3 cursor-pointer mb-6 ml-8">
+                      <input 
+                        type="checkbox" 
+                        checked={editHotelData.callsEnabled !== false} 
+                        onChange={(e) => setEditHotelData({...editHotelData, callsEnabled: e.target.checked})}
+                        className="w-5 h-5 text-stone-900 border-stone-300 rounded focus:ring-stone-900 disabled:opacity-50"
+                        disabled={editHotelData.chatEnabled === false || hotel?.adminChatEnabled === false}
+                      />
+                      <span className={`font-medium ${editHotelData.chatEnabled === false || hotel?.adminChatEnabled === false ? 'text-stone-400' : 'text-stone-700'}`}>Allow Voice/Video Calls</span>
+                    </label>
+
                     <label className="flex items-center gap-3 cursor-pointer">
                       <input 
                         type="checkbox" 
                         checked={editHotelData.isOnline ?? true} 
                         onChange={(e) => setEditHotelData({...editHotelData, isOnline: e.target.checked})}
-                        className="w-5 h-5 text-emerald-600 border-stone-300 rounded focus:ring-emerald-600"
-                        disabled={editHotelData.chatEnabled === false}
+                        className="w-5 h-5 text-emerald-600 border-stone-300 rounded focus:ring-emerald-600 disabled:opacity-50"
+                        disabled={editHotelData.chatEnabled === false || hotel?.adminChatEnabled === false}
                       />
-                      <span className={`font-medium ${editHotelData.chatEnabled === false ? 'text-stone-400' : 'text-stone-700'}`}>Show as "Online"</span>
+                      <span className={`font-medium ${editHotelData.chatEnabled === false || hotel?.adminChatEnabled === false ? 'text-stone-400' : 'text-stone-700'}`}>Show as "Online"</span>
                     </label>
                     <p className="text-xs text-stone-500 mt-2 ml-8">When offline, your out-of-office message is shown.</p>
                   </div>
@@ -1159,7 +1184,7 @@ export default function ManageHotel() {
                     <textarea 
                       value={editHotelData.outOfOfficeMessage || ''} 
                       onChange={e => setEditHotelData({...editHotelData, outOfOfficeMessage: e.target.value})}
-                      disabled={editHotelData.chatEnabled === false || editHotelData.isOnline === true}
+                      disabled={editHotelData.chatEnabled === false || hotel?.adminChatEnabled === false || editHotelData.isOnline === true}
                       className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition h-24 resize-none disabled:opacity-50"
                       placeholder="We're currently away. Leave a message and we'll reply soon!" 
                     />
@@ -1657,7 +1682,7 @@ export default function ManageHotel() {
                     <div>
                       <div className="flex items-center gap-3 mb-1 flex-wrap">
                         <span className="font-bold text-stone-900 text-lg">{booking.guestName}</span>
-                        {booking.status !== 'cancelled' && booking.status !== 'rejected' && (
+                        {booking.status !== 'cancelled' && booking.status !== 'rejected' && hotel?.adminChatEnabled !== false && (
                           <button
                             type="button"
                             onClick={() => setChatTarget(booking)}
@@ -1840,6 +1865,9 @@ export default function ManageHotel() {
                   const isEnded = inquiry.status === 'ended';
                   const isGuestTyping = Boolean(inquiry.guestTyping && (Date.now() - (inquiry.guestTypingAt || 0) < 5000));
                   const isGuestInChat = Boolean(inquiry.guestInChat);
+                  const isUnread = inquiry.lastSenderId !== user?.uid && 
+                                   inquiry.updatedAt && 
+                                   (!inquiry.managerLastOpenedAt || inquiry.updatedAt > inquiry.managerLastOpenedAt);
 
                   return (
                     <div key={inquiry.id} className="py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 group hover:bg-stone-50/60 -mx-6 px-6 transition rounded-2xl">
@@ -1857,7 +1885,12 @@ export default function ManageHotel() {
                         </div>
                         <div>
                           <div className="flex items-center gap-2 flex-wrap">
-                            <h4 className="font-bold text-stone-900">{inquiry.guestName || 'Guest'}</h4>
+                            <h4 className="font-bold text-stone-900 flex items-center gap-2">
+                              {inquiry.guestName || 'Guest'}
+                              {isUnread && (
+                                <span className="w-2 h-2 rounded-full bg-blue-600" title="New message"></span>
+                              )}
+                            </h4>
                             <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
                               Inquiry
                             </span>
@@ -1901,13 +1934,15 @@ export default function ManageHotel() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2 self-end sm:self-center">
-                        <button
-                          type="button"
-                          onClick={() => setInquiryChatTarget(inquiry)}
-                          className="flex items-center gap-2 px-4 py-2.5 bg-stone-900 text-white hover:bg-stone-800 rounded-xl transition font-semibold text-xs shadow-xs"
-                        >
-                          <MessageSquare className="w-4 h-4" /> Open Chat
-                        </button>
+                        {hotel?.adminChatEnabled !== false && (
+                          <button
+                            type="button"
+                            onClick={() => setInquiryChatTarget(inquiry)}
+                            className="flex items-center gap-2 px-4 py-2.5 bg-stone-900 text-white hover:bg-stone-800 rounded-xl transition font-semibold text-xs shadow-xs"
+                          >
+                            <MessageSquare className="w-4 h-4" /> Open Chat
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => setInquiryToDelete(inquiry.id)}
