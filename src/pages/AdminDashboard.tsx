@@ -17,8 +17,10 @@ import SmartImage from '../components/SmartImage';
 import { getHotelImage } from '../lib/images';
 import { isAdmin, isHotelManager, userRoles, toRoleFields } from '../lib/roles';
 import { formatMoney } from '../lib/booking';
+import { Navigation, TrendingUp } from 'lucide-react';
+import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 
-type Tab = 'overview' | 'properties' | 'users' | 'bookings';
+type Tab = 'overview' | 'analytics' | 'properties' | 'users' | 'bookings' | 'destinations';
 
 export default function AdminDashboard() {
   const { user, loading: authLoading, resetPassword } = useAuth();
@@ -42,6 +44,13 @@ export default function AdminDashboard() {
   const [currentBookingPage, setCurrentBookingPage] = useState(1);
   const [premiumEnabled, setPremiumEnabled] = useState(false);
   const [togglingPremium, setTogglingPremium] = useState(false);
+  const [customDestinations, setCustomDestinations] = useState<string[]>([]);
+  const [manualDestinationsEnabled, setManualDestinationsEnabled] = useState(false);
+  const [featuredMode, setFeaturedMode] = useState<'auto' | 'manual' | 'disabled'>('auto');
+  const [savingFeaturedMode, setSavingFeaturedMode] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [savingDestinations, setSavingDestinations] = useState(false);
+  const [newDestination, setNewDestination] = useState('');
   
   const itemsPerPage = 10;
 
@@ -55,7 +64,11 @@ export default function AdminDashboard() {
       ]);
       
       if (settingsSnapshot.exists()) {
-        setPremiumEnabled(!!settingsSnapshot.data().premiumListingsEnabled);
+        const data = settingsSnapshot.data();
+        setPremiumEnabled(!!data.premiumListingsEnabled);
+        setCustomDestinations(data.popularDestinations || []);
+        setManualDestinationsEnabled(!!data.manualDestinationsEnabled);
+        setFeaturedMode(data.featuredMode || 'auto');
       }
 
       const hotelsData = hotelsSnapshot.docs.map(doc => ({
@@ -114,7 +127,6 @@ export default function AdminDashboard() {
   };
 
   const handleDeleteHotel = async (hotelId: string) => {
-    if (!window.confirm("Are you sure you want to completely delete this hotel listing? This cannot be undone.")) return;
     try {
       await deleteDoc(doc(db, 'hotels', hotelId));
       toast.success('Listing deleted');
@@ -217,6 +229,119 @@ export default function AdminDashboard() {
   }, [users, userSearch]);
   
   // Overview Stats
+  const destinationStats = useMemo(() => {
+    const dStats = new Map<string, { listings: number, bookings: number }>();
+    
+    for (const hotel of hotels) {
+      const loc = hotel.location?.trim();
+      if (!loc || !/^[A-Za-z][A-Za-z\s'&.,-]{2,}$/.test(loc)) continue;
+      if (!dStats.has(loc)) dStats.set(loc, { listings: 0, bookings: 0 });
+      dStats.get(loc)!.listings += 1;
+    }
+    
+    for (const booking of bookings) {
+      const hotel = hotels.find(h => h.id === booking.hotelId);
+      if (!hotel) continue;
+      const loc = hotel.location?.trim();
+      if (!loc || !/^[A-Za-z][A-Za-z\s'&.,-]{2,}$/.test(loc)) continue;
+      if (!dStats.has(loc)) dStats.set(loc, { listings: 0, bookings: 0 });
+      dStats.get(loc)!.bookings += 1;
+    }
+    
+    return Array.from(dStats.entries())
+      .map(([location, data]) => ({ location, ...data }))
+      .sort((a, b) => (b.bookings * 2 + b.listings) - (a.bookings * 2 + a.listings));
+  }, [hotels, bookings]);
+
+  
+  const saveFeaturedMode = async (mode: 'auto' | 'manual' | 'disabled') => {
+    setSavingFeaturedMode(true);
+    try {
+      await setDoc(doc(db, 'system', 'settings'), { featuredMode: mode }, { merge: true });
+      setFeaturedMode(mode);
+      toast.success('Featured mode updated');
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to save featured mode');
+    } finally {
+      setSavingFeaturedMode(false);
+    }
+  };
+
+  const saveDestinations = async () => {
+    setSavingDestinations(true);
+    try {
+      await setDoc(doc(db, 'system', 'settings'), { popularDestinations: customDestinations, manualDestinationsEnabled }, { merge: true });
+      toast.success('Popular destinations updated');
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to save destinations');
+    } finally {
+      setSavingDestinations(false);
+    }
+  };
+
+  const chartData = useMemo(() => {
+    // We can also compute properties growth here
+    const propertiesByMonth = new Map<string, number>();
+    // Group by month
+    const months = new Map<string, { month: string; bookings: number; users: number; properties: number; timestamp: number }>();
+    
+    // Get last 6 months
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      const key = d.toLocaleString('default', { month: 'short', year: 'numeric' });
+      months.set(key, { month: key, bookings: 0, users: 0, properties: 0, timestamp: d.getTime() });
+    }
+
+    bookings.forEach(b => {
+      const d = new Date(b.createdAt);
+      const key = d.toLocaleString('default', { month: 'short', year: 'numeric' });
+      if (months.has(key)) {
+        months.get(key)!.bookings += 1;
+      }
+    });
+
+    users.forEach(u => {
+      if (!u.createdAt) return;
+      const d = new Date(u.createdAt);
+      const key = d.toLocaleString('default', { month: 'short', year: 'numeric' });
+      if (months.has(key)) {
+        months.get(key)!.users += 1;
+      }
+    });
+
+    hotels.forEach(h => {
+      if (!h.createdAt) return;
+      const d = new Date(h.createdAt);
+      const key = d.toLocaleString('default', { month: 'short', year: 'numeric' });
+      if (months.has(key)) {
+        months.get(key)!.properties += 1;
+      }
+    });
+
+    return Array.from(months.values()).sort((a, b) => a.timestamp - b.timestamp);
+  }, [bookings, users, hotels]);
+
+  const featuredCandidateStats = useMemo(() => {
+    const propertyStats = new Map<string, { hotel: Hotel; bookings: number }>();
+    hotels.forEach(h => propertyStats.set(h.id!, { hotel: h, bookings: 0 }));
+    bookings.forEach(b => {
+      if (propertyStats.has(b.hotelId)) {
+        propertyStats.get(b.hotelId)!.bookings += 1;
+      }
+    });
+    return Array.from(propertyStats.values())
+      .filter(s => s.hotel.status === 'approved' || !s.hotel.status)
+      .sort((a, b) => {
+        // Sort by featured first, then by bookings
+        if (a.hotel.featured && !b.hotel.featured) return -1;
+        if (!a.hotel.featured && b.hotel.featured) return 1;
+        return b.bookings - a.bookings;
+      });
+  }, [hotels, bookings]);
+
   const stats = useMemo(() => {
     return {
       totalProperties: hotels.length,
@@ -260,6 +385,15 @@ export default function AdminDashboard() {
             Overview
           </button>
           <button 
+            onClick={() => setActiveTab('analytics')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition ${
+              activeTab === 'analytics' ? 'bg-stone-900 text-white' : 'text-stone-600 hover:bg-stone-100'
+            }`}
+          >
+            <TrendingUp className="w-5 h-5" />
+            Analytics
+          </button>
+          <button 
             onClick={() => setActiveTab('properties')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition ${
               activeTab === 'properties' ? 'bg-stone-900 text-white' : 'text-stone-600 hover:bg-stone-100'
@@ -291,6 +425,15 @@ export default function AdminDashboard() {
             <CalendarRange className="w-5 h-5" />
             All Bookings
           </button>
+          <button 
+            onClick={() => setActiveTab('destinations')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition ${
+              activeTab === 'destinations' ? 'bg-stone-900 text-white' : 'text-stone-600 hover:bg-stone-100'
+            }`}
+          >
+            <Navigation className="w-5 h-5" />
+            Destinations
+          </button>
         </nav>
       </div>
 
@@ -303,15 +446,21 @@ export default function AdminDashboard() {
             <h2 className="text-3xl font-serif font-bold text-stone-900">Platform Overview</h2>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm">
+              <button
+                onClick={() => setActiveTab('properties')}
+                className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm text-left hover:border-stone-300 hover:shadow-md transition focus:outline-none focus:ring-2 focus:ring-stone-900"
+              >
                 <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-4">
                   <Building2 className="w-6 h-6" />
                 </div>
                 <p className="text-stone-500 text-sm font-medium mb-1">Total Properties</p>
                 <p className="text-3xl font-bold text-stone-900">{stats.totalProperties}</p>
-              </div>
+              </button>
               
-              <div className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm">
+              <button
+                onClick={() => setActiveTab('users')}
+                className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm text-left hover:border-stone-300 hover:shadow-md transition focus:outline-none focus:ring-2 focus:ring-stone-900"
+              >
                 <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mb-4">
                   <Users className="w-6 h-6" />
                 </div>
@@ -320,23 +469,29 @@ export default function AdminDashboard() {
                   <p className="text-3xl font-bold text-stone-900">{stats.totalUsers}</p>
                   <span className="text-xs text-stone-400 font-medium">{stats.managersCount} managers</span>
                 </div>
-              </div>
+              </button>
               
-              <div className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm">
+              <button
+                onClick={() => setActiveTab('bookings')}
+                className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm text-left hover:border-stone-300 hover:shadow-md transition focus:outline-none focus:ring-2 focus:ring-stone-900"
+              >
                 <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center mb-4">
                   <CalendarRange className="w-6 h-6" />
                 </div>
                 <p className="text-stone-500 text-sm font-medium mb-1">Total Bookings</p>
                 <p className="text-3xl font-bold text-stone-900">{stats.totalBookings}</p>
-              </div>
+              </button>
               
-              <div className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm">
+              <button
+                onClick={() => setActiveTab('properties')}
+                className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm text-left hover:border-stone-300 hover:shadow-md transition focus:outline-none focus:ring-2 focus:ring-stone-900"
+              >
                 <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center mb-4">
                   <Activity className="w-6 h-6" />
                 </div>
                 <p className="text-stone-500 text-sm font-medium mb-1">Pending Approvals</p>
                 <p className="text-3xl font-bold text-stone-900">{stats.pendingProperties}</p>
-              </div>
+              </button>
             </div>
             
             <div className="mt-8">
@@ -359,6 +514,202 @@ export default function AdminDashboard() {
             </div>
           </div>
         )}
+        
+        {/* ===================== ANALYTICS TAB ===================== */}
+        {activeTab === 'analytics' && (
+          <div className="space-y-8 animate-in fade-in duration-300">
+            <div>
+              <h2 className="text-3xl font-serif font-bold text-stone-900">Analytics & Insights</h2>
+              <p className="text-stone-500 mt-1">Platform growth trends and data-driven property management.</p>
+            </div>
+            
+            
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+              {/* Bookings Trend Chart */}
+              <div className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm flex flex-col h-full">
+                <h3 className="font-bold text-stone-900 text-lg mb-2">Booking Volume</h3>
+                <p className="text-sm text-stone-500 mb-6">Confirmed bookings over the last 6 months.</p>
+                <div className="flex-1 min-h-[250px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="colorBookings" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#059669" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="#059669" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e7e5e4" />
+                      <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#78716c' }} dy={10} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#78716c' }} />
+                      <RechartsTooltip 
+                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}
+                        labelStyle={{ color: '#292524', fontWeight: 'bold', marginBottom: '4px' }}
+                      />
+                      <Area type="monotone" dataKey="bookings" name="Bookings" stroke="#059669" strokeWidth={3} fillOpacity={1} fill="url(#colorBookings)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Users Growth Chart */}
+              <div className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm flex flex-col h-full">
+                <h3 className="font-bold text-stone-900 text-lg mb-2">User Growth</h3>
+                <p className="text-sm text-stone-500 mb-6">New user sign-ups over the last 6 months.</p>
+                <div className="flex-1 min-h-[250px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="colorUsers" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e7e5e4" />
+                      <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#78716c' }} dy={10} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#78716c' }} />
+                      <RechartsTooltip 
+                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}
+                        labelStyle={{ color: '#292524', fontWeight: 'bold', marginBottom: '4px' }}
+                      />
+                      <Area type="monotone" dataKey="users" name="New Users" stroke="#2563eb" strokeWidth={3} fillOpacity={1} fill="url(#colorUsers)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Property Growth Chart */}
+              <div className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm flex flex-col h-full">
+                <h3 className="font-bold text-stone-900 text-lg mb-2">Property Listings</h3>
+                <p className="text-sm text-stone-500 mb-6">New properties listed over the last 6 months.</p>
+                <div className="flex-1 min-h-[250px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e7e5e4" />
+                      <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#78716c' }} dy={10} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#78716c' }} />
+                      <RechartsTooltip 
+                        cursor={{ fill: '#f5f5f4' }}
+                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}
+                        labelStyle={{ color: '#292524', fontWeight: 'bold', marginBottom: '4px' }}
+                      />
+                      <Bar dataKey="properties" name="New Properties" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+
+            
+            {/* Featured Stays Manager */}
+            <div className="bg-white rounded-3xl border border-stone-200 p-6 shadow-sm">
+              <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+                <div>
+                  <h3 className="font-bold text-stone-900 text-xl">Manage Featured Stays</h3>
+                  <p className="text-sm text-stone-500 mt-1">
+                    These are "The ones guests go back to" shown on the explore page. Use booking performance to decide what to promote.
+                  </p>
+                </div>
+                <div className="flex items-center bg-stone-100 rounded-xl p-1 shrink-0">
+                  <button
+                    onClick={() => saveFeaturedMode('auto')}
+                    disabled={savingFeaturedMode}
+                    className={`px-4 py-2 text-sm font-bold rounded-lg transition ${featuredMode === 'auto' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-700'}`}
+                  >
+                    Auto-Fill
+                  </button>
+                  <button
+                    onClick={() => saveFeaturedMode('manual')}
+                    disabled={savingFeaturedMode}
+                    className={`px-4 py-2 text-sm font-bold rounded-lg transition ${featuredMode === 'manual' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-700'}`}
+                  >
+                    Strict Manual
+                  </button>
+                  <button
+                    onClick={() => saveFeaturedMode('disabled')}
+                    disabled={savingFeaturedMode}
+                    className={`px-4 py-2 text-sm font-bold rounded-lg transition ${featuredMode === 'disabled' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-700'}`}
+                  >
+                    Disabled
+                  </button>
+                </div>
+              </div>
+
+              {featuredMode === 'disabled' && (
+                <div className="bg-stone-50 border border-stone-200 text-stone-600 p-4 rounded-2xl mb-6">
+                  <strong>Section Disabled:</strong> The featured stays section is currently hidden from the home page completely.
+                </div>
+              )}
+              {featuredMode === 'manual' && (
+                <div className="bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-2xl mb-6">
+                  <strong>Strict Manual Mode Active:</strong> The home page will ONLY show the properties you explicitly mark as Featured below (up to 3). If none are featured, the section will be hidden.
+                </div>
+              )}
+              {featuredMode === 'auto' && (
+                <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-4 rounded-2xl mb-6">
+                  <strong>Auto-Fill Active:</strong> Featured properties are shown first. Any remaining slots (up to 3 total) are automatically filled with the highest-rated properties on the platform.
+                </div>
+              )}
+
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse min-w-[800px]">
+                  <thead>
+                    <tr className="bg-stone-50 border-b border-stone-200">
+                      <th className="px-6 py-4 text-xs font-bold text-stone-500 uppercase tracking-wider rounded-tl-xl">Property</th>
+                      <th className="px-6 py-4 text-xs font-bold text-stone-500 uppercase tracking-wider">Location</th>
+                      <th className="px-6 py-4 text-xs font-bold text-stone-500 uppercase tracking-wider">Total Bookings</th>
+                      <th className="px-6 py-4 text-xs font-bold text-stone-500 uppercase tracking-wider text-right rounded-tr-xl">Featured Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-stone-100">
+                    {featuredCandidateStats.map(({ hotel, bookings }) => (
+                      <tr key={hotel.id} className={`transition ${hotel.featured ? 'bg-amber-50/30' : 'hover:bg-stone-50'}`}>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-4">
+                            <div className="h-10 w-10 rounded-lg overflow-hidden shrink-0 bg-stone-100">
+                              <SmartImage src={getHotelImage(hotel)} alt={hotel.name} className="w-full h-full object-cover" />
+                            </div>
+                            <span className="font-bold text-stone-900">{hotel.name}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-stone-600">
+                          {hotel.location}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            <CalendarRange className="w-4 h-4 text-stone-400" />
+                            <span className="font-medium text-stone-900">{bookings}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <button
+                            onClick={() => handleToggleFeatured(hotel)}
+                            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition ${
+                              hotel.featured 
+                                ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' 
+                                : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                            }`}
+                          >
+                            <Star className={`h-4 w-4 ${hotel.featured ? 'fill-amber-500 text-amber-500' : ''}`} />
+                            {hotel.featured ? 'Featured' : 'Promote'}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    {featuredCandidateStats.length === 0 && (
+                      <tr>
+                        <td colSpan={4} className="px-6 py-12 text-center text-stone-500">
+                          No properties available.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* ===================== PROPERTIES TAB ===================== */}
         {activeTab === 'properties' && (
           <div className="space-y-6 animate-in fade-in duration-300">
@@ -523,18 +874,41 @@ export default function AdminDashboard() {
                       </button>
 
                       <Link 
-                        to={`/dashboard/hotel/${hotel.id}`}
+                        to={`/admin/hotel/${hotel.id}`}
                         className="bg-stone-900 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-stone-800 transition flex items-center gap-2 ml-auto"
                       >
                         <Edit2 className="h-4 w-4" /> Edit
                       </Link>
-                      <button
-                        onClick={() => handleDeleteHotel(hotel.id!)}
-                        className="bg-red-100 text-red-700 p-2 rounded-xl hover:bg-red-200 transition"
-                        title="Delete Listing"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      {confirmDeleteId === hotel.id ? (
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-red-600">Sure?</span>
+                          <button
+                            onClick={() => {
+                              handleDeleteHotel(hotel.id!);
+                              setConfirmDeleteId(null);
+                            }}
+                            className="bg-red-600 text-white p-2 rounded-xl hover:bg-red-700 transition"
+                            title="Confirm Delete"
+                          >
+                            <CheckCircle className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => setConfirmDeleteId(null)}
+                            className="bg-stone-200 text-stone-700 p-2 rounded-xl hover:bg-stone-300 transition"
+                            title="Cancel"
+                          >
+                            <XCircle className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setConfirmDeleteId(hotel.id!)}
+                          className="bg-red-100 text-red-700 p-2 rounded-xl hover:bg-red-200 transition"
+                          title="Delete Listing"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -753,7 +1127,137 @@ export default function AdminDashboard() {
           </div>
         )}
 
+        {/* ===================== DESTINATIONS TAB ===================== */}
+        {activeTab === 'destinations' && (
+          <div className="space-y-6 animate-in fade-in duration-300">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+              <div>
+                <h2 className="text-3xl font-serif font-bold text-stone-900">Destinations</h2>
+                <p className="text-stone-500 mt-1">Manage the popular destinations shown on the explore page.</p>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-xl border border-stone-200">
+                  <span className="text-sm font-bold text-stone-700">Manual Mode</span>
+                  <button
+                    onClick={() => setManualDestinationsEnabled(!manualDestinationsEnabled)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${manualDestinationsEnabled ? 'bg-emerald-600' : 'bg-stone-300'}`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${manualDestinationsEnabled ? 'translate-x-6' : 'translate-x-1'}`}
+                    />
+                  </button>
+                </div>
+                <button
+                  onClick={saveDestinations}
+                  disabled={savingDestinations}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-bold transition flex items-center gap-2 disabled:opacity-50"
+                >
+                  {savingDestinations ? 'Saving...' : 'Save Configuration'}
+                </button>
+              </div>
+            </div>
+
+            {!manualDestinationsEnabled && (
+              <div className="bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-2xl mb-6">
+                <strong>Auto-Generation Active:</strong> The home page is currently showing destinations generated dynamically from live listings. Enable "Manual Mode" above to take full control and show exactly what is in your Active Popular List below.
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Custom Destinations Manager */}
+              <div className="bg-white rounded-3xl border border-stone-200 p-6 shadow-sm flex flex-col h-full">
+                <h3 className="font-bold text-stone-900 text-lg mb-2">Active Popular List</h3>
+                <p className="text-sm text-stone-500 mb-6">
+                  These destinations will be shown exactly as listed when Manual Mode is enabled.
+                </p>
+
+                <div className="flex gap-2 mb-6">
+                  <input
+                    type="text"
+                    value={newDestination}
+                    onChange={e => setNewDestination(e.target.value)}
+                    placeholder="E.g. Cape Maclear"
+                    className="flex-1 bg-stone-50 border border-stone-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-stone-900"
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && newDestination.trim() && !customDestinations.includes(newDestination.trim())) {
+                        setCustomDestinations([...customDestinations, newDestination.trim()]);
+                        setNewDestination('');
+                      }
+                    }}
+                  />
+                  <button
+                    onClick={() => {
+                      if (newDestination.trim() && !customDestinations.includes(newDestination.trim())) {
+                        setCustomDestinations([...customDestinations, newDestination.trim()]);
+                        setNewDestination('');
+                      }
+                    }}
+                    className="bg-stone-900 text-white px-4 py-2.5 rounded-xl font-bold hover:bg-stone-800 transition"
+                  >
+                    Add
+                  </button>
+                </div>
+
+                <div className="flex flex-col gap-2 flex-1">
+                  {customDestinations.map((dest, i) => (
+                    <div key={dest} className="flex items-center justify-between bg-stone-50 border border-stone-100 rounded-xl px-4 py-3 group">
+                      <span className="font-bold text-stone-900">{i + 1}. {dest}</span>
+                      <button
+                        onClick={() => setCustomDestinations(customDestinations.filter(d => d !== dest))}
+                        className="text-stone-400 hover:text-red-500 transition opacity-0 group-hover:opacity-100"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                  {customDestinations.length === 0 && (
+                    <div className="flex-1 flex items-center justify-center border-2 border-dashed border-stone-200 rounded-2xl p-6 text-center text-stone-500">
+                      List is empty.<br/>Add destinations above.
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Data-driven Recommendations */}
+              <div className="bg-white rounded-3xl border border-stone-200 p-6 shadow-sm flex flex-col h-full max-h-[600px]">
+                <h3 className="font-bold text-stone-900 text-lg mb-2">Performance Data</h3>
+                <p className="text-sm text-stone-500 mb-6">
+                  Calculated from live platform data (Bookings carry more weight). Click to add to your custom list.
+                </p>
+                
+                <div className="overflow-y-auto pr-2 space-y-2 flex-1 scrollbar-slim">
+                  {destinationStats.map(stat => (
+                    <div key={stat.location} className="flex items-center justify-between p-3 rounded-xl hover:bg-stone-50 border border-transparent hover:border-stone-100 transition">
+                      <div>
+                        <p className="font-bold text-stone-900">{stat.location}</p>
+                        <div className="flex items-center gap-3 mt-1 text-xs text-stone-500">
+                          <span className="flex items-center gap-1"><Building2 className="w-3 h-3" /> {stat.listings}</span>
+                          <span className="flex items-center gap-1"><CalendarRange className="w-3 h-3" /> {stat.bookings}</span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          if (!customDestinations.includes(stat.location)) {
+                            setCustomDestinations([...customDestinations, stat.location]);
+                          }
+                        }}
+                        disabled={customDestinations.includes(stat.location)}
+                        className="text-xs font-bold px-3 py-1.5 rounded-lg bg-stone-100 text-stone-600 hover:bg-stone-200 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                      >
+                        {customDestinations.includes(stat.location) ? 'Added' : 'Add'}
+                      </button>
+                    </div>
+                  ))}
+                  {destinationStats.length === 0 && (
+                    <p className="text-stone-500 text-center py-6">No destination data yet.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 }
+

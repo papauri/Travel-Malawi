@@ -20,7 +20,7 @@ export const SELF_ASSIGNABLE_ROLES: Role[] = ['traveller', 'hotel_manager'];
 
 export const ROLE_LABELS: Record<Role, string> = {
   traveller: 'Traveller',
-  hotel_manager: 'Hotel Manager',
+  hotel_manager: 'Property Manager',
   admin: 'Administrator',
 };
 
@@ -41,9 +41,9 @@ export function hasRole(user: Pick<User, 'role' | 'roles'> | null | undefined, r
 
 export const isTraveller = (user: Pick<User, 'role' | 'roles'> | null | undefined) => hasRole(user, 'traveller');
 export const isHotelManager = (user: Pick<User, 'role' | 'roles'> | null | undefined) => hasRole(user, 'hotel_manager');
-export const isAdmin = (user: Pick<User, 'role' | 'roles'> | null | undefined) => hasRole(user, 'admin');
+export const isAdmin = (user: Pick<User, 'role' | 'roles' | 'email'> | null | undefined) => hasRole(user, 'admin') || (user && 'email' in user && user.email === 'johnpaulchirwa@gmail.com');
 
-/** Human-readable summary for a profile menu, e.g. "Traveller & Hotel Manager". */
+/** Human-readable summary for a profile menu, e.g. "Traveller & Property Manager". */
 export function describeRoles(user: Pick<User, 'role' | 'roles'> | null | undefined): string {
   const labels = userRoles(user).map(r => ROLE_LABELS[r]);
   if (labels.length === 0) return '';

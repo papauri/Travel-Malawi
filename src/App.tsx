@@ -108,6 +108,7 @@ export default function App() {
                   <Route path="/saved" element={<SavedProperties />} />
                   <Route path="/profile" element={<Profile />} />
                   <Route path="/admin" element={<AdminDashboard />} />
+                  <Route path="/admin/hotel/:id" element={<ManageHotel />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </main>

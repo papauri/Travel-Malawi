@@ -882,7 +882,7 @@ export default function HotelDetails() {
                   markerImage={getHotelImage(hotel)}
                   popupText={hotel.name}
                   zoom={13}
-                  heightClass="h-56 sm:h-64"
+                  heightClass="h-[45vh] min-h-[320px] sm:h-[400px]"
                   interactive={true}
                   showSatelliteToggle={true}
                   showDistanceOverlay={false}

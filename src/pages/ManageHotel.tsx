@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, Link, useLocation } from 'react-router-dom';
 import { doc, getDoc, collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Hotel, RoomType, Booking, CurrencyCode, PriceMap, Restaurant, WeeklyHours } from '../types';
@@ -62,6 +62,7 @@ function hotelFormSnapshot(data: Partial<Hotel>): string {
     hours: data.hours ?? null,
     chatEnabled: data.chatEnabled !== false,
     callsEnabled: data.callsEnabled !== false,
+    adminChatEnabled: data.adminChatEnabled !== false,
     isOnline: data.isOnline ?? true,
     outOfOfficeMessage: data.outOfOfficeMessage ?? '',
   });
@@ -74,6 +75,9 @@ const HOTEL_READONLY_FIELDS = [
 
 export default function ManageHotel() {
   const { id } = useParams<{ id: string }>();
+  const location = useLocation();
+  const isAdminRoute = location.pathname.startsWith('/admin/');
+  const backUrl = isAdminRoute ? '/admin' : '/dashboard';
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
 
@@ -178,7 +182,7 @@ export default function ManageHotel() {
           setEditHotelData(hData);
           setRestaurant(hData.restaurant ?? null);
         } else {
-          navigate('/dashboard');
+          navigate(backUrl);
           return;
         }
 
@@ -762,7 +766,7 @@ export default function ManageHotel() {
       {/* There was no route back: a manager with several properties had to use
           the browser's back button to reach their dashboard again. */}
       <Link
-        to="/dashboard"
+        to={backUrl}
         className="inline-flex items-center gap-1.5 text-sm font-medium text-stone-500 hover:text-stone-900 transition mb-6"
       >
         <ChevronLeft className="h-4 w-4" /> All properties
@@ -932,10 +936,10 @@ export default function ManageHotel() {
             <div className="bg-white rounded-3xl border border-stone-200 p-8 shadow-sm">
               <h3 className="text-lg font-serif font-bold text-stone-900 mb-6">How your photos look to guests</h3>
               
-              {/* Hotel Gallery */}
+              {/* Property Gallery */}
               {(editHotelData.imageUrl || (editHotelData.galleryUrls && editHotelData.galleryUrls.length > 0)) && (
                 <div className="mb-8">
-                  <p className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-3">Hotel Gallery</p>
+                  <p className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-3">Property Gallery</p>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     {editHotelData.imageUrl && (
                       <div className="relative aspect-video rounded-xl overflow-hidden border-2 border-emerald-400">
@@ -1025,7 +1029,7 @@ export default function ManageHotel() {
                 <GalleryUpload 
                   value={editHotelData.galleryUrls || []} 
                   onChange={(urls) => setEditHotelData({ ...editHotelData, galleryUrls: urls })} 
-                  label="Hotel Gallery"
+                  label="Property Gallery"
                   folder="gallery"
                 />
               </div>
@@ -1139,10 +1143,22 @@ export default function ManageHotel() {
                 <h4 className="font-serif font-bold text-stone-900 mb-4">Guest Messaging</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    {hotel?.adminChatEnabled === false && (
+                    {hotel?.adminChatEnabled === false && !isAdmin(user) && (
                       <div className="mb-4 bg-amber-50 border border-amber-200 text-amber-800 p-3 rounded-lg text-sm">
                         <strong>Premium Feature:</strong> Chat capabilities have been disabled for this listing by an administrator. Please contact support to upgrade or re-enable.
                       </div>
+                    )}
+                    
+                    {isAdmin(user) && (
+                      <label className="flex items-center gap-3 cursor-pointer mb-6 p-3 bg-red-50 border border-red-200 rounded-lg">
+                        <input 
+                          type="checkbox" 
+                          checked={editHotelData.adminChatEnabled !== false} 
+                          onChange={(e) => setEditHotelData({...editHotelData, adminChatEnabled: e.target.checked})}
+                          className="w-5 h-5 text-red-600 border-red-300 rounded focus:ring-red-600"
+                        />
+                        <span className="font-bold text-red-900">Admin: Enable Chat Service Globally</span>
+                      </label>
                     )}
                     <label className="flex items-center gap-3 cursor-pointer mb-6">
                       <input 
@@ -1150,9 +1166,9 @@ export default function ManageHotel() {
                         checked={editHotelData.chatEnabled !== false} 
                         onChange={(e) => setEditHotelData({...editHotelData, chatEnabled: e.target.checked})}
                         className="w-5 h-5 text-stone-900 border-stone-300 rounded focus:ring-stone-900 disabled:opacity-50"
-                        disabled={hotel?.adminChatEnabled === false}
+                        disabled={editHotelData.adminChatEnabled === false}
                       />
-                      <span className={`font-medium ${hotel?.adminChatEnabled === false ? 'text-stone-400' : 'text-stone-700'}`}>Enable Pre-booking Chat</span>
+                      <span className={`font-medium ${editHotelData.adminChatEnabled === false ? 'text-stone-400' : 'text-stone-700'}`}>Enable Pre-booking Chat</span>
                     </label>
                     
                     <label className="flex items-center gap-3 cursor-pointer mb-6 ml-8">
@@ -1161,9 +1177,9 @@ export default function ManageHotel() {
                         checked={editHotelData.callsEnabled !== false} 
                         onChange={(e) => setEditHotelData({...editHotelData, callsEnabled: e.target.checked})}
                         className="w-5 h-5 text-stone-900 border-stone-300 rounded focus:ring-stone-900 disabled:opacity-50"
-                        disabled={editHotelData.chatEnabled === false || hotel?.adminChatEnabled === false}
+                        disabled={editHotelData.chatEnabled === false || editHotelData.adminChatEnabled === false}
                       />
-                      <span className={`font-medium ${editHotelData.chatEnabled === false || hotel?.adminChatEnabled === false ? 'text-stone-400' : 'text-stone-700'}`}>Allow Voice/Video Calls</span>
+                      <span className={`font-medium ${editHotelData.chatEnabled === false || editHotelData.adminChatEnabled === false ? 'text-stone-400' : 'text-stone-700'}`}>Allow Voice/Video Calls</span>
                     </label>
 
                     <label className="flex items-center gap-3 cursor-pointer">
@@ -1172,9 +1188,9 @@ export default function ManageHotel() {
                         checked={editHotelData.isOnline ?? true} 
                         onChange={(e) => setEditHotelData({...editHotelData, isOnline: e.target.checked})}
                         className="w-5 h-5 text-emerald-600 border-stone-300 rounded focus:ring-emerald-600 disabled:opacity-50"
-                        disabled={editHotelData.chatEnabled === false || hotel?.adminChatEnabled === false}
+                        disabled={editHotelData.chatEnabled === false || editHotelData.adminChatEnabled === false}
                       />
-                      <span className={`font-medium ${editHotelData.chatEnabled === false || hotel?.adminChatEnabled === false ? 'text-stone-400' : 'text-stone-700'}`}>Show as "Online"</span>
+                      <span className={`font-medium ${editHotelData.chatEnabled === false || editHotelData.adminChatEnabled === false ? 'text-stone-400' : 'text-stone-700'}`}>Show as "Online"</span>
                     </label>
                     <p className="text-xs text-stone-500 mt-2 ml-8">When offline, your out-of-office message is shown.</p>
                   </div>
@@ -1184,7 +1200,7 @@ export default function ManageHotel() {
                     <textarea 
                       value={editHotelData.outOfOfficeMessage || ''} 
                       onChange={e => setEditHotelData({...editHotelData, outOfOfficeMessage: e.target.value})}
-                      disabled={editHotelData.chatEnabled === false || hotel?.adminChatEnabled === false || editHotelData.isOnline === true}
+                      disabled={editHotelData.chatEnabled === false || editHotelData.adminChatEnabled === false || editHotelData.isOnline === true}
                       className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition h-24 resize-none disabled:opacity-50"
                       placeholder="We're currently away. Leave a message and we'll reply soon!" 
                     />

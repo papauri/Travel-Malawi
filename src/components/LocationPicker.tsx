@@ -506,7 +506,7 @@ export default function LocationPicker({
             }}
             popupText={selectedPlaceName || locationText || 'Property Location'}
             interactive={true}
-            heightClass="h-72"
+            heightClass="h-[60vh] min-h-[400px] sm:h-[500px]"
           />
         </div>
 

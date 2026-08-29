@@ -309,7 +309,7 @@ export default function ListProperty() {
                   maxLength={NAME_MAX}
                   value={draft.name}
                   onChange={e => set('name', e.target.value)}
-                  placeholder="e.g. Nkhata Bay Beach Lodge"
+                  placeholder="e.g. Nkhata Bay Beach Lodge or Central Guest House"
                   className={fieldClass}
                 />
                 <p className="mt-2 text-xs text-stone-400">
@@ -533,7 +533,7 @@ export default function ListProperty() {
                     autoComplete="email"
                     value={draft.contactEmail}
                     onChange={e => set('contactEmail', e.target.value)}
-                    placeholder="reservations@yourlodge.mw"
+                    placeholder="reservations@yourproperty.mw"
                     className={`${fieldClass} pl-11`}
                   />
                 </div>
@@ -826,7 +826,7 @@ function HostIntro({
             For Malawian hosts
           </p>
           <h1 className="max-w-3xl font-serif text-[clamp(2.5rem,6vw,4.5rem)] leading-[1.05] tracking-[-0.03em]">
-            Your lodge. Your rates.
+            Your property. Your rates.
             <br />
             Your guests.
           </h1>

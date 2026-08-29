@@ -441,7 +441,7 @@ export default function DirectionsPanel({
       </div>
 
       {/* Interactive Map with Route & Destination Pin */}
-      <div className="mb-6 h-[400px] rounded-2xl overflow-hidden border border-stone-200/80">
+      <div className="mb-6 h-[50vh] min-h-[400px] rounded-2xl overflow-hidden border border-stone-200/80">
         <InteractiveMap
           center={destCoords}
           markerPosition={destCoords}

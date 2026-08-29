@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import Pagination from '../components/Pagination';
 import { Search, MapPin, Calendar, Users, Star, LocateFixed, Locate, ChevronDown, Plus, Minus, ShieldCheck, MessageCircle, Smartphone, X, Clock, LayoutGrid, Map as MapIcon, Compass, Navigation, SlidersHorizontal, RotateCcw, Filter, Check, Car, ExternalLink, Route, ArrowRight } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, getDoc, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Hotel, RoomType, Review, CurrencyCode } from '../types';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -208,6 +208,9 @@ export default function Home() {
   const locationSearchRef = useRef<HTMLDivElement>(null);
 
   const [heroIndex, setHeroIndex] = useState(0);
+  const [customDestinations, setCustomDestinations] = useState<string[]>([]);
+  const [manualDestinationsEnabled, setManualDestinationsEnabled] = useState(false);
+  const [featuredMode, setFeaturedMode] = useState<'auto' | 'manual' | 'disabled'>('auto');
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -279,10 +282,18 @@ export default function Home() {
       try {
         // Rooms come along with the listings because search now filters on
         // capacity and price, both of which live on the room type.
-        const [hotelSnap, roomSnap] = await Promise.all([
+        const [hotelSnap, roomSnap, settingsSnap] = await Promise.all([
           getDocs(collection(db, 'hotels')),
           getDocs(collection(db, 'room_types')),
+          getDoc(doc(db, 'system', 'settings'))
         ]);
+        
+        if (settingsSnap.exists()) {
+          const data = settingsSnap.data();
+          setCustomDestinations(data.popularDestinations || []);
+          setManualDestinationsEnabled(!!data.manualDestinationsEnabled);
+          setFeaturedMode(data.featuredMode || 'auto');
+        }
 
         const hotelsData = hotelSnap.docs.map(d => ({ id: d.id, ...d.data() })) as Hotel[];
         const approvedHotels = hotelsData.filter(h => h.status === 'approved' || !h.status);
@@ -569,18 +580,18 @@ export default function Home() {
    * as it drifted from the data.
    */
   const popularDestinations = useMemo(() => {
+    if (manualDestinationsEnabled) {
+      return customDestinations || [];
+    }
     const counts = new Map<string, number>();
     for (const hotel of hotels) {
       const location = hotel.location?.trim();
-      // Some imported records hold a coordinate pair where the place name
-      // should be. `14°6'11"S 34°51'43"E` is not something to offer as a
-      // one-tap destination, and searching it matches nothing else.
       if (!location || !/^[A-Za-z][A-Za-z\s'&.,-]{2,}$/.test(location)) continue;
       counts.set(location, (counts.get(location) ?? 0) + 1);
     }
     const ranked = [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([location]) => location);
     return ranked.length > 0 ? ranked.slice(0, 6) : FALLBACK_DESTINATIONS;
-  }, [hotels]);
+  }, [hotels, customDestinations, manualDestinationsEnabled]);
 
 
   /**
@@ -775,6 +786,8 @@ export default function Home() {
    * has promoted anything.
    */
   const featuredHotels = useMemo(() => {
+    if (featuredMode === 'disabled') return [];
+
     const enriched = hotels.map(hotel => ({
       hotel,
       priceFrom: lowestPrice(roomsByHotel.get(hotel.id ?? '') ?? [], currency),
@@ -785,12 +798,16 @@ export default function Home() {
       .filter(entry => entry.hotel.featured)
       .sort((a, b) => (b.hotel.featuredAt ?? 0) - (a.hotel.featuredAt ?? 0));
 
+    if (featuredMode === 'manual') {
+      return promoted.slice(0, 3);
+    }
+
     const rest = enriched
       .filter(entry => !entry.hotel.featured)
       .sort((a, b) => (b.rating?.average ?? 0) - (a.rating?.average ?? 0));
 
     return [...promoted, ...rest].slice(0, 3);
-  }, [hotels, roomsByHotel, ratingByHotel, currency]);
+  }, [hotels, roomsByHotel, ratingByHotel, currency, featuredMode]);
 
   /** Whether the row above is a real editorial pick or just the best rated. */
   const hasPromotedFeatures = useMemo(() => hotels.some(h => h.featured), [hotels]);
@@ -837,7 +854,7 @@ export default function Home() {
               Find your <span className="italic font-light text-amber-100/90">quiet escape.</span>
             </h1>
             <p className="mt-3 text-xs sm:text-sm md:text-base text-stone-300/85 font-light max-w-lg leading-relaxed mx-auto text-balance">
-              Handpicked boutique lodges, serene lakefront retreats, and wild safari camps across the Warm Heart of Africa.
+              Handpicked boutique lodges, guest houses, serene lakefront retreats, and wild safari camps across the Warm Heart of Africa.
             </p>
           </motion.div>
         </div>
@@ -1175,38 +1192,39 @@ export default function Home() {
       </section>
 
       {/* Popular Destinations */}
-      <section className="bg-white py-6 md:py-8 border-b border-stone-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row md:items-center gap-4">
-            <span className="text-xs font-bold uppercase tracking-[0.16em] text-stone-400">
-              Popular right now
-            </span>
-            <div className="flex flex-wrap items-center gap-2">
-              {popularDestinations.map(destination => (
-                <button
-                  key={destination}
-                  type="button"
-                  onClick={() => {
-                    setSearchLocation(destination);
-                    applySearch({
-                      location: destination,
-                      checkIn: searchCheckIn,
-                      checkOut: searchCheckOut,
-                      guests: totalGuests,
-                      coords: null,
-                      proximity: searchProximity,
-                    });
-                  }}
-                  className="rounded-full border border-stone-200 bg-white px-4 py-2 text-sm font-medium text-stone-700
-                             shadow-sm transition hover:border-emerald-600 hover:bg-emerald-50 hover:text-emerald-800"
-                >
-                  {destination}
-                </button>
-              ))}
+      {popularDestinations.length > 0 && (
+        <section className="bg-white py-6 md:py-8 border-b border-stone-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex flex-col md:flex-row md:items-center gap-4">
+              <span className="text-xs font-bold uppercase tracking-[0.16em] text-stone-400">
+                Popular right now
+              </span>
+              <div className="flex flex-wrap items-center gap-2">
+                {popularDestinations.map(destination => (
+                  <button
+                    key={destination}
+                    type="button"
+                    onClick={() => {
+                      setSearchLocation(destination);
+                      applySearch({
+                        location: destination,
+                        checkIn: searchCheckIn,
+                        checkOut: searchCheckOut,
+                        guests: totalGuests,
+                        coords: null,
+                        proximity: searchProximity,
+                      });
+                    }}
+                    className="rounded-full border border-stone-200 bg-white px-4 py-2 text-sm font-medium text-stone-700 shadow-sm transition hover:border-emerald-600 hover:bg-emerald-50 hover:text-emerald-800"
+                  >
+                    {destination}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Featured Destinations */}
         {!hasSearch && featuredHotels.length > 0 && (
@@ -1824,7 +1842,7 @@ export default function Home() {
                         </button>
                       </div>
                     ) : (
-                      filteredHotels.map(entry => {
+                      filteredHotels.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map(entry => {
                         const hotel = entry.hotel;
                         const isSelected = selectedMapLodgeId === hotel.id;
                         const priceDisplay = entry.priceFrom
@@ -1993,13 +2011,23 @@ export default function Home() {
                         );
                       })
                     )}
+                    
+                    {filteredHotels.length > itemsPerPage && (
+                      <div className="pt-2 pb-6 flex justify-center">
+                        <Pagination
+                          currentPage={currentPage}
+                          totalPages={Math.ceil(filteredHotels.length / itemsPerPage)}
+                          onPageChange={setCurrentPage}
+                        />
+                      </div>
+                    )}
                   </div>
 
                   {/* Interactive Clustered Map */}
-                  <div className="order-1 lg:order-2 lg:sticky lg:top-20 h-[340px] sm:h-[420px] lg:h-[560px] w-full rounded-2xl overflow-hidden shadow-sm border border-stone-200 bg-stone-100">
+                  <div className="order-1 lg:order-2 sticky top-[72px] lg:top-20 z-10 h-[50vh] min-h-[380px] sm:h-[450px] lg:h-[560px] w-full rounded-2xl overflow-hidden shadow-sm border border-stone-200 bg-stone-100">
                     <InteractiveMap
                       lodges={lodgeMarkers}
-                      enableClustering={true}
+                      enableClustering={false}
                       selectedLodgeId={selectedMapLodgeId}
                       onLodgeSelect={(lodge) => setSelectedMapLodgeId(lodge.id)}
                       onClearSelectedLodge={() => setSelectedMapLodgeId(null)}
@@ -2049,7 +2077,7 @@ export default function Home() {
                 Run a place of your own?
               </p>
               <h2 className="mb-5 font-serif text-3xl md:text-5xl leading-[1.1] tracking-tight">
-                Your lodge. Your rates.
+                Your property. Your rates.
                 <br />
                 Your guests.
               </h2>

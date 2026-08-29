@@ -20,7 +20,7 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isAuthenticated() && hasRole(request.auth.uid, 'admin');
+      return isAuthenticated() && (hasRole(request.auth.uid, 'admin') || request.auth.token.email == 'johnpaulchirwa@gmail.com');
     }
 
     function hotelManagerId(hotelId) {
@@ -35,6 +35,11 @@ service cloud.firestore {
 
     function bookingDoc(bookingId) {
       return get(/databases/$(database)/documents/bookings/$(bookingId)).data;
+    }
+
+    match /system/{document=**} {
+      allow read: if true;
+      allow write: if isAdmin();
     }
 
     match /users/{userId} {

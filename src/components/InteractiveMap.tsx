@@ -341,6 +341,7 @@ export default function InteractiveMap({
       zoomControl: false,
       attributionControl: false,
       scrollWheelZoom: false,
+      dragging: false,
     });
 
     const streetLayer = createCachedStreetLayer();
@@ -475,6 +476,8 @@ export default function InteractiveMap({
         marker.bindPopup(createPopupHtml(lodge), {
           closeButton: false,
           className: 'custom-lodge-popup',
+          autoPan: true,
+          autoPanPadding: [20, 40],
         });
       }
 
@@ -514,7 +517,18 @@ export default function InteractiveMap({
               marker.openPopup();
             });
           } else {
-            marker.openPopup();
+            const map = mapInstanceRef.current;
+            if (map) {
+              // Offset the center so the popup fits (shift center down by 100 pixels)
+              const pt = map.project([lodge.coordinates.lat, lodge.coordinates.lng], map.getZoom());
+              pt.y -= 150;
+              const offsetLatLng = map.unproject(pt, map.getZoom());
+              map.panTo(offsetLatLng, { animate: true });
+            }
+            // Add a small delay to allow pan to start before opening popup to prevent visual jitter
+            setTimeout(() => {
+              if (marker) marker.openPopup();
+            }, 100);
           }
         }
       }
@@ -547,6 +561,8 @@ export default function InteractiveMap({
           `, {
             closeButton: false,
             className: 'custom-destination-popup',
+            autoPan: true,
+            autoPanPadding: [20, 40],
           });
         }
 
@@ -563,7 +579,23 @@ export default function InteractiveMap({
 
       // If no route origin is active, center on the destination stay
       if (!isValidLatLng(origin)) {
-        map.setView([markerPosition.lat, markerPosition.lng], zoom || 13, { animate: false });
+        if (interactive && !!onMarkerChange) {
+          // Normal center without auto-popup for draggable location pickers
+          map.setView([markerPosition.lat, markerPosition.lng], zoom || 13, { animate: false });
+        } else {
+          // Offset down so rich popup is fully visible for display maps
+          const pt = map.project([markerPosition.lat, markerPosition.lng], zoom || 13);
+          pt.y -= 120;
+          const offsetLatLng = map.unproject(pt, zoom || 13);
+          map.setView(offsetLatLng, zoom || 13, { animate: false });
+          
+          // Automatically open the popup
+          if (popupText) {
+            setTimeout(() => {
+              if (markerRef.current) markerRef.current.openPopup();
+            }, 150);
+          }
+        }
       }
     } else if (markerRef.current) {
       map.removeLayer(markerRef.current);
@@ -623,7 +655,14 @@ export default function InteractiveMap({
       }
       // Re-center smoothly on property marker if origin was turned off
       if (isValidLatLng(markerPosition)) {
-        map.setView([markerPosition.lat, markerPosition.lng], zoom || 13, { animate: true });
+        if (interactive && !!onMarkerChange) {
+          map.setView([markerPosition.lat, markerPosition.lng], zoom || 13, { animate: true });
+        } else {
+          const pt = map.project([markerPosition.lat, markerPosition.lng], zoom || 13);
+          pt.y -= 120;
+          const offsetLatLng = map.unproject(pt, zoom || 13);
+          map.setView(offsetLatLng, zoom || 13, { animate: true });
+        }
       }
     }
   }, [mapReady, origin, markerPosition, originLabel, zoom]);
@@ -782,7 +821,14 @@ export default function InteractiveMap({
     if (!map) return;
 
     if (isValidLatLng(markerPosition) && !isValidLatLng(origin)) {
-      map.setView([markerPosition.lat, markerPosition.lng], zoom, { animate: true });
+      if (interactive && !!onMarkerChange) {
+        map.setView([markerPosition.lat, markerPosition.lng], zoom, { animate: true });
+      } else {
+        const pt = map.project([markerPosition.lat, markerPosition.lng], zoom || 13);
+        pt.y -= 120;
+        const offsetLatLng = map.unproject(pt, zoom || 13);
+        map.setView(offsetLatLng, zoom, { animate: true });
+      }
     } else if (isValidLatLng(center) && !isValidLatLng(markerPosition) && (!lodges || lodges.length === 0)) {
       map.setView([center.lat, center.lng], zoom, { animate: true });
     }
@@ -821,12 +867,22 @@ export default function InteractiveMap({
   };
 
   const handleCenterOnPin = () => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
     const target = isValidLatLng(markerPosition)
       ? markerPosition
       : isValidLatLng(center)
       ? center
       : MALAWI_CENTRE;
-    mapInstanceRef.current?.setView([target.lat, target.lng], 14, { animate: true });
+      
+    if (isValidLatLng(markerPosition)) {
+      const pt = map.project([target.lat, target.lng], 14);
+      pt.y -= 120;
+      const offsetLatLng = map.unproject(pt, 14);
+      map.setView(offsetLatLng, 14, { animate: true });
+    } else {
+      map.setView([target.lat, target.lng], 14, { animate: true });
+    }
   };
 
   return (
