@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { useManagerPresence } from '../hooks/usePresence';
 import { 
   collection, 
   query, 
