@@ -16,7 +16,8 @@ import { db } from '../lib/firebase';
 
 export default function Navbar() {
   const { user, logOut } = useAuth();
-  const { openAuth } = useAuthDialog();`n  const { presence, setManualStatus } = usePresence();
+  const { openAuth } = useAuthDialog();
+  const { presence, setManualStatus } = usePresence();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const [soundOn, setSoundOn] = useState(isSoundEnabled);

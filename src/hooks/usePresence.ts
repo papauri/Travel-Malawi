@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { isManager } from '../lib/roles';
+import { isHotelManager } from '../lib/roles';
 
 export type PresenceStatus = 'online' | 'away' | 'offline';
 
@@ -75,7 +75,7 @@ export function usePresence() {
 
   // Activity tracking for managers
   useEffect(() => {
-    if (!user || !isManager(user)) return;
+    if (!user || !isHotelManager(user)) return;
 
     let isActive = true;
     let manualOverride = false; // To respect manual status
