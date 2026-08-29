@@ -4,6 +4,7 @@ import PropertyChat from '../components/PropertyChat';
 import BookingChat from '../components/BookingChat';
 import Modal from '../components/Modal';
 import { useAuth } from './AuthContext';
+import { useManagerPresence } from '../hooks/usePresence';
 import { MessageSquare, Minus, X, Maximize2, Sparkles } from 'lucide-react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -68,27 +69,7 @@ export function ChatModalProvider({ children }: { children: React.ReactNode }) {
     }
   }, [activeChat]);
 
-  // If the active chat is an inquiry, listen to the hotel's live online status for the minimized pill
-  useEffect(() => {
-    if (!activeChat || activeChat.type !== 'inquiry' || !activeChat.hotel?.id) {
-      setLiveHotelStatus({});
-      return;
-    }
 
-    const unsub = onSnapshot(doc(db, 'hotels', activeChat.hotel.id), (snap) => {
-      if (snap.exists()) {
-        const data = snap.data();
-        setLiveHotelStatus({
-          isOnline: data.isOnline !== false,
-          name: data.name,
-        });
-      }
-    }, (err) => {
-      console.warn('Could not listen to hotel status in ChatModalContext:', err);
-    });
-
-    return () => unsub();
-  }, [activeChat]);
 
   const openInquiryChat = (hotel: Hotel, guestId?: string, guestName?: string) => {
     setActiveChat({
@@ -126,10 +107,11 @@ export function ChatModalProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const currentHotelName = liveHotelStatus.name || (activeChat?.type === 'inquiry' ? activeChat.hotel.name : 'Property');
-  const isOnline = liveHotelStatus.isOnline !== undefined 
-    ? liveHotelStatus.isOnline 
-    : (activeChat?.type === 'inquiry' ? activeChat.hotel.isOnline !== false : true);
+  const currentHotelName = activeChat?.type === 'inquiry' ? activeChat.hotel.name : 'Property';
+  const activeManagerId = activeChat?.type === 'inquiry' ? activeChat.hotel.managerId : 
+                          activeChat?.type === 'booking' ? activeChat.booking.managerId : undefined;
+  const managerPresence = useManagerPresence(activeManagerId);
+  const isOnline = managerPresence?.status === 'online';
 
   return (
     <ChatModalContext.Provider

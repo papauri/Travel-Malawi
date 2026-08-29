@@ -64,6 +64,8 @@ export default function PropertyChat({
   
   // Real-time live hotel status so online/offline updates instantly on guest screen
   const [liveHotel, setLiveHotel] = useState<Hotel>(hotel);
+  const managerPresence = useManagerPresence(hotel.managerId);
+  const hostIsOnline = managerPresence?.status === 'online';
 
   const [showEndChatConfirm, setShowEndChatConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -477,7 +479,7 @@ export default function PropertyChat({
                 className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ring-2 ring-stone-900 transition-colors ${
                   otherInChat
                     ? 'bg-emerald-400 animate-pulse'
-                    : liveHotel.isOnline !== false
+                    : hostIsOnline
                     ? 'bg-emerald-500'
                     : 'bg-stone-500'
                 }`}
@@ -510,11 +512,11 @@ export default function PropertyChat({
                   <div className="flex items-center gap-1 text-[11px] text-stone-300">
                     <span 
                       className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                        liveHotel.isOnline !== false ? 'bg-emerald-400' : 'bg-stone-500'
+                        hostIsOnline ? 'bg-emerald-400' : 'bg-stone-500'
                       }`} 
                     />
                     <span className="text-stone-300 truncate">
-                      {liveHotel.isOnline !== false ? 'Host Online' : 'Host Away'}
+                      {hostIsOnline ? 'Host Online' : 'Host Away'}
                     </span>
                   </div>
                 )}
@@ -603,7 +605,7 @@ export default function PropertyChat({
       </div>
       
       {/* Offline Out of Office Banner */}
-      {liveHotel.isOnline === false && liveHotel.outOfOfficeMessage && (
+      {!hostIsOnline && liveHotel.outOfOfficeMessage && (
         <div className="bg-amber-50 border-b border-amber-200/80 p-3 flex items-start gap-2.5 transition-all animate-fadeIn">
           <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
           <div>
@@ -790,7 +792,7 @@ export default function PropertyChat({
                 onChange={handleInputChange}
                 onBlur={handleInputBlur}
                 placeholder={
-                  liveHotel.isOnline !== false 
+                  hostIsOnline 
                     ? "Type your message..." 
                     : "Host is away. Leave a message..."
                 }
