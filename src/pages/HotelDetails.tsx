@@ -4,6 +4,7 @@ import { doc, getDoc, collection, query, where, getDocs, addDoc, onSnapshot } fr
 import { db } from '../lib/firebase';
 import { Hotel, RoomType, Review, CurrencyCode } from '../types';
 import { useAuth } from '../contexts/AuthContext';
+import { Helmet } from 'react-helmet-async';
 import { useChatModal } from '../contexts/ChatModalContext';
 import PhoneInput from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
