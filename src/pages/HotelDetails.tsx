@@ -326,7 +326,8 @@ export default function HotelDetails() {
     if (problems.length > 0) {
       setFieldErrors(errorsByField(problems));
       toast.error(problems[0].message);
-      return;
+        setTimeout(() => document.querySelector('.text-red-600')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+        return;
     }
     setFieldErrors({});
 
@@ -1554,3 +1555,4 @@ export default function HotelDetails() {
     </div>
   );
 }
+
