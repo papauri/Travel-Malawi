@@ -1009,15 +1009,33 @@ export default function ManageHotel() {
               )}
 
               {/* Room Images */}
-              {rooms.some(r => r.imageUrl) && (
+              {rooms.some(r => r.imageUrl || (r.galleryUrls && r.galleryUrls.length > 0)) && (
                 <div>
                   <p className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-3">Room Images</p>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {rooms.filter(r => r.imageUrl).map(room => (
-                      <div key={`room-${room.id}`} className="relative aspect-video rounded-xl overflow-hidden border border-blue-200">
-                        <SmartImage src={room.imageUrl} alt={room.name} className="w-full h-full object-cover" />
-                        <span className="absolute top-2 left-2 bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">{room.name}</span>
+                  <div className="space-y-6">
+                    {rooms.filter(r => r.imageUrl || (r.galleryUrls && r.galleryUrls.length > 0)).map(room => (
+                      <div key={`room-preview-${room.id}`} className="space-y-3">
+                        <p className="text-sm font-bold text-stone-700">{room.name}</p>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                          {room.imageUrl && (
+                            <div className="relative aspect-video rounded-xl overflow-hidden border-2 border-blue-400">
+                              <SmartImage src={room.imageUrl} alt={room.name} className="w-full h-full object-cover" />
+                              <span className="absolute top-2 left-2 bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider shadow-sm">Room Main</span>
+                            </div>
+                          )}
+                          {(room.galleryUrls || []).map((url, idx) => (
+                            <div key={`room-${room.id}-gal-${idx}`} className="relative aspect-video rounded-xl overflow-hidden border border-stone-200">
+                              <SmartImage src={url} alt={`Gallery ${idx + 1}`} className="w-full h-full object-cover" />
+                              <span className="absolute top-2 left-2 bg-stone-900/70 text-white text-[10px] px-2 py-0.5 rounded-md">Gallery</span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              </div>
                     ))}
                   </div>
                 </div>
