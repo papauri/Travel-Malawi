@@ -440,7 +440,7 @@ export default function Home() {
       setSearching(false);
       // Ensure clean viewport alignment after search state commit
       setTimeout(() => {
-        document.getElementById('search-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        document.getElementById(viewMode === 'grid' ? 'map-canvas' : 'grid-canvas')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 60);
     }
   };
@@ -1483,7 +1483,32 @@ export default function Home() {
               </div>
             )}
 
-            {/* Sort Dropdown */}
+            
+              {/* Geolocation Toggle */}
+              <button
+                type="button"
+                onClick={handleToggleUserLocation}
+                disabled={isLocatingUser}
+                className={`flex items-center gap-1.5 border rounded-full px-3.5 py-1.5 text-xs font-semibold outline-none transition shadow-2xs ${
+                  showUserLocation
+                    ? 'bg-blue-50 text-blue-800 border-blue-200 hover:bg-blue-100'
+                    : 'bg-white border-stone-200 text-stone-700 hover:bg-stone-50'
+                }`}
+              >
+                {isLocatingUser ? (
+                  <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <div className="relative flex items-center justify-center">
+                    <Locate className="w-3.5 h-3.5" />
+                    {showUserLocation && (
+                      <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-blue-500 rounded-full animate-ping" />
+                    )}
+                  </div>
+                )}
+                <span className="hidden sm:inline">{showUserLocation ? 'GPS: ON' : 'Use GPS'}</span>
+              </button>
+
+              {/* Sort Dropdown */}
             <label className="flex items-center gap-2 shrink-0">
               <span className="text-xs font-bold text-stone-400 uppercase tracking-wider hidden sm:inline">Sort</span>
               <select
@@ -1542,7 +1567,7 @@ export default function Home() {
             {viewMode === 'grid' ? (
               /* LIST / GRID VIEW */
               <div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 gap-y-8">
+                <div id="grid-canvas" className="scroll-mt-24 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 gap-y-8">
                   {filteredHotels.length > 0 ? filteredHotels.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((entry, index) => (
                     <HotelCard
                       key={entry.hotel.id}
@@ -1590,232 +1615,8 @@ export default function Home() {
             ) : (
               /* MAP VIEW */
               <div className="space-y-4">
-                {/* Map View Search, Filter & Location Control Bar */}
-                <div className="bg-white rounded-2xl border border-stone-200 shadow-xs p-3.5 md:p-4 space-y-3.5">
-                  {/* Top Row: Search Input, Quick Filters, Geolocation Toggle, and Sort */}
-                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-                    {/* Search Field */}
-                    <div className="relative flex-1 min-w-[240px]">
-                      <Search className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                      <input
-                        type="text"
-                        value={mapSearchText}
-                        onChange={(e) => setMapSearchText(e.target.value)}
-                        placeholder="Search map by lodge name, district, or lakefront area..."
-                        className="w-full pl-9 pr-8 py-2 text-xs md:text-sm bg-stone-50 hover:bg-stone-100/80 focus:bg-white border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-600/30 focus:border-emerald-600 transition"
-                      />
-                      {mapSearchText && (
-                        <button
-                          type="button"
-                          onClick={() => setMapSearchText('')}
-                          className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-stone-400 hover:text-stone-700 transition"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Controls Row: Geolocation, Filters, Sort */}
-                    <div className="flex flex-wrap items-center gap-2">
-                      {/* User Location Toggle Button */}
-                      <button
-                        type="button"
-                        onClick={handleToggleUserLocation}
-                        disabled={isLocatingUser}
-                        className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition shadow-2xs border ${
-                          showUserLocation
-                            ? 'bg-blue-600 text-white border-blue-700 hover:bg-blue-700'
-                            : 'bg-stone-50 text-stone-700 border-stone-200 hover:bg-stone-100 hover:text-stone-900'
-                        }`}
-                        title={showUserLocation ? "Turn off your location pin" : "Locate me on map to find nearest stays"}
-                      >
-                        {isLocatingUser ? (
-                          <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                        ) : (
-                          <div className="relative flex items-center justify-center">
-                            <Locate className={`w-3.5 h-3.5 ${showUserLocation ? 'text-white' : 'text-blue-600'}`} />
-                            {showUserLocation && (
-                              <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping" />
-                            )}
-                          </div>
-                        )}
-                        <span>{showUserLocation ? 'My Location: ON' : 'Show My Location'}</span>
-                      </button>
-
-                      {/* Sort Dropdown */}
-                      <div className="relative inline-flex items-center">
-                        <select
-                          value={sortKey}
-                          onChange={(e) => {
-                            const newSort = e.target.value as SortKey;
-                            setSortKey(newSort);
-                            if (newSort === 'distance_asc' && !showUserLocation && !isLocatingUser) {
-                              handleToggleUserLocation();
-                            }
-                          }}
-                          className="appearance-none text-xs font-semibold bg-stone-50 hover:bg-stone-100 text-stone-800 border border-stone-200 rounded-xl pl-3 pr-7 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-600/30 focus:border-emerald-600 transition cursor-pointer"
-                        >
-                          <option value="recommended">Sort: Recommended</option>
-                          <option value="distance_asc">Sort: Nearest to Me (GPS)</option>
-                          <option value="price_asc">Sort: Price: Low to High</option>
-                          <option value="price_desc">Sort: Price: High to Low</option>
-                          <option value="rating">Sort: Guest Rating</option>
-                          <option value="name_asc">Sort: Name (A-Z)</option>
-                        </select>
-                        <ChevronDown className="w-3.5 h-3.5 text-stone-500 absolute right-2.5 pointer-events-none" />
-                      </div>
-
-                      {/* Filter Modal / Popover Toggle */}
-                      <button
-                        type="button"
-                        onClick={() => setShowMapFiltersModal(prev => !prev)}
-                        className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition border ${
-                          activeMapFiltersCount > 0
-                            ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
-                            : 'bg-stone-50 text-stone-700 border-stone-200 hover:bg-stone-100'
-                        }`}
-                      >
-                        <SlidersHorizontal className="w-3.5 h-3.5" />
-                        <span>Filters</span>
-                        {activeMapFiltersCount > 0 && (
-                          <span className="w-4 h-4 rounded-full bg-emerald-700 text-white text-[10px] flex items-center justify-center font-black">
-                            {activeMapFiltersCount}
-                          </span>
-                        )}
-                      </button>
-
-                      {/* Clear Filters Button */}
-                      {activeMapFiltersCount > 0 && (
-                        <button
-                          type="button"
-                          onClick={clearMapFilters}
-                          className="inline-flex items-center gap-1 px-2.5 py-2 text-xs font-semibold text-stone-500 hover:text-stone-800 transition"
-                          title="Reset map filters"
-                        >
-                          <RotateCcw className="w-3 h-3" />
-                          <span>Reset</span>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Filter Details Drawer / Bar */}
-                  <div className={`pt-2 border-t border-stone-100 flex flex-wrap items-center gap-2.5 transition-all ${
-                    showMapFiltersModal ? 'block' : 'hidden md:flex'
-                  }`}>
-                    {/* Category Selector Chips */}
-                    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full scrollbar-none">
-                      <button
-                        type="button"
-                        onClick={() => setActiveCategory('All')}
-                        className={`px-3 py-1 rounded-full text-xs font-medium shrink-0 transition ${
-                          activeCategory === 'All'
-                            ? 'bg-stone-900 text-white font-bold'
-                            : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-                        }`}
-                      >
-                        All Types
-                      </button>
-                      {PROPERTY_CATEGORIES.map(cat => (
-                        <button
-                          key={cat}
-                          type="button"
-                          onClick={() => setActiveCategory(cat)}
-                          className={`px-3 py-1 rounded-full text-xs font-medium shrink-0 transition ${
-                            activeCategory === cat
-                              ? 'bg-stone-900 text-white font-bold'
-                              : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-                          }`}
-                        >
-                          {cat}
-                        </button>
-                      ))}
-                    </div>
-
-                    {/* Extra Secondary Filters */}
-                    <div className="flex flex-wrap items-center gap-2 pt-1 md:pt-0">
-                      {/* Price Range Slider Toggle in Map View */}
-                      <button
-                        type="button"
-                        onClick={() => setShowPriceFilterDrawer(prev => !prev)}
-                        className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg border transition ${
-                          isPriceFiltered
-                            ? 'bg-emerald-700 text-white border-emerald-700'
-                            : 'bg-stone-50 hover:bg-stone-100 text-stone-700 border-stone-200'
-                        }`}
-                      >
-                        <SlidersHorizontal className="w-3 h-3" />
-                        <span>
-                          {isPriceFiltered 
-                            ? `${formatMoney(priceRange[0], currency)} - ${priceRange[1] >= priceLimitMax ? `${formatMoney(priceLimitMax, currency)}+` : formatMoney(priceRange[1], currency)}`
-                            : 'Budget: Range Slider'}
-                        </span>
-                      </button>
-
-                      {/* Rating Filter */}
-                      <select
-                        value={mapMinRating}
-                        onChange={(e) => setMapMinRating(Number(e.target.value))}
-                        className="text-xs font-medium bg-stone-50 hover:bg-stone-100 text-stone-700 border border-stone-200 rounded-lg px-2.5 py-1 focus:outline-none"
-                      >
-                        <option value={0}>Rating: Any</option>
-                        <option value={4.0}>★ 4.0 & above</option>
-                        <option value={4.5}>★ 4.5 & above</option>
-                      </select>
-
-                      {/* Amenity Filter */}
-                      <select
-                        value={mapAmenityFilter}
-                        onChange={(e) => setMapAmenityFilter(e.target.value)}
-                        className="text-xs font-medium bg-stone-50 hover:bg-stone-100 text-stone-700 border border-stone-200 rounded-lg px-2.5 py-1 focus:outline-none"
-                      >
-                        <option value="all">Amenity: Any</option>
-                        <option value="beach">Lakefront / Beach</option>
-                        <option value="pool">Swimming Pool</option>
-                        <option value="safari">Safari / Game Drives</option>
-                        <option value="wifi">Free WiFi</option>
-                        <option value="restaurant">Restaurant / Dining</option>
-                        <option value="air conditioning">Air Conditioning</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Geolocation Notice Banner if active */}
-                  {showUserLocation && userLocation && (
-                    <div className="flex items-center justify-between bg-blue-50/80 border border-blue-200/80 px-3.5 py-2 rounded-xl text-xs text-blue-900">
-                      <div className="flex items-center gap-2">
-                        <Locate className="w-4 h-4 text-blue-600 animate-pulse shrink-0" />
-                        <span>
-                          <strong>Location active:</strong> Showing real distances from your GPS location. Stays are sorted by proximity.
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={handleToggleUserLocation}
-                        className="text-[11px] font-bold text-blue-700 hover:text-blue-900 underline ml-2 shrink-0"
-                      >
-                        Turn off
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Geolocation Error Alert if failed */}
-                  {userLocationError && (
-                    <div className="flex items-center justify-between bg-amber-50 border border-amber-200 px-3.5 py-2 rounded-xl text-xs text-amber-900">
-                      <span>{userLocationError}</span>
-                      <button
-                        type="button"
-                        onClick={() => setUserLocationError(null)}
-                        className="text-amber-700 hover:text-amber-900 p-0.5"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  )}
-                </div>
-
                 {/* Main Map View: Left Cards List + Right Map Canvas */}
-                <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] xl:grid-cols-[420px_1fr] gap-4 lg:gap-6 items-start">
+                <div id="map-canvas" className="scroll-mt-24 grid grid-cols-1 lg:grid-cols-[380px_1fr] xl:grid-cols-[420px_1fr] gap-4 lg:gap-6 items-start">
                   {/* Lodge Cards Feed (Natural flow on mobile, scrollable sidebar on desktop) */}
                   <div className="order-2 lg:order-1 lg:h-[560px] lg:overflow-y-auto pr-0 lg:pr-1 space-y-3 scrollbar-slim">
                     <div className="flex items-center justify-between px-1 text-xs text-stone-500 font-medium">
@@ -2121,9 +1922,10 @@ export default function Home() {
       <div className="fixed bottom-24 md:bottom-12 right-6 md:right-12 z-50 pointer-events-none">
         <button
           onClick={() => {
-            setViewMode(viewMode === 'grid' ? 'map' : 'grid');
+            const newMode = viewMode === 'grid' ? 'map' : 'grid';
+            setViewMode(newMode);
             setTimeout(() => {
-              document.getElementById('search-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              document.getElementById(newMode === 'map' ? 'map-canvas' : 'grid-canvas')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }, 50);
           }}
           className="pointer-events-auto flex items-center justify-center gap-2 bg-stone-900/95 backdrop-blur-md text-white rounded-full px-4 py-3 sm:px-5 shadow-[0_4px_24px_rgba(0,0,0,0.25)] hover:scale-105 hover:bg-stone-800 transition-all active:scale-95 border border-stone-700/50"
@@ -2144,6 +1946,7 @@ export default function Home() {
     </div>
   );
 }
+
 
 
 
