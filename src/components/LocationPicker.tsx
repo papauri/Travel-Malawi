@@ -44,6 +44,7 @@ import {
   distanceKm,
 } from '../lib/geo';
 import InteractiveMap from './InteractiveMap';
+import { usePermission } from '../contexts/PermissionContext';
 
 interface Props {
   value: LatLng | null | undefined;
@@ -77,6 +78,7 @@ export default function LocationPicker({
 }: Props) {
   const [paste, setPaste] = useState('');
   const [locating, setLocating] = useState(false);
+  const { requestPermission } = usePermission();
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [showSearchResults, setShowSearchResults] = useState(false);
@@ -231,12 +233,9 @@ export default function LocationPicker({
       toast.error('This browser will not share a location.');
       return;
     }
+    const granted = await requestPermission('location');
+    if (!granted) return;
     setLocating(true);
-    toast('Please allow location access to automatically place the pin. You can safely deny this and drag the pin manually.', { 
-      icon: '📍', 
-      duration: 6000,
-      id: 'geo-permission' 
-    });
     navigator.geolocation.getCurrentPosition(
       position => {
         

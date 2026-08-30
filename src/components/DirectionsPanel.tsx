@@ -99,7 +99,7 @@ export default function DirectionsPanel({
   const isGpsActive = Boolean(guestLocation && selectedOriginName === 'Your Current GPS Position');
 
   // Request or Toggle guest's live location
-  const handleToggleGuestLocation = () => {
+  const handleToggleGuestLocation = async () => {
     if (isGpsActive) {
       setGuestLocation(null);
       setSelectedOriginName(null);
@@ -111,12 +111,9 @@ export default function DirectionsPanel({
       toast.error('Geolocation is not supported by your browser.');
       return;
     }
+    const granted = await requestPermission('location');
+    if (!granted) return;
     setLocating(true);
-    toast('Please allow location access to calculate the distance from your current position. You can safely deny this.', { 
-      icon: '📍', 
-      duration: 6000,
-      id: 'geo-permission' 
-    });
     navigator.geolocation.getCurrentPosition(
       pos => {
         
@@ -471,5 +468,6 @@ export default function DirectionsPanel({
     </div>
   );
 }
+
 
 

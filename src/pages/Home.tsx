@@ -142,15 +142,9 @@ export default function Home() {
       return;
     }
 
+    const granted = await requestPermission('location');
+    if (!granted) return;
     setIsLocatingUser(true);
-    setUserLocationError(null);
-
-    toast('Please allow location access to see your position on the map. You can safely deny this.', { 
-      icon: '📍', 
-      duration: 6000,
-      id: 'geo-permission' 
-    });
-
     navigator.geolocation.getCurrentPosition(
       (position) => {
         
@@ -475,12 +469,8 @@ export default function Home() {
       return;
     }
     
-    toast('Please allow location access to find places near you. You can safely deny this if you prefer to search manually.', { 
-      icon: '📍', 
-      duration: 6000,
-      id: 'geo-permission' 
-    });
-
+    const granted = await requestPermission('location');
+    if (!granted) return;
     navigator.geolocation.getCurrentPosition(
       pos => {
         
