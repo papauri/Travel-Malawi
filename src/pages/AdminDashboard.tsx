@@ -159,6 +159,11 @@ export default function AdminDashboard() {
   const handleDeleteHotel = async (hotelId: string) => {
     try {
       await deleteDoc(doc(db, 'hotels', hotelId));
+      try {
+        await fetch(`/api/hotels/${hotelId}/archive-images`, { method: 'POST' });
+      } catch (err) {
+        console.error('Failed to archive images:', err);
+      }
       toast.success('Listing deleted');
       setHotels(hotels.filter(h => h.id !== hotelId));
     } catch (error) {

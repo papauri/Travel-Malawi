@@ -88,7 +88,7 @@ export default function Modal({
   // button floats.
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center sm:p-4"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby={titleId}
@@ -107,13 +107,9 @@ export default function Modal({
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ type: 'spring', stiffness: 420, damping: 34, mass: 0.9 }}
         className={`relative z-10 w-full ${SIZES[size]} bg-white shadow-2xl shadow-stone-950/25
-          rounded-t-[1.75rem] sm:rounded-[1.75rem]
+          rounded-[1.75rem]
           max-h-[92dvh] sm:max-h-[88dvh] flex flex-col overflow-hidden`}
       >
-        {/* Grab handle for the sheet presentation on small screens. */}
-        <div className="sm:hidden pt-3 pb-1 flex justify-center shrink-0">
-          <span className="h-1 w-10 rounded-full bg-stone-200" />
-        </div>
 
         <div className="flex items-start gap-4 px-6 sm:px-8 pt-5 sm:pt-7 pb-5 border-b border-stone-100 shrink-0">
           <div className="flex-1 min-w-0">

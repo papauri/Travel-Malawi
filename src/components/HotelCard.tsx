@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronLeft, ChevronRight, Star, Heart } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Star, Heart, Scale } from 'lucide-react';
 import { Hotel } from '../types';
 import SmartImage from './SmartImage';
 import { getHotelImages } from '../lib/images';
 import { formatMoney } from '../lib/currency';
 import { CurrencyCode } from '../types';
 import { useWishlist } from '../hooks/useWishlist';
+import { useCompare } from '../contexts/CompareContext';
 
 interface HotelCardProps {
   hotel: Hotel;
@@ -28,7 +29,10 @@ interface HotelCardProps {
 export default function HotelCard({ hotel, searchParams, index, priceFrom, priceCurrency = 'USD', rating }: HotelCardProps) {
   const [currentImageIdx, setCurrentImageIdx] = useState(0);
   const { savedHotelIds, toggleSave } = useWishlist();
+  const { selectedHotels, toggleHotel } = useCompare();
+
   const isSaved = hotel.id ? savedHotelIds.includes(hotel.id) : false;
+  const isComparing = hotel.id ? selectedHotels.some(h => h.hotel.id === hotel.id) : false;
 
   // Resolved centrally: drops empty/dead URLs and falls back to bundled
   // photography, so this is always at least one usable image.
@@ -72,7 +76,7 @@ export default function HotelCard({ hotel, searchParams, index, priceFrom, price
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: "-50px" }}
         transition={{ delay: index * 0.05, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-        className="relative w-full aspect-[4/5] overflow-hidden bg-stone-100"
+        className="relative w-full aspect-[4/5] overflow-hidden bg-stone-100 rounded-2xl"
       >
         <button
           onClick={(e) => {
@@ -86,6 +90,23 @@ export default function HotelCard({ hotel, searchParams, index, priceFrom, price
             className={`w-6 h-6 drop-shadow-md ${isSaved ? 'fill-emerald-500 text-emerald-500' : 'fill-black/30 text-white'}`} 
             strokeWidth={isSaved ? 0 : 2}
           />
+        </button>
+
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (hotel.id) toggleHotel({ hotel, priceFrom, priceCurrency, rating });
+          }}
+          className={`absolute top-4 left-4 z-20 flex items-center gap-1.5 px-3 py-1.5 rounded-full backdrop-blur-sm transition-all duration-200 shadow-md ${
+            isComparing 
+              ? 'bg-emerald-500 text-white' 
+              : 'bg-black/30 text-white hover:bg-black/50'
+          }`}
+          title={isComparing ? 'Remove from comparison' : 'Compare Property'}
+        >
+          <Scale className="w-4 h-4" />
+          <span className="text-[10px] font-bold uppercase tracking-wider hidden sm:inline">{isComparing ? 'Comparing' : 'Compare'}</span>
         </button>
 
         <AnimatePresence initial={false} mode="wait">

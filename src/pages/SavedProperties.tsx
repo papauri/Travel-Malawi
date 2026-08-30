@@ -24,10 +24,27 @@ export default function SavedProperties() {
       }
       
       try {
+        const cached = localStorage.getItem('savedHotelsCache');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          // Only use cache if the saved IDs somewhat match to avoid stale data
+          setSavedHotels(parsed);
+          setLoading(false);
+        }
+      } catch (e) {
+        console.warn('Failed to read saved hotels cache', e);
+      }
+      
+      try {
         const hotelPromises = savedHotelIds.map(id => getDoc(doc(db, 'hotels', id)));
         const docs = await Promise.all(hotelPromises);
         const hotels = docs.filter(d => d.exists()).map(d => ({ id: d.id, ...d.data() } as Hotel));
         setSavedHotels(hotels);
+        try {
+          localStorage.setItem('savedHotelsCache', JSON.stringify(hotels));
+        } catch (e) {
+          console.warn('Failed to cache saved hotels', e);
+        }
       } catch (err) {
         console.error("Failed to load saved hotels:", err);
       } finally {

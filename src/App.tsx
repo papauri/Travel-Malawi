@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, useLocation, Link } from 'react-router-do
 import { AuthProvider } from './contexts/AuthContext';
 import { AuthDialogProvider } from './contexts/AuthDialogContext';
 import { ChatModalProvider } from './contexts/ChatModalContext';
+import { CompareProvider } from './contexts/CompareContext';
 import Breadcrumbs, { BreadcrumbProvider } from './components/Breadcrumbs';
 import Navbar from './components/Navbar';
 import MobileNav from './components/MobileNav';
@@ -21,6 +22,7 @@ import Privacy from './pages/Privacy';
 import Refunds from './pages/Refunds';
 import GlobalNotificationManager from './components/GlobalNotificationManager';
 import PageLoader from './components/PageLoader';
+import CompareWidget from './components/CompareWidget';
 import { Toaster } from 'react-hot-toast';
 import Lenis from 'lenis';
 
@@ -95,8 +97,9 @@ export default function App() {
         <ScrollToTop />
         <AuthDialogProvider>
           <ChatModalProvider>
-            <BreadcrumbProvider>
-            <div className="min-h-screen bg-stone-50 flex flex-col font-sans">
+            <CompareProvider>
+              <BreadcrumbProvider>
+              <div className="min-h-screen bg-stone-50 flex flex-col font-sans">
               <Navbar />
               <Breadcrumbs />
               <Toaster 
@@ -111,6 +114,7 @@ export default function App() {
                 }} 
               />
               <GlobalNotificationManager />
+              <CompareWidget />
               <PageLoader />
               <main className="flex-1 pb-16 md:pb-0">
                 <Routes>
@@ -131,6 +135,7 @@ export default function App() {
               <MobileNav />
             </div>
             </BreadcrumbProvider>
+            </CompareProvider>
           </ChatModalProvider>
         </AuthDialogProvider>
       </BrowserRouter>

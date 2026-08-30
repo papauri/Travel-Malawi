@@ -18,10 +18,26 @@ export function useWishlist() {
       return;
     }
 
-    const unsub = onSnapshot(doc(db, 'users', user.uid), (docSnap) => {
-      if (docSnap.exists()) {
-        setSavedHotelIds(docSnap.data()?.savedHotelIds || []);
+    const uid = user.uid;
+    try {
+      const cached = localStorage.getItem(`wishlist_${uid}`);
+      if (cached) {
+        setSavedHotelIds(JSON.parse(cached));
+        setLoading(false);
       }
+    } catch (e) {}
+
+    const unsub = onSnapshot(doc(db, 'users', uid), (docSnap) => {
+      if (docSnap.exists()) {
+        const ids = docSnap.data()?.savedHotelIds || [];
+        setSavedHotelIds(ids);
+        try {
+          localStorage.setItem(`wishlist_${uid}`, JSON.stringify(ids));
+        } catch (e) {}
+      }
+      setLoading(false);
+    }, (error) => {
+      console.warn("Wishlist fetch error:", error);
       setLoading(false);
     });
 

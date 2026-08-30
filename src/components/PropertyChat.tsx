@@ -14,7 +14,7 @@ import {
   getDocs 
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { Hotel, Message, User, HotelChat } from '../types';
+import { Hotel, Message, User, HotelChat, Call } from '../types';
 import { 
   Send, 
   Loader2, 
@@ -32,7 +32,8 @@ import {
   Check,
   CheckCheck,
   Phone,
-  Video
+  Video,
+  PhoneMissed
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { chimeForIncoming, newChimeState } from '../lib/notificationSound';
@@ -58,6 +59,7 @@ export default function PropertyChat({
   guestName 
 }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
+  const [calls, setCalls] = useState<Call[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -223,11 +225,28 @@ export default function PropertyChat({
       toast.error('Could not load messages.');
       setLoading(false);
     });
+
+    const callsQuery = query(
+      collection(db, 'hotel_chats', computedChatId, 'calls'),
+      orderBy('createdAt', 'asc')
+    );
+    
+    const unsubCalls = onSnapshot(callsQuery, (snapshot) => {
+      const cls = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as Call[];
+      setCalls(cls);
+      
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    }, (error) => {
+      console.warn('Error fetching calls:', error);
+    });
     
     // Cleanup presence & typing when closing / unmounting chat
     return () => {
       unsubChatDoc();
       unsubMessages();
+      unsubCalls();
       clearInterval(presenceInterval);
 
       if (computedChatId) {
@@ -454,11 +473,20 @@ export default function PropertyChat({
     ? new Date(chatDocData.endedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric' })
     : '';
 
+  type TimelineItem = 
+    | { type: 'message'; data: Message; id: string; createdAt: number }
+    | { type: 'call'; data: Call; id: string; createdAt: number };
+
+  const timelineItems: TimelineItem[] = [
+    ...messages.map(m => ({ type: 'message' as const, data: m, id: m.id || String(m.createdAt), createdAt: m.createdAt })),
+    ...calls.map(c => ({ type: 'call' as const, data: c, id: c.id || String(c.createdAt), createdAt: c.createdAt }))
+  ].sort((a, b) => a.createdAt - b.createdAt);
+
   // Find index of the last message sent by me
   const lastMyMessageIndex = (() => {
     if (!currentUser) return -1;
-    for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].senderId === currentUser.uid) {
+    for (let i = timelineItems.length - 1; i >= 0; i--) {
+      if (timelineItems[i].type === 'message' && (timelineItems[i].data as Message).senderId === currentUser.uid) {
         return i;
       }
     }
@@ -647,7 +675,7 @@ export default function PropertyChat({
           <div className="h-full flex items-center justify-center">
             <Loader2 className="w-6 h-6 text-stone-400 animate-spin" />
           </div>
-        ) : messages.length === 0 ? (
+        ) : timelineItems.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-stone-400 text-center p-6">
             <div className="w-12 h-12 rounded-2xl bg-stone-100 flex items-center justify-center mb-3 text-stone-400 shadow-2xs">
               <MessageSquare className="w-6 h-6" />
@@ -659,8 +687,50 @@ export default function PropertyChat({
           </div>
         ) : (
           <>
-            {/* Conversation Messages */}
-            {messages.map((msg, index) => {
+            {/* Conversation Timeline */}
+            {timelineItems.map((item, index) => {
+              if (item.type === 'call') {
+                const call = item.data;
+                const isMe = call.callerId === currentUser.uid;
+                const callDate = new Date(call.createdAt);
+                const timeFormatted = callDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                
+                const isMissed = call.status === 'missed' || call.status === 'rejected' || (!call.answer && call.status === 'ended');
+                const isVideo = call.type === 'video';
+                const CallIcon = isMissed ? PhoneMissed : (isVideo ? Video : Phone);
+                const iconColor = isMissed ? 'text-red-500' : (call.status === 'connected' ? 'text-blue-500' : 'text-emerald-500');
+                
+                let durationText = '';
+                if (call.status === 'connected' || call.status === 'ended') {
+                   if (call.connectedAt && call.endedAt) {
+                      const seconds = Math.floor((call.endedAt - call.connectedAt) / 1000);
+                      if (seconds < 60) durationText = `${seconds}s`;
+                      else durationText = `${Math.floor(seconds/60)}m ${seconds % 60}s`;
+                   } else if (call.status === 'connected') {
+                      durationText = 'Ongoing...';
+                   }
+                }
+                
+                return (
+                  <div key={`call-${item.id}`} className="flex justify-center my-3 animate-fadeIn">
+                    <div className="flex items-center gap-2.5 px-4 py-2 bg-stone-100/80 rounded-full border border-stone-200 shadow-2xs">
+                       <div className={`w-7 h-7 rounded-full flex items-center justify-center bg-white shadow-sm border border-stone-100 ${iconColor}`}>
+                         <CallIcon className="w-3.5 h-3.5" />
+                       </div>
+                       <div className="flex flex-col">
+                         <span className="text-xs font-bold text-stone-700 leading-tight">
+                           {isMissed ? (isMe ? 'Unanswered Call' : 'Missed Call') : (isVideo ? 'Video Call' : 'Voice Call')}
+                         </span>
+                         <span className="text-[10px] font-medium text-stone-400 mt-0.5">
+                            {timeFormatted} {durationText && <span className="text-stone-500 font-semibold">• {durationText}</span>}
+                         </span>
+                       </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              const msg = item.data;
               const isMe = msg.senderId === currentUser.uid;
               const msgDate = new Date(msg.createdAt);
               const timeFormatted = msgDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -677,7 +747,7 @@ export default function PropertyChat({
 
               return (
                 <div 
-                  key={msg.id || index} 
+                  key={`msg-${item.id}`} 
                   className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-fadeIn`}
                 >
                   <span className="text-[10px] font-medium text-stone-400 mb-1 px-1">

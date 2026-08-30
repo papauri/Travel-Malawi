@@ -47,6 +47,16 @@ export default function MyBookings() {
     }
     const uid = user.uid;
 
+    try {
+      const cached = localStorage.getItem(`myBookingsCache_${uid}`);
+      if (cached) {
+        setBookings(JSON.parse(cached));
+        setLoading(false);
+      }
+    } catch (e) {
+      console.warn('Failed to read bookings cache', e);
+    }
+
     async function fetchBookings() {
       try {
         const docs = await getDocs(query(collection(db, 'bookings'), where('guestId', '==', uid)));
@@ -79,6 +89,11 @@ export default function MyBookings() {
         }));
         enriched.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
         setBookings(enriched);
+        try {
+          localStorage.setItem(`myBookingsCache_${uid}`, JSON.stringify(enriched));
+        } catch (e) {
+          console.warn('Failed to cache bookings', e);
+        }
       } catch (error) {
         console.error("Error fetching bookings:", error);
         toast.error('Could not load your bookings.');

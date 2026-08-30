@@ -250,10 +250,11 @@ export function useWebRTC(chatId: string, currentUserId: string, currentUserName
         type: answerDescription.type,
         sdp: answerDescription.sdp
       },
-      updatedAt: Date.now()
+      updatedAt: Date.now(),
+      connectedAt: Date.now()
     });
     
-    setActiveCall({ ...call, status: 'connected' });
+    setActiveCall({ ...call, status: 'connected', connectedAt: Date.now() });
   };
 
   const rejectCall = async (call: Call) => {

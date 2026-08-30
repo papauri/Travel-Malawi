@@ -9,12 +9,15 @@ import { db } from '../lib/firebase';
 import { RoomType } from '../types';
 import { ChevronLeft, ChevronRight, Lock } from 'lucide-react';
 import { BookingLike, buildOccupancyMap } from '../lib/availability';
-import { DateStr, toDateStr, todayStr } from '../lib/dates';
+import { DateStr, toDateStr, todayStr, addDays, formatDateStr } from '../lib/dates';
 
 interface Props {
   hotelId: string;
   rooms: RoomType[];
   onDateSelect?: (date: DateStr) => void;
+  onRangeSelect?: (inDate: DateStr, outDate: DateStr) => void;
+  checkIn?: DateStr;
+  checkOut?: DateStr;
   selectedRoom?: RoomType | null;
   /**
    * Manager mode. When supplied, clicking a day toggles it in the room's
@@ -23,6 +26,8 @@ interface Props {
   onToggleBlocked?: (date: DateStr) => void;
   /** Blocked dates being edited, so the grid reflects unsaved changes. */
   blockedDates?: string[];
+  /** Blocked units being edited. */
+  blockedUnits?: Record<string, number>;
 }
 
 interface DayInfo {
@@ -45,9 +50,13 @@ export default function AvailabilityCalendar({
   hotelId,
   rooms,
   onDateSelect,
+  onRangeSelect,
+  checkIn,
+  checkOut,
   selectedRoom,
   onToggleBlocked,
   blockedDates,
+  blockedUnits,
 }: Props) {
   const today = todayStr();
   const isManagerMode = !!onToggleBlocked;
@@ -73,16 +82,40 @@ export default function AvailabilityCalendar({
    * property-wide calendar showed hand-blocked nights as bookable.
    */
   const blockedInventory = useMemo(() => {
-    const source = selectedRoom
-      ? [{ dates: blockedDates ?? selectedRoom.blockedDates ?? [], units: selectedRoom.quantity ?? 0 }]
-      : rooms.map(r => ({ dates: r.blockedDates ?? [], units: r.quantity ?? 0 }));
-
     const totals: Record<DateStr, number> = {};
-    for (const { dates, units } of source) {
-      for (const date of dates) totals[date] = (totals[date] ?? 0) + units;
+
+    if (selectedRoom) {
+      const dates = blockedDates ?? selectedRoom.blockedDates ?? [];
+      const qty = selectedRoom.quantity ?? 0;
+      for (const d of dates) {
+        totals[d] = (totals[d] ?? 0) + qty;
+      }
+      
+      const units = blockedUnits ?? selectedRoom.blockedUnits ?? {};
+      for (const [d, u] of Object.entries(units)) {
+        if (!totals[d] || totals[d] < qty) {
+          totals[d] = Math.max(totals[d] ?? 0, Number(u));
+        }
+      }
+    } else {
+      for (const r of rooms) {
+        const dates = r.blockedDates ?? [];
+        const qty = r.quantity ?? 0;
+        for (const d of dates) {
+          totals[d] = (totals[d] ?? 0) + qty;
+        }
+        
+        const units = r.blockedUnits ?? {};
+        for (const [d, u] of Object.entries(units)) {
+          if (!dates.includes(d)) {
+            totals[d] = (totals[d] ?? 0) + Number(u);
+          }
+        }
+      }
     }
+
     return Object.entries(totals).map(([date, units]) => ({ date, units }));
-  }, [rooms, selectedRoom, blockedDates]);
+  }, [rooms, selectedRoom, blockedDates, blockedUnits]);
 
   const blockedSet = useMemo(
     () => new Set(blockedInventory.map(b => b.date)),
@@ -186,7 +219,40 @@ export default function AvailabilityCalendar({
       return;
     }
     if (avail === 'full' || avail === 'blocked') return;
-    onDateSelect?.(day.dateStr);
+
+    if (onRangeSelect) {
+      if (!checkIn || (checkIn && checkOut)) {
+        onRangeSelect(day.dateStr, '');
+        // If clicking the last day of the month as the checkIn date, auto-advance to next month
+        const lastDayOfMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+        if (day.date.getDate() === lastDayOfMonth) {
+          nextMonth();
+        }
+      } else {
+        if (day.dateStr <= checkIn) {
+          onRangeSelect(day.dateStr, '');
+        } else {
+          let cursor = checkIn;
+          let valid = true;
+          while (cursor < day.dateStr) {
+            const b = bookedMap[cursor] || 0;
+            const isBlocked = blockedSet.has(cursor);
+            if (totalRooms === 0 || isBlocked || b >= totalRooms) {
+              valid = false;
+              break;
+            }
+            cursor = addDays(cursor, 1);
+          }
+          if (valid) {
+            onRangeSelect(checkIn, day.dateStr);
+          } else {
+            onRangeSelect(day.dateStr, '');
+          }
+        }
+      }
+    } else {
+      onDateSelect?.(day.dateStr);
+    }
   }
 
   const cellStyles: Record<Availability, string> = {
@@ -220,9 +286,16 @@ export default function AvailabilityCalendar({
       <div className="flex items-center justify-between px-8 py-6 border-b border-stone-100">
         <div>
           <h3 className="text-xl font-serif text-stone-900">Availability</h3>
-          <p className="text-sm text-stone-500 mt-0.5">
-            {isManagerMode ? 'Click a date to block or unblock it' : 'Select a check-in date'}
-          </p>
+          <div className="text-sm text-stone-500 mt-0.5 flex flex-col gap-1.5">
+            <p>{isManagerMode ? 'Click a date to block or unblock it' : 'Select your travel dates'}</p>
+            {(!isManagerMode && (checkIn || checkOut)) && (
+              <p className="font-semibold text-emerald-700 bg-emerald-50 self-start px-3 py-1 rounded-md border border-emerald-100/50">
+                {checkIn ? formatDateStr(checkIn) : 'Select check-in'}
+                <span className="text-emerald-400 mx-2">→</span>
+                {checkOut ? formatDateStr(checkOut) : 'Select check-out'}
+              </p>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <button
@@ -277,6 +350,16 @@ export default function AvailabilityCalendar({
               // In manager mode every future day stays clickable, including
               // sold-out ones, so a date can always be taken off sale.
               const disabled = avail === 'past' || (!isManagerMode && (avail === 'full' || avail === 'blocked'));
+              
+              const isSelected = day.dateStr === checkIn || day.dateStr === checkOut;
+              const isInRange = checkIn && checkOut && day.dateStr > checkIn && day.dateStr < checkOut;
+              
+              const rangeStyles = isSelected
+                ? 'bg-stone-900 text-white ring-2 ring-stone-900 ring-offset-1 border-stone-900 hover:bg-stone-800'
+                : isInRange
+                ? 'bg-stone-100 text-stone-900 border-stone-200'
+                : cellStyles[avail];
+
               return (
                 <button
                   key={day.dateStr}
@@ -293,16 +376,16 @@ export default function AvailabilityCalendar({
                   className={`
                     relative flex flex-col items-center justify-center
                     rounded-xl py-2 px-1 text-sm font-medium transition
-                    ${cellStyles[avail]}
+                    ${rangeStyles}
                     ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}
-                    ${isToday ? 'ring-2 ring-stone-400 ring-offset-1' : ''}
+                    ${isToday && !isSelected ? 'ring-2 ring-stone-400 ring-offset-1' : ''}
                   `}
                 >
                   <span>{day.date.getDate()}</span>
                   {avail === 'blocked' ? (
-                    <Lock className="mt-1 h-2.5 w-2.5" />
+                    <Lock className={`mt-1 h-2.5 w-2.5 ${isSelected ? 'text-stone-300' : ''}`} />
                   ) : (
-                    <span className={`mt-1 h-1.5 w-1.5 rounded-full ${dotStyles[avail]}`} />
+                    <span className={`mt-1 h-1.5 w-1.5 rounded-full ${isSelected ? 'bg-white' : dotStyles[avail]}`} />
                   )}
                 </button>
               );

@@ -173,6 +173,7 @@ export interface RoomType {
     prices?: PriceMap;
   }[];
   blockedDates?: string[]; // Array of 'YYYY-MM-DD'
+  blockedUnits?: Record<string, number>;
 }
 
 export interface Message {
@@ -207,6 +208,7 @@ export interface Call {
   answer?: any;
   createdAt: number;
   updatedAt: number;
+  connectedAt?: number;
   endedAt?: number;
 }
 

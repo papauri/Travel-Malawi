@@ -12,7 +12,7 @@
  * cannot drift apart.
  */
 
-import { addDoc, collection, getDocs, limit, query, where } from 'firebase/firestore';
+import { addDoc, doc, setDoc, collection, getDocs, limit, query, where } from 'firebase/firestore';
 import { db } from './firebase';
 import { Hotel } from '../types';
 import { defaultWeek } from './hours';
@@ -98,6 +98,7 @@ export const MALAWI_LOCATIONS = [
 ];
 
 export interface ListingDraft {
+  id?: string;
   name: string;
   category: PropertyCategory | '';
   location: string;
@@ -115,8 +116,11 @@ export interface ListingDraft {
   contactWhatsapp: string;
 }
 
+import { v4 as uuidv4 } from "uuid";
+
 export function emptyDraft(): ListingDraft {
   return {
+    id: uuidv4(),
     name: '',
     category: '',
     location: '',
@@ -316,6 +320,7 @@ export async function createListing(draft: ListingDraft, managerId: string): Pro
   const payload: Record<string, unknown> = { ...draftToHotel(draft, managerId) };
   // Firestore rejects `undefined`; coordinates are the only optional object.
   if (payload.coordinates === undefined) delete payload.coordinates;
-  const ref = await addDoc(collection(db, 'hotels'), payload);
-  return ref.id;
+  const docId = draft.id || uuidv4();
+  await setDoc(doc(db, 'hotels', docId), payload);
+  return docId;
 }

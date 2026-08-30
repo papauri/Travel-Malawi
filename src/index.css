@@ -89,3 +89,11 @@ body {
   width: 1.5rem;
   height: 1rem;
 }
+
+/* Pin Point Cursor for dropping pins */
+.pick-location-mode .leaflet-grab {
+  cursor: crosshair !important;
+}
+.pick-location-mode .leaflet-interactive {
+  cursor: crosshair !important;
+}

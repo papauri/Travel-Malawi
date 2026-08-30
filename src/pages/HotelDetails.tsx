@@ -651,7 +651,7 @@ export default function HotelDetails() {
           <div className="mb-16">
             <h2
               id="rooms-section"
-              className="text-4xl md:text-5xl font-serif text-stone-900 mb-10 tracking-tight"
+              className="scroll-mt-32 text-4xl md:text-5xl font-serif text-stone-900 mb-10 tracking-tight"
             >
               Available Rooms
             </h2>
@@ -765,9 +765,17 @@ export default function HotelDetails() {
             <AvailabilityCalendar
               hotelId={id!}
               rooms={rooms}
+              checkIn={checkIn}
+              checkOut={checkOut}
+              onRangeSelect={(inDate, outDate) => {
+                setCheckIn(inDate);
+                setCheckOut(outDate);
+                if (inDate && outDate) {
+                  document.getElementById('rooms-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+              }}
               onDateSelect={(date) => {
                 setCheckIn(date);
-                document.getElementById('rooms-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
               }}
             />
           </div>
@@ -1042,7 +1050,7 @@ export default function HotelDetails() {
             </div>
           )}
 
-          <div id="reviews" className="mb-24 mt-8 border-t border-stone-200 pt-12">
+          <div id="reviews" className="scroll-mt-32 mb-24 mt-8 border-t border-stone-200 pt-12">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-10">
               <div className="flex flex-wrap items-baseline gap-4">
                 <h2 className="text-4xl md:text-5xl font-serif text-stone-900 tracking-tight">Guest Reviews</h2>
@@ -1135,7 +1143,7 @@ export default function HotelDetails() {
           </div>
         </div>
           {/* Full Directions & Navigation Panel for Guests */}
-          <div id="directions" className="lg:col-span-3 mb-24 pt-8 border-t border-stone-200">
+          <div id="directions" className="scroll-mt-32 lg:col-span-3 mb-24 pt-8 border-t border-stone-200">
             <div className="mb-8">
               <span className="text-[0.68rem] font-bold text-emerald-700 tracking-[0.16em] uppercase">Find Your Way</span>
               <h2 className="text-3xl md:text-4xl font-serif text-stone-900 mt-1 tracking-tight">Location &amp; Driving Directions</h2>

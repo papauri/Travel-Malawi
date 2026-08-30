@@ -679,12 +679,61 @@ export default function ManageHotel() {
 
   /** Adds or removes one date from the room being edited. */
   const toggleBlockedDate = (date: string) => {
+    const qty = editRoomData.quantity ?? 1;
+    if (qty <= 1) {
+      // For single-unit rooms, just toggle as before
+      setEditRoomData(prev => {
+        const current = Array.isArray(prev.blockedDates) ? prev.blockedDates : [];
+        const next = current.includes(date)
+          ? current.filter(d => d !== date)
+          : [...current, date].sort();
+        return { ...prev, blockedDates: next };
+      });
+      return;
+    }
+
+    // For multi-unit rooms, prompt for the number of units to block
+    const currentFullyBlocked = (editRoomData.blockedDates ?? []).includes(date);
+    const currentBlockedUnits = editRoomData.blockedUnits?.[date] ?? 0;
+    
+    const displayValue = currentFullyBlocked ? 'all' : (currentBlockedUnits > 0 ? currentBlockedUnits.toString() : '0');
+    const result = window.prompt(
+      `How many rooms do you want to block on ${formatDateStr(date, { month: 'short', day: 'numeric', year: 'numeric' })}?\n(Enter 0 to unblock, or 'all' to block all ${qty} rooms)`,
+      displayValue
+    );
+
+    if (result === null) return; // cancelled
+
+    const input = result.trim().toLowerCase();
+    
     setEditRoomData(prev => {
-      const current = Array.isArray(prev.blockedDates) ? prev.blockedDates : [];
-      const next = current.includes(date)
-        ? current.filter(d => d !== date)
-        : [...current, date].sort();
-      return { ...prev, blockedDates: next };
+      const nextDates = [...(prev.blockedDates ?? [])];
+      const nextUnits = { ...(prev.blockedUnits ?? {}) };
+      
+      if (input === '0' || input === '') {
+        // Unblock
+        const datesFiltered = nextDates.filter(d => d !== date);
+        delete nextUnits[date];
+        return { ...prev, blockedDates: datesFiltered, blockedUnits: nextUnits };
+      }
+      
+      if (input === 'all' || parseInt(input, 10) >= qty) {
+        // Fully block
+        if (!nextDates.includes(date)) nextDates.push(date);
+        delete nextUnits[date];
+        return { ...prev, blockedDates: nextDates.sort(), blockedUnits: nextUnits };
+      }
+      
+      const parsed = parseInt(input, 10);
+      if (!isNaN(parsed) && parsed > 0 && parsed < qty) {
+        // Partially block
+        const datesFiltered = nextDates.filter(d => d !== date);
+        nextUnits[date] = parsed;
+        return { ...prev, blockedDates: datesFiltered, blockedUnits: nextUnits };
+      }
+      
+      // Invalid input, do nothing
+      return prev;
     });
   };
 
@@ -1021,7 +1070,7 @@ export default function ManageHotel() {
                   label="Main Property Image"
                   value={editHotelData.imageUrl || ''}
                   onChange={(url) => setEditHotelData({ ...editHotelData, imageUrl: url })}
-                  folder="hotels"
+                  folder={`hotels/${id}`}
                 />
                 <FieldError message={detailProblems.imageUrl} />
               </div>
@@ -1030,7 +1079,7 @@ export default function ManageHotel() {
                   value={editHotelData.galleryUrls || []} 
                   onChange={(urls) => setEditHotelData({ ...editHotelData, galleryUrls: urls })} 
                   label="Property Gallery"
-                  folder="gallery"
+                  folder={`hotels/${id}/gallery`}
                 />
               </div>
               {/* The category decides which home-page filter the listing shows
@@ -1284,7 +1333,7 @@ export default function ManageHotel() {
                         label="Room Main Image"
                         value={editRoomData.imageUrl || ''}
                         onChange={(url) => setEditRoomData({...editRoomData, imageUrl: url})}
-                        folder="rooms"
+                        folder={`hotels/${id}/rooms`}
                       />
                     </div>
                   {/* `room_gallery` was not one of the folders the storage rules
@@ -1295,7 +1344,7 @@ export default function ManageHotel() {
                       value={editRoomData.galleryUrls || []}
                       onChange={(urls) => setEditRoomData({ ...editRoomData, galleryUrls: urls })}
                       label="Room Gallery"
-                      folder="rooms"
+                      folder={`hotels/${id}/rooms`}
                     />
                   </div>
                   <div className="md:col-span-2">
@@ -1473,23 +1522,36 @@ export default function ManageHotel() {
                         rooms={rooms}
                         selectedRoom={rooms.find(r => r.id === editingRoomId) ?? null}
                         blockedDates={(editRoomData.blockedDates as string[]) ?? []}
+                        blockedUnits={editRoomData.blockedUnits ?? {}}
                         onToggleBlocked={toggleBlockedDate}
                       />
-                      {Array.isArray(editRoomData.blockedDates) && editRoomData.blockedDates.length > 0 && (
+                      {((Array.isArray(editRoomData.blockedDates) && editRoomData.blockedDates.length > 0) || (Object.keys(editRoomData.blockedUnits ?? {}).length > 0)) && (
                         <div className="mt-4">
                           <p className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">
-                            {editRoomData.blockedDates.length} night{editRoomData.blockedDates.length === 1 ? '' : 's'} blocked
+                            Manual Blockages
                           </p>
                           <div className="flex flex-wrap gap-2">
-                            {editRoomData.blockedDates.map(date => (
+                            {(editRoomData.blockedDates ?? []).map(date => (
                               <button
                                 key={date}
                                 type="button"
                                 onClick={() => toggleBlockedDate(date)}
                                 className="flex items-center gap-1.5 bg-stone-800 text-white text-xs font-medium px-3 py-1.5 rounded-full hover:bg-red-600 transition"
-                                title="Unblock this date"
+                                title="Edit this date"
                               >
-                                {formatDateStr(date, { month: 'short', day: 'numeric', year: 'numeric' })}
+                                {formatDateStr(date, { month: 'short', day: 'numeric', year: 'numeric' })} (All)
+                                <X className="w-3 h-3" />
+                              </button>
+                            ))}
+                            {Object.entries(editRoomData.blockedUnits ?? {}).map(([date, count]) => (
+                              <button
+                                key={date}
+                                type="button"
+                                onClick={() => toggleBlockedDate(date)}
+                                className="flex items-center gap-1.5 bg-stone-100 text-stone-800 border border-stone-200 text-xs font-medium px-3 py-1.5 rounded-full hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition"
+                                title="Edit this date"
+                              >
+                                {formatDateStr(date, { month: 'short', day: 'numeric', year: 'numeric' })} ({count} room{count === 1 ? '' : 's'})
                                 <X className="w-3 h-3" />
                               </button>
                             ))}

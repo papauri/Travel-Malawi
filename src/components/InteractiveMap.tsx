@@ -340,8 +340,10 @@ export default function InteractiveMap({
       zoom: initialZoom,
       zoomControl: false,
       attributionControl: false,
-      scrollWheelZoom: false,
-      dragging: false,
+      scrollWheelZoom: interactive,
+      dragging: interactive,
+      touchZoom: interactive,
+      doubleClickZoom: interactive,
     });
 
     const streetLayer = createCachedStreetLayer();
@@ -889,7 +891,7 @@ export default function InteractiveMap({
     <div
       className={`relative overflow-hidden rounded-2xl border border-stone-200 bg-stone-100 shadow-inner isolate ${
         isFullscreen ? 'fixed inset-4 z-[2000] shadow-2xl' : `${heightClass} z-0`
-      } ${className}`}
+      } ${interactive && onMarkerChange ? 'pick-location-mode' : ''} ${className}`}
     >
       <div ref={containerRef} className="h-full w-full" />
 

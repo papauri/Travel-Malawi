@@ -41,7 +41,26 @@ export default function DatePicker({ checkIn, checkOut, onSelect, isDateBlocked 
       return;
     }
     const fromStr = range.from ? format(range.from, 'yyyy-MM-dd') : '';
-    const toStr = range.to ? format(range.to, 'yyyy-MM-dd') : '';
+    let toStr = range.to ? format(range.to, 'yyyy-MM-dd') : '';
+    
+    // Ensure the selected range does not span any blocked dates
+    if (fromStr && toStr && isDateBlocked) {
+      let current = range.from!;
+      let valid = true;
+      let guard = 0;
+      while (current < range.to! && guard++ < 1000) {
+        if (isDateBlocked(format(current, 'yyyy-MM-dd'))) {
+          valid = false;
+          break;
+        }
+        current = addDays(current, 1);
+      }
+      if (!valid) {
+        // If the range spans a blocked date, just set the start date
+        toStr = '';
+      }
+    }
+
     onSelect(fromStr, toStr);
   };
 

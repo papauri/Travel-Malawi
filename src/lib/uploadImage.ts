@@ -1,32 +1,10 @@
 /**
- * Image uploads.
- *
- * The previous version passed any file straight to Firebase Storage with no
- * validation and let failures surface as a bare "Failed to upload image", which
- * was unhelpful given the most common failure is that Storage has not been
- * enabled on the project at all.
+ * Image uploads to local backend server.
  */
 
-import { ref, uploadBytesResumable, getDownloadURL, StorageError } from 'firebase/storage';
-import { storage } from './firebase';
-import { v4 as uuidv4 } from 'uuid';
-
-/** Matches the content types allowed by storage.rules. */
 export const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/gif'];
-
-/** The `accept` attribute for a file input, kept in step with the above. */
 export const IMAGE_ACCEPT_ATTR = ACCEPTED_IMAGE_TYPES.join(',');
-
-/** 8 MB, matching storage.rules. Rejected here so the upload never starts. */
 export const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
-
-const EXTENSION_BY_TYPE: Record<string, string> = {
-  'image/jpeg': 'jpg',
-  'image/png': 'png',
-  'image/webp': 'webp',
-  'image/avif': 'avif',
-  'image/gif': 'gif',
-};
 
 export function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -34,10 +12,8 @@ export function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-/** Thrown for problems worth showing the user verbatim. */
 export class ImageUploadError extends Error {}
 
-/** Checks a file before any network call. Returns null when it is fine. */
 export function validateImage(file: File): string | null {
   if (!file) return 'No file selected.';
   if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
@@ -52,46 +28,10 @@ export function validateImage(file: File): string | null {
   return null;
 }
 
-/**
- * Turns a Storage error code into something a property manager can act on.
- * `storage/unknown` on a project with no bucket is by far the most common, and
- * "unknown" tells them nothing.
- */
-function describeError(error: unknown): string {
-  const code = (error as StorageError)?.code;
-  switch (code) {
-    case 'storage/unauthorized':
-      return 'You do not have permission to upload here. Sign in again, or ask an administrator to check the storage rules.';
-    case 'storage/unauthenticated':
-      return 'Your session expired. Sign in again and retry the upload.';
-    case 'storage/retry-limit-exceeded':
-      return 'The upload timed out. Check your connection and try again.';
-    case 'storage/canceled':
-      return 'Upload cancelled.';
-    case 'storage/quota-exceeded':
-      return 'This project has run out of storage.';
-    case 'storage/invalid-checksum':
-      return 'The file was corrupted in transit. Please try again.';
-    case 'storage/unknown':
-    default:
-      return (
-        'Could not reach image storage. If this is a new project, Firebase Storage ' +
-        'may not be enabled yet — see SECURITY.md for the one-time setup step.'
-      );
-  }
-}
-
 export interface UploadOptions {
-  /** Called with 0–100 as the upload proceeds. */
   onProgress?: (percent: number) => void;
 }
 
-/**
- * Uploads one image and resolves to its public download URL.
- *
- * The stored name is a UUID with an extension derived from the file's actual
- * content type, not from whatever the original filename claimed.
- */
 export async function uploadImage(
   file: File,
   folder: string = 'uploads',
@@ -100,33 +40,45 @@ export async function uploadImage(
   const problem = validateImage(file);
   if (problem) throw new ImageUploadError(problem);
 
-  const extension = EXTENSION_BY_TYPE[file.type] ?? 'jpg';
-  const filePath = `${folder}/${uuidv4()}.${extension}`;
-  const storageRef = ref(storage, filePath);
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/upload', true);
 
-  const task = uploadBytesResumable(storageRef, file, {
-    contentType: file.type,
-    // Listing photos change rarely and are served on every page view.
-    cacheControl: 'public, max-age=31536000, immutable',
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable && options.onProgress) {
+        options.onProgress(Math.round((e.loaded / e.total) * 100));
+      }
+    };
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const res = JSON.parse(xhr.responseText);
+          resolve(res.url);
+        } catch (err) {
+          reject(new ImageUploadError('Invalid response from server'));
+        }
+      } else {
+        try {
+          const res = JSON.parse(xhr.responseText);
+          reject(new ImageUploadError(res.error || 'Upload failed'));
+        } catch (err) {
+          reject(new ImageUploadError('Upload failed with status ' + xhr.status));
+        }
+      }
+    };
+
+    xhr.onerror = () => reject(new ImageUploadError('Network error during upload'));
+
+    const formData = new FormData();
+    formData.append('folder', folder);
+    formData.append('image', file);
+
+    xhr.send(formData);
   });
-
-  await new Promise<void>((resolve, reject) => {
-    task.on(
-      'state_changed',
-      snapshot => {
-        if (!options.onProgress || snapshot.totalBytes === 0) return;
-        options.onProgress(Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100));
-      },
-      error => reject(new ImageUploadError(describeError(error))),
-      () => resolve()
-    );
-  });
-
-  return getDownloadURL(storageRef);
 }
 
-/** Message for a caught upload failure, whatever its shape. */
 export function uploadErrorMessage(error: unknown): string {
   if (error instanceof ImageUploadError) return error.message;
-  return describeError(error);
+  return (error as Error)?.message || 'An unknown error occurred during upload.';
 }

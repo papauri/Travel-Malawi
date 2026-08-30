@@ -495,7 +495,7 @@ export default function ListProperty() {
                 label="Main photograph"
                 value={draft.imageUrl}
                 onChange={url => set('imageUrl', url)}
-                folder="hotels"
+                folder={`hotels/${draft.id}`}
               />
               <FieldError message={visible.imageUrl} />
 
@@ -504,7 +504,7 @@ export default function ListProperty() {
                   value={draft.galleryUrls}
                   onChange={urls => set('galleryUrls', urls)}
                   label="More photographs"
-                  folder="gallery"
+                  folder={`hotels/${draft.id}/gallery`}
                 />
                 <p className="mt-2 text-xs text-stone-400">
                   Rooms, the view, the food, the bathroom. Six or more is where bookings start.

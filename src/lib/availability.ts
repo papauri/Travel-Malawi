@@ -12,7 +12,7 @@ import { roomPrice } from './currency';
 import { DateStr, addDays, nightsInRange, rangesOverlap } from './dates';
 
 /** Booking statuses that hold inventory. */
-export const ACTIVE_BOOKING_STATUSES = ['pending', 'confirmed'] as const;
+export const ACTIVE_BOOKING_STATUSES = ['confirmed'] as const;
 
 /** The subset of a booking this module needs; anything wider is accepted. */
 export interface BookingLike {
@@ -41,19 +41,54 @@ export function bookedUnitsForRange(
   checkOut: DateStr
 ): number {
   if (!roomTypeId) return 0;
-  return bookings.reduce((total, booking) => {
-    if (booking.roomTypeId !== roomTypeId) return total;
-    if (!isActiveBooking(booking)) return total;
-    if (!rangesOverlap(booking.checkIn!, booking.checkOut!, checkIn, checkOut)) return total;
-    return total + (booking.quantity ?? 1);
-  }, 0);
+  
+  const dailyCounts: Record<string, number> = {};
+  
+  for (const booking of bookings) {
+    if (booking.roomTypeId !== roomTypeId) continue;
+    if (!isActiveBooking(booking)) continue;
+    if (!rangesOverlap(booking.checkIn!, booking.checkOut!, checkIn, checkOut)) continue;
+    
+    let cursor = booking.checkIn!;
+    let guard = 0;
+    while (cursor < booking.checkOut! && guard++ < 1000) {
+      if (cursor >= checkIn && cursor < checkOut) {
+        dailyCounts[cursor] = (dailyCounts[cursor] ?? 0) + (booking.quantity ?? 1);
+      }
+      cursor = addDays(cursor, 1);
+    }
+  }
+  
+  let maxUnits = 0;
+  for (const count of Object.values(dailyCounts)) {
+    if (count > maxUnits) maxUnits = count;
+  }
+  return maxUnits;
 }
 
-/** True when the manager has blocked any night of the range by hand. */
-export function isRoomBlockedInRange(room: RoomType, checkIn: DateStr, checkOut: DateStr): boolean {
-  if (!room.blockedDates?.length) return false;
-  const blocked = new Set(room.blockedDates);
-  return nightsInRange(checkIn, checkOut).some(night => blocked.has(night));
+export function blockedUnitsForRange(
+  room: RoomType,
+  checkIn: DateStr,
+  checkOut: DateStr
+): number {
+  let maxBlocked = 0;
+  const nights = nightsInRange(checkIn, checkOut);
+  
+  if (room.blockedDates?.length) {
+    const fullyBlocked = new Set(room.blockedDates);
+    if (nights.some(night => fullyBlocked.has(night))) {
+      return room.quantity ?? 0; // The entire room type is blocked
+    }
+  }
+
+  if (room.blockedUnits) {
+    for (const night of nights) {
+      const units = room.blockedUnits[night] ?? 0;
+      if (units > maxBlocked) maxBlocked = units;
+    }
+  }
+
+  return maxBlocked;
 }
 
 /**
@@ -69,8 +104,11 @@ export function isRoomAvailable(
 ): boolean {
   const inventory = room.quantity ?? 0;
   if (inventory <= 0) return false;
-  if (isRoomBlockedInRange(room, checkIn, checkOut)) return false;
-  return bookedUnitsForRange(bookings, room.id, checkIn, checkOut) + quantity <= inventory;
+  
+  const booked = bookedUnitsForRange(bookings, room.id, checkIn, checkOut);
+  const blocked = blockedUnitsForRange(room, checkIn, checkOut);
+  
+  return (booked + blocked + quantity) <= inventory;
 }
 
 /** Units of a room type still sellable for a range; never negative. */
@@ -81,8 +119,12 @@ export function unitsRemaining(
   checkOut: DateStr
 ): number {
   const inventory = room.quantity ?? 0;
-  if (inventory <= 0 || isRoomBlockedInRange(room, checkIn, checkOut)) return 0;
-  return Math.max(0, inventory - bookedUnitsForRange(bookings, room.id, checkIn, checkOut));
+  if (inventory <= 0) return 0;
+  
+  const booked = bookedUnitsForRange(bookings, room.id, checkIn, checkOut);
+  const blocked = blockedUnitsForRange(room, checkIn, checkOut);
+  
+  return Math.max(0, inventory - booked - blocked);
 }
 
 /**

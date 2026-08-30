@@ -10,7 +10,6 @@
  * with the page anyway — so the preference is opted into deliberately, and the
  * toggle that turns it on doubles as the gesture that unlocks playback.
  */
-
 const STORAGE_KEY = 'chatSoundEnabled';
 
 type Listener = (enabled: boolean) => void;
@@ -32,6 +31,7 @@ export function setSoundEnabled(enabled: boolean): void {
     // The preference will not survive a reload; honouring it now still helps.
   }
   listeners.forEach(listener => listener(enabled));
+
   // Turning it on is a click, which is the gesture browsers require before
   // audio may play. Warming the context here means the first real message
   // makes a sound instead of being silently dropped.
@@ -56,6 +56,7 @@ let context: AudioContext | null = null;
 function ensureContext(): AudioContext | null {
   const Ctor = audioContextCtor();
   if (!Ctor) return null;
+
   if (!context) {
     try {
       context = new Ctor();
@@ -63,6 +64,7 @@ function ensureContext(): AudioContext | null {
       return null;
     }
   }
+
   return context;
 }
 
@@ -101,10 +103,12 @@ export function playChime(): void {
   for (const note of notes) {
     const oscillator = ctx.createOscillator();
     const gain = ctx.createGain();
+
     oscillator.type = 'sine';
     oscillator.frequency.value = note.frequency;
 
     const start = now + note.at;
+
     // A quick fade in and out; a square-edged tone clicks.
     gain.gain.setValueAtTime(0, start);
     gain.gain.linearRampToValueAtTime(0.09, start + 0.02);
@@ -113,6 +117,51 @@ export function playChime(): void {
     oscillator.connect(gain).connect(ctx.destination);
     oscillator.start(start);
     oscillator.stop(start + 0.24);
+  }
+}
+
+let activeRinger: number | NodeJS.Timeout | null = null;
+
+export function startRinging(): void {
+  if (!isSoundEnabled()) return;
+  if (activeRinger) return; // already ringing
+
+  const ring = () => {
+    const ctx = ensureContext();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') {
+      void unlock();
+    }
+    const now = ctx.currentTime;
+    const notes = [
+      { frequency: 440, at: 0 },
+      { frequency: 480, at: 0.1 },
+      { frequency: 440, at: 0.2 },
+      { frequency: 480, at: 0.3 }
+    ];
+    for (const note of notes) {
+      const oscillator = ctx.createOscillator();
+      const gain = ctx.createGain();
+      oscillator.type = 'sine';
+      oscillator.frequency.value = note.frequency;
+      const start = now + note.at;
+      gain.gain.setValueAtTime(0, start);
+      gain.gain.linearRampToValueAtTime(0.15, start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.1);
+      oscillator.connect(gain).connect(ctx.destination);
+      oscillator.start(start);
+      oscillator.stop(start + 0.15);
+    }
+  };
+  
+  ring();
+  activeRinger = setInterval(ring, 2000);
+}
+
+export function stopRinging(): void {
+  if (activeRinger) {
+    clearInterval(activeRinger);
+    activeRinger = null;
   }
 }
 
@@ -147,6 +196,7 @@ export function shouldChime(
     state.primed = true;
     return false;
   }
+
   return incoming.some(m => m.senderId && m.senderId !== currentUserId);
 }
 
@@ -164,5 +214,6 @@ export function chimeForIncoming(
     }
     return;
   }
+
   if (shouldChime(messages, currentUserId, seen.current)) playChime();
 }
