@@ -183,13 +183,14 @@ export default function ImageUpload({ value, onChange, label = 'Image', folder =
       )}
       
       {value && mode === 'upload' && !isUploading && (
-        <div className="mt-3 relative rounded-xl overflow-hidden h-32 bg-stone-100 border border-stone-200">
+        <div className="mt-3 relative rounded-xl overflow-hidden aspect-video bg-stone-100 border border-stone-200 shadow-sm">
           <SmartImage src={value} alt="Preview" className="w-full h-full object-cover" />
         </div>
       )}
     </div>
   );
 }
+
 
 
 

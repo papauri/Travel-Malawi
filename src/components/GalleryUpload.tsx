@@ -148,7 +148,7 @@ export default function GalleryUpload({ value = [], onChange, label = "Gallery I
       
       {/* Draggable Grid */}
       {value.length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-6">
           {value.map((url, idx) => (
             <div
               key={`${url}-${idx}`}
@@ -156,9 +156,14 @@ export default function GalleryUpload({ value = [], onChange, label = "Gallery I
               onDragStart={(e) => handleDragStart(e, idx)}
               onDragEnd={handleDragEnd}
               onDragOver={(e) => handleDragOver(e, idx)}
-              className="relative aspect-video rounded-xl overflow-hidden group cursor-move bg-stone-100 border border-stone-200"
+              className={`relative aspect-video rounded-xl overflow-hidden group cursor-move bg-stone-100 transition-all ${idx === 0 ? "border-2 border-emerald-500 shadow-md ring-2 ring-emerald-500/20" : "border border-stone-200 hover:border-stone-300"}`}
             >
               <SmartImage src={url} alt={`Gallery ${idx + 1}`} className="w-full h-full object-cover pointer-events-none" />
+              {idx === 0 && (
+                <div className="absolute top-2 left-2 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider shadow-sm">
+                  Cover Photo
+                </div>
+              )}
               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
                 <GripVertical className="text-white h-8 w-8" />
               </div>
