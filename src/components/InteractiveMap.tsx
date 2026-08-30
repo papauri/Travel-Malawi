@@ -357,14 +357,14 @@ export default function InteractiveMap({
 
     // Ensure map tiles and container geometry calculate correctly
     const resizeTimer = setTimeout(() => {
-      map.invalidateSize();
+      mapInstanceRef.current?.invalidateSize();
     }, 150);
 
     // Watch for container resizes
     let resizeObserver: ResizeObserver | null = null;
     if (typeof ResizeObserver !== 'undefined' && containerRef.current) {
       resizeObserver = new ResizeObserver(() => {
-        map.invalidateSize();
+        mapInstanceRef.current?.invalidateSize();
       });
       resizeObserver.observe(containerRef.current);
     }
@@ -1153,6 +1153,7 @@ export default function InteractiveMap({
     </div>
   );
 }
+
 
 
 
