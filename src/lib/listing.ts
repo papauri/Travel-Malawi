@@ -1,3 +1,4 @@
+import { addDoc, collection, setDoc, doc, getDocs, query, where, limit } from "firebase/firestore";
 /**
  * Everything the "list your property" flow needs, in one place.
  *
@@ -12,7 +13,6 @@
  * cannot drift apart.
  */
 
-import { addDoc, doc, setDoc, collection, getDocs, limit, query, where } from 'firebase/firestore';
 import { db } from './firebase';
 import { Hotel } from '../types';
 import { defaultWeek } from './hours';
@@ -114,9 +114,11 @@ export interface ListingDraft {
   contactEmail: string;
   contactPhone: string;
   contactWhatsapp: string;
+  rooms: RoomInput[];
 }
 
 import { v4 as uuidv4 } from "uuid";
+import { RoomInput, validateRoom } from "./validateRoom";
 
 export function emptyDraft(): ListingDraft {
   return {
@@ -135,14 +137,15 @@ export function emptyDraft(): ListingDraft {
     contactEmail: '',
     contactPhone: '',
     contactWhatsapp: '',
-  };
+      rooms: [],
+    };
 }
 
 export const NAME_MAX = 80;
 export const DESCRIPTION_MIN = 60;
 export const DESCRIPTION_MAX = 2000;
 
-export type DraftErrors = Partial<Record<keyof ListingDraft, string>>;
+export type DraftErrors = Partial<Record<keyof ListingDraft | "rooms", string>>;
 
 /**
  * The fields each step owns. The wizard validates a step before it will
@@ -153,6 +156,7 @@ export const STEP_FIELDS: (keyof ListingDraft)[][] = [
   ['name', 'category', 'location'],
   ['description', 'amenities'],
   ['imageUrl', 'galleryUrls'],
+  ['rooms'], // Rooms
   ['contactEmail', 'contactPhone', 'contactWhatsapp', 'checkInTime', 'checkOutTime'],
   [], // Plan & Pricing
   [], // Review

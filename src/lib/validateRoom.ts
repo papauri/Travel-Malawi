@@ -31,6 +31,10 @@ export const MAX_ROOM_GUESTS = 30;
 
 /** What the editor holds while a room is being written. */
 export interface RoomInput {
+  id?: string;
+  imageUrl?: string;
+  galleryUrls?: string[];
+  amenities?: string[];
   name?: string;
   description?: string;
   currencies?: CurrencyCode[];

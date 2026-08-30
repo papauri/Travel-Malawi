@@ -54,7 +54,7 @@ const STEPS = [
 ];
 
 /** Every step that carries fields — used to find the first one still wrong. */
-const FIELD_STEPS = [0, 1, 2, 3];
+const FIELD_STEPS = [0, 1, 2, 3, 4];
 
 /** Survives the round trip through a Google sign-in popup. */
 function readDraft(): ListingDraft {
@@ -518,6 +518,169 @@ export default function ListProperty() {
 
           {step === 3 && (
             <div className="space-y-8">
+              <div className="rounded-2xl border border-stone-200 bg-stone-50 p-6">
+                <h3 className="text-lg font-serif font-bold text-stone-900 mb-2">What will guests book?</h3>
+                <p className="text-sm text-stone-600 mb-6">
+                  Add at least one room type (e.g. "Standard Double", "Lakeview Chalet").
+                  You can always add more later from your dashboard.
+                </p>
+
+                {draft.rooms.length > 0 && (
+                  <div className="space-y-4 mb-6">
+                    {draft.rooms.map((room, idx) => (
+                      <div key={idx} className="bg-white p-4 rounded-xl border border-stone-200 flex justify-between items-center shadow-sm">
+                        <div className="flex items-center gap-4">
+                          {room.imageUrl ? (
+                            <img src={room.imageUrl} className="w-16 h-12 rounded-lg object-cover" />
+                          ) : (
+                            <div className="w-16 h-12 bg-stone-100 rounded-lg flex items-center justify-center">
+                              <span className="text-[10px] text-stone-400">No photo</span>
+                            </div>
+                          )}
+                          <div>
+                            <h4 className="font-bold text-stone-900">{room.name}</h4>
+                            <p className="text-xs text-stone-500">
+                              {room.currencies?.[0]} {room.prices?.[room.currencies?.[0] || 'USD']} / night
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = [...draft.rooms];
+                            updated.splice(idx, 1);
+                            set('rooms', updated);
+                          }}
+                          className="text-red-500 p-2 hover:bg-red-50 rounded-lg transition"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    set('rooms', [...draft.rooms, {
+                      name: '',
+                      description: '',
+                      currencies: ['USD'],
+                      prices: { USD: 0 },
+                      maxGuests: 2,
+                      quantity: 1,
+                      imageUrl: '',
+                      galleryUrls: [],
+                    }]);
+                  }}
+                  className="w-full py-4 border-2 border-dashed border-stone-300 rounded-xl text-stone-600 font-semibold hover:border-stone-400 hover:bg-stone-100 transition"
+                >
+                  + Add a room type
+                </button>
+              </div>
+
+              {draft.rooms.map((room, idx) => (
+                <div key={idx} className="bg-white border border-blue-200 rounded-2xl p-6 shadow-sm relative space-y-6">
+                  <div className="absolute top-0 right-0 bg-blue-100 text-blue-800 text-[10px] font-bold px-3 py-1 rounded-bl-xl rounded-tr-xl uppercase tracking-widest">
+                    Room Type {idx + 1}
+                  </div>
+                  
+                  <div>
+                    <label className={labelClass}>Room Name</label>
+                    <input
+                      type="text"
+                      value={room.name || ''}
+                      onChange={e => {
+                        const updated = [...draft.rooms];
+                        updated[idx].name = e.target.value;
+                        set('rooms', updated);
+                      }}
+                      className={fieldClass}
+                      placeholder="e.g. Standard Double Room"
+                    />
+                  </div>
+
+                  <div>
+                    <label className={labelClass}>Description</label>
+                    <textarea
+                      value={room.description || ''}
+                      onChange={e => {
+                        const updated = [...draft.rooms];
+                        updated[idx].description = e.target.value;
+                        set('rooms', updated);
+                      }}
+                      className={fieldClass}
+                      rows={2}
+                      placeholder="What makes this room special?"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className={labelClass}>Nightly Price (USD)</label>
+                      <input
+                        type="number"
+                        value={room.prices?.USD || ''}
+                        onChange={e => {
+                          const updated = [...draft.rooms];
+                          updated[idx].prices = { ...updated[idx].prices, USD: Number(e.target.value) };
+                          set('rooms', updated);
+                        }}
+                        className={fieldClass}
+                        min="0"
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>How many of these rooms?</label>
+                      <input
+                        type="number"
+                        value={room.quantity || ''}
+                        onChange={e => {
+                          const updated = [...draft.rooms];
+                          updated[idx].quantity = Number(e.target.value);
+                          set('rooms', updated);
+                        }}
+                        className={fieldClass}
+                        min="1"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-stone-100">
+                    <ImageUpload
+                      label="Room Main Image"
+                      value={room.imageUrl || ''}
+                      onChange={url => {
+                        const updated = [...draft.rooms];
+                        updated[idx].imageUrl = url;
+                        set('rooms', updated);
+                      }}
+                      folder={`hotels/${draft.id}/rooms`}
+                    />
+                  </div>
+                  
+                  <div className="pt-4 border-t border-stone-100">
+                    <GalleryUpload
+                      label="Room Gallery (More photos)"
+                      value={room.galleryUrls || []}
+                      onChange={urls => {
+                        const updated = [...draft.rooms];
+                        updated[idx].galleryUrls = urls;
+                        set('rooms', updated);
+                      }}
+                      folder={`hotels/${draft.id}/rooms`}
+                    />
+                  </div>
+                </div>
+              ))}
+
+              <FieldError message={visible.rooms} />
+            </div>
+          )}
+
+{step === 4 && (
+            <div className="space-y-8">
               <div className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-5">
                 <p className="text-sm leading-relaxed text-emerald-900">
                   Guests see these on your listing, and a booking request quotes them back so
@@ -613,7 +776,7 @@ export default function ListProperty() {
             </div>
           )}
 
-          {step === 4 && (
+          {step === 5 && (
             <div className="space-y-6">
               {checkingPremium ? (
                 <div className="flex justify-center p-12">
@@ -660,7 +823,7 @@ export default function ListProperty() {
             </div>
           )}
 
-          {step === 5 && (
+          {step === 6 && (
             <div className="space-y-8">
               <div className="overflow-hidden rounded-2xl border border-stone-200">
                 <div className="relative h-64 bg-stone-100">
