@@ -8,10 +8,7 @@ import { LatLng, isValidLatLng, MALAWI_CENTRE, distanceKm, estimateTravelTime, g
 import { CurrencyCode } from '../types';
 import { Layers, Locate, Maximize2, Minimize2, ZoomIn, ZoomOut, Navigation, Star, MapPin, Car, ArrowRight, ExternalLink, X, Compass, Route, WifiOff, CloudDownload, Download } from 'lucide-react';
 import toast from 'react-hot-toast';
-import 'leaflet-gesture-handling/dist/leaflet-gesture-handling.css';
-import { GestureHandling } from 'leaflet-gesture-handling';
 
-L.Map.addInitHook('addHandler', 'gestureHandling', GestureHandling);
 
 import { createCachedStreetLayer, createCachedSatelliteLayer, prefetchMalawiMapTiles } from '../lib/mapCache';
 
@@ -345,10 +342,9 @@ export default function InteractiveMap({
       zoom: initialZoom,
       zoomControl: false,
       attributionControl: false,
-      scrollWheelZoom: interactive,
-      // @ts-ignore
-      gestureHandling: interactive,
-      dragging: interactive,
+      scrollWheelZoom: false,
+      
+      dragging: interactive && !L.Browser.mobile,
       touchZoom: interactive,
       doubleClickZoom: interactive,
     });
@@ -843,6 +839,16 @@ export default function InteractiveMap({
     }
   }, [center, markerPosition, zoom, lodges]);
 
+  // Update mobile dragging dynamically based on fullscreen
+  useEffect(() => {
+    if (mapInstanceRef.current && L.Browser.mobile && interactive) {
+      if (isFullscreen) {
+        mapInstanceRef.current.dragging.enable();
+      } else {
+        mapInstanceRef.current.dragging.disable();
+      }
+    }
+  }, [isFullscreen, interactive]);
   // Invalidate map size on resize / fullscreen
   const toggleFullscreen = () => {
     setIsFullscreen(prev => !prev);
@@ -1147,6 +1153,9 @@ export default function InteractiveMap({
     </div>
   );
 }
+
+
+
 
 
 
