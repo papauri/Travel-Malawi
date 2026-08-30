@@ -195,7 +195,8 @@ export default function ListProperty() {
       setStep(firstBadStep);
       setShowErrors(true);
       toast.error('Something above still needs filling in.');
-      return;
+        setTimeout(() => document.querySelector('p[role="alert"].text-red-600')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+        return;
     }
 
     setSubmitting(true);

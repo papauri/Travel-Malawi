@@ -341,7 +341,8 @@ export default function ManageHotel() {
     if (!id || !hotel) return;
     if (hasDetailProblem) {
       toast.error(Object.values(detailProblems).find(Boolean) ?? 'Check the highlighted fields.');
-      return;
+        setTimeout(() => document.querySelector('p[role="alert"].text-red-600')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+        return;
     }
     setSaving(true);
     try {
@@ -501,7 +502,8 @@ export default function ManageHotel() {
     if (hasErrors(problems)) {
       setRoomErrors(problems);
       toast.error(firstError(problems) ?? 'Check the highlighted fields.');
-      return;
+        setTimeout(() => document.querySelector('p[role="alert"].text-red-600')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+        return;
     }
     setRoomErrors({});
 
@@ -1024,7 +1026,7 @@ export default function ManageHotel() {
           )}
 
           <div className="bg-white rounded-2xl sm:rounded-3xl border border-stone-200 p-5 sm:p-6 md:p-8 shadow-sm">
-          <form onSubmit={handleSaveHotel} className="space-y-6" noValidate>
+          <form onSubmit={handleSaveHotel} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="md:col-span-2">
                 <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Property Name</label>
@@ -1316,7 +1318,7 @@ export default function ManageHotel() {
                 <button onClick={cancelEditRoom} className="p-2 text-stone-400 hover:bg-stone-100 rounded-full transition"><X className="h-5 w-5" /></button>
               </div>
               
-              <form onSubmit={handleSaveRoom} className="space-y-6" noValidate>
+              <form onSubmit={handleSaveRoom} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="md:col-span-2">
                     <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Room Name</label>
@@ -2176,5 +2178,6 @@ export default function ManageHotel() {
     </div>
   );
 }
+
 
 
