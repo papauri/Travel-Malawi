@@ -123,7 +123,7 @@ export default function Home() {
   const [isLocatingUser, setIsLocatingUser] = useState(false);
   const [userLocationError, setUserLocationError] = useState<string | null>(null);
 
-  const handleToggleUserLocation = () => {
+  const handleToggleUserLocation = async () => {
     if (showUserLocation) {
       setShowUserLocation(false);
       setUserLocation(null);
@@ -1940,6 +1940,7 @@ export default function Home() {
     </div>
   );
 }
+
 
 
 
