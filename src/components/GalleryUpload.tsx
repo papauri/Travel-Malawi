@@ -206,7 +206,7 @@ export default function GalleryUpload({ value = [], onChange, label = "Gallery I
               onChange={e => setUrlInput(e.target.value)}
               onKeyDown={e => e.key === "Enter" && (e.preventDefault(), handleAddUrl())}
               className="flex-1 rounded-xl border-stone-200 border bg-white p-3 text-sm focus:ring-2 focus:ring-stone-900 outline-none transition"
-              placeholder="Image address, or a OneDrive / Drive / Dropbox share link"
+              placeholder="e.g. https://example.com/image.jpg"
             />
             <button
               type="button"

@@ -117,7 +117,7 @@ export default function ImageUpload({ value, onChange, label = 'Image', folder =
               onChange(url);
             }}
             className="w-full rounded-xl border-stone-200 border bg-stone-50 p-4 focus:ring-2 focus:ring-stone-900 focus:border-transparent outline-none transition"
-            placeholder="Paste an image address, or a OneDrive / Drive / Dropbox share link"
+            placeholder="e.g. https://example.com/image.jpg"
           />
 
           {shareNote && (
@@ -190,3 +190,5 @@ export default function ImageUpload({ value, onChange, label = 'Image', folder =
     </div>
   );
 }
+
+

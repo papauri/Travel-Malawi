@@ -86,6 +86,7 @@ export default function DirectionsPanel({
   const [guestLocation, setGuestLocation] = useState<LatLng | null>(null);
   const [selectedOriginName, setSelectedOriginName] = useState<string | null>(null);
   const [locating, setLocating] = useState(false);
+  const { requestPermission } = usePermission();
   const [copiedCoords, setCopiedCoords] = useState(false);
 
   // Always resolve valid coordinates so the stay and photo pin display by default
@@ -117,7 +118,7 @@ export default function DirectionsPanel({
     });
     navigator.geolocation.getCurrentPosition(
       pos => {
-        toast.dismiss('geo-permission');
+        
         setLocating(false);
         const origin = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         setGuestLocation(origin);
@@ -469,3 +470,4 @@ export default function DirectionsPanel({
     </div>
   );
 }
+

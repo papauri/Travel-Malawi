@@ -6,6 +6,7 @@ import {
   query, where, addDoc, getDocs, deleteDoc 
 } from 'firebase/firestore';
 import { Call, CallCandidate } from '../types';
+import { usePermission } from '../contexts/PermissionContext';
 
 const configuration = {
   iceServers: [
@@ -24,6 +25,7 @@ export function useWebRTC(chatId: string, currentUserId: string, currentUserName
   const [error, setError] = useState<string | null>(null);
   const [networkQuality, setNetworkQuality] = useState<NetworkQuality>('unknown');
   
+  const { requestPermission } = usePermission();
   const peerConnection = useRef<RTCPeerConnection | null>(null);
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -132,14 +134,14 @@ export function useWebRTC(chatId: string, currentUserId: string, currentUserName
       });
       
       const stream = await navigator.mediaDevices.getUserMedia({ video, audio: true });
-      toast.dismiss('media-permission');
+      
       setLocalStream(stream);
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = stream;
       }
       return stream;
     } catch (err: any) {
-      toast.dismiss('media-permission');
+      
       setError(err.message);
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
         toast('Call cancelled. Camera/microphone access was denied. You can continue using text chat.', { icon: '💬' });
@@ -359,3 +361,4 @@ export function useWebRTC(chatId: string, currentUserId: string, currentUserName
     endCall
   };
 }
+

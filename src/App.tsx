@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useLocation, Link } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { AuthDialogProvider } from './contexts/AuthDialogContext';
+import { PermissionProvider } from './contexts/PermissionContext';
 import { ChatModalProvider } from './contexts/ChatModalContext';
 import { CompareProvider } from './contexts/CompareContext';
 import Breadcrumbs, { BreadcrumbProvider } from './components/Breadcrumbs';
@@ -95,7 +96,8 @@ export default function App() {
     <AuthProvider>
       <BrowserRouter>
         <ScrollToTop />
-        <AuthDialogProvider>
+        <PermissionProvider>
+          <AuthDialogProvider>
           <ChatModalProvider>
             <CompareProvider>
               <BreadcrumbProvider>
@@ -138,6 +140,7 @@ export default function App() {
             </CompareProvider>
           </ChatModalProvider>
         </AuthDialogProvider>
+          </PermissionProvider>
       </BrowserRouter>
     </AuthProvider>
   );

@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import { collection, getDocs, getDoc, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Hotel, RoomType, Review, CurrencyCode } from '../types';
+import { usePermission } from '../contexts/PermissionContext';
 import { Link, useSearchParams } from 'react-router-dom';
 import HotelCard from '../components/HotelCard';
 import SmartImage from '../components/SmartImage';
@@ -71,6 +72,7 @@ const FALLBACK_DESTINATIONS = ['Lake Malawi', 'Likoma', 'Zomba', 'Liwonde', 'Lil
 
 export default function Home() {
   const today = todayStr();
+  const { requestPermission } = usePermission();
 
   const [hotels, setHotels] = useState<Hotel[]>(() => getCachedHotels());
   const [rooms, setRooms] = useState<RoomType[]>(() => getCachedRooms());
@@ -151,7 +153,7 @@ export default function Home() {
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        toast.dismiss('geo-permission');
+        
         const coords: LatLng = {
           lat: position.coords.latitude,
           lng: position.coords.longitude,
@@ -467,7 +469,7 @@ export default function Home() {
     });
   };
 
-  const handleNearMe = () => {
+  const handleNearMe = async () => {
     if (!navigator.geolocation) {
       toast.error("Geolocation is not supported by your browser.");
       return;
@@ -481,7 +483,7 @@ export default function Home() {
 
     navigator.geolocation.getCurrentPosition(
       pos => {
-        toast.dismiss('geo-permission');
+        
         setSearchLocation('Near Me');
         applySearch({
           location: 'Near Me',
@@ -2142,6 +2144,7 @@ export default function Home() {
     </div>
   );
 }
+
 
 
 

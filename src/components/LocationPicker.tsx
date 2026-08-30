@@ -226,7 +226,7 @@ export default function LocationPicker({
     toast.success(`Pin set to ${formatCoordinates(parsed, 4)}.`);
   };
 
-  const useMyPosition = () => {
+  const useMyPosition = async () => {
     if (!navigator.geolocation) {
       toast.error('This browser will not share a location.');
       return;
@@ -239,7 +239,7 @@ export default function LocationPicker({
     });
     navigator.geolocation.getCurrentPosition(
       position => {
-        toast.dismiss('geo-permission');
+        
         setLocating(false);
         const coords = { lat: position.coords.latitude, lng: position.coords.longitude };
         onChange(coords);
@@ -621,3 +621,4 @@ export default function LocationPicker({
     </div>
   );
 }
+
