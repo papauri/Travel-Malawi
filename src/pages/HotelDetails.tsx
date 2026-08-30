@@ -676,7 +676,7 @@ export default function HotelDetails() {
                   >
                     <div className="w-full md:w-2/5 lg:w-1/3 aspect-[4/3] overflow-hidden rounded-[16px] relative shrink-0 group">
                       <div className="w-full h-full flex overflow-x-auto snap-x snap-mandatory scrollbar-none">
-                        {[getRoomImage(room, hotel), ...(room.galleryUrls || [])].map((imgUrl, i) => (
+                        {Array.from(new Set([getRoomImage(room, hotel), ...(room.galleryUrls || [])])).map((imgUrl, i) => (
                           <div key={i} className="min-w-full h-full shrink-0 snap-center relative">
                             <SmartImage
                               src={imgUrl}

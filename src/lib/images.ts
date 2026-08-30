@@ -139,12 +139,16 @@ export function getHotelImage(hotel: { name?: string; imageUrl?: string; gallery
  * `imageUrl`, so this falls back to the parent hotel's photography before the
  * placeholder.
  */
-export function getRoomImage(
-  room: { imageUrl?: string },
+export function getRoomImage(room: { imageUrl?: string; galleryUrls?: unknown },
   hotel?: { name?: string; imageUrl?: string; galleryUrls?: unknown } | null
 ): string {
   const direct = normalizeImageUrl(room?.imageUrl);
   if (direct) return direct;
+  
+  if (Array.isArray(room?.galleryUrls) && room.galleryUrls.length > 0) {
+    const galDirect = normalizeImageUrl(room.galleryUrls[0] as string);
+    if (galDirect) return galDirect;
+  }
   if (hotel) {
     const images = getHotelImages(hotel);
     // Prefer a gallery shot over the hero image so a room card does not simply
