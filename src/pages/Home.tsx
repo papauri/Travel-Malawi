@@ -1302,19 +1302,23 @@ export default function Home() {
 
       {/* Main Property Listings & Map Section */}
       <section id="search-results" className="scroll-mt-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12 w-full flex-1">
-        {/* Results Header */}
-        <div className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
-          <div>
-            <h2 className="text-3xl md:text-4xl font-serif text-stone-900 mb-2 tracking-tight">
+        {/* Results Header Title */}
+          <div className="text-center mb-6 md:mb-8 max-w-3xl mx-auto">
+            <h2 className="text-2xl md:text-3xl font-serif text-stone-900 mb-2 tracking-tight">
               {hasSearch ? 'What matched' : 'Every stay in Malawi'}
             </h2>
-            <p className="text-stone-500 text-sm md:text-base">
+            <p className="text-stone-500 text-sm">
               {hasSearch
                 ? `${filteredHotels.length} propert${filteredHotels.length === 1 ? 'y' : 'ies'} can take you.`
                 : 'Independent lodges, camps and guesthouses — every one booked direct with its owner.'}
             </p>
-            {hasSearch || isPriceFiltered ? (
-              <div className="flex flex-wrap items-center gap-2 mt-3">
+          </div>
+
+          {/* Filter Toolbar */}
+          <div className="mb-6 flex flex-col lg:flex-row lg:items-center justify-between gap-4 lg:bg-stone-50 lg:border lg:border-stone-200 lg:p-2.5 lg:rounded-2xl">
+            <div className="flex-1 min-w-0">
+              {hasSearch || isPriceFiltered ? (
+              <div className="flex flex-wrap items-center gap-2">
                 {appliedSearch.coords && (
                   <span className="text-xs font-semibold bg-stone-100 text-stone-700 px-3 py-1 rounded-full">
                     Within {appliedSearch.proximity} km
@@ -1357,10 +1361,10 @@ export default function Home() {
                   <X className="w-3 h-3" /> Clear all
                 </button>
               </div>
-            ) : null}
-          </div>
+            ) : <span className="hidden lg:inline-block text-xs font-semibold text-stone-400 uppercase tracking-wider px-2">Filter results</span>}
+            </div>
 
-          <div className="flex items-center gap-3 shrink-0 flex-wrap">
+            <div className="flex items-center gap-2 shrink-0 flex-wrap justify-start lg:justify-end">
             {/* Category Dropdown */}
             <label className="flex items-center gap-2 shrink-0">
               <select
@@ -1946,6 +1950,7 @@ export default function Home() {
     </div>
   );
 }
+
 
 
 
