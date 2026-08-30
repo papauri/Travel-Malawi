@@ -126,6 +126,7 @@ export default function ListProperty() {
   const goNext = () => {
     if (!isStepComplete(draft, step)) {
       setShowErrors(true);
+      setTimeout(() => document.querySelector('p[role="alert"].text-red-600')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
       return;
     }
     setShowErrors(false);
@@ -207,7 +208,8 @@ export default function ListProperty() {
         toast.error('You already have a property listed under that name.');
         setStep(0);
         setShowErrors(true);
-        return;
+      setTimeout(() => document.querySelector('p[role="alert"].text-red-600')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+      return;
       }
 
       const id = await createListing(draft, user.uid);
@@ -901,5 +903,6 @@ function HostIntro({
     </div>
   );
 }
+
 
 
