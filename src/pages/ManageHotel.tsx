@@ -1035,11 +1035,6 @@ export default function ManageHotel() {
                   </div>
                 </div>
               )}
-              </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           )}
 
