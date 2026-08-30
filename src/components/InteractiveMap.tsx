@@ -8,6 +8,11 @@ import { LatLng, isValidLatLng, MALAWI_CENTRE, distanceKm, estimateTravelTime, g
 import { CurrencyCode } from '../types';
 import { Layers, Locate, Maximize2, Minimize2, ZoomIn, ZoomOut, Navigation, Star, MapPin, Car, ArrowRight, ExternalLink, X, Compass, Route, WifiOff, CloudDownload, Download } from 'lucide-react';
 import toast from 'react-hot-toast';
+import 'leaflet-gesture-handling/dist/leaflet-gesture-handling.css';
+import { GestureHandling } from 'leaflet-gesture-handling';
+
+L.Map.addInitHook('addHandler', 'gestureHandling', GestureHandling);
+
 import { createCachedStreetLayer, createCachedSatelliteLayer, prefetchMalawiMapTiles } from '../lib/mapCache';
 
 export interface LodgeMarker {
@@ -341,6 +346,8 @@ export default function InteractiveMap({
       zoomControl: false,
       attributionControl: false,
       scrollWheelZoom: interactive,
+      // @ts-ignore
+      gestureHandling: interactive,
       dragging: interactive,
       touchZoom: interactive,
       doubleClickZoom: interactive,
@@ -1140,3 +1147,6 @@ export default function InteractiveMap({
     </div>
   );
 }
+
+
+
