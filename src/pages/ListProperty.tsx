@@ -48,6 +48,7 @@ const STEPS = [
   { title: 'The basics', blurb: 'What it is called, and where it is.' },
   { title: 'The place', blurb: 'What a guest should know before booking.' },
   { title: 'Photographs', blurb: 'The pictures that do the selling.' },
+  { title: 'Rooms & Rates', blurb: 'What guests will actually book.' },
   { title: 'Reaching you', blurb: 'How guests get hold of you, and your hours.' },
   { title: 'Plan & Pricing', blurb: 'Provisioning options.' },
   { title: 'Check it over', blurb: 'One last look before it goes for review.' },
@@ -525,9 +526,9 @@ export default function ListProperty() {
                   You can always add more later from your dashboard.
                 </p>
 
-                {draft.rooms.length > 0 && (
+                {(draft.rooms || []).length > 0 && (
                   <div className="space-y-4 mb-6">
-                    {draft.rooms.map((room, idx) => (
+                    {(draft.rooms || []).map((room, idx) => (
                       <div key={idx} className="bg-white p-4 rounded-xl border border-stone-200 flex justify-between items-center shadow-sm">
                         <div className="flex items-center gap-4">
                           {room.imageUrl ? (
@@ -547,7 +548,7 @@ export default function ListProperty() {
                         <button
                           type="button"
                           onClick={() => {
-                            const updated = [...draft.rooms];
+                            const updated = [...(draft.rooms || [])];
                             updated.splice(idx, 1);
                             set('rooms', updated);
                           }}
@@ -563,7 +564,7 @@ export default function ListProperty() {
                 <button
                   type="button"
                   onClick={() => {
-                    set('rooms', [...draft.rooms, {
+                    set('rooms', [...(draft.rooms || []), {
                       name: '',
                       description: '',
                       currencies: ['USD'],
@@ -580,7 +581,7 @@ export default function ListProperty() {
                 </button>
               </div>
 
-              {draft.rooms.map((room, idx) => (
+              {(draft.rooms || []).map((room, idx) => (
                 <div key={idx} className="bg-white border border-blue-200 rounded-2xl p-6 shadow-sm relative space-y-6">
                   <div className="absolute top-0 right-0 bg-blue-100 text-blue-800 text-[10px] font-bold px-3 py-1 rounded-bl-xl rounded-tr-xl uppercase tracking-widest">
                     Room Type {idx + 1}
@@ -592,7 +593,7 @@ export default function ListProperty() {
                       type="text"
                       value={room.name || ''}
                       onChange={e => {
-                        const updated = [...draft.rooms];
+                        const updated = [...(draft.rooms || [])];
                         updated[idx].name = e.target.value;
                         set('rooms', updated);
                       }}
@@ -606,7 +607,7 @@ export default function ListProperty() {
                     <textarea
                       value={room.description || ''}
                       onChange={e => {
-                        const updated = [...draft.rooms];
+                        const updated = [...(draft.rooms || [])];
                         updated[idx].description = e.target.value;
                         set('rooms', updated);
                       }}
@@ -623,7 +624,7 @@ export default function ListProperty() {
                         type="number"
                         value={room.prices?.USD || ''}
                         onChange={e => {
-                          const updated = [...draft.rooms];
+                          const updated = [...(draft.rooms || [])];
                           updated[idx].prices = { ...updated[idx].prices, USD: Number(e.target.value) };
                           set('rooms', updated);
                         }}
@@ -637,7 +638,7 @@ export default function ListProperty() {
                         type="number"
                         value={room.quantity || ''}
                         onChange={e => {
-                          const updated = [...draft.rooms];
+                          const updated = [...(draft.rooms || [])];
                           updated[idx].quantity = Number(e.target.value);
                           set('rooms', updated);
                         }}
@@ -652,7 +653,7 @@ export default function ListProperty() {
                       label="Room Main Image"
                       value={room.imageUrl || ''}
                       onChange={url => {
-                        const updated = [...draft.rooms];
+                        const updated = [...(draft.rooms || [])];
                         updated[idx].imageUrl = url;
                         set('rooms', updated);
                       }}
@@ -665,7 +666,7 @@ export default function ListProperty() {
                       label="Room Gallery (More photos)"
                       value={room.galleryUrls || []}
                       onChange={urls => {
-                        const updated = [...draft.rooms];
+                        const updated = [...(draft.rooms || [])];
                         updated[idx].galleryUrls = urls;
                         set('rooms', updated);
                       }}
