@@ -17,6 +17,7 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { usePermission } from '../contexts/PermissionContext';
 import {
   LatLng,
   distanceKm,
@@ -470,4 +471,5 @@ export default function DirectionsPanel({
     </div>
   );
 }
+
 

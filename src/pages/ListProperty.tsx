@@ -26,6 +26,7 @@ import {
 
 import { useAuth } from '../contexts/AuthContext';
 import { useAuthDialog } from '../contexts/AuthDialogContext';
+import { usePermission } from '../contexts/PermissionContext';
 import { isHotelManager } from '../lib/roles';
 import ImageUpload from '../components/ImageUpload';
 import GalleryUpload from '../components/GalleryUpload';
@@ -83,6 +84,7 @@ export default function ListProperty() {
   const [submitting, setSubmitting] = useState(false);
   const [enabling, setEnabling] = useState(false);
   const [amenityInput, setAmenityInput] = useState('');
+  const { requestPermission } = usePermission();
   const [premiumEnabled, setPremiumEnabled] = useState(false);
   const [checkingPremium, setCheckingPremium] = useState(true);
 
@@ -151,19 +153,16 @@ export default function ListProperty() {
     setAmenityInput('');
   };
 
-  const useMyLocation = () => {
+  const useMyLocation = async () => {
     if (!navigator.geolocation) {
       toast.error('Your browser will not share a location.');
       return;
     }
-    toast('Please allow location access to automatically place the pin. You can safely deny this and select it manually.', { 
-      icon: '📍', 
-      duration: 6000,
-      id: 'geo-permission' 
-    });
+    const allowed = await requestPermission('location');
+      if (!allowed) return;
     navigator.geolocation.getCurrentPosition(
       position => {
-        toast.dismiss('geo-permission');
+        
         toast.success('Pin dropped at your current position.', { id: 'geo' });
         set('coordinates', { lat: position.coords.latitude, lng: position.coords.longitude });
       },
@@ -901,3 +900,5 @@ function HostIntro({
     </div>
   );
 }
+
+
