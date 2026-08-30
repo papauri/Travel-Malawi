@@ -13,7 +13,7 @@ interface Props {
 }
 
 export default function ImageUpload({ value, onChange, label = 'Image', folder = 'uploads' }: Props) {
-  const [mode, setMode] = useState<'url' | 'upload'>('url');
+  const [mode, setMode] = useState<'url' | 'upload'>('upload');
   const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState(0);
 
@@ -190,5 +190,6 @@ export default function ImageUpload({ value, onChange, label = 'Image', folder =
     </div>
   );
 }
+
 
 

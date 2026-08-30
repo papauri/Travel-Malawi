@@ -13,7 +13,7 @@ interface Props {
 }
 
 export default function GalleryUpload({ value = [], onChange, label = "Gallery Images", folder = "gallery" }: Props) {
-  const [mode, setMode] = useState<"url" | "upload">("url");
+  const [mode, setMode] = useState<"url" | "upload">("upload");
   const [urlInput, setUrlInput] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState("");
@@ -253,3 +253,4 @@ export default function GalleryUpload({ value = [], onChange, label = "Gallery I
     </div>
   );
 }
+
