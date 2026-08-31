@@ -3,6 +3,7 @@ import { collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, doc, o
 import { db } from '../lib/firebase';
 import { Broadcast } from '../types';
 import { Megaphone, Trash2, CheckCircle2, Clock, Plus, Loader2 } from 'lucide-react';
+import ConfirmDialog from './ConfirmDialog';
 import toast from 'react-hot-toast';
 
 interface BroadcastManagerProps {
@@ -16,6 +17,7 @@ export default function BroadcastManager({ hotelId, managerId }: BroadcastManage
   const [isAdding, setIsAdding] = useState(false);
   const [newMessage, setNewMessage] = useState('');
   const [newType, setNewType] = useState<'info' | 'alert' | 'event'>('info');
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
   useEffect(() => {
     const q = query(collection(db, 'broadcasts'), where('hotelId', '==', hotelId));
@@ -61,13 +63,14 @@ export default function BroadcastManager({ hotelId, managerId }: BroadcastManage
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this broadcast?')) return;
     try {
       await deleteDoc(doc(db, 'broadcasts', id));
       toast.success('Broadcast deleted');
     } catch (err) {
       console.error(err);
       toast.error('Failed to delete broadcast');
+    } finally {
+      setDeleteTargetId(null);
     }
   };
 
@@ -181,8 +184,9 @@ export default function BroadcastManager({ hotelId, managerId }: BroadcastManage
                     {broadcast.isActive ? 'Deactivate' : 'Activate'}
                   </button>
                   <button
-                    onClick={() => handleDelete(broadcast.id!)}
+                    onClick={() => setDeleteTargetId(broadcast.id!)}
                     className="p-2 text-stone-400 hover:bg-red-50 hover:text-red-600 rounded-full transition"
+                    title="Delete broadcast"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -192,6 +196,21 @@ export default function BroadcastManager({ hotelId, managerId }: BroadcastManage
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={Boolean(deleteTargetId)}
+        title="Delete Broadcast"
+        message="Are you sure you want to delete this broadcast? Guests will no longer see this update."
+        confirmText="Delete"
+        cancelText="Cancel"
+        isDestructive={true}
+        onConfirm={() => {
+          if (deleteTargetId) {
+            handleDelete(deleteTargetId);
+          }
+        }}
+        onCancel={() => setDeleteTargetId(null)}
+      />
     </div>
   );
 }
