@@ -19,18 +19,11 @@ export const PermissionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const requestPermission = useCallback((permType: PermissionType): Promise<boolean> => {
     return new Promise(async (resolve) => {
-      // Check if already granted, so we don't annoy the user
-      if (navigator.permissions) {
-        try {
-          const status = await navigator.permissions.query({ 
-            name: permType === 'location' ? 'geolocation' : 'camera' as any 
-          });
-          if (status.state === 'granted') {
-            return resolve(true);
-          }
-        } catch (e) {
-          // ignore unsupported browsers
-        }
+      // Rely on a soft local cache to avoid showing our custom explainer every single time.
+      // We cannot use navigator.permissions.query() because the AI Studio environment
+      // violently intercepts it and shows a generic unstyled popup immediately.
+      if (localStorage.getItem('perm_granted_' + permType) === 'true') {
+        return resolve(true);
       }
       
       setType(permType);
