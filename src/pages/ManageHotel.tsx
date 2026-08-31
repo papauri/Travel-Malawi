@@ -36,6 +36,18 @@ import { validateProperty } from '../lib/listing';
 import { RoomErrors, firstError, hasErrors, validateRoom } from '../lib/validateRoom';
 import FieldError from '../components/FieldError';
 
+const SectionCard = ({ title, description, children }: { title: string, description?: string, children: React.ReactNode }) => (
+  <div className="bg-white rounded-2xl border border-stone-200 overflow-hidden shadow-sm">
+    <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-stone-100 bg-stone-50/50">
+      <h3 className="font-serif text-lg text-stone-900">{title}</h3>
+      {description && <p className="text-sm text-stone-500 mt-1">{description}</p>}
+    </div>
+    <div className="p-4 sm:p-6 space-y-6">
+      {children}
+    </div>
+  </div>
+);
+
 type Tab = 'details' | 'rooms' | 'restaurant' | 'bookings' | 'inquiries' | 'stayos' | 'broadcasts';
 
 const TABS: Tab[] = ['details', 'rooms', 'restaurant', 'bookings', 'inquiries', 'stayos', 'broadcasts'];
@@ -1044,9 +1056,9 @@ export default function ManageHotel() {
             </div>
           )}
 
-          <div className="bg-white rounded-2xl sm:rounded-3xl border border-stone-200 p-5 sm:p-6 md:p-8 shadow-sm">
           <form onSubmit={handleSaveHotel} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+  <SectionCard title="Basic Information" description="The core details about your property shown to guests.">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="md:col-span-2">
                 <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Property Name</label>
                 <input type="text" required value={editHotelData.name || ''} readOnly disabled className="w-full bg-stone-200 border border-stone-300 p-3 rounded-xl outline-none text-stone-500 cursor-not-allowed" />
@@ -1057,6 +1069,11 @@ export default function ManageHotel() {
                 <textarea required rows={4} value={editHotelData.description || ''} onChange={e => setEditHotelData({...editHotelData, description: e.target.value})} className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition" />
                 <FieldError message={detailProblems.description} />
               </div>
+    </div>
+  </SectionCard>
+
+  <SectionCard title="Location & Maps" description="Where you are located and how guests can find you.">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Location</label>
                 <div className="flex gap-2">
@@ -1086,6 +1103,11 @@ export default function ManageHotel() {
                 <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Location Notes / Directions</label>
                 <textarea rows={2} value={editHotelData.locationNotes || ''} onChange={e => setEditHotelData({...editHotelData, locationNotes: e.target.value})} className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition" placeholder="Any extra directions or notes to help guests find the property (optional)." />
               </div>
+    </div>
+  </SectionCard>
+
+  <SectionCard title="Photos & Media" description="High-quality images that showcase your property.">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <ImageUpload
                   label="Main Property Image"
@@ -1136,6 +1158,11 @@ export default function ManageHotel() {
                 <p className="text-xs text-stone-400 mt-2">Guests filter by this. Pick every one that genuinely fits.</p>
                 <FieldError message={detailProblems.category} />
               </div>
+    </div>
+  </SectionCard>
+
+  <SectionCard title="Amenities" description="Features available to all guests at the property.">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="md:col-span-2">
                 <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Amenities</label>
                 <div className="flex flex-wrap gap-2 mb-3">
@@ -1226,7 +1253,12 @@ export default function ManageHotel() {
               {/* A listing held no way of reaching the property at all, so the
                   page promised a host who confirms "by phone or WhatsApp"
                   without carrying either. */}
-              <div className="md:col-span-2 pt-6 border-t border-stone-100">
+    </div>
+  </SectionCard>
+
+  <SectionCard title="Operations & Contact" description="How and when guests can reach you.">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="md:col-span-2">
                 <h4 className="font-serif font-bold text-stone-900 mb-1">How guests reach you</h4>
                 <p className="text-sm text-stone-500 mb-5">
                   Shown on your listing and quoted back on every booking request.
@@ -1291,7 +1323,12 @@ export default function ManageHotel() {
                 <FieldError message={detailProblems.checkOutTime} />
               </div>
 
-              <div className="md:col-span-2 pt-6 border-t border-stone-100">
+    </div>
+  </SectionCard>
+
+  <SectionCard title="Guest Messaging" description="Manage how guests can chat or call you directly through the app.">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="md:col-span-2">
                 <h4 className="font-serif font-bold text-stone-900 mb-4">Guest Messaging</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
@@ -1360,7 +1397,12 @@ export default function ManageHotel() {
                 </div>
               </div>
 
-              <div className="md:col-span-2 pt-6 border-t border-stone-100">
+    </div>
+  </SectionCard>
+
+  <SectionCard title="Opening Hours" description="When guests can arrive and receive service.">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="md:col-span-2">
                 <OpeningHoursEditor
                   value={editHotelData.hours}
                   onChange={hours => setEditHotelData({ ...editHotelData, hours })}
@@ -1368,7 +1410,8 @@ export default function ManageHotel() {
                   hint="Shown to guests on your listing. Leave unset to publish no hours."
                 />
               </div>
-            </div>
+    </div>
+  </SectionCard>
             {/* Pinned: this form is long enough that the save button used to
                 sit well below the fold with no sign it was there. */}
             <div className="sticky bottom-0 -mx-8 -mb-8 px-8 py-4 bg-white/95 backdrop-blur border-t border-stone-100 flex items-center justify-between gap-4 rounded-b-3xl">
@@ -1397,7 +1440,6 @@ export default function ManageHotel() {
             </div>
           </form>
         </div>
-        </div>
       )}
 
       {/* TAB CONTENT: STAY OS */}
@@ -1423,14 +1465,15 @@ export default function ManageHotel() {
           </div>
 
           {editingRoomId && (
-            <div className="bg-white p-8 rounded-3xl border border-stone-200 shadow-sm">
-              <div className="flex justify-between items-center mb-6">
+            <div className="mb-6">
+              <div className="flex justify-between items-center mb-6 bg-white p-6 rounded-2xl border border-stone-200 shadow-sm">
                 <h3 className="font-serif text-xl text-stone-900">{editingRoomId === 'new' ? 'New Room Type' : 'Edit Room'}</h3>
                 <button onClick={cancelEditRoom} className="p-2 text-stone-400 hover:bg-stone-100 rounded-full transition"><X className="h-5 w-5" /></button>
               </div>
               
               <form onSubmit={handleSaveRoom} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <SectionCard title="Room Details">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="md:col-span-2">
                     <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Room Name</label>
                     <input type="text" required value={editRoomData.name || ''} onChange={e => setEditRoomData({...editRoomData, name: e.target.value})} className={`w-full bg-stone-50 border p-3 rounded-xl outline-none transition ${roomErrors.name ? 'border-red-300 focus:border-red-500' : 'border-stone-200 focus:border-stone-900'}`} />
@@ -1441,6 +1484,11 @@ export default function ManageHotel() {
                     <textarea required rows={3} value={editRoomData.description || ''} onChange={e => setEditRoomData({...editRoomData, description: e.target.value})} className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition" />
                     <FieldError message={roomErrors.description} />
                   </div>
+                </div>
+                </SectionCard>
+
+                <SectionCard title="Photos & Amenities">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="md:col-span-2">
                       <ImageUpload
                         label="Room Main Image"
@@ -1548,6 +1596,11 @@ export default function ManageHotel() {
                       </button>
                     </div>
                   </div>
+                  </div>
+                </SectionCard>
+
+                <SectionCard title="Pricing & Currencies">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="md:col-span-2">
                     <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Currencies you sell this room in</label>
                     <FieldError message={roomErrors.currencies} />
@@ -1632,10 +1685,11 @@ export default function ManageHotel() {
                     <input type="number" required min={0} value={editRoomData.quantity || 1} onChange={e => setEditRoomData({...editRoomData, quantity: Number(e.target.value)})} className={`w-full bg-stone-50 border p-3 rounded-xl outline-none transition ${roomErrors.quantity ? 'border-red-300 focus:border-red-500' : 'border-stone-200 focus:border-stone-900'}`} />
                     <FieldError message={roomErrors.quantity} />
                   </div>
-                </div>
+                  </div>
+                </SectionCard>
 
-                {/* PACKAGES & INCLUSIONS */}
-                <div className="border-t border-stone-200 pt-6">
+                <SectionCard title="Packages & Inclusions">
+                <div>
                   <h4 className="text-sm font-bold text-stone-800 uppercase tracking-wider mb-4">Room Packages & Inclusions</h4>
                   <FieldError message={roomErrors.packages} />
                   <div className="flex flex-wrap gap-2 mb-4">
@@ -1701,9 +1755,10 @@ export default function ManageHotel() {
                     </div>
                   )}
                 </div>
+                </SectionCard>
 
-                {/* BLOCKED DATES */}
-                <div className="border-t border-stone-200 pt-6">
+                <SectionCard title="Availability & Block Dates">
+                <div>
                   <h4 className="text-sm font-bold text-stone-800 uppercase tracking-wider mb-2">Block Dates</h4>
                   <p className="text-xs text-stone-500 mb-4">
                     Take individual nights off sale — maintenance, an owner stay, a private hire.
@@ -1763,10 +1818,11 @@ export default function ManageHotel() {
                     </>
                   )}
                 </div>
+                </SectionCard>
 
                 {/* The room form runs past a packages list and a month
                     calendar, so its actions are pinned to the viewport. */}
-                <div className="sticky bottom-0 -mx-8 -mb-8 px-8 py-4 bg-white/95 backdrop-blur border-t border-stone-100 flex items-center justify-end gap-3 rounded-b-3xl">
+                <div className="sticky bottom-0 py-4 bg-white/95 backdrop-blur border-t border-stone-100 flex items-center justify-end gap-3">
                   <button type="button" onClick={cancelEditRoom} className="px-6 py-3 rounded-xl font-medium text-stone-600 hover:bg-stone-100 transition">
                     Cancel
                   </button>
