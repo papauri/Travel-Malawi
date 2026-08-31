@@ -1,3 +1,4 @@
+import SectionCard from './SectionCard';
 import React, { useState, useEffect } from 'react';
 import { collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, doc, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -84,11 +85,8 @@ export default function BroadcastManager({ hotelId, managerId }: BroadcastManage
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-serif font-bold text-stone-900">Broadcasts & Alerts</h2>
-          <p className="text-stone-500 mt-1 text-sm">Send real-time updates directly to your guests' bookings page.</p>
-        </div>
+      <SectionCard title="Broadcasts & Alerts" description="Send real-time updates directly to your guests' bookings page.">
+      <div className="flex justify-end">
         {!isAdding && (
           <button
             onClick={() => setIsAdding(true)}
@@ -197,6 +195,7 @@ export default function BroadcastManager({ hotelId, managerId }: BroadcastManage
         </div>
       )}
 
+      </SectionCard>
       <ConfirmDialog
         isOpen={Boolean(deleteTargetId)}
         title="Delete Broadcast"
