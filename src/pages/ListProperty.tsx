@@ -617,7 +617,7 @@ export default function ListProperty() {
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                       <label className={labelClass}>Nightly Price (USD)</label>
                       <input
@@ -633,7 +633,7 @@ export default function ListProperty() {
                       />
                     </div>
                     <div>
-                      <label className={labelClass}>How many of these rooms?</label>
+                      <label className={labelClass}>Quantity</label>
                       <input
                         type="number"
                         value={room.quantity || ''}
@@ -644,6 +644,21 @@ export default function ListProperty() {
                         }}
                         className={fieldClass}
                         min="1"
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Max Guests</label>
+                      <input
+                        type="number"
+                        value={room.maxGuests || ''}
+                        onChange={e => {
+                          const updated = [...(draft.rooms || [])];
+                          updated[idx].maxGuests = Number(e.target.value);
+                          set('rooms', updated);
+                        }}
+                        className={fieldClass}
+                        min="1"
+                        max="30"
                       />
                     </div>
                   </div>

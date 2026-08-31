@@ -322,9 +322,28 @@ export function draftToHotel(draft: ListingDraft, managerId: string): Omit<Hotel
 /** Creates the listing and returns its new id. */
 export async function createListing(draft: ListingDraft, managerId: string): Promise<string> {
   const payload: Record<string, unknown> = { ...draftToHotel(draft, managerId) };
-  // Firestore rejects `undefined`; coordinates are the only optional object.
   if (payload.coordinates === undefined) delete payload.coordinates;
   const docId = draft.id || uuidv4();
   await setDoc(doc(db, 'hotels', docId), payload);
+
+  // Create room documents
+  for (const r of (draft.rooms || [])) {
+    const primaryCurrency = (r.currencies && r.currencies.length > 0) ? r.currencies[0] : 'USD';
+    const roomPayload = {
+      ...r,
+      hotelId: docId,
+      currency: primaryCurrency,
+      price: Number(r.prices?.[primaryCurrency] ?? 0),
+      priceMWK: Number(r.prices?.MWK ?? 0),
+      showDualCurrency: (r.currencies?.length ?? 0) > 1,
+      extraGuestFee: Number(r.extraGuestFees?.[primaryCurrency] ?? 0),
+      amenities: r.amenities || [],
+      galleryUrls: r.galleryUrls || [],
+      blockedDates: [],
+    };
+    delete roomPayload.id;
+    await addDoc(collection(db, 'room_types'), roomPayload);
+  }
+
   return docId;
 }
