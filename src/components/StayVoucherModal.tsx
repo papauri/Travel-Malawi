@@ -1,0 +1,215 @@
+import React from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { ShieldCheck, MapPin, X, Users, Phone, Zap, Droplets, Map, Wifi, Monitor, CheckCircle2, ClipboardList, UtensilsCrossed } from 'lucide-react';
+import { Booking, Hotel, RoomType } from '../types';
+import { formatMoney } from '../lib/booking';
+import { formatDateStr } from '../lib/dates';
+import SmartImage from './SmartImage';
+
+type EnrichedBooking = Booking & { hotel?: Hotel; room?: RoomType };
+
+interface Props {
+  booking: EnrichedBooking | null;
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export default function StayVoucherModal({ booking, isOpen, onClose }: Props) {
+  if (!booking || !booking.hotel) return null;
+  const hotel = booking.hotel;
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-stone-900/60 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            className="w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-full relative"
+          >
+            {/* Header / Ticket Top */}
+            <div className="bg-stone-900 text-white p-6 relative shrink-0">
+              <button
+                onClick={onClose}
+                className="absolute top-4 right-4 p-2 text-stone-400 hover:text-white hover:bg-stone-800 rounded-full transition z-10"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              
+              <div className="flex items-center gap-2 mb-4">
+                <ShieldCheck className="w-6 h-6 text-emerald-400" />
+                <span className="font-serif font-bold tracking-wide">Stay OS Digital Voucher</span>
+              </div>
+              
+              <h2 className="text-3xl font-serif font-bold text-white mb-2 pr-12 leading-tight">
+                {hotel.name}
+              </h2>
+              <div className="flex items-center gap-1.5 text-stone-400 text-sm">
+                <MapPin className="w-4 h-4" /> {hotel.location}
+              </div>
+            </div>
+
+            {/* Scrollable Content */}
+            <div className="overflow-y-auto p-6 space-y-8 flex-1">
+              
+              {/* Payment Status & Details */}
+              <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-5 flex items-start gap-4">
+                <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+                  <CheckCircle2 className="w-6 h-6" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-emerald-900 text-lg mb-1">Confirmed — Payment on Arrival</h4>
+                  <p className="text-emerald-700 text-sm leading-relaxed">
+                    Show this digital voucher when you arrive. You will settle the total of <span className="font-bold">{formatMoney(booking.total ?? 0, booking.currency)}</span> directly with the property.
+                  </p>
+                  {booking.reference && (
+                    <p className="mt-3 text-xs font-mono font-bold text-emerald-800 bg-emerald-100 px-3 py-1.5 rounded-lg inline-block">
+                      REF: {booking.reference}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Stay Info Grid */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="bg-stone-50 rounded-2xl p-4">
+                  <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1">Check-in</p>
+                  <p className="font-bold text-stone-900">{formatDateStr(booking.checkIn)}</p>
+                </div>
+                <div className="bg-stone-50 rounded-2xl p-4">
+                  <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1">Check-out</p>
+                  <p className="font-bold text-stone-900">{formatDateStr(booking.checkOut)}</p>
+                </div>
+                <div className="bg-stone-50 rounded-2xl p-4">
+                  <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1">Guests</p>
+                  <p className="font-bold text-stone-900">{booking.guests} {booking.guests === 1 ? 'Guest' : 'Guests'}</p>
+                </div>
+                <div className="bg-stone-50 rounded-2xl p-4">
+                  <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1">Room</p>
+                  <p className="font-bold text-stone-900 truncate" title={booking.room?.name || 'Room'}>{booking.room?.name || 'Room'}</p>
+                </div>
+              </div>
+
+              {/* Daily Board */}
+              {hotel.dailyBoard && (hotel.dailyBoard.activities || hotel.dailyBoard.dishOfTheDay || hotel.dailyBoard.notes) && (
+                <div className="bg-emerald-900 text-white rounded-2xl p-6 shadow-md relative overflow-hidden">
+                  <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
+                    <ClipboardList className="w-32 h-32" />
+                  </div>
+                  <h3 className="font-serif font-bold text-xl mb-4 flex items-center gap-2 relative z-10">
+                    <ClipboardList className="w-5 h-5 text-emerald-400" /> Host's Daily Board
+                  </h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
+                    {hotel.dailyBoard.activities && (
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 mb-2">Today's Activities</p>
+                        <p className="text-sm leading-relaxed whitespace-pre-wrap">{hotel.dailyBoard.activities}</p>
+                      </div>
+                    )}
+                    {hotel.dailyBoard.dishOfTheDay && (
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 mb-2 flex items-center gap-1.5">
+                          <UtensilsCrossed className="w-3 h-3" /> Dish of the Day
+                        </p>
+                        <p className="text-sm font-semibold">{hotel.dailyBoard.dishOfTheDay}</p>
+                      </div>
+                    )}
+                    {hotel.dailyBoard.notes && (
+                      <div className="md:col-span-2 mt-2 pt-4 border-t border-emerald-800/50">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 mb-2">Important Notes</p>
+                        <p className="text-sm text-emerald-50 leading-relaxed whitespace-pre-wrap">{hotel.dailyBoard.notes}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Infrastructure */}
+              {hotel.infrastructure && (
+                <div>
+                  <h3 className="font-serif font-bold text-xl text-stone-900 mb-4 flex items-center gap-2">
+                    <ShieldCheck className="w-5 h-5 text-emerald-600" /> Property Setup
+                  </h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    {hotel.infrastructure.powerSource && hotel.infrastructure.powerSource !== 'None' && (
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
+                          <Zap className="w-5 h-5 text-amber-500" />
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-stone-500">Power</p>
+                          <p className="text-sm font-semibold text-stone-900">{hotel.infrastructure.powerSource}</p>
+                        </div>
+                      </div>
+                    )}
+                    {hotel.infrastructure.waterSource && (
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
+                          <Droplets className="w-5 h-5 text-blue-500" />
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-stone-500">Water</p>
+                          <p className="text-sm font-semibold text-stone-900">{hotel.infrastructure.waterSource}</p>
+                        </div>
+                      </div>
+                    )}
+                    {hotel.infrastructure.internetSource && hotel.infrastructure.internetSource !== 'None' && (
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-sky-50 flex items-center justify-center shrink-0">
+                          <Wifi className="w-5 h-5 text-sky-500" />
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-stone-500">Internet</p>
+                          <p className="text-sm font-semibold text-stone-900">{hotel.infrastructure.internetSource}</p>
+                        </div>
+                      </div>
+                    )}
+                    {hotel.infrastructure.workspaceSetup && hotel.infrastructure.workspaceSetup !== 'None' && (
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center shrink-0">
+                          <Monitor className="w-5 h-5 text-indigo-500" />
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-stone-500">WFH</p>
+                          <p className="text-sm font-semibold text-stone-900">{hotel.infrastructure.workspaceSetup}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Crew */}
+              {hotel.crew && hotel.crew.length > 0 && (
+                <div>
+                  <h3 className="font-serif font-bold text-xl text-stone-900 mb-4 flex items-center gap-2">
+                    <Users className="w-5 h-5 text-emerald-600" /> On-site Team
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {hotel.crew.map((member) => (
+                      <div key={member.id} className="border border-stone-200 rounded-2xl p-4 flex items-center gap-4 bg-white">
+                        <div className="w-12 h-12 rounded-full bg-stone-100 flex items-center justify-center shrink-0">
+                          <Users className="w-6 h-6 text-stone-400" />
+                        </div>
+                        <div>
+                          <p className="font-bold text-stone-900">{member.name}</p>
+                          <p className="text-sm text-stone-500 mb-1">{member.role}</p>
+                          <a href={`tel:${member.phone}`} className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md hover:bg-emerald-100 transition">
+                            <Phone className="w-3 h-3" /> Call
+                          </a>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
+  );
+}

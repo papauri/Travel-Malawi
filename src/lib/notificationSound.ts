@@ -202,7 +202,7 @@ export function shouldChime(
 
 /** Chimes for a message somebody else just sent, only when not already actively looking at the open foreground tab. */
 export function chimeForIncoming(
-  messages: { id?: string; senderId?: string }[],
+  messages: { id?: string; senderId?: string; text?: string; content?: string }[],
   currentUserId: string | undefined,
   seen: React.MutableRefObject<ChimeState>
 ): void {
@@ -215,5 +215,16 @@ export function chimeForIncoming(
     return;
   }
 
-  if (shouldChime(messages, currentUserId, seen.current)) playChime();
+  const incoming = messages.filter(m => m.id && !seen.current.ids.has(m.id));
+  if (shouldChime(messages, currentUserId, seen.current)) {
+    playChime();
+    
+    if ('Notification' in window && Notification.permission === 'granted') {
+      const otherMsgs = incoming.filter(m => m.senderId && m.senderId !== currentUserId);
+      if (otherMsgs.length > 0) {
+        const text = otherMsgs[otherMsgs.length - 1].text || otherMsgs[otherMsgs.length - 1].content || 'You have a new message.';
+        new Notification('New Message', { body: text });
+      }
+    }
+  }
 }

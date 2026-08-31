@@ -244,7 +244,7 @@ service cloud.firestore {
 
     match /hotel_chats/{chatId} {
       allow read: if isAuthenticated() && (
-        resource == null ||
+        
         resource.data.guestId == request.auth.uid ||
         resource.data.managerId == request.auth.uid ||
         isAdmin()
@@ -334,6 +334,16 @@ service cloud.firestore {
           isAdmin()
         );
       }
+    }
+
+    
+    match /broadcasts/{broadcastId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && isManager(request.resource.data.hotelId)
+                    && request.resource.data.managerId == request.auth.uid;
+      allow update: if isAuthenticated() && isManager(resource.data.hotelId)
+                    && request.resource.data.hotelId == resource.data.hotelId;
+      allow delete: if isAuthenticated() && (isManager(resource.data.hotelId) || isAdmin());
     }
 
     match /reviews/{reviewId} {

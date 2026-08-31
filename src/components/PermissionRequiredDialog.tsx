@@ -11,11 +11,11 @@ interface Props {
   onDeny: () => void;
 }
 
-export default function PermissionRequestModal({ type, isOpen, onAllow, onDeny }: Props) {
+export default function PermissionRequiredDialog({ type, isOpen, onAllow, onDeny }: Props) {
   return (
     <AnimatePresence>
       {isOpen && type && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-stone-900/40 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-stone-900/40 backdrop-blur-sm">
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -31,18 +31,37 @@ export default function PermissionRequestModal({ type, isOpen, onAllow, onDeny }
               </button>
 
               <div className="w-16 h-16 rounded-2xl bg-emerald-50 flex items-center justify-center mb-6 text-emerald-600">
-                {type === 'location' ? <MapPin className="w-8 h-8" /> : <Mic className="w-8 h-8" />}
+                {type === 'location' ? <MapPin className="w-8 h-8" /> : (
+                  <div className="flex items-center gap-1">
+                    <Camera className="w-6 h-6" />
+                    <Mic className="w-6 h-6" />
+                  </div>
+                )}
               </div>
               
               <h3 className="text-2xl font-serif text-stone-900 mb-3 tracking-tight">
                 {type === 'location' ? 'Location Access' : 'Camera & Microphone'}
               </h3>
               
-              <p className="text-stone-600 leading-relaxed mb-8">
-                {type === 'location' 
-                  ? 'We need access to your location to accurately calculate distances to lodges, drop pins on the map, and show you properties "Near Me". Your location is never stored on our servers.'
-                  : 'To start this real-time voice and video call, we need access to your device\'s camera and microphone. Your call is peer-to-peer and completely private.'}
-              </p>
+              <div className="text-stone-600 leading-relaxed mb-8 space-y-4">
+                {type === 'location' ? (
+                  <>
+                    <p>We use your location to calculate distances, drop map pins, and show you nearby properties.</p>
+                    <div className="bg-stone-50 p-4 rounded-xl text-sm border border-stone-100">
+                      <p className="font-semibold text-stone-900 mb-1">Privacy First</p>
+                      <p>Your precise location is only used temporarily on your device and is <span className="font-semibold">never stored on our servers</span>.</p>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p>To start this real-time call, we need temporary access to your device's camera and microphone.</p>
+                    <div className="bg-stone-50 p-4 rounded-xl text-sm border border-stone-100">
+                      <p className="font-semibold text-stone-900 mb-1">End-to-End Encrypted</p>
+                      <p>Your call is peer-to-peer and completely private. We cannot hear, record, or store your conversations.</p>
+                    </div>
+                  </>
+                )}
+              </div>
 
               <div className="flex gap-3">
                 <button

@@ -4,15 +4,17 @@ import { doc, getDoc, collection, query, where, getDocs, addDoc, updateDoc, dele
 import { db } from '../lib/firebase';
 import { Hotel, RoomType, Booking, CurrencyCode, PriceMap, Restaurant, WeeklyHours } from '../types';
 import { useAuth } from '../contexts/AuthContext';
-import { Plus, CheckCircle2, XCircle, Clock, Save, Edit2, Trash2, Users, Calendar, Check, X, Building, BedDouble, Loader2, Download, TrendingUp, Percent, Wallet, UtensilsCrossed, Eye, ChevronLeft, ExternalLink, AlertTriangle } from 'lucide-react';
+import { Plus, CheckCircle2, XCircle, Clock, Save, Edit2, Trash2, Users, Calendar, Check, X, Building, BedDouble, Loader2, Download, TrendingUp, Percent, Wallet, UtensilsCrossed, Eye, ChevronLeft, ExternalLink, AlertTriangle, ShieldCheck } from 'lucide-react';
 import ImageUpload from '../components/ImageUpload';
 import GalleryUpload from '../components/GalleryUpload';
+import StayOSManager from '../components/StayOSManager';
+import BroadcastManager from '../components/BroadcastManager';
 import ConfirmDialog from '../components/ConfirmDialog';
 import Modal from '../components/Modal';
 import Pagination from '../components/Pagination';
 import BookingChat from '../components/BookingChat';
 import PropertyChat from '../components/PropertyChat';
-import { MessageSquare } from 'lucide-react';
+import { MessageSquare, Megaphone } from 'lucide-react';
 import SmartImage from '../components/SmartImage';
 import { useBreadcrumbLabel } from '../components/Breadcrumbs';
 import LocationPicker from '../components/LocationPicker';
@@ -28,15 +30,15 @@ import { CURRENCIES, CURRENCY_CODES, currenciesForRooms, roomCurrencies, roomPri
 import { defaultWeek } from '../lib/hours';
 import { SPAM_REASON_LABELS } from '../lib/spam';
 import { isHotelManager, isAdmin } from '../lib/roles';
-import { PROPERTY_CATEGORIES } from '../lib/listing';
+import { PROPERTY_CATEGORIES, COMMON_AMENITIES } from '../lib/listing';
 import { emailProblem, phoneProblem } from '../lib/contact';
 import { validateProperty } from '../lib/listing';
 import { RoomErrors, firstError, hasErrors, validateRoom } from '../lib/validateRoom';
 import FieldError from '../components/FieldError';
 
-type Tab = 'details' | 'rooms' | 'restaurant' | 'bookings' | 'inquiries';
+type Tab = 'details' | 'rooms' | 'restaurant' | 'bookings' | 'inquiries' | 'stayos' | 'broadcasts';
 
-const TABS: Tab[] = ['details', 'rooms', 'restaurant', 'bookings', 'inquiries'];
+const TABS: Tab[] = ['details', 'rooms', 'restaurant', 'bookings', 'inquiries', 'stayos', 'broadcasts'];
 
 const isTab = (value: string | null): value is Tab => !!value && (TABS as string[]).includes(value);
 
@@ -88,6 +90,7 @@ export default function ManageHotel() {
   const [pendingTab, setPendingTab] = useState<Tab | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [amenityInput, setAmenityInput] = useState("");
   const [confirmModalBooking, setConfirmModalBooking] = useState<string | null>(null);
   const [bookingToDelete, setBookingToDelete] = useState<string | null>(null);
 
@@ -203,7 +206,8 @@ export default function ManageHotel() {
         try {
           const inquiriesQuery = query(
             collection(db, 'hotel_chats'),
-            where('hotelId', '==', id)
+            where('hotelId', '==', id),
+            where('managerId', '==', user?.uid)
           );
           unsubInquiries = onSnapshot(inquiriesQuery, (snap) => {
             const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -936,6 +940,8 @@ export default function ManageHotel() {
       <div className="flex gap-1 border-b border-stone-200 mb-8 overflow-x-auto scrollbar-hide -mx-6 px-6 lg:mx-0 lg:px-0">
         {([
           { id: 'details' as Tab, label: 'Property details', icon: Building },
+          { id: 'stayos' as Tab, label: 'Stay OS', icon: ShieldCheck },
+          { id: 'broadcasts' as Tab, label: 'Broadcasts', icon: Megaphone },
           { id: 'rooms' as Tab, label: 'Rooms & pricing', icon: BedDouble },
           { id: 'restaurant' as Tab, label: 'Restaurant', icon: UtensilsCrossed },
           { id: 'bookings' as Tab, label: 'Bookings', icon: Calendar },
@@ -1131,8 +1137,90 @@ export default function ManageHotel() {
                 <FieldError message={detailProblems.category} />
               </div>
               <div className="md:col-span-2">
-                <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Amenities (comma separated)</label>
-                <input type="text" value={Array.isArray(editHotelData.amenities) ? editHotelData.amenities.join(', ') : editHotelData.amenities || ''} onChange={e => setEditHotelData({...editHotelData, amenities: e.target.value as any})} className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition" placeholder="WiFi, Pool, Spa..." />
+                <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Amenities</label>
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {COMMON_AMENITIES.map(amenity => {
+                    const current = Array.isArray(editHotelData.amenities) ? editHotelData.amenities : (editHotelData.amenities || '').split(',').map(s=>s.trim()).filter(Boolean);
+                    const selected = current.includes(amenity);
+                    return (
+                      <button
+                        key={amenity}
+                        type="button"
+                        onClick={() => {
+                          if (current.includes(amenity)) {
+                            setEditHotelData({...editHotelData, amenities: current.filter(a => a !== amenity) as any});
+                          } else {
+                            setEditHotelData({...editHotelData, amenities: [...current, amenity] as any});
+                          }
+                        }}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${
+                          selected
+                            ? 'border-stone-900 bg-stone-900 text-white'
+                            : 'border-stone-200 bg-stone-50 text-stone-600 hover:border-stone-400'
+                        }`}
+                      >
+                        {amenity}
+                      </button>
+                    );
+                  })}
+                </div>
+                
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {(() => {
+                     const current = Array.isArray(editHotelData.amenities) ? editHotelData.amenities : (editHotelData.amenities || '').split(',').map(s=>s.trim()).filter(Boolean);
+                     const custom = current.filter(a => !COMMON_AMENITIES.includes(a));
+                     if (custom.length === 0) return null;
+                     return custom.map(amenity => (
+                        <span key={amenity} className="inline-flex items-center gap-1.5 rounded-full bg-stone-100 border border-stone-200 px-3 py-1.5 text-xs font-medium text-stone-700">
+                          {amenity}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditHotelData({...editHotelData, amenities: current.filter(a => a !== amenity) as any});
+                            }}
+                            className="text-stone-400 hover:text-stone-700 transition"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                     ));
+                  })()}
+                </div>
+                
+                <div className="flex gap-2 max-w-sm">
+                  <input 
+                    type="text" 
+                    value={amenityInput} 
+                    onChange={e => setAmenityInput(e.target.value)} 
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (!amenityInput.trim()) return;
+                        let current = Array.isArray(editHotelData.amenities) ? editHotelData.amenities : (editHotelData.amenities || '').split(',').map(s=>s.trim()).filter(Boolean);
+                        if (!current.includes(amenityInput.trim())) {
+                          setEditHotelData({...editHotelData, amenities: [...current, amenityInput.trim()] as any});
+                        }
+                        setAmenityInput('');
+                      }
+                    }}
+                    className="flex-1 bg-stone-50 border border-stone-200 p-2.5 text-sm rounded-xl outline-none focus:border-stone-900 transition" 
+                    placeholder="Add custom amenity..." 
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!amenityInput.trim()) return;
+                      let current = Array.isArray(editHotelData.amenities) ? editHotelData.amenities : (editHotelData.amenities || '').split(',').map(s=>s.trim()).filter(Boolean);
+                      if (!current.includes(amenityInput.trim())) {
+                        setEditHotelData({...editHotelData, amenities: [...current, amenityInput.trim()] as any});
+                      }
+                      setAmenityInput('');
+                    }}
+                    className="inline-flex shrink-0 items-center justify-center rounded-xl bg-stone-900 px-4 text-xs font-semibold text-white transition hover:bg-stone-800"
+                  >
+                    <Plus className="h-4 w-4" /> Add
+                  </button>
+                </div>
               </div>
 
               {/* A listing held no way of reaching the property at all, so the
@@ -1312,6 +1400,16 @@ export default function ManageHotel() {
         </div>
       )}
 
+      {/* TAB CONTENT: STAY OS */}
+      {activeTab === 'stayos' && (
+        <StayOSManager hotel={hotel} />
+      )}
+
+      {/* TAB CONTENT: BROADCASTS */}
+      {activeTab === 'broadcasts' && (
+        <BroadcastManager hotelId={id!} managerId={user!.uid} />
+      )}
+
       {/* TAB CONTENT: ROOMS */}
       {activeTab === 'rooms' && (
         <div className="space-y-6">
@@ -1361,6 +1459,94 @@ export default function ManageHotel() {
                       label="Room Gallery"
                       folder={`hotels/${id}/rooms`}
                     />
+                  </div>
+
+                  {/* ROOM AMENITIES */}
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Room Amenities</label>
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {COMMON_AMENITIES.map(amenity => {
+                        const current = Array.isArray(editRoomData.amenities) ? editRoomData.amenities : (editRoomData.amenities || '').split(',').map(s=>s.trim()).filter(Boolean);
+                        const selected = current.includes(amenity);
+                        return (
+                          <button
+                            key={amenity}
+                            type="button"
+                            onClick={() => {
+                              if (current.includes(amenity)) {
+                                setEditRoomData({...editRoomData, amenities: current.filter(a => a !== amenity) as any});
+                              } else {
+                                setEditRoomData({...editRoomData, amenities: [...current, amenity] as any});
+                              }
+                            }}
+                            className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${
+                              selected
+                                ? 'border-stone-900 bg-stone-900 text-white'
+                                : 'border-stone-200 bg-stone-50 text-stone-600 hover:border-stone-400'
+                            }`}
+                          >
+                            {amenity}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {(() => {
+                         const current = Array.isArray(editRoomData.amenities) ? editRoomData.amenities : (editRoomData.amenities || '').split(',').map(s=>s.trim()).filter(Boolean);
+                         const custom = current.filter(a => !COMMON_AMENITIES.includes(a));
+                         if (custom.length === 0) return null;
+                         return custom.map(amenity => (
+                            <span key={amenity} className="inline-flex items-center gap-1.5 rounded-full bg-stone-100 border border-stone-200 px-3 py-1.5 text-xs font-medium text-stone-700">
+                              {amenity}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditRoomData({...editRoomData, amenities: current.filter(a => a !== amenity) as any});
+                                }}
+                                className="text-stone-400 hover:text-stone-700 transition"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </span>
+                         ));
+                      })()}
+                    </div>
+                    
+                    <div className="flex gap-2 max-w-sm">
+                      <input 
+                        type="text" 
+                        value={amenityInput} 
+                        onChange={e => setAmenityInput(e.target.value)} 
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            if (!amenityInput.trim()) return;
+                            let current = Array.isArray(editRoomData.amenities) ? editRoomData.amenities : (editRoomData.amenities || '').split(',').map(s=>s.trim()).filter(Boolean);
+                            if (!current.includes(amenityInput.trim())) {
+                              setEditRoomData({...editRoomData, amenities: [...current, amenityInput.trim()] as any});
+                            }
+                            setAmenityInput('');
+                          }
+                        }}
+                        className="flex-1 bg-stone-50 border border-stone-200 p-2.5 text-sm rounded-xl outline-none focus:border-stone-900 transition" 
+                        placeholder="Add custom amenity..." 
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!amenityInput.trim()) return;
+                          let current = Array.isArray(editRoomData.amenities) ? editRoomData.amenities : (editRoomData.amenities || '').split(',').map(s=>s.trim()).filter(Boolean);
+                          if (!current.includes(amenityInput.trim())) {
+                            setEditRoomData({...editRoomData, amenities: [...current, amenityInput.trim()] as any});
+                          }
+                          setAmenityInput('');
+                        }}
+                        className="inline-flex shrink-0 items-center justify-center rounded-xl bg-stone-900 px-4 text-xs font-semibold text-white transition hover:bg-stone-800"
+                      >
+                        <Plus className="h-4 w-4" /> Add
+                      </button>
+                    </div>
                   </div>
                   <div className="md:col-span-2">
                     <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Currencies you sell this room in</label>
@@ -1600,7 +1786,7 @@ export default function ManageHotel() {
           )}
 
           {!editingRoomId && rooms.map(room => (
-            <div key={room.id} className={`bg-white border p-4 sm:p-6 rounded-3xl flex flex-col md:flex-row gap-4 sm:gap-6 items-stretch md:items-center shadow-sm transition ${room.quantity === 0 ? 'border-red-200 bg-red-50/30' : 'border-stone-200'}`}>
+            <div key={room.id} onClick={() => startEditRoom(room)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') startEditRoom(room); }} className={`group cursor-pointer bg-white border p-4 sm:p-6 rounded-3xl flex flex-col md:flex-row gap-4 sm:gap-6 items-stretch md:items-center shadow-sm hover:border-stone-400 hover:shadow-md transition ${room.quantity === 0 ? 'border-red-200 bg-red-50/30' : 'border-stone-200'}`}>
               <div className="w-full md:w-48 h-48 sm:h-40 md:h-36 bg-stone-100 rounded-2xl overflow-hidden shrink-0">
                 <SmartImage src={room.imageUrl} alt={room.name} className="w-full h-full object-cover" />
               </div>
@@ -1634,8 +1820,9 @@ export default function ManageHotel() {
               </div>
               <div className="flex md:flex-col w-full md:w-32 lg:w-40 gap-2 border-t md:border-t-0 md:border-l border-stone-100 pt-4 md:pt-0 md:pl-6 shrink-0 mt-2 md:mt-0 justify-center">
                 <button 
-                  onClick={() => startEditRoom(room)}
-                  className="flex-1 md:w-full flex items-center justify-center gap-2 px-4 py-3 md:py-2.5 bg-stone-100 text-stone-700 rounded-xl hover:bg-stone-200 transition text-sm font-semibold"
+                  type="button"
+                  tabIndex={-1}
+                  className="flex-1 md:w-full flex items-center justify-center gap-2 px-4 py-3 md:py-2.5 bg-stone-100 group-hover:bg-stone-200 text-stone-700 rounded-xl transition text-sm font-semibold"
                 >
                   <Edit2 className="h-4 w-4" /> Edit
                 </button>

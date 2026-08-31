@@ -1,6 +1,12 @@
 {
   "name": "Travel Malawi",
   "description": "A globally inclusive platform connecting the world to independent lodges and camps across Malawi.",
-  "requestFramePermissions": ["geolocation", "camera", "microphone"],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
-import PermissionRequestModal, { PermissionType } from '../components/PermissionRequestModal';
+import PermissionRequiredDialog, { PermissionType } from '../components/PermissionRequiredDialog';
+import toast from 'react-hot-toast';
 
 interface PermissionContextValue {
   requestPermission: (type: PermissionType) => Promise<boolean>;
@@ -51,7 +52,7 @@ export const PermissionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   return (
     <PermissionContext.Provider value={{ requestPermission }}>
       {children}
-      <PermissionRequestModal 
+      <PermissionRequiredDialog 
         isOpen={isOpen}
         type={type}
         onAllow={handleAllow}
