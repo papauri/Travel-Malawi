@@ -156,19 +156,19 @@ export default function ManagerDashboard() {
             </Link>
           </div>
         ) : (
-          hotels.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map(hotel => (
-            <Link
-              key={hotel.id}
-              to={
-                (summaryByHotel.get(hotel.id!)?.pending ?? 0) > 0
+          hotels.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map(hotel => {
+            const targetUrl = (summaryByHotel.get(hotel.id!)?.pending ?? 0) > 0
                   ? `/dashboard/hotel/${hotel.id}?tab=bookings`
                   : (summaryByHotel.get(hotel.id!)?.rooms ?? 0) === 0
                     ? `/dashboard/hotel/${hotel.id}?tab=rooms`
-                    : `/dashboard/hotel/${hotel.id}`
-              }
-              className="group bg-white rounded-3xl shadow-sm border border-stone-200 overflow-hidden flex flex-col hover:border-stone-400 transition duration-300"
+                    : `/dashboard/hotel/${hotel.id}`;
+            return (
+            <div
+              key={hotel.id}
+              className="group bg-white rounded-3xl shadow-sm border border-stone-200 overflow-hidden flex flex-col hover:border-stone-400 transition duration-300 relative"
             >
-              <div className="w-full aspect-[4/3] sm:aspect-auto sm:h-56 md:h-60 bg-stone-100 relative shrink-0">
+              <Link to={targetUrl} className="absolute inset-0 z-0" aria-label={`Manage ${hotel.name}`} />
+              <div className="w-full aspect-[4/3] sm:aspect-auto sm:h-56 md:h-60 bg-stone-100 relative shrink-0 pointer-events-none">
                 <SmartImage
                   src={getHotelImage(hotel)}
                   alt={hotel.name}
@@ -176,7 +176,7 @@ export default function ManagerDashboard() {
                 />
                 {/* Moderation status was previously only visible to admins, so a
                     manager had no way to tell whether their listing was live. */}
-                <span className={`absolute top-4 left-4 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[0.65rem] font-bold uppercase tracking-wider shadow-sm ${
+                <span className={`absolute top-4 left-4 z-10 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[0.65rem] font-bold uppercase tracking-wider shadow-sm ${
                   hotel.status === 'pending' ? 'bg-amber-100 text-amber-800' :
                   hotel.status === 'rejected' ? 'bg-red-100 text-red-700' :
                   'bg-emerald-100 text-emerald-700'
@@ -202,7 +202,7 @@ export default function ManagerDashboard() {
                   <span>{hotel.isOnline !== false ? 'Online' : 'Offline'}</span>
                 </button>
               </div>
-              <div className="p-5 sm:p-6 md:p-8 flex-1 flex flex-col">
+              <div className="p-5 sm:p-6 md:p-8 flex-1 flex flex-col pointer-events-none">
                 <h3 className="text-2xl font-serif font-bold text-stone-900 mb-2">{hotel.name}</h3>
                 <p className="text-stone-500 mb-5">{hotel.location}</p>
 
@@ -236,8 +236,9 @@ export default function ManagerDashboard() {
                   <ChevronRight className="h-5 w-5 text-stone-400 group-hover:text-stone-900 transition" />
                 </div>
               </div>
-            </Link>
-          ))
+            </div>
+            );
+          })
         )}
       </div>
       {hotels.length > itemsPerPage && (

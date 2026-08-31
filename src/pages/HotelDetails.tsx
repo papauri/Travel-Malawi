@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { doc, getDoc, collection, query, where, getDocs, addDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { Hotel, RoomType, Review, CurrencyCode } from '../types';
+import { Hotel, RoomType, Review, CurrencyCode, Broadcast } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { useAuthDialog } from '../contexts/AuthDialogContext';
 import { Helmet } from 'react-helmet-async';
@@ -10,7 +10,7 @@ import { useChatModal } from '../contexts/ChatModalContext';
 import { useManagerPresence } from '../hooks/usePresence';
 import PhoneInput from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
-import { MapPin, Calendar, Users, Star, CheckCircle2, ChevronRight, Info, Plus, Minus, ShieldCheck, AlertTriangle, UtensilsCrossed, Clock, BedDouble, MessageSquare, MessageCircle, Images, Mail, PhoneCall, Navigation, CreditCard, LogIn, LogOut, Share2 } from 'lucide-react';
+import { MapPin, Megaphone, Calendar, Users, Star, CheckCircle2, ChevronRight, Info, Plus, Minus, ShieldCheck, AlertTriangle, UtensilsCrossed, Clock, BedDouble, MessageSquare, MessageCircle, Images, Mail, PhoneCall, Navigation, CreditCard, LogIn, LogOut, Share2, Zap, Droplets, Map, Wifi, Monitor } from 'lucide-react';
 import toast from 'react-hot-toast';
 import AvailabilityCalendar from '../components/AvailabilityCalendar';
 import { motion } from 'motion/react';
@@ -79,6 +79,7 @@ export default function HotelDetails() {
   });
   const [guestName, setGuestName] = useState(user?.displayName || '');
   const [guestEmail, setGuestEmail] = useState(user?.email || '');
+  const [broadcasts, setBroadcasts] = useState<Broadcast[]>([]);
   const [guestPhone, setGuestPhone] = useState('');
   const [guestWhatsapp, setGuestWhatsapp] = useState('');
   const [specialRequests, setSpecialRequests] = useState('');
@@ -185,6 +186,8 @@ export default function HotelDetails() {
   }, [checkIn, checkOut]);
 
   const isBookable = !hotel?.status || hotel.status === 'approved';
+
+
 
   /** The Menu tab only exists when the property has published a restaurant. */
   const restaurant = hotel?.restaurant?.enabled ? hotel.restaurant : null;
@@ -645,6 +648,7 @@ export default function HotelDetails() {
 
       <div className="max-w-[90rem] mx-auto px-4 lg:px-12 py-24 grid grid-cols-1 lg:grid-cols-3 gap-16 lg:gap-24">
         <div className="lg:col-span-2">
+
           <h2 className="text-4xl md:text-5xl font-serif text-stone-900 mb-6 tracking-tight">About this property</h2>
           <p className="text-stone-600 text-lg leading-relaxed mb-12">{hotel.description}</p>
 
@@ -1121,8 +1125,76 @@ export default function HotelDetails() {
         </div>
         
         {/* Sticky Sidebar / Highlights */}
-        <div className="relative">
-          <div className="sticky top-28 bg-white border border-stone-200 rounded-2xl p-6 shadow-xs space-y-5">
+        <div className="relative space-y-6">
+          {hotel.infrastructure && (
+            <div className="sticky top-28 bg-white border border-stone-200 rounded-2xl p-6 shadow-xs space-y-4">
+              <div className="border-b border-stone-100 pb-3">
+                <h3 className="text-lg font-serif font-bold text-stone-900 flex items-center gap-2">
+                  <ShieldCheck className="h-4 w-4 text-emerald-600" /> Stay OS Verified
+                </h3>
+                <p className="text-stone-500 text-xs mt-0.5">Host-verified infrastructure & setup</p>
+              </div>
+              <ul className="space-y-4">
+                {hotel.infrastructure.powerSource && hotel.infrastructure.powerSource !== 'None' && (
+                  <li className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
+                      <Zap className="w-4 h-4 text-amber-500" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wider text-stone-500">Power</p>
+                      <p className="text-sm font-medium text-stone-900">{hotel.infrastructure.powerSource}</p>
+                    </div>
+                  </li>
+                )}
+                {hotel.infrastructure.waterSource && (
+                  <li className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
+                      <Droplets className="w-4 h-4 text-blue-500" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wider text-stone-500">Water Supply</p>
+                      <p className="text-sm font-medium text-stone-900">{hotel.infrastructure.waterSource}</p>
+                    </div>
+                  </li>
+                )}
+                {hotel.infrastructure.internetSource && hotel.infrastructure.internetSource !== 'None' && (
+                  <li className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-sky-50 flex items-center justify-center shrink-0">
+                      <Wifi className="w-4 h-4 text-sky-500" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wider text-stone-500">Internet</p>
+                      <p className="text-sm font-medium text-stone-900">{hotel.infrastructure.internetSource}</p>
+                    </div>
+                  </li>
+                )}
+                {hotel.infrastructure.workspaceSetup && hotel.infrastructure.workspaceSetup !== 'None' && (
+                  <li className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center shrink-0">
+                      <Monitor className="w-4 h-4 text-indigo-500" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wider text-stone-500">Work From Home</p>
+                      <p className="text-sm font-medium text-stone-900">{hotel.infrastructure.workspaceSetup}</p>
+                    </div>
+                  </li>
+                )}
+                {hotel.infrastructure.roadAccess && (
+                  <li className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center shrink-0">
+                      <Map className="w-4 h-4 text-stone-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wider text-stone-500">Road Access</p>
+                      <p className="text-sm font-medium text-stone-900">{hotel.infrastructure.roadAccess}</p>
+                    </div>
+                  </li>
+                )}
+              </ul>
+            </div>
+          )}
+          
+          <div className="sticky top-[28rem] bg-white border border-stone-200 rounded-2xl p-6 shadow-xs space-y-5">
             <div className="border-b border-stone-100 pb-3">
               <h3 className="text-lg font-serif font-bold text-stone-900 flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-emerald-700" /> Property Highlights

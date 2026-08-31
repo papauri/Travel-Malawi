@@ -52,6 +52,7 @@ export const CATEGORY_HINTS: Record<PropertyCategory, string> = {
 /** Offered as one-tap chips; a host can still type anything else. */
 export const COMMON_AMENITIES = [
   'Free WiFi',
+  'Dedicated Workspace',
   'Breakfast included',
   'Swimming pool',
   'Restaurant',

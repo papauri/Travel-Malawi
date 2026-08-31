@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import {
-  collection, query, where, getDocs, getDoc, doc, updateDoc, addDoc,
+  collection, query, where, getDocs, getDoc, doc, updateDoc, addDoc, onSnapshot,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { Booking, Hotel, RoomType } from '../types';
+import { Booking, Hotel, RoomType, Broadcast } from '../types';
 import {
-  Calendar, MapPin, ExternalLink, Clock, CheckCircle2, XCircle, Ban, Star, Copy,
+  Calendar, MapPin, ExternalLink, Clock, CheckCircle2, XCircle, Ban, Star, Copy, ShieldCheck, Users, MessageCircle, Phone, Info, Map as MapIcon,
 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -16,7 +16,8 @@ import Modal, { fieldClass, labelClass } from '../components/Modal';
 import Pagination from '../components/Pagination';
 import FieldError from '../components/FieldError';
 import BookingChat from '../components/BookingChat';
-import { MessageSquare } from 'lucide-react';
+import StayVoucherModal from '../components/StayVoucherModal';
+import { MessageSquare, Megaphone, X } from 'lucide-react';
 import { getHotelImage } from '../lib/images';
 import { formatDateStr, daysUntil, nightsBetween } from '../lib/dates';
 import { cancellationTerms, formatMoney, isStayComplete, FREE_CANCELLATION_DAYS } from '../lib/booking';
@@ -33,6 +34,7 @@ export default function MyBookings() {
   const [filter, setFilter] = useState<Filter>('upcoming');
   const [cancelTarget, setCancelTarget] = useState<EnrichedBooking | null>(null);
   const [reviewTarget, setReviewTarget] = useState<EnrichedBooking | null>(null);
+  const [voucherTarget, setVoucherTarget] = useState<EnrichedBooking | null>(null);
   const [reviewedBookingIds, setReviewedBookingIds] = useState<Set<string>>(new Set());
   const [busyId, setBusyId] = useState<string | null>(null);
   const [chatTarget, setChatTarget] = useState<EnrichedBooking | null>(null);
@@ -125,6 +127,60 @@ export default function MyBookings() {
 
   const visible = grouped[filter];
 
+  
+  const [broadcasts, setBroadcasts] = useState<Broadcast[]>([]);
+  const [hiddenBroadcastIds, setHiddenBroadcastIds] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('hiddenBroadcasts') || '[]');
+    } catch {
+      return [];
+    }
+  });
+
+  const upcomingHotelIds = useMemo(() => {
+    return Array.from(new Set(grouped.upcoming.map(b => b.hotelId))).filter(Boolean) as string[];
+  }, [grouped.upcoming]);
+
+  // Mark broadcasts as seen when viewed
+  useEffect(() => {
+    if (filter === 'upcoming' && broadcasts.length > 0) {
+      const seenIds = JSON.parse(localStorage.getItem('seenBroadcasts') || '[]');
+      let updated = false;
+      broadcasts.forEach(b => {
+        if (!seenIds.includes(b.id)) {
+          seenIds.push(b.id);
+          updated = true;
+        }
+      });
+      if (updated) {
+        localStorage.setItem('seenBroadcasts', JSON.stringify(seenIds));
+        // We dispatch a custom event so the Navbar badge can update instantly
+        window.dispatchEvent(new Event('broadcasts-seen'));
+      }
+    }
+  }, [broadcasts, filter]);
+
+  useEffect(() => {
+    if (upcomingHotelIds.length === 0) {
+      setBroadcasts([]);
+      return;
+    }
+    const batch = upcomingHotelIds.slice(0, 30);
+    const q = query(
+      collection(db, 'broadcasts'),
+      where('hotelId', 'in', batch),
+      where('isActive', '==', true)
+    );
+    const unsub = onSnapshot(q, (snap) => {
+      const docs = snap.docs.map(d => ({ id: d.id, ...d.data() } as Broadcast));
+      docs.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      setBroadcasts(docs);
+    }, (err) => {
+      console.warn('Failed to listen to broadcasts:', err);
+    });
+    return () => unsub();
+  }, [upcomingHotelIds]);
+
   const handleCancel = async (booking: EnrichedBooking) => {
     if (!booking.id) return;
     setBusyId(booking.id);
@@ -205,6 +261,52 @@ export default function MyBookings() {
       <div className="max-w-4xl mx-auto px-6 lg:px-8">
         <h1 className="text-4xl font-serif font-bold text-stone-900 mb-2">My Itinerary</h1>
         <p className="text-stone-500 mb-8">Manage your upcoming stays and past bookings.</p>
+
+        {broadcasts.filter(b => !hiddenBroadcastIds.includes(b.id!)).length > 0 && filter === 'upcoming' && (
+          <div className="mb-10 space-y-4">
+            <h2 className="text-xl font-serif font-bold text-stone-900 flex items-center gap-2">
+              <Megaphone className="w-5 h-5" /> Live Updates
+            </h2>
+            <div className="grid grid-cols-1 gap-4">
+              {broadcasts.filter(b => !hiddenBroadcastIds.includes(b.id!)).map(broadcast => {
+                const hotel = grouped.upcoming.find(b => b.hotelId === broadcast.hotelId)?.hotel;
+                return (
+                  <div key={broadcast.id} className="bg-white border border-stone-200 rounded-3xl p-5 shadow-sm flex items-start gap-4">
+                    <div className={`mt-1 p-2 rounded-full shrink-0 ${
+                      broadcast.type === 'alert' ? 'bg-red-100 text-red-600' :
+                      broadcast.type === 'event' ? 'bg-amber-100 text-amber-600' :
+                      'bg-blue-100 text-blue-600'
+                    }`}>
+                      <Megaphone className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xs font-bold uppercase tracking-wider text-stone-500">
+                          {hotel?.name || 'Property Update'}
+                        </span>
+                        <span className="text-stone-300">•</span>
+                        <span className="text-xs font-bold uppercase tracking-wider text-stone-500">{broadcast.type}</span>
+                        <span className="text-stone-300">•</span>
+                        <span className="text-xs text-stone-500">{new Date(broadcast.createdAt).toLocaleString()}</span>
+                      </div>
+                      <p className="text-stone-900 font-medium">{broadcast.message}</p>
+                    </div>
+                    <button 
+                      className="p-1.5 ml-auto text-stone-400 hover:text-stone-600 hover:bg-stone-100 rounded-full transition"
+                      onClick={() => {
+                        const newHidden = [...hiddenBroadcastIds, broadcast.id!];
+                        setHiddenBroadcastIds(newHidden);
+                        localStorage.setItem('hiddenBroadcasts', JSON.stringify(newHidden));
+                      }}
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         <div className="flex gap-2 mb-10 border-b border-stone-200">
           {tabs.map(tab => (
@@ -319,7 +421,17 @@ export default function MyBookings() {
 
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mt-auto">
                     <div className="space-y-3">
-                      {(booking.status !== 'cancelled' && booking.status !== 'rejected') && (booking.hotel?.chatEnabled !== false && booking.hotel?.adminChatEnabled !== false) && (
+                      <div className="flex flex-wrap gap-2">
+                        {booking.status === 'confirmed' && daysUntil(booking.checkOut) >= 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setVoucherTarget(booking)}
+                            className="text-xs font-semibold text-emerald-900 border-2 border-emerald-900 bg-emerald-50 px-4 py-2 rounded-xl hover:bg-emerald-900 hover:text-white transition flex items-center gap-1.5"
+                          >
+                            <ShieldCheck className="w-4 h-4" /> View Digital Voucher
+                          </button>
+                        )}
+                        {(booking.status !== 'cancelled' && booking.status !== 'rejected') && (booking.hotel?.chatEnabled !== false && booking.hotel?.adminChatEnabled !== false) && (
                           <button
                             type="button"
                             onClick={() => setChatTarget(booking)}
@@ -328,6 +440,7 @@ export default function MyBookings() {
                             <MessageSquare className="w-4 h-4" /> Contact host
                           </button>
                         )}
+                      </div>
                         {booking.status === 'pending' && (
                         <p className="text-xs font-medium text-amber-600 bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-100">
                           Waiting for property confirmation. Payment on arrival.
@@ -371,7 +484,7 @@ export default function MyBookings() {
                     <div className="text-right w-full sm:w-auto">
                       <p className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-1">Total Price</p>
                       <div className="text-2xl font-serif font-bold text-stone-900">
-                        {formatMoney(booking.total ?? 0, booking.currency)}
+                        {formatMoney(booking.total ?? ((booking.room?.price ?? 0) * nights), booking.currency)}
                       </div>
                     </div>
                   </div>
@@ -420,6 +533,11 @@ export default function MyBookings() {
           </div>
         </Modal>
       )}
+      <StayVoucherModal 
+        booking={voucherTarget} 
+        isOpen={!!voucherTarget} 
+        onClose={() => setVoucherTarget(null)} 
+      />
       {reviewTarget && (
         <ReviewDialog
           booking={reviewTarget}

@@ -78,9 +78,40 @@ export interface Restaurant {
   footnote?: string;
 }
 
+export interface StayCrewMember {
+  id: string;
+  name: string;
+  role: string; // e.g. "Caretaker", "Boat Captain", "Guide", "Chef"
+  phone: string;
+  whatsapp?: string;
+  isAvailable: boolean;
+  description?: string;
+}
+
+export interface InfrastructureDetails {
+  powerSource: string;
+  powerNotes?: string;
+  waterSource: string;
+  roadAccess: string;
+  internetSource: string;
+  workspaceSetup: string;
+  offlineTrustBadge?: boolean;
+}
+
+export interface DailyBoard {
+  activities?: string;
+  dishOfTheDay?: string;
+  notes?: string;
+  updatedAt?: number;
+}
+
 export interface Hotel {
   id?: string;
   status?: 'pending' | 'approved' | 'rejected';
+  verificationStatus?: 'unverified' | 'community_verified' | 'verified_partner';
+  infrastructure?: InfrastructureDetails;
+  crew?: StayCrewMember[];
+  dailyBoard?: DailyBoard;
   managerId: string;
   name: string;
   description: string;
@@ -279,6 +310,12 @@ export interface Booking {
   /** The currency the guest was quoted and will pay in. */
   currency: CurrencyCode | string;
   status: BookingStatus;
+  
+  // Stay OS: Digital Voucher Fields
+  voucherIssued?: boolean;
+  voucherCode?: string; // a secure, short hash or code for the physical stay
+  offlinePaymentAgreed?: boolean; // confirms that payment is handled on-site
+  
   specialRequests?: string;
   packageIds?: string[];
   extraGuestTotal?: number;
@@ -305,5 +342,16 @@ export interface Review {
   authorName: string;
   rating: number; // 1-5
   text: string;
+  createdAt: number;
+}
+
+
+export interface Broadcast {
+  id?: string;
+  hotelId: string;
+  managerId: string;
+  message: string;
+  type: 'info' | 'alert' | 'event';
+  isActive: boolean;
   createdAt: number;
 }

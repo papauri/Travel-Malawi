@@ -16,7 +16,7 @@ import { DECORATIVE_IMAGE, HERO_IMAGE, getHotelImage } from '../lib/images';
 import { BookingLike, lowestPrice, roomsMatching } from '../lib/availability';
 import { todayStr } from '../lib/dates';
 import { CURRENCY_CODES, CURRENCIES, currenciesForRooms, formatMoney, readStoredCurrency, storeCurrency } from '../lib/currency';
-import { PROPERTY_CATEGORIES } from '../lib/listing';
+import { PROPERTY_CATEGORIES, COMMON_AMENITIES } from '../lib/listing';
 import { distanceKm, isValidLatLng, resolveHotelCoordinates, LatLng, estimateTravelTime, getDirectionsUrl } from '../lib/geo';
 import { getCachedHotels, saveCachedHotels, getCachedRooms, saveCachedRooms } from '../lib/mapCache';
 
@@ -1380,7 +1380,7 @@ export default function Home() {
                 <ChevronDown className="w-3 h-3 text-stone-400 group-open:rotate-180 transition-transform" />
               </summary>
               <div className="absolute right-0 mt-2 w-56 bg-white border border-stone-200 rounded-2xl shadow-xl z-50 p-2 flex flex-col gap-1">
-                {['Swimming Pool', 'Lakefront', 'Air Conditioning', 'Free WiFi', 'Restaurant', 'Spa', 'Bar', 'Room Service'].map(amenity => {
+                {COMMON_AMENITIES.map(amenity => {
                   const isActive = activeAmenities.includes(amenity);
                   return (
                     <label key={amenity} className="flex items-center gap-3 px-3 py-2 hover:bg-stone-50 rounded-xl cursor-pointer text-sm transition">
