@@ -608,7 +608,7 @@ export default function ManageHotel() {
         ...pkg,
         prices: pkg.prices ?? { [currencies[0]]: pkg.price ?? 0 },
       })),
-      amenities: room.amenities?.join(', ') as any,
+      amenities: room.amenities || [],
       // Kept as an array so the calendar can toggle entries directly.
       blockedDates: [...(room.blockedDates ?? [])],
     });
@@ -1140,7 +1140,7 @@ export default function ManageHotel() {
                 <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Amenities</label>
                 <div className="flex flex-wrap gap-2 mb-3">
                   {COMMON_AMENITIES.map(amenity => {
-                    const current = Array.isArray(editHotelData.amenities) ? editHotelData.amenities : (editHotelData.amenities || '').split(',').map(s=>s.trim()).filter(Boolean);
+                    const current = Array.isArray(editHotelData.amenities) ? editHotelData.amenities : (editHotelData.amenities || []);
                     const selected = current.includes(amenity);
                     return (
                       <button
@@ -1167,7 +1167,7 @@ export default function ManageHotel() {
                 
                 <div className="flex flex-wrap gap-2 mb-3">
                   {(() => {
-                     const current = Array.isArray(editHotelData.amenities) ? editHotelData.amenities : (editHotelData.amenities || '').split(',').map(s=>s.trim()).filter(Boolean);
+                     const current = Array.isArray(editHotelData.amenities) ? editHotelData.amenities : (editHotelData.amenities || []);
                      const custom = current.filter(a => !COMMON_AMENITIES.includes(a));
                      if (custom.length === 0) return null;
                      return custom.map(amenity => (
@@ -1196,7 +1196,7 @@ export default function ManageHotel() {
                       if (e.key === 'Enter') {
                         e.preventDefault();
                         if (!amenityInput.trim()) return;
-                        let current = Array.isArray(editHotelData.amenities) ? editHotelData.amenities : (editHotelData.amenities || '').split(',').map(s=>s.trim()).filter(Boolean);
+                        let current = Array.isArray(editHotelData.amenities) ? editHotelData.amenities : (editHotelData.amenities || []);
                         if (!current.includes(amenityInput.trim())) {
                           setEditHotelData({...editHotelData, amenities: [...current, amenityInput.trim()] as any});
                         }
@@ -1210,7 +1210,7 @@ export default function ManageHotel() {
                     type="button"
                     onClick={() => {
                       if (!amenityInput.trim()) return;
-                      let current = Array.isArray(editHotelData.amenities) ? editHotelData.amenities : (editHotelData.amenities || '').split(',').map(s=>s.trim()).filter(Boolean);
+                      let current = Array.isArray(editHotelData.amenities) ? editHotelData.amenities : (editHotelData.amenities || []);
                       if (!current.includes(amenityInput.trim())) {
                         setEditHotelData({...editHotelData, amenities: [...current, amenityInput.trim()] as any});
                       }
@@ -1466,7 +1466,7 @@ export default function ManageHotel() {
                     <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Room Amenities</label>
                     <div className="flex flex-wrap gap-2 mb-3">
                       {COMMON_AMENITIES.map(amenity => {
-                        const current = Array.isArray(editRoomData.amenities) ? editRoomData.amenities : (editRoomData.amenities || '').split(',').map(s=>s.trim()).filter(Boolean);
+                        const current = editRoomData.amenities || [];
                         const selected = current.includes(amenity);
                         return (
                           <button
@@ -1493,7 +1493,7 @@ export default function ManageHotel() {
                     
                     <div className="flex flex-wrap gap-2 mb-3">
                       {(() => {
-                         const current = Array.isArray(editRoomData.amenities) ? editRoomData.amenities : (editRoomData.amenities || '').split(',').map(s=>s.trim()).filter(Boolean);
+                         const current = editRoomData.amenities || [];
                          const custom = current.filter(a => !COMMON_AMENITIES.includes(a));
                          if (custom.length === 0) return null;
                          return custom.map(amenity => (
@@ -1522,7 +1522,7 @@ export default function ManageHotel() {
                           if (e.key === 'Enter') {
                             e.preventDefault();
                             if (!amenityInput.trim()) return;
-                            let current = Array.isArray(editRoomData.amenities) ? editRoomData.amenities : (editRoomData.amenities || '').split(',').map(s=>s.trim()).filter(Boolean);
+                            let current = editRoomData.amenities || [];
                             if (!current.includes(amenityInput.trim())) {
                               setEditRoomData({...editRoomData, amenities: [...current, amenityInput.trim()] as any});
                             }
@@ -1536,7 +1536,7 @@ export default function ManageHotel() {
                         type="button"
                         onClick={() => {
                           if (!amenityInput.trim()) return;
-                          let current = Array.isArray(editRoomData.amenities) ? editRoomData.amenities : (editRoomData.amenities || '').split(',').map(s=>s.trim()).filter(Boolean);
+                          let current = editRoomData.amenities || [];
                           if (!current.includes(amenityInput.trim())) {
                             setEditRoomData({...editRoomData, amenities: [...current, amenityInput.trim()] as any});
                           }
