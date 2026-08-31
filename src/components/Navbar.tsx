@@ -218,7 +218,7 @@ export default function Navbar() {
                       >
                         <span className="flex items-center gap-2.5">
                           {soundOn ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
-                          Message sounds
+                          Notification sounds
                         </span>
                         <span
                           aria-hidden="true"

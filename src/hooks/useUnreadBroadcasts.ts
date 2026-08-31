@@ -3,6 +3,7 @@ import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { Booking, Broadcast } from '../types';
+import { playChime } from '../lib/notificationSound';
 import toast from 'react-hot-toast';
 
 export function useUnreadBroadcasts() {
