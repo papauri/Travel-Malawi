@@ -339,18 +339,9 @@ service cloud.firestore {
     
     match /broadcasts/{broadcastId} {
       allow read: if true;
-      allow create: if isAuthenticated() && (isManager(request.resource.data.hotelId) || isAdmin())
-                    && request.resource.data.managerId == request.auth.uid;
-      allow update: if isAuthenticated() && (
-                      resource.data.managerId == request.auth.uid ||
-                      isManager(resource.data.hotelId) ||
-                      isAdmin()
-                    );
-      allow delete: if isAuthenticated() && (
-                      resource.data.managerId == request.auth.uid ||
-                      isManager(resource.data.hotelId) ||
-                      isAdmin()
-                    );
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated();
     }
 
     match /reviews/{reviewId} {
