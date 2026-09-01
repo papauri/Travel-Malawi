@@ -975,7 +975,7 @@ export default function ManageHotel() {
               <Percent className="h-4 w-4" />
               <span className="text-xs font-bold uppercase tracking-wider">Occupancy · 30d</span>
             </div>
-            <p className="text-3xl font-serif font-bold text-stone-900">{stats.occupancy.toFixed(0)}%</p>
+            <p className="text-2xl font-bold tracking-tight text-stone-900">{stats.occupancy.toFixed(0)}%</p>
             <p className="text-xs text-stone-400 mt-1">{stats.occupiedNights} of {stats.availableNights} room-nights</p>
           </div>
           {canSeeFinancials && (
@@ -987,9 +987,9 @@ export default function ManageHotel() {
                 </div>
                 <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                   {stats.upcomingRevenue.length === 0
-                    ? <p className="text-3xl font-serif font-bold text-stone-900">&mdash;</p>
+                    ? <p className="text-2xl font-bold tracking-tight text-stone-900">&mdash;</p>
                     : stats.upcomingRevenue.map(([code, total]) => (
-                        <p key={code} className="text-3xl font-serif font-bold text-stone-900">{formatMoney(total, code)}</p>
+                        <p key={code} className="text-2xl font-bold tracking-tight text-stone-900">{formatMoney(total, code)}</p>
                       ))}
                 </div>
                 <p className="text-xs text-stone-400 mt-1">Confirmed stays not yet completed</p>
@@ -1001,9 +1001,9 @@ export default function ManageHotel() {
                 </div>
                 <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                   {stats.allTimeRevenue.length === 0
-                    ? <p className="text-3xl font-serif font-bold text-stone-900">&mdash;</p>
+                    ? <p className="text-2xl font-bold tracking-tight text-stone-900">&mdash;</p>
                     : stats.allTimeRevenue.map(([code, total]) => (
-                        <p key={code} className="text-3xl font-serif font-bold text-stone-900">{formatMoney(total, code)}</p>
+                        <p key={code} className="text-2xl font-bold tracking-tight text-stone-900">{formatMoney(total, code)}</p>
                       ))}
                 </div>
                 <p className="text-xs text-stone-400 mt-1">{stats.confirmedCount} confirmed booking{stats.confirmedCount === 1 ? '' : 's'}</p>
@@ -1015,7 +1015,7 @@ export default function ManageHotel() {
               <Clock className="h-4 w-4" />
               <span className="text-xs font-bold uppercase tracking-wider">Awaiting reply</span>
             </div>
-            <p className="text-3xl font-serif font-bold text-stone-900">{stats.pending}</p>
+            <p className="text-2xl font-bold tracking-tight text-stone-900">{stats.pending}</p>
             <p className="text-xs text-stone-400 mt-1">Avg stay {stats.averageStay.toFixed(1)} nights</p>
           </div>
         </div>
@@ -2127,41 +2127,35 @@ export default function ManageHotel() {
                   <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-4">
                     <div>
                       <div className="flex items-center gap-3 mb-1 flex-wrap">
-                        <span className="font-bold text-stone-900 text-lg">{booking.guestName}</span>
-                        {booking.status !== 'cancelled' && booking.status !== 'rejected' && hotel?.adminChatEnabled !== false && (
-                          <button
-                            type="button"
-                            onClick={() => setChatTarget(booking)}
-                            className="ml-2 text-xs font-semibold text-stone-900 border-2 border-stone-900 bg-white px-3 py-1.5 rounded-lg hover:bg-stone-900 hover:text-white transition inline-flex items-center gap-1"
-                          >
-                            <MessageSquare className="w-3.5 h-3.5" /> Message
-                          </button>
-                        )}
-                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider ${
-                          booking.status === 'confirmed' ? 'bg-emerald-100 text-emerald-700' :
-                          booking.status === 'rejected' ? 'bg-red-100 text-red-700' :
-                          booking.status === 'cancelled' ? 'bg-stone-200 text-stone-600' :
-                          'bg-amber-100 text-amber-700'
-                        }`}>
-                          {booking.status}
 
+                          <span className="font-bold text-stone-900 text-lg">{booking.guestName}</span>
+                          <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider ${
+                            booking.status === 'confirmed' ? 'bg-emerald-100 text-emerald-700' :
+                            booking.status === 'rejected' ? 'bg-red-100 text-red-700' :
+                            booking.status === 'cancelled' ? 'bg-stone-200 text-stone-600' :
+                            'bg-amber-100 text-amber-700'
+                          }`}>
+                            {booking.status}
                           </span>
+                          
                           {booking.status === 'confirmed' && booking.arrivalPin && (
-                            <span className="ml-2 px-2.5 py-0.5 rounded-full text-xs font-bold tracking-wider bg-indigo-100 text-indigo-700 border border-indigo-200">
+                            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold tracking-wider bg-indigo-100 text-indigo-700 border border-indigo-200 flex items-center gap-1">
                               PIN: {booking.arrivalPin}
                             </span>
                           )}
-
-                          {booking.status === 'confirmed' && booking.arrivalPin && (
-
-                            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold tracking-wider bg-indigo-100 text-indigo-700 border border-indigo-200">
-
-                              PIN: {booking.arrivalPin}
-
-                            </span>
-
+                          
+                          {booking.status !== 'cancelled' && booking.status !== 'rejected' && hotel?.adminChatEnabled !== false && (
+                            <button
+                              type="button"
+                              onClick={() => setChatTarget(booking)}
+                              className="ml-auto text-xs font-semibold text-stone-900 border-2 border-stone-200 bg-white px-3 py-1 rounded-lg hover:border-stone-900 transition inline-flex items-center gap-1"
+                            >
+                              <MessageSquare className="w-3.5 h-3.5" /> Message Guest
+                            </button>
                           )}
-                        {booking.reference && (
+                        </div>
+                        <div className="flex items-center gap-2 mb-2 flex-wrap">
+                          {booking.reference && (
                           <span className="text-xs font-mono font-semibold text-stone-400">{booking.reference}</span>
                         )}
                         {/* Accepted, but the spam checks found something. The
@@ -2199,7 +2193,7 @@ export default function ManageHotel() {
                     
                     <div className="text-right flex flex-col items-end">
                       {canSeeFinancials && (
-                        <span className="font-serif font-bold text-2xl text-stone-900 mb-2">{formatMoney(booking.total ?? 0, booking.currency)}</span>
+                        <span className="font-bold text-xl tracking-tight text-stone-900 mb-2">{formatMoney(booking.total ?? 0, booking.currency)}</span>
                       )}
                       <div className="flex gap-2">
                         <button onClick={() => setBookingToDelete(booking.id!)} className="text-stone-400 hover:text-red-500 transition p-2">
