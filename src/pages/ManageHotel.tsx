@@ -35,18 +35,9 @@ import { emailProblem, phoneProblem } from '../lib/contact';
 import { validateProperty } from '../lib/listing';
 import { RoomErrors, firstError, hasErrors, validateRoom } from '../lib/validateRoom';
 import FieldError from '../components/FieldError';
+import SectionCard from '../components/SectionCard';
 
-const SectionCard = ({ title, description, children }: { title: string, description?: string, children: React.ReactNode }) => (
-  <div className="bg-white rounded-2xl border border-stone-200 overflow-hidden shadow-sm">
-    <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-stone-100 bg-stone-50/50">
-      <h3 className="font-serif text-lg text-stone-900">{title}</h3>
-      {description && <p className="text-sm text-stone-500 mt-1">{description}</p>}
-    </div>
-    <div className="p-4 sm:p-6 space-y-6">
-      {children}
-    </div>
-  </div>
-);
+
 
 type Tab = 'details' | 'rooms' | 'restaurant' | 'bookings' | 'inquiries' | 'stayos' | 'broadcasts';
 
@@ -1257,13 +1248,8 @@ export default function ManageHotel() {
   </SectionCard>
 
   <SectionCard title="Operations & Contact" description="How and when guests can reach you.">
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="md:col-span-2">
-                <h4 className="font-serif font-bold text-stone-900 mb-1">How guests reach you</h4>
-                <p className="text-sm text-stone-500 mb-5">
-                  Shown on your listing and quoted back on every booking request.
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
                     <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Booking email</label>
                     <input
@@ -1297,11 +1283,11 @@ export default function ManageHotel() {
                     />
                     <FieldError message={contactProblems.contactWhatsapp} />
                   </div>
-                </div>
               </div>
 
               {/* These were hard-coded as "From 14:00" and "Until 11:00" on
                   every listing, whatever the property actually did. */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Check-in from</label>
                 <input
@@ -1322,15 +1308,13 @@ export default function ManageHotel() {
                 />
                 <FieldError message={detailProblems.checkOutTime} />
               </div>
+              </div>
 
     </div>
   </SectionCard>
 
   <SectionCard title="Guest Messaging" description="Manage how guests can chat or call you directly through the app.">
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="md:col-span-2">
-                <h4 className="font-serif font-bold text-stone-900 mb-4">Guest Messaging</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     {hotel?.adminChatEnabled === false && !isAdmin(user) && (
                       <div className="mb-4 bg-amber-50 border border-amber-200 text-amber-800 p-3 rounded-lg text-sm">
@@ -1394,8 +1378,7 @@ export default function ManageHotel() {
                       placeholder="We're currently away. Leave a message and we'll reply soon!" 
                     />
                   </div>
-                </div>
-              </div>
+
 
     </div>
   </SectionCard>
@@ -1414,7 +1397,7 @@ export default function ManageHotel() {
   </SectionCard>
             {/* Pinned: this form is long enough that the save button used to
                 sit well below the fold with no sign it was there. */}
-            <div className="sticky bottom-0 -mx-8 -mb-8 px-8 py-4 bg-white/95 backdrop-blur border-t border-stone-100 flex items-center justify-between gap-4 rounded-b-3xl">
+            <div className="sticky bottom-0 py-4 bg-white/95 backdrop-blur border-t border-stone-100 flex items-center justify-between gap-4 rounded-b-2xl mt-4">
               <p className="text-sm text-stone-500">
                 {hotelDirty ? 'Unsaved changes' : 'Everything is saved'}
               </p>
