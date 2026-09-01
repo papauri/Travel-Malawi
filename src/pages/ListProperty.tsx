@@ -495,7 +495,9 @@ export default function ListProperty() {
           {step === 2 && (
             <div className="space-y-8">
               <ImageUpload
-                label="Main photograph"
+                label="Property Cover Photo"
+                hint="Choose an impressive exterior or best-view shot."
+                tooltip="Guest View: This image appears as the large hero banner spanning the top of your property page, and serves as the main thumbnail in search results."
                 value={draft.imageUrl}
                 onChange={url => set('imageUrl', url)}
                 folder={`hotels/${draft.id}`}
@@ -504,9 +506,11 @@ export default function ListProperty() {
 
               <div className="border-t border-stone-100 pt-8">
                 <GalleryUpload
+                  label="Property Gallery"
+                  hint="Include common areas and surroundings. Do NOT put specific room photos here."
+                  tooltip="Guest View: These appear in the photo grid/carousel at the top of your property page, just below the cover photo."
                   value={draft.galleryUrls}
                   onChange={urls => set('galleryUrls', urls)}
-                  label="More photographs"
                   folder={`hotels/${draft.id}/gallery`}
                 />
                 <p className="mt-2 text-xs text-stone-400">
@@ -665,7 +669,9 @@ export default function ListProperty() {
 
                   <div className="pt-4 border-t border-stone-100">
                     <ImageUpload
-                      label="Room Main Image"
+                      label="Room Cover Photo"
+                      hint="Make it a well-lit, wide shot of the bed and room."
+                      tooltip="Guest View: This image appears as the primary thumbnail for this room type in the booking list on your property page."
                       value={room.imageUrl || ''}
                       onChange={url => {
                         const updated = [...(draft.rooms || [])];
@@ -678,7 +684,9 @@ export default function ListProperty() {
                   
                   <div className="pt-4 border-t border-stone-100">
                     <GalleryUpload
-                      label="Room Gallery (More photos)"
+                      label="Room Gallery"
+                      hint="Add photos of the en-suite bathroom, the view from this room, and specific room amenities."
+                      tooltip="Guest View: These photos form the image carousel when a guest clicks to view more details about this specific room type."
                       value={room.galleryUrls || []}
                       onChange={urls => {
                         const updated = [...(draft.rooms || [])];

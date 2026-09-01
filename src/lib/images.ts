@@ -149,11 +149,6 @@ export function getRoomImage(room: { imageUrl?: string; galleryUrls?: unknown },
     const galDirect = normalizeImageUrl(room.galleryUrls[0] as string);
     if (galDirect) return galDirect;
   }
-  if (hotel) {
-    const images = getHotelImages(hotel);
-    // Prefer a gallery shot over the hero image so a room card does not simply
-    // repeat the picture shown at the top of the page.
-    return images[1] ?? images[0];
-  }
+  
   return PLACEHOLDER_IMAGE;
 }

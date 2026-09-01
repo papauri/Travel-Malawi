@@ -16,6 +16,7 @@ import BookingChat from '../components/BookingChat';
 import PropertyChat from '../components/PropertyChat';
 import { MessageSquare, Megaphone } from 'lucide-react';
 import SmartImage from '../components/SmartImage';
+import { getHotelImages, getHotelImage, getRoomImage, localImagesForName } from '../lib/images';
 import { useBreadcrumbLabel } from '../components/Breadcrumbs';
 import LocationPicker from '../components/LocationPicker';
 import AvailabilityCalendar from '../components/AvailabilityCalendar';
@@ -39,9 +40,9 @@ import SectionCard from '../components/SectionCard';
 
 
 
-type Tab = 'details' | 'rooms' | 'restaurant' | 'bookings' | 'inquiries' | 'stayos' | 'broadcasts';
+type Tab = 'details' | 'media' | 'rooms' | 'restaurant' | 'bookings' | 'inquiries' | 'stayos' | 'broadcasts';
 
-const TABS: Tab[] = ['details', 'rooms', 'restaurant', 'bookings', 'inquiries', 'stayos', 'broadcasts'];
+const TABS: Tab[] = ['details', 'media', 'rooms', 'restaurant', 'bookings', 'inquiries', 'stayos', 'broadcasts'];
 
 const isTab = (value: string | null): value is Tab => !!value && (TABS as string[]).includes(value);
 
@@ -77,6 +78,69 @@ function hotelFormSnapshot(data: Partial<Hotel>): string {
 const HOTEL_READONLY_FIELDS = [
   'id', 'managerId', 'status', 'featured', 'featuredAt', 'createdAt', 'name', 'reviews',
 ] as const;
+
+
+function RoomMediaEditor({ room, hotelId, onUpdate }: { room: RoomType, hotelId: string, onUpdate: (room: RoomType) => void }) {
+  const [imageUrl, setImageUrl] = useState(room.imageUrl || '');
+  const [galleryUrls, setGalleryUrls] = useState<string[]>(room.galleryUrls || []);
+  const [saving, setSaving] = useState(false);
+
+  const isDirty = imageUrl !== (room.imageUrl || '') || JSON.stringify(galleryUrls) !== JSON.stringify(room.galleryUrls || []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await updateDoc(doc(db, 'room_types', room.id!), { imageUrl, galleryUrls });
+      onUpdate({ ...room, imageUrl, galleryUrls });
+      toast.success(`${room.name} media saved.`);
+    } catch (e) {
+      toast.error('Failed to save room media.');
+    }
+    setSaving(false);
+  };
+
+  return (
+    <div className="bg-white border border-stone-200 rounded-2xl p-6 shadow-sm relative">
+      <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+        <div>
+          <h3 className="text-xl font-bold text-stone-900">{room.name}</h3>
+          <p className="text-sm text-stone-500 mt-1">Upload distinct photos for this room type to eliminate confusion.</p>
+        </div>
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={!isDirty || saving}
+          className="bg-stone-100 text-stone-700 px-5 py-2.5 rounded-lg font-bold flex items-center gap-2 hover:bg-stone-200 disabled:opacity-50 transition"
+        >
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+          Save Room Media
+        </button>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <ImageUpload
+            label="Cover Photo"
+            hint="Make it a well-lit, wide shot of the bed and room."
+            tooltip="Guest View: This image appears as the primary thumbnail for this room type in the booking list on your property page."
+            value={imageUrl}
+            onChange={setImageUrl}
+            folder={`hotels/${hotelId}/rooms`}
+          />
+        </div>
+        <div className="md:col-span-2">
+          <GalleryUpload
+            label="Gallery"
+            hint="Add photos of the en-suite bathroom, the view from this room, and specific room amenities."
+            tooltip="Guest View: These photos form the image carousel when a guest clicks to view more details about this specific room type."
+            value={galleryUrls}
+            onChange={setGalleryUrls}
+            folder={`hotels/${hotelId}/rooms`}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function ManageHotel() {
   const { id } = useParams<{ id: string }>();
@@ -184,6 +248,21 @@ export default function ManageHotel() {
         const docSnap = await getDoc(docRef);
         if (docSnap.exists() && (docSnap.data().managerId === user?.uid || isAdmin(user))) {
           const hData = { id: docSnap.id, ...docSnap.data() } as Hotel;
+          
+          // Seed missing images with local fallbacks so the admin sees exactly what guests see and can manage them.
+          const local = localImagesForName(hData.name);
+          if (!hData.imageUrl && local.length > 0) {
+             hData.imageUrl = local[0];
+          }
+          if (local.length > 1) {
+             const currentGal = hData.galleryUrls || [];
+             // Only add local images that aren't already the main image or in the gallery
+             const toAdd = local.slice(1).filter(img => img !== hData.imageUrl && !currentGal.includes(img));
+             if (toAdd.length > 0) {
+               hData.galleryUrls = [...currentGal, ...toAdd];
+             }
+          }
+
           setHotel(hData);
           setEditHotelData(hData);
           setRestaurant(hData.restaurant ?? null);
@@ -821,15 +900,6 @@ export default function ManageHotel() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 md:py-12">
-      {/* There was no route back: a manager with several properties had to use
-          the browser's back button to reach their dashboard again. */}
-      <Link
-        to={backUrl}
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-stone-500 hover:text-stone-900 transition mb-6"
-      >
-        <ChevronLeft className="h-4 w-4" /> All properties
-      </Link>
-
       <div className="mb-8 flex flex-col md:flex-row md:items-start md:justify-between gap-4">
         <div>
           <h1 className="text-4xl font-serif font-bold text-stone-900">{hotel.name}</h1>
@@ -940,9 +1010,10 @@ export default function ManageHotel() {
           </div>
         </div>
       )}
-      <div className="flex gap-1 border-b border-stone-200 mb-8 overflow-x-auto scrollbar-hide -mx-6 px-6 lg:mx-0 lg:px-0">
+      <div className="sticky top-[121px] z-40 bg-stone-50 pt-2 pb-0 flex gap-1 border-b border-stone-200 mb-8 overflow-x-auto scrollbar-hide -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
         {([
           { id: 'details' as Tab, label: 'Property details', icon: Building },
+          { id: 'media' as Tab, label: 'Media', icon: Eye },
           { id: 'stayos' as Tab, label: 'Stay OS', icon: ShieldCheck },
           { id: 'broadcasts' as Tab, label: 'Broadcasts', icon: Megaphone },
           { id: 'rooms' as Tab, label: 'Rooms & pricing', icon: BedDouble },
@@ -962,7 +1033,7 @@ export default function ManageHotel() {
             <button
               key={tab.id}
               onClick={() => requestTab(tab.id)}
-              className={`flex items-center gap-2 px-5 py-3 border-b-2 font-medium whitespace-nowrap transition ${
+              className={`flex items-center gap-2 px-4 py-3 border-b-2 text-sm font-medium whitespace-nowrap transition ${
                 activeTab === tab.id
                   ? 'border-stone-900 text-stone-900'
                   : 'border-transparent text-stone-500 hover:text-stone-700'
@@ -991,61 +1062,7 @@ export default function ManageHotel() {
       {/* TAB CONTENT: DETAILS */}
       {activeTab === 'details' && (
         <div className="space-y-6">
-          {/* LIVE PREVIEW: How your images look to guests */}
-          {(editHotelData.imageUrl || (editHotelData.galleryUrls && editHotelData.galleryUrls.length > 0) || rooms.some(r => r.imageUrl)) && (
-            <div className="bg-white rounded-2xl sm:rounded-2xl border border-stone-200 p-5 sm:p-6 md:p-8 shadow-sm">
-              <h3 className="text-lg font-serif font-bold text-stone-900 mb-6">How your photos look to guests</h3>
-              
-              {/* Property Gallery */}
-              {(editHotelData.imageUrl || (editHotelData.galleryUrls && editHotelData.galleryUrls.length > 0)) && (
-                <div className="mb-8">
-                  <p className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-3">Property Gallery</p>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {editHotelData.imageUrl && (
-                      <div className="relative aspect-video rounded-xl overflow-hidden border-2 border-emerald-400">
-                        <SmartImage src={editHotelData.imageUrl} alt="Main" className="w-full h-full object-cover" />
-                        <span className="absolute top-2 left-2 bg-emerald-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">Main</span>
-                      </div>
-                    )}
-                    {(editHotelData.galleryUrls || []).map((url, idx) => (
-                      <div key={`gal-${idx}`} className="relative aspect-video rounded-xl overflow-hidden border border-stone-200">
-                        <SmartImage src={url} alt={`Gallery ${idx + 1}`} className="w-full h-full object-cover" />
-                        <span className="absolute top-2 left-2 bg-stone-900/70 text-white text-[10px] px-2 py-0.5 rounded-full">Gallery</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Room Images */}
-              {rooms.some(r => r.imageUrl || (r.galleryUrls && r.galleryUrls.length > 0)) && (
-                <div>
-                  <p className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-3">Room Images</p>
-                  <div className="space-y-6">
-                    {rooms.filter(r => r.imageUrl || (r.galleryUrls && r.galleryUrls.length > 0)).map(room => (
-                      <div key={`room-preview-${room.id}`} className="space-y-3">
-                        <p className="text-sm font-bold text-stone-700">{room.name}</p>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                          {room.imageUrl && (
-                            <div className="relative aspect-video rounded-xl overflow-hidden border-2 border-blue-400">
-                              <SmartImage src={room.imageUrl} alt={room.name} className="w-full h-full object-cover" />
-                              <span className="absolute top-2 left-2 bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider shadow-sm">Room Main</span>
-                            </div>
-                          )}
-                          {(room.galleryUrls || []).map((url, idx) => (
-                            <div key={`room-${room.id}-gal-${idx}`} className="relative aspect-video rounded-xl overflow-hidden border border-stone-200">
-                              <SmartImage src={url} alt={`Gallery ${idx + 1}`} className="w-full h-full object-cover" />
-                              <span className="absolute top-2 left-2 bg-stone-900/70 text-white text-[10px] px-2 py-0.5 rounded-md">Gallery</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+          
 
           <form onSubmit={handleSaveHotel} className="space-y-6">
   <SectionCard title="Basic Information" description="The core details about your property shown to guests.">
@@ -1097,28 +1114,8 @@ export default function ManageHotel() {
     </div>
   </SectionCard>
 
-  <SectionCard title="Photos & Media" description="High-quality images that showcase your property.">
+  <SectionCard title="Property Category" description="Choose a category for your property.">
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <ImageUpload
-                  label="Main Property Image"
-                  value={editHotelData.imageUrl || ''}
-                  onChange={(url) => setEditHotelData({ ...editHotelData, imageUrl: url })}
-                  folder={`hotels/${id}`}
-                />
-                <FieldError message={detailProblems.imageUrl} />
-              </div>
-              <div className="md:col-span-2">
-                <GalleryUpload 
-                  value={editHotelData.galleryUrls || []} 
-                  onChange={(urls) => setEditHotelData({ ...editHotelData, galleryUrls: urls })} 
-                  label="Property Gallery"
-                  folder={`hotels/${id}/gallery`}
-                />
-              </div>
-              {/* The category decides which home-page filter the listing shows
-                  under. It could be set nowhere at all, so every property
-                  created through the app was unreachable from the filter row. */}
               <div className="md:col-span-2">
                 <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Category</label>
                 <div className="flex flex-wrap gap-2">
@@ -1436,6 +1433,135 @@ export default function ManageHotel() {
       )}
 
       {/* TAB CONTENT: ROOMS */}
+      
+      {activeTab === 'media' && (
+        <div className="space-y-6">
+{/* LIVE PREVIEW: How your images look to guests */}
+          {(editHotelData.imageUrl || (editHotelData.galleryUrls && editHotelData.galleryUrls.length > 0) || rooms.some(r => r.imageUrl)) && (
+            <div className="bg-white rounded-2xl sm:rounded-2xl border border-stone-200 p-5 sm:p-6 md:p-8 shadow-sm">
+              <h3 className="text-lg font-serif font-bold text-stone-900 mb-6">How your photos look to guests</h3>
+              
+              {/* Property Gallery */}
+              {true && (
+                <div className="mb-8">
+                  <p className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-3">Property Gallery</p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {true && (
+                      <div className="relative aspect-video rounded-xl overflow-hidden border-2 border-emerald-400">
+                        <SmartImage src={getHotelImage(editHotelData)} alt="Main" className="w-full h-full object-cover" />
+                        <span className="absolute top-2 left-2 bg-emerald-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">Main</span>
+                      </div>
+                    )}
+                    {(editHotelData.galleryUrls || []).map((url, idx) => (
+                      <div key={`gal-${idx}`} className="relative aspect-video rounded-xl overflow-hidden border border-stone-200">
+                        <SmartImage src={url} alt={`Gallery ${idx + 1}`} className="w-full h-full object-cover" />
+                        <span className="absolute top-2 left-2 bg-stone-900/70 text-white text-[10px] px-2 py-0.5 rounded-full">Gallery</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Room Images */}
+              {rooms.length > 0 && (
+                <div>
+                  <p className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-3">Room Images</p>
+                  <div className="space-y-6">
+                    {rooms.map(room => (
+                      <div key={`room-preview-${room.id}`} className="space-y-3">
+                        <p className="text-sm font-bold text-stone-700">{room.name}</p>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                          {true && (
+                            <div className="relative aspect-video rounded-xl overflow-hidden border-2 border-blue-400">
+                              <SmartImage src={getRoomImage(room, null)} alt={room.name} className="w-full h-full object-cover" />
+                              <span className="absolute top-2 left-2 bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider shadow-sm">Room Main</span>
+                            </div>
+                          )}
+                          {(room.galleryUrls || []).map((url, idx) => (
+                            <div key={`room-${room.id}-gal-${idx}`} className="relative aspect-video rounded-xl overflow-hidden border border-stone-200">
+                              <SmartImage src={url} alt={`Gallery ${idx + 1}`} className="w-full h-full object-cover" />
+                              <span className="absolute top-2 left-2 bg-stone-900/70 text-white text-[10px] px-2 py-0.5 rounded-md">Gallery</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          <SectionCard title="Cover Photo" description="This will be the large banner on your hotel's hero page, and the main thumbnail in search results.">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="md:col-span-2">
+                <ImageUpload
+                  label="Cover Photo"
+                  hint="Choose an impressive exterior or best-view shot."
+                  tooltip="Guest View: This image appears as the large hero banner spanning the top of your property page, and serves as the main thumbnail in search results."
+                  value={editHotelData.imageUrl || ''}
+                  onChange={(url) => setEditHotelData({ ...editHotelData, imageUrl: url })}
+                  folder={`hotels/${id}`}
+                />
+                <FieldError message={detailProblems.imageUrl} />
+              </div>
+            </div>
+          </SectionCard>
+
+          <SectionCard title="Gallery" description="These appear in the main photo grid/carousel at the top of your property page.">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="md:col-span-2">
+                <GalleryUpload 
+                  label="Gallery"
+                  hint="Include common areas and surroundings. Do NOT put specific room photos here."
+                  tooltip="Guest View: These appear in the photo grid/carousel at the top of your property page, just below the cover photo."
+                  value={editHotelData.galleryUrls || []} 
+                  onChange={(urls) => setEditHotelData({ ...editHotelData, galleryUrls: urls })} 
+                  folder={`hotels/${id}/gallery`}
+                />
+              </div>
+            </div>
+          </SectionCard>
+
+          <div className="flex justify-end mb-8 border-b pb-8 border-stone-200">
+             <button
+                type="button"
+                onClick={handleSaveHotel}
+                disabled={saving || !hotelDirty}
+                className="bg-stone-900 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-stone-800 disabled:opacity-50 transition"
+              >
+                {saving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
+                Save Property Media
+              </button>
+          </div>
+
+          <div className="mb-4 mt-8">
+            <h2 className="text-2xl font-serif font-bold text-stone-900">Room-Specific Photos</h2>
+            <p className="text-stone-500 mt-1">Upload distinct photos for each room type to eliminate confusion.</p>
+          </div>
+
+          {rooms.length === 0 ? (
+            <div className="bg-stone-50 p-8 rounded-2xl text-center border border-stone-200">
+               <BedDouble className="h-10 w-10 text-stone-400 mx-auto mb-3" />
+               <p className="text-stone-500 font-medium">You haven't added any rooms yet.</p>
+               <button onClick={() => requestTab('rooms')} className="mt-4 text-emerald-600 font-bold hover:underline">Go to Rooms Tab</button>
+            </div>
+          ) : (
+            <div className="space-y-8">
+              {rooms.map(room => {
+                return (
+                  <RoomMediaEditor 
+                    key={room.id} 
+                    room={room} 
+                    hotelId={id!} 
+                    onUpdate={(updated) => setRooms(rooms.map(r => r.id === updated.id ? updated : r))} 
+                  />
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       {activeTab === 'rooms' && (
         <div className="space-y-6">
           <div className="flex justify-between items-center mb-2">
@@ -1470,28 +1596,8 @@ export default function ManageHotel() {
                 </div>
                 </SectionCard>
 
-                <SectionCard title="Photos & Amenities">
+                <SectionCard title="Room Amenities">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="md:col-span-2">
-                      <ImageUpload
-                        label="Room Main Image"
-                        value={editRoomData.imageUrl || ''}
-                        onChange={(url) => setEditRoomData({...editRoomData, imageUrl: url})}
-                        folder={`hotels/${id}/rooms`}
-                      />
-                    </div>
-                  {/* `room_gallery` was not one of the folders the storage rules
-                      allow, so every room-gallery upload was refused outright.
-                      Room photographs belong with the room's main image. */}
-                  <div className="md:col-span-2">
-                    <GalleryUpload
-                      value={editRoomData.galleryUrls || []}
-                      onChange={(urls) => setEditRoomData({ ...editRoomData, galleryUrls: urls })}
-                      label="Room Gallery"
-                      folder={`hotels/${id}/rooms`}
-                    />
-                  </div>
-
                   {/* ROOM AMENITIES */}
                   <div className="md:col-span-2">
                     <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Room Amenities</label>
@@ -1827,7 +1933,7 @@ export default function ManageHotel() {
           {!editingRoomId && rooms.map(room => (
             <div key={room.id} onClick={() => startEditRoom(room)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') startEditRoom(room); }} className={`group cursor-pointer bg-white border p-4 sm:p-6 rounded-2xl flex flex-col md:flex-row gap-4 sm:gap-6 items-stretch md:items-center shadow-sm hover:border-stone-400 hover:shadow-md transition ${room.quantity === 0 ? 'border-red-200 bg-red-50/30' : 'border-stone-200'}`}>
               <div className="w-full md:w-48 h-48 sm:h-40 md:h-36 bg-stone-100 rounded-2xl overflow-hidden shrink-0">
-                <SmartImage src={room.imageUrl} alt={room.name} className="w-full h-full object-cover" />
+                <SmartImage src={getRoomImage(room, null)} alt={room.name} className="w-full h-full object-cover" />
               </div>
               <div className="flex-1 min-w-0 w-full flex flex-col justify-center">
                 <div className="flex flex-col sm:flex-row justify-between sm:items-start gap-2 mb-2">

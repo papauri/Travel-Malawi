@@ -1,5 +1,6 @@
 import React, { useState, useRef } from "react";
-import { Upload, Link as LinkIcon, Image as ImageIcon, Loader2, X, GripVertical } from "lucide-react";
+import { Upload, Link as LinkIcon, Image as ImageIcon, Loader2, X, GripVertical, Eye, Info } from "lucide-react";
+import Tooltip from './Tooltip';
 import { uploadImage, uploadErrorMessage, validateImage, IMAGE_ACCEPT_ATTR } from "../lib/uploadImage";
 import { resolveShareUrl, SHARE_PROVIDER_NAMES } from "../lib/shareLinks";
 import toast from "react-hot-toast";
@@ -9,10 +10,12 @@ interface Props {
   value: string[];
   onChange: (urls: string[]) => void;
   label?: string;
+  hint?: React.ReactNode;
   folder?: string;
+  tooltip?: string;
 }
 
-export default function GalleryUpload({ value = [], onChange, label = "Gallery Images", folder = "gallery" }: Props) {
+export default function GalleryUpload({ value = [], onChange, label = "Gallery", hint, folder = "gallery", tooltip, }: Props) {
   const [mode, setMode] = useState<"url" | "upload">("upload");
   const [urlInput, setUrlInput] = useState("");
   const [isUploading, setIsUploading] = useState(false);
@@ -144,7 +147,13 @@ export default function GalleryUpload({ value = [], onChange, label = "Gallery I
 
   return (
     <div className="w-full">
-      <label className="block text-sm font-bold text-stone-700 mb-2 uppercase tracking-wide">{label}</label>
+      <div className="mb-3">
+        <div className="flex items-center gap-2 mb-1">
+          <label className="block text-sm font-bold text-stone-700 uppercase tracking-wide">{label}</label>
+          {tooltip && <Tooltip text={tooltip} />}
+        </div>
+        {hint && <div className="text-sm text-stone-500 mb-4 leading-relaxed">{hint}</div>}
+      </div>
       
       {/* Draggable Grid */}
       {value.length > 0 && (
@@ -156,21 +165,20 @@ export default function GalleryUpload({ value = [], onChange, label = "Gallery I
               onDragStart={(e) => handleDragStart(e, idx)}
               onDragEnd={handleDragEnd}
               onDragOver={(e) => handleDragOver(e, idx)}
-              className={`relative aspect-video rounded-xl overflow-hidden group cursor-move bg-stone-100 transition-all ${idx === 0 ? "border-2 border-emerald-500 shadow-md ring-2 ring-emerald-500/20" : "border border-stone-200 hover:border-stone-300"}`}
+              className={`relative aspect-video rounded-xl overflow-hidden group cursor-move bg-stone-100 transition-all border border-stone-200 hover:border-stone-300`}
             >
               <SmartImage src={url} alt={`Gallery ${idx + 1}`} className="w-full h-full object-cover pointer-events-none" />
-              {idx === 0 && (
-                <div className="absolute top-2 left-2 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider shadow-sm">
-                  Cover Photo
-                </div>
-              )}
-              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
-                <GripVertical className="text-white h-8 w-8" />
+
+              <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/40 opacity-0 group-hover:opacity-100 transition pointer-events-none" />
+              
+              <div className="absolute bottom-2 left-2 bg-stone-900/60 backdrop-blur-sm p-1 rounded-md opacity-0 group-hover:opacity-100 transition pointer-events-none">
+                <GripVertical className="text-white h-4 w-4" />
               </div>
+
               <button
                 type="button"
                 onClick={() => removeImage(idx)}
-                className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition hover:bg-red-600 z-10"
+                className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition hover:bg-red-600 z-10 shadow-sm"
               >
                 <X className="w-4 h-4" />
               </button>
