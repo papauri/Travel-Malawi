@@ -141,7 +141,7 @@ export default function ManagerDashboard() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 md:gap-8">
         {hotels.length === 0 ? (
-          <div className="col-span-full bg-white p-16 text-center rounded-3xl border border-stone-200 shadow-sm">
+          <div className="col-span-full bg-white p-16 text-center rounded-2xl border border-stone-200 shadow-sm">
             <Building2 className="h-16 w-16 text-stone-300 mx-auto mb-6" />
             <h3 className="text-2xl font-serif text-stone-900 mb-3">Nothing listed yet</h3>
             <p className="text-stone-500 text-lg max-w-md mx-auto mb-8">
@@ -165,7 +165,7 @@ export default function ManagerDashboard() {
             return (
             <div
               key={hotel.id}
-              className="group bg-white rounded-3xl shadow-sm border border-stone-200 overflow-hidden flex flex-col hover:border-stone-400 transition duration-300 relative"
+              className="group bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden flex flex-col hover:border-stone-400 transition duration-300 relative"
             >
               <Link to={targetUrl} className="absolute inset-0 z-0" aria-label={`Manage ${hotel.name}`} />
               <div className="w-full aspect-[4/3] sm:aspect-auto sm:h-56 md:h-60 bg-stone-100 relative shrink-0 pointer-events-none">

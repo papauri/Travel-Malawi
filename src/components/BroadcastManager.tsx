@@ -144,7 +144,7 @@ export default function BroadcastManager({ hotelId, managerId }: BroadcastManage
       )}
 
       {broadcasts.length === 0 ? (
-        <div className="text-center py-16 bg-white border border-dashed border-stone-200 rounded-3xl">
+        <div className="text-center py-16 bg-white border border-dashed border-stone-200 rounded-2xl">
           <Megaphone className="w-12 h-12 text-stone-300 mx-auto mb-4" />
           <h3 className="text-lg font-bold text-stone-900 mb-2">No broadcasts</h3>
           <p className="text-stone-500 max-w-sm mx-auto">Keep your guests informed with live alerts and event notifications.</p>

@@ -123,7 +123,7 @@ export default function StayOSManager({ hotel }: StayOSManagerProps) {
           </p>
         </div>
 
-        <div className="bg-white rounded-3xl border border-stone-200 p-6 md:p-8 shadow-xs grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="bg-white rounded-2xl border border-stone-200 p-6 md:p-8 shadow-sm grid grid-cols-1 md:grid-cols-3 gap-8">
           <div>
             <label className="block text-sm font-semibold text-stone-900 mb-2 flex items-center gap-2">
               <Zap className="w-4 h-4 text-amber-500" /> Power Source
@@ -254,7 +254,7 @@ export default function StayOSManager({ hotel }: StayOSManagerProps) {
         </div>
 
         {crew.length === 0 ? (
-          <div className="bg-stone-50 border-2 border-dashed border-stone-200 rounded-3xl p-12 text-center">
+          <div className="bg-stone-50 border-2 border-dashed border-stone-200 rounded-2xl p-12 text-center">
             <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-sm mx-auto mb-4">
               <User className="w-8 h-8 text-stone-400" />
             </div>
@@ -264,7 +264,7 @@ export default function StayOSManager({ hotel }: StayOSManagerProps) {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {crew.map((c) => (
-              <div key={c.id} className="bg-white border border-stone-200 rounded-3xl p-6 shadow-xs relative group">
+              <div key={c.id} className="bg-white border border-stone-200 rounded-2xl p-6 shadow-sm relative group">
                 <button
                   onClick={() => removeCrew(c.id)}
                   className="absolute top-4 right-4 p-2 text-stone-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition opacity-0 group-hover:opacity-100"

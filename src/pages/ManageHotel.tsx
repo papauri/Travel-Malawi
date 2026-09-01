@@ -851,7 +851,7 @@ export default function ManageHotel() {
             type="button"
             onClick={handleToggleOnlineStatus}
             disabled={togglingStatus}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider border transition shadow-xs ${
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider border transition shadow-sm ${
               hotel.isOnline !== false
                 ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
                 : 'bg-stone-100 text-stone-700 border-stone-300 hover:bg-stone-200'
@@ -993,7 +993,7 @@ export default function ManageHotel() {
         <div className="space-y-6">
           {/* LIVE PREVIEW: How your images look to guests */}
           {(editHotelData.imageUrl || (editHotelData.galleryUrls && editHotelData.galleryUrls.length > 0) || rooms.some(r => r.imageUrl)) && (
-            <div className="bg-white rounded-2xl sm:rounded-3xl border border-stone-200 p-5 sm:p-6 md:p-8 shadow-sm">
+            <div className="bg-white rounded-2xl sm:rounded-2xl border border-stone-200 p-5 sm:p-6 md:p-8 shadow-sm">
               <h3 className="text-lg font-serif font-bold text-stone-900 mb-6">How your photos look to guests</h3>
               
               {/* Property Gallery */}
@@ -1819,13 +1819,13 @@ export default function ManageHotel() {
           )}
 
           {!editingRoomId && rooms.length === 0 && (
-            <div className="bg-stone-50 border border-stone-200 border-dashed rounded-3xl p-12 text-center text-stone-500">
+            <div className="bg-stone-50 border border-stone-200 border-dashed rounded-2xl p-12 text-center text-stone-500">
               No rooms added yet. Click 'Add Room' to get started.
             </div>
           )}
 
           {!editingRoomId && rooms.map(room => (
-            <div key={room.id} onClick={() => startEditRoom(room)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') startEditRoom(room); }} className={`group cursor-pointer bg-white border p-4 sm:p-6 rounded-3xl flex flex-col md:flex-row gap-4 sm:gap-6 items-stretch md:items-center shadow-sm hover:border-stone-400 hover:shadow-md transition ${room.quantity === 0 ? 'border-red-200 bg-red-50/30' : 'border-stone-200'}`}>
+            <div key={room.id} onClick={() => startEditRoom(room)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') startEditRoom(room); }} className={`group cursor-pointer bg-white border p-4 sm:p-6 rounded-2xl flex flex-col md:flex-row gap-4 sm:gap-6 items-stretch md:items-center shadow-sm hover:border-stone-400 hover:shadow-md transition ${room.quantity === 0 ? 'border-red-200 bg-red-50/30' : 'border-stone-200'}`}>
               <div className="w-full md:w-48 h-48 sm:h-40 md:h-36 bg-stone-100 rounded-2xl overflow-hidden shrink-0">
                 <SmartImage src={room.imageUrl} alt={room.name} className="w-full h-full object-cover" />
               </div>
@@ -1881,7 +1881,7 @@ export default function ManageHotel() {
       {activeTab === 'restaurant' && (
         <div className="space-y-8">
           {!restaurant ? (
-            <div className="bg-white rounded-3xl border border-stone-200 p-12 text-center">
+            <div className="bg-white rounded-2xl border border-stone-200 p-12 text-center">
               <UtensilsCrossed className="h-10 w-10 mx-auto mb-4 text-stone-300" />
               <h3 className="text-2xl font-serif text-stone-900 mb-2">No restaurant yet</h3>
               <p className="text-stone-500 max-w-md mx-auto mb-8">
@@ -1948,7 +1948,7 @@ export default function ManageHotel() {
 
       {/* TAB CONTENT: BOOKINGS */}
       {activeTab === 'bookings' && (
-        <div className="bg-white rounded-3xl border border-stone-200 overflow-hidden shadow-sm">
+        <div className="bg-white rounded-2xl border border-stone-200 overflow-hidden shadow-sm">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-6 md:px-8 py-5 border-b border-stone-100">
             <div className="flex flex-wrap gap-2">
               {([
@@ -2131,7 +2131,7 @@ export default function ManageHotel() {
       {activeTab === 'inquiries' && (
         <div className="space-y-6">
           {/* Host Status & Overview Card */}
-          <div className="bg-white rounded-3xl border border-stone-200 p-6 md:p-8 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="bg-white rounded-2xl border border-stone-200 p-6 md:p-8 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-3">
                 <span className={`h-3 w-3 rounded-full ${hotel.isOnline !== false ? 'bg-emerald-500 animate-pulse' : 'bg-stone-400'}`} />
@@ -2151,14 +2151,14 @@ export default function ManageHotel() {
               className={`px-5 py-2.5 rounded-xl font-semibold text-xs uppercase tracking-wider transition ${
                 hotel.isOnline !== false
                   ? 'bg-stone-100 hover:bg-stone-200 text-stone-800 border border-stone-300'
-                  : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs'
+                  : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm'
               }`}
             >
               {hotel.isOnline !== false ? 'Go Offline / Set Away' : 'Turn Online Now'}
             </button>
           </div>
 
-          <div className="bg-white rounded-3xl border border-stone-200 overflow-hidden shadow-xs p-6 md:p-8">
+          <div className="bg-white rounded-2xl border border-stone-200 overflow-hidden shadow-sm p-6 md:p-8">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-serif font-bold text-stone-900">Guest Messages & Inquiries</h3>
               <span className="text-xs font-semibold text-stone-500 bg-stone-100 px-3 py-1 rounded-full">
@@ -2192,7 +2192,7 @@ export default function ManageHotel() {
                     <div key={inquiry.id} className="py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 group hover:bg-stone-50/60 -mx-6 px-6 transition rounded-2xl">
                       <div className="flex items-start gap-4">
                         <div className="relative">
-                          <div className="w-11 h-11 rounded-2xl bg-stone-900 text-white font-bold text-base flex items-center justify-center shrink-0 shadow-xs">
+                          <div className="w-11 h-11 rounded-2xl bg-stone-900 text-white font-bold text-base flex items-center justify-center shrink-0 shadow-sm">
                             {guestInitial}
                           </div>
                           {/* Live Presence indicator dot on guest avatar */}
@@ -2257,7 +2257,7 @@ export default function ManageHotel() {
                           <button
                             type="button"
                             onClick={() => setInquiryChatTarget(inquiry)}
-                            className="flex items-center gap-2 px-4 py-2.5 bg-stone-900 text-white hover:bg-stone-800 rounded-xl transition font-semibold text-xs shadow-xs"
+                            className="flex items-center gap-2 px-4 py-2.5 bg-stone-900 text-white hover:bg-stone-800 rounded-xl transition font-semibold text-xs shadow-sm"
                           >
                             <MessageSquare className="w-4 h-4" /> Open Chat
                           </button>
