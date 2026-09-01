@@ -69,6 +69,7 @@ function hotelFormSnapshot(data: Partial<Hotel>): string {
     chatEnabled: data.chatEnabled !== false,
     callsEnabled: data.callsEnabled !== false,
     adminChatEnabled: data.adminChatEnabled !== false,
+    adminWifiVoucherEnabled: data.adminWifiVoucherEnabled !== false,
     isOnline: data.isOnline ?? true,
     outOfOfficeMessage: data.outOfOfficeMessage ?? '',
   });
@@ -1320,15 +1321,26 @@ export default function ManageHotel() {
                     )}
                     
                     {isAdmin(user) && (
-                      <label className="flex items-center gap-3 cursor-pointer mb-6 p-3 bg-red-50 border border-red-200 rounded-lg">
-                        <input 
-                          type="checkbox" 
-                          checked={editHotelData.adminChatEnabled !== false} 
-                          onChange={(e) => setEditHotelData({...editHotelData, adminChatEnabled: e.target.checked})}
-                          className="w-5 h-5 text-red-600 border-red-300 rounded focus:ring-red-600"
-                        />
-                        <span className="font-bold text-red-900">Admin: Enable Chat Service Globally</span>
-                      </label>
+                      <>
+                        <label className="flex items-center gap-3 cursor-pointer mb-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                          <input 
+                            type="checkbox" 
+                            checked={editHotelData.adminChatEnabled !== false} 
+                            onChange={(e) => setEditHotelData({...editHotelData, adminChatEnabled: e.target.checked})}
+                            className="w-5 h-5 text-red-600 border-red-300 rounded focus:ring-red-600"
+                          />
+                          <span className="font-bold text-red-900">Admin: Enable Chat Service Globally</span>
+                        </label>
+                        <label className="flex items-center gap-3 cursor-pointer mb-6 p-3 bg-red-50 border border-red-200 rounded-lg">
+                          <input 
+                            type="checkbox" 
+                            checked={editHotelData.adminWifiVoucherEnabled !== false} 
+                            onChange={(e) => setEditHotelData({...editHotelData, adminWifiVoucherEnabled: e.target.checked})}
+                            className="w-5 h-5 text-red-600 border-red-300 rounded focus:ring-red-600"
+                          />
+                          <span className="font-bold text-red-900">Admin: Enable WiFi Voucher Feature Globally</span>
+                        </label>
+                      </>
                     )}
                     <label className="flex items-center gap-3 cursor-pointer mb-6">
                       <input 

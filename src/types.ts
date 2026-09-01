@@ -96,6 +96,9 @@ export interface InfrastructureDetails {
   internetSource: string;
   workspaceSetup: string;
   offlineTrustBadge?: boolean;
+  wifiSSID?: string;
+  wifiPassword?: string;
+  shareWifiVoucher?: boolean;
 }
 
 export interface DailyBoard {
@@ -148,6 +151,7 @@ export interface Hotel {
   checkOutTime?: string;
   chatEnabled?: boolean;
   adminChatEnabled?: boolean;
+  adminWifiVoucherEnabled?: boolean;
   callsEnabled?: boolean;
   isOnline?: boolean;
   outOfOfficeMessage?: string;

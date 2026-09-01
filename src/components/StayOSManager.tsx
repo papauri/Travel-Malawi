@@ -231,6 +231,58 @@ export default function StayOSManager({ hotel }: StayOSManagerProps) {
               <p className="text-sm text-stone-500">Enable this to generate non-financial Digital Vouchers that guests present on arrival.</p>
             </div>
           </div>
+
+          <div className="md:col-span-3 pt-6 border-t border-stone-100">
+            <h3 className="font-semibold text-stone-900 mb-4 flex items-center gap-2">
+              <Wifi className="w-5 h-5 text-indigo-500" /> Guest WiFi Access
+            </h3>
+            
+            {hotel.adminWifiVoucherEnabled === false ? (
+              <div className="mb-4 bg-amber-50 border border-amber-200 text-amber-800 p-3 rounded-lg text-sm">
+                <strong>Admin Disabled:</strong> Sharing WiFi details on vouchers has been disabled by an administrator.
+              </div>
+            ) : (
+              <div className="bg-indigo-50/50 rounded-xl p-5 border border-indigo-100">
+                <div className="flex items-center gap-4 mb-4">
+                  <button
+                    onClick={() => setInfrastructure({...infrastructure, shareWifiVoucher: !infrastructure.shareWifiVoucher})}
+                    className={`w-12 h-6 rounded-full transition-colors relative ${infrastructure.shareWifiVoucher ? 'bg-indigo-500' : 'bg-stone-300'}`}
+                  >
+                    <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${infrastructure.shareWifiVoucher ? 'left-7' : 'left-1'}`} />
+                  </button>
+                  <div>
+                    <p className="font-semibold text-stone-900">Include WiFi Details on Digital Voucher</p>
+                    <p className="text-xs text-stone-500 mt-0.5">Guests can easily copy or scan a QR code to connect upon arrival.</p>
+                  </div>
+                </div>
+                
+                {infrastructure.shareWifiVoucher && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t border-indigo-100">
+                    <div>
+                      <label className="block text-xs font-semibold text-stone-500 uppercase tracking-wider mb-1">Network Name (SSID)</label>
+                      <input
+                        type="text"
+                        value={infrastructure.wifiSSID || ''}
+                        onChange={(e) => setInfrastructure({...infrastructure, wifiSSID: e.target.value})}
+                        placeholder="e.g. Guest_Network_5G"
+                        className="w-full px-3 py-2 bg-white border border-stone-200 rounded-xl text-stone-900 font-semibold focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-stone-500 uppercase tracking-wider mb-1">Password</label>
+                      <input
+                        type="text"
+                        value={infrastructure.wifiPassword || ''}
+                        onChange={(e) => setInfrastructure({...infrastructure, wifiPassword: e.target.value})}
+                        placeholder="e.g. stay1234"
+                        className="w-full px-3 py-2 bg-white border border-stone-200 rounded-xl text-stone-900 font-semibold focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
