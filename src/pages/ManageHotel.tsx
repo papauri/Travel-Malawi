@@ -2146,6 +2146,11 @@ export default function ManageHotel() {
                           {booking.status}
 
                           </span>
+                          {booking.status === 'confirmed' && booking.arrivalPin && (
+                            <span className="ml-2 px-2.5 py-0.5 rounded-full text-xs font-bold tracking-wider bg-indigo-100 text-indigo-700 border border-indigo-200">
+                              PIN: {booking.arrivalPin}
+                            </span>
+                          )}
 
                           {booking.status === 'confirmed' && booking.arrivalPin && (
 
