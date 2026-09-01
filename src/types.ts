@@ -314,6 +314,7 @@ export interface Booking {
   /** The currency the guest was quoted and will pay in. */
   currency: CurrencyCode | string;
   status: BookingStatus;
+  arrivalPin?: string;
   
   // Stay OS: Digital Voucher Fields
   voucherIssued?: boolean;

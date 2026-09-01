@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import QRCode from 'react-qr-code';
 import { motion, AnimatePresence } from 'motion/react';
-import { ShieldCheck, MapPin, X, Users, Phone, Zap, Droplets, Map, Wifi, Monitor, CheckCircle2, ClipboardList, UtensilsCrossed, Copy, Eye, QrCode } from 'lucide-react';
+import { ShieldCheck, MapPin, X, Users, Phone, Zap, Droplets, Map, Wifi, Monitor, CheckCircle2, ClipboardList, UtensilsCrossed, Copy, Eye, QrCode, Lock, Unlock } from 'lucide-react';
 import { Booking, Hotel, RoomType } from '../types';
 import { formatMoney } from '../lib/booking';
 import { formatDateStr } from '../lib/dates';
@@ -19,8 +19,34 @@ export default function StayVoucherModal({ booking, isOpen, onClose }: Props) {
   const [showWifi, setShowWifi] = useState(false);
   const [copied, setCopied] = useState(false);
   
+  // Arrival PIN Lock State
+  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [pinInput, setPinInput] = useState('');
+  const [pinError, setPinError] = useState(false);
+
+  React.useEffect(() => {
+    if (booking?.id) {
+      const saved = localStorage.getItem(`voucher_unlocked_${booking.id}`);
+      if (saved === 'true') setIsUnlocked(true);
+    }
+  }, [booking?.id]);
+
+  const handleUnlock = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (pinInput === booking?.arrivalPin) {
+      setIsUnlocked(true);
+      setPinError(false);
+      localStorage.setItem(`voucher_unlocked_${booking.id}`, 'true');
+    } else {
+      setPinError(true);
+      setPinInput('');
+    }
+  };
+
   if (!booking || !booking.hotel) return null;
   const hotel = booking.hotel;
+  const isLocked = booking.arrivalPin && !isUnlocked;
+
 
   return (
     <AnimatePresence>
@@ -94,6 +120,44 @@ export default function StayVoucherModal({ booking, isOpen, onClose }: Props) {
                   <p className="font-bold text-stone-900 truncate" title={booking.room?.name || 'Room'}>{booking.room?.name || 'Room'}</p>
                 </div>
               </div>
+
+
+              {/* Arrival PIN Lock Screen */}
+              {isLocked && (
+                <div className="bg-stone-50 border border-stone-200 rounded-2xl p-6 md:p-8 text-center relative overflow-hidden shrink-0 mt-4 mx-6">
+                  <div className="absolute top-0 left-0 w-full h-1 bg-amber-400" />
+                  <div className="w-16 h-16 bg-white rounded-2xl shadow-sm border border-stone-200 flex items-center justify-center mx-auto mb-4">
+                    <Lock className="w-8 h-8 text-amber-500" />
+                  </div>
+                  <h3 className="font-serif font-bold text-2xl text-stone-900 mb-2">Premium Features Locked</h3>
+                  <p className="text-stone-500 max-w-md mx-auto mb-6">
+                    Enter the 4-digit Arrival PIN provided by your host to unlock the WiFi password, daily board, and on-property perks.
+                  </p>
+                  
+                  <form onSubmit={handleUnlock} className="flex flex-col items-center gap-4">
+                    <input
+                      type="text"
+                      maxLength={4}
+                      value={pinInput}
+                      onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ''))}
+                      placeholder="• • • •"
+                      className={`text-center text-3xl tracking-[1em] indent-[1em] font-mono w-48 py-3 bg-white border-2 rounded-xl outline-none transition-colors ${pinError ? 'border-red-500 text-red-500' : 'border-stone-200 focus:border-amber-500'}`}
+                    />
+                    {pinError && <p className="text-red-500 text-xs font-bold uppercase tracking-wider">Incorrect PIN</p>}
+                    <button 
+                      type="submit"
+                      disabled={pinInput.length !== 4}
+                      className="flex items-center gap-2 px-8 py-3 bg-stone-900 text-white rounded-xl font-bold hover:bg-stone-800 transition disabled:opacity-50"
+                    >
+                      <Unlock className="w-4 h-4" /> Unlock Voucher
+                    </button>
+                  </form>
+                </div>
+              )}
+
+              {/* Locked Features Wrapper */}
+              {!isLocked && (
+                <div className="space-y-6">
 
               {/* Daily Board */}
               {hotel.dailyBoard && (hotel.dailyBoard.activities || hotel.dailyBoard.dishOfTheDay || hotel.dailyBoard.notes) && (
@@ -414,6 +478,8 @@ export default function StayVoucherModal({ booking, isOpen, onClose }: Props) {
               )}
 
 
+                </div>
+              )} {/* End Locked Features Wrapper */}
             </div>
           </motion.div>
         </div>

@@ -873,6 +873,14 @@ export default function ManageHotel() {
         patch.cancelledAt = Date.now();
         patch.cancelledBy = 'manager';
       }
+      
+      // Generate Arrival PIN if confirmed and it doesn't have one
+      let newPin = booking.arrivalPin;
+      if (status === 'confirmed' && !newPin) {
+        newPin = Math.floor(1000 + Math.random() * 9000).toString();
+        patch.arrivalPin = newPin;
+      }
+      
       await updateDoc(doc(db, 'bookings', bookingId), patch);
       setBookings(bookings.map(b => b.id === bookingId ? { ...b, ...patch } as Booking : b));
       setConfirmModalBooking(null);
@@ -2136,7 +2144,18 @@ export default function ManageHotel() {
                           'bg-amber-100 text-amber-700'
                         }`}>
                           {booking.status}
-                        </span>
+
+                          </span>
+
+                          {booking.status === 'confirmed' && booking.arrivalPin && (
+
+                            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold tracking-wider bg-indigo-100 text-indigo-700 border border-indigo-200">
+
+                              PIN: {booking.arrivalPin}
+
+                            </span>
+
+                          )}
                         {booking.reference && (
                           <span className="text-xs font-mono font-semibold text-stone-400">{booking.reference}</span>
                         )}
