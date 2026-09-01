@@ -1,5 +1,7 @@
 import SectionCard from './SectionCard';
 import React, { useState } from 'react';
+import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
+import ConfirmDialog from './ConfirmDialog';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Hotel, InfrastructureDetails, StayCrewMember, DailyBoard } from '../types';
@@ -74,6 +76,25 @@ export default function StayOSManager({ hotel }: StayOSManagerProps) {
   
   const [crew, setCrew] = useState<StayCrewMember[]>(hotel.crew || []);
   const [dailyBoard, setDailyBoard] = useState<DailyBoard>(hotel.dailyBoard || { activities: '', dishOfTheDay: '', notes: '' });
+
+  const initialInfrastructure = hotel.infrastructure || {
+    powerSource: 'None',
+    waterSource: 'Water Board',
+    roadAccess: 'Tarred',
+    internetSource: 'None',
+    workspaceSetup: 'None',
+    offlineTrustBadge: false
+  };
+  const initialCrew = hotel.crew || [];
+  const initialDailyBoard = hotel.dailyBoard || { activities: '', dishOfTheDay: '', notes: '' };
+  
+  const isDirty = 
+    JSON.stringify(infrastructure) !== JSON.stringify(initialInfrastructure) ||
+    JSON.stringify(crew) !== JSON.stringify(initialCrew) ||
+    JSON.stringify(dailyBoard) !== JSON.stringify(initialDailyBoard);
+
+  const blocker = useUnsavedChanges(isDirty);
+
 
   const handleSave = async () => {
     setSaving(true);
@@ -406,16 +427,45 @@ export default function StayOSManager({ hotel }: StayOSManagerProps) {
         </div>
       </div>
 
-      <div className="flex items-center gap-4 pt-6 border-t border-stone-200">
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition shadow-sm disabled:opacity-50"
-        >
-          {saving ? <CheckCircle2 className="w-5 h-5 animate-pulse" /> : <Save className="w-5 h-5" />}
-          {saving ? 'Saving...' : 'Save Stay OS Details'}
-        </button>
+      
+      <div className="sticky bottom-0 py-4 bg-white/95 backdrop-blur-md border-t border-stone-200 flex items-center justify-between gap-4 rounded-b-2xl mt-8 px-6 -mx-6 mb-[-3rem] z-20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+        <p className="text-sm font-medium text-stone-500">
+          {isDirty ? <span className="text-amber-600 flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" /> Unsaved changes</span> : 'Everything is saved'}
+        </p>
+        <div className="flex items-center gap-3">
+          {isDirty && (
+            <button
+              onClick={() => {
+                setInfrastructure(initialInfrastructure);
+                setCrew(initialCrew);
+                setDailyBoard(initialDailyBoard);
+              }}
+              className="px-4 py-2 text-stone-500 hover:text-stone-900 font-semibold transition"
+            >
+              Discard
+            </button>
+          )}
+          <button
+            onClick={handleSave}
+            disabled={saving || !isDirty}
+            className="flex items-center gap-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {saving ? <CheckCircle2 className="w-5 h-5 animate-pulse" /> : <Save className="w-5 h-5" />}
+            {saving ? 'Saving...' : 'Save details'}
+          </button>
+        </div>
       </div>
+      
+      <ConfirmDialog 
+        isOpen={blocker.state === 'blocked'} 
+        title="Unsaved Changes" 
+        message="You have unsaved changes to your Stay OS settings. Are you sure you want to leave this page and discard them?"
+        confirmText="Discard and Leave"
+        cancelText="Stay on Page"
+        isDestructive={true}
+        onConfirm={() => blocker.proceed?.()}
+        onCancel={() => blocker.reset?.()}
+      />
     </div>
   );
 }

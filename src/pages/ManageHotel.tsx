@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
+import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { useParams, useNavigate, useSearchParams, Link, useLocation } from 'react-router-dom';
 import { doc, getDoc, collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -1406,9 +1407,9 @@ export default function ManageHotel() {
   </SectionCard>
             {/* Pinned: this form is long enough that the save button used to
                 sit well below the fold with no sign it was there. */}
-            <div className="sticky bottom-0 py-4 bg-white/95 backdrop-blur border-t border-stone-100 flex items-center justify-between gap-4 rounded-b-2xl mt-4">
+            <div className="sticky bottom-0 p-4 bg-white/95 backdrop-blur-md border-t border-stone-200 flex items-center justify-between gap-4 rounded-b-2xl mt-4 z-20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
               <p className="text-sm text-stone-500">
-                {hotelDirty ? 'Unsaved changes' : 'Everything is saved'}
+                {hotelDirty ? <span className="text-amber-600 flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" /> Unsaved changes</span> : 'Everything is saved'}
               </p>
               <div className="flex items-center gap-3">
                 {hotelDirty && (
