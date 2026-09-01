@@ -10,9 +10,18 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { MessageSquare, CalendarCheck, CheckCircle2, XCircle, X, Phone, PhoneOff, Video } from 'lucide-react';
 
+const showBrowserNotification = (title: string, body: string, onClick?: () => void) => {
+  if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+    const n = new Notification(title, { body, icon: '/favicon.ico' });
+    if (onClick) {
+      n.onclick = () => { window.focus(); onClick(); n.close(); };
+    }
+  }
+};
+
 export default function GlobalNotificationManager() {
   const { user } = useAuth();
-  const { activeChat, isMinimized, openInquiryChat } = useChatModal();
+  const { activeChat, isMinimized, openInquiryChat, openBookingChat } = useChatModal();
   const navigate = useNavigate();
 
   // Keep references to active chat and minimize status for snapshot listeners
@@ -24,6 +33,7 @@ export default function GlobalNotificationManager() {
   // Track known timestamps / statuses to avoid toasting existing records on first load
   const knownChatTimestamps = useRef<Record<string, number>>({});
   const knownBookingStatuses = useRef<Record<string, Booking['status']>>({});
+    const knownBookingMessageTimestamps = useRef<Record<string, number>>({});
   const isInitialChatLoad = useRef(true);
   const isInitialBookingLoad = useRef(true);
   
@@ -321,9 +331,55 @@ export default function GlobalNotificationManager() {
         const currentStatus = booking.status;
         const previousStatus = knownBookingStatuses.current[booking.id!];
 
+        
+        const currentMessageAt = booking.lastMessageAt || 0;
+        const previousMessageAt = knownBookingMessageTimestamps.current[booking.id!] || 0;
+
         knownBookingStatuses.current[booking.id!] = currentStatus;
+        knownBookingMessageTimestamps.current[booking.id!] = currentMessageAt;
 
         if (isInitialBookingLoad.current) return;
+        
+        // NEW BOOKING MESSAGE
+        if (change.type === 'modified' && currentMessageAt > previousMessageAt && booking.lastMessageSenderId !== user.uid) {
+            const chatContext = activeChatRef.current;
+            if (chatContext?.type === 'booking' && chatContext.booking.id === booking.id && !isMinimizedRef.current) {
+                // User is actively looking at it!
+            } else {
+                playChime();
+                showBrowserNotification(
+                  `New message from ${booking.lastMessageSenderName}`,
+                  booking.lastMessageText || 'Sent an attachment',
+                  () => openBookingChat(booking)
+                );
+                
+                toast.custom(
+                  (t) => (
+                    <div className="bg-stone-900 text-white p-4 rounded-2xl shadow-2xl flex flex-col gap-2 border border-stone-800 max-w-sm w-full">
+                      <div className="flex items-center justify-between">
+                         <div className="flex items-center gap-2">
+                             <MessageSquare className="w-5 h-5 text-indigo-400" />
+                             <span className="font-bold text-sm">New message from {booking.lastMessageSenderName}</span>
+                         </div>
+                         <button onClick={() => toast.dismiss(t.id)} className="text-stone-400 hover:text-white"><X className="w-4 h-4" /></button>
+                      </div>
+                      <p className="text-xs text-stone-300 italic px-7 line-clamp-2">"{booking.lastMessageText}"</p>
+                      <button
+                        onClick={() => {
+                          toast.dismiss(t.id);
+                          openBookingChat(booking);
+                        }}
+                        className="ml-7 mt-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-sm self-start transition"
+                      >
+                        Open Chat
+                      </button>
+                    </div>
+                  ),
+                  { duration: 8000, position: 'top-right' }
+                );
+            }
+        }
+
 
         // NEW PENDING BOOKING FOR MANAGER
         if (isManager && change.type === 'added' && currentStatus === 'pending') {

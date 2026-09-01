@@ -200,12 +200,21 @@ export default function BookingChat({ booking, currentUser }: Props) {
         createdAt: now,
       });
 
-      // Update presence
-      const presenceDocRef = doc(db, 'bookings', booking.id, 'presence', 'chat_state');
-      await updateDoc(presenceDocRef, {
-        [isManager ? 'managerTyping' : 'guestTyping']: false,
-        [isManager ? 'managerLastSeenAt' : 'guestLastSeenAt']: now
-      }).catch(() => {});
+              // Update presence
+        const presenceDocRef = doc(db, 'bookings', booking.id, 'presence', 'chat_state');
+        await updateDoc(presenceDocRef, {
+          [isManager ? 'managerTyping' : 'guestTyping']: false,
+          [isManager ? 'managerLastSeenAt' : 'guestLastSeenAt']: now
+        }).catch(() => {});
+
+        // Update the booking document with latest message so GlobalNotificationManager can catch it
+        const bookingRef = doc(db, 'bookings', booking.id);
+        await updateDoc(bookingRef, {
+          lastMessageAt: now,
+          lastMessageText: newMessage.trim(),
+          lastMessageSenderId: currentUser.uid,
+          lastMessageSenderName: currentUser.displayName || (isManager ? 'Host' : 'Guest'),
+        }).catch(() => {});
 
       setNewMessage('');
     } catch (error: any) {

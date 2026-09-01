@@ -315,6 +315,10 @@ export interface Booking {
   currency: CurrencyCode | string;
   status: BookingStatus;
   arrivalPin?: string;
+  lastMessageAt?: number;
+  lastMessageText?: string;
+  lastMessageSenderId?: string;
+  lastMessageSenderName?: string;
   
   // Stay OS: Digital Voucher Fields
   voucherIssued?: boolean;
