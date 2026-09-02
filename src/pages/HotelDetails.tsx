@@ -10,7 +10,7 @@ import { useChatModal } from '../contexts/ChatModalContext';
 import { useManagerPresence } from '../hooks/usePresence';
 import PhoneInput from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
-import { MapPin, Megaphone, Calendar, Users, Star, CheckCircle2, ChevronRight, Info, Plus, Minus, ShieldCheck, AlertTriangle, UtensilsCrossed, Clock, BedDouble, MessageSquare, MessageCircle, Images, Mail, PhoneCall, Navigation, CreditCard, LogIn, LogOut, Share2, Zap, Droplets, Map, Wifi, Monitor } from 'lucide-react';
+import { MapPin, Megaphone, Calendar, Users, Star, CheckCircle2, ChevronRight, Info, Plus, Minus, ShieldCheck, AlertTriangle, UtensilsCrossed, Clock, BedDouble, MessageSquare, MessageCircle, Images, Mail, PhoneCall, Phone, Navigation, CreditCard, LogIn, LogOut, Share2, Zap, Droplets, Map, Wifi, Monitor } from 'lucide-react';
 import toast from 'react-hot-toast';
 import AvailabilityCalendar from '../components/AvailabilityCalendar';
 import { motion } from 'motion/react';
@@ -1260,9 +1260,67 @@ export default function HotelDetails() {
         </div>
         
         {/* Sticky Sidebar / Highlights */}
-        <div className="relative space-y-6">
+        <div className="sticky top-28 flex flex-col gap-6 max-h-[calc(100vh-8rem)] overflow-y-auto pb-8 pr-2">
+          {/* Quick Navigation Card */}
+          <div className="hidden lg:block bg-stone-900 text-white border border-stone-800 rounded-2xl p-5 shadow-lg">
+            <h3 className="text-sm font-serif font-bold mb-3 flex items-center gap-2">
+              <Navigation className="h-4 w-4 text-emerald-400" /> Quick Navigation
+            </h3>
+            <div className="flex flex-col gap-2">
+              <a href="#rooms-section" className="text-xs text-stone-300 hover:text-white hover:bg-stone-800 px-3 py-2 rounded-lg transition-colors flex items-center gap-2">
+                <BedDouble className="w-3.5 h-3.5" /> Accommodations & Spaces
+              </a>
+              {hotel.restaurant && hotel.restaurant.enabled !== false && (
+                <a href="#restaurant-menu" className="text-xs text-stone-300 hover:text-white hover:bg-stone-800 px-3 py-2 rounded-lg transition-colors flex items-center gap-2">
+                  <UtensilsCrossed className="w-3.5 h-3.5" /> Dining & Menu
+                </a>
+              )}
+              {activeSpaceTab === 'rooms' && (
+                <a href="#reviews" className="text-xs text-stone-300 hover:text-white hover:bg-stone-800 px-3 py-2 rounded-lg transition-colors flex items-center gap-2">
+                  <Star className="w-3.5 h-3.5" /> Guest Reviews
+                </a>
+              )}
+              <a href="#directions" className="text-xs text-stone-300 hover:text-white hover:bg-stone-800 px-3 py-2 rounded-lg transition-colors flex items-center gap-2">
+                <MapPin className="w-3.5 h-3.5" /> Location & Directions
+              </a>
+            </div>
+          </div>
+
+          {/* Contact Card */}
+          <div className="bg-white border border-stone-200 rounded-2xl p-6 shadow-xs space-y-4">
+             <div className="border-b border-stone-100 pb-3">
+               <h3 className="text-lg font-serif font-bold text-stone-900 flex items-center gap-2">
+                 <PhoneCall className="h-4 w-4 text-emerald-600" /> Contact Property
+               </h3>
+               <p className="text-stone-500 text-xs mt-0.5">Reach out directly to the host</p>
+             </div>
+             <div className="space-y-3">
+                 {hotel.contactPhone && (
+                   <a href={`tel:${hotel.contactPhone}`} className="flex items-center gap-3 text-stone-600 hover:text-stone-900 transition">
+                     <div className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center shrink-0"><Phone className="w-4 h-4" /></div>
+                     <span className="text-sm font-medium">{hotel.contactPhone}</span>
+                   </a>
+                 )}
+                 {hotel.contactEmail && (
+                   <a href={`mailto:${hotel.contactEmail}`} className="flex items-center gap-3 text-stone-600 hover:text-stone-900 transition overflow-hidden">
+                     <div className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center shrink-0"><Mail className="w-4 h-4" /></div>
+                     <span className="text-sm font-medium truncate">{hotel.contactEmail}</span>
+                   </a>
+                 )}
+                 {hotel.contactWhatsapp && (
+                   <a href={`https://wa.me/${hotel.contactWhatsapp.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 text-stone-600 hover:text-stone-900 transition">
+                     <div className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center shrink-0"><MessageCircle className="w-4 h-4 text-green-600" /></div>
+                     <span className="text-sm font-medium">WhatsApp</span>
+                   </a>
+                 )}
+                 {!hotel.contactPhone && !hotel.contactEmail && !hotel.contactWhatsapp && (
+                    <p className="text-xs text-stone-500 italic">Contact details not provided.</p>
+                 )}
+             </div>
+          </div>
+
           {hotel.infrastructure && (
-            <div className="sticky top-28 bg-white border border-stone-200 rounded-2xl p-6 shadow-xs space-y-4">
+            <div className="bg-white border border-stone-200 rounded-2xl p-6 shadow-xs space-y-4">
               <div className="border-b border-stone-100 pb-3">
                 <h3 className="text-lg font-serif font-bold text-stone-900 flex items-center gap-2">
                   <ShieldCheck className="h-4 w-4 text-emerald-600" /> Stay OS Verified
@@ -1329,7 +1387,7 @@ export default function HotelDetails() {
             </div>
           )}
           
-          <div className="sticky top-[28rem] bg-white border border-stone-200 rounded-2xl p-6 shadow-xs space-y-5">
+          <div className="bg-white border border-stone-200 rounded-2xl p-6 shadow-xs space-y-5">
             <div className="border-b border-stone-100 pb-3">
               <h3 className="text-lg font-serif font-bold text-stone-900 flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-emerald-700" /> Property Highlights
