@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { doc, getDoc, collection, query, where, getDocs, addDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { Hotel, RoomType, Review, CurrencyCode, Broadcast } from '../types';
+import { Hotel, RoomType, ConferenceRoom, Review, CurrencyCode, Broadcast } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { useAuthDialog } from '../contexts/AuthDialogContext';
 import { Helmet } from 'react-helmet-async';
@@ -899,24 +899,25 @@ export default function HotelDetails() {
           </div>
 
           {/* Property Policies Card (Directly Below Rooms) */}
-          {rooms.length > 0 && (
+          {(activeSpaceTab === 'rooms' ? rooms.length > 0 : conferenceRooms.length > 0) && (
           <div className="mb-12 bg-white rounded-2xl p-5 sm:p-7 border border-stone-200 shadow-xs flex flex-col justify-between overflow-hidden">
             <div className="space-y-4">
               <div>
                 <div className="flex items-center justify-between gap-2 mb-1">
                   <h3 className="text-xl font-serif font-bold text-stone-900 flex items-center gap-2">
-                    <ShieldCheck className="h-5 w-5 text-stone-700 shrink-0" /> Property Policies
+                    <ShieldCheck className="h-5 w-5 text-stone-700 shrink-0" /> {activeSpaceTab === 'rooms' ? 'Property Policies' : 'Conference Policies'}
                   </h3>
                   <span className="text-[10px] font-bold text-stone-700 bg-stone-100 px-2.5 py-0.5 rounded-md border border-stone-200/80 uppercase tracking-wide shrink-0">
                     Verified Rules
                   </span>
                 </div>
-                <p className="text-stone-500 text-xs sm:text-sm">Standard house rules and stay guidelines for your reservation</p>
+                <p className="text-stone-500 text-xs sm:text-sm">{activeSpaceTab === 'rooms' ? 'Standard house rules and stay guidelines for your reservation' : 'Guidelines and policies for your event reservation'}</p>
               </div>
 
               {/* Dynamic Single-Row Adaptive Grid */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
-                {/* Check-in */}
+                {activeSpaceTab === 'rooms' && (<>
+                  {/* Check-in */}
                 <div className="bg-stone-50/90 border border-stone-200/70 rounded-xl p-2.5 sm:p-3 xl:p-3.5 flex items-center gap-2.5 sm:gap-3 min-w-0">
                   <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-stone-200/70 text-stone-800 flex items-center justify-center shrink-0">
                     <LogIn className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
@@ -942,6 +943,8 @@ export default function HotelDetails() {
                   </div>
                 </div>
 
+                  </>)}
+
                 {/* Cancellation */}
                 <div className="bg-stone-50/90 border border-stone-200/70 rounded-xl p-2.5 sm:p-3 xl:p-3.5 flex items-center gap-2.5 sm:gap-3 min-w-0">
                   <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-stone-200/70 text-stone-800 flex items-center justify-center shrink-0">
@@ -949,8 +952,8 @@ export default function HotelDetails() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-stone-400 truncate">Cancellation</div>
-                    <div className="text-[11px] sm:text-xs xl:text-sm font-semibold text-stone-900 leading-tight whitespace-nowrap truncate" title={hotel.cancellationPolicy || "Free 7d prior"}>
-                      {hotel.cancellationPolicy || "Free 7d prior"}
+                    <div className="text-[11px] sm:text-xs xl:text-sm font-semibold text-stone-900 leading-tight whitespace-nowrap truncate" title={activeSpaceTab === 'rooms' ? (hotel.cancellationPolicy || "Free 7d prior") : (hotel.conferenceCancellationPolicy || "Non-refundable")}>
+                      {activeSpaceTab === 'rooms' ? (hotel.cancellationPolicy || "Free 7d prior") : (hotel.conferenceCancellationPolicy || "Non-refundable")}
                     </div>
                   </div>
                 </div>
@@ -962,11 +965,26 @@ export default function HotelDetails() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-stone-400 truncate">Payment</div>
-                    <div className="text-[11px] sm:text-xs xl:text-sm font-semibold text-stone-900 leading-tight whitespace-nowrap truncate" title={hotel.paymentPolicy || "Pay at property"}>
-                      {hotel.paymentPolicy || "Pay at property"}
+                    <div className="text-[11px] sm:text-xs xl:text-sm font-semibold text-stone-900 leading-tight whitespace-nowrap truncate" title={activeSpaceTab === 'rooms' ? (hotel.paymentPolicy || "Pay at property") : (hotel.conferencePaymentPolicy || "Deposit required")}>
+                      {activeSpaceTab === 'rooms' ? (hotel.paymentPolicy || "Pay at property") : (hotel.conferencePaymentPolicy || "Deposit required")}
                     </div>
                   </div>
                 </div>
+
+                {/* Conference Guidelines */}
+                {activeSpaceTab === 'conferences' && hotel.conferenceGuidelines && (
+                  <div className="bg-stone-50/90 border border-stone-200/70 rounded-xl p-2.5 sm:p-3 xl:p-3.5 flex items-center gap-2.5 sm:gap-3 min-w-0">
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-stone-200/70 text-stone-800 flex items-center justify-center shrink-0">
+                      <Info className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-stone-400 truncate">Guidelines</div>
+                      <div className="text-[11px] sm:text-xs xl:text-sm font-semibold text-stone-900 leading-tight whitespace-nowrap truncate" title={hotel.conferenceGuidelines}>
+                        {hotel.conferenceGuidelines}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Reception Hours */}
@@ -1170,7 +1188,8 @@ export default function HotelDetails() {
             </div>
           )}
 
-          <div id="reviews" className="scroll-mt-32 mb-24 mt-8 border-t border-stone-200 pt-12">
+          {activeSpaceTab === 'rooms' && (
+            <div id="reviews" className="scroll-mt-32 mb-24 mt-8 border-t border-stone-200 pt-12">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-10">
               <div className="flex flex-wrap items-baseline gap-4">
                 <h2 className="text-4xl md:text-5xl font-serif text-stone-900 tracking-tight">Guest Reviews</h2>
@@ -1237,6 +1256,7 @@ export default function HotelDetails() {
               </>
             )}
           </div>
+          )}
         </div>
         
         {/* Sticky Sidebar / Highlights */}

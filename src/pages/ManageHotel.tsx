@@ -1288,7 +1288,7 @@ export default function ManageHotel() {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6 pt-6 border-t border-stone-100">
               <div>
-                <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Cancellation Policy</label>
+                <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Stay Cancellation Policy</label>
                 <input
                   type="text"
                   value={editHotelData.cancellationPolicy ?? 'Free 7d prior'}
@@ -1298,7 +1298,7 @@ export default function ManageHotel() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Payment Policy</label>
+                <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Stay Payment Policy</label>
                 <input
                   type="text"
                   value={editHotelData.paymentPolicy ?? 'Pay at property'}
@@ -1307,6 +1307,42 @@ export default function ManageHotel() {
                   placeholder="e.g. Pay at property"
                 />
               </div>
+              </div>
+
+              <div className="mt-8 pt-8 border-t border-stone-200">
+                <h3 className="text-lg font-serif font-bold text-stone-900 mb-6">Conference & Events Policies</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Conference Cancellation</label>
+                    <input
+                      type="text"
+                      value={editHotelData.conferenceCancellationPolicy ?? ''}
+                      onChange={e => setEditHotelData({ ...editHotelData, conferenceCancellationPolicy: e.target.value })}
+                      className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition"
+                      placeholder="e.g. Non-refundable 30d prior"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Conference Payment</label>
+                    <input
+                      type="text"
+                      value={editHotelData.conferencePaymentPolicy ?? ''}
+                      onChange={e => setEditHotelData({ ...editHotelData, conferencePaymentPolicy: e.target.value })}
+                      className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition"
+                      placeholder="e.g. 50% deposit required"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Conference Guidelines</label>
+                    <input
+                      type="text"
+                      value={editHotelData.conferenceGuidelines ?? ''}
+                      onChange={e => setEditHotelData({ ...editHotelData, conferenceGuidelines: e.target.value })}
+                      className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition"
+                      placeholder="e.g. Outside catering allowed, 1hr setup time"
+                    />
+                  </div>
+                </div>
               </div>
 
     </div>

@@ -141,6 +141,9 @@ export interface Hotel {
   categories?: string[];
   cancellationPolicy?: string;
   paymentPolicy?: string;
+  conferenceCancellationPolicy?: string;
+  conferencePaymentPolicy?: string;
+  conferenceGuidelines?: string;
   galleryUrls?: string[];
   /** Legacy embedded reviews, scraped at import time. Guest-written reviews
    *  live in the `reviews` collection instead — see `Review`. */
