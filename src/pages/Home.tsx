@@ -1298,7 +1298,7 @@ export default function Home() {
                       <div className="flex items-center justify-between mt-0.5">
                         {entry.priceFrom ? (
                           <p className="text-sm text-stone-600">
-                            <PriceDisplay className="text-stone-900" amount={entry.priceFrom} currency={currency} />
+                            <span className="text-stone-500 text-xs mr-1 font-medium">From</span><PriceDisplay className="text-stone-900" amount={entry.priceFrom} currency={currency} />
                             <span className="text-stone-400 text-xs"> / night</span>
                           </p>
                         ) : (

@@ -764,10 +764,11 @@ export default function HotelDetails() {
                       
                       <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-4 mt-4 pt-4 border-t border-stone-100 flex-wrap">
                         <div>
-                          <span className="text-stone-400 tracking-widest uppercase text-[9px] font-bold block mb-1">From</span>
+                          
                           <div className="flex items-baseline gap-1.5">
-                            <span className="text-3xl text-stone-900">
-                              <PriceDisplay amount={roomPrice(room, roomDisplayCurrency) ?? 0} currency={roomDisplayCurrency} />
+                            <span className="text-sm text-stone-500 font-medium mr-1.5">From</span>
+                              <span className="text-3xl text-stone-900">
+                                <PriceDisplay amount={roomPrice(room, roomDisplayCurrency) ?? 0} currency={roomDisplayCurrency} />
                             </span>
                             <span className="text-stone-500 uppercase text-[10px] font-bold">/ night</span>
                           </div>
