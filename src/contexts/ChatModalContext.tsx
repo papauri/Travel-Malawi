@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { Hotel, Booking, HotelChat } from '../types';
 import PropertyChat from '../components/PropertyChat';
 import BookingChat from '../components/BookingChat';
@@ -112,6 +113,8 @@ export function ChatModalProvider({ children }: { children: React.ReactNode }) {
                           activeChat?.type === 'booking' ? activeChat.booking.managerId : undefined;
   const managerPresence = useManagerPresence(activeManagerId);
   const isOnline = managerPresence?.status === 'online';
+
+  useBodyScrollLock(!!activeChat && !isMinimized);
 
   return (
     <ChatModalContext.Provider

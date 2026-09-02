@@ -124,11 +124,6 @@ export function useWebRTC(chatId: string, currentUserId: string, currentUserName
 
   const setupMedia = async (video: boolean = true) => {
     try {
-      toast('Please allow access to your camera/microphone. You can safely deny this if you prefer text chat.', { 
-        icon: '🛡️', 
-        duration: 8000,
-        id: 'media-permission' 
-      });
       
       const stream = await navigator.mediaDevices.getUserMedia({ video, audio: true });
       
