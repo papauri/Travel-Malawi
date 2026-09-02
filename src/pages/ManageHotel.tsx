@@ -184,6 +184,7 @@ export default function ManageHotel() {
   const [managerCheckIn, setManagerCheckIn] = useState<string>('');
   const [managerCheckOut, setManagerCheckOut] = useState<string>('');
   const [roomErrors, setRoomErrors] = useState<RoomErrors>({});
+    const [customPackageName, setCustomPackageName] = useState('');
   const [bookingFilter, setBookingFilter] = useState<'all' | 'pending' | 'confirmed' | 'cancelled'>('all');
   const [currentBookingPage, setCurrentBookingPage] = useState(1);
   const bookingsPerPage = 5;
@@ -664,16 +665,15 @@ export default function ManageHotel() {
       } as Record<string, unknown>;
       delete roomPayload.id;
 
-      if (editingRoomId === 'new') {
+            if (editingRoomId === 'new') {
         const docRef = await addDoc(collection(db, 'room_types'), roomPayload);
         setRooms([...rooms, { id: docRef.id, ...roomPayload } as RoomType]);
-        setShowAddRoom(false);
+        setEditingRoomId(docRef.id);
       } else if (editingRoomId) {
         await updateDoc(doc(db, 'room_types', editingRoomId), roomPayload);
         setRooms(rooms.map(r => r.id === editingRoomId ? { ...r, ...roomPayload } as RoomType : r));
       }
       toast.success('Room saved.');
-      setEditingRoomId(null);
     } catch (error) {
       console.error("Error saving room:", error);
       toast.error('Failed to save room.');
@@ -1748,25 +1748,29 @@ export default function ManageHotel() {
                       {CURRENCY_CODES.map(code => {
                         const selected = editingCurrencies.includes(code);
                         return (
-                          <button
+                          <label
                             key={code}
-                            type="button"
-                            aria-pressed={selected}
-                            onClick={() => toggleCurrency(code)}
-                            className={`px-4 py-2 rounded-full text-sm font-semibold border transition ${
+                            className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition cursor-pointer ${
                               selected
-                                ? 'border-stone-900 bg-stone-900 text-white'
-                                : 'border-stone-200 bg-stone-50 text-stone-600 hover:border-stone-400'
+                                ? 'border-emerald-600 bg-emerald-50'
+                                : 'border-stone-200 bg-stone-50 hover:border-stone-300'
                             }`}
                           >
-                            {CURRENCIES[code].symbol} {CURRENCIES[code].label}
-                          </button>
+                            <input 
+                              type="checkbox" 
+                              checked={selected}
+                              onChange={() => toggleCurrency(code)}
+                              className="w-4 h-4 text-emerald-600 border-stone-300 rounded focus:ring-emerald-500"
+                            />
+                            <span className={`text-sm font-semibold ${selected ? 'text-emerald-900' : 'text-stone-600'}`}>
+                              {CURRENCIES[code].symbol} {CURRENCIES[code].label}
+                            </span>
+                          </label>
                         );
                       })}
                     </div>
                     <p className="text-xs text-stone-400">
-                      Set your own price in each. Nothing is converted &mdash; guests pay the
-                      amount you enter, in the currency they choose.
+                      Select one or both currencies. If both are enabled, guests will see both prices side-by-side. Nothing is auto-converted.
                       {editingCurrencies.length > 1 && ` ${CURRENCIES[editingCurrencies[0]].label} is shown by default.`}
                     </p>
                   </div>
