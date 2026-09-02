@@ -596,7 +596,7 @@ export default function PropertyChat({
             </button>
           )}
 
-          {/* Delete Chat History Button (Manager / Admin only) */}
+          {/* Delete Chat History Button (Both Guest & Manager) */}
           {isManager && currentUser && (
             <button
               type="button"
@@ -823,16 +823,24 @@ export default function PropertyChat({
                   <p className="text-[11px] text-stone-500 mt-0.5">
                     Ended by {chatDocData?.endedByName || (chatDocData?.endedBy === 'manager' ? 'Host' : 'Guest')} {endedDateStr && `on ${endedDateStr}`}.
                   </p>
-                  <div className="mt-2.5 flex justify-center">
-                    <button
-                      type="button"
-                      onClick={handleRestartChat}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold rounded-lg shadow-2xs transition cursor-pointer"
-                    >
-                      <RotateCcw className="w-3 h-3" />
-                      <span>Start New Conversation</span>
-                    </button>
-                  </div>
+                                      <div className="mt-2.5 flex justify-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleRestartChat}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold rounded-lg shadow-2xs transition cursor-pointer"
+                      >
+                        <RotateCcw className="w-3 h-3" />
+                        <span>Start New Conversation</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowDeleteConfirm(true)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs font-semibold rounded-lg shadow-2xs transition cursor-pointer"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        <span>Clear History</span>
+                      </button>
+                    </div>
                 </div>
               </div>
             )}
@@ -902,7 +910,7 @@ export default function PropertyChat({
         onCancel={() => setShowEndChatConfirm(false)}
       />
 
-      {/* Confirm Delete Chat History Dialog (Manager / Admin) */}
+      {/* Confirm Delete Chat History Dialog */}
       <ConfirmDialog
         isOpen={showDeleteConfirm}
         title="Delete Chat History"
