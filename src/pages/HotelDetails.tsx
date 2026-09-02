@@ -653,14 +653,14 @@ export default function HotelDetails() {
 
             <a
               href="#directions"
-              className="flex items-center gap-2 bg-stone-100 hover:bg-stone-200 text-stone-800 px-4 py-2 rounded-full text-sm font-semibold transition"
+              className="lg:hidden flex items-center gap-2 bg-stone-100 hover:bg-stone-200 text-stone-800 px-4 py-2 rounded-full text-sm font-semibold transition"
             >
               <Navigation className="h-4 w-4 text-emerald-600" />
               <span>Get Directions Right Away</span>
             </a>
             <a
               href="#reviews"
-              className="flex items-center gap-2 bg-stone-100 hover:bg-stone-200 text-stone-800 px-4 py-2 rounded-full text-sm font-semibold transition"
+              className="lg:hidden flex items-center gap-2 bg-stone-100 hover:bg-stone-200 text-stone-800 px-4 py-2 rounded-full text-sm font-semibold transition"
             >
               <Star className="h-4 w-4 text-emerald-600" />
               <span>Skip to Reviews</span>
@@ -1261,7 +1261,7 @@ export default function HotelDetails() {
         </div>
         
         {/* Sticky Sidebar / Highlights */}
-        <div className="sticky top-28 flex flex-col gap-6 max-h-[calc(100vh-8rem)] overflow-y-auto pb-8 pr-2">
+        <div className="sticky top-32 lg:top-36 flex flex-col gap-6 max-h-[calc(100vh-9rem)] overflow-y-auto pb-8 pr-2 pt-2">
           {/* Quick Navigation Card */}
           <div className="hidden lg:block bg-stone-900 text-white border border-stone-800 rounded-2xl p-5 shadow-lg">
             <h3 className="text-sm font-serif font-bold mb-3 flex items-center gap-2">
