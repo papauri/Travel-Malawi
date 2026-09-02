@@ -629,12 +629,13 @@ export default function ManageHotel() {
 
       // Only the chosen currencies are stored, so removing one actually
       // withdraws the price rather than leaving a stale amount behind.
-      const keep = (map: PriceMap | undefined): PriceMap =>
-        Object.fromEntries(
-          currencies
-            .map(code => [code, Number(map?.[code] ?? 0)])
-            .filter(([, value]) => Number(value) > 0)
+      const keep = (map: PriceMap | undefined): PriceMap => {
+        if (!map) return {};
+        // Keep all prices > 0 even for inactive currencies to retain them if re-enabled
+        return Object.fromEntries(
+          Object.entries(map).filter(([, value]) => Number(value) > 0)
         );
+      };
 
       const priceMap = keep(prices);
       const primary = currencies[0];
@@ -752,23 +753,16 @@ export default function ManageHotel() {
       const current = prev.currencies ?? [];
       if (current.includes(code)) {
         if (current.length === 1) return prev; // one currency must remain
-        const drop = (map: PriceMap | undefined) => {
-          const next = { ...(map ?? {}) };
-          delete next[code];
-          return next;
-        };
         return {
           ...prev,
           currencies: current.filter(c => c !== code),
-          prices: drop(prev.prices),
-          extraGuestFees: drop(prev.extraGuestFees),
-          packages: (prev.packages ?? []).map(pkg => ({ ...pkg, prices: drop(pkg.prices) })),
+          // We no longer drop prices so they are retained if re-ticked
         };
       }
       return {
         ...prev,
         currencies: CURRENCY_CODES.filter(c => current.includes(c) || c === code),
-        prices: { ...(prev.prices ?? {}), [code]: 0 },
+        // We no longer initialize to 0 so we retain previous value if any
       };
     });
   };
