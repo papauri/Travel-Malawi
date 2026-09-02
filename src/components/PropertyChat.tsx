@@ -31,15 +31,13 @@ import {
   Eye,
   Check,
   CheckCheck,
+  PhoneMissed,
   Phone,
-  Video,
-  PhoneMissed
+  Video
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { chimeForIncoming, newChimeState } from '../lib/notificationSound';
 import ConfirmDialog from './ConfirmDialog';
-import { useWebRTC } from '../lib/useWebRTC';
-import { CallModal } from './CallModal';
 
 interface Props {
   hotel: Hotel;
@@ -86,26 +84,6 @@ export default function PropertyChat({
   const isManager = guestId !== undefined || (currentUser && liveHotel.managerId === currentUser.uid);
   const effectiveManagerId = liveHotel.managerId || (isManager ? (currentUser?.uid || '') : '') || '';
   const otherParticipantName = isManager ? activeGuestName : (liveHotel.name || 'Host');
-
-  const {
-    activeCall,
-    incomingCall,
-    localVideoRef,
-    remoteVideoRef,
-    localStream,
-    remoteStream,
-    networkQuality,
-    startCall,
-    answerCall,
-    rejectCall,
-    endCall
-  } = useWebRTC(chatId || '', currentUser?.uid || '', isManager ? (liveHotel.name || 'Manager') : activeGuestName);
-
-  const handleStartCall = (video: boolean) => {
-    if (!currentUser) return;
-    const calleeId = isManager ? activeGuestId! : effectiveManagerId;
-    startCall(calleeId, video);
-  };
 
   // 1. Listen in real-time to the Hotel doc for live online/offline status & out of office message
   useEffect(() => {
@@ -562,25 +540,6 @@ export default function PropertyChat({
 
         {/* Action Controls */}
         <div className="flex items-center gap-1 shrink-0">
-          {/* Call Buttons */}
-          {!isChatEnded && currentUser && (liveHotel.callsEnabled !== false) && (
-            <>
-              <button
-                onClick={() => handleStartCall(false)}
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-stone-300 hover:text-white hover:bg-stone-800 transition-colors"
-                title="Audio Call"
-              >
-                <Phone className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => handleStartCall(true)}
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-stone-300 hover:text-white hover:bg-stone-800 transition-colors"
-                title="Video Call"
-              >
-                <Video className="w-4 h-4" />
-              </button>
-            </>
-          )}
 
           {/* End Chat Button (Both Guest & Manager) */}
           {!isChatEnded && currentUser && (
@@ -912,19 +871,6 @@ export default function PropertyChat({
         isDestructive={true}
         onConfirm={handleDeleteChatHistory}
         onCancel={() => setShowDeleteConfirm(false)}
-      />
-
-      <CallModal
-        activeCall={activeCall}
-        incomingCall={incomingCall}
-        localVideoRef={localVideoRef}
-        remoteVideoRef={remoteVideoRef}
-        localStream={localStream}
-        remoteStream={remoteStream}
-        networkQuality={networkQuality}
-        onAnswer={answerCall}
-        onReject={rejectCall}
-        onEndCall={endCall}
       />
     </div>
   );

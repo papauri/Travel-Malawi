@@ -157,7 +157,7 @@ export interface Hotel {
   chatEnabled?: boolean;
   adminChatEnabled?: boolean;
   adminWifiVoucherEnabled?: boolean;
-  callsEnabled?: boolean;
+
   isOnline?: boolean;
   outOfOfficeMessage?: string;
   /** Absent, or `enabled: false`, means the property has no restaurant. */

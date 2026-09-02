@@ -73,7 +73,6 @@ function hotelFormSnapshot(data: Partial<Hotel>): string {
     contactWhatsapp: data.contactWhatsapp ?? '',
     hours: data.hours ?? null,
     chatEnabled: data.chatEnabled !== false,
-    callsEnabled: data.callsEnabled !== false,
     adminChatEnabled: data.adminChatEnabled !== false,
     adminWifiVoucherEnabled: data.adminWifiVoucherEnabled !== false,
     isOnline: data.isOnline ?? true,
@@ -1393,12 +1392,9 @@ export default function ManageHotel() {
                     <label className="flex items-center gap-3 cursor-pointer mb-6 ml-8">
                       <input 
                         type="checkbox" 
-                        checked={editHotelData.callsEnabled !== false} 
-                        onChange={(e) => setEditHotelData({...editHotelData, callsEnabled: e.target.checked})}
                         className="w-5 h-5 text-stone-900 border-stone-300 rounded focus:ring-stone-900 disabled:opacity-50"
                         disabled={editHotelData.chatEnabled === false || editHotelData.adminChatEnabled === false}
                       />
-                      <span className={`font-medium ${editHotelData.chatEnabled === false || editHotelData.adminChatEnabled === false ? 'text-stone-400' : 'text-stone-700'}`}>Allow Voice/Video Calls</span>
                     </label>
 
                     <label className="flex items-center gap-3 cursor-pointer">
