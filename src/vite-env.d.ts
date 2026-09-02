@@ -5,3 +5,4 @@ declare module '*.css' {
   export default content;
 }
 
+/// <reference types="vite-plugin-pwa/client" />
