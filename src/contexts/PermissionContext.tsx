@@ -1,9 +1,8 @@
 import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
 import PermissionRequiredDialog, { PermissionType } from '../components/PermissionRequiredDialog';
-import toast from 'react-hot-toast';
 
 interface PermissionContextValue {
-  requestPermission: (type: PermissionType) => Promise<boolean>;
+  requestPermission: (type: PermissionType, onGrantedAction?: () => void) => Promise<boolean>;
 }
 
 const PermissionContext = createContext<PermissionContextValue>({
@@ -16,24 +15,32 @@ export const PermissionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [isOpen, setIsOpen] = useState(false);
   const [type, setType] = useState<PermissionType | null>(null);
   const resolveRef = useRef<((value: boolean) => void) | null>(null);
+  const actionRef = useRef<(() => void) | null>(null);
 
-  const requestPermission = useCallback((permType: PermissionType): Promise<boolean> => {
+  const requestPermission = useCallback((permType: PermissionType, onGrantedAction?: () => void): Promise<boolean> => {
     return new Promise(async (resolve) => {
-      // Rely on a soft local cache to avoid showing our custom explainer every single time.
-      // We cannot use navigator.permissions.query() because the AI Studio environment
-      // violently intercepts it and shows a generic unstyled popup immediately.
       if (localStorage.getItem('perm_granted_' + permType) === 'true') {
+        if (onGrantedAction) {
+          try { onGrantedAction(); } catch (e) {}
+        }
         return resolve(true);
       }
       
       setType(permType);
       setIsOpen(true);
       resolveRef.current = resolve;
+      actionRef.current = onGrantedAction || null;
     });
   }, []);
 
   const handleAllow = () => {
     setIsOpen(false);
+    
+    // Execute the action synchronously within the click event to preserve the browser's user-gesture token
+    if (actionRef.current) {
+      try { actionRef.current(); } catch (e) { console.error(e); }
+    }
+    
     if (resolveRef.current) resolveRef.current(true);
   };
 

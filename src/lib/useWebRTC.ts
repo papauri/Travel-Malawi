@@ -125,28 +125,42 @@ export function useWebRTC(chatId: string, currentUserId: string, currentUserName
     return () => unsubscribe();
   }, [chatId, activeCall?.id, currentUserId]);
 
-  const setupMedia = async (video: boolean = true) => {
-    try {
-      const granted = await requestPermission('camera_mic');
-      if (!granted) throw new Error('Permission denied');
-      
-      const stream = await navigator.mediaDevices.getUserMedia({ video, audio: true });
-      
-      setLocalStream(stream);
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = stream;
-      }
-      return stream;
-    } catch (err: any) {
-      
-      setError(err.message);
-      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        toast('Call cancelled. Camera/microphone access was denied. You can continue using text chat.', { icon: '💬' });
-      } else {
-        toast.error('Could not access camera/microphone. Please check your device settings.');
-      }
-      return null;
-    }
+  const setupMedia = async (video: boolean = true): Promise<MediaStream | null> => {
+    return new Promise((resolveMedia) => {
+      let mediaPromise: Promise<MediaStream> | null = null;
+
+      // Executed synchronously inside the click handler to preserve the user-gesture token
+      const performMediaRequest = () => {
+        mediaPromise = navigator.mediaDevices.getUserMedia({ video, audio: true });
+      };
+
+      requestPermission('camera_mic', performMediaRequest).then(async (granted) => {
+        if (!granted) {
+          return resolveMedia(null);
+        }
+
+        if (!mediaPromise) {
+           mediaPromise = navigator.mediaDevices.getUserMedia({ video, audio: true });
+        }
+
+        try {
+          const stream = await mediaPromise;
+          setLocalStream(stream);
+          if (localVideoRef.current) {
+            localVideoRef.current.srcObject = stream;
+          }
+          resolveMedia(stream);
+        } catch (err: any) {
+          setError(err.message);
+          if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+            toast('Call cancelled. Camera/mic access denied. If you are in an embedded preview window, open the app in a new tab!', { icon: '🚫', duration: 5000 });
+          } else {
+            toast.error('Could not access camera/microphone. Please check your device settings.');
+          }
+          resolveMedia(null);
+        }
+      });
+    });
   };
 
   const createPeerConnection = (callId: string, isCaller: boolean, stream: MediaStream) => {
