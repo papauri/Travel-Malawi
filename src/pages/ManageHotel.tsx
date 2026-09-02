@@ -73,6 +73,7 @@ function hotelFormSnapshot(data: Partial<Hotel>): string {
     contactWhatsapp: data.contactWhatsapp ?? '',
     hours: data.hours ?? null,
     chatEnabled: data.chatEnabled !== false,
+      callsEnabled: data.callsEnabled !== false,
     adminChatEnabled: data.adminChatEnabled !== false,
     adminWifiVoucherEnabled: data.adminWifiVoucherEnabled !== false,
     isOnline: data.isOnline ?? true,
