@@ -385,6 +385,11 @@ export default function GlobalNotificationManager() {
         if (isManager && change.type === 'added' && currentStatus === 'pending') {
           playChime();
           const hotel = await fetchHotelData(booking.hotelId);
+          showBrowserNotification(
+            'New Booking Request',
+            `${booking.guestName} requested a stay at ${hotel?.name || 'your property'}`,
+            () => navigate(`/dashboard/hotel/${booking.hotelId}?tab=bookings`)
+          );
           toast.custom(
             (t) => (
               <div
@@ -444,6 +449,11 @@ export default function GlobalNotificationManager() {
         if (!isManager && change.type === 'modified' && previousStatus && previousStatus !== currentStatus) {
           playChime();
           if (currentStatus === 'confirmed' && previousStatus === 'pending') {
+            showBrowserNotification(
+              'Booking Confirmed!',
+              'The property has approved your stay request.',
+              () => navigate('/my-bookings')
+            );
             toast.custom(
               (t) => (
                 <div className="bg-emerald-900 text-white p-4 rounded-2xl shadow-2xl flex items-center gap-3 border border-emerald-700">
@@ -467,6 +477,11 @@ export default function GlobalNotificationManager() {
             );
           } else if (currentStatus === 'cancelled') {
             const byWho = booking.cancelledBy === 'manager' ? 'the property' : 'you';
+            showBrowserNotification(
+              'Booking Cancelled',
+              `Your booking was cancelled by ${byWho}.`,
+              () => navigate('/my-bookings')
+            );
             toast.custom(
               (t) => (
                 <div className="bg-stone-900 text-white p-4 rounded-2xl shadow-2xl flex items-center gap-3 border border-stone-800">
