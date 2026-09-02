@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, useLocation, Link } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider, Outlet, useLocation, Link } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { AuthDialogProvider } from './contexts/AuthDialogContext';
 import { PermissionProvider } from './contexts/PermissionContext';
@@ -61,6 +61,73 @@ function ScrollToTop() {
   return null;
 }
 
+function RootLayout({ children }: { children?: React.ReactNode }) {
+  return (
+    <PermissionProvider>
+      <AuthDialogProvider>
+        <ChatModalProvider>
+          <CompareProvider>
+            <BreadcrumbProvider>
+              <ScrollToTop />
+              <div className="min-h-screen bg-stone-50 flex flex-col font-sans">
+                <Navbar />
+                <Breadcrumbs />
+                <Toaster 
+                  position="bottom-center"
+                  toastOptions={{
+                    style: {
+                      background: '#1c1917',
+                      color: '#fff',
+                      borderRadius: '16px',
+                      padding: '16px 24px',
+                    }
+                  }} 
+                />
+                <GlobalNotificationManager />
+                <CompareWidget />
+                <PageLoader />
+                <main className="flex-1 pb-16 md:pb-0">
+                  {children || <Outlet />}
+                </main>
+                <Footer />
+                <MobileNav />
+              </div>
+            </BreadcrumbProvider>
+          </CompareProvider>
+        </ChatModalProvider>
+      </AuthDialogProvider>
+    </PermissionProvider>
+  );
+}
+
+const router = createBrowserRouter([
+  {
+    path: "/",
+    element: <RootLayout />,
+    errorElement: (
+      <RootLayout>
+        <NotFound />
+      </RootLayout>
+    ),
+    children: [
+      { index: true, element: <Home /> },
+      { path: "hotel/:id", element: <HotelDetails /> },
+      { path: "list-your-property", element: <ListProperty /> },
+      { path: "dashboard", element: <ManagerDashboard /> },
+      { path: "dashboard/hotel/:id", element: <ManageHotel /> },
+      { path: "my-bookings", element: <MyBookings /> },
+      { path: "saved", element: <SavedProperties /> },
+      { path: "profile", element: <Profile /> },
+      { path: "admin", element: <AdminDashboard /> },
+      { path: "terms", element: <Terms /> },
+      { path: "privacy", element: <Privacy /> },
+      { path: "refunds", element: <Refunds /> },
+      { path: "admin/hotel/:id", element: <ManageHotel /> },
+      { path: "*", element: <NotFound /> }
+    ]
+  }
+]);
+
 export default function App() {
   useEffect(() => {
     // Preserve native hardware-accelerated momentum scrolling on touch devices
@@ -94,54 +161,7 @@ export default function App() {
 
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <ScrollToTop />
-        <PermissionProvider>
-          <AuthDialogProvider>
-          <ChatModalProvider>
-            <CompareProvider>
-              <BreadcrumbProvider>
-              <div className="min-h-screen bg-stone-50 flex flex-col font-sans">
-              <Navbar />
-              <Breadcrumbs />
-              <Toaster 
-                position="bottom-center"
-                toastOptions={{
-                  style: {
-                    background: '#1c1917',
-                    color: '#fff',
-                    borderRadius: '16px',
-                    padding: '16px 24px',
-                  }
-                }} 
-              />
-              <GlobalNotificationManager />
-              <CompareWidget />
-              <PageLoader />
-              <main className="flex-1 pb-16 md:pb-0">
-                <Routes>
-                  <Route path="/" element={<Home />} />
-                  <Route path="/hotel/:id" element={<HotelDetails />} />
-                  <Route path="/list-your-property" element={<ListProperty />} />
-                  <Route path="/dashboard" element={<ManagerDashboard />} />
-                  <Route path="/dashboard/hotel/:id" element={<ManageHotel />} />
-                  <Route path="/my-bookings" element={<MyBookings />} />
-                  <Route path="/saved" element={<SavedProperties />} />
-                  <Route path="/profile" element={<Profile />} />
-                  <Route path="/admin" element={<AdminDashboard />} />`n              <Route path="/terms" element={<Terms />} />`n              <Route path="/privacy" element={<Privacy />} />`n              <Route path="/refunds" element={<Refunds />} />
-                  <Route path="/admin/hotel/:id" element={<ManageHotel />} />
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </main>
-              <Footer />
-              <MobileNav />
-            </div>
-            </BreadcrumbProvider>
-            </CompareProvider>
-          </ChatModalProvider>
-        </AuthDialogProvider>
-          </PermissionProvider>
-      </BrowserRouter>
+      <RouterProvider router={router} />
     </AuthProvider>
   );
 }
