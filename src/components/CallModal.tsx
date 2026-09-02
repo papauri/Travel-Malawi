@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Phone, Video, PhoneOff, Mic, MicOff, Video as VideoIcon, VideoOff, Volume2, VolumeX, SignalHigh, SignalMedium, SignalLow, SignalZero } from 'lucide-react';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { Call } from '../types';
 
 interface CallModalProps {
@@ -28,6 +29,8 @@ export function CallModal({
   remoteStream,
   networkQuality = 'unknown'
 }: CallModalProps) {
+  useBodyScrollLock(!!activeCall || !!incomingCall);
+
   const [isMuted, setIsMuted] = React.useState(false);
   const [isVideoOff, setIsVideoOff] = React.useState(false);
   const [isSpeakerOn, setIsSpeakerOn] = React.useState(true);

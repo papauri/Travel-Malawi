@@ -21,6 +21,7 @@ import { isAdmin, isHotelManager, userRoles, toRoleFields } from '../lib/roles';
 import { formatMoney } from '../lib/booking';
 import { Navigation, TrendingUp } from 'lucide-react';
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
+import PriceDisplay from '../components/PriceDisplay';
 
 type Tab = 'overview' | 'analytics' | 'properties' | 'users' | 'bookings' | 'destinations' | 'content';
 
@@ -1132,7 +1133,7 @@ export default function AdminDashboard() {
                             {b.checkIn} <br/>to {b.checkOut}
                           </td>
                           <td className="px-6 py-4 text-sm font-medium text-stone-900">
-                            {formatMoney(b.total || 0, b.currency)}
+                            <PriceDisplay amount={b.total || 0} currency={b.currency} />
                           </td>
                           <td className="px-6 py-4">
                             <span className={`px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wider ${

@@ -1,6 +1,7 @@
 import React, { useEffect, useId, useRef } from 'react';
 import { motion } from 'motion/react';
 import { X } from 'lucide-react';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 
 type Size = 'sm' | 'md' | 'lg';
 
@@ -45,6 +46,7 @@ export default function Modal({
   children,
 }: Props) {
   const titleId = useId();
+  useBodyScrollLock(open);
   const panelRef = useRef<HTMLDivElement>(null);
 
   // Escape closes, and the page behind is frozen while the dialog is up.
@@ -58,13 +60,11 @@ export default function Modal({
     };
     document.addEventListener('keydown', onKeyDown);
 
-    const root = document.documentElement;
-    const previousOverflow = root.style.overflow;
-    root.style.overflow = 'hidden';
+    
 
     return () => {
       document.removeEventListener('keydown', onKeyDown);
-      root.style.overflow = previousOverflow;
+      
     };
   }, [open, onClose]);
 

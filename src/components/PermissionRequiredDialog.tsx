@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { Camera, MapPin, Mic, X } from 'lucide-react';
 
 export type PermissionType = 'location' | 'camera_mic';

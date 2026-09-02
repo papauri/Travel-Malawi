@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useAuthDialog } from '../contexts/AuthDialogContext';
@@ -23,6 +23,23 @@ export default function Navbar() {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const [soundOn, setSoundOn] = useState(isSoundEnabled);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent | TouchEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowUserMenu(false);
+      }
+    }
+    if (showUserMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [showUserMenu]);
 
   // Kept in step with anything else that changes the preference.
   useEffect(() => onSoundPreferenceChange(setSoundOn), []);
@@ -130,7 +147,7 @@ export default function Navbar() {
                 )}
 
                 {/* User avatar + dropdown */}
-                <div className="relative pl-5 border-l border-stone-200">
+                <div className="relative pl-5 border-l border-stone-200" ref={menuRef}>
                   <button
                     onClick={() => setShowUserMenu(v => !v)}
                     className="flex items-center gap-2.5 rounded-full px-3 py-1.5 hover:bg-stone-100 transition"

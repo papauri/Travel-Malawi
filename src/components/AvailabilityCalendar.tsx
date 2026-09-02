@@ -28,6 +28,7 @@ interface Props {
   blockedDates?: string[];
   /** Blocked units being edited. */
   blockedUnits?: Record<string, number>;
+  availableRoomNames?: string[];
 }
 
 interface DayInfo {
@@ -57,6 +58,7 @@ export default function AvailabilityCalendar({
   onToggleBlocked,
   blockedDates,
   blockedUnits,
+  availableRoomNames = [],
 }: Props) {
   const today = todayStr();
   const isManagerMode = !!onToggleBlocked;
@@ -117,10 +119,17 @@ export default function AvailabilityCalendar({
     return Object.entries(totals).map(([date, units]) => ({ date, units }));
   }, [rooms, selectedRoom, blockedDates, blockedUnits]);
 
-  const blockedSet = useMemo(
-    () => new Set(blockedInventory.map(b => b.date)),
-    [blockedInventory]
-  );
+  const blockedSet = useMemo(() => {
+    const set = new Set<string>();
+    for (const b of blockedInventory) {
+      if (totalRooms > 0 && b.units >= totalRooms) {
+        set.add(b.date);
+      } else if (totalRooms === 0 && b.units > 0) {
+        set.add(b.date);
+      }
+    }
+    return set;
+  }, [blockedInventory, totalRooms]);
 
   const [rawBookings, setRawBookings] = useState<BookingLike[]>([]);
 
@@ -214,11 +223,15 @@ export default function AvailabilityCalendar({
   function handleDayClick(day: DayInfo) {
     const avail = getAvailability(day);
     if (avail === 'past') return;
-    if (isManagerMode) {
-      onToggleBlocked!(day.dateStr);
+    
+    // In manager mode, allow selecting booked dates
+    // For guests, they can't start a booking on a blocked date, 
+    // but they CAN end a booking on a blocked date if the range before it is valid.
+    const isSelectingCheckout = !isManagerMode && checkIn && !checkOut && day.dateStr > checkIn;
+    
+    if (!isManagerMode && !isSelectingCheckout && (avail === 'full' || avail === 'blocked')) {
       return;
     }
-    if (avail === 'full' || avail === 'blocked') return;
 
     if (onRangeSelect) {
       if (!checkIn || (checkIn && checkOut)) {
@@ -232,16 +245,18 @@ export default function AvailabilityCalendar({
         if (day.dateStr <= checkIn) {
           onRangeSelect(day.dateStr, '');
         } else {
-          let cursor = checkIn;
           let valid = true;
-          while (cursor < day.dateStr) {
-            const b = bookedMap[cursor] || 0;
-            const isBlocked = blockedSet.has(cursor);
-            if (totalRooms === 0 || isBlocked || b >= totalRooms) {
-              valid = false;
-              break;
+          if (!isManagerMode) {
+            let cursor = checkIn;
+            while (cursor < day.dateStr) {
+              const b = bookedMap[cursor] || 0;
+              const isBlocked = blockedSet.has(cursor);
+              if (totalRooms === 0 || isBlocked || b >= totalRooms) {
+                valid = false;
+                break;
+              }
+              cursor = addDays(cursor, 1);
             }
-            cursor = addDays(cursor, 1);
           }
           if (valid) {
             onRangeSelect(checkIn, day.dateStr);
@@ -250,6 +265,8 @@ export default function AvailabilityCalendar({
           }
         }
       }
+    } else if (isManagerMode && onToggleBlocked) {
+      onToggleBlocked(day.dateStr);
     } else {
       onDateSelect?.(day.dateStr);
     }
@@ -289,11 +306,30 @@ export default function AvailabilityCalendar({
           <div className="text-sm text-stone-500 mt-0.5 flex flex-col gap-1.5">
             <p>{isManagerMode ? 'Click a date to block or unblock it' : 'Select your travel dates'}</p>
             {(!isManagerMode && (checkIn || checkOut)) && (
-              <p className="font-semibold text-emerald-700 bg-emerald-50 self-start px-3 py-1 rounded-md border border-emerald-100/50">
-                {checkIn ? formatDateStr(checkIn) : 'Select check-in'}
-                <span className="text-emerald-400 mx-2">→</span>
-                {checkOut ? formatDateStr(checkOut) : 'Select check-out'}
-              </p>
+              <div className="flex flex-col gap-2 mt-1">
+                <p className="font-semibold text-emerald-700 bg-emerald-50 self-start px-3 py-1 rounded-md border border-emerald-100/50">
+                  {checkIn ? formatDateStr(checkIn) : 'Select check-in'}
+                  <span className="text-emerald-400 mx-2">→</span>
+                  {checkOut ? formatDateStr(checkOut) : 'Select check-out'}
+                </p>
+                {checkIn && checkOut && (
+                  <div className="text-xs">
+                    {availableRoomNames.length > 0 ? (
+                      <div className="flex flex-col items-start gap-1">
+                        <span className="text-emerald-700 font-medium">Available: {availableRoomNames.join(', ')}</span>
+                        <button 
+                          onClick={() => document.getElementById('rooms-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                          className="mt-1 bg-stone-900 text-white px-3 py-1.5 rounded-full font-bold uppercase tracking-wider text-[9px] hover:bg-emerald-700 transition-colors shadow-sm"
+                        >
+                          Scroll to Book
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="text-red-500 font-medium">No rooms available for these dates.</span>
+                    )}
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </div>
@@ -349,7 +385,25 @@ export default function AvailabilityCalendar({
               const isToday = day.dateStr === today;
               // In manager mode every future day stays clickable, including
               // sold-out ones, so a date can always be taken off sale.
-              const disabled = avail === 'past' || (!isManagerMode && (avail === 'full' || avail === 'blocked'));
+              const isSelectingCheckout = !isManagerMode && checkIn && !checkOut && day.dateStr > checkIn;
+              
+              // We need to check if the range from checkIn to day.dateStr is valid before enabling it as a checkout date
+              let isValidCheckout = false;
+              if (isSelectingCheckout) {
+                isValidCheckout = true;
+                let cursor = checkIn;
+                while (cursor < day.dateStr) {
+                  const b = bookedMap[cursor] || 0;
+                  const isBlocked = blockedSet.has(cursor);
+                  if (totalRooms === 0 || isBlocked || b >= totalRooms) {
+                    isValidCheckout = false;
+                    break;
+                  }
+                  cursor = addDays(cursor, 1);
+                }
+              }
+
+              const disabled = avail === 'past' || (!isManagerMode && !isValidCheckout && (avail === 'full' || avail === 'blocked'));
               
               const isSelected = day.dateStr === checkIn || day.dateStr === checkOut;
               const isInRange = checkIn && checkOut && day.dateStr > checkIn && day.dateStr < checkOut;
@@ -357,7 +411,7 @@ export default function AvailabilityCalendar({
               const rangeStyles = isSelected
                 ? 'bg-stone-900 text-white ring-2 ring-stone-900 ring-offset-1 border-stone-900 hover:bg-stone-800'
                 : isInRange
-                ? 'bg-stone-100 text-stone-900 border-stone-200'
+                ? 'bg-stone-100 text-stone-900 border-stone-200 hover:bg-stone-200'
                 : cellStyles[avail];
 
               return (

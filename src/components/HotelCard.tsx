@@ -9,6 +9,7 @@ import { formatMoney } from '../lib/currency';
 import { CurrencyCode } from '../types';
 import { useWishlist } from '../hooks/useWishlist';
 import { useCompare } from '../contexts/CompareContext';
+import PriceDisplay from './PriceDisplay';
 
 interface HotelCardProps {
   hotel: Hotel;
@@ -191,7 +192,7 @@ export default function HotelCard({ hotel, searchParams, index, priceFrom, price
         <div className="flex items-center justify-between mt-1">
           {priceFrom ? (
             <p className="text-sm text-stone-600">
-              <span className="font-semibold text-stone-900">{formatMoney(priceFrom, priceCurrency)}</span>
+              <PriceDisplay className="text-stone-900" amount={priceFrom} currency={priceCurrency} />
               <span className="text-stone-400"> / night</span>
             </p>
           ) : (

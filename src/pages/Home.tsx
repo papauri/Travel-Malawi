@@ -19,6 +19,7 @@ import { CURRENCY_CODES, CURRENCIES, currenciesForRooms, formatMoney, readStored
 import { PROPERTY_CATEGORIES, COMMON_AMENITIES } from '../lib/listing';
 import { distanceKm, isValidLatLng, resolveHotelCoordinates, LatLng, estimateTravelTime, getDirectionsUrl } from '../lib/geo';
 import { getCachedHotels, saveCachedHotels, getCachedRooms, saveCachedRooms } from '../lib/mapCache';
+import PriceDisplay from '../components/PriceDisplay';
 
 type SortKey = 'recommended' | 'distance_asc' | 'price_asc' | 'price_desc' | 'rating' | 'name_asc';
 
@@ -926,6 +927,13 @@ export default function Home() {
                                 onClick={() => {
                                   setSearchLocation(suggestion.text);
                                   setShowRecentSearches(false);
+                                  saveRecentSearch({
+                                    location: suggestion.text,
+                                    adults,
+                                    children,
+                                    roomsWanted,
+                                    timestamp: Date.now()
+                                  });
                                   applySearch({
                                     location: suggestion.text,
                                     checkIn: searchCheckIn,
@@ -997,6 +1005,13 @@ export default function Home() {
                                   setChildren(rs.children);
                                   setRoomsWanted(rs.roomsWanted);
                                   setShowRecentSearches(false);
+                                  saveRecentSearch({
+                                    location: rs.location,
+                                    adults: rs.adults,
+                                    children: rs.children,
+                                    roomsWanted: rs.roomsWanted,
+                                    timestamp: Date.now()
+                                  });
                                   applySearch({
                                     location: rs.location,
                                     checkIn: searchCheckIn,
@@ -1036,6 +1051,13 @@ export default function Home() {
                               onClick={() => {
                                 setSearchLocation(dest);
                                 setShowRecentSearches(false);
+                                saveRecentSearch({
+                                  location: dest,
+                                  adults,
+                                  children,
+                                  roomsWanted,
+                                  timestamp: Date.now()
+                                });
                                 applySearch({
                                   location: dest,
                                   checkIn: searchCheckIn,
@@ -1198,6 +1220,13 @@ export default function Home() {
                     type="button"
                     onClick={() => {
                       setSearchLocation(destination);
+                      saveRecentSearch({
+                        location: destination,
+                        adults,
+                        children,
+                        roomsWanted,
+                        timestamp: Date.now()
+                      });
                       applySearch({
                         location: destination,
                         checkIn: searchCheckIn,
@@ -1269,7 +1298,7 @@ export default function Home() {
                       <div className="flex items-center justify-between mt-0.5">
                         {entry.priceFrom ? (
                           <p className="text-sm text-stone-600">
-                            <span className="font-bold text-stone-900">{formatMoney(entry.priceFrom, currency)}</span>
+                            <PriceDisplay className="text-stone-900" amount={entry.priceFrom} currency={currency} />
                             <span className="text-stone-400 text-xs"> / night</span>
                           </p>
                         ) : (
@@ -1667,7 +1696,7 @@ export default function Home() {
                             }`}
                           >
                             <div className="flex gap-3 sm:gap-3.5">
-                              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-xl overflow-hidden bg-stone-100 shrink-0 relative">
+                              <div className="w-32 h-32 sm:w-36 sm:h-36 rounded-xl overflow-hidden bg-stone-100 shrink-0 relative">
                                 {img ? (
                                   <SmartImage src={img} alt={hotel.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                                 ) : (

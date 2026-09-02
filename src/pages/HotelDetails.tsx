@@ -40,6 +40,8 @@ import {
 } from '../lib/currency';
 import Modal, { fieldClass, labelClass } from '../components/Modal';
 import Lightbox from '../components/Lightbox';
+import PriceDisplay from '../components/PriceDisplay';
+import RoomGallery from '../components/RoomGallery';
 
 export default function HotelDetails() {
   const { id } = useParams<{ id: string }>();
@@ -62,6 +64,8 @@ export default function HotelDetails() {
   const [hotel, setHotel] = useState<Hotel | null>(() => (id ? getSingleCachedHotel(id) : null));
   const managerPresence = useManagerPresence(hotel?.managerId);
   const [rooms, setRooms] = useState<RoomType[]>([]);
+  const [conferenceRooms, setConferenceRooms] = useState<ConferenceRoom[]>([]);
+  const [activeSpaceTab, setActiveSpaceTab] = useState<'rooms' | 'conferences'>('rooms');
   const [bookings, setBookings] = useState<BookingLike[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(() => !id || !getSingleCachedHotel(id));
@@ -138,8 +142,12 @@ export default function HotelDetails() {
 
     async function fetchRooms() {
       try {
-        const roomDocs = await getDocs(query(collection(db, 'room_types'), where('hotelId', '==', id)));
+        const [roomDocs, confDocs] = await Promise.all([
+          getDocs(query(collection(db, 'room_types'), where('hotelId', '==', id))),
+          getDocs(query(collection(db, 'conference_rooms'), where('hotelId', '==', id)))
+        ]);
         setRooms(roomDocs.docs.map(d => ({ id: d.id, ...d.data() } as RoomType)));
+        setConferenceRooms(confDocs.docs.map(d => ({ id: d.id, ...d.data() } as ConferenceRoom)));
       } catch (error) {
         console.error("Error fetching rooms:", error);
       }
@@ -222,6 +230,12 @@ export default function HotelDetails() {
     }
     return map;
   }, [rooms, bookings, checkIn, checkOut]);
+
+  const availableRoomNames = useMemo(() => {
+    return rooms
+      .filter(r => r.id && roomAvailability[r.id]?.available)
+      .map(r => r.name);
+  }, [rooms, roomAvailability]);
 
   /** Combined rating across imported and guest-written reviews. */
   const ratingSummary = useMemo(() => {
@@ -489,14 +503,23 @@ export default function HotelDetails() {
       >
         <div className="mx-auto max-w-7xl px-4 lg:px-8 h-16 flex items-center justify-between">
           <h2 className="font-serif text-lg md:text-xl font-bold text-stone-900 tracking-tight truncate pr-4">{hotel.name}</h2>
-          <button
-            onClick={() => {
-              document.getElementById('rooms-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }}
-            className="bg-stone-900 text-white px-5 py-2.5 rounded-full text-xs font-bold uppercase tracking-widest shrink-0 hover:bg-emerald-700 active:scale-95 transition-all shadow-sm"
-          >
-            Book Now
-          </button>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              onClick={handleShare}
+              className="flex items-center gap-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 px-3 sm:px-4 py-2 sm:py-2.5 rounded-full text-xs font-bold transition-all shadow-sm shrink-0"
+              title="Share this property"
+            >
+              <Share2 className="h-4 w-4" /> <span className="hidden sm:inline">Share</span>
+            </button>
+            <button
+              onClick={() => {
+                document.getElementById('rooms-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }}
+              className="bg-stone-900 text-white px-4 sm:px-5 py-2 sm:py-2.5 rounded-full text-xs font-bold uppercase tracking-widest shrink-0 hover:bg-emerald-700 active:scale-95 transition-all shadow-sm"
+            >
+              Book Now
+            </button>
+          </div>
         </div>
       </div>
 
@@ -646,20 +669,37 @@ export default function HotelDetails() {
         </div>
       </div>
 
-      <div className="max-w-[90rem] mx-auto px-4 lg:px-12 py-24 grid grid-cols-1 lg:grid-cols-3 gap-16 lg:gap-24">
+      <div className="max-w-[90rem] mx-auto px-4 lg:px-12 py-12 lg:py-24 grid grid-cols-1 lg:grid-cols-3 gap-12 lg:gap-24">
         <div className="lg:col-span-2">
 
           <h2 className="text-4xl md:text-5xl font-serif text-stone-900 mb-6 tracking-tight">About this property</h2>
           <p className="text-stone-600 text-lg leading-relaxed mb-12">{hotel.description}</p>
 
-          {/* Available Rooms Section */}
+          {/* Spaces Section */}
           <div className="mb-16">
-            <h2
-              id="rooms-section"
-              className="scroll-mt-32 text-4xl md:text-5xl font-serif text-stone-900 mb-10 tracking-tight"
-            >
-              Available Rooms
-            </h2>
+            <div id="rooms-section" className="scroll-mt-32 mb-10">
+              {conferenceRooms.length > 0 ? (
+                <div className="flex items-center gap-6 border-b border-stone-200">
+                  <button 
+                    onClick={() => setActiveSpaceTab('rooms')}
+                    className={`pb-4 text-xl md:text-2xl font-serif tracking-tight transition-colors border-b-2 ${activeSpaceTab === 'rooms' ? 'border-stone-900 text-stone-900' : 'border-transparent text-stone-400 hover:text-stone-600'}`}
+                  >
+                    Accommodations
+                  </button>
+                  <button 
+                    onClick={() => setActiveSpaceTab('conferences')}
+                    className={`pb-4 text-xl md:text-2xl font-serif tracking-tight transition-colors border-b-2 ${activeSpaceTab === 'conferences' ? 'border-stone-900 text-stone-900' : 'border-transparent text-stone-400 hover:text-stone-600'}`}
+                  >
+                    Conference Spaces
+                  </button>
+                </div>
+              ) : (
+                <h2 className="text-4xl md:text-5xl font-serif text-stone-900 tracking-tight">Available Rooms</h2>
+              )}
+            </div>
+            
+            {activeSpaceTab === 'rooms' ? (
+              <>
             {rooms.length === 0 ? (
               <p className="text-stone-500 italic">No rooms available at the moment.</p>
             ) : (
@@ -676,30 +716,16 @@ export default function HotelDetails() {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true, margin: "-50px" }}
                     transition={{ duration: 0.5, ease: "easeOut" }}
-                    className="w-[85vw] sm:w-[400px] md:w-full shrink-0 snap-center flex flex-col md:flex-row md:items-start gap-5 p-4 bg-white border border-stone-200 rounded-[24px] shadow-sm hover:shadow-md transition-shadow duration-300"
+                    className="w-[85vw] sm:w-[400px] md:w-full shrink-0 snap-center grid grid-cols-1 md:grid-cols-[2fr_3fr] gap-6 p-5 md:p-6 lg:p-7 bg-white border border-stone-200 rounded-[24px] shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden"
                   >
-                    <div className="w-full md:w-2/5 lg:w-1/3 aspect-[4/3] overflow-hidden rounded-[16px] relative shrink-0 group">
-                      <div className="w-full h-full flex overflow-x-auto snap-x snap-mandatory scrollbar-none">
-                        {Array.from(new Set([getRoomImage(room, hotel), ...(room.galleryUrls || [])])).map((imgUrl, i) => (
-                          <div key={i} className="min-w-full h-full shrink-0 snap-center relative">
-                            <SmartImage
-                              src={imgUrl}
-                              alt={`${room.name} photo ${i + 1}`}
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                        ))}
-                      </div>
-                      
-                      {((room.galleryUrls || []).length > 0) && (
-                        <div className="absolute bottom-3 right-3 bg-stone-900/60 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-sm z-10 pointer-events-none">
-                          <Images className="h-3 w-3" />
-                          Swipe for more
-                        </div>
-                      )}
+                    <div className="w-full aspect-[4/3] overflow-hidden rounded-[16px] relative group">
+                      <RoomGallery 
+                        images={Array.from(new Set([getRoomImage(room, hotel), ...(room.galleryUrls || [])]))}
+                        altPrefix={room.name}
+                      />
                     </div>
                     
-                    <div className="w-full md:w-3/5 lg:w-2/3 flex flex-col justify-between py-1 pr-1 md:pr-2">
+                    <div className="w-full flex flex-col justify-between py-1 min-w-0">
                       <div>
                         <div className="flex flex-wrap items-start justify-between gap-4 mb-3">
                           <h3 className="text-2xl md:text-3xl font-serif text-stone-900 tracking-tight leading-none">{room.name}</h3>
@@ -736,18 +762,18 @@ export default function HotelDetails() {
                         </div>
                       </div>
                       
-                      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mt-4 pt-4 border-t border-stone-100">
+                      <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-4 mt-4 pt-4 border-t border-stone-100 flex-wrap">
                         <div>
                           <span className="text-stone-400 tracking-widest uppercase text-[9px] font-bold block mb-1">From</span>
                           <div className="flex items-baseline gap-1.5">
-                            <span className="text-3xl font-serif text-stone-900 tracking-tight">
-                              {formatMoney(roomPrice(room, roomDisplayCurrency) ?? 0, roomDisplayCurrency)}
+                            <span className="text-3xl text-stone-900">
+                              <PriceDisplay amount={roomPrice(room, roomDisplayCurrency) ?? 0} currency={roomDisplayCurrency} />
                             </span>
                             <span className="text-stone-500 uppercase text-[10px] font-bold">/ night</span>
                           </div>
                           {roomCurrencies(room).filter(c => c !== roomDisplayCurrency).map(code => (
                             <div key={code} className="text-xs text-stone-400 mt-1 font-medium">
-                              or {formatMoney(roomPrice(room, code) ?? 0, code)} / night
+                              or <PriceDisplay amount={roomPrice(room, code) ?? 0} currency={code} /> / night
                             </div>
                           ))}
                         </div>
@@ -772,26 +798,114 @@ export default function HotelDetails() {
               rooms={rooms}
               checkIn={checkIn}
               checkOut={checkOut}
+              availableRoomNames={availableRoomNames}
               onRangeSelect={(inDate, outDate) => {
                 setCheckIn(inDate);
                 setCheckOut(outDate);
-                if (inDate && outDate) {
-                  document.getElementById('rooms-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
               }}
               onDateSelect={(date) => {
                 setCheckIn(date);
               }}
             />
+            </>
+            ) : (
+              <div className="space-y-6">
+                <div className="bg-stone-50 border border-stone-200 rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div>
+                    <h3 className="text-lg font-serif font-bold text-stone-900 mb-1">Book a Conference Space</h3>
+                    <p className="text-sm text-stone-600">Contact the property directly to reserve a conference room or inquire about event packages.</p>
+                  </div>
+                  <div className="flex flex-col gap-2 shrink-0">
+                    {hotel.contactPhone && (
+                      <a href={`tel:${hotel.contactPhone}`} className="bg-stone-900 text-white px-5 py-2.5 rounded-full text-sm font-bold text-center hover:bg-stone-800 transition">
+                        Call {hotel.contactPhone}
+                      </a>
+                    )}
+                    {hotel.contactEmail && (
+                      <a href={`mailto:${hotel.contactEmail}`} className="bg-white border border-stone-200 text-stone-900 px-5 py-2.5 rounded-full text-sm font-bold text-center hover:bg-stone-50 transition">
+                        Email Property
+                      </a>
+                    )}
+                  </div>
+                </div>
+
+                {conferenceRooms.map((room) => (
+                  <motion.div
+                    key={room.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, margin: "-50px" }}
+                    transition={{ duration: 0.5, ease: "easeOut" }}
+                    className="w-[85vw] sm:w-[400px] md:w-full shrink-0 snap-center grid grid-cols-1 md:grid-cols-[2fr_3fr] gap-6 p-5 md:p-6 lg:p-7 bg-white border border-stone-200 rounded-[24px] shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden"
+                  >
+                    <div className="w-full aspect-[4/3] overflow-hidden rounded-[16px] relative group">
+                      <RoomGallery 
+                        images={Array.from(new Set([room.imageUrl, ...(room.galleryUrls || [])]))}
+                        altPrefix={room.name}
+                      />
+                    </div>
+                    
+                    <div className="w-full flex flex-col justify-between py-1 min-w-0">
+                      <div>
+                        <div className="flex flex-wrap items-start justify-between gap-4 mb-3">
+                          <h3 className="text-2xl md:text-3xl font-serif text-stone-900 tracking-tight leading-none">{room.name}</h3>
+                          <div className="flex items-center gap-2 text-stone-700 bg-stone-50 px-3 py-1.5 rounded-full text-xs font-semibold border border-stone-200 shadow-xs">
+                            <Users className="h-3.5 w-3.5 text-emerald-600 shrink-0" /> 
+                            <span>Capacity: {room.capacity}</span>
+                          </div>
+                        </div>
+                        
+                        <p className="text-stone-500 text-sm leading-relaxed mb-5 font-light">{room.description}</p>
+                        
+                        {room.amenities && room.amenities.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 mb-4">
+                            {room.amenities.map(a => (
+                              <span key={a} className="bg-stone-100 text-stone-600 px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider">{a}</span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Conference Pricing & Policies Card */}
+                      {(room.pricing || (room.policies && room.policies.length > 0)) && (
+                        <div className="mt-4 bg-stone-50 border border-stone-100 rounded-xl p-4 sm:p-5">
+                          {room.pricing && (
+                            <div className="mb-4">
+                              <h4 className="text-[10px] font-bold uppercase tracking-wider text-stone-400 mb-1">Pricing & Packages</h4>
+                              <p className="text-sm font-semibold text-stone-800">{room.pricing}</p>
+                            </div>
+                          )}
+                          
+                          {room.policies && room.policies.length > 0 && (
+                            <div>
+                              <h4 className="text-[10px] font-bold uppercase tracking-wider text-stone-400 mb-2">Guidelines & Offers</h4>
+                              <ul className="space-y-1.5">
+                                {room.policies.map((policy, idx) => (
+                                  <li key={idx} className="text-xs sm:text-sm text-stone-600 flex items-start gap-2">
+                                    <span className="text-emerald-500 mt-0.5">•</span>
+                                    <span className="leading-tight">{policy}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* Stay Policies Card (Directly Below Rooms) */}
+          {/* Property Policies Card (Directly Below Rooms) */}
+          {rooms.length > 0 && (
           <div className="mb-12 bg-white rounded-2xl p-5 sm:p-7 border border-stone-200 shadow-xs flex flex-col justify-between overflow-hidden">
             <div className="space-y-4">
               <div>
                 <div className="flex items-center justify-between gap-2 mb-1">
                   <h3 className="text-xl font-serif font-bold text-stone-900 flex items-center gap-2">
-                    <ShieldCheck className="h-5 w-5 text-stone-700 shrink-0" /> Stay Policies
+                    <ShieldCheck className="h-5 w-5 text-stone-700 shrink-0" /> Property Policies
                   </h3>
                   <span className="text-[10px] font-bold text-stone-700 bg-stone-100 px-2.5 py-0.5 rounded-md border border-stone-200/80 uppercase tracking-wide shrink-0">
                     Verified Rules
@@ -835,8 +949,8 @@ export default function HotelDetails() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-stone-400 truncate">Cancellation</div>
-                    <div className="text-[11px] sm:text-xs xl:text-sm font-semibold text-stone-900 leading-tight whitespace-nowrap truncate" title="Free 7d prior">
-                      Free 7d prior
+                    <div className="text-[11px] sm:text-xs xl:text-sm font-semibold text-stone-900 leading-tight whitespace-nowrap truncate" title={hotel.cancellationPolicy || "Free 7d prior"}>
+                      {hotel.cancellationPolicy || "Free 7d prior"}
                     </div>
                   </div>
                 </div>
@@ -848,8 +962,8 @@ export default function HotelDetails() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-stone-400 truncate">Payment</div>
-                    <div className="text-[11px] sm:text-xs xl:text-sm font-semibold text-stone-900 leading-tight whitespace-nowrap truncate" title="Pay at property">
-                      Pay at property
+                    <div className="text-[11px] sm:text-xs xl:text-sm font-semibold text-stone-900 leading-tight whitespace-nowrap truncate" title={hotel.paymentPolicy || "Pay at property"}>
+                      {hotel.paymentPolicy || "Pay at property"}
                     </div>
                   </div>
                 </div>
@@ -890,6 +1004,7 @@ export default function HotelDetails() {
               <span className="leading-normal">Special requests &amp; custom arrival times can be arranged directly with the host</span>
             </div>
           </div>
+          )}
 
           {/* Location & Setting Card */}
           <div className="mb-12 bg-white rounded-2xl p-6 sm:p-7 border border-stone-200 shadow-xs flex flex-col justify-between overflow-hidden">
@@ -1216,7 +1331,7 @@ export default function HotelDetails() {
           </div>
         </div>
           {/* Full Directions & Navigation Panel for Guests */}
-          <div id="directions" className="scroll-mt-32 lg:col-span-3 mb-24 pt-8 border-t border-stone-200">
+          <div id="directions" className="scroll-mt-32 lg:col-span-3 mb-0 pt-8 border-t border-stone-200">
             <div className="mb-8">
               <span className="text-[0.68rem] font-bold text-emerald-700 tracking-[0.16em] uppercase">Find Your Way</span>
               <h2 className="text-3xl md:text-4xl font-serif text-stone-900 mt-1 tracking-tight">Location &amp; Driving Directions</h2>
@@ -1260,8 +1375,8 @@ export default function HotelDetails() {
                     {nights > 0 ? `Total · ${nights} night${nights === 1 ? '' : 's'}` : 'Total'}
                   </p>
                   {nights > 0 ? (
-                    <p className="font-serif text-2xl font-semibold text-stone-900 leading-tight">
-                      {formatMoney(grandTotal, bookingCurrency)}
+                    <p className="text-2xl font-semibold text-stone-900 leading-tight">
+                      <PriceDisplay amount={grandTotal} currency={bookingCurrency} />
                     </p>
                   ) : (
                     // A zero total reads as "free" rather than "not priced yet".
@@ -1467,7 +1582,7 @@ export default function HotelDetails() {
                               {unavailable
                                 ? `Not available in ${bookingCurrency}`
                                 : <>
-                                    {amount > 0 ? `+${formatMoney(amount, bookingCurrency)}` : 'Included'}
+                                    {amount > 0 ? <><span className="opacity-60">+</span><PriceDisplay amount={amount} currency={bookingCurrency} /></> : 'Included'}
                                     {pkg.type === 'per_person' ? ' per person, per night' : pkg.type === 'per_room' ? ' per room, per night' : ' per stay'}
                                   </>}
                             </span>
@@ -1517,29 +1632,29 @@ export default function HotelDetails() {
                 ) : (
                   <div className="space-y-2.5 text-sm">
                     <div className="flex justify-between text-stone-600">
-                      <span>{formatMoney(basePrice, bookingCurrency)} &times; {nights} night{nights === 1 ? '' : 's'}</span>
-                      <span className="text-stone-900 tabular-nums">{formatMoney(basePrice * nights, bookingCurrency)}</span>
+                      <span className="flex items-center gap-1"><PriceDisplay amount={basePrice} currency={bookingCurrency} /> &times; {nights} night{nights === 1 ? '' : 's'}</span>
+                      <PriceDisplay className="text-stone-900" amount={basePrice * nights} currency={bookingCurrency} />
                     </div>
 
                     {extraGuestsCount > 0 && extraGuestFee > 0 && (
                       <div className="flex justify-between text-stone-600">
-                        <span>Extra guests ({extraGuestsCount} &times; {formatMoney(extraGuestFee, bookingCurrency)} &times; {nights}n)</span>
-                        <span className="text-stone-900 tabular-nums">{formatMoney(extraGuestsCount * extraGuestFee * nights, bookingCurrency)}</span>
+                        <span className="flex items-center gap-1">Extra guests ({extraGuestsCount} &times; <PriceDisplay amount={extraGuestFee} currency={bookingCurrency} /> &times; {nights}n)</span>
+                        <PriceDisplay className="text-stone-900" amount={extraGuestsCount * extraGuestFee * nights} currency={bookingCurrency} />
                       </div>
                     )}
 
                     {packagesTotal > 0 && (
                       <div className="flex justify-between text-emerald-700">
                         <span>Selected packages</span>
-                        <span className="tabular-nums">+{formatMoney(packagesTotal, bookingCurrency)}</span>
+                        <span className="flex items-center"><span className="opacity-60">+</span><PriceDisplay amount={packagesTotal} currency={bookingCurrency} /></span>
                       </div>
                     )}
 
                     <div className="flex justify-between items-baseline border-t border-stone-200 pt-3 mt-3">
                       <span className="font-semibold text-stone-900">Total</span>
                       <div className="text-right">
-                        <div className="font-serif text-xl font-semibold text-stone-900 tabular-nums">
-                          {formatMoney(grandTotal, bookingCurrency)}
+                        <div className="text-xl font-semibold text-stone-900 tabular-nums">
+                          <PriceDisplay amount={grandTotal} currency={bookingCurrency} />
                         </div>
                         <div className="text-xs text-stone-500 mt-0.5">
                           Payable in {CURRENCIES[bookingCurrency].label}

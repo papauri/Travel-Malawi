@@ -22,6 +22,7 @@ import { getHotelImage } from '../lib/images';
 import { formatDateStr, daysUntil, nightsBetween } from '../lib/dates';
 import { cancellationTerms, formatMoney, isStayComplete, FREE_CANCELLATION_DAYS } from '../lib/booking';
 import { isTraveller } from '../lib/roles';
+import PriceDisplay from '../components/PriceDisplay';
 
 type EnrichedBooking = Booking & { hotel?: Hotel; room?: RoomType };
 type Filter = 'upcoming' | 'past' | 'cancelled';
@@ -484,7 +485,7 @@ export default function MyBookings() {
                     <div className="text-right w-full sm:w-auto">
                       <p className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-1">Total Price</p>
                       <div className="text-2xl font-serif font-bold text-stone-900">
-                        {formatMoney(booking.total ?? ((booking.room?.price ?? 0) * nights), booking.currency)}
+                        <PriceDisplay amount={booking.total ?? ((booking.room?.price ?? 0) * nights)} currency={booking.currency} />
                       </div>
                     </div>
                   </div>

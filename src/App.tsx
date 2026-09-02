@@ -86,7 +86,7 @@ function RootLayout({ children }: { children?: React.ReactNode }) {
                 <GlobalNotificationManager />
                 <CompareWidget />
                 <PageLoader />
-                <main className="flex-1 pb-16 md:pb-0">
+                <main className="flex-1">
                   {children || <Outlet />}
                 </main>
                 <Footer />

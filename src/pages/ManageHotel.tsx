@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { useParams, useNavigate, useSearchParams, Link, useLocation } from 'react-router-dom';
 import { doc, getDoc, collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
@@ -10,12 +11,13 @@ import ImageUpload from '../components/ImageUpload';
 import GalleryUpload from '../components/GalleryUpload';
 import StayOSManager from '../components/StayOSManager';
 import BroadcastManager from '../components/BroadcastManager';
+import ConferenceManager from '../components/ConferenceManager';
 import ConfirmDialog from '../components/ConfirmDialog';
 import Modal from '../components/Modal';
 import Pagination from '../components/Pagination';
 import BookingChat from '../components/BookingChat';
 import PropertyChat from '../components/PropertyChat';
-import { MessageSquare, Megaphone } from 'lucide-react';
+import { MessageSquare, Megaphone, Presentation } from 'lucide-react';
 import SmartImage from '../components/SmartImage';
 import { getHotelImages, getHotelImage, getRoomImage, localImagesForName } from '../lib/images';
 import { useBreadcrumbLabel } from '../components/Breadcrumbs';
@@ -38,12 +40,13 @@ import { validateProperty } from '../lib/listing';
 import { RoomErrors, firstError, hasErrors, validateRoom } from '../lib/validateRoom';
 import FieldError from '../components/FieldError';
 import SectionCard from '../components/SectionCard';
+import PriceDisplay from '../components/PriceDisplay';
 
 
 
-type Tab = 'details' | 'media' | 'rooms' | 'restaurant' | 'bookings' | 'inquiries' | 'stayos' | 'broadcasts';
+type Tab = 'details' | 'media' | 'rooms' | 'conferences' | 'restaurant' | 'bookings' | 'inquiries' | 'stayos' | 'broadcasts';
 
-const TABS: Tab[] = ['details', 'media', 'rooms', 'restaurant', 'bookings', 'inquiries', 'stayos', 'broadcasts'];
+const TABS: Tab[] = ['details', 'media', 'rooms', 'conferences', 'restaurant', 'bookings', 'inquiries', 'stayos', 'broadcasts'];
 
 const isTab = (value: string | null): value is Tab => !!value && (TABS as string[]).includes(value);
 
@@ -63,6 +66,8 @@ function hotelFormSnapshot(data: Partial<Hotel>): string {
     amenities,
     checkInTime: data.checkInTime ?? '',
     checkOutTime: data.checkOutTime ?? '',
+    cancellationPolicy: data.cancellationPolicy ?? '',
+    paymentPolicy: data.paymentPolicy ?? '',
     contactEmail: data.contactEmail ?? '',
     contactPhone: data.contactPhone ?? '',
     contactWhatsapp: data.contactWhatsapp ?? '',
@@ -176,12 +181,16 @@ export default function ManageHotel() {
   const [showAddRoom, setShowAddRoom] = useState(false);
   const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
   const [editRoomData, setEditRoomData] = useState<Partial<RoomType>>({});
+  const [managingBlockDate, setManagingBlockDate] = useState<string | null>(null);
+  const [managerCheckIn, setManagerCheckIn] = useState<string>('');
+  const [managerCheckOut, setManagerCheckOut] = useState<string>('');
   const [roomErrors, setRoomErrors] = useState<RoomErrors>({});
   const [bookingFilter, setBookingFilter] = useState<'all' | 'pending' | 'confirmed' | 'cancelled'>('all');
   const [currentBookingPage, setCurrentBookingPage] = useState(1);
   const bookingsPerPage = 5;
   const [chatTarget, setChatTarget] = useState<Booking | null>(null);
   const [inquiryChatTarget, setInquiryChatTarget] = useState<any | null>(null);
+  useBodyScrollLock(!!inquiryChatTarget);
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [savingRestaurant, setSavingRestaurant] = useState(false);
   const [togglingStatus, setTogglingStatus] = useState(false);
@@ -782,49 +791,8 @@ export default function ManageHotel() {
       return;
     }
 
-    // For multi-unit rooms, prompt for the number of units to block
-    const currentFullyBlocked = (editRoomData.blockedDates ?? []).includes(date);
-    const currentBlockedUnits = editRoomData.blockedUnits?.[date] ?? 0;
-    
-    const displayValue = currentFullyBlocked ? 'all' : (currentBlockedUnits > 0 ? currentBlockedUnits.toString() : '0');
-    const result = window.prompt(
-      `How many rooms do you want to block on ${formatDateStr(date, { month: 'short', day: 'numeric', year: 'numeric' })}?\n(Enter 0 to unblock, or 'all' to block all ${qty} rooms)`,
-      displayValue
-    );
-
-    if (result === null) return; // cancelled
-
-    const input = result.trim().toLowerCase();
-    
-    setEditRoomData(prev => {
-      const nextDates = [...(prev.blockedDates ?? [])];
-      const nextUnits = { ...(prev.blockedUnits ?? {}) };
-      
-      if (input === '0' || input === '') {
-        // Unblock
-        const datesFiltered = nextDates.filter(d => d !== date);
-        delete nextUnits[date];
-        return { ...prev, blockedDates: datesFiltered, blockedUnits: nextUnits };
-      }
-      
-      if (input === 'all' || parseInt(input, 10) >= qty) {
-        // Fully block
-        if (!nextDates.includes(date)) nextDates.push(date);
-        delete nextUnits[date];
-        return { ...prev, blockedDates: nextDates.sort(), blockedUnits: nextUnits };
-      }
-      
-      const parsed = parseInt(input, 10);
-      if (!isNaN(parsed) && parsed > 0 && parsed < qty) {
-        // Partially block
-        const datesFiltered = nextDates.filter(d => d !== date);
-        nextUnits[date] = parsed;
-        return { ...prev, blockedDates: datesFiltered, blockedUnits: nextUnits };
-      }
-      
-      // Invalid input, do nothing
-      return prev;
-    });
+    // For multi-unit rooms, open the modal/manager instead of a prompt
+    setManagingBlockDate(date);
   };
 
   const toggleRoomAvailability = async (room: RoomType) => {
@@ -989,7 +957,7 @@ export default function ManageHotel() {
                   {stats.upcomingRevenue.length === 0
                     ? <p className="text-2xl font-bold tracking-tight text-stone-900">&mdash;</p>
                     : stats.upcomingRevenue.map(([code, total]) => (
-                        <p key={code} className="text-2xl font-bold tracking-tight text-stone-900">{formatMoney(total, code)}</p>
+                        <p key={code} className="text-2xl text-stone-900"><PriceDisplay amount={total} currency={code} /></p>
                       ))}
                 </div>
                 <p className="text-xs text-stone-400 mt-1">Confirmed stays not yet completed</p>
@@ -1003,7 +971,7 @@ export default function ManageHotel() {
                   {stats.allTimeRevenue.length === 0
                     ? <p className="text-2xl font-bold tracking-tight text-stone-900">&mdash;</p>
                     : stats.allTimeRevenue.map(([code, total]) => (
-                        <p key={code} className="text-2xl font-bold tracking-tight text-stone-900">{formatMoney(total, code)}</p>
+                        <p key={code} className="text-2xl text-stone-900"><PriceDisplay amount={total} currency={code} /></p>
                       ))}
                 </div>
                 <p className="text-xs text-stone-400 mt-1">{stats.confirmedCount} confirmed booking{stats.confirmedCount === 1 ? '' : 's'}</p>
@@ -1027,6 +995,7 @@ export default function ManageHotel() {
           { id: 'stayos' as Tab, label: 'Stay OS', icon: ShieldCheck },
           { id: 'broadcasts' as Tab, label: 'Broadcasts', icon: Megaphone },
           { id: 'rooms' as Tab, label: 'Rooms & pricing', icon: BedDouble },
+          { id: 'conferences' as Tab, label: 'Conferences', icon: Presentation },
           { id: 'restaurant' as Tab, label: 'Restaurant', icon: UtensilsCrossed },
           { id: 'bookings' as Tab, label: 'Bookings', icon: Calendar },
           { id: 'inquiries' as Tab, label: 'Inquiries', icon: MessageSquare },
@@ -1316,6 +1285,29 @@ export default function ManageHotel() {
                 <FieldError message={detailProblems.checkOutTime} />
               </div>
               </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6 pt-6 border-t border-stone-100">
+              <div>
+                <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Cancellation Policy</label>
+                <input
+                  type="text"
+                  value={editHotelData.cancellationPolicy ?? 'Free 7d prior'}
+                  onChange={e => setEditHotelData({ ...editHotelData, cancellationPolicy: e.target.value })}
+                  className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition"
+                  placeholder="e.g. Free 7d prior"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Payment Policy</label>
+                <input
+                  type="text"
+                  value={editHotelData.paymentPolicy ?? 'Pay at property'}
+                  onChange={e => setEditHotelData({ ...editHotelData, paymentPolicy: e.target.value })}
+                  className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition"
+                  placeholder="e.g. Pay at property"
+                />
+              </div>
+              </div>
 
     </div>
   </SectionCard>
@@ -1581,6 +1573,10 @@ export default function ManageHotel() {
             </div>
           )}
         </div>
+      )}
+
+      {activeTab === 'conferences' && (
+        <ConferenceManager hotelId={id!} />
       )}
 
       {activeTab === 'rooms' && (
@@ -1868,7 +1864,7 @@ export default function ManageHotel() {
                 </SectionCard>
 
                 <SectionCard title="Availability & Block Dates">
-                <div>
+                <div id="room-calendar-section">
                   <h4 className="text-sm font-bold text-stone-800 uppercase tracking-wider mb-2">Block Dates</h4>
                   <p className="text-xs text-stone-500 mb-4">
                     Take individual nights off sale — maintenance, an owner stay, a private hire.
@@ -1890,7 +1886,122 @@ export default function ManageHotel() {
                         blockedDates={(editRoomData.blockedDates as string[]) ?? []}
                         blockedUnits={editRoomData.blockedUnits ?? {}}
                         onToggleBlocked={toggleBlockedDate}
+                        checkIn={managerCheckIn}
+                        checkOut={managerCheckOut}
+                        onRangeSelect={(inDate, outDate) => {
+                          setManagerCheckIn(inDate);
+                          setManagerCheckOut(outDate);
+                          if (inDate && !outDate) {
+                            setManagingBlockDate(inDate);
+                          } else if (inDate && outDate) {
+                            setManagingBlockDate(inDate + '|' + outDate);
+                          } else {
+                            setManagingBlockDate(null);
+                          }
+                        }}
                       />
+                      
+                      {managingBlockDate && (() => {
+                        const isRange = managingBlockDate.includes('|');
+                        const start = isRange ? managingBlockDate.split('|')[0] : managingBlockDate;
+                        const end = isRange ? managingBlockDate.split('|')[1] : managingBlockDate;
+                        
+                        // Generate all dates in the range
+                        const datesInRange = [];
+                        let cursor = start;
+                        while (cursor <= end) {
+                          datesInRange.push(cursor);
+                          // simple increment day (assuming we have addDays available, wait we don't in this scope)
+                          // we can do:
+                          const d = new Date(cursor);
+                          d.setUTCDate(d.getUTCDate() + 1);
+                          cursor = d.toISOString().split('T')[0];
+                        }
+
+                        const titleStr = isRange 
+                          ? `${formatDateStr(start, { month: 'short', day: 'numeric' })} - ${formatDateStr(end, { month: 'short', day: 'numeric', year: 'numeric' })}`
+                          : formatDateStr(start, { month: 'long', day: 'numeric', year: 'numeric' });
+
+                        return (
+                          <div className="mt-4 p-4 border border-stone-200 rounded-xl bg-stone-50">
+                            <div className="flex justify-between items-center mb-4">
+                              <h4 className="font-bold text-stone-900">
+                                Manage Availability: {titleStr}
+                              </h4>
+                              <button onClick={() => {
+                                setManagingBlockDate(null);
+                                setManagerCheckIn('');
+                                setManagerCheckOut('');
+                              }} className="text-stone-400 hover:text-stone-700">
+                                <X className="h-5 w-5" />
+                              </button>
+                            </div>
+                            
+                            <p className="text-sm text-stone-500 mb-4">
+                              Select which individual rooms are unavailable for {isRange ? 'these dates' : 'this date'}.
+                            </p>
+                            
+                            <div className="space-y-3">
+                              {Array.from({ length: editRoomData.quantity ?? 1 }).map((_, i) => {
+                                // For a range, we check if ALL dates in the range have this unit blocked.
+                                // Actually, it's easier to just assume if the first date has it blocked, we show it as checked.
+                                const isFullyBlocked = (editRoomData.blockedDates ?? []).includes(start);
+                                const partialCount = editRoomData.blockedUnits?.[start] ?? 0;
+                                const isChecked = isFullyBlocked || i < partialCount;
+                                
+                                return (
+                                  <label key={i} className="flex items-center gap-3 p-3 bg-white border border-stone-200 rounded-lg cursor-pointer hover:bg-stone-50">
+                                    <input 
+                                      type="checkbox"
+                                      checked={isChecked}
+                                      onChange={(e) => {
+                                        const check = e.target.checked;
+                                        setEditRoomData(prev => {
+                                          const nextDates = [...(prev.blockedDates ?? [])];
+                                          const nextUnits = { ...(prev.blockedUnits ?? {}) };
+                                          const qty = prev.quantity ?? 1;
+                                          
+                                          datesInRange.forEach(date => {
+                                            const currentBlocked = nextDates.includes(date) ? qty : (nextUnits[date] ?? 0);
+                                            const targetBlocked = check ? Math.min(qty, currentBlocked + 1) : Math.max(0, currentBlocked - 1);
+                                            
+                                            if (targetBlocked >= qty) {
+                                              if (!nextDates.includes(date)) nextDates.push(date);
+                                              delete nextUnits[date];
+                                            } else if (targetBlocked <= 0) {
+                                              const idx = nextDates.indexOf(date);
+                                              if (idx > -1) nextDates.splice(idx, 1);
+                                              delete nextUnits[date];
+                                            } else {
+                                              const idx = nextDates.indexOf(date);
+                                              if (idx > -1) nextDates.splice(idx, 1);
+                                              nextUnits[date] = targetBlocked;
+                                            }
+                                          });
+                                          
+                                          return { ...prev, blockedDates: nextDates.sort(), blockedUnits: nextUnits };
+                                        });
+                                      }}
+                                      className="w-5 h-5 rounded border-stone-300 text-stone-900 focus:ring-stone-900"
+                                    />
+                                    <span className="font-medium text-stone-700">Room Unit {i + 1}</span>
+                                  </label>
+                                );
+                              })}
+                            </div>
+                            
+                            <div className="mt-4 flex justify-end">
+                              <button onClick={() => {
+                                setManagingBlockDate(null);
+                                setManagerCheckIn('');
+                                setManagerCheckOut('');
+                              }} className="px-4 py-2 bg-stone-900 text-white text-sm font-bold rounded-lg hover:bg-stone-800">
+                                Done
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })()}
                       {((Array.isArray(editRoomData.blockedDates) && editRoomData.blockedDates.length > 0) || (Object.keys(editRoomData.blockedUnits ?? {}).length > 0)) && (
                         <div className="mt-4">
                           <p className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">
@@ -1967,7 +2078,7 @@ export default function ManageHotel() {
                           ? 'text-xl font-serif font-bold text-stone-900 whitespace-nowrap'
                           : 'text-sm text-stone-500 font-medium whitespace-nowrap'}
                       >
-                        {formatMoney(roomPrice(room, code) ?? 0, code)}
+                        <PriceDisplay amount={roomPrice(room, code) ?? 0} currency={code} />
                       </div>
                     ))}
                   </div>
@@ -1993,10 +2104,17 @@ export default function ManageHotel() {
                   <Edit2 className="h-4 w-4" /> Edit
                 </button>
                 <button 
-                  onClick={() => toggleRoomAvailability(room)}
-                  className={`flex-1 md:w-full flex items-center justify-center px-4 py-3 md:py-2.5 rounded-xl text-sm font-bold uppercase tracking-wider transition ${room.quantity === 0 ? 'bg-red-50 text-red-700 hover:bg-red-100' : 'bg-stone-50 text-stone-500 hover:bg-stone-100'}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    startEditRoom(room);
+                    setTimeout(() => {
+                      const el = document.getElementById('room-calendar-section');
+                      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }, 100);
+                  }}
+                  className="flex-1 md:w-full flex items-center justify-center px-4 py-3 md:py-2.5 rounded-xl text-sm font-bold uppercase tracking-wider transition bg-stone-50 text-stone-700 hover:bg-stone-200"
                 >
-                  {room.quantity === 0 ? 'Unblock' : 'Block'}
+                  Manage Blocks
                 </button>
               </div>
             </div>
@@ -2193,7 +2311,7 @@ export default function ManageHotel() {
                     
                     <div className="text-right flex flex-col items-end">
                       {canSeeFinancials && (
-                        <span className="font-bold text-xl tracking-tight text-stone-900 mb-2">{formatMoney(booking.total ?? 0, booking.currency)}</span>
+                        <PriceDisplay className="text-xl text-stone-900 mb-2" amount={booking.total ?? 0} currency={booking.currency} />
                       )}
                       <div className="flex gap-2">
                         <button onClick={() => setBookingToDelete(booking.id!)} className="text-stone-400 hover:text-red-500 transition p-2">
@@ -2465,7 +2583,7 @@ export default function ManageHotel() {
                   {canSeeFinancials && (
                     <div className="flex justify-between px-4 py-3">
                       <span className="text-stone-500">Total</span>
-                      <span className="font-semibold text-stone-900 tabular-nums">{formatMoney(booking.total ?? 0, booking.currency)}</span>
+                      <PriceDisplay className="text-stone-900" amount={booking.total ?? 0} currency={booking.currency} />
                     </div>
                   )}
                   {booking.guestPhone && (

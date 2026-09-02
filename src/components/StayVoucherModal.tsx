@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import QRCode from 'react-qr-code';
 import { motion, AnimatePresence } from 'motion/react';
 import { ShieldCheck, MapPin, X, Users, Phone, Zap, Droplets, Map, Wifi, Monitor, CheckCircle2, ClipboardList, UtensilsCrossed, Copy, Eye, QrCode, Lock, Unlock } from 'lucide-react';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { Booking, Hotel, RoomType } from '../types';
 import { formatMoney } from '../lib/booking';
 import { formatDateStr } from '../lib/dates';
 import SmartImage from './SmartImage';
+import PriceDisplay from '../components/PriceDisplay';
 
 type EnrichedBooking = Booking & { hotel?: Hotel; room?: RoomType };
 
@@ -18,6 +20,7 @@ interface Props {
 export default function StayVoucherModal({ booking, isOpen, onClose }: Props) {
   const [showWifi, setShowWifi] = useState(false);
   const [copied, setCopied] = useState(false);
+  useBodyScrollLock(isOpen);
   
   // Arrival PIN Lock State
   const [isUnlocked, setIsUnlocked] = useState(false);
@@ -56,7 +59,7 @@ export default function StayVoucherModal({ booking, isOpen, onClose }: Props) {
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-full relative"
+            className="w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[95dvh] sm:max-h-[95vh] relative"
           >
             {/* Header / Ticket Top */}
             <div className="bg-stone-900 text-white p-6 relative shrink-0">
@@ -81,17 +84,17 @@ export default function StayVoucherModal({ booking, isOpen, onClose }: Props) {
             </div>
 
             {/* Scrollable Content */}
-            <div className="overflow-y-auto p-6 space-y-8 flex-1">
+            <div className="overflow-y-auto p-4 sm:p-6 space-y-6 sm:space-y-8 flex-1 scrollbar-slim">
               
               {/* Payment Status & Details */}
-              <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-5 flex items-start gap-4">
+              <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 sm:p-5 flex items-start gap-3 sm:gap-4">
                 <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
                   <CheckCircle2 className="w-6 h-6" />
                 </div>
                 <div>
                   <h4 className="font-bold text-emerald-900 text-lg mb-1">Confirmed — Payment on Arrival</h4>
                   <p className="text-emerald-700 text-sm leading-relaxed">
-                    Show this digital voucher when you arrive. You will settle the total of <span className="font-bold">{formatMoney(booking.total ?? 0, booking.currency)}</span> directly with the property.
+                    Show this digital voucher when you arrive. You will settle the total of <PriceDisplay amount={booking.total ?? 0} currency={booking.currency} /> directly with the property.
                   </p>
                   {booking.reference && (
                     <p className="mt-3 text-xs font-mono font-bold text-emerald-800 bg-emerald-100 px-3 py-1.5 rounded-lg inline-block">
@@ -102,20 +105,20 @@ export default function StayVoucherModal({ booking, isOpen, onClose }: Props) {
               </div>
 
               {/* Stay Info Grid */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-stone-50 rounded-2xl p-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
+                <div className="bg-stone-50 rounded-2xl p-3 sm:p-4">
                   <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1">Check-in</p>
                   <p className="font-bold text-stone-900">{formatDateStr(booking.checkIn)}</p>
                 </div>
-                <div className="bg-stone-50 rounded-2xl p-4">
+                <div className="bg-stone-50 rounded-2xl p-3 sm:p-4">
                   <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1">Check-out</p>
                   <p className="font-bold text-stone-900">{formatDateStr(booking.checkOut)}</p>
                 </div>
-                <div className="bg-stone-50 rounded-2xl p-4">
+                <div className="bg-stone-50 rounded-2xl p-3 sm:p-4">
                   <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1">Guests</p>
                   <p className="font-bold text-stone-900">{booking.guests} {booking.guests === 1 ? 'Guest' : 'Guests'}</p>
                 </div>
-                <div className="bg-stone-50 rounded-2xl p-4">
+                <div className="bg-stone-50 rounded-2xl p-3 sm:p-4">
                   <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1">Room</p>
                   <p className="font-bold text-stone-900 truncate" title={booking.room?.name || 'Room'}>{booking.room?.name || 'Room'}</p>
                 </div>
@@ -124,7 +127,7 @@ export default function StayVoucherModal({ booking, isOpen, onClose }: Props) {
 
               {/* Arrival PIN Lock Screen */}
               {isLocked && (
-                <div className="bg-stone-50 border border-stone-200 rounded-2xl p-6 md:p-8 text-center relative overflow-hidden shrink-0 mt-4 mx-6">
+                <div className="bg-stone-50 border border-stone-200 rounded-2xl p-5 sm:p-8 text-center relative overflow-hidden shrink-0 mt-6">
                   <div className="absolute top-0 left-0 w-full h-1 bg-amber-400" />
                   <div className="w-16 h-16 bg-white rounded-2xl shadow-sm border border-stone-200 flex items-center justify-center mx-auto mb-4">
                     <Lock className="w-8 h-8 text-amber-500" />
@@ -317,72 +320,7 @@ export default function StayVoucherModal({ booking, isOpen, onClose }: Props) {
                 </div>
               )}
 
-              {/* Guest WiFi */}
-              {hotel.infrastructure?.shareWifiVoucher && hotel.adminWifiVoucherEnabled !== false && hotel.infrastructure.wifiSSID && (
-                <div>
-                  <h3 className="font-serif font-bold text-xl text-stone-900 mb-4 flex items-center gap-2">
-                    <Wifi className="w-5 h-5 text-indigo-600" /> Guest WiFi Access
-                  </h3>
-                  
-                  {!showWifi ? (
-                    <button 
-                      onClick={() => setShowWifi(true)}
-                      className="w-full py-4 border-2 border-indigo-100 bg-indigo-50 hover:bg-indigo-100 rounded-2xl flex items-center justify-center gap-2 text-indigo-700 font-semibold transition"
-                    >
-                      <Eye className="w-5 h-5" /> Reveal WiFi Password
-                    </button>
-                  ) : (
-                    <div className="bg-white border border-indigo-100 rounded-2xl p-6 shadow-sm relative overflow-hidden">
-                      <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
-                        <Wifi className="w-48 h-48 text-indigo-900" />
-                      </div>
-                      
-                      <div className="flex flex-col sm:flex-row gap-6 items-center sm:items-start relative z-10">
-                        <div className="shrink-0 bg-white p-3 rounded-2xl border border-stone-200 shadow-sm">
-                          <QRCode 
-                            value={`WIFI:S:${hotel.infrastructure.wifiSSID};T:WPA;P:${hotel.infrastructure.wifiPassword || ''};;`} 
-                            size={120} 
-                            level="M"
-                          />
-                        </div>
-                        
-                        <div className="flex-1 w-full text-center sm:text-left space-y-4">
-                          <div>
-                            <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400 mb-1">Network (SSID)</p>
-                            <p className="font-bold text-lg text-stone-900">{hotel.infrastructure.wifiSSID}</p>
-                          </div>
-                          
-                          {hotel.infrastructure.wifiPassword && (
-                            <div>
-                              <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400 mb-1">Password</p>
-                              <div className="flex items-center justify-center sm:justify-start gap-2">
-                                <code className="font-mono bg-stone-100 px-3 py-1.5 rounded-lg text-stone-900 font-bold tracking-wide">
-                                  {hotel.infrastructure.wifiPassword}
-                                </code>
-                                <button 
-                                  onClick={() => {
-                                    navigator.clipboard.writeText(hotel.infrastructure.wifiPassword || '');
-                                    setCopied(true);
-                                    setTimeout(() => setCopied(false), 2000);
-                                  }}
-                                  className="p-1.5 text-stone-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
-                                  title="Copy Password"
-                                >
-                                  {copied ? <CheckCircle2 className="w-5 h-5 text-emerald-500" /> : <Copy className="w-5 h-5" />}
-                                </button>
-                              </div>
-                            </div>
-                          )}
-                          
-                          <p className="text-xs text-stone-500 flex items-center justify-center sm:justify-start gap-1">
-                            <QrCode className="w-3.5 h-3.5" /> Scan QR with phone camera to connect
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
+              
 
 
               {/* Crew */}
@@ -410,72 +348,7 @@ export default function StayVoucherModal({ booking, isOpen, onClose }: Props) {
                 </div>
               )}
 
-              {/* Guest WiFi */}
-              {hotel.infrastructure?.shareWifiVoucher && hotel.adminWifiVoucherEnabled !== false && hotel.infrastructure.wifiSSID && (
-                <div>
-                  <h3 className="font-serif font-bold text-xl text-stone-900 mb-4 flex items-center gap-2">
-                    <Wifi className="w-5 h-5 text-indigo-600" /> Guest WiFi Access
-                  </h3>
-                  
-                  {!showWifi ? (
-                    <button 
-                      onClick={() => setShowWifi(true)}
-                      className="w-full py-4 border-2 border-indigo-100 bg-indigo-50 hover:bg-indigo-100 rounded-2xl flex items-center justify-center gap-2 text-indigo-700 font-semibold transition"
-                    >
-                      <Eye className="w-5 h-5" /> Reveal WiFi Password
-                    </button>
-                  ) : (
-                    <div className="bg-white border border-indigo-100 rounded-2xl p-6 shadow-sm relative overflow-hidden">
-                      <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
-                        <Wifi className="w-48 h-48 text-indigo-900" />
-                      </div>
-                      
-                      <div className="flex flex-col sm:flex-row gap-6 items-center sm:items-start relative z-10">
-                        <div className="shrink-0 bg-white p-3 rounded-2xl border border-stone-200 shadow-sm">
-                          <QRCode 
-                            value={`WIFI:S:${hotel.infrastructure.wifiSSID};T:WPA;P:${hotel.infrastructure.wifiPassword || ''};;`} 
-                            size={120} 
-                            level="M"
-                          />
-                        </div>
-                        
-                        <div className="flex-1 w-full text-center sm:text-left space-y-4">
-                          <div>
-                            <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400 mb-1">Network (SSID)</p>
-                            <p className="font-bold text-lg text-stone-900">{hotel.infrastructure.wifiSSID}</p>
-                          </div>
-                          
-                          {hotel.infrastructure.wifiPassword && (
-                            <div>
-                              <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400 mb-1">Password</p>
-                              <div className="flex items-center justify-center sm:justify-start gap-2">
-                                <code className="font-mono bg-stone-100 px-3 py-1.5 rounded-lg text-stone-900 font-bold tracking-wide">
-                                  {hotel.infrastructure.wifiPassword}
-                                </code>
-                                <button 
-                                  onClick={() => {
-                                    navigator.clipboard.writeText(hotel.infrastructure.wifiPassword || '');
-                                    setCopied(true);
-                                    setTimeout(() => setCopied(false), 2000);
-                                  }}
-                                  className="p-1.5 text-stone-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
-                                  title="Copy Password"
-                                >
-                                  {copied ? <CheckCircle2 className="w-5 h-5 text-emerald-500" /> : <Copy className="w-5 h-5" />}
-                                </button>
-                              </div>
-                            </div>
-                          )}
-                          
-                          <p className="text-xs text-stone-500 flex items-center justify-center sm:justify-start gap-1">
-                            <QrCode className="w-3.5 h-3.5" /> Scan QR with phone camera to connect
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
+              
 
 
                 </div>

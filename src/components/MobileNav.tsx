@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useAuthDialog } from '../contexts/AuthDialogContext';
@@ -11,6 +12,7 @@ export default function MobileNav() {
   const { user, logOut } = useAuth();
   const { openAuth } = useAuthDialog();
   const [isOpen, setIsOpen] = useState(false);
+  useBodyScrollLock(isOpen);
   const isManager = isHotelManager(user);
 
   // Close the sheet when location changes
@@ -40,11 +42,18 @@ export default function MobileNav() {
           <>
             {/* Backdrop */}
             <motion.div
+              role="button"
+              tabIndex={0}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsOpen(false)}
-              className="md:hidden fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-[60]"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  setIsOpen(false);
+                }
+              }}
+              className="md:hidden fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-[60] cursor-pointer"
             />
             
             {/* Sheet */}

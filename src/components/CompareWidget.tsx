@@ -1,12 +1,15 @@
 import React from 'react';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { motion, AnimatePresence } from 'motion/react';
 import { Scale, X, Check, Star, MapPin, Clock, Phone, Mail, Tag, ArrowRight } from 'lucide-react';
 import { useCompare } from '../contexts/CompareContext';
 import { getHotelImages } from '../lib/images';
 import { formatMoney } from '../lib/currency';
+import PriceDisplay from './PriceDisplay';
 
 export default function CompareWidget() {
   const { selectedHotels, clearSelection, toggleHotel, isCompareModalOpen, setIsCompareModalOpen } = useCompare();
+  useBodyScrollLock(isCompareModalOpen);
 
   if (selectedHotels.length === 0) return null;
 
@@ -130,7 +133,7 @@ export default function CompareWidget() {
                             {item.priceFrom && item.priceCurrency && (
                               <div className="text-right shrink-0">
                                 <div className="font-bold text-lg text-emerald-700">
-                                  {formatMoney(item.priceFrom, item.priceCurrency)}
+                                  <PriceDisplay amount={item.priceFrom} currency={item.priceCurrency} />
                                 </div>
                                 <div className="text-[10px] text-stone-500 uppercase font-semibold">per night</div>
                               </div>

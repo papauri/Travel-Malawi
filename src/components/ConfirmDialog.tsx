@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { AlertTriangle } from 'lucide-react';
 
 interface Props {
@@ -28,6 +29,8 @@ export default function ConfirmDialog({
   onCancel,
   isDestructive = false
 }: Props) {
+  useBodyScrollLock(isOpen);
+
   // Escape cancels, and the page behind is frozen — which also stops Lenis,
   // since it scrolls the window.
   useEffect(() => {

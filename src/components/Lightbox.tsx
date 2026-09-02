@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import SmartImage from './SmartImage';
 
 interface LightboxProps {
@@ -24,10 +25,7 @@ export default function Lightbox({ images, initialIndex = 0, onClose }: Lightbox
   }, [currentIndex, onClose]);
 
   // Lock body scroll
-  useEffect(() => {
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = ''; };
-  }, []);
+  useBodyScrollLock(true);
 
   const next = () => setCurrentIndex((prev) => (prev + 1) % images.length);
   const prev = () => setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);

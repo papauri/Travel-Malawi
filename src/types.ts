@@ -139,6 +139,8 @@ export interface Hotel {
   featuredAt?: number;
   amenities: string[];
   categories?: string[];
+  cancellationPolicy?: string;
+  paymentPolicy?: string;
   galleryUrls?: string[];
   /** Legacy embedded reviews, scraped at import time. Guest-written reviews
    *  live in the `reviews` collection instead — see `Review`. */
@@ -363,4 +365,17 @@ export interface Broadcast {
   type: 'info' | 'alert' | 'event';
   isActive: boolean;
   createdAt: number;
+}
+
+export interface ConferenceRoom {
+  id?: string;
+  hotelId: string;
+  name: string;
+  description: string;
+  capacity: number;
+  amenities: string[];
+  imageUrl: string;
+  galleryUrls?: string[];
+  policies?: string[];
+  pricing?: string;
 }

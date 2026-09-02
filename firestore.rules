@@ -337,6 +337,14 @@ service cloud.firestore {
     }
 
     
+
+    match /conference_rooms/{roomId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && (isManager(request.resource.data.hotelId) || isAdmin());
+      allow update: if isAuthenticated() && (isManager(resource.data.hotelId) || isAdmin());
+      allow delete: if isAuthenticated() && (isManager(resource.data.hotelId) || isAdmin());
+    }
+    
     match /broadcasts/{broadcastId} {
       allow read: if true;
       allow create: if isAuthenticated();
