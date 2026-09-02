@@ -26,7 +26,6 @@ import {
 
 import { useAuth } from '../contexts/AuthContext';
 import { useAuthDialog } from '../contexts/AuthDialogContext';
-import { usePermission } from '../contexts/PermissionContext';
 import { isHotelManager } from '../lib/roles';
 import ImageUpload from '../components/ImageUpload';
 import GalleryUpload from '../components/GalleryUpload';
@@ -85,7 +84,6 @@ export default function ListProperty() {
   const [submitting, setSubmitting] = useState(false);
   const [enabling, setEnabling] = useState(false);
   const [amenityInput, setAmenityInput] = useState('');
-  const { requestPermission } = usePermission();
   const [premiumEnabled, setPremiumEnabled] = useState(false);
   const [checkingPremium, setCheckingPremium] = useState(true);
 
@@ -160,8 +158,6 @@ export default function ListProperty() {
       toast.error('Your browser will not share a location.');
       return;
     }
-    const allowed = await requestPermission('location');
-      if (!allowed) return;
     navigator.geolocation.getCurrentPosition(
       position => {
         

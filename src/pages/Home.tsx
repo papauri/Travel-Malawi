@@ -6,7 +6,6 @@ import toast from 'react-hot-toast';
 import { collection, getDocs, getDoc, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Hotel, RoomType, Review, CurrencyCode } from '../types';
-import { usePermission } from '../contexts/PermissionContext';
 import { Link, useSearchParams } from 'react-router-dom';
 import HotelCard from '../components/HotelCard';
 import SmartImage from '../components/SmartImage';
@@ -73,7 +72,6 @@ const FALLBACK_DESTINATIONS = ['Lake Malawi', 'Likoma', 'Zomba', 'Liwonde', 'Lil
 
 export default function Home() {
   const today = todayStr();
-  const { requestPermission } = usePermission();
 
   const [hotels, setHotels] = useState<Hotel[]>(() => getCachedHotels());
   const [rooms, setRooms] = useState<RoomType[]>(() => getCachedRooms());
@@ -142,9 +140,6 @@ export default function Home() {
       toast.error(err);
       return;
     }
-
-    const granted = await requestPermission('location');
-    if (!granted) return;
     setIsLocatingUser(true);
     navigator.geolocation.getCurrentPosition(
       (position) => {
@@ -469,9 +464,6 @@ export default function Home() {
       toast.error("Geolocation is not supported by your browser.");
       return;
     }
-    
-    const granted = await requestPermission('location');
-    if (!granted) return;
     navigator.geolocation.getCurrentPosition(
       pos => {
         

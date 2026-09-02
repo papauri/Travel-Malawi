@@ -17,7 +17,6 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { usePermission } from '../contexts/PermissionContext';
 import {
   LatLng,
   distanceKm,
@@ -87,7 +86,6 @@ export default function DirectionsPanel({
   const [guestLocation, setGuestLocation] = useState<LatLng | null>(null);
   const [selectedOriginName, setSelectedOriginName] = useState<string | null>(null);
   const [locating, setLocating] = useState(false);
-  const { requestPermission } = usePermission();
   const [copiedCoords, setCopiedCoords] = useState(false);
 
   // Always resolve valid coordinates so the stay and photo pin display by default
@@ -111,8 +109,6 @@ export default function DirectionsPanel({
       toast.error('Geolocation is not supported by your browser.');
       return;
     }
-    const granted = await requestPermission('location');
-    if (!granted) return;
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
       pos => {

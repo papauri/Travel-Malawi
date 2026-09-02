@@ -2,7 +2,6 @@ import React, { useEffect } from 'react';
 import { createBrowserRouter, RouterProvider, Outlet, useLocation, Link } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { AuthDialogProvider } from './contexts/AuthDialogContext';
-import { PermissionProvider } from './contexts/PermissionContext';
 import { ChatModalProvider } from './contexts/ChatModalContext';
 import { CompareProvider } from './contexts/CompareContext';
 import Breadcrumbs, { BreadcrumbProvider } from './components/Breadcrumbs';
@@ -63,7 +62,6 @@ function ScrollToTop() {
 
 function RootLayout({ children }: { children?: React.ReactNode }) {
   return (
-    <PermissionProvider>
       <AuthDialogProvider>
         <ChatModalProvider>
           <CompareProvider>
@@ -96,7 +94,6 @@ function RootLayout({ children }: { children?: React.ReactNode }) {
           </CompareProvider>
         </ChatModalProvider>
       </AuthDialogProvider>
-    </PermissionProvider>
   );
 }
 
