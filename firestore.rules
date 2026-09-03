@@ -369,10 +369,10 @@ service cloud.firestore {
     }
     
     match /broadcasts/{broadcastId} {
-      allow read: if true;
-      allow create: if isAuthenticated();
-      allow update: if isAuthenticated();
-      allow delete: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && (isManager(request.resource.data.hotelId) || isAdmin());
+      allow update: if isAuthenticated() && (isManager(resource.data.hotelId) || isAdmin());
+      allow delete: if isAuthenticated() && (isManager(resource.data.hotelId) || isAdmin());
     }
 
     match /reviews/{reviewId} {

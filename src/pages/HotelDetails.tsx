@@ -180,9 +180,49 @@ export default function HotelDetails() {
       .catch(err => console.warn('Reviews unavailable:', err?.message ?? err));
   }, [id]);
 
-  // Live property broadcasts & alerts (e.g. dinner times, local notices, special events)
+  const [hasStayBooking, setHasStayBooking] = useState(false);
+
+  // Broadcasts are strictly for logged-in guests who have a booking with this stay (or the property manager)
   useEffect(() => {
-    if (!id) return;
+    if (!user || !id) {
+      setHasStayBooking(false);
+      setBroadcasts([]);
+      return;
+    }
+
+    if (hotel && hotel.managerId === user.uid) {
+      setHasStayBooking(true);
+      return;
+    }
+
+    const q = query(
+      collection(db, 'bookings'),
+      where('guestId', '==', user.uid),
+      where('hotelId', '==', id),
+      where('status', 'in', ['pending', 'confirmed'])
+    );
+
+    const unsub = onSnapshot(q, (snap) => {
+      const now = new Date();
+      now.setHours(0, 0, 0, 0);
+      const active = snap.docs.some(d => {
+        const checkOut = new Date(d.data().checkOut);
+        return checkOut >= now;
+      });
+      setHasStayBooking(active);
+    }, () => {
+      setHasStayBooking(false);
+    });
+
+    return () => unsub();
+  }, [user, id, hotel?.managerId]);
+
+  // Only subscribe to broadcasts if user is logged in AND has an active booking with this stay
+  useEffect(() => {
+    if (!id || !user || !hasStayBooking) {
+      setBroadcasts([]);
+      return;
+    }
     const q = query(
       collection(db, 'broadcasts'),
       where('hotelId', '==', id),
@@ -196,7 +236,7 @@ export default function HotelDetails() {
       console.warn('Live broadcasts unavailable:', err?.message ?? err);
     });
     return () => unsub();
-  }, [id]);
+  }, [id, user, hasStayBooking]);
 
   useEffect(() => {
     if (user) {
@@ -649,8 +689,8 @@ export default function HotelDetails() {
         </div>
 
         <div className="max-w-[90rem] mx-auto px-4 lg:px-12">
-          {/* Active Property Broadcasts / Live Alerts */}
-          {broadcasts.length > 0 && (
+          {/* Active Property Broadcasts / Live Alerts - Strictly for logged-in guests with a stay booking */}
+          {user && hasStayBooking && broadcasts.length > 0 && (
             <div className="mt-6 space-y-3">
               {broadcasts.map(b => (
                 <div
@@ -673,7 +713,7 @@ export default function HotelDetails() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-xs font-bold uppercase tracking-wider opacity-75">
-                        Property Announcement • {b.type}
+                        Notice for your stay • {b.type}
                       </span>
                       <span className="opacity-40 text-xs">•</span>
                       <span className="text-xs opacity-60">
