@@ -7,6 +7,7 @@ import { Search, LogIn, User as UserIcon, Briefcase, Building2, Heart, Menu, X, 
 import { isHotelManager, isTraveller, describeRoles, isAdmin } from '../lib/roles';
 import { motion, AnimatePresence } from 'motion/react';
 import { openAccessPermissionsModal } from './AccessRequestModal';
+import { useUnreadBroadcasts } from '../hooks/useUnreadBroadcasts';
 
 export default function MobileNav() {
   const { pathname } = useLocation();
@@ -15,6 +16,7 @@ export default function MobileNav() {
   const [isOpen, setIsOpen] = useState(false);
   useBodyScrollLock(isOpen);
   const isManager = isHotelManager(user);
+  const unreadBroadcasts = useUnreadBroadcasts();
 
   // Close the sheet when location changes
   useEffect(() => {
@@ -33,10 +35,16 @@ export default function MobileNav() {
       <div className="md:hidden fixed bottom-6 right-4 sm:bottom-8 sm:right-8 z-40">
         <button
           onClick={() => setIsOpen(true)}
-          className="bg-stone-900 text-white p-3.5 sm:p-4 rounded-full shadow-2xl hover:bg-stone-800 transition-transform active:scale-95 flex items-center justify-center border border-stone-700/50"
+          className="relative bg-stone-900 text-white p-3.5 sm:p-4 rounded-full shadow-2xl hover:bg-stone-800 transition-transform active:scale-95 flex items-center justify-center border border-stone-700/50"
           aria-label="Menu"
         >
           <Menu className="w-6 h-6" />
+          {unreadBroadcasts > 0 && (
+            <span className="absolute top-1 right-1 flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+            </span>
+          )}
         </button>
       </div>
 
@@ -107,10 +115,17 @@ export default function MobileNav() {
                       </Link>
                       <Link
                         to="/my-bookings"
-                        className={`flex items-center gap-4 px-4 py-3.5 rounded-2xl transition ${pathname === '/my-bookings' ? 'bg-stone-100 text-stone-900 font-bold' : 'text-stone-600 hover:bg-stone-50 hover:text-stone-900'}`}
+                        className={`flex items-center justify-between px-4 py-3.5 rounded-2xl transition ${pathname === '/my-bookings' ? 'bg-stone-100 text-stone-900 font-bold' : 'text-stone-600 hover:bg-stone-50 hover:text-stone-900'}`}
                       >
-                        <Briefcase className="w-5 h-5" />
-                        <span>My Trips</span>
+                        <div className="flex items-center gap-4">
+                          <Briefcase className="w-5 h-5" />
+                          <span>My Trips</span>
+                        </div>
+                        {unreadBroadcasts > 0 && (
+                          <span className="px-2 py-0.5 text-xs font-bold bg-red-500 text-white rounded-full">
+                            {unreadBroadcasts}
+                          </span>
+                        )}
                       </Link>
                     </>
                   )}

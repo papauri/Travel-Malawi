@@ -9,6 +9,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useAuthDialog } from '../contexts/AuthDialogContext';
 import { LogOut, Bell, Palmtree, ChevronDown, LayoutDashboard, Briefcase, ShieldCheck, Building2, Volume2, VolumeX, Heart, UserCircle } from 'lucide-react';
 import { isSoundEnabled, onSoundPreferenceChange, setSoundEnabled } from '../lib/notificationSound';
+import { requestBrowserNotifications } from './GlobalNotificationManager';
 import { describeRoles, isAdmin, isHotelManager, isTraveller } from '../lib/roles';
 import { useUnreadBroadcasts } from '../hooks/useUnreadBroadcasts';
 import { usePresence, PresenceStatus } from '../hooks/usePresence';
@@ -134,8 +135,15 @@ export default function Navbar() {
                   </>
                 )}
 
-                {isTraveller(user) && (
-                  <Link to="/my-bookings" className="relative p-2 text-stone-500 hover:text-stone-900 transition hover:bg-stone-100 rounded-full" title="Notifications">
+                {user && (
+                  <Link
+                    to="/my-bookings"
+                    onClick={() => {
+                      void requestBrowserNotifications();
+                    }}
+                    className="relative p-2 text-stone-500 hover:text-stone-900 transition hover:bg-stone-100 rounded-full"
+                    title="Notifications & Trips"
+                  >
                     <Bell className="w-5 h-5" />
                     {unreadBroadcasts > 0 && (
                       <span className="absolute top-1 right-1 flex h-2.5 w-2.5">
@@ -228,7 +236,13 @@ export default function Navbar() {
                           quiet one, and the click that turns it on is also the
                           gesture browsers require before audio may play. */}
                       <button
-                        onClick={() => setSoundEnabled(!soundOn)}
+                        onClick={() => {
+                          const next = !soundOn;
+                          setSoundEnabled(next);
+                          if (next) {
+                            void requestBrowserNotifications();
+                          }
+                        }}
                         role="switch"
                         aria-checked={soundOn}
                         className="w-full flex items-center justify-between gap-2.5 px-4 py-2.5 text-sm text-stone-600 hover:bg-stone-50 hover:text-stone-900 transition"

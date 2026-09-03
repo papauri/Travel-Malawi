@@ -180,6 +180,24 @@ export default function HotelDetails() {
       .catch(err => console.warn('Reviews unavailable:', err?.message ?? err));
   }, [id]);
 
+  // Live property broadcasts & alerts (e.g. dinner times, local notices, special events)
+  useEffect(() => {
+    if (!id) return;
+    const q = query(
+      collection(db, 'broadcasts'),
+      where('hotelId', '==', id),
+      where('isActive', '==', true)
+    );
+    const unsub = onSnapshot(q, (snap) => {
+      const docs = snap.docs.map(d => ({ id: d.id, ...d.data() } as Broadcast));
+      docs.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      setBroadcasts(docs);
+    }, (err) => {
+      console.warn('Live broadcasts unavailable:', err?.message ?? err);
+    });
+    return () => unsub();
+  }, [id]);
+
   useEffect(() => {
     if (user) {
       setGuestName(user.displayName || '');
@@ -631,6 +649,44 @@ export default function HotelDetails() {
         </div>
 
         <div className="max-w-[90rem] mx-auto px-4 lg:px-12">
+          {/* Active Property Broadcasts / Live Alerts */}
+          {broadcasts.length > 0 && (
+            <div className="mt-6 space-y-3">
+              {broadcasts.map(b => (
+                <div
+                  key={b.id}
+                  className={`flex items-start gap-3.5 rounded-2xl p-4 sm:p-5 border transition-all ${
+                    b.type === 'alert'
+                      ? 'bg-red-50 border-red-200 text-red-950'
+                      : b.type === 'event'
+                      ? 'bg-amber-50 border-amber-200 text-amber-950'
+                      : 'bg-emerald-50 border-emerald-200 text-emerald-950'
+                  }`}
+                >
+                  <div className={`p-2 rounded-xl shrink-0 mt-0.5 ${
+                    b.type === 'alert' ? 'bg-red-100 text-red-600' :
+                    b.type === 'event' ? 'bg-amber-100 text-amber-600' :
+                    'bg-emerald-100 text-emerald-700'
+                  }`}>
+                    <Megaphone className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs font-bold uppercase tracking-wider opacity-75">
+                        Property Announcement • {b.type}
+                      </span>
+                      <span className="opacity-40 text-xs">•</span>
+                      <span className="text-xs opacity-60">
+                        {new Date(b.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                      </span>
+                    </div>
+                    <p className="text-sm font-medium leading-relaxed">{b.message}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* A listing awaiting moderation is reachable by direct link, so it says
               plainly that it cannot be booked rather than failing at submit. */}
           {!isBookable && (

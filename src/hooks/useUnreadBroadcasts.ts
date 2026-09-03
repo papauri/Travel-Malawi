@@ -11,9 +11,14 @@ export function useUnreadBroadcasts() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [broadcasts, setBroadcasts] = useState<Broadcast[]>([]);
 
+  const isInitialLoad = useState<{ current: boolean }>({ current: true })[0];
+  const knownBroadcastIds = useState<{ current: Set<string> }>({ current: new Set<string>() })[0];
+
   useEffect(() => {
     if (!user) {
       setBroadcasts([]);
+      isInitialLoad.current = true;
+      knownBroadcastIds.current.clear();
       return;
     }
 
@@ -54,18 +59,28 @@ export function useUnreadBroadcasts() {
       unsubBroadcasts = onSnapshot(qBroadcasts, (bSnap) => {
         const fetchedBroadcasts = bSnap.docs.map(d => ({ id: d.id, ...d.data() } as Broadcast));
         
-        setBroadcasts(prev => {
-          if (prev.length > 0) {
-            const newBroadcasts = fetchedBroadcasts.filter(fb => !prev.find(p => p.id === fb.id));
-            newBroadcasts.forEach(b => {
-              toast.success(`New Update: ${b.message}`, { icon: '📣', duration: 8000 });
-              if ('Notification' in window && Notification.permission === 'granted') {
-                new Notification('New Property Update', { body: b.message });
-              }
-            });
-          }
-          return fetchedBroadcasts;
-        });
+        if (isInitialLoad.current) {
+          isInitialLoad.current = false;
+          fetchedBroadcasts.forEach(b => {
+            if (b.id) knownBroadcastIds.current.add(b.id);
+          });
+          setBroadcasts(fetchedBroadcasts);
+          return;
+        }
+
+        const newBroadcasts = fetchedBroadcasts.filter(fb => fb.id && !knownBroadcastIds.current.has(fb.id));
+        if (newBroadcasts.length > 0) {
+          playChime();
+          newBroadcasts.forEach(b => {
+            if (b.id) knownBroadcastIds.current.add(b.id);
+            toast.success(`New Update: ${b.message}`, { icon: '📣', duration: 8000 });
+            if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+              const n = new Notification('New Property Update', { body: b.message, icon: '/favicon.ico' });
+              n.onclick = () => { window.focus(); n.close(); };
+            }
+          });
+        }
+        setBroadcasts(fetchedBroadcasts);
       }, (err) => {
         console.warn('Failed to listen to broadcasts for badge:', err);
       });
