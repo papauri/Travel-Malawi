@@ -428,96 +428,96 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-6 lg:px-8 py-12 w-full flex flex-col md:flex-row gap-8 min-h-screen">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-12 w-full flex flex-col md:flex-row gap-6 md:gap-8 min-h-screen">
       
       {/* Sidebar Navigation */}
       <div className="w-full md:w-64 shrink-0 space-y-2">
-        <div className="mb-8 px-4">
-          <div className="flex items-center gap-3 mb-2">
-            <Shield className="h-8 w-8 text-stone-900" />
-            <h1 className="text-2xl font-serif font-bold text-stone-900">Admin</h1>
+        <div className="mb-4 md:mb-8 px-1 md:px-4">
+          <div className="flex items-center gap-3 mb-1 sm:mb-2">
+            <Shield className="h-7 w-7 sm:h-8 sm:w-8 text-stone-900" />
+            <h1 className="text-xl sm:text-2xl font-serif font-bold text-stone-900">Admin</h1>
           </div>
-          <p className="text-stone-500 text-sm">Platform Management</p>
+          <p className="text-stone-500 text-xs sm:text-sm">Platform Management</p>
         </div>
         
-        <nav className="space-y-1">
+        <nav className="flex md:flex-col gap-1.5 overflow-x-auto pb-2 md:pb-0 scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           <button 
             onClick={() => setActiveTab('overview')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition ${
-              activeTab === 'overview' ? 'bg-stone-900 text-white' : 'text-stone-600 hover:bg-stone-100'
+            className={`whitespace-nowrap shrink-0 md:w-full flex items-center gap-2.5 px-3.5 sm:px-4 py-2 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition ${
+              activeTab === 'overview' ? 'bg-stone-900 text-white shadow-xs' : 'text-stone-600 bg-stone-100/70 md:bg-transparent hover:bg-stone-100'
             }`}
           >
-            <LayoutDashboard className="w-5 h-5" />
+            <LayoutDashboard className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
             Overview
           </button>
           <button 
             onClick={() => setActiveTab('analytics')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition ${
-              activeTab === 'analytics' ? 'bg-stone-900 text-white' : 'text-stone-600 hover:bg-stone-100'
+            className={`whitespace-nowrap shrink-0 md:w-full flex items-center gap-2.5 px-3.5 sm:px-4 py-2 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition ${
+              activeTab === 'analytics' ? 'bg-stone-900 text-white shadow-xs' : 'text-stone-600 bg-stone-100/70 md:bg-transparent hover:bg-stone-100'
             }`}
           >
-            <TrendingUp className="w-5 h-5" />
+            <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
             Analytics
           </button>
           <button 
             onClick={() => setActiveTab('properties')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition ${
-              activeTab === 'properties' ? 'bg-stone-900 text-white' : 'text-stone-600 hover:bg-stone-100'
+            className={`whitespace-nowrap shrink-0 md:w-full flex items-center gap-2.5 px-3.5 sm:px-4 py-2 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition ${
+              activeTab === 'properties' ? 'bg-stone-900 text-white shadow-xs' : 'text-stone-600 bg-stone-100/70 md:bg-transparent hover:bg-stone-100'
             }`}
           >
-            <Building2 className="w-5 h-5" />
+            <Building2 className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
             Properties
             {stats.pendingProperties > 0 && (
-              <span className="ml-auto bg-amber-500 text-white text-[10px] px-2 py-0.5 rounded-full">
+              <span className="ml-1 sm:ml-auto bg-amber-500 text-white text-[10px] px-2 py-0.5 rounded-full">
                 {stats.pendingProperties}
               </span>
             )}
           </button>
           <button 
             onClick={() => setActiveTab('users')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition ${
-              activeTab === 'users' ? 'bg-stone-900 text-white' : 'text-stone-600 hover:bg-stone-100'
+            className={`whitespace-nowrap shrink-0 md:w-full flex items-center gap-2.5 px-3.5 sm:px-4 py-2 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition ${
+              activeTab === 'users' ? 'bg-stone-900 text-white shadow-xs' : 'text-stone-600 bg-stone-100/70 md:bg-transparent hover:bg-stone-100'
             }`}
           >
-            <Users className="w-5 h-5" />
+            <Users className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
             Users
           </button>
           <button 
             onClick={() => setActiveTab('bookings')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition ${
-              activeTab === 'bookings' ? 'bg-stone-900 text-white' : 'text-stone-600 hover:bg-stone-100'
+            className={`whitespace-nowrap shrink-0 md:w-full flex items-center gap-2.5 px-3.5 sm:px-4 py-2 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition ${
+              activeTab === 'bookings' ? 'bg-stone-900 text-white shadow-xs' : 'text-stone-600 bg-stone-100/70 md:bg-transparent hover:bg-stone-100'
             }`}
           >
-            <CalendarRange className="w-5 h-5" />
+            <CalendarRange className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
             All Bookings
           </button>
           <button 
             onClick={() => setActiveTab('destinations')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition ${
-              activeTab === 'destinations' ? 'bg-stone-900 text-white' : 'text-stone-600 hover:bg-stone-100'
+            className={`whitespace-nowrap shrink-0 md:w-full flex items-center gap-2.5 px-3.5 sm:px-4 py-2 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition ${
+              activeTab === 'destinations' ? 'bg-stone-900 text-white shadow-xs' : 'text-stone-600 bg-stone-100/70 md:bg-transparent hover:bg-stone-100'
             }`}
           >
-            <Navigation className="w-5 h-5" />
-              Destinations
-            </button>
-            <button 
-              onClick={() => setActiveTab('content')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition ${
-                activeTab === 'content' ? 'bg-stone-900 text-white' : 'text-stone-600 hover:bg-stone-100'
-              }`}
-            >
-              <FileText className="w-5 h-5" />
-              Content & Legal
-            </button>
-            <button 
-              onClick={() => setActiveTab('ai')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition ${
-                activeTab === 'ai' ? 'bg-stone-900 text-white' : 'text-stone-600 hover:bg-stone-100'
-              }`}
-            >
-              <Cpu className="w-5 h-5" />
-              AI Services & Keys
-            </button>
+            <Navigation className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+            Destinations
+          </button>
+          <button 
+            onClick={() => setActiveTab('content')}
+            className={`whitespace-nowrap shrink-0 md:w-full flex items-center gap-2.5 px-3.5 sm:px-4 py-2 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition ${
+              activeTab === 'content' ? 'bg-stone-900 text-white shadow-xs' : 'text-stone-600 bg-stone-100/70 md:bg-transparent hover:bg-stone-100'
+            }`}
+          >
+            <FileText className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+            Content & Legal
+          </button>
+          <button 
+            onClick={() => setActiveTab('ai')}
+            className={`whitespace-nowrap shrink-0 md:w-full flex items-center gap-2.5 px-3.5 sm:px-4 py-2 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition ${
+              activeTab === 'ai' ? 'bg-stone-900 text-white shadow-xs' : 'text-stone-600 bg-stone-100/70 md:bg-transparent hover:bg-stone-100'
+            }`}
+          >
+            <Cpu className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+            AI Services & Keys
+          </button>
         </nav>
       </div>
 

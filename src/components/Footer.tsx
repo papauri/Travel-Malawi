@@ -7,7 +7,7 @@ import { openAccessPermissionsModal } from './AccessRequestModal';
 export default function Footer() {
   const { settings } = useSystemSettings();
   return (
-    <footer className="bg-stone-900 text-stone-300 py-16 border-t border-stone-800 mt-auto">
+    <footer className="bg-stone-900 text-stone-300 pt-16 pb-28 md:py-16 border-t border-stone-800 mt-auto">
       <div className="max-w-7xl mx-auto px-6 lg:px-8 grid grid-cols-1 md:grid-cols-4 gap-12">
         <div className="space-y-6">
           <Link to="/" className="flex items-center gap-2 text-white">

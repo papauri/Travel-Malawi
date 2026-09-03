@@ -10,6 +10,7 @@ import {
 import ReactMarkdown from 'react-markdown';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { isAdmin, isHotelManager } from '../lib/roles';
 import { useAIAssistant, OperationsChatPayload, OperationsChatResult, ActionProposal } from '../hooks/useAIAssistant';
 import { db } from '../lib/firebase';
@@ -101,6 +102,7 @@ export default function OperationsCopilot() {
 
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
+  useBodyScrollLock(isOpen && !isMinimized);
   const [isExpanded, setIsExpanded] = useState(false);
   const [viewingMemory, setViewingMemory] = useState(false);
   const [newDirectiveInput, setNewDirectiveInput] = useState('');
@@ -1546,7 +1548,7 @@ export default function OperationsCopilot() {
             )}
 
             {/* INPUT BAR */}
-            <div className="p-3 sm:p-3.5 pb-6 sm:pb-3.5 bg-white border-t border-stone-200 shrink-0">
+            <div className="p-3 sm:p-3.5 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:pb-3.5 bg-white border-t border-stone-200 shrink-0">
               <form
                 onSubmit={e => {
                   e.preventDefault();

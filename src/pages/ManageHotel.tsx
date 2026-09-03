@@ -1023,7 +1023,7 @@ export default function ManageHotel() {
           </div>
         </div>
       )}
-      <div className="sticky top-[121px] z-40 bg-stone-50 pt-2 pb-0 flex gap-1 border-b border-stone-200 mb-8 overflow-x-auto scrollbar-hide -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+      <div className="sticky top-[121px] z-40 bg-stone-50 pt-2 pb-0 flex gap-1 border-b border-stone-200 mb-8 overflow-x-auto scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
         {([
           { id: 'details' as Tab, label: 'Property details', icon: Building },
           { id: 'media' as Tab, label: 'Media', icon: Eye },
@@ -1577,7 +1577,7 @@ export default function ManageHotel() {
   </SectionCard>
             {/* Pinned: this form is long enough that the save button used to
                 sit well below the fold with no sign it was there. */}
-            <div className="sticky bottom-0 p-4 bg-white/95 backdrop-blur-md border-t border-stone-200 flex items-center justify-between gap-4 rounded-b-2xl mt-4 z-20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+            <div className="sticky bottom-0 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-white/95 backdrop-blur-md border-t border-stone-200 flex items-center justify-between gap-4 rounded-b-2xl mt-4 z-20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
               <p className="text-sm text-stone-500">
                 {hotelDirty ? <span className="text-amber-600 flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" /> Unsaved changes</span> : 'Everything is saved'}
               </p>
@@ -2232,7 +2232,7 @@ export default function ManageHotel() {
 
                 {/* The room form runs past a packages list and a month
                     calendar, so its actions are pinned to the viewport. */}
-                <div className="sticky bottom-0 py-4 bg-white/95 backdrop-blur border-t border-stone-100 flex items-center justify-end gap-3">
+                <div className="sticky bottom-0 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] px-4 bg-white/95 backdrop-blur border-t border-stone-100 flex items-center justify-end gap-3 z-20">
                   <button type="button" onClick={cancelEditRoom} className="px-6 py-3 rounded-xl font-medium text-stone-600 hover:bg-stone-100 transition">
                     Cancel
                   </button>

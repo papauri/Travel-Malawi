@@ -497,7 +497,7 @@ export default function HotelDetails() {
       </Helmet>
       {/* Sticky Header when scrolled past hero */}
       <div
-        className={`fixed top-20 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-b border-stone-200/60 shadow-xs transition-transform duration-300 ease-in-out ${
+        className={`fixed top-20 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-b border-stone-200/60 shadow-xs transition-transform duration-300 ease-in-out flex flex-col ${
           isScrolledPastHero ? 'translate-y-0' : '-translate-y-full opacity-0 pointer-events-none'
         }`}
       >
@@ -520,6 +520,36 @@ export default function HotelDetails() {
               Book Now
             </button>
           </div>
+        </div>
+
+        {/* Mobile Quick Navigation */}
+        <div className="lg:hidden flex items-center gap-2 overflow-x-auto px-4 pb-3 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          <a 
+            href="#rooms-section" 
+            className="whitespace-nowrap px-4 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold rounded-full border border-stone-200/60 flex items-center gap-1.5 transition-colors"
+          >
+            <BedDouble className="w-3.5 h-3.5 text-stone-400" /> Accommodations
+          </a>
+          {hotel.restaurant && hotel.restaurant.enabled !== false && (
+            <a 
+              href="#restaurant-menu" 
+              className="whitespace-nowrap px-4 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold rounded-full border border-stone-200/60 flex items-center gap-1.5 transition-colors"
+            >
+              <UtensilsCrossed className="w-3.5 h-3.5 text-stone-400" /> Dining
+            </a>
+          )}
+          <a 
+            href="#reviews" 
+            className="whitespace-nowrap px-4 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold rounded-full border border-stone-200/60 flex items-center gap-1.5 transition-colors"
+          >
+            <Star className="w-3.5 h-3.5 text-stone-400" /> Reviews
+          </a>
+          <a 
+            href="#directions" 
+            className="whitespace-nowrap px-4 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold rounded-full border border-stone-200/60 flex items-center gap-1.5 transition-colors"
+          >
+            <MapPin className="w-3.5 h-3.5 text-stone-400" /> Location
+          </a>
         </div>
       </div>
 
@@ -677,7 +707,7 @@ export default function HotelDetails() {
 
           {/* Spaces Section */}
           <div className="mb-16">
-            <div id="rooms-section" className="scroll-mt-32 mb-10">
+            <div id="rooms-section" className="scroll-mt-36 lg:scroll-mt-28 mb-10">
               {conferenceRooms.length > 0 ? (
                 <div className="flex items-center gap-6 border-b border-stone-200">
                   <button 
@@ -1152,7 +1182,7 @@ export default function HotelDetails() {
 
                     {/* Restaurant Menu */}
           {restaurant && (
-            <div id="restaurant-menu" className="mb-24 pt-8 border-t border-stone-200">
+            <div id="restaurant-menu" className="scroll-mt-36 mb-24 pt-8 border-t border-stone-200">
               <div className="mb-6 sm:mb-8">
                 <span className="text-[0.68rem] font-bold text-emerald-700 tracking-[0.16em] uppercase">Dining &amp; Culinary</span>
                 <h2 className="text-3xl sm:text-4xl md:text-5xl font-serif text-stone-900 mt-1 tracking-tight">Restaurant &amp; Menu</h2>
@@ -1190,7 +1220,7 @@ export default function HotelDetails() {
           )}
 
           {activeSpaceTab === 'rooms' && (
-            <div id="reviews" className="scroll-mt-32 mb-24 mt-8 border-t border-stone-200 pt-12 relative z-10 bg-white">
+            <div id="reviews" className="scroll-mt-36 lg:scroll-mt-28 mb-24 mt-8 border-t border-stone-200 pt-12 relative z-10 bg-white">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-10">
               <div className="flex flex-wrap items-baseline gap-4">
                 <h2 className="text-4xl md:text-5xl font-serif text-stone-900 tracking-tight">Guest Reviews</h2>
@@ -1410,7 +1440,7 @@ export default function HotelDetails() {
           </div>
         </div>
           {/* Full Directions & Navigation Panel for Guests */}
-          <div id="directions" className="scroll-mt-32 lg:col-span-3 mb-0 pt-8 border-t border-stone-200 relative z-10 bg-white">
+          <div id="directions" className="scroll-mt-36 lg:scroll-mt-28 lg:col-span-3 mb-0 pt-8 border-t border-stone-200 relative z-10 bg-white">
             <div className="mb-8">
               <span className="text-[0.68rem] font-bold text-emerald-700 tracking-[0.16em] uppercase">Find Your Way</span>
               <h2 className="text-3xl md:text-4xl font-serif text-stone-900 mt-1 tracking-tight">Location &amp; Driving Directions</h2>

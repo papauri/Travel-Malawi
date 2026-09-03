@@ -118,6 +118,7 @@ export default function HotelCard({ hotel, searchParams, index, priceFrom, price
             exit={{ opacity: 0 }}
             transition={{ duration: 0.4 }}
             className="absolute inset-0"
+            style={{ touchAction: 'pan-y' }}
             drag="x"
             dragConstraints={{ left: 0, right: 0 }}
             dragElastic={1}

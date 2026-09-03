@@ -97,3 +97,19 @@ body {
 .pick-location-mode .leaflet-interactive {
   cursor: crosshair !important;
 }
+
+/* Safe-area insets for modern mobile devices (iPhone home indicator & notch) */
+.pb-safe {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+}
+.pt-safe {
+  padding-top: max(1rem, env(safe-area-inset-top, 0px));
+}
+.mb-safe {
+  margin-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+}
+
+/* Prevent horizontal page bounce on mobile */
+html, body {
+  overflow-x: clip;
+}

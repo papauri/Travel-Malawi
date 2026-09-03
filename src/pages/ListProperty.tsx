@@ -712,7 +712,7 @@ export default function ListProperty() {
           })}
         </ol>
 
-        <div className="rounded-3xl border border-stone-200 bg-white p-7 shadow-sm md:p-10">
+        <div className="rounded-3xl border border-stone-200 bg-white p-5 sm:p-7 md:p-10 shadow-sm">
           {step === 0 && (
             <div className="space-y-8">
               <div>

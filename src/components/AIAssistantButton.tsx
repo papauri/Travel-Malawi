@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAIAssistant, AIGenerateOptions } from '../hooks/useAIAssistant';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { PenLine, RefreshCw, Check, X, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -30,6 +31,7 @@ export default function AIAssistantButton({
 }: Props) {
   const { status, generate, generating } = useAIAssistant();
   const [isOpen, setIsOpen] = useState(false);
+  useBodyScrollLock(isOpen);
   const [suggestion, setSuggestion] = useState<string>('');
   const [activeAction, setActiveAction] = useState<'draft' | 'polish' | 'shorten'>('draft');
   const [customNote, setCustomNote] = useState('');
@@ -94,7 +96,7 @@ export default function AIAssistantButton({
 
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/40 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white border border-stone-200 rounded-2xl shadow-xl max-w-xl w-full p-6 space-y-5 text-left relative max-h-[90vh] overflow-y-auto">
+          <div className="bg-white border border-stone-200 rounded-2xl shadow-xl max-w-xl w-full p-4 sm:p-6 space-y-4 sm:space-y-5 text-left relative max-h-[90vh] overflow-y-auto">
             {/* Header */}
             <div className="flex items-start justify-between border-b border-stone-100 pb-4">
               <div>

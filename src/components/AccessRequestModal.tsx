@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { MapPin, Mic, Video, X, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 
 const STORAGE_KEY = 'tm_permissions_prefs';
 
@@ -19,6 +20,7 @@ export function openAccessPermissionsModal() {
 
 export default function AccessRequestModal() {
   const [isOpen, setIsOpen] = useState(false);
+  useBodyScrollLock(isOpen);
   const [locationEnabled, setLocationEnabled] = useState(true);
   const [microphoneEnabled, setMicrophoneEnabled] = useState(true);
   const [cameraEnabled, setCameraEnabled] = useState(true);

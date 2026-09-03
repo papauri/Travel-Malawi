@@ -319,16 +319,37 @@ export default function Home() {
       .catch(error => console.warn('Reviews unavailable:', error?.message ?? error));
   }, []);
 
-  // The dropdown used to stay open until its toggle was clicked again, which
-  // left it covering the results while the visitor scrolled.
+  // Close dropdowns when clicking outside
   useEffect(() => {
     if (!showGuestDropdown) return;
-    const onPointerDown = (event: MouseEvent) => {
+    const onPointerDown = (event: MouseEvent | TouchEvent) => {
       if (!guestSelectorRef.current?.contains(event.target as Node)) setShowGuestDropdown(false);
     };
     document.addEventListener('mousedown', onPointerDown);
-    return () => document.removeEventListener('mousedown', onPointerDown);
+    document.addEventListener('touchstart', onPointerDown);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('touchstart', onPointerDown);
+    };
   }, [showGuestDropdown]);
+
+  // Close open filter <details> tags when clicking outside
+  useEffect(() => {
+    const handleDetailsClickOutside = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as HTMLElement;
+      document.querySelectorAll('details[open]').forEach(el => {
+        if (!el.contains(target)) {
+          el.removeAttribute('open');
+        }
+      });
+    };
+    document.addEventListener('mousedown', handleDetailsClickOutside);
+    document.addEventListener('touchstart', handleDetailsClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleDetailsClickOutside);
+      document.removeEventListener('touchstart', handleDetailsClickOutside);
+    };
+  }, []);
 
   /** Currencies any listing is sold in, so the switch only offers real ones. */
   const offeredCurrencies = useMemo(() => {
@@ -1190,7 +1211,7 @@ export default function Home() {
               <button
                 onClick={handleSearch}
                 disabled={searching}
-                className="w-full lg:w-auto h-full flex items-center justify-center gap-2 bg-[#2D2A26] hover:bg-[#1F1D1A] active:scale-98 text-[#F5F2EB] rounded-xl lg:rounded-full px-5 lg:px-6 py-2.5 lg:py-2.5 font-medium text-xs sm:text-sm tracking-wide transition shadow-sm disabled:opacity-60"
+                className="w-full lg:w-auto h-full min-h-[44px] flex items-center justify-center gap-2 bg-[#2D2A26] hover:bg-[#1F1D1A] active:scale-98 text-[#F5F2EB] rounded-xl lg:rounded-full px-5 lg:px-6 py-2.5 lg:py-2.5 font-medium text-xs sm:text-sm tracking-wide transition shadow-sm disabled:opacity-60"
               >
                 {searching
                   ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-stone-400 border-t-white" />
