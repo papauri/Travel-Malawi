@@ -5,7 +5,7 @@ import { db } from '../lib/firebase';
 import { Hotel, User, Booking, Role } from '../types';
 import { SystemSettings } from '../hooks/useSystemSettings';
 import { 
-  Shield, Building2, CheckCircle, XCircle, Clock, MapPin, 
+  Shield, Building2, CheckCircle, CheckCircle2, XCircle, Clock, MapPin, 
   MapPinOff, Users, Edit2, Key, Trash2, Star, ExternalLink, 
   MessageSquare, MessageSquareOff, LayoutDashboard, CalendarRange, FileText, 
   Search, Activity, Cpu
@@ -174,6 +174,29 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleUpdateBookingStatus = async (bookingId: string, newStatus: string) => {
+    try {
+      await updateDoc(doc(db, 'bookings', bookingId), { status: newStatus });
+      setBookings(bookings.map(b => b.id === bookingId ? { ...b, status: newStatus as any } : b));
+      toast.success(`Booking status updated to ${newStatus}`);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to update booking status.');
+    }
+  };
+
+  const handleDeleteBooking = async (bookingId: string) => {
+    if (!window.confirm('Are you sure you want to permanently delete this booking?')) return;
+    try {
+      await deleteDoc(doc(db, 'bookings', bookingId));
+      setBookings(bookings.filter(b => b.id !== bookingId));
+      toast.success('Booking deleted.');
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to delete booking.');
+    }
+  };
+
   const handleToggleFeatured = async (hotel: Hotel) => {
     const next = !hotel.featured;
     if (next && !hotel.status) {
@@ -250,7 +273,13 @@ export default function AdminDashboard() {
     }
     if (hotelSearch) {
       const q = hotelSearch.toLowerCase();
-      filtered = filtered.filter(h => h.name.toLowerCase().includes(q) || h.managerId.toLowerCase().includes(q));
+      filtered = filtered.filter(h => 
+        h.name.toLowerCase().includes(q) || 
+        (h.managerName && h.managerName.toLowerCase().includes(q)) ||
+        (h.ownerName && h.ownerName.toLowerCase().includes(q)) ||
+        (h.managerEmail && h.managerEmail.toLowerCase().includes(q)) ||
+        (h.managerId && h.managerId.toLowerCase().includes(q))
+      );
     }
     return filtered;
   }, [hotels, onlyBadPins, hotelSearch]);
@@ -717,8 +746,8 @@ export default function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-stone-100">
-                    {featuredCandidateStats.map(({ hotel, bookings }) => (
-                      <tr key={hotel.id} className={`transition ${hotel.featured ? 'bg-amber-50/30' : 'hover:bg-stone-50'}`}>
+                    {featuredCandidateStats.map(({ hotel, bookings }, idx) => (
+                      <tr key={`feat-candidate-${hotel.id || 'hotel'}-${idx}`} className={`transition ${hotel.featured ? 'bg-amber-50/30' : 'hover:bg-stone-50'}`}>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-4">
                             <div className="h-10 w-10 rounded-lg overflow-hidden shrink-0 bg-stone-100">
@@ -797,8 +826,8 @@ export default function AdminDashboard() {
             </div>
 
             <div className="space-y-6">
-              {visibleHotels.slice((currentHotelPage - 1) * itemsPerPage, currentHotelPage * itemsPerPage).map(hotel => (
-                <div key={hotel.id} className="bg-white rounded-3xl p-6 shadow-sm border border-stone-200 flex flex-col md:flex-row gap-6 hover:border-stone-300 transition">
+              {visibleHotels.slice((currentHotelPage - 1) * itemsPerPage, currentHotelPage * itemsPerPage).map((hotel, index) => (
+                <div key={`admin-hotel-${hotel.id || 'hotel'}-${index}`} className="bg-white rounded-3xl p-6 shadow-sm border border-stone-200 flex flex-col md:flex-row gap-6 hover:border-stone-300 transition">
                   <div className="h-48 w-full md:w-64 bg-stone-100 rounded-2xl overflow-hidden shrink-0">
                     <SmartImage src={getHotelImage(hotel)} alt={hotel.name} className="w-full h-full object-cover" />
                   </div>
@@ -855,9 +884,32 @@ export default function AdminDashboard() {
                             </a>
                           );
                         })()}
-                        <p className="text-stone-500 text-sm flex items-center gap-2">
-                          <Users className="h-4 w-4" /> Manager: {users.find(u => u.uid === hotel.managerId)?.email || hotel.managerId}
-                        </p>
+                        <div className="text-stone-500 text-sm space-y-1">
+                          <p className="flex items-center gap-2">
+                            <Users className="h-4 w-4 text-stone-400" />
+                            <span>
+                              <strong className="text-stone-700 font-medium">Manager:</strong>{' '}
+                              {hotel.managerName ? (
+                                <>
+                                  <span className="text-stone-900 font-semibold">{hotel.managerName}</span>
+                                  <span className="text-xs text-stone-500 ml-1.5">
+                                    ({hotel.managerEmail || (hotel.managerId ? users.find(u => u.uid === hotel.managerId)?.email || hotel.managerId : 'Platform Direct')})
+                                  </span>
+                                </>
+                              ) : (
+                                (hotel.managerId && users.find(u => u.uid === hotel.managerId)?.email) ||
+                                hotel.managerEmail ||
+                                hotel.managerId ||
+                                <span className="text-stone-400 italic">Self-managed / Open manager</span>
+                              )}
+                            </span>
+                          </p>
+                          {hotel.ownerName && (
+                            <p className="flex items-center gap-2 pl-6 text-xs text-stone-500">
+                              <span><strong>Owner/Entity:</strong> {hotel.ownerName} {hotel.ownerEmail ? `(${hotel.ownerEmail})` : ''}</span>
+                            </p>
+                          )}
+                        </div>
                       </div>
                     </div>
                     
@@ -1014,10 +1066,10 @@ export default function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-stone-100">
-                    {visibleUsers.slice((currentUserPage - 1) * itemsPerPage, currentUserPage * itemsPerPage).map(u => {
+                    {visibleUsers.slice((currentUserPage - 1) * itemsPerPage, currentUserPage * itemsPerPage).map((u, index) => {
                       const rolesList = userRoles(u);
                       return (
-                        <tr key={u.uid} className="hover:bg-stone-50 transition">
+                        <tr key={`admin-user-${u.uid || 'user'}-${index}`} className="hover:bg-stone-50 transition">
                           <td className="px-6 py-4">
                             <p className="font-bold text-stone-900">{u.displayName || 'No Name'}</p>
                             <p className="text-sm text-stone-500">{u.email}</p>
@@ -1125,13 +1177,14 @@ export default function AdminDashboard() {
                       <th className="px-6 py-4 text-xs font-bold text-stone-500 uppercase tracking-wider">Dates</th>
                       <th className="px-6 py-4 text-xs font-bold text-stone-500 uppercase tracking-wider">Amount</th>
                       <th className="px-6 py-4 text-xs font-bold text-stone-500 uppercase tracking-wider">Status</th>
+                      <th className="px-6 py-4 text-xs font-bold text-stone-500 uppercase tracking-wider text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-stone-100">
-                    {bookings.slice((currentBookingPage - 1) * itemsPerPage, currentBookingPage * itemsPerPage).map(b => {
+                    {bookings.slice((currentBookingPage - 1) * itemsPerPage, currentBookingPage * itemsPerPage).map((b, index) => {
                       const hotelName = hotels.find(h => h.id === b.hotelId)?.name || 'Unknown Property';
                       return (
-                        <tr key={b.id} className="hover:bg-stone-50 transition">
+                        <tr key={`admin-booking-${b.id || 'booking'}-${index}`} className="hover:bg-stone-50 transition">
                           <td className="px-6 py-4 text-sm font-mono text-stone-500">{b.reference || 'N/A'}</td>
                           <td className="px-6 py-4 text-sm font-bold text-stone-900">{hotelName}</td>
                           <td className="px-6 py-4 text-sm text-stone-600">
@@ -1154,6 +1207,35 @@ export default function AdminDashboard() {
                             }`}>
                               {b.status}
                             </span>
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              {b.status === 'pending' && (
+                                <>
+                                  <button
+                                    onClick={() => handleUpdateBookingStatus(b.id!, 'confirmed')}
+                                    className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition"
+                                    title="Confirm Booking"
+                                  >
+                                    <CheckCircle2 className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleUpdateBookingStatus(b.id!, 'rejected')}
+                                    className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition"
+                                    title="Reject Booking"
+                                  >
+                                    <XCircle className="w-4 h-4" />
+                                  </button>
+                                </>
+                              )}
+                              <button
+                                onClick={() => handleDeleteBooking(b.id!)}
+                                className="p-1.5 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                                title="Delete Booking"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -1255,7 +1337,7 @@ export default function AdminDashboard() {
 
                 <div className="flex flex-col gap-2 flex-1">
                   {customDestinations.map((dest, i) => (
-                    <div key={dest} className="flex items-center justify-between bg-stone-50 border border-stone-100 rounded-xl px-4 py-3 group">
+                    <div key={`custom-dest-${dest}-${i}`} className="flex items-center justify-between bg-stone-50 border border-stone-100 rounded-xl px-4 py-3 group">
                       <span className="font-bold text-stone-900">{i + 1}. {dest}</span>
                       <button
                         onClick={() => setCustomDestinations(customDestinations.filter(d => d !== dest))}
@@ -1281,8 +1363,8 @@ export default function AdminDashboard() {
                 </p>
                 
                 <div className="overflow-y-auto pr-2 space-y-2 flex-1 scrollbar-slim">
-                  {destinationStats.map(stat => (
-                    <div key={stat.location} className="flex items-center justify-between p-3 rounded-xl hover:bg-stone-50 border border-transparent hover:border-stone-100 transition">
+                  {destinationStats.map((stat, sIdx) => (
+                    <div key={`dest-stat-${stat.location}-${sIdx}`} className="flex items-center justify-between p-3 rounded-xl hover:bg-stone-50 border border-transparent hover:border-stone-100 transition">
                       <div>
                         <p className="font-bold text-stone-900">{stat.location}</p>
                         <div className="flex items-center gap-3 mt-1 text-xs text-stone-500">

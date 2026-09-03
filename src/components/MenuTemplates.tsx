@@ -96,9 +96,9 @@ function Tags({ tags }: { tags?: string[] }) {
   if (!tags?.length) return null;
   return (
     <span className="inline-flex flex-wrap gap-1 align-middle ml-1.5">
-      {tags.map(tag => (
+      {tags.map((tag, tagIdx) => (
         <span
-          key={tag}
+          key={`tag-${tag}-${tagIdx}`}
           className="text-[9px] sm:text-[10px] uppercase font-semibold tracking-wider text-emerald-800 bg-emerald-50/90 border border-emerald-200/80 rounded-full px-2 py-0.5 whitespace-nowrap shadow-2xs"
         >
           {tag}
@@ -117,8 +117,8 @@ function ClassicMenu(props: Props) {
     <div className="bg-white rounded-3xl border border-stone-200 p-5 sm:p-8 md:p-12 lg:p-14 shadow-xs">
       <Masthead {...props} titleClass="font-serif text-3xl sm:text-4xl md:text-5xl text-stone-900 tracking-tight" />
       <div className="space-y-10 sm:space-y-12 max-w-2xl mx-auto">
-        {restaurant.sections.map(section => (
-          <section key={section.id}>
+        {restaurant.sections.map((section, sIdx) => (
+          <section key={`classic-sec-${section.id || sIdx}-${sIdx}`}>
             <h3 className="font-serif text-xl sm:text-2xl md:text-3xl text-stone-900 text-center mb-1">
               {section.name}
             </h3>
@@ -128,8 +128,8 @@ function ClassicMenu(props: Props) {
               </p>
             )}
             <ul className="space-y-4 sm:space-y-5 mt-4 sm:mt-6">
-              {section.items.map(item => (
-                <li key={item.id} className="group">
+              {section.items.map((item, iIdx) => (
+                <li key={`classic-item-${item.id || iIdx}-${iIdx}`} className="group">
                   <div className="flex items-baseline justify-between gap-2 sm:gap-4">
                     <div className="font-serif font-medium text-stone-900 text-base sm:text-lg flex flex-wrap items-baseline gap-1.5 min-w-0">
                       <span>{item.name}</span>
@@ -163,15 +163,15 @@ function ElegantMenu(props: Props) {
     <div className="bg-[#fbfaf8] rounded-3xl border border-stone-200 p-5 sm:p-8 md:p-12 lg:p-16 shadow-xs">
       <Masthead {...props} titleClass="font-serif text-3xl sm:text-4xl md:text-5xl text-stone-900 tracking-tight font-light" />
       <div className="space-y-10 sm:space-y-14 max-w-xl mx-auto text-center">
-        {restaurant.sections.map(section => (
-          <section key={section.id}>
+        {restaurant.sections.map((section, sIdx) => (
+          <section key={`elegant-sec-${section.id || sIdx}-${sIdx}`}>
             <h3 className="text-[10px] sm:text-xs uppercase tracking-[0.25em] sm:tracking-[0.35em] text-stone-500 font-semibold mb-2">
               {section.name}
             </h3>
             <span className="block w-10 sm:w-12 h-px bg-stone-300 mx-auto mb-6 sm:mb-8" />
             <ul className="space-y-6 sm:space-y-8">
-              {section.items.map(item => (
-                <li key={item.id} className="space-y-1">
+              {section.items.map((item, iIdx) => (
+                <li key={`elegant-item-${item.id || iIdx}-${iIdx}`} className="space-y-1">
                   <p className="font-serif text-lg sm:text-xl md:text-2xl text-stone-900">
                     {item.name}
                   </p>
@@ -204,14 +204,14 @@ function MinimalMenu(props: Props) {
     <div className="bg-white rounded-3xl border border-stone-200 p-5 sm:p-8 md:p-12 lg:p-14 shadow-xs">
       <Masthead {...props} align="left" titleClass="text-2xl sm:text-3xl md:text-4xl font-bold text-stone-900 tracking-tight" />
       <div className="space-y-10 sm:space-y-12 max-w-2xl">
-        {restaurant.sections.map(section => (
-          <section key={section.id}>
+        {restaurant.sections.map((section, sIdx) => (
+          <section key={`minimal-sec-${section.id || sIdx}-${sIdx}`}>
             <h3 className="text-xs sm:text-sm font-semibold uppercase tracking-[0.18em] text-stone-400 mb-4 sm:mb-6 pb-2 border-b border-stone-100">
               {section.name}
             </h3>
             <ul className="space-y-5 sm:space-y-6">
-              {section.items.map(item => (
-                <li key={item.id} className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-1 sm:gap-6 pb-3 border-b border-stone-50 last:border-b-0">
+              {section.items.map((item, iIdx) => (
+                <li key={`minimal-item-${item.id || iIdx}-${iIdx}`} className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-1 sm:gap-6 pb-3 border-b border-stone-50 last:border-b-0">
                   <div className="min-w-0">
                     <div className="text-stone-900 font-medium text-sm sm:text-base flex flex-wrap items-baseline gap-1.5">
                       <span>{item.name}</span>
@@ -242,8 +242,8 @@ function BistroMenu(props: Props) {
     <div className="bg-[#f7f3ea] rounded-3xl border border-[#e6dcc8] p-5 sm:p-8 md:p-10 lg:p-12 shadow-xs">
       <Masthead {...props} accentClass="text-[#a98d5f]" titleClass="font-serif text-3xl sm:text-4xl md:text-5xl text-[#3f3527] tracking-tight" />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 sm:gap-x-10 lg:gap-x-12 gap-y-8 sm:gap-y-10">
-        {restaurant.sections.map(section => (
-          <section key={section.id} className="break-inside-avoid">
+        {restaurant.sections.map((section, sIdx) => (
+          <section key={`bistro-sec-${section.id || sIdx}-${sIdx}`} className="break-inside-avoid">
             <h3 className="font-serif text-lg sm:text-xl text-[#3f3527] pb-2 mb-3 sm:mb-4 border-b-2 border-[#e6dcc8] font-bold">
               {section.name}
             </h3>
@@ -251,8 +251,8 @@ function BistroMenu(props: Props) {
               <p className="text-xs sm:text-sm text-[#7a6a52] mb-3 italic">{section.description}</p>
             )}
             <ul className="space-y-3.5 sm:space-y-4">
-              {section.items.map(item => (
-                <li key={item.id} className="flex items-baseline justify-between gap-3">
+              {section.items.map((item, iIdx) => (
+                <li key={`bistro-item-${item.id || iIdx}-${iIdx}`} className="flex items-baseline justify-between gap-3">
                   <div className="min-w-0">
                     <div className="font-semibold text-[#3f3527] text-sm sm:text-base flex flex-wrap items-baseline gap-1.5">
                       <span>{item.name}</span>
@@ -283,16 +283,16 @@ function ModernMenu(props: Props) {
     <div className="bg-stone-50 rounded-3xl border border-stone-200 p-5 sm:p-8 md:p-10 lg:p-12 shadow-xs">
       <Masthead {...props} align="left" titleClass="text-2xl sm:text-3xl md:text-4xl font-bold text-stone-900 tracking-tight" />
       <div className="space-y-8 sm:space-y-10">
-        {restaurant.sections.map(section => (
-          <section key={section.id}>
+        {restaurant.sections.map((section, sIdx) => (
+          <section key={`modern-sec-${section.id || sIdx}-${sIdx}`}>
             <div className="flex items-baseline gap-3 mb-4 sm:mb-5">
               <h3 className="text-base sm:text-lg font-bold text-stone-900">{section.name}</h3>
               <span className="flex-1 h-px bg-stone-200" />
               <span className="text-xs text-stone-400 font-medium">{section.items.length} items</span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
-              {section.items.map(item => (
-                <article key={item.id} className="bg-white rounded-2xl border border-stone-200/90 p-4 sm:p-5 flex flex-col justify-between shadow-2xs hover:shadow-xs transition-shadow">
+              {section.items.map((item, iIdx) => (
+                <article key={`modern-item-${item.id || iIdx}-${iIdx}`} className="bg-white rounded-2xl border border-stone-200/90 p-4 sm:p-5 flex flex-col justify-between shadow-2xs hover:shadow-xs transition-shadow">
                   <div>
                     <div className="flex items-start justify-between gap-2.5 mb-2">
                       <h4 className="font-semibold text-stone-900 text-sm sm:text-base leading-snug">{item.name}</h4>
@@ -324,8 +324,8 @@ function HeritageMenu(props: Props) {
       <div className="border-2 border-double border-stone-300 rounded-2xl p-5 sm:p-8 md:p-12 lg:p-14">
         <Masthead {...props} titleClass="font-serif text-2xl sm:text-3xl md:text-4xl text-stone-900 tracking-[0.08em] uppercase" />
         <div className="space-y-10 sm:space-y-12 max-w-2xl mx-auto">
-          {restaurant.sections.map(section => (
-            <section key={section.id}>
+          {restaurant.sections.map((section, sIdx) => (
+            <section key={`heritage-sec-${section.id || sIdx}-${sIdx}`}>
               <div className="text-center mb-5 sm:mb-6">
                 <h3 className="font-serif text-xs sm:text-sm uppercase tracking-[0.25em] sm:tracking-[0.3em] text-stone-700 font-bold">
                   {section.name}
@@ -333,8 +333,8 @@ function HeritageMenu(props: Props) {
                 <span className="block w-20 sm:w-24 h-px bg-stone-300 mx-auto mt-2.5" />
               </div>
               <ul className="space-y-5 sm:space-y-6">
-                {section.items.map(item => (
-                  <li key={item.id} className="text-center space-y-1">
+                {section.items.map((item, iIdx) => (
+                  <li key={`heritage-item-${item.id || iIdx}-${iIdx}`} className="text-center space-y-1">
                     <div className="font-serif text-base sm:text-lg text-stone-900 tracking-wide flex flex-wrap items-baseline justify-center gap-1.5">
                       <span>{item.name}</span>
                       <Tags tags={item.tags} />

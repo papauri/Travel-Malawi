@@ -204,8 +204,8 @@ export default function ConferenceManager({ hotelId }: Props) {
                   
                   {room.amenities && room.amenities.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 mb-4">
-                      {room.amenities.slice(0, 5).map(a => (
-                        <span key={a} className="bg-stone-100 text-stone-600 px-2.5 py-1 rounded-md text-[10px] uppercase font-bold tracking-wider">{a}</span>
+                      {room.amenities.slice(0, 5).map((a, aIdx) => (
+                        <span key={`${a}-${aIdx}`} className="bg-stone-100 text-stone-600 px-2.5 py-1 rounded-md text-[10px] uppercase font-bold tracking-wider">{a}</span>
                       ))}
                       {room.amenities.length > 5 && (
                         <span className="text-[10px] text-stone-400 font-bold px-1 py-1">+{room.amenities.length - 5} more</span>

@@ -5,7 +5,8 @@ import {
   Image as ImageIcon,
   Loader2,
   Eye,
-  Info
+  Info,
+  Trash2,
 } from "lucide-react";
 import Tooltip from './Tooltip';
 import {
@@ -127,8 +128,18 @@ export default function ImageUpload({
             alt="Preview"
             className="w-full h-full object-cover"
           />
+          <div className="absolute top-3 right-3 z-10">
+            <button
+              type="button"
+              onClick={() => onChange("")}
+              className="px-2.5 py-1.5 bg-stone-900/80 hover:bg-red-600 text-white rounded-lg transition-colors backdrop-blur-sm shadow text-xs flex items-center gap-1.5 font-medium cursor-pointer"
+              title="Remove photo"
+            >
+              <Trash2 className="w-3.5 h-3.5" /> Remove
+            </button>
+          </div>
           {mode === "url" && (
-            <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="absolute inset-0 pointer-events-none bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
               <span className="text-white text-sm font-medium drop-shadow-md bg-black/40 px-3 py-1 rounded-full">
                 Current Cover Photo
               </span>

@@ -19,6 +19,7 @@ import { PROPERTY_CATEGORIES, COMMON_AMENITIES } from '../lib/listing';
 import { distanceKm, isValidLatLng, resolveHotelCoordinates, LatLng, estimateTravelTime, getDirectionsUrl } from '../lib/geo';
 import { getCachedHotels, saveCachedHotels, getCachedRooms, saveCachedRooms } from '../lib/mapCache';
 import PriceDisplay from '../components/PriceDisplay';
+import { openAccessPermissionsModal } from '../components/AccessRequestModal';
 
 type SortKey = 'recommended' | 'distance_asc' | 'price_asc' | 'price_desc' | 'rating' | 'name_asc';
 
@@ -160,7 +161,8 @@ export default function Home() {
         setIsLocatingUser(false);
         let msg = 'Could not access your location. Please check browser permissions.';
         if (err.code === 1) { // PERMISSION_DENIED
-          msg = 'Location permission was denied. Enable location in browser settings.';
+          msg = 'Location permission was denied. Tap to review permissions.';
+          openAccessPermissionsModal();
         } else if (err.code === 3) { // TIMEOUT
           msg = 'Location request timed out. Please try again.';
         }
@@ -478,7 +480,10 @@ export default function Home() {
         });
         toast.success(`Found your location! Showing places within ${searchProximity}km.`);
       },
-      () => toast.error("Could not get your location. Please check browser permissions.")
+      () => {
+        toast.error("Could not get your location. Please check browser permissions.");
+        openAccessPermissionsModal();
+      }
     );
   };
 
@@ -913,7 +918,7 @@ export default function Home() {
                         <h4 className="text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-2 px-2">Suggestions</h4>
                         <ul className="space-y-1">
                           {searchSuggestions.map((suggestion, i) => (
-                            <li key={i}>
+                            <li key={`${suggestion.text}-${i}`}>
                               <button
                                 type="button"
                                 onClick={() => {
@@ -988,7 +993,7 @@ export default function Home() {
                         </div>
                         <ul className="space-y-1">
                           {recentSearches.map((rs, i) => (
-                            <li key={i}>
+                            <li key={`${rs.location}-${rs.timestamp || i}`}>
                               <button
                                 type="button"
                                 onClick={() => {
@@ -1036,9 +1041,9 @@ export default function Home() {
                       <div className="pt-2 border-t border-stone-200/60">
                         <h4 className="text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1.5 px-2">Popular destinations</h4>
                         <div className="flex flex-wrap gap-1 px-1">
-                          {popularDestinations.map(dest => (
+                          {popularDestinations.map((dest, dIdx) => (
                             <button
-                              key={`drop-${dest}`}
+                              key={`drop-${dest}-${dIdx}`}
                               type="button"
                               onClick={() => {
                                 setSearchLocation(dest);
@@ -1147,8 +1152,8 @@ export default function Home() {
                     { label: 'Adults', hint: 'Ages 13 or above', value: adults, set: setAdults, min: 1, max: 16 },
                     { label: 'Children', hint: 'Ages 2–12', value: children, set: setChildren, min: 0, max: 16 },
                     { label: 'Rooms', hint: 'Up to 8', value: roomsWanted, set: setRoomsWanted, min: 1, max: 8 },
-                  ] as const).map(row => (
-                    <div key={row.label} className="flex items-center justify-between px-2.5 py-2 rounded-xl hover:bg-stone-200/50">
+                  ] as const).map((row, rIdx) => (
+                    <div key={`${row.label}-${rIdx}`} className="flex items-center justify-between px-2.5 py-2 rounded-xl hover:bg-stone-200/50">
                       <div>
                         <span className="block text-xs font-semibold text-stone-900">{row.label}</span>
                         <span className="text-[10px] text-stone-500">{row.hint}</span>
@@ -1206,9 +1211,9 @@ export default function Home() {
                 Popular right now
               </span>
               <div className="flex flex-wrap items-center gap-2">
-                {popularDestinations.map(destination => (
+                {popularDestinations.map((destination, dIdx) => (
                   <button
-                    key={destination}
+                    key={`pop-${destination}-${dIdx}`}
                     type="button"
                     onClick={() => {
                       setSearchLocation(destination);
@@ -1262,7 +1267,7 @@ export default function Home() {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {featuredHotels.map((entry, index) => (
-                  <Link key={entry.hotel.id} to={`/hotel/${entry.hotel.id}`} className="group flex flex-col gap-3">
+                  <Link key={`featured-${entry.hotel.id || 'hotel'}-${index}`} to={`/hotel/${entry.hotel.id}`} className="group flex flex-col gap-3">
                     <div className="relative w-full aspect-[4/3] overflow-hidden bg-stone-100 rounded-2xl shadow-xs">
                       <SmartImage
                         src={getHotelImage(entry.hotel)}
@@ -1383,8 +1388,8 @@ export default function Home() {
                 onChange={e => setActiveCategory(e.target.value)}
                 className="bg-white border border-stone-200 rounded-full px-3.5 py-1.5 text-xs font-semibold text-stone-700 outline-none focus:border-stone-900 transition shadow-2xs"
               >
-                {(['All', ...PROPERTY_CATEGORIES] as string[]).map(category => (
-                  <option key={category} value={category}>{category === 'All' ? 'All Types' : category}</option>
+                {(['All', ...PROPERTY_CATEGORIES] as string[]).map((category, cIdx) => (
+                  <option key={`cat-${category}-${cIdx}`} value={category}>{category === 'All' ? 'All Types' : category}</option>
                 ))}
               </select>
             </label>
@@ -1401,10 +1406,10 @@ export default function Home() {
                 <ChevronDown className="w-3 h-3 text-stone-400 group-open:rotate-180 transition-transform" />
               </summary>
               <div className="absolute right-0 mt-2 w-56 bg-white border border-stone-200 rounded-2xl shadow-xl z-50 p-2 flex flex-col gap-1">
-                {COMMON_AMENITIES.map(amenity => {
+                {COMMON_AMENITIES.map((amenity, aIdx) => {
                   const isActive = activeAmenities.includes(amenity);
                   return (
-                    <label key={amenity} className="flex items-center gap-3 px-3 py-2 hover:bg-stone-50 rounded-xl cursor-pointer text-sm transition">
+                    <label key={`amenity-${amenity}-${aIdx}`} className="flex items-center gap-3 px-3 py-2 hover:bg-stone-50 rounded-xl cursor-pointer text-sm transition">
                       <input 
                         type="checkbox" 
                         checked={isActive}
@@ -1479,9 +1484,9 @@ export default function Home() {
             {/* Currency selector */}
             {offeredCurrencies.length > 1 && (
               <div className="flex items-center gap-1.5 bg-stone-50 p-1 rounded-full border border-stone-200">
-                {offeredCurrencies.map(code => (
+                {offeredCurrencies.map((code, cIdx) => (
                   <button
-                    key={code}
+                    key={`curr-${code}-${cIdx}`}
                     type="button"
                     onClick={() => chooseCurrency(code)}
                     aria-pressed={currency === code}
@@ -1568,7 +1573,7 @@ export default function Home() {
             )}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {[...Array(8)].map((_, i) => (
-                <div key={i} className="flex flex-col gap-3">
+                <div key={`skeleton-${i}`} className="flex flex-col gap-3">
                   <div className="animate-pulse bg-stone-200/80 rounded-2xl aspect-[4/3] w-full" />
                   <div className="animate-pulse bg-stone-200/70 h-3 w-1/3 rounded-full mt-1" />
                   <div className="animate-pulse bg-stone-200/90 h-5 w-3/4 rounded-md" />
@@ -1585,7 +1590,7 @@ export default function Home() {
                 <div id="grid-canvas" className="scroll-mt-24 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 gap-y-8">
                   {filteredHotels.length > 0 ? filteredHotels.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((entry, index) => (
                     <HotelCard
-                      key={entry.hotel.id}
+                      key={`hotel-card-${entry.hotel.id || 'hotel'}-${index}`}
                       hotel={entry.hotel}
                       index={index}
                       priceFrom={entry.priceFrom}
@@ -1661,7 +1666,7 @@ export default function Home() {
                         </button>
                       </div>
                     ) : (
-                      filteredHotels.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map(entry => {
+                      filteredHotels.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((entry, index) => {
                         const hotel = entry.hotel;
                         const isSelected = selectedMapLodgeId === hotel.id;
                         const priceDisplay = entry.priceFrom
@@ -1678,7 +1683,7 @@ export default function Home() {
 
                         return (
                           <div
-                            key={hotel.id}
+                            key={`map-hotel-${hotel.id || 'hotel'}-${index}`}
                             id={`map-card-${hotel.id}`}
                             onClick={() => setSelectedMapLodgeId(isSelected ? null : hotel.id ?? null)}
                             className={`group p-3 sm:p-3.5 rounded-2xl border transition-all duration-200 cursor-pointer bg-white ${
@@ -1922,8 +1927,8 @@ export default function Home() {
                 { term: 'Paid on arrival', detail: 'Guests settle with you, in kwacha or dollars.' },
                 { term: 'One dashboard', detail: 'Rooms, rates, blocked dates and every request.' },
                 { term: 'WhatsApp built in', detail: 'Confirmations reach guests where they read.' },
-              ].map(item => (
-                <div key={item.term} className="rounded-xl border border-white/15 bg-white/[0.07] p-4 backdrop-blur-sm">
+              ].map((item, tIdx) => (
+                <div key={`feat-term-${item.term}-${tIdx}`} className="rounded-xl border border-white/15 bg-white/[0.07] p-4 backdrop-blur-sm">
                   <dt className="mb-1 text-sm font-bold text-white">{item.term}</dt>
                   <dd className="text-xs leading-relaxed text-white/65">{item.detail}</dd>
                 </div>

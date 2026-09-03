@@ -3,9 +3,10 @@ import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useAuthDialog } from '../contexts/AuthDialogContext';
-import { Search, LogIn, User as UserIcon, Briefcase, Building2, Heart, Menu, X, LogOut, Settings } from 'lucide-react';
+import { Search, LogIn, User as UserIcon, Briefcase, Building2, Heart, Menu, X, LogOut, Settings, ShieldCheck } from 'lucide-react';
 import { isHotelManager, isTraveller, describeRoles, isAdmin } from '../lib/roles';
 import { motion, AnimatePresence } from 'motion/react';
+import { openAccessPermissionsModal } from './AccessRequestModal';
 
 export default function MobileNav() {
   const { pathname } = useLocation();
@@ -146,21 +147,39 @@ export default function MobileNav() {
                         <span>Profile Settings</span>
                       </Link>
                       <button
+                        type="button"
+                        onClick={() => { setIsOpen(false); openAccessPermissionsModal(); }}
+                        className="w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition text-stone-600 hover:bg-stone-50 hover:text-stone-900 cursor-pointer"
+                      >
+                        <ShieldCheck className="w-5 h-5 text-emerald-600" />
+                        <span>Device Permissions</span>
+                      </button>
+                      <button
                         onClick={() => { logOut(); setIsOpen(false); }}
-                        className="w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition text-red-600 hover:bg-red-50"
+                        className="w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition text-red-600 hover:bg-red-50 cursor-pointer"
                       >
                         <LogOut className="w-5 h-5" />
                         <span>Sign out</span>
                       </button>
                     </>
                   ) : (
-                    <button
-                      onClick={() => { openAuth('signin'); setIsOpen(false); }}
-                      className="w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition text-stone-900 font-medium hover:bg-stone-50"
-                    >
-                      <LogIn className="w-5 h-5" />
-                      <span>Sign in to your account</span>
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => { setIsOpen(false); openAccessPermissionsModal(); }}
+                        className="w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition text-stone-600 hover:bg-stone-50 hover:text-stone-900 cursor-pointer"
+                      >
+                        <ShieldCheck className="w-5 h-5 text-emerald-600" />
+                        <span>Device Permissions</span>
+                      </button>
+                      <button
+                        onClick={() => { openAuth('signin'); setIsOpen(false); }}
+                        className="w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition text-stone-900 font-medium hover:bg-stone-50 cursor-pointer"
+                      >
+                        <LogIn className="w-5 h-5" />
+                        <span>Sign in to your account</span>
+                      </button>
+                    </>
                   )}
                 </div>
               </div>

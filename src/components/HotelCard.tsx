@@ -162,7 +162,7 @@ export default function HotelCard({ hotel, searchParams, index, priceFrom, price
             <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1.5 z-10">
               {allImages.map((image, i) => (
                 <div 
-                  key={image} 
+                  key={`${image}-${i}`} 
                   className={`h-1 transition-all ${i === currentImageIdx ? 'w-6 bg-white' : 'w-2 bg-white/50'}`}
                 />
               ))}

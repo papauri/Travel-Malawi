@@ -10,7 +10,7 @@ import toast from 'react-hot-toast';
 
 import SmartImage from '../components/SmartImage';
 import { getHotelImage } from '../lib/images';
-import { isHotelManager } from '../lib/roles';
+import { isHotelManager, isAdmin } from '../lib/roles';
 
 import Pagination from '../components/Pagination';
 
@@ -50,12 +50,38 @@ export default function ManagerDashboard() {
 
   const fetchMyHotels = async () => {
     try {
-      const q = query(collection(db, 'hotels'), where("managerId", "==", user?.uid));
-      const querySnapshot = await getDocs(q);
-      const hotelsData = querySnapshot.docs.map(doc => ({
+      const querySnapshot = await getDocs(collection(db, 'hotels'));
+      const allHotels = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as Hotel[];
+
+      const userEmailLower = user?.email?.toLowerCase();
+      const userIsAdmin = isAdmin(user);
+
+      const hotelsData = allHotels.filter(h => {
+        if (userIsAdmin) return true;
+        const hasAssignedManager = Boolean(
+          h.managerId &&
+          h.managerId !== 'unassigned' &&
+          h.managerId !== 'none' &&
+          h.managerId.trim() !== ''
+        );
+
+        if (hasAssignedManager && h.managerId === user?.uid) return true;
+        if (userEmailLower) {
+          if (h.managerEmail && h.managerEmail.toLowerCase() === userEmailLower) return true;
+          if (h.ownerEmail && h.ownerEmail.toLowerCase() === userEmailLower) return true;
+          if (h.contactEmail && h.contactEmail.toLowerCase() === userEmailLower) return true;
+        }
+        if ((h as any).ownerId === user?.uid || (h as any).createdBy === user?.uid) return true;
+        
+        // Unassigned properties belong to the signed-in user
+        if (!hasAssignedManager) return true;
+
+        return false;
+      });
+
       setHotels(hotelsData);
 
       // A dashboard that only lists names cannot tell you which property needs
@@ -156,7 +182,7 @@ export default function ManagerDashboard() {
             </Link>
           </div>
         ) : (
-          hotels.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map(hotel => {
+          hotels.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((hotel, hIdx) => {
             const targetUrl = (summaryByHotel.get(hotel.id!)?.pending ?? 0) > 0
                   ? `/dashboard/hotel/${hotel.id}?tab=bookings`
                   : (summaryByHotel.get(hotel.id!)?.rooms ?? 0) === 0
@@ -164,7 +190,7 @@ export default function ManagerDashboard() {
                     : `/dashboard/hotel/${hotel.id}`;
             return (
             <div
-              key={hotel.id}
+              key={`mgr-hotel-${hotel.id || hIdx}-${hIdx}`}
               className="group bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden flex flex-col hover:border-stone-400 transition duration-300 relative"
             >
               <Link to={targetUrl} className="absolute inset-0 z-0" aria-label={`Manage ${hotel.name}`} />

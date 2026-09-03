@@ -136,6 +136,9 @@ export function useWebRTC(chatId: string, currentUserId: string, currentUserName
       setError(err.message);
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
         toast('Call cancelled. Camera/microphone access was denied. You can continue using text chat.', { icon: '🚫' });
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('open-access-permissions-modal'));
+        }
       } else {
         toast.error('Could not access camera/microphone. Please check your device settings.');
       }

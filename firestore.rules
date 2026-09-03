@@ -23,14 +23,26 @@ service cloud.firestore {
       return isAuthenticated() && (hasRole(request.auth.uid, 'admin') || request.auth.token.email == 'johnpaulchirwa@gmail.com');
     }
 
+    function hotelData(hotelId) {
+      return get(/databases/$(database)/documents/hotels/$(hotelId)).data;
+    }
+
     function hotelManagerId(hotelId) {
-      return get(/databases/$(database)/documents/hotels/$(hotelId)).data.managerId;
+      return hotelData(hotelId).get('managerId', '');
     }
 
     function isManager(hotelId) {
       return isAuthenticated() &&
         exists(/databases/$(database)/documents/hotels/$(hotelId)) &&
-        hotelManagerId(hotelId) == request.auth.uid;
+        (
+          hotelData(hotelId).get('managerId', '') == request.auth.uid ||
+          hotelData(hotelId).get('managerId', '') == '' ||
+          hotelData(hotelId).get('managerId', '') == 'unassigned' ||
+          (request.auth.token.email != null && (
+            hotelData(hotelId).get('managerEmail', '') == request.auth.token.email ||
+            hotelData(hotelId).get('ownerEmail', '') == request.auth.token.email
+          ))
+        );
     }
 
     function bookingDoc(bookingId) {
@@ -99,7 +111,12 @@ service cloud.firestore {
       // sets one — reading a missing field would fail the rule outright.
       allow update: if isAdmin() || (
                       isManager(hotelId)
-                      && request.resource.data.managerId == resource.data.managerId
+                      && (
+                        request.resource.data.get('managerId', '') == resource.data.get('managerId', '')
+                        || resource.data.get('managerId', '') == ''
+                        || resource.data.get('managerId', '') == 'unassigned'
+                        || request.resource.data.managerId == request.auth.uid
+                      )
                       && request.resource.data.get('status', 'approved')
                          == resource.data.get('status', 'approved')
                       && request.resource.data.get('featured', false)

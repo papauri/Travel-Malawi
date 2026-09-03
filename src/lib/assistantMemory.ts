@@ -1,12 +1,15 @@
 import { db } from './firebase';
-import { collection, doc, setDoc, deleteDoc, getDocs, query, where, orderBy } from 'firebase/firestore';
+import { collection, doc, setDoc, deleteDoc, getDocs, query, where } from 'firebase/firestore';
 
 export interface LearnedDirective {
   id: string;
   text: string;
   createdAt: number;
-  authorRole?: 'admin' | 'hotel_manager';
+  authorRole?: 'admin' | 'hotel_manager' | 'autonomous_engine';
   userId?: string;
+  type?: 'directive' | 'autonomous_patch' | 'mistake_correction';
+  trigger?: string; // what prompted this patch/directive
+  resolution?: string; // how the patch corrects behavior
 }
 
 const STORAGE_PREFIX = 'tm_ai_directives_';
@@ -14,12 +17,21 @@ const STORAGE_PREFIX = 'tm_ai_directives_';
 const DEFAULT_DIRECTIVES: Omit<LearnedDirective, 'id' | 'createdAt'>[] = [
   {
     text: 'Standard Malawi lodge check-in begins at 14:00; checkout is at 10:00 AM unless early/late arrangement is noted.',
+    type: 'directive',
   },
   {
     text: 'Always clarify if boat transfers, park conservation fees, or meal packages (like breakfast) are included in quoted lodge room rates.',
+    type: 'directive',
   },
   {
     text: 'Prioritize USD for international travel inquiries and MWK for domestic resident reservations when requested.',
+    type: 'directive',
+  },
+  {
+    text: 'When asked about property owners or managers, always state their names and contact details (email, phone, WhatsApp) accurately from the verified platform records.',
+    type: 'autonomous_patch',
+    trigger: 'User inquiry about property ownership transparency',
+    resolution: 'Transparently disclose assigned manager/owner names, emails, and contact numbers.',
   },
 ];
 
@@ -39,6 +51,9 @@ export function getLearnedDirectives(userId: string = 'global'): LearnedDirectiv
       text: d.text,
       createdAt: Date.now() - (index * 60000),
       userId,
+      type: d.type || 'directive',
+      trigger: d.trigger,
+      resolution: d.resolution,
     }));
     localStorage.setItem(`${STORAGE_PREFIX}${userId}`, JSON.stringify(seeded));
     return seeded;
@@ -66,6 +81,9 @@ export async function syncDirectivesWithCloud(userId: string = 'global'): Promis
       createdAt: d.data().createdAt || Date.now(),
       authorRole: d.data().authorRole,
       userId: d.data().userId || userId,
+      type: d.data().type || 'directive',
+      trigger: d.data().trigger,
+      resolution: d.data().resolution,
     }));
 
     // Merge cloud and local directives by text / id
@@ -93,15 +111,31 @@ export async function syncDirectivesWithCloud(userId: string = 'global'): Promis
 export function addLearnedDirective(
   userId: string = 'global',
   text: string,
-  role?: 'admin' | 'hotel_manager'
+  role?: 'admin' | 'hotel_manager' | 'autonomous_engine',
+  type: 'directive' | 'autonomous_patch' | 'mistake_correction' = 'directive',
+  trigger?: string,
+  resolution?: string
 ): LearnedDirective {
   const clean = text.trim();
   if (!clean) throw new Error('Directive text cannot be empty.');
 
   const current = getLearnedDirectives(userId);
   // Avoid exact duplicates
-  const existing = current.find(d => d.text.toLowerCase() === clean.toLowerCase());
-  if (existing) return existing;
+  const existingIndex = current.findIndex(d => d.text.toLowerCase() === clean.toLowerCase());
+  if (existingIndex >= 0) {
+    // Update existing
+    const updatedItem = {
+      ...current[existingIndex],
+      type: type || current[existingIndex].type,
+      trigger: trigger || current[existingIndex].trigger,
+      resolution: resolution || current[existingIndex].resolution,
+    };
+    current[existingIndex] = updatedItem;
+    try {
+      localStorage.setItem(`${STORAGE_PREFIX}${userId}`, JSON.stringify(current));
+    } catch {}
+    return updatedItem;
+  }
 
   const newItem: LearnedDirective = {
     id: `rule_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
@@ -109,6 +143,9 @@ export function addLearnedDirective(
     createdAt: Date.now(),
     authorRole: role,
     userId,
+    type,
+    trigger,
+    resolution,
   };
 
   const updated = [newItem, ...current];
@@ -125,10 +162,29 @@ export function addLearnedDirective(
       createdAt: newItem.createdAt,
       authorRole: newItem.authorRole || 'hotel_manager',
       userId,
+      type: newItem.type || 'directive',
+      trigger: newItem.trigger || '',
+      resolution: newItem.resolution || '',
     }).catch(err => console.warn('Failed to write directive to Firestore:', err));
   }
 
   return newItem;
+}
+
+export function addAutonomousPatch(
+  userId: string = 'global',
+  patchText: string,
+  trigger?: string,
+  resolution?: string
+): LearnedDirective {
+  return addLearnedDirective(
+    userId,
+    patchText,
+    'autonomous_engine',
+    'autonomous_patch',
+    trigger || 'Self-detected correction / error recovery',
+    resolution || 'Autonomous behavioral patch applied to concierge memory'
+  );
 }
 
 export function removeLearnedDirective(userId: string = 'global', id: string): void {
@@ -153,4 +209,3 @@ export function clearLearnedDirectives(userId: string = 'global'): void {
     console.warn('Failed to clear learned directives:', err);
   }
 }
-

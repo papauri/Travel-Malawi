@@ -5,7 +5,7 @@ import {
   ChevronDown, ExternalLink, Calendar, Building, DollarSign, 
   TrendingUp, Clock, AlertCircle, Loader2, CheckCircle2, ShieldAlert,
   ArrowRight, Settings2, Sliders, Info, SlidersHorizontal, ConciergeBell,
-  Utensils, Coffee, Sparkles, Layers, ShieldCheck, Minus, Maximize2
+  Utensils, Coffee, Sparkles, Layers, ShieldCheck, Minus, Maximize2, Minimize2
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import toast from 'react-hot-toast';
@@ -19,6 +19,7 @@ import {
   getLearnedDirectives, 
   syncDirectivesWithCloud,
   addLearnedDirective, 
+  addAutonomousPatch,
   removeLearnedDirective, 
   LearnedDirective 
 } from '../lib/assistantMemory';
@@ -30,6 +31,7 @@ interface ChatMessage {
   actionProposal?: ActionProposal | null;
   actionApplied?: boolean;
   actionRejected?: boolean;
+  suggestedFollowUps?: string[];
   timestamp: number;
 }
 
@@ -99,6 +101,7 @@ export default function OperationsCopilot() {
 
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [viewingMemory, setViewingMemory] = useState(false);
   const [newDirectiveInput, setNewDirectiveInput] = useState('');
   const [learnedRules, setLearnedRules] = useState<LearnedDirective[]>([]);
@@ -109,6 +112,7 @@ export default function OperationsCopilot() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [conferences, setConferences] = useState<any[]>([]);
   const [dataLoading, setDataLoading] = useState(false);
+  const [hasFetched, setHasFetched] = useState(false);
 
   // Chat conversation
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -119,6 +123,7 @@ export default function OperationsCopilot() {
   const [proposalHotelSelections, setProposalHotelSelections] = useState<Record<string, string[]>>({});
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatScrollContainerRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<HTMLInputElement>(null);
 
   const userIsAdmin = isAdmin(user);
@@ -169,9 +174,34 @@ export default function OperationsCopilot() {
         bookingDocs = bookingsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Booking));
         confDocs = confSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
       } else {
-        // Property Managers are strictly scoped to their own assigned properties
-        const hotelsSnap = await getDocs(query(collection(db, 'hotels'), where('managerId', '==', user.uid)));
-        hotelDocs = hotelsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Hotel));
+        // Property Managers: fetch all platform hotels to accurately identify the user's properties
+        // Just because a property has no manager assigned, it DOES belong to the signed-in user!
+        const hotelsSnap = await getDocs(collection(db, 'hotels'));
+        const allHotels = hotelsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Hotel));
+
+        const userEmailLower = user.email?.toLowerCase();
+        hotelDocs = allHotels.filter(h => {
+          const hasAssignedManager = Boolean(
+            h.managerId &&
+            h.managerId !== 'unassigned' &&
+            h.managerId !== 'none' &&
+            h.managerId.trim() !== ''
+          );
+
+          if (hasAssignedManager && h.managerId === user.uid) return true;
+          if (userEmailLower) {
+            if (h.managerEmail && h.managerEmail.toLowerCase() === userEmailLower) return true;
+            if (h.ownerEmail && h.ownerEmail.toLowerCase() === userEmailLower) return true;
+            if (h.contactEmail && h.contactEmail.toLowerCase() === userEmailLower) return true;
+          }
+          if ((h as any).ownerId === user.uid || (h as any).createdBy === user.uid) return true;
+          
+          // CRITICAL: Unassigned properties belong to the signed-in user!
+          if (!hasAssignedManager) return true;
+
+          return false;
+        });
+
         const hotelIds = hotelDocs.map(h => h.id).filter(Boolean) as string[];
 
         if (hotelIds.length > 0) {
@@ -200,6 +230,7 @@ export default function OperationsCopilot() {
       console.warn('Could not load live operations data:', err);
     } finally {
       setDataLoading(false);
+      setHasFetched(true);
     }
   };
 
@@ -226,19 +257,20 @@ export default function OperationsCopilot() {
 
   // Initial welcome message distinguishing Global Admin vs Manager
   useEffect(() => {
-    if (messages.length === 0 && isAuthorized) {
+    if (messages.length === 0 && isAuthorized && hasFetched) {
       const greeting = userFirstName ? `Hi ${userFirstName}` : 'Hello';
       if (userIsAdmin) {
+        const propText = properties.length > 0 ? `all **${properties.length} platform properties**` : `the platform`;
         setMessages([
           {
             id: 'welcome',
             role: 'assistant',
-            content: `${greeting}! I have live visibility across all **${properties.length} platform properties**.\n\nWhat would you like to review, audit, or adjust today?`,
+            content: `${greeting}! I have live visibility across ${propText}.\n\nWhat would you like to review, audit, or adjust today?`,
             timestamp: Date.now(),
           },
         ]);
       } else {
-        const propNames = properties.map(p => `**${p.name}**`).join(', ') || 'your lodge';
+        const propNames = properties.map(p => `**${p.name}**`).join(', ') || 'your properties';
         setMessages([
           {
             id: 'welcome',
@@ -249,14 +281,64 @@ export default function OperationsCopilot() {
         ]);
       }
     }
-  }, [user, isAuthorized, messages.length, userIsAdmin, properties.length, userFirstName]);
+  }, [user, isAuthorized, messages.length, userIsAdmin, properties, userFirstName, hasFetched]);
 
-  // Scroll chat to bottom
+  // Scroll chat messages container smoothly to bottom on new messages without scrolling the background window
   useEffect(() => {
-    if (isOpen) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (isOpen && !isMinimized && chatScrollContainerRef.current) {
+      const el = chatScrollContainerRef.current;
+      el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
     }
-  }, [messages, isOpen]);
+  }, [messages, isOpen, isMinimized]);
+
+  // Prevent body & html scrolling and pause smooth scroller when chat is open and not minimized
+  useEffect(() => {
+    const lenisInstance = (window as any).__lenis;
+    if (isOpen && !isMinimized) {
+      document.body.style.overflow = 'hidden';
+      document.documentElement.style.overflow = 'hidden';
+      if (lenisInstance && typeof lenisInstance.stop === 'function') {
+        lenisInstance.stop();
+      }
+    } else {
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+      if (lenisInstance && typeof lenisInstance.start === 'function') {
+        lenisInstance.start();
+      }
+    }
+    return () => {
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+      if (lenisInstance && typeof lenisInstance.start === 'function') {
+        lenisInstance.start();
+      }
+    };
+  }, [isOpen, isMinimized]);
+
+  // Isolate wheel scrolling inside the chat window so it never bubbles or chains to the page behind
+  useEffect(() => {
+    const el = chatScrollContainerRef.current;
+    if (!el || !isOpen || isMinimized) return;
+
+    const handleNativeWheel = (e: WheelEvent) => {
+      e.stopPropagation();
+      const { scrollTop, scrollHeight, clientHeight } = el;
+      const isAtTop = scrollTop <= 0;
+      const isAtBottom = scrollTop + clientHeight >= scrollHeight - 1;
+
+      // When scrolling up and already at the top, or scrolling down and already at the bottom,
+      // prevent default to stop the browser from chaining the scroll to the background window/page
+      if ((e.deltaY < 0 && isAtTop) || (e.deltaY > 0 && isAtBottom)) {
+        e.preventDefault();
+      }
+    };
+
+    el.addEventListener('wheel', handleNativeWheel, { passive: false });
+    return () => {
+      el.removeEventListener('wheel', handleNativeWheel);
+    };
+  }, [isOpen, isMinimized]);
 
   // If not authorized or AI is disabled globally, do not render
   if (!isAuthorized || !aiStatus.enabled) {
@@ -266,6 +348,9 @@ export default function OperationsCopilot() {
   // Quick live metrics
   const arrivalsCountToday = bookings.filter(b => b.checkIn === todayStr && b.status !== 'cancelled').length;
   const departuresCountToday = bookings.filter(b => b.checkOut === todayStr && b.status !== 'cancelled').length;
+
+  const lastAssistantMsg = [...messages].reverse().find(m => m.role === 'assistant');
+  const dynamicSuggestions = lastAssistantMsg?.suggestedFollowUps;
 
   const handleSendMessage = async (textToSend?: string) => {
     const text = (textToSend || inputMessage).trim();
@@ -291,9 +376,10 @@ export default function OperationsCopilot() {
       context: {
         currentDateStr: todayStr,
         currentTimeStr: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        properties: properties.map(p => {
+        properties: properties.map((p, pIdx) => {
           const propRooms = rooms.filter(r => r.hotelId === p.id);
           const propConfs = conferences.filter(c => c.hotelId === p.id);
+          const isUnassigned = !p.managerId || p.managerId === 'unassigned' || p.managerId === 'none' || p.managerId.trim() === '';
           return {
             id: p.id || '',
             name: p.name,
@@ -303,13 +389,26 @@ export default function OperationsCopilot() {
             featured: Boolean(p.featured),
             isOnline: p.isOnline !== false,
             outOfOfficeMessage: p.outOfOfficeMessage,
+            managerId: isUnassigned ? (userIsAdmin ? 'unassigned' : user.uid) : p.managerId,
+            managerName: p.managerName || (!userIsAdmin ? (userFirstName || user.displayName || 'Host') : undefined),
+            managerEmail: p.managerEmail || p.contactEmail || (!userIsAdmin ? user.email || undefined : undefined),
+            managerPhone: p.managerPhone || p.contactPhone,
+            ownerName: p.ownerName,
+            ownerEmail: p.ownerEmail,
+            ownerPhone: p.ownerPhone,
+            contactWhatsapp: p.contactWhatsapp || p.contactPhone,
+            contactEmail: p.contactEmail,
+            contactPhone: p.contactPhone,
+            crew: p.crew?.map(c => ({
+              name: c.name,
+              role: c.role,
+              phone: c.phone,
+              whatsapp: c.whatsapp,
+            })),
             checkInTime: p.checkInTime || '14:00',
             checkOutTime: p.checkOutTime || '10:00',
             cancellationPolicy: p.cancellationPolicy || 'Standard',
             paymentPolicy: p.paymentPolicy || 'Direct payment',
-            contactWhatsapp: p.contactWhatsapp || p.contactPhone,
-            contactEmail: p.contactEmail,
-            contactPhone: p.contactPhone,
             amenities: p.amenities || [],
             restaurant: p.restaurant ? {
               enabled: Boolean(p.restaurant.enabled),
@@ -378,11 +477,28 @@ export default function OperationsCopilot() {
         toast.success(`🧠 Copilot learned: "${saved.text.slice(0, 50)}..."`, { icon: '🧠' });
       }
 
+      // If the AI autonomously generated a patch from a mistake, persist it!
+      if (result.autonomousPatch && user.uid) {
+        const patch = result.autonomousPatch;
+        const savedPatch = addAutonomousPatch(
+          user.uid,
+          patch.patch,
+          patch.trigger,
+          patch.resolution
+        );
+        setLearnedRules(getLearnedDirectives(user.uid));
+        toast.success(`⚡ Autonomous Concierge Patch: "${savedPatch.text.slice(0, 50)}..."`, {
+          icon: '⚡',
+          duration: 5000,
+        });
+      }
+
       const assistantMsg: ChatMessage = {
         id: `assistant_${Date.now()}`,
         role: 'assistant',
         content: result.reply,
         actionProposal: result.actionProposal,
+        suggestedFollowUps: result.suggestedFollowUps,
         timestamp: Date.now(),
       };
       setMessages(prev => [...prev, assistantMsg]);
@@ -440,22 +556,46 @@ export default function OperationsCopilot() {
     action: ActionProposal, 
     overrideTargetIds?: string[]
   ) => {
+    if (!window.confirm(`Are you sure you want to execute this action: ${action.type.replace(/_/g, ' ')}?`)) {
+      return;
+    }
+
     setExecutingAction(msgId);
     try {
       const targetIds = overrideTargetIds || getEffectiveHotelIds(msgId, action);
-      if (targetIds.length === 0) {
+      if (targetIds.length === 0 && action.type !== 'update_booking_status') {
         toast.error('Please select at least one property to apply changes to.');
+        setExecutingAction(null);
         return;
       }
 
-      // Authorization Check: Property Managers may only modify their assigned properties
+      // Authorization Check: Property Managers may only modify their own properties
       if (!userIsAdmin) {
+        const userEmailLower = user?.email?.toLowerCase();
         const unauthorized = targetIds.some(id => {
           const prop = properties.find(p => p.id === id);
-          return !prop || prop.managerId !== user?.uid;
+          if (!prop) return true;
+          const hasAssignedManager = Boolean(
+            prop.managerId &&
+            prop.managerId !== 'unassigned' &&
+            prop.managerId !== 'none' &&
+            prop.managerId.trim() !== ''
+          );
+          // If property has an assigned manager other than current user, check email
+          if (hasAssignedManager && prop.managerId !== user?.uid) {
+            if (userEmailLower && prop.managerEmail && prop.managerEmail.toLowerCase() === userEmailLower) {
+              return false;
+            }
+            if (userEmailLower && prop.ownerEmail && prop.ownerEmail.toLowerCase() === userEmailLower) {
+              return false;
+            }
+            return true;
+          }
+          // Unassigned properties belong to the signed-in user!
+          return false;
         });
         if (unauthorized) {
-          toast.error('Permission denied: You can only manage your own assigned properties.');
+          toast.error('Permission denied: You can only manage your own properties.');
           return;
         }
       }
@@ -802,96 +942,127 @@ export default function OperationsCopilot() {
       {/* 2. REFINED OPERATIONS DRAWER (z-[150] strictly above navbar)  */}
       {/* ------------------------------------------------------------- */}
       <AnimatePresence>
+        {/* Backdrop for full-sheet touch and desktop dismissal */}
         {isOpen && !isMinimized && (
           <motion.div
-            initial={{ opacity: 0, y: 15, scale: 0.98 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsMinimized(true)}
+            className="fixed inset-0 bg-stone-950/40 backdrop-blur-xs z-[145]"
+          />
+        )}
+
+        {isOpen && !isMinimized && (
+          <motion.div
+            data-lenis-prevent="true"
+            initial={{ opacity: 0, y: 20, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 15, scale: 0.98 }}
-            transition={{ duration: 0.18, ease: 'easeOut' }}
-            className="fixed bottom-4 right-3 left-3 sm:left-auto sm:right-6 sm:bottom-20 z-[150] sm:w-[420px] h-[510px] max-h-[calc(100dvh-8.5rem)] min-h-[350px] bg-white rounded-2xl shadow-2xl border border-stone-200 flex flex-col overflow-hidden"
+            exit={{ opacity: 0, y: 20, scale: 0.98 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            className={`fixed z-[150] bg-white shadow-2xl border border-stone-200/90 flex flex-col overflow-hidden transition-[width,height,inset] duration-200 ${
+              isExpanded
+                ? 'inset-x-0 bottom-0 top-4 sm:inset-x-auto sm:top-auto sm:bottom-16 sm:right-6 sm:w-[580px] sm:h-[calc(100dvh-5rem)] rounded-t-3xl sm:rounded-2xl'
+                : 'inset-x-0 bottom-0 top-10 sm:inset-x-auto sm:top-auto sm:bottom-20 sm:right-6 sm:w-[460px] h-[calc(100dvh-2.5rem)] sm:h-[680px] sm:max-h-[calc(100dvh-6.5rem)] sm:min-h-[520px] rounded-t-3xl sm:rounded-2xl'
+            }`}
           >
             {/* TOP HEADER */}
-            <div className="bg-stone-900 text-white p-3 px-3.5 sm:px-4 flex items-center justify-between border-b border-stone-800 shrink-0">
-              <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1">
-                <ConciergeAvatar size="sm" isOnline={true} />
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5 sm:gap-2">
-                    <h3 className="text-xs font-bold text-stone-100 tracking-wide flex items-center gap-1 sm:gap-1.5 truncate">
-                      {userIsAdmin ? 'Platform Concierge' : 'Lodge Concierge'}
-                      <ConciergeBell className="w-3 h-3 text-amber-400 shrink-0" />
-                    </h3>
-                    <span className="text-[9px] font-semibold bg-stone-800 text-stone-300 border border-stone-700 px-1.5 py-0.2 rounded-full uppercase tracking-wider shrink-0">
-                      {userIsAdmin ? 'Admin' : 'Manager'}
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-stone-400 truncate max-w-[170px] sm:max-w-[200px]">
-                    {userIsAdmin
-                      ? `Executive hospitality desk • ${properties.length} properties`
-                      : properties.length === 1
-                      ? `At your service at ${properties[0].name}`
-                      : `At your service • ${properties.length} assigned lodges`}
-                  </p>
-                </div>
-              </div>
+            <div className="bg-stone-900 text-white p-3 pt-[max(12px,env(safe-area-inset-top))] sm:pt-3 px-3.5 sm:px-4 flex flex-col border-b border-stone-800 shrink-0">
+              {/* Mobile grab handle */}
+              <div className="w-10 h-1 bg-stone-700/80 rounded-full mx-auto mb-2 sm:hidden shrink-0" />
 
-              <div className="flex items-center gap-0.5 sm:gap-1 text-stone-400 shrink-0">
-                {/* Rules & Directives tab toggle */}
-                <button
-                  type="button"
-                  onClick={() => setViewingMemory(prev => !prev)}
-                  className={`p-1.5 rounded-lg transition cursor-pointer ${viewingMemory ? 'bg-stone-800 text-stone-200' : 'hover:bg-stone-800 hover:text-stone-200'}`}
-                  title="Operating Rules & Preferences"
-                >
-                  <div className="relative">
-                    <Sliders className="w-3.5 h-3.5" />
-                    {learnedRules.length > 0 && (
-                      <span className="absolute -top-1 -right-1 bg-stone-700 text-stone-200 font-bold text-[8px] w-3 h-3 rounded-full flex items-center justify-center">
-                        {learnedRules.length}
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1">
+                  <ConciergeAvatar size="sm" isOnline={true} />
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                      <h3 className="text-xs font-bold text-stone-100 tracking-wide flex items-center gap-1 sm:gap-1.5 truncate">
+                        {userIsAdmin ? 'Platform Concierge' : 'Lodge Concierge'}
+                        <ConciergeBell className="w-3 h-3 text-amber-400 shrink-0" />
+                      </h3>
+                      <span className="text-[9px] font-semibold bg-stone-800 text-stone-300 border border-stone-700 px-1.5 py-0.2 rounded-full uppercase tracking-wider shrink-0">
+                        {userIsAdmin ? 'Admin' : 'Manager'}
                       </span>
-                    )}
+                    </div>
+                    <p className="text-[10px] text-stone-400 truncate max-w-[170px] sm:max-w-[200px]">
+                      {userIsAdmin
+                        ? `Executive hospitality desk • ${properties.length} properties`
+                        : properties.length === 1
+                        ? `At your service at ${properties[0].name}`
+                        : `At your service • ${properties.length} assigned lodges`}
+                    </p>
                   </div>
-                </button>
+                </div>
 
-                {/* Reset / End Chat */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMessages([]);
-                    toast.success('Session chat cleared.');
-                  }}
-                  className="p-1.5 hover:bg-stone-800 hover:text-stone-200 rounded-lg transition cursor-pointer"
-                  title="Clear conversation"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                </button>
+                <div className="flex items-center gap-0.5 sm:gap-1 text-stone-400 shrink-0">
+                  {/* Rules & Directives tab toggle */}
+                  <button
+                    type="button"
+                    onClick={() => setViewingMemory(prev => !prev)}
+                    className={`p-1.5 rounded-lg transition cursor-pointer ${viewingMemory ? 'bg-stone-800 text-stone-200' : 'hover:bg-stone-800 hover:text-stone-200'}`}
+                    title="Operating Rules & Preferences"
+                  >
+                    <div className="relative">
+                      <Sliders className="w-3.5 h-3.5" />
+                      {learnedRules.length > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-stone-700 text-stone-200 font-bold text-[8px] w-3 h-3 rounded-full flex items-center justify-center">
+                          {learnedRules.length}
+                        </span>
+                      )}
+                    </div>
+                  </button>
 
-                {/* Minimize window */}
-                <button
-                  type="button"
-                  onClick={() => setIsMinimized(true)}
-                  className="p-1.5 hover:bg-stone-800 hover:text-stone-200 rounded-lg transition cursor-pointer"
-                  title="Minimize window"
-                >
-                  <Minus className="w-3.5 h-3.5" />
-                </button>
+                  {/* Expand / Collapse toggle (Desktop) */}
+                  <button
+                    type="button"
+                    onClick={() => setIsExpanded(prev => !prev)}
+                    className="hidden sm:inline-flex p-1.5 hover:bg-stone-800 hover:text-stone-200 rounded-lg transition cursor-pointer"
+                    title={isExpanded ? "Collapse to standard size" : "Expand window"}
+                  >
+                    {isExpanded ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+                  </button>
 
-                {/* Close window */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsOpen(false);
-                    setIsMinimized(false);
-                  }}
-                  className="p-1.5 hover:bg-stone-800 hover:text-stone-200 rounded-lg transition cursor-pointer"
-                  title="Close Assistant"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
+                  {/* Reset / End Chat */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMessages([]);
+                      toast.success('Session chat cleared.');
+                    }}
+                    className="p-1.5 hover:bg-stone-800 hover:text-stone-200 rounded-lg transition cursor-pointer"
+                    title="Clear conversation"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                  </button>
+
+                  {/* Minimize window */}
+                  <button
+                    type="button"
+                    onClick={() => setIsMinimized(true)}
+                    className="p-1.5 hover:bg-stone-800 hover:text-stone-200 rounded-lg transition cursor-pointer"
+                    title="Minimize window"
+                  >
+                    <Minus className="w-3.5 h-3.5" />
+                  </button>
+
+                  {/* Close window */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsOpen(false);
+                      setIsMinimized(false);
+                    }}
+                    className="p-1.5 hover:bg-stone-800 hover:text-stone-200 rounded-lg transition cursor-pointer"
+                    title="Close Assistant"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
             </div>
 
             {/* LIVE SNAPSHOT STATUS BAR */}
-            <div className="bg-stone-50 border-b border-stone-200 px-3.5 py-1.5 flex items-center justify-between text-[11px] text-stone-600">
+            <div className="bg-stone-50 border-b border-stone-200 px-3.5 py-1.5 flex items-center justify-between text-[11px] text-stone-600 shrink-0">
               <div className="flex items-center gap-2">
                 <Calendar className="w-3 h-3 text-stone-400" />
                 <span className="font-semibold text-stone-700">{todayStr}</span>
@@ -910,7 +1081,11 @@ export default function OperationsCopilot() {
             </div>
 
             {/* MAIN CONTENT AREA */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-stone-100/40">
+            <div
+              ref={chatScrollContainerRef}
+              data-lenis-prevent="true"
+              className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-4.5 space-y-4 bg-stone-100/40 overscroll-contain"
+            >
               {viewingMemory ? (
                 /* -------------------------------------------------- */
                 /* DIRECTIVES & SELF-PATCHING MEMORY DRAWER           */
@@ -960,9 +1135,9 @@ export default function OperationsCopilot() {
                         No custom directives saved yet. Directives you teach the copilot will show up here.
                       </div>
                     ) : (
-                      learnedRules.map((rule) => (
+                      learnedRules.map((rule, rIdx) => (
                         <div
-                          key={rule.id}
+                          key={`${rule.id}-${rIdx}`}
                           className="p-3 bg-white rounded-xl border border-stone-200 flex items-start justify-between gap-3 text-xs"
                         >
                           <div className="space-y-1">
@@ -989,9 +1164,9 @@ export default function OperationsCopilot() {
                 /* CONVERSATION STREAM                                 */
                 /* -------------------------------------------------- */
                 <>
-                  {messages.map(msg => (
+                  {messages.map((msg, mIdx) => (
                     <div
-                      key={msg.id}
+                      key={`${msg.id}-${mIdx}`}
                       className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
                     >
                       <div
@@ -1097,11 +1272,11 @@ export default function OperationsCopilot() {
 
                                 {/* Property Toggle Chips */}
                                 <div className="flex flex-wrap gap-1.5 pt-0.5">
-                                  {properties.map(p => {
+                                  {properties.map((p, pIdx) => {
                                     const selected = effectiveTargetIds.includes(p.id!);
                                     return (
                                       <button
-                                        key={p.id}
+                                        key={`${p.id}-${pIdx}`}
                                         type="button"
                                         onClick={() => handleToggleHotelForProposal(msg.id, p.id!, effectiveTargetIds)}
                                         className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-[11px] font-medium transition cursor-pointer border ${
@@ -1300,74 +1475,70 @@ export default function OperationsCopilot() {
 
             {/* QUICK ACTION PROMPT CHIPS */}
             {!viewingMemory && (
-              <div className="bg-stone-50/90 border-t border-stone-200 px-3 py-2 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-                {userIsAdmin ? (
+              <div className="bg-stone-50/90 border-t border-stone-200 px-3 py-2 flex flex-wrap items-center gap-1.5">
+                {dynamicSuggestions && dynamicSuggestions.length > 0 ? (
+                  dynamicSuggestions.map((suggestion, idx) => (
+                    <button
+                      key={`suggestion-${idx}-${suggestion.slice(0, 15)}`}
+                      type="button"
+                      onClick={() => handleSendMessage(suggestion)}
+                      className="px-2.5 py-1 bg-white hover:bg-stone-100 border border-stone-200 text-stone-700 rounded-lg text-[11px] font-medium transition shadow-2xs cursor-pointer"
+                    >
+                      ✨ {suggestion}
+                    </button>
+                  ))
+                ) : userIsAdmin ? (
                   <>
                     <button
+                      key="admin-chip-exec-summary"
                       type="button"
                       onClick={() => handleSendMessage('Give me an executive summary of today: platform arrivals, checkouts, and active listings.')}
-                      className="shrink-0 px-2.5 py-1 bg-white hover:bg-stone-100 border border-stone-200 text-stone-700 rounded-lg text-[11px] font-medium transition shadow-2xs cursor-pointer"
+                      className="px-2.5 py-1 bg-white hover:bg-stone-100 border border-stone-200 text-stone-700 rounded-lg text-[11px] font-medium transition shadow-2xs cursor-pointer"
                     >
                       📊 Executive Summary
                     </button>
                     <button
+                      key="admin-chip-all-props"
                       type="button"
                       onClick={() => handleSendMessage('List all properties on the platform with their statuses and manager details.')}
-                      className="shrink-0 px-2.5 py-1 bg-white hover:bg-stone-100 border border-stone-200 text-stone-700 rounded-lg text-[11px] font-medium transition shadow-2xs cursor-pointer"
+                      className="px-2.5 py-1 bg-white hover:bg-stone-100 border border-stone-200 text-stone-700 rounded-lg text-[11px] font-medium transition shadow-2xs cursor-pointer"
                     >
                       🏢 All Properties
                     </button>
                     <button
+                      key="admin-chip-rates-audit"
                       type="button"
-                      onClick={() => handleSendMessage('Audit all room rates across the platform in both USD and MWK.')}
-                      className="shrink-0 px-2.5 py-1 bg-white hover:bg-stone-100 border border-stone-200 text-stone-700 rounded-lg text-[11px] font-medium transition shadow-2xs cursor-pointer"
+                      onClick={() => handleSendMessage('Audit all room rates across the platform.')}
+                      className="px-2.5 py-1 bg-white hover:bg-stone-100 border border-stone-200 text-stone-700 rounded-lg text-[11px] font-medium transition shadow-2xs cursor-pointer"
                     >
                       💰 Rates Audit
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleSendMessage('How do I manage users and initiate password resets for managers?')}
-                      className="shrink-0 px-2.5 py-1 bg-white hover:bg-stone-100 border border-stone-200 text-stone-700 rounded-lg text-[11px] font-medium transition shadow-2xs cursor-pointer"
-                    >
-                      🔑 User Management
                     </button>
                   </>
                 ) : (
                   <>
                     <button
+                      key="mgr-chip-today-arrivals"
                       type="button"
                       onClick={() => handleSendMessage('Do I have any arrivals or bookings scheduled for today?')}
-                      className="shrink-0 px-2.5 py-1 bg-white hover:bg-stone-100 border border-stone-200 text-stone-700 rounded-lg text-[11px] font-medium transition shadow-2xs cursor-pointer"
+                      className="px-2.5 py-1 bg-white hover:bg-stone-100 border border-stone-200 text-stone-700 rounded-lg text-[11px] font-medium transition shadow-2xs cursor-pointer"
                     >
                       📅 Today's Arrivals
                     </button>
                     <button
+                      key="mgr-chip-today-checkouts"
                       type="button"
                       onClick={() => handleSendMessage('Who is scheduled to check out today?')}
-                      className="shrink-0 px-2.5 py-1 bg-white hover:bg-stone-100 border border-stone-200 text-stone-700 rounded-lg text-[11px] font-medium transition shadow-2xs cursor-pointer"
+                      className="px-2.5 py-1 bg-white hover:bg-stone-100 border border-stone-200 text-stone-700 rounded-lg text-[11px] font-medium transition shadow-2xs cursor-pointer"
                     >
                       🚪 Checkouts Today
                     </button>
                     <button
+                      key="mgr-chip-my-rates"
                       type="button"
-                      onClick={() => handleSendMessage('Show me all my room rates in USD and MWK.')}
-                      className="shrink-0 px-2.5 py-1 bg-white hover:bg-stone-100 border border-stone-200 text-stone-700 rounded-lg text-[11px] font-medium transition shadow-2xs cursor-pointer"
+                      onClick={() => handleSendMessage('Show me all my room rates.')}
+                      className="px-2.5 py-1 bg-white hover:bg-stone-100 border border-stone-200 text-stone-700 rounded-lg text-[11px] font-medium transition shadow-2xs cursor-pointer"
                     >
                       💰 My Room Rates
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleSendMessage('What is the status of my property menu: restaurant, conference rooms, check-in policies, and online status?')}
-                      className="shrink-0 px-2.5 py-1 bg-white hover:bg-stone-100 border border-stone-200 text-stone-700 rounded-lg text-[11px] font-medium transition shadow-2xs cursor-pointer"
-                    >
-                      ⚙️ Property Menu
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleSendMessage('What is my current occupancy and confirmed revenue?')}
-                      className="shrink-0 px-2.5 py-1 bg-white hover:bg-stone-100 border border-stone-200 text-stone-700 rounded-lg text-[11px] font-medium transition shadow-2xs cursor-pointer"
-                    >
-                      📈 Occupancy
                     </button>
                   </>
                 )}
@@ -1375,7 +1546,7 @@ export default function OperationsCopilot() {
             )}
 
             {/* INPUT BAR */}
-            <div className="p-3 bg-white border-t border-stone-200">
+            <div className="p-3 sm:p-3.5 pb-6 sm:pb-3.5 bg-white border-t border-stone-200 shrink-0">
               <form
                 onSubmit={e => {
                   e.preventDefault();
@@ -1394,12 +1565,12 @@ export default function OperationsCopilot() {
                       : 'Ask about bookings, checkouts, or adjust room rates...'
                   }
                   disabled={generating}
-                  className="flex-1 text-xs px-3.5 py-2.5 bg-stone-50 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-stone-900/10 focus:border-stone-400 disabled:opacity-60 transition"
+                  className="flex-1 text-sm sm:text-xs px-3.5 py-2.5 bg-stone-50 border border-stone-200 rounded-xl focus:outline-none focus:bg-white focus:ring-2 focus:ring-stone-900/10 focus:border-stone-400 disabled:opacity-60 transition"
                 />
                 <button
                   type="submit"
                   disabled={!inputMessage.trim() || generating}
-                  className="p-2.5 bg-stone-900 hover:bg-stone-800 disabled:opacity-40 text-white rounded-xl transition shadow-2xs flex items-center justify-center shrink-0 cursor-pointer"
+                  className="w-10 h-10 bg-stone-900 hover:bg-stone-800 disabled:opacity-40 text-white rounded-xl transition shadow-2xs flex items-center justify-center shrink-0 cursor-pointer"
                   title="Send query"
                 >
                   {generating ? (

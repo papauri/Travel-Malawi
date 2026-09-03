@@ -24,6 +24,7 @@ import GlobalNotificationManager from './components/GlobalNotificationManager';
 import PageLoader from './components/PageLoader';
 import CompareWidget from './components/CompareWidget';
 import OperationsCopilot from './components/OperationsCopilot';
+import AccessRequestModal from './components/AccessRequestModal';
 import { Toaster } from 'react-hot-toast';
 import Lenis from 'lenis';
 
@@ -79,6 +80,7 @@ function RootContent({ children }: { children?: React.ReactNode }) {
         }} 
       />
       <GlobalNotificationManager />
+      <AccessRequestModal />
       <CompareWidget />
       {/* Strictly scoped to current authenticated session - unmounted and completely destroyed on logout or user switch */}
       {user && <OperationsCopilot key={user.uid} />}
@@ -153,6 +155,8 @@ export default function App() {
       syncTouch: false,
     });
 
+    (window as any).__lenis = lenis;
+
     let animationFrameId: number;
     function raf(time: number) {
       lenis.raf(time);
@@ -162,6 +166,7 @@ export default function App() {
 
     return () => {
       cancelAnimationFrame(animationFrameId);
+      (window as any).__lenis = null;
       lenis.destroy();
     };
   }, []);

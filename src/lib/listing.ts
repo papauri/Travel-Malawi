@@ -111,6 +111,14 @@ export interface ListingDraft {
   coordinates: { lat: number; lng: number } | null;
   checkInTime: string;
   checkOutTime: string;
+  /** Designated Property Manager details */
+  managerName: string;
+  managerEmail: string;
+  managerPhone: string;
+  /** Operating Owner entity (if different from manager) */
+  ownerName: string;
+  ownerEmail: string;
+  ownerPhone: string;
   /** How guests reach the property once they have booked — or before. */
   contactEmail: string;
   contactPhone: string;
@@ -135,11 +143,17 @@ export function emptyDraft(): ListingDraft {
     coordinates: null,
     checkInTime: '14:00',
     checkOutTime: '11:00',
+    managerName: '',
+    managerEmail: '',
+    managerPhone: '',
+    ownerName: '',
+    ownerEmail: '',
+    ownerPhone: '',
     contactEmail: '',
     contactPhone: '',
     contactWhatsapp: '',
-      rooms: [],
-    };
+    rooms: [],
+  };
 }
 
 export const NAME_MAX = 80;
@@ -158,7 +172,7 @@ export const STEP_FIELDS: (keyof ListingDraft)[][] = [
   ['description', 'amenities'],
   ['imageUrl', 'galleryUrls'],
   ['rooms'], // Rooms
-  ['contactEmail', 'contactPhone', 'contactWhatsapp', 'checkInTime', 'checkOutTime'],
+  ['managerName', 'managerEmail', 'managerPhone', 'contactEmail', 'contactPhone', 'contactWhatsapp', 'checkInTime', 'checkOutTime'],
   [], // Plan & Pricing
   [], // Review
 ];
@@ -180,6 +194,12 @@ export interface PropertyDetails {
   imageUrl?: string;
   checkInTime?: string;
   checkOutTime?: string;
+  managerName?: string;
+  managerEmail?: string;
+  managerPhone?: string;
+  ownerName?: string;
+  ownerEmail?: string;
+  ownerPhone?: string;
   contactEmail?: string;
   contactPhone?: string;
   contactWhatsapp?: string;
@@ -236,6 +256,24 @@ export function validateProperty(
 
   if (!isTime(data.checkInTime ?? '')) errors.checkInTime = 'Use a 24-hour time, e.g. 14:00.';
   if (!isTime(data.checkOutTime ?? '')) errors.checkOutTime = 'Use a 24-hour time, e.g. 11:00.';
+
+  // Designated Property Manager validation
+  const managerName = (data.managerName ?? '').trim();
+  if (strict && !managerName) {
+    errors.managerName = 'Provide the name of the property manager / host.';
+  } else if (managerName && managerName.length < 2) {
+    errors.managerName = 'Manager name must be at least 2 characters.';
+  }
+
+  if (data.managerEmail) {
+    const mgrEmailProblem = emailProblem(data.managerEmail, 'Manager email', false);
+    if (mgrEmailProblem) errors.managerEmail = mgrEmailProblem;
+  }
+
+  if (data.managerPhone) {
+    const mgrPhoneProblem = phoneProblem(data.managerPhone, 'Manager direct phone', false);
+    if (mgrPhoneProblem) errors.managerPhone = mgrPhoneProblem;
+  }
 
   // A booking request is only the start of a conversation: the property has to
   // be reachable for it to become a stay. Required to publish for that reason;
@@ -305,6 +343,12 @@ export function draftToHotel(draft: ListingDraft, managerId: string): Omit<Hotel
 
   return {
     managerId,
+    managerName: draft.managerName.trim() || (draft.contactEmail ? draft.contactEmail.split('@')[0] : 'Property Manager'),
+    managerEmail: draft.managerEmail.trim() || draft.contactEmail.trim(),
+    managerPhone: draft.managerPhone.trim() || draft.contactPhone.trim(),
+    ownerName: draft.ownerName.trim() || draft.managerName.trim() || 'Property Owner',
+    ownerEmail: draft.ownerEmail.trim() || draft.managerEmail.trim() || draft.contactEmail.trim(),
+    ownerPhone: draft.ownerPhone.trim() || draft.managerPhone.trim() || draft.contactPhone.trim(),
     // Every new listing is moderated, and the security rules require this
     // exact value on create.
     status: 'pending',

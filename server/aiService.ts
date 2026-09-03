@@ -479,13 +479,22 @@ export interface OperationsAssistantRequest {
       featured?: boolean;
       isOnline?: boolean;
       outOfOfficeMessage?: string;
+      managerId?: string;
+      managerName?: string;
+      managerEmail?: string;
+      managerPhone?: string;
+      ownerName?: string;
+      ownerEmail?: string;
+      ownerPhone?: string;
+      contactName?: string;
+      contactWhatsapp?: string;
+      contactEmail?: string;
+      contactPhone?: string;
+      crew?: Array<{ name: string; role: string; phone?: string; whatsapp?: string }>;
       checkInTime?: string;
       checkOutTime?: string;
       cancellationPolicy?: string;
       paymentPolicy?: string;
-      contactWhatsapp?: string;
-      contactEmail?: string;
-      contactPhone?: string;
       amenities?: string[];
       restaurant?: {
         enabled: boolean;
@@ -536,6 +545,12 @@ export interface OperationsAssistantRequest {
       total?: number;
     }>;
     learnedRules?: string[];
+    autonomousPatches?: Array<{
+      id?: string;
+      patch: string;
+      trigger?: string;
+      resolution?: string;
+    }>;
   };
 }
 
@@ -545,6 +560,12 @@ export interface OperationsAssistantResult {
   model: string;
   actionProposal?: ActionProposal | null;
   newLearnedRule?: string | null;
+  autonomousPatch?: {
+    trigger?: string;
+    patch: string;
+    resolution?: string;
+  } | null;
+  suggestedFollowUps?: string[];
 }
 
 const OPERATIONS_SYSTEM_PROMPT = `You are the executive Lodge Operations Copilot and Hospitality AI for the premier Malawian accommodations platform (The Warm Heart of Africa).
@@ -588,6 +609,22 @@ CRITICAL ROLE-BASED ACCESS CONTROL (RBAC) & SECURITY BOUNDARIES
        "As a Property Manager, your administrative authority is strictly limited to your own assigned properties. You do not have authorization to manage credentials, edit profiles, or reset passwords for other managers. Account management and password resets can only be performed by the Global Administrator."
      * A manager CANNOT approve properties for public listing or feature properties on the homepage (requires Global Admin).
      * A manager CANNOT change platform system settings.
+
+================================================================================
+CRITICAL DIRECTIVE: UNASSIGNED PROPERTIES, OWNERSHIP & PLATFORM AVAILABILITY
+================================================================================
+1. PROPERTIES WITHOUT AN ASSIGNED MANAGER BELONG TO THE SIGNED-IN USER:
+   - Just because a property does not have a manager formally assigned (e.g. managerId is unassigned/blank, or manager name/contact fields are empty), YOU MUST NEVER ASSUME OR STATE THAT THE PROPERTY DOES NOT BELONG TO THE SIGNED-IN USER. IT DOES BELONG TO THE SIGNED-IN USER.
+   - The signed-in user is the legitimate host/owner/manager. Treat all properties in their scope—including any property without a designated manager—as fully owned and managed by them.
+   - You MUST NOT tell the signed-in user "You do not own this property", "No manager is assigned so this isn't yours", or refuse to discuss/manage it.
+   - Assist them with pride and precision across all their properties, rooms, rates, policies, and operations.
+
+2. GLOBAL ADMINISTRATOR: ALL PROPERTIES EXIST & ARE FULLY AVAILABLE ON THE SITE:
+   - For Global Administrators, ALL properties in the system are real, active, and available on the platform/site.
+   - NEVER tell the Global Administrator that "there are no properties available on the site" simply because a property has no manager assigned, no owner specified, or blank manager fields!
+   - Properties exist and are available on the platform regardless of whether a manager or owner has been formally designated yet.
+   - If properties are listed in your live context, state clearly that they are active on the platform, list them, and assist with auditing, reviewing, or managing them.
+   - NEVER make the false claim that the platform has no properties when properties exist in your context.
 
 ================================================================================
 FULL PROPERTY MENU ACCESS & CAPABILITIES
@@ -745,6 +782,44 @@ If replacing amenities list: use "type": "update_amenities", "amenities": ["Brea
 \`\`\`
 
 ================================================================================
+AUTONOMOUS PATCHING & LEARNING FROM MISTAKES (CRITICAL)
+================================================================================
+You possess an Autonomous Patching & Error-Recovery capability.
+You are humble, swift to recognize when you made an error or when a host corrects you, and you immediately patch your own operational directives.
+
+1. WHEN THE USER POINTS OUT A MISTAKE OR CORRECTION:
+   (e.g., "That's wrong", "The owner is actually...", "You said X but it's Y", "We don't do that", "Remember that...", or corrects any fact, policy, or number):
+   - Immediately acknowledge the correction warmly and gracefully without making excuses.
+   - Emit an \`\`\`autonomous_patch JSON block:
+     \`\`\`autonomous_patch
+     {
+       "trigger": "<Exact correction or mistake pointed out by user>",
+       "patch": "<Permanent behavioral or factual rule to prevent repeating this mistake>",
+       "resolution": "<Summary of how your behavior or response is now patched>"
+     }
+     \`\`\`
+   - Emit a matching \`\`\`learned_rule block so it is permanently saved in memory:
+     \`\`\`learned_rule
+     {
+       "rule": "<The patched rule or factual knowledge>"
+     }
+     \`\`\`
+   - Then deliver the corrected, high-accuracy answer immediately.
+
+2. PROPERTY OWNERSHIP & MANAGEMENT INQUIRIES:
+   - When asked who owns, hosts, or manages a property, or for contact details/emails of property managers:
+   - Check the "Owner / Manager" and "Front Desk / Inquiries Contact" fields provided for each property in your live context.
+   - Always state the manager's name, email, phone number, and WhatsApp clearly.
+   - Never say you do not know who manages a property when the information is present in the property details.
+
+3. CONCIERGE EXCELLENCE (SUPER HELPFUL & PROACTIVE):
+   - You are the resident Concierge of Travel Malawi. You understand both property operations and guest concierge needs:
+     * Safari excursions, Lake Malawi boat trips, hiking Mount Mulanje, diving at Cape Maclear, exploring Zomba Plateau or Nyika.
+     * Transport logistics: Kamuzu Int'l Airport (LLW), Chileka Int'l Airport (BLZ), 4x4 car hires, boat transfers.
+     * Guest hospitality: greeting guests, dietary accommodations (Lake Chambo fish, vegetarian, halal), power/Wi-Fi reliability.
+     * StayOS operations: check-in preparations, room assignments, price adjustments in USD/MWK, daily board updates.
+
+================================================================================
 CRITICAL: MULTI-PROPERTY & BULK UPDATES
 ================================================================================
 When a host asks to apply an update to ALL their properties (e.g. "add breakfast to all 3 of my properties", "set checkout to 11am for all lodges", "put all my properties offline", "apply changes to all"):
@@ -768,6 +843,19 @@ YOU MUST ALWAYS append a \`\`\`learned_rule JSON block at the very end of your r
 }
 \`\`\`
 This is your continuous memory mechanism. Always emit it whenever a host preference or rule is communicated.
+
+================================================================================
+DYNAMIC NEXT SUGGESTIONS (MANDATORY)
+================================================================================
+You MUST ALWAYS append a \`\`\`suggested_follow_ups JSON block at the very end of your response containing EXACTLY 2 to 3 short, highly relevant follow-up questions or actions the user might want to take next based on the current context. Keep them concise (max 6-8 words) so they fit perfectly in prompt chips without scrolling.
+
+\`\`\`suggested_follow_ups
+[
+  "Review pending bookings",
+  "Update room rates",
+  "Check today's arrivals"
+]
+\`\`\`
 
 Tone: Executive, warm, helpful, proactive, and respectful. Hospitality-focused. Always verify that actions stay strictly within the user's role limits.`;
 
@@ -822,6 +910,24 @@ export async function executeOperationsAssistantChat(req: OperationsAssistantReq
       ? `    - Conference Halls: ${p.conferences.map(c => `"${c.name}" (capacity ${c.capacity} pax, rate $${c.dayRateUSD || 0} / MWK ${c.dayRateMWK || 0})`).join('; ')}`
       : `    - Conference Halls: None configured`;
 
+    // Owner, Manager & Front Desk Contact details
+    const hasAssignedManager = Boolean(p.managerId && p.managerId !== 'N/A' && p.managerId !== 'unassigned' && p.managerId.trim() !== '');
+    const ownerLine = p.ownerName ? ` | Operating Entity / Owner: "${p.ownerName}" (Email: ${p.ownerEmail || 'Not specified'}, Phone: ${p.ownerPhone || 'Not specified'})` : '';
+    let ownerManagerSummary = '';
+    if (isAdminUser) {
+      ownerManagerSummary = hasAssignedManager
+        ? `    - Assigned Manager: "${p.managerName || 'Assigned Host'}" | Email: ${p.managerEmail || p.contactEmail || 'Not specified'} | Phone: ${p.managerPhone || p.contactPhone || 'Not specified'} | WhatsApp: ${p.contactWhatsapp || p.managerPhone || 'Not specified'} (Manager UID: ${p.managerId})${ownerLine}`
+        : `    - Management Status: Self-hosted / Open Manager (Available live on site)${ownerLine}`;
+    } else {
+      ownerManagerSummary = hasAssignedManager
+        ? `    - Property Ownership: Belongs to signed-in host (${cleanFirstName || 'Host'}) | Manager: "${p.managerName || cleanFirstName || 'Host'}" (UID: ${p.managerId})${ownerLine}`
+        : `    - Property Ownership: Belongs to signed-in user (${cleanFirstName || 'Host'}) | Manager Assignment: Directly hosted by current user${ownerLine}`;
+    }
+    const contactSummary = `    - Front Desk / Inquiries Contact: Email: ${p.contactEmail || p.managerEmail || 'N/A'} | Phone: ${p.contactPhone || p.contactWhatsapp || 'N/A'} | WhatsApp: ${p.contactWhatsapp || 'N/A'}`;
+    const crewSummary = p.crew && p.crew.length > 0
+      ? `    - Property Crew on duty: ${p.crew.map(c => `${c.name} (${c.role}, ${c.phone})`).join(', ')}`
+      : '';
+
     // Policies & Front Desk details
     const policiesSummary = `    - Policies: Check-in ${p.checkInTime || '14:00'}, Check-out ${p.checkOutTime || '10:00'} | Cancellation: "${p.cancellationPolicy || 'Standard'}" | WhatsApp: ${p.contactWhatsapp || 'Not configured'}`;
     const liveStatusSummary = `    - Front Desk / Status: ${p.isOnline !== false ? '🟢 ONLINE (Available for live chats)' : `🌙 OFFLINE (Out of office: "${p.outOfOfficeMessage || 'Away'}")`}`;
@@ -831,8 +937,10 @@ export async function executeOperationsAssistantChat(req: OperationsAssistantReq
       : '';
 
     return `• Property: "${p.name}" (ID: ${p.id})
-    - Category: ${p.category || 'Lodge'} | Location: ${p.location || 'Malawi'} | Listing Status: ${p.status || 'active'}${p.featured ? ' [🌟 Featured on Homepage]' : ''}
-${liveStatusSummary}
+    - Category: ${p.category || 'Lodge'} | Location: ${p.location || 'Malawi'} | Listing Status: ${p.status || 'active'} | Availability: LIVE & AVAILABLE ON SITE${p.featured ? ' [🌟 Featured on Homepage]' : ''}
+${ownerManagerSummary}
+${contactSummary}
+${crewSummary ? `${crewSummary}\n` : ''}${liveStatusSummary}
 ${policiesSummary}
 ${amenitiesSummary}
 ${diningSummary}
@@ -885,6 +993,10 @@ ${upcoming.length > 10 ? `  ...and ${upcoming.length - 10} more upcoming booking
     ? `Learned Directives & Custom Host Rules:\n${req.context.learnedRules.map((r, i) => `${i + 1}. ${r}`).join('\n')}`
     : 'Learned Directives & Custom Host Rules: None yet.';
 
+  const autonomousPatchesSummary = req.context.autonomousPatches && req.context.autonomousPatches.length > 0
+    ? `\nActive Autonomous Concierge Patches (Self-corrected rules & mistake patches):\n${req.context.autonomousPatches.map((p, i) => `${i + 1}. [Patch: ${p.trigger || 'Correction'}] ${p.patch}`).join('\n')}`
+    : '';
+
   const userPrompt = `
 CURRENT USER & CONTEXT:
 - Name: ${cleanFirstName || 'Partner'}
@@ -893,12 +1005,18 @@ CURRENT USER & CONTEXT:
 - Current Date & Time: ${today} ${time}
 
 LIVE PROPERTIES IN SCOPE (${req.context.properties.length}):
-${propertiesSummary || 'No properties loaded in user scope.'}
+${propertiesSummary || (isAdminUser ? 'No properties currently registered in platform database.' : 'No properties in host scope.')}
+
+MANDATORY PROPERTY OWNERSHIP & AVAILABILITY ENFORCEMENT:
+- Even if a property does not have a manager formally assigned or has blank manager fields, it DOES belong to the signed-in user. NEVER assume, claim, or imply that a property does not belong to the signed-in user because there is no manager assigned.
+- For Global Administrator, NEVER claim that "there are no properties available on the site" simply because a property has no manager assigned, no owner specified, or unassigned fields. Every property listed above is live, active, and fully available on the site.
+- If properties are listed above, discuss them directly and confirm their availability and status with complete confidence.
 
 LIVE BOOKING SCHEDULE:
 ${bookingsSummary}
 
 ${learnedRulesSummary}
+${autonomousPatchesSummary}
 
 CONVERSATION HISTORY:
 ${(req.history || []).slice(-6).map(h => `${h.role === 'user' ? 'User' : 'Assistant'}: ${h.content}`).join('\n')}
@@ -1041,10 +1159,47 @@ USER MESSAGE:
     }
   }
 
+  // Parse out autonomous patch
+  let autonomousPatch: { trigger?: string; patch: string; resolution?: string } | null = null;
+  const patchMatch = rawGenerated.match(/```autonomous_patch\s*([\s\S]*?)\s*```/);
+  if (patchMatch) {
+    try {
+      const parsed = JSON.parse(patchMatch[1].trim());
+      if (parsed?.patch) {
+        autonomousPatch = {
+          trigger: parsed.trigger || 'User feedback / correction',
+          patch: String(parsed.patch).trim(),
+          resolution: parsed.resolution || 'Patched into persistent concierge memory',
+        };
+        if (!newLearnedRule) {
+          newLearnedRule = autonomousPatch.patch;
+        }
+      }
+    } catch (e) {
+      console.error('Failed to parse autonomous patch JSON:', e);
+    }
+  }
+
+  let suggestedFollowUps: string[] | undefined = undefined;
+  const followUpMatch = rawGenerated.match(/```suggested_follow_ups\s*([\s\S]*?)\s*```/);
+  if (followUpMatch) {
+    try {
+      const parsed = JSON.parse(followUpMatch[1].trim());
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        // limit to 3 items max
+        suggestedFollowUps = parsed.slice(0, 3).map(String);
+      }
+    } catch (e) {
+      console.error('Failed to parse suggested_follow_ups JSON:', e);
+    }
+  }
+
   // Clean the text to show the user
   let cleanReply = rawGenerated
     .replace(/```action_proposal[\s\S]*?```/g, '')
     .replace(/```learned_rule[\s\S]*?```/g, '')
+    .replace(/```autonomous_patch[\s\S]*?```/g, '')
+    .replace(/```suggested_follow_ups[\s\S]*?```/g, '')
     .trim();
 
   // Clean away any repetitive formulaic robot openings like "Moni Administrator!", "Moni!", "Hello Administrator!"
@@ -1059,6 +1214,8 @@ USER MESSAGE:
     model,
     actionProposal,
     newLearnedRule,
+    autonomousPatch,
+    suggestedFollowUps,
   };
 }
 

@@ -23,6 +23,7 @@ import {
   Images, Loader2, LocateFixed, Mail, MapPin, MessageCircle, Phone, Plus, Send,
   Award, FileText, CheckCircle2, Wallet, X, DollarSign, Coins, Trash2, Sliders, ChevronDown, ChevronUp,
   RefreshCw, TrendingUp, HelpCircle,
+  User, UserCheck, Shield, Building,
 } from 'lucide-react';
 
 import { useAuth } from '../contexts/AuthContext';
@@ -76,7 +77,7 @@ const STEPS = [
   { title: 'The place', blurb: 'What a guest should know before booking.' },
   { title: 'Photographs', blurb: 'The pictures that do the selling.' },
   { title: 'Rooms & Rates', blurb: 'What guests will actually book.' },
-  { title: 'Reaching you', blurb: 'How guests get hold of you, and your hours.' },
+  { title: 'Management & Contact', blurb: 'Designate the property manager, contacts, and check-in hours.' },
   { title: 'Plan & Pricing', blurb: 'Provisioning options.' },
   { title: 'Check it over', blurb: 'One last look before it goes for review.' },
 ];
@@ -155,6 +156,36 @@ export default function ListProperty() {
       // Private browsing; the draft simply will not persist.
     }
   }, [draft]);
+
+  // Pre-fill manager and contact details from signed-in host if empty
+  useEffect(() => {
+    if (!user) return;
+    setDraft(current => {
+      let changed = false;
+      const next = { ...current };
+      if (!next.managerName && user.displayName) {
+        next.managerName = user.displayName;
+        changed = true;
+      }
+      if (!next.managerEmail && user.email) {
+        next.managerEmail = user.email;
+        changed = true;
+      }
+      if (!next.contactEmail && user.email) {
+        next.contactEmail = user.email;
+        changed = true;
+      }
+      if (!next.managerPhone && user.phone) {
+        next.managerPhone = user.phone;
+        changed = true;
+      }
+      if (!next.contactPhone && user.phone) {
+        next.contactPhone = user.phone;
+        changed = true;
+      }
+      return changed ? next : current;
+    });
+  }, [user]);
 
   const set = useCallback(<K extends keyof ListingDraft>(key: K, value: ListingDraft[K]) => {
     setDraft(current => ({ ...current, [key]: value }));
@@ -650,13 +681,13 @@ export default function ListProperty() {
 
         {/* Progress. Each completed step stays clickable so a host can go back
             and correct something without losing the rest. */}
-        <ol className="mb-10 grid grid-cols-5 gap-2">
+        <ol className="mb-10 grid grid-cols-7 gap-2">
           {STEPS.map((s, index) => {
             const done = index < step && isStepComplete(draft, index);
             const active = index === step;
             const reachable = index <= step || FIELD_STEPS.slice(0, index).every(i => isStepComplete(draft, i));
             return (
-              <li key={s.title}>
+              <li key={`step-${s.title}-${index}`}>
                 <button
                   type="button"
                   disabled={!reachable}
@@ -704,11 +735,11 @@ export default function ListProperty() {
               <div>
                 <span className={labelClass}>Which category fits best?</span>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  {PROPERTY_CATEGORIES.map(category => {
+                  {PROPERTY_CATEGORIES.map((category, catIdx) => {
                     const selected = draft.category === category;
                     return (
                       <button
-                        key={category}
+                        key={`cat-${category}-${catIdx}`}
                         type="button"
                         aria-pressed={selected}
                         onClick={() => set('category', category as PropertyCategory)}
@@ -745,7 +776,7 @@ export default function ListProperty() {
                   className={fieldClass}
                 />
                 <datalist id="malawi-locations">
-                  {MALAWI_LOCATIONS.map(location => <option key={location} value={location} />)}
+                  {MALAWI_LOCATIONS.map((location, locIdx) => <option key={`loc-${location}-${locIdx}`} value={location} />)}
                 </datalist>
                 <FieldError message={visible.location} />
               </div>
@@ -894,11 +925,11 @@ export default function ListProperty() {
                       </div>
                     </div>
                     <div className="flex flex-wrap gap-1.5">
-                      {suggestedAmenities.map(am => {
+                      {suggestedAmenities.map((am, aIdx) => {
                         const isSelected = draft.amenities.includes(am);
                         return (
                           <button
-                            key={am}
+                            key={`${am}-${aIdx}`}
                             type="button"
                             onClick={() => toggleAmenity(am)}
                             className={`text-xs px-3 py-1 rounded-full border transition flex items-center gap-1.5 font-medium ${
@@ -917,11 +948,11 @@ export default function ListProperty() {
                 )}
 
                 <div className="flex flex-wrap gap-2">
-                  {COMMON_AMENITIES.map(amenity => {
+                  {COMMON_AMENITIES.map((amenity, amIdx) => {
                     const selected = draft.amenities.includes(amenity);
                     return (
                       <button
-                        key={amenity}
+                        key={`amenity-${amenity}-${amIdx}`}
                         type="button"
                         aria-pressed={selected}
                         onClick={() => toggleAmenity(amenity)}
@@ -962,9 +993,9 @@ export default function ListProperty() {
 
                 {draft.amenities.length > 0 && (
                   <div className="mt-4 flex flex-wrap gap-2">
-                    {draft.amenities.map(amenity => (
+                    {draft.amenities.map((amenity, aIdx) => (
                       <span
-                        key={amenity}
+                        key={`${amenity}-${aIdx}`}
                         className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-800"
                       >
                         {amenity}
@@ -1039,7 +1070,7 @@ export default function ListProperty() {
                     </p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {(draft.rooms || []).map((room, idx) => (
-                        <div key={idx} className="bg-white p-3.5 rounded-xl border border-stone-200 flex items-center justify-between shadow-2xs">
+                        <div key={`configured-room-${room.id || idx}-${idx}`} className="bg-white p-3.5 rounded-xl border border-stone-200 flex items-center justify-between shadow-2xs">
                           <div className="flex items-center gap-3 min-w-0">
                             {room.imageUrl ? (
                               <img src={room.imageUrl} alt={room.name} className="w-12 h-12 rounded-lg object-cover shrink-0" />
@@ -1169,7 +1200,7 @@ export default function ListProperty() {
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                       {suggestedRooms.map((roomItem, rIdx) => (
-                        <div key={rIdx} className="bg-stone-50 border border-stone-200 rounded-xl p-4 flex flex-col justify-between space-y-3.5 shadow-2xs hover:border-stone-300 transition">
+                        <div key={`suggested-room-${roomItem.name || rIdx}-${rIdx}`} className="bg-stone-50 border border-stone-200 rounded-xl p-4 flex flex-col justify-between space-y-3.5 shadow-2xs hover:border-stone-300 transition">
                           <div className="space-y-2.5">
                             {/* Room Name Input */}
                             <div>
@@ -1390,7 +1421,7 @@ export default function ListProperty() {
                 const hasMwk = roomCurrencies.includes('MWK');
 
                 return (
-                  <div key={idx} className="bg-white border border-stone-200 rounded-2xl p-6 shadow-sm relative space-y-6">
+                  <div key={`room-pricing-card-${room.id || idx}-${idx}`} className="bg-white border border-stone-200 rounded-2xl p-6 shadow-sm relative space-y-6">
                     <div className="flex items-center justify-between border-b border-stone-100 pb-4">
                       <div className="flex items-center gap-2">
                         <span className="bg-stone-900 text-white text-[11px] font-bold px-2.5 py-1 rounded-md uppercase tracking-wider">
@@ -1852,95 +1883,257 @@ export default function ListProperty() {
 
 {step === 4 && (
             <div className="space-y-8">
-              <div className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-5">
-                <p className="text-sm leading-relaxed text-emerald-900">
-                  Guests see these on your listing, and a booking request quotes them back so
-                  nobody has to hunt for a number when they are already on the road.
-                </p>
-              </div>
-
-              <div>
-                <label className={labelClass} htmlFor="listing-email">Booking email</label>
-                <div className="relative">
-                  <Mail className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
-                  <input
-                    id="listing-email"
-                    type="email"
-                    autoComplete="email"
-                    value={draft.contactEmail}
-                    onChange={e => set('contactEmail', e.target.value)}
-                    placeholder="reservations@yourproperty.mw"
-                    className={`${fieldClass} pl-11`}
-                  />
+              {/* Designated Property Manager (Required) */}
+              <div className="rounded-2xl border border-stone-200 bg-stone-50/70 p-5 sm:p-6 space-y-5">
+                <div className="flex items-start gap-3">
+                  <div className="rounded-xl bg-stone-900 p-2 text-white shadow-2xs">
+                    <UserCheck className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-stone-900">Designated Property Manager & Host in Charge</h3>
+                    <p className="text-xs text-stone-500 mt-0.5">
+                      The primary person managing on-site hospitality, guest check-ins, and operations. Our AI Concierge and travelers will know this person as the authorized manager.
+                    </p>
+                  </div>
                 </div>
-                <p className="mt-2 text-xs text-stone-400">
-                  Where booking requests should reach you. It can differ from your sign-in address.
-                </p>
-                <FieldError message={visible.contactEmail} />
-              </div>
 
-              <div>
-                <label className={labelClass} htmlFor="listing-phone">Phone number</label>
-                <div className="relative">
-                  <Phone className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
-                  <input
-                    id="listing-phone"
-                    type="tel"
-                    autoComplete="tel"
-                    value={draft.contactPhone}
-                    onChange={e => set('contactPhone', e.target.value)}
-                    placeholder="+265 991 234 567"
-                    className={`${fieldClass} pl-11`}
-                  />
+                <div>
+                  <label className={labelClass} htmlFor="listing-manager-name">
+                    Manager Full Name <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <User className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+                    <input
+                      id="listing-manager-name"
+                      type="text"
+                      value={draft.managerName}
+                      onChange={e => set('managerName', e.target.value)}
+                      placeholder="e.g. Kondwani Banda or Chimwemwe Phiri"
+                      className={`${fieldClass} pl-11`}
+                    />
+                  </div>
+                  <p className="mt-1.5 text-xs text-stone-400">
+                    The named host or manager who will be managing the property.
+                  </p>
+                  <FieldError message={visible.managerName} />
                 </div>
-                <p className="mt-2 text-xs text-stone-400">
-                  Include the country code so guests abroad can dial it.
-                </p>
-                <FieldError message={visible.contactPhone} />
-              </div>
 
-              <div>
-                <label className={labelClass} htmlFor="listing-whatsapp">
-                  WhatsApp <span className="font-medium normal-case tracking-normal text-stone-400">(optional)</span>
-                </label>
-                <div className="relative">
-                  <MessageCircle className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
-                  <input
-                    id="listing-whatsapp"
-                    type="tel"
-                    value={draft.contactWhatsapp}
-                    onChange={e => set('contactWhatsapp', e.target.value)}
-                    placeholder="Same as the phone number"
-                    className={`${fieldClass} pl-11`}
-                  />
+                <div className="grid gap-4 sm:grid-cols-2 pt-2 border-t border-stone-200/60">
+                  <div>
+                    <label className={labelClass} htmlFor="listing-manager-email">
+                      Manager Direct Email <span className="text-stone-400 font-normal lowercase">(optional direct)</span>
+                    </label>
+                    <div className="relative">
+                      <Mail className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+                      <input
+                        id="listing-manager-email"
+                        type="email"
+                        value={draft.managerEmail}
+                        onChange={e => set('managerEmail', e.target.value)}
+                        placeholder={draft.contactEmail || "manager@property.mw"}
+                        className={`${fieldClass} pl-11`}
+                      />
+                    </div>
+                    <FieldError message={visible.managerEmail} />
+                  </div>
+                  <div>
+                    <label className={labelClass} htmlFor="listing-manager-phone">
+                      Manager Direct Phone <span className="text-stone-400 font-normal lowercase">(optional direct)</span>
+                    </label>
+                    <div className="relative">
+                      <Phone className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+                      <input
+                        id="listing-manager-phone"
+                        type="tel"
+                        value={draft.managerPhone}
+                        onChange={e => set('managerPhone', e.target.value)}
+                        placeholder={draft.contactPhone || "+265 991 234 567"}
+                        className={`${fieldClass} pl-11`}
+                      />
+                    </div>
+                    <FieldError message={visible.managerPhone} />
+                  </div>
                 </div>
-                <p className="mt-2 text-xs text-stone-400">
-                  Leave it blank if it is the same number — we will use the phone number above.
-                </p>
-                <FieldError message={visible.contactWhatsapp} />
               </div>
 
+              {/* Property Ownership / Operating Entity (Optional) */}
+              <div className="rounded-2xl border border-stone-200 bg-white p-5 sm:p-6 space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="rounded-xl bg-stone-100 p-2 text-stone-700">
+                    <Building className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-stone-900">Property Ownership & Operating Entity <span className="text-xs text-stone-400 font-normal">(Optional)</span></h3>
+                    <p className="text-xs text-stone-500 mt-0.5">
+                      If the lodge or property is owned by a company, trust, or individual separate from the on-site manager.
+                    </p>
+                  </div>
+                </div>
+
+                <div>
+                  <label className={labelClass} htmlFor="listing-owner-name">
+                    Owner or Holding Entity Name
+                  </label>
+                  <div className="relative">
+                    <Building className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+                    <input
+                      id="listing-owner-name"
+                      type="text"
+                      value={draft.ownerName}
+                      onChange={e => set('ownerName', e.target.value)}
+                      placeholder="e.g. Nyika Safaris Ltd or Dr. T. Mwale"
+                      className={`${fieldClass} pl-11`}
+                    />
+                  </div>
+                  <FieldError message={visible.ownerName} />
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2 pt-1">
+                  <div>
+                    <label className={labelClass} htmlFor="listing-owner-email">
+                      Owner Email <span className="text-stone-400 font-normal lowercase">(optional)</span>
+                    </label>
+                    <div className="relative">
+                      <Mail className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+                      <input
+                        id="listing-owner-email"
+                        type="email"
+                        value={draft.ownerEmail}
+                        onChange={e => set('ownerEmail', e.target.value)}
+                        placeholder="owner@company.mw"
+                        className={`${fieldClass} pl-11`}
+                      />
+                    </div>
+                    <FieldError message={visible.ownerEmail} />
+                  </div>
+                  <div>
+                    <label className={labelClass} htmlFor="listing-owner-phone">
+                      Owner Phone <span className="text-stone-400 font-normal lowercase">(optional)</span>
+                    </label>
+                    <div className="relative">
+                      <Phone className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+                      <input
+                        id="listing-owner-phone"
+                        type="tel"
+                        value={draft.ownerPhone}
+                        onChange={e => set('ownerPhone', e.target.value)}
+                        placeholder="+265 888 123 456"
+                        className={`${fieldClass} pl-11`}
+                      />
+                    </div>
+                    <FieldError message={visible.ownerPhone} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Public Booking & Front Desk Contact */}
+              <div className="rounded-2xl border border-emerald-100 bg-emerald-50/40 p-5 sm:p-6 space-y-5">
+                <div className="flex items-start gap-3">
+                  <div className="rounded-xl bg-emerald-600 p-2 text-white shadow-2xs">
+                    <Mail className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-stone-900">Public Booking & Guest Inquiries</h3>
+                    <p className="text-xs text-stone-600 mt-0.5">
+                      These details are presented to guests on your public listing and confirmed on booking vouchers.
+                    </p>
+                  </div>
+                </div>
+
+                <div>
+                  <label className={labelClass} htmlFor="listing-email">
+                    Booking & Reservations Email <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <Mail className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+                    <input
+                      id="listing-email"
+                      type="email"
+                      autoComplete="email"
+                      value={draft.contactEmail}
+                      onChange={e => set('contactEmail', e.target.value)}
+                      placeholder="reservations@yourproperty.mw"
+                      className={`${fieldClass} pl-11`}
+                    />
+                  </div>
+                  <p className="mt-1.5 text-xs text-stone-400">
+                    Where booking requests should reach you. It can differ from your sign-in address.
+                  </p>
+                  <FieldError message={visible.contactEmail} />
+                </div>
+
+                <div>
+                  <label className={labelClass} htmlFor="listing-phone">
+                    Booking Phone Number <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <Phone className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+                    <input
+                      id="listing-phone"
+                      type="tel"
+                      autoComplete="tel"
+                      value={draft.contactPhone}
+                      onChange={e => set('contactPhone', e.target.value)}
+                      placeholder="+265 991 234 567"
+                      className={`${fieldClass} pl-11`}
+                    />
+                  </div>
+                  <p className="mt-1.5 text-xs text-stone-400">
+                    Include country code (+265) so international travelers can connect immediately.
+                  </p>
+                  <FieldError message={visible.contactPhone} />
+                </div>
+
+                <div>
+                  <label className={labelClass} htmlFor="listing-whatsapp">
+                    WhatsApp Number <span className="font-medium normal-case tracking-normal text-stone-400">(optional)</span>
+                  </label>
+                  <div className="relative">
+                    <MessageCircle className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+                    <input
+                      id="listing-whatsapp"
+                      type="tel"
+                      value={draft.contactWhatsapp}
+                      onChange={e => set('contactWhatsapp', e.target.value)}
+                      placeholder="Same as the phone number"
+                      className={`${fieldClass} pl-11`}
+                    />
+                  </div>
+                  <p className="mt-1.5 text-xs text-stone-400">
+                    Leave blank if same as phone number — we will use the phone number above.
+                  </p>
+                  <FieldError message={visible.contactWhatsapp} />
+                </div>
+              </div>
+
+              {/* Check-in & Check-out Times */}
               <div className="grid gap-6 border-t border-stone-100 pt-8 sm:grid-cols-2">
                 <div>
                   <label className={labelClass} htmlFor="listing-checkin">Check-in from</label>
-                  <input
-                    id="listing-checkin"
-                    type="time"
-                    value={draft.checkInTime}
-                    onChange={e => set('checkInTime', e.target.value)}
-                    className={fieldClass}
-                  />
+                  <div className="relative">
+                    <Clock className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+                    <input
+                      id="listing-checkin"
+                      type="time"
+                      value={draft.checkInTime}
+                      onChange={e => set('checkInTime', e.target.value)}
+                      className={`${fieldClass} pl-11`}
+                    />
+                  </div>
                   <FieldError message={visible.checkInTime} />
                 </div>
                 <div>
                   <label className={labelClass} htmlFor="listing-checkout">Check-out until</label>
-                  <input
-                    id="listing-checkout"
-                    type="time"
-                    value={draft.checkOutTime}
-                    onChange={e => set('checkOutTime', e.target.value)}
-                    className={fieldClass}
-                  />
+                  <div className="relative">
+                    <Clock className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+                    <input
+                      id="listing-checkout"
+                      type="time"
+                      value={draft.checkOutTime}
+                      onChange={e => set('checkOutTime', e.target.value)}
+                      className={`${fieldClass} pl-11`}
+                    />
+                  </div>
                   <FieldError message={visible.checkOutTime} />
                 </div>
               </div>
@@ -2014,8 +2207,8 @@ export default function ListProperty() {
 
                   {draft.amenities.length > 0 && (
                     <div className="mt-6 flex flex-wrap gap-2">
-                      {draft.amenities.map(amenity => (
-                        <span key={amenity} className="rounded-full bg-stone-100 px-3 py-1.5 text-sm text-stone-700">
+                      {draft.amenities.map((amenity, aIdx) => (
+                        <span key={`${amenity}-${aIdx}`} className="rounded-full bg-stone-100 px-3 py-1.5 text-sm text-stone-700">
                           {amenity}
                         </span>
                       ))}
@@ -2039,11 +2232,11 @@ export default function ListProperty() {
 
                   <dl className="mt-4 grid gap-4 border-t border-stone-100 pt-6 text-sm sm:grid-cols-3">
                     <div className="min-w-0">
-                      <dt className="font-semibold text-stone-400">Email</dt>
+                      <dt className="font-semibold text-stone-400">Public Email</dt>
                       <dd className="truncate text-stone-900">{draft.contactEmail}</dd>
                     </div>
                     <div>
-                      <dt className="font-semibold text-stone-400">Phone</dt>
+                      <dt className="font-semibold text-stone-400">Public Phone</dt>
                       <dd className="text-stone-900">{draft.contactPhone}</dd>
                     </div>
                     <div>
@@ -2052,6 +2245,40 @@ export default function ListProperty() {
                         {draft.contactWhatsapp.trim() || `${draft.contactPhone} (same)`}
                       </dd>
                     </div>
+                  </dl>
+
+                  <dl className="mt-4 grid gap-4 border-t border-stone-100 pt-6 text-sm sm:grid-cols-2">
+                    <div>
+                      <dt className="font-semibold text-stone-400 flex items-center gap-1.5">
+                        <UserCheck className="w-3.5 h-3.5 text-stone-500" />
+                        <span>Designated Property Manager</span>
+                      </dt>
+                      <dd className="text-stone-900 font-medium mt-0.5">{draft.managerName || 'Assigned Host'}</dd>
+                      {(draft.managerEmail || draft.managerPhone) && (
+                        <dd className="text-stone-500 text-xs mt-0.5">
+                          {[draft.managerEmail, draft.managerPhone].filter(Boolean).join(' · ')}
+                        </dd>
+                      )}
+                    </div>
+                    {draft.ownerName ? (
+                      <div>
+                        <dt className="font-semibold text-stone-400 flex items-center gap-1.5">
+                          <Building className="w-3.5 h-3.5 text-stone-500" />
+                          <span>Property Owner / Entity</span>
+                        </dt>
+                        <dd className="text-stone-900 font-medium mt-0.5">{draft.ownerName}</dd>
+                        {(draft.ownerEmail || draft.ownerPhone) && (
+                          <dd className="text-stone-500 text-xs mt-0.5">
+                            {[draft.ownerEmail, draft.ownerPhone].filter(Boolean).join(' · ')}
+                          </dd>
+                        )}
+                      </div>
+                    ) : (
+                      <div>
+                        <dt className="font-semibold text-stone-400">Ownership & Management</dt>
+                        <dd className="text-stone-500 text-xs mt-0.5">Managed directly by host on-site</dd>
+                      </div>
+                    )}
                   </dl>
 
                   {/* Room Types & Pricing Summary in Review */}
@@ -2076,7 +2303,7 @@ export default function ListProperty() {
                     ) : (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {(draft.rooms || []).map((room, rIdx) => (
-                          <div key={rIdx} className="bg-stone-50 p-3.5 rounded-xl border border-stone-200 text-xs space-y-1.5">
+                          <div key={`draft-summary-room-${room.id || rIdx}-${rIdx}`} className="bg-stone-50 p-3.5 rounded-xl border border-stone-200 text-xs space-y-1.5">
                             <div className="flex items-start justify-between gap-2">
                               <span className="font-bold text-stone-900 text-sm">{room.name || `Room ${rIdx + 1}`}</span>
                               <span className="text-[10px] font-semibold text-stone-500 bg-white px-2 py-0.5 rounded border border-stone-200">
@@ -2184,7 +2411,9 @@ export default function ListProperty() {
                 <div className="rounded-2xl border border-red-200 bg-red-50 p-5 text-sm text-red-700">
                   <p className="font-bold">Not quite ready to send:</p>
                   <ul className="mt-2 list-inside list-disc space-y-1">
-                    {Object.values(allErrors).map(message => <li key={message}>{message}</li>)}
+                    {Object.entries(allErrors).map(([field, message]) => (
+                      <li key={`${field}-${message}`}>{message}</li>
+                    ))}
                   </ul>
                 </div>
               )}
@@ -2313,8 +2542,8 @@ function HostIntro({
 
       <section className="mx-auto w-full max-w-6xl px-6 py-20 lg:px-8">
         <div className="grid gap-10 md:grid-cols-3">
-          {SELLING_POINTS.map(point => (
-            <div key={point.title}>
+          {SELLING_POINTS.map((point, pIdx) => (
+            <div key={`selling-point-${point.title}-${pIdx}`}>
               <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700">
                 <point.icon className="h-5 w-5" />
               </div>
@@ -2335,7 +2564,7 @@ function HostIntro({
               { icon: Images, title: 'Photographs', body: 'One main shot, then as many more as you have.' },
               { icon: ChevronRight, title: 'Rooms and rates', body: 'Add a room type, set the price, open for bookings.' },
             ].map((item, index) => (
-              <li key={item.title} className="rounded-3xl border border-stone-200 bg-white p-7">
+              <li key={`step-card-${item.title}-${index}`} className="rounded-3xl border border-stone-200 bg-white p-7">
                 <span className="mb-4 block text-xs font-bold uppercase tracking-[0.2em] text-stone-400">
                   0{index + 1}
                 </span>

@@ -494,9 +494,9 @@ export default function PropertyChat({
   })();
 
   return (
-    <div className="flex flex-col h-[500px] max-h-[calc(100dvh-7.5rem)] min-h-[350px] bg-white rounded-2xl shadow-2xl overflow-hidden border border-stone-200">
+    <div className="flex flex-col h-full bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden border border-stone-200">
       {/* Header Bar */}
-      <div className="p-3.5 sm:p-4 bg-stone-900 text-white flex justify-between items-center gap-2 select-none border-b border-stone-800">
+      <div className="p-3.5 pt-[max(14px,env(safe-area-inset-top))] sm:p-4 bg-stone-900 text-white flex justify-between items-center gap-2 select-none border-b border-stone-800">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2.5">
             <div className="relative">
@@ -851,7 +851,7 @@ export default function PropertyChat({
       
       {/* Bottom Message Input Bar */}
       {currentUser && (
-        <div className="p-3 bg-white border-t border-stone-100">
+        <div className="p-3 pb-6 sm:pb-3 bg-white border-t border-stone-100 shrink-0">
           {isChatEnded ? (
             <div className="flex items-center justify-between gap-2 p-1.5 bg-stone-50 rounded-xl border border-stone-200">
               <span className="text-xs text-stone-500 pl-2">Session ended. Send a message to restart.</span>

@@ -116,6 +116,12 @@ export interface Hotel {
   crew?: StayCrewMember[];
   dailyBoard?: DailyBoard;
   managerId: string;
+  managerName?: string;
+  managerEmail?: string;
+  managerPhone?: string;
+  ownerName?: string;
+  ownerEmail?: string;
+  ownerPhone?: string;
   name: string;
   description: string;
   location: string;

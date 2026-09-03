@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Palmtree, Map, Mail, Phone, MapPin, Facebook, Instagram, Twitter } from 'lucide-react';
 import { useSystemSettings } from '../hooks/useSystemSettings';
+import { openAccessPermissionsModal } from './AccessRequestModal';
 
 export default function Footer() {
   const { settings } = useSystemSettings();
@@ -68,9 +69,17 @@ export default function Footer() {
       
       <div className="max-w-7xl mx-auto px-6 lg:px-8 mt-16 pt-8 border-t border-stone-800 text-sm flex flex-col md:flex-row justify-between items-center text-stone-500">
         <p>&copy; {new Date().getFullYear()} Travel Malawi. All rights reserved.</p>
-        <div className="flex items-center gap-6 mt-4 md:mt-0">
+        <div className="flex flex-wrap items-center gap-6 mt-4 md:mt-0">
+          <button
+            type="button"
+            onClick={openAccessPermissionsModal}
+            className="hover:text-white transition cursor-pointer text-left"
+          >
+            Device Permissions
+          </button>
           <Link to="/privacy" className="hover:text-white transition">Privacy Policy</Link>
-          <Link to="/terms" className="hover:text-white transition">Terms of Service</Link><Link to="/refunds" className="hover:text-white transition">Refunds & Cancellations</Link>
+          <Link to="/terms" className="hover:text-white transition">Terms of Service</Link>
+          <Link to="/refunds" className="hover:text-white transition">Refunds & Cancellations</Link>
         </div>
       </div>
     </footer>

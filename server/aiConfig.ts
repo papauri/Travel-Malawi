@@ -81,8 +81,27 @@ function getEnvApiKey(provider: AIProviderId): string | undefined {
 
 let inMemoryConfig: AISystemConfig | null = null;
 
+function autoSelectWorkingProvider(config: AISystemConfig) {
+  const currentKey = config.providers[config.activeProvider]?.apiKey?.trim() || getEnvApiKey(config.activeProvider);
+  if (!currentKey) {
+    const providers = Object.keys(DEFAULT_PROVIDERS) as AIProviderId[];
+    for (const pid of providers) {
+      const key = config.providers[pid]?.apiKey?.trim() || getEnvApiKey(pid);
+      if (key) {
+        config.activeProvider = pid;
+        break;
+      }
+    }
+  }
+}
+
 export function loadAIConfig(): AISystemConfig {
   if (inMemoryConfig) {
+    const oldProvider = inMemoryConfig.activeProvider;
+    autoSelectWorkingProvider(inMemoryConfig);
+    if (oldProvider !== inMemoryConfig.activeProvider) {
+      saveAIConfig(inMemoryConfig);
+    }
     return inMemoryConfig;
   }
 
@@ -105,6 +124,13 @@ export function loadAIConfig(): AISystemConfig {
         },
         updatedAt: parsed.updatedAt || Date.now(),
       };
+      
+      const oldProvider = inMemoryConfig.activeProvider;
+      autoSelectWorkingProvider(inMemoryConfig);
+      if (oldProvider !== inMemoryConfig.activeProvider) {
+        saveAIConfig(inMemoryConfig);
+      }
+      
       return inMemoryConfig;
     }
   } catch (err) {
@@ -118,7 +144,7 @@ export function loadAIConfig(): AISystemConfig {
     providers: { ...DEFAULT_PROVIDERS },
     updatedAt: Date.now(),
   };
-
+  autoSelectWorkingProvider(inMemoryConfig);
   saveAIConfig(inMemoryConfig);
   return inMemoryConfig;
 }

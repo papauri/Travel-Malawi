@@ -252,8 +252,8 @@ export default function HotelDetails() {
 
   /** Imported and guest-written reviews in one list, verified stays first. */
   const allReviews = useMemo(() => {
-    const written = reviews.map(r => ({
-      key: r.id ?? `review-${r.createdAt}`,
+    const written = reviews.map((r, i) => ({
+      key: r.id ? `rev-${r.id}-${i}` : `review-${r.createdAt}-${i}`,
       author: r.authorName || 'Guest',
       rating: r.rating,
       text: r.text,
@@ -590,7 +590,7 @@ export default function HotelDetails() {
 
           {/* Supporting photographs, only when they exist */}
           {galleryImages.map((url, index) => (
-            <div key={url} className="relative rounded-none overflow-hidden hidden md:block md:col-span-2 md:row-span-1 group cursor-pointer" onClick={() => setShowHotelGallery(true)}>
+            <div key={`${url}-${index}`} className="relative rounded-none overflow-hidden hidden md:block md:col-span-2 md:row-span-1 group cursor-pointer" onClick={() => setShowHotelGallery(true)}>
               <SmartImage
                 src={url}
                 alt={`${hotel.name} — photograph ${index + 2}`}
@@ -704,14 +704,14 @@ export default function HotelDetails() {
               <p className="text-stone-500 italic">No rooms available at the moment.</p>
             ) : (
               <div className="flex overflow-x-auto md:flex-col gap-4 md:gap-6 mb-12 pb-6 -mx-4 px-4 md:mx-0 md:px-0 snap-x snap-mandatory scrollbar-none">
-                {rooms.map((room) => {
+                {rooms.map((room, index) => {
                   const status = room.id ? roomAvailability[room.id] : undefined;
                   const roomDisplayCurrency = resolveCurrency(room, currency);
                   const isSoldOut = status ? !status.available : (room.quantity ?? 0) <= 0;
                   const hasDates = !!checkIn && !!checkOut && checkIn < checkOut;
                   return (
                   <motion.div
-                    key={room.id}
+                    key={room.id || `room-${index}`}
                     initial={{ opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true, margin: "-50px" }}
@@ -749,8 +749,8 @@ export default function HotelDetails() {
                               <span>{status?.remaining != null ? status.remaining : room.quantity} Available</span>
                             </div>
                           )}
-                          {room.packages && room.packages.length > 0 && room.packages.map(pkg => (
-                            <span key={pkg.id} className="px-3 py-1.5 bg-stone-100 text-stone-700 rounded-full text-[11px] font-semibold tracking-wide border border-stone-200 flex items-center gap-1">
+                          {room.packages && room.packages.length > 0 && room.packages.map((pkg, pIdx) => (
+                            <span key={`${pkg.id || 'pkg'}-${pIdx}`} className="px-3 py-1.5 bg-stone-100 text-stone-700 rounded-full text-[11px] font-semibold tracking-wide border border-stone-200 flex items-center gap-1">
                               <Plus className="w-3 h-3 text-stone-400" />
                               {pkg.name}
                               {(() => {
@@ -830,9 +830,9 @@ export default function HotelDetails() {
                   </div>
                 </div>
 
-                {conferenceRooms.map((room) => (
+                {conferenceRooms.map((room, cIdx) => (
                   <motion.div
-                    key={room.id}
+                    key={room.id || `conf-room-${cIdx}`}
                     initial={{ opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true, margin: "-50px" }}
@@ -860,8 +860,8 @@ export default function HotelDetails() {
                         
                         {room.amenities && room.amenities.length > 0 && (
                           <div className="flex flex-wrap gap-1.5 mb-4">
-                            {room.amenities.map(a => (
-                              <span key={a} className="bg-stone-100 text-stone-600 px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider">{a}</span>
+                            {room.amenities.map((a, aIdx) => (
+                              <span key={`${a}-${aIdx}`} className="bg-stone-100 text-stone-600 px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider">{a}</span>
                             ))}
                           </div>
                         )}
@@ -1007,8 +1007,8 @@ export default function HotelDetails() {
                     ) : null}
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-xs">
-                    {summariseHours(hotel.hours!).map(row => (
-                      <div key={row.label} className="flex justify-between items-center text-stone-600 py-1 gap-2 min-w-0 bg-white/80 px-2.5 rounded-lg border border-stone-200/60 text-[11px] sm:text-xs">
+                    {summariseHours(hotel.hours!).map((row, rIdx) => (
+                      <div key={`${row.label}-${rIdx}`} className="flex justify-between items-center text-stone-600 py-1 gap-2 min-w-0 bg-white/80 px-2.5 rounded-lg border border-stone-200/60 text-[11px] sm:text-xs">
                         <span className="font-medium text-stone-500 shrink-0 whitespace-nowrap">{row.label}</span>
                         <span className="font-semibold text-stone-900 text-right whitespace-nowrap">{row.hours}</span>
                       </div>
@@ -1164,8 +1164,8 @@ export default function HotelDetails() {
                       <Clock className="h-4 w-4 text-emerald-700" />
                       <span>Kitchen Hours</span>
                     </span>
-                    {summariseHours(restaurant.hours!).map(row => (
-                      <span key={row.label} className="text-stone-600 font-medium">
+                    {summariseHours(restaurant.hours!).map((row, rIdx) => (
+                      <span key={`${row.label}-${rIdx}`} className="text-stone-600 font-medium">
                         <span className="text-stone-400 font-normal">{row.label}:</span> {row.hours}
                       </span>
                     ))}
@@ -1214,8 +1214,8 @@ export default function HotelDetails() {
             ) : (
               <>
                 <div className="grid grid-cols-1 gap-6">
-                  {allReviews.slice((currentReviewPage - 1) * reviewsPerPage, currentReviewPage * reviewsPerPage).map(review => (
-                    <div key={review.key} className="bg-white p-8 rounded-3xl border border-stone-200 shadow-sm">
+                  {allReviews.slice((currentReviewPage - 1) * reviewsPerPage, currentReviewPage * reviewsPerPage).map((review, rIdx) => (
+                    <div key={`${review.key}-${rIdx}`} className="bg-white p-8 rounded-3xl border border-stone-200 shadow-sm">
                       <div className="flex justify-between items-start mb-4">
                         <div className="flex items-center gap-4">
                           <div className="w-12 h-12 bg-stone-100 rounded-full flex items-center justify-center text-stone-600 font-serif font-bold text-lg">
@@ -1627,7 +1627,7 @@ export default function HotelDetails() {
                 <div>
                   <label className={labelClass}>Enhance your stay</label>
                   <div className="grid gap-2">
-                    {selectedRoom.packages.map(pkg => {
+                    {selectedRoom.packages.map((pkg, pIdx) => {
                       const checked = selectedPackages.includes(pkg.id);
                       const amount = packagePrice(pkg, bookingCurrency, roomPrimary);
                       // A package the property never priced in this currency
@@ -1636,7 +1636,7 @@ export default function HotelDetails() {
                       const unavailable = amount === null;
                       return (
                         <label
-                          key={pkg.id}
+                          key={`${pkg.id || 'pkg'}-${pIdx}`}
                           className={`flex items-center gap-3 rounded-xl border px-4 py-3 transition ${
                             unavailable
                               ? 'border-stone-200 bg-stone-50/60 opacity-60 cursor-not-allowed'

@@ -42,13 +42,22 @@ export interface OperationsChatPayload {
       featured?: boolean;
       isOnline?: boolean;
       outOfOfficeMessage?: string;
+      managerId?: string;
+      managerName?: string;
+      managerEmail?: string;
+      managerPhone?: string;
+      ownerName?: string;
+      ownerEmail?: string;
+      ownerPhone?: string;
+      contactName?: string;
+      contactWhatsapp?: string;
+      contactEmail?: string;
+      contactPhone?: string;
+      crew?: Array<{ name: string; role: string; phone?: string; whatsapp?: string }>;
       checkInTime?: string;
       checkOutTime?: string;
       cancellationPolicy?: string;
       paymentPolicy?: string;
-      contactWhatsapp?: string;
-      contactEmail?: string;
-      contactPhone?: string;
       amenities?: string[];
       restaurant?: {
         enabled: boolean;
@@ -99,6 +108,12 @@ export interface OperationsChatPayload {
       total?: number;
     }>;
     learnedRules?: string[];
+    autonomousPatches?: Array<{
+      id?: string;
+      patch: string;
+      trigger?: string;
+      resolution?: string;
+    }>;
   };
 }
 
@@ -175,6 +190,12 @@ export interface OperationsChatResult {
   model: string;
   actionProposal?: ActionProposal | null;
   newLearnedRule?: string | null;
+  suggestedFollowUps?: string[];
+  autonomousPatch?: {
+    trigger?: string;
+    patch: string;
+    resolution?: string;
+  } | null;
 }
 
 let cachedStatus: AIStatus | null = null;

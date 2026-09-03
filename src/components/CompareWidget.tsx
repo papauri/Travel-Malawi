@@ -30,8 +30,8 @@ export default function CompareWidget() {
             </div>
             
             <div className="flex -space-x-3 mr-1 sm:mr-2 shrink-0">
-              {selectedHotels.map(item => (
-                <div key={item.hotel.id} className="w-6 h-6 sm:w-8 sm:h-8 rounded-full border-2 border-stone-900 overflow-hidden bg-stone-800">
+              {selectedHotels.map((item, idx) => (
+                <div key={`comp-${item.hotel.id || 'hotel'}-${idx}`} className="w-6 h-6 sm:w-8 sm:h-8 rounded-full border-2 border-stone-900 overflow-hidden bg-stone-800">
                   <img src={getHotelImages(item.hotel)[0]} alt={item.hotel.name} className="w-full h-full object-cover" />
                 </div>
               ))}
@@ -105,8 +105,8 @@ export default function CompareWidget() {
                   </motion.div>
                 </motion.div>
                 <div className="flex flex-nowrap md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 overflow-x-auto pb-6 snap-x snap-mandatory scrollbar-hide">
-                  {selectedHotels.map(item => (
-                    <div key={item.hotel.id} className="flex-none w-[85vw] sm:w-80 md:w-auto snap-center flex flex-col gap-0 bg-white rounded-2xl shadow-xs border border-stone-200 overflow-hidden">
+                  {selectedHotels.map((item, hIdx) => (
+                    <div key={item.hotel.id || `selected-hotel-${hIdx}`} className="flex-none w-[85vw] sm:w-80 md:w-auto snap-center flex flex-col gap-0 bg-white rounded-2xl shadow-xs border border-stone-200 overflow-hidden">
                       <div className="relative aspect-[4/3] bg-stone-100 shrink-0">
                         <img 
                           src={getHotelImages(item.hotel)[0]} 
@@ -213,8 +213,8 @@ export default function CompareWidget() {
                         <div>
                           <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 mb-3 block">Amenities</span>
                           <ul className="grid grid-cols-1 gap-2 text-sm">
-                            {item.hotel.amenities.map(amenity => (
-                              <li key={amenity} className="flex items-start gap-2 text-stone-700 font-medium">
+                            {item.hotel.amenities.map((amenity, aIdx) => (
+                              <li key={`${amenity}-${aIdx}`} className="flex items-start gap-2 text-stone-700 font-medium">
                                 <Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
                                 <span>{amenity}</span>
                               </li>

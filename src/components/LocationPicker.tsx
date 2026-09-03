@@ -431,9 +431,9 @@ export default function LocationPicker({
                       <div className="px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-stone-500 bg-stone-100 rounded-lg flex items-center gap-1.5 mb-1">
                         <Globe className="h-3 w-3" /> Map Geocoding Search
                       </div>
-                      {onlineResults.map(res => (
+                      {onlineResults.map((res, idx) => (
                         <button
-                          key={res.id}
+                          key={`${res.id}-${idx}`}
                           type="button"
                           onClick={() =>
                             handlePickPlace(

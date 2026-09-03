@@ -6,7 +6,7 @@ import { doc, getDoc, collection, query, where, getDocs, addDoc, updateDoc, dele
 import { db } from '../lib/firebase';
 import { Hotel, RoomType, Booking, CurrencyCode, PriceMap, Restaurant, WeeklyHours } from '../types';
 import { useAuth } from '../contexts/AuthContext';
-import { Plus, CheckCircle2, XCircle, Clock, Save, Edit2, Trash2, Users, Calendar, Check, X, Building, BedDouble, Loader2, Download, TrendingUp, Percent, Wallet, UtensilsCrossed, Eye, ChevronLeft, ExternalLink, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { Plus, CheckCircle2, XCircle, Clock, Save, Edit2, Trash2, Users, Calendar, Check, X, Building, BedDouble, Loader2, Download, TrendingUp, Percent, Wallet, UtensilsCrossed, Eye, ChevronLeft, ExternalLink, AlertTriangle, ShieldCheck, UserCheck, User, Mail, Phone } from 'lucide-react';
 import ImageUpload from '../components/ImageUpload';
 import GalleryUpload from '../components/GalleryUpload';
 import StayOSManager from '../components/StayOSManager';
@@ -70,6 +70,12 @@ function hotelFormSnapshot(data: Partial<Hotel>): string {
     checkOutTime: data.checkOutTime ?? '',
     cancellationPolicy: data.cancellationPolicy ?? '',
     paymentPolicy: data.paymentPolicy ?? '',
+    managerName: data.managerName ?? '',
+    managerEmail: data.managerEmail ?? '',
+    managerPhone: data.managerPhone ?? '',
+    ownerName: data.ownerName ?? '',
+    ownerEmail: data.ownerEmail ?? '',
+    ownerPhone: data.ownerPhone ?? '',
     contactEmail: data.contactEmail ?? '',
     contactPhone: data.contactPhone ?? '',
     contactWhatsapp: data.contactWhatsapp ?? '',
@@ -258,7 +264,28 @@ export default function ManageHotel() {
       try {
         const docRef = doc(db, 'hotels', id);
         const docSnap = await getDoc(docRef);
-        if (docSnap.exists() && (docSnap.data().managerId === user?.uid || isAdmin(user))) {
+        const hRaw = docSnap.exists() ? docSnap.data() : null;
+        const hasAssignedManager = Boolean(
+          hRaw?.managerId &&
+          hRaw.managerId !== 'unassigned' &&
+          hRaw.managerId !== 'none' &&
+          hRaw.managerId.trim() !== ''
+        );
+        const userEmailLower = user?.email?.toLowerCase();
+        const canManage = Boolean(
+          isAdmin(user) ||
+          !hasAssignedManager || // Unassigned properties belong to the signed-in user!
+          hRaw?.managerId === user?.uid ||
+          (userEmailLower && (
+            (hRaw?.managerEmail && hRaw.managerEmail.toLowerCase() === userEmailLower) ||
+            (hRaw?.ownerEmail && hRaw.ownerEmail.toLowerCase() === userEmailLower) ||
+            (hRaw?.contactEmail && hRaw.contactEmail.toLowerCase() === userEmailLower)
+          )) ||
+          hRaw?.ownerId === user?.uid ||
+          hRaw?.createdBy === user?.uid
+        );
+
+        if (docSnap.exists() && canManage) {
           const hData = { id: docSnap.id, ...docSnap.data() } as Hotel;
           
           // Seed missing images with local fallbacks so the admin sees exactly what guests see and can manage them.
@@ -388,7 +415,20 @@ export default function ManageHotel() {
     return [...filtered].sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
   }, [bookings, bookingFilter]);
 
-  const canSeeFinancials = hotel?.managerId === user?.uid;
+  const canSeeFinancials = Boolean(
+    isAdmin(user) ||
+    !hotel?.managerId ||
+    hotel?.managerId === 'unassigned' ||
+    hotel?.managerId === 'none' ||
+    hotel?.managerId === user?.uid ||
+    (user?.email && (
+      (hotel?.managerEmail && hotel.managerEmail.toLowerCase() === user.email.toLowerCase()) ||
+      (hotel?.ownerEmail && hotel.ownerEmail.toLowerCase() === user.email.toLowerCase()) ||
+      (hotel?.contactEmail && hotel.contactEmail.toLowerCase() === user.email.toLowerCase())
+    )) ||
+    (hotel as any)?.ownerId === user?.uid ||
+    (hotel as any)?.createdBy === user?.uid
+  );
 
   /** Downloads the property's bookings as CSV for accounting or a spreadsheet. */
   const exportBookingsCsv = () => {
@@ -860,6 +900,7 @@ export default function ManageHotel() {
     try {
       await deleteDoc(doc(db, 'bookings', bookingId));
       setBookings(bookings.filter(b => b.id !== bookingId));
+      setBookingToDelete(null);
       toast.success('Booking deleted.');
     } catch (error) {
       console.error("Error deleting booking:", error);
@@ -930,7 +971,7 @@ export default function ManageHotel() {
       )}
 
       {/* Performance snapshot */}
-      {user?.uid === hotel.managerId && (
+      {canSeeFinancials && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
           <div className="bg-white border border-stone-200 rounded-2xl p-5 shadow-sm">
             <div className="flex items-center gap-2 text-stone-400 mb-2">
@@ -950,8 +991,8 @@ export default function ManageHotel() {
                 <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                   {stats.upcomingRevenue.length === 0
                     ? <p className="text-2xl font-bold tracking-tight text-stone-900">&mdash;</p>
-                    : stats.upcomingRevenue.map(([code, total]) => (
-                        <p key={code} className="text-2xl text-stone-900"><PriceDisplay amount={total} currency={code} /></p>
+                    : stats.upcomingRevenue.map(([code, total], idx) => (
+                        <p key={`up-rev-${code}-${idx}`} className="text-2xl text-stone-900"><PriceDisplay amount={total} currency={code} /></p>
                       ))}
                 </div>
                 <p className="text-xs text-stone-400 mt-1">Confirmed stays not yet completed</p>
@@ -964,8 +1005,8 @@ export default function ManageHotel() {
                 <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                   {stats.allTimeRevenue.length === 0
                     ? <p className="text-2xl font-bold tracking-tight text-stone-900">&mdash;</p>
-                    : stats.allTimeRevenue.map(([code, total]) => (
-                        <p key={code} className="text-2xl text-stone-900"><PriceDisplay amount={total} currency={code} /></p>
+                    : stats.allTimeRevenue.map(([code, total], idx) => (
+                        <p key={`all-rev-${code}-${idx}`} className="text-2xl text-stone-900"><PriceDisplay amount={total} currency={code} /></p>
                       ))}
                 </div>
                 <p className="text-xs text-stone-400 mt-1">{stats.confirmedCount} confirmed booking{stats.confirmedCount === 1 ? '' : 's'}</p>
@@ -1105,11 +1146,11 @@ export default function ManageHotel() {
               <div className="md:col-span-2">
                 <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Category</label>
                 <div className="flex flex-wrap gap-2">
-                  {PROPERTY_CATEGORIES.map(category => {
+                  {PROPERTY_CATEGORIES.map((category, catIdx) => {
                     const selected = (editHotelData.categories ?? []).includes(category);
                     return (
                       <button
-                        key={category}
+                        key={`mgmt-cat-${category}-${catIdx}`}
                         type="button"
                         aria-pressed={selected}
                         onClick={() => setEditHotelData({
@@ -1140,12 +1181,12 @@ export default function ManageHotel() {
               <div className="md:col-span-2">
                 <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Amenities</label>
                 <div className="flex flex-wrap gap-2 mb-3">
-                  {COMMON_AMENITIES.map(amenity => {
+                  {COMMON_AMENITIES.map((amenity, amIdx) => {
                     const current = Array.isArray(editHotelData.amenities) ? editHotelData.amenities : (editHotelData.amenities || []);
                     const selected = current.includes(amenity);
                     return (
                       <button
-                        key={amenity}
+                        key={`mgmt-amenity-${amenity}-${amIdx}`}
                         type="button"
                         onClick={() => {
                           if (current.includes(amenity)) {
@@ -1171,8 +1212,8 @@ export default function ManageHotel() {
                      const current = Array.isArray(editHotelData.amenities) ? editHotelData.amenities : (editHotelData.amenities || []);
                      const custom = current.filter(a => !COMMON_AMENITIES.includes(a));
                      if (custom.length === 0) return null;
-                     return custom.map(amenity => (
-                        <span key={amenity} className="inline-flex items-center gap-1.5 rounded-full bg-stone-100 border border-stone-200 px-3 py-1.5 text-xs font-medium text-stone-700">
+                     return custom.map((amenity, aIdx) => (
+                        <span key={`${amenity}-${aIdx}`} className="inline-flex items-center gap-1.5 rounded-full bg-stone-100 border border-stone-200 px-3 py-1.5 text-xs font-medium text-stone-700">
                           {amenity}
                           <button
                             type="button"
@@ -1230,11 +1271,100 @@ export default function ManageHotel() {
     </div>
   </SectionCard>
 
-  <SectionCard title="Operations & Contact" description="How and when guests can reach you.">
+  <SectionCard title="Operations & Contact" description="Designate the on-site manager, ownership entity, and guest contact numbers.">
     <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Designated Property Manager */}
+              <div className="rounded-xl border border-stone-200 bg-stone-50/70 p-4 sm:p-5 space-y-4">
+                <div className="flex items-center gap-2.5 text-stone-900 font-semibold">
+                  <UserCheck className="w-5 h-5 text-stone-700" />
+                  <span>Designated Property Manager in Charge</span>
+                </div>
+                <p className="text-xs text-stone-500">
+                  The person responsible for daily operations, guest check-ins, and hospitality on-site. Known to guests and our AI Concierge.
+                </p>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
                   <div>
-                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Booking email</label>
+                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Manager Name</label>
+                    <input
+                      type="text"
+                      value={editHotelData.managerName ?? ''}
+                      onChange={e => setEditHotelData({ ...editHotelData, managerName: e.target.value })}
+                      className="w-full bg-white border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition"
+                      placeholder="e.g. Kondwani Banda"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Manager Direct Email</label>
+                    <input
+                      type="email"
+                      value={editHotelData.managerEmail ?? ''}
+                      onChange={e => setEditHotelData({ ...editHotelData, managerEmail: e.target.value })}
+                      className="w-full bg-white border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition"
+                      placeholder="manager@lodge.mw"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Manager Direct Phone</label>
+                    <input
+                      type="tel"
+                      value={editHotelData.managerPhone ?? ''}
+                      onChange={e => setEditHotelData({ ...editHotelData, managerPhone: e.target.value })}
+                      className="w-full bg-white border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition"
+                      placeholder="+265 991 234 567"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Property Owner / Holding Entity */}
+              <div className="rounded-xl border border-stone-200 bg-white p-4 sm:p-5 space-y-4">
+                <div className="flex items-center gap-2.5 text-stone-900 font-semibold">
+                  <Building className="w-5 h-5 text-stone-600" />
+                  <span>Property Owner / Legal Entity <span className="text-xs text-stone-400 font-normal">(Optional)</span></span>
+                </div>
+                <p className="text-xs text-stone-500">
+                  Entity, holding company, or individual holding title/operating lease separate from the local manager.
+                </p>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+                  <div>
+                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Owner / Entity Name</label>
+                    <input
+                      type="text"
+                      value={editHotelData.ownerName ?? ''}
+                      onChange={e => setEditHotelData({ ...editHotelData, ownerName: e.target.value })}
+                      className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition"
+                      placeholder="e.g. Nyika Safaris Group"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Owner Email</label>
+                    <input
+                      type="email"
+                      value={editHotelData.ownerEmail ?? ''}
+                      onChange={e => setEditHotelData({ ...editHotelData, ownerEmail: e.target.value })}
+                      className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition"
+                      placeholder="owner@company.mw"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Owner Phone</label>
+                    <input
+                      type="tel"
+                      value={editHotelData.ownerPhone ?? ''}
+                      onChange={e => setEditHotelData({ ...editHotelData, ownerPhone: e.target.value })}
+                      className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition"
+                      placeholder="+265 888 123 456"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Guest Booking Contact */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
+                  <div>
+                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Public Booking Email</label>
                     <input
                       type="email"
                       value={editHotelData.contactEmail ?? ''}
@@ -1245,7 +1375,7 @@ export default function ManageHotel() {
                     <FieldError message={contactProblems.contactEmail} />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Phone</label>
+                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Public Phone</label>
                     <input
                       type="tel"
                       value={editHotelData.contactPhone ?? ''}
@@ -1600,10 +1730,10 @@ export default function ManageHotel() {
             </div>
           ) : (
             <div className="space-y-8">
-              {rooms.map(room => {
+              {rooms.map((room, rIdx) => {
                 return (
                   <RoomMediaEditor 
-                    key={room.id} 
+                    key={room.id || `room-media-${rIdx}`} 
                     room={room} 
                     hotelId={id!} 
                     onUpdate={(updated) => setRooms(rooms.map(r => r.id === updated.id ? updated : r))} 
@@ -1704,8 +1834,8 @@ export default function ManageHotel() {
                          const current = editRoomData.amenities || [];
                          const custom = current.filter(a => !COMMON_AMENITIES.includes(a));
                          if (custom.length === 0) return null;
-                         return custom.map(amenity => (
-                            <span key={amenity} className="inline-flex items-center gap-1.5 rounded-full bg-stone-100 border border-stone-200 px-3 py-1.5 text-xs font-medium text-stone-700">
+                         return custom.map((amenity, aIdx) => (
+                            <span key={`${amenity}-${aIdx}`} className="inline-flex items-center gap-1.5 rounded-full bg-stone-100 border border-stone-200 px-3 py-1.5 text-xs font-medium text-stone-700">
                               {amenity}
                               <button
                                 type="button"
@@ -1767,11 +1897,11 @@ export default function ManageHotel() {
                     <FieldError message={roomErrors.prices} />
                     <FieldError message={roomErrors.extraGuestFees} />
                     <div className="flex flex-wrap gap-2 mb-1">
-                      {CURRENCY_CODES.map(code => {
+                      {CURRENCY_CODES.map((code, cIdx) => {
                         const selected = editingCurrencies.includes(code);
                         return (
                           <label
-                            key={code}
+                            key={`edit-curr-code-${code}-${cIdx}`}
                             className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition cursor-pointer ${
                               selected
                                 ? 'border-emerald-600 bg-emerald-50'
@@ -1797,8 +1927,8 @@ export default function ManageHotel() {
                     </p>
                   </div>
 
-                  {editingCurrencies.map(code => (
-                    <React.Fragment key={code}>
+                  {editingCurrencies.map((code, cIdx) => (
+                    <React.Fragment key={`edit-rate-${code}-${cIdx}`}>
                       <div>
                         <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">
                           Nightly rate &middot; {CURRENCIES[code].label}
@@ -1865,13 +1995,14 @@ export default function ManageHotel() {
                       { name: "Kids Free (Under 12)", price: 0, type: "per_stay" as const },
                       { name: "Spa Access", price: 25, type: "per_person" as const },
                       { name: "WiFi Premium", price: 5, type: "per_room" as const },
-                    ].filter(p => !(editRoomData.packages || []).some(ep => ep.name === p.name)).map(p => (
-                      <button key={p.name} type="button" onClick={() => {
+                    ].filter(p => !(editRoomData.packages || []).some(ep => ep.name === p.name)).map((p, pIdx) => (
+                      <button key={`preset-pkg-${p.name}-${pIdx}`} type="button" onClick={() => {
                         const pkgs = editRoomData.packages || [];
                         // The preset amounts are dollars; other currencies start
                         // blank for the manager to fill in.
                         const prices = editingCurrencies.includes('USD') ? { USD: p.price } : {};
-                        setEditRoomData({...editRoomData, packages: [...pkgs, { id: Date.now().toString(), ...p, prices }]});
+                        const uniqueId = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+                        setEditRoomData({...editRoomData, packages: [...pkgs, { id: uniqueId, ...p, prices }]});
                       }} className="px-3 py-1.5 bg-stone-100 text-stone-700 rounded-full text-xs font-medium hover:bg-stone-200 transition border border-stone-200">
                         + {p.name}
                       </button>
@@ -1879,13 +2010,13 @@ export default function ManageHotel() {
                   </div>
                   {editRoomData.packages && editRoomData.packages.length > 0 && (
                     <div className="space-y-3">
-                      {editRoomData.packages.map(pkg => (
-                        <div key={pkg.id} className="flex items-center gap-3 bg-stone-50 p-3 rounded-xl border border-stone-100 flex-wrap">
+                      {editRoomData.packages.map((pkg, pIdx) => (
+                        <div key={`edit-room-pkg-${pkg.id || 'pkg'}-${pIdx}`} className="flex items-center gap-3 bg-stone-50 p-3 rounded-xl border border-stone-100 flex-wrap">
                           <span className="flex-1 min-w-[8rem] font-medium text-sm">{pkg.name}</span>
                           {/* One field per currency: a package left at zero in a
                               currency is simply not offered to guests paying in it. */}
-                          {editingCurrencies.map(code => (
-                            <div key={code} className="flex items-center gap-1.5">
+                          {editingCurrencies.map((code, cIdx) => (
+                            <div key={`pkg-price-${pkg.id || pIdx}-${code}-${cIdx}`} className="flex items-center gap-1.5">
                               <span className="text-xs text-stone-500 w-6 text-right">{CURRENCIES[code].symbol}</span>
                               <input
                                 type="number"
@@ -2066,9 +2197,9 @@ export default function ManageHotel() {
                             Manual Blockages
                           </p>
                           <div className="flex flex-wrap gap-2">
-                            {(editRoomData.blockedDates ?? []).map(date => (
+                            {(editRoomData.blockedDates ?? []).map((date, dIdx) => (
                               <button
-                                key={date}
+                                key={`blocked-full-${date}-${dIdx}`}
                                 type="button"
                                 onClick={() => toggleBlockedDate(date)}
                                 className="flex items-center gap-1.5 bg-stone-800 text-white text-xs font-medium px-3 py-1.5 rounded-full hover:bg-red-600 transition"
@@ -2078,9 +2209,9 @@ export default function ManageHotel() {
                                 <X className="w-3 h-3" />
                               </button>
                             ))}
-                            {Object.entries(editRoomData.blockedUnits ?? {}).map(([date, count]) => (
+                            {Object.entries(editRoomData.blockedUnits ?? {}).map(([date, count], uIdx) => (
                               <button
-                                key={date}
+                                key={`blocked-unit-${date}-${uIdx}`}
                                 type="button"
                                 onClick={() => toggleBlockedDate(date)}
                                 className="flex items-center gap-1.5 bg-stone-100 text-stone-800 border border-stone-200 text-xs font-medium px-3 py-1.5 rounded-full hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition"
@@ -2120,8 +2251,8 @@ export default function ManageHotel() {
             </div>
           )}
 
-          {!editingRoomId && rooms.map(room => (
-            <div key={room.id} onClick={() => startEditRoom(room)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') startEditRoom(room); }} className={`group cursor-pointer bg-white border p-4 sm:p-6 rounded-2xl flex flex-col md:flex-row gap-4 sm:gap-6 items-stretch md:items-center shadow-sm hover:border-stone-400 hover:shadow-md transition ${room.quantity === 0 ? 'border-red-200 bg-red-50/30' : 'border-stone-200'}`}>
+          {!editingRoomId && rooms.map((room, rIdx) => (
+            <div key={`mgmt-room-card-${room.id || 'room'}-${rIdx}`} onClick={() => startEditRoom(room)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') startEditRoom(room); }} className={`group cursor-pointer bg-white border p-4 sm:p-6 rounded-2xl flex flex-col md:flex-row gap-4 sm:gap-6 items-stretch md:items-center shadow-sm hover:border-stone-400 hover:shadow-md transition ${room.quantity === 0 ? 'border-red-200 bg-red-50/30' : 'border-stone-200'}`}>
               <div className="w-full md:w-48 h-48 sm:h-40 md:h-36 bg-stone-100 rounded-2xl overflow-hidden shrink-0">
                 <SmartImage src={getRoomImage(room, null)} alt={room.name} className="w-full h-full object-cover" />
               </div>
@@ -2131,7 +2262,7 @@ export default function ManageHotel() {
                   <div className="flex sm:flex-col gap-3 sm:gap-0 text-left sm:text-right items-baseline sm:items-end">
                     {roomCurrencies(room).map((code, i) => (
                       <div
-                        key={code}
+                        key={`room-curr-disp-${code}-${i}`}
                         className={i === 0
                           ? 'text-xl font-serif font-bold text-stone-900 whitespace-nowrap'
                           : 'text-sm text-stone-500 font-medium whitespace-nowrap'}
@@ -2148,8 +2279,8 @@ export default function ManageHotel() {
                     {room.quantity > 0 ? `${room.quantity} Available` : 'Blocked'}
                   </span>
                 
-                  {room.packages && room.packages.length > 0 && room.packages.map(pkg => (
-                    <span key={pkg.id} className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full text-xs">{pkg.name}</span>
+                  {room.packages && room.packages.length > 0 && room.packages.map((pkg, pIdx) => (
+                    <span key={`room-view-pkg-${pkg.id || 'pkg'}-${pIdx}`} className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full text-xs">{pkg.name}</span>
                   ))}
                 </div>
               </div>
@@ -2298,8 +2429,8 @@ export default function ManageHotel() {
             </div>
           ) : (
             <ul className="divide-y divide-stone-100">
-              {visibleBookings.slice((currentBookingPage - 1) * bookingsPerPage, currentBookingPage * bookingsPerPage).map(booking => (
-                <li key={booking.id} className="p-6 md:p-8 hover:bg-stone-50 transition">
+              {visibleBookings.slice((currentBookingPage - 1) * bookingsPerPage, currentBookingPage * bookingsPerPage).map((booking, bIdx) => (
+                <li key={`mgmt-booking-${booking.id || 'booking'}-${bIdx}`} className="p-6 md:p-8 hover:bg-stone-50 transition">
                   <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-4">
                     <div>
                       <div className="flex items-center gap-3 mb-1 flex-wrap">
@@ -2383,8 +2514,8 @@ export default function ManageHotel() {
                     <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-900">
                       <span className="font-semibold block mb-1">Why this was flagged</span>
                       <ul className="list-disc list-inside space-y-0.5">
-                        {(booking.flagReasons ?? []).map(reason => (
-                          <li key={reason}>{SPAM_REASON_LABELS[reason] ?? reason}</li>
+                        {(booking.flagReasons ?? []).map((reason, rIdx) => (
+                          <li key={`${reason}-${rIdx}`}>{SPAM_REASON_LABELS[reason] ?? reason}</li>
                         ))}
                       </ul>
                     </div>
@@ -2491,7 +2622,7 @@ export default function ManageHotel() {
               </div>
             ) : (
               <div className="divide-y divide-stone-100">
-                {inquiries.map((inquiry) => {
+                {inquiries.map((inquiry, inqIdx) => {
                   const guestInitial = (inquiry.guestName || 'Guest').charAt(0).toUpperCase();
                   const updatedDate = inquiry.updatedAt ? new Date(inquiry.updatedAt) : new Date();
                   const isEnded = inquiry.status === 'ended';
@@ -2502,7 +2633,7 @@ export default function ManageHotel() {
                                    (!inquiry.managerLastOpenedAt || inquiry.updatedAt > inquiry.managerLastOpenedAt);
 
                   return (
-                    <div key={inquiry.id} className="py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 group hover:bg-stone-50/60 -mx-6 px-6 transition rounded-2xl">
+                    <div key={`inquiry-row-${inquiry.id || 'inq'}-${inqIdx}`} className="py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 group hover:bg-stone-50/60 -mx-6 px-6 transition rounded-2xl">
                       <div className="flex items-start gap-4">
                         <div className="relative">
                           <div className="w-11 h-11 rounded-2xl bg-stone-900 text-white font-bold text-base flex items-center justify-center shrink-0 shadow-sm">

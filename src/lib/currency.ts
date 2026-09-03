@@ -101,9 +101,9 @@ export function roomPrimaryCurrency(room: Pick<RoomType, 'currencies' | 'currenc
 
 /** Every currency the room is actually priced in, primary first. */
 export function roomCurrencies(room: RoomType): CurrencyCode[] {
-  const declared = room.currencies?.filter(isCurrencyCode) ?? [];
+  const declared = Array.from(new Set(room.currencies?.filter(isCurrencyCode) ?? []));
   const candidates = declared.length > 0 ? declared : CURRENCY_CODES;
-  const priced = candidates.filter(code => roomPrice(room, code) !== null);
+  const priced = Array.from(new Set(candidates.filter(code => roomPrice(room, code) !== null)));
   // A room with no price at all still needs a currency to render against.
   return priced.length > 0 ? priced : [roomPrimaryCurrency(room)];
 }

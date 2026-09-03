@@ -174,7 +174,7 @@ export function ChatModalProvider({ children }: { children: React.ReactNode }) {
             /* Expanded Floating Chat Card Docked at Bottom Right */
             <div 
               id="expanded-floating-chat-container"
-              className="fixed bottom-4 sm:bottom-6 right-3 sm:right-6 z-[200] w-[calc(100vw-24px)] sm:w-[410px] max-w-full max-h-[calc(100dvh-7.5rem)] origin-bottom-right animate-fadeIn flex flex-col"
+              className="fixed inset-x-0 bottom-0 top-10 sm:top-auto sm:inset-x-auto sm:bottom-6 sm:right-6 z-[200] sm:w-[440px] h-[calc(100dvh-2.5rem)] sm:h-[660px] sm:max-h-[calc(100dvh-5rem)] origin-bottom-right animate-fadeIn flex flex-col overflow-hidden rounded-t-3xl sm:rounded-2xl shadow-2xl"
             >
               {activeChat.type === 'inquiry' ? (
                 <PropertyChat
@@ -186,8 +186,8 @@ export function ChatModalProvider({ children }: { children: React.ReactNode }) {
                   onMinimize={minimizeChat}
                 />
               ) : (
-                <div className="bg-white rounded-2xl overflow-hidden shadow-2xl border border-stone-200 flex flex-col max-h-[calc(100dvh-7.5rem)]">
-                  <div className="p-3 bg-stone-900 text-white flex justify-between items-center shrink-0">
+                <div className="bg-white rounded-t-3xl sm:rounded-2xl overflow-hidden shadow-2xl border border-stone-200 flex flex-col h-full">
+                  <div className="p-3 pt-[max(12px,env(safe-area-inset-top))] sm:pt-3 bg-stone-900 text-white flex justify-between items-center shrink-0">
                     <div className="flex items-center gap-2">
                       <MessageSquare className="w-4 h-4 text-emerald-400" />
                       <div>
@@ -218,7 +218,7 @@ export function ChatModalProvider({ children }: { children: React.ReactNode }) {
                       </button>
                     </div>
                   </div>
-                  <div className="flex-1 min-h-0 h-[460px] max-h-[calc(100dvh-11rem)] min-h-[300px]">
+                  <div className="flex-1 min-h-0">
                     <BookingChat booking={activeChat.booking} currentUser={user} />
                   </div>
                 </div>
