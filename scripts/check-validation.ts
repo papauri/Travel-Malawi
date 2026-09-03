@@ -110,6 +110,7 @@ const property = {
   imageUrl: 'https://example.com/a.jpg',
   checkInTime: '14:00',
   checkOutTime: '11:00',
+  managerName: 'Kondwani Banda',
   contactEmail: 'stay@lodge.mw',
   contactPhone: '+265991234567',
   contactWhatsapp: '',
@@ -129,6 +130,8 @@ check('the editor\'s categories array is read too', Object.keys(validateProperty
 check('a listing with no photo', !!validateProperty({ ...property, imageUrl: '' }, 'edit').imageUrl, true);
 check('an impossible check-in time', !!validateProperty({ ...property, checkInTime: '25:00' }, 'edit').checkInTime, true);
 check('an empty name', !!validateProperty({ ...property, name: '' }, 'edit').name, true);
+check('no manager name blocks publishing', !!validateProperty({ ...property, managerName: '' }, 'publish').managerName, true);
+check('...but does not block editing', !!validateProperty({ ...property, managerName: '' }, 'edit').managerName, false);
 
 /* --------------------------------------------------------------- chime -- */
 
