@@ -21,7 +21,8 @@ import toast from 'react-hot-toast';
 import {
   ArrowLeft, ArrowRight, BadgeCheck, Building2, Check, ChevronRight, Clock,
   Images, Loader2, LocateFixed, Mail, MapPin, MessageCircle, Phone, Plus, Send,
-  Sparkles, Wallet, X,
+  Award, FileText, CheckCircle2, Wallet, X, DollarSign, Coins, Trash2, Sliders, ChevronDown, ChevronUp,
+  RefreshCw, TrendingUp, HelpCircle,
 } from 'lucide-react';
 
 import { useAuth } from '../contexts/AuthContext';
@@ -32,6 +33,8 @@ import GalleryUpload from '../components/GalleryUpload';
 import SmartImage from '../components/SmartImage';
 import FieldError from '../components/FieldError';
 import LocationPicker from '../components/LocationPicker';
+import AIAssistantButton from '../components/AIAssistantButton';
+import { useAIAssistant } from '../hooks/useAIAssistant';
 import { DECORATIVE_IMAGE, getHotelImage } from '../lib/images';
 import { db } from '../lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
@@ -40,6 +43,31 @@ import {
   MALAWI_LOCATIONS, NAME_MAX, PROPERTY_CATEGORIES, PropertyCategory, createListing,
   emptyDraft, errorsForStep, hasDuplicateListing, isStepComplete, validateDraft,
 } from '../lib/listing';
+import { RoomInput } from '../lib/validateRoom';
+import { CURRENCIES, formatMoney } from '../lib/currency';
+import { CurrencyCode } from '../types';
+
+const ESTIMATED_MWK_PER_USD = 1750;
+
+function convertUsdToMwk(usd: number): number {
+  if (!usd || usd <= 0) return 0;
+  return Math.round((usd * ESTIMATED_MWK_PER_USD) / 5000) * 5000;
+}
+
+function convertMwkToUsd(mwk: number): number {
+  if (!mwk || mwk <= 0) return 0;
+  return Math.max(5, Math.round((mwk / ESTIMATED_MWK_PER_USD) / 5) * 5);
+}
+
+export interface SuggestedRoomItem {
+  name: string;
+  description: string;
+  maxGuests: number;
+  suggestedPriceUsd: number;
+  suggestedPriceMwk: number;
+  currencies: ('USD' | 'MWK')[];
+  isCustomizing?: boolean;
+}
 
 const DRAFT_KEY = 'listingDraft';
 
@@ -86,6 +114,20 @@ export default function ListProperty() {
   const [amenityInput, setAmenityInput] = useState('');
   const [premiumEnabled, setPremiumEnabled] = useState(false);
   const [checkingPremium, setCheckingPremium] = useState(true);
+
+  // Subtle, optional AI Assistant features
+  const { status: aiStatus, generate, generateDetailed } = useAIAssistant();
+  const [draftingStarter, setDraftingStarter] = useState(false);
+  const [suggestingAmenities, setSuggestingAmenities] = useState(false);
+  const [suggestedAmenities, setSuggestedAmenities] = useState<string[]>([]);
+  const [suggestingRooms, setSuggestingRooms] = useState(false);
+  const [suggestedRooms, setSuggestedRooms] = useState<SuggestedRoomItem[]>([]);
+  const [polishingSuggestedIdx, setPolishingSuggestedIdx] = useState<number | null>(null);
+  const [aiRateRoomIdx, setAiRateRoomIdx] = useState<number | null>(null);
+  const [aiRateLoading, setAiRateLoading] = useState(false);
+  const [aiRateData, setAiRateData] = useState<{ usd: number; mwk: number; reasoning: string } | null>(null);
+  const [reviewingListing, setReviewingListing] = useState(false);
+  const [listingReview, setListingReview] = useState<string | null>(null);
 
   const isHost = isHotelManager(user);
 
@@ -166,6 +208,348 @@ export default function ListProperty() {
       },
       () => toast.error('Could not read your location. Check browser permissions.', { id: 'geo' })
     );
+  };
+
+  // Optional AI Helper: Draft initial description
+  const handleDraftStarter = async () => {
+    if (!draft.name?.trim()) {
+      toast.error('Please enter a property name in Step 1 first.');
+      return;
+    }
+    setDraftingStarter(true);
+    try {
+      const text = await generate({
+        action: 'draft',
+        entityType: 'property',
+        details: {
+          name: draft.name,
+          location: draft.location,
+          locationNotes: draft.locationNotes,
+          category: draft.category,
+          amenities: draft.amenities,
+        },
+      });
+      if (text) {
+        set('description', text);
+        toast.success('Draft created based on your property details');
+      }
+    } finally {
+      setDraftingStarter(false);
+    }
+  };
+
+  // Optional AI Helper: Suggest relevant amenities
+  const handleSuggestAmenities = async () => {
+    setSuggestingAmenities(true);
+    try {
+      const res = await generateDetailed<string[]>({
+        action: 'suggest_amenities',
+        entityType: 'property',
+        details: {
+          name: draft.name,
+          location: draft.location,
+          category: draft.category,
+          amenities: draft.amenities,
+        },
+      });
+
+      if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+        // Filter out already selected
+        const newOnes = res.data.filter(
+          item => !draft.amenities.some(a => a.toLowerCase() === item.toLowerCase())
+        );
+        setSuggestedAmenities(newOnes.length > 0 ? newOnes : res.data);
+        toast.success(`Suggested ${res.data.length} amenities for ${draft.category || 'your stay'}`);
+      } else if (res?.text) {
+        const items = res.text
+          .split(/[,\n]/)
+          .map(s => s.replace(/^[-*•\d.]+\s*/, '').trim())
+          .filter(s => s.length > 1 && s.length < 35);
+        if (items.length > 0) {
+          setSuggestedAmenities(items.slice(0, 8));
+        }
+      }
+    } catch {
+      toast.error('Could not generate amenity suggestions');
+    } finally {
+      setSuggestingAmenities(false);
+    }
+  };
+
+  const addAllSuggestedAmenities = () => {
+    const toAdd = suggestedAmenities.filter(
+      item => !draft.amenities.some(a => a.toLowerCase() === item.toLowerCase())
+    );
+    if (toAdd.length > 0) {
+      set('amenities', [...draft.amenities, ...toAdd]);
+      toast.success(`Added ${toAdd.length} amenities`);
+    }
+    setSuggestedAmenities([]);
+  };
+
+  // Optional AI Helper: Suggest standard room types tailored for Malawi
+  const handleSuggestRoomTypes = async () => {
+    setSuggestingRooms(true);
+    try {
+      const res = await generateDetailed<Array<{
+        name: string;
+        description: string;
+        maxGuests: number;
+        suggestedPriceUsd: number;
+        suggestedPriceMwk?: number;
+      }>>({
+        action: 'suggest_rooms',
+        entityType: 'property',
+        details: {
+          name: draft.name,
+          location: draft.location,
+          category: draft.category,
+        },
+      });
+
+      if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+        const formatted: SuggestedRoomItem[] = res.data.map(item => {
+          const usd = Number(item.suggestedPriceUsd) || 65;
+          const mwk = Number(item.suggestedPriceMwk) || convertUsdToMwk(usd);
+          return {
+            name: item.name || 'Standard Room',
+            description: item.description || '',
+            maxGuests: Number(item.maxGuests) || 2,
+            suggestedPriceUsd: usd,
+            suggestedPriceMwk: mwk,
+            currencies: ['USD', 'MWK'],
+            isCustomizing: false,
+          };
+        });
+        setSuggestedRooms(formatted);
+        toast.success(`Generated ${formatted.length} room suggestions with USD & MK rates`);
+      } else {
+        toast.error('Could not parse room suggestions. You can add room types manually below.');
+      }
+    } catch {
+      toast.error('Error generating room suggestions');
+    } finally {
+      setSuggestingRooms(false);
+    }
+  };
+
+  const updateSuggestedRoom = (index: number, patch: Partial<SuggestedRoomItem>) => {
+    setSuggestedRooms(prev => {
+      const next = [...prev];
+      if (next[index]) {
+        next[index] = { ...next[index], ...patch };
+      }
+      return next;
+    });
+  };
+
+  const adjustSuggestedPrice = (index: number, currency: 'usd' | 'mwk', delta: number) => {
+    setSuggestedRooms(prev => {
+      const next = [...prev];
+      const item = next[index];
+      if (!item) return prev;
+      if (currency === 'usd') {
+        const newUsd = Math.max(10, (item.suggestedPriceUsd || 50) + delta);
+        next[index] = {
+          ...item,
+          suggestedPriceUsd: newUsd,
+          suggestedPriceMwk: convertUsdToMwk(newUsd),
+        };
+      } else {
+        const newMwk = Math.max(10000, (item.suggestedPriceMwk || 75000) + delta);
+        next[index] = {
+          ...item,
+          suggestedPriceMwk: newMwk,
+          suggestedPriceUsd: convertMwkToUsd(newMwk),
+        };
+      }
+      return next;
+    });
+  };
+
+  const handlePolishSuggestedDescription = async (index: number) => {
+    const item = suggestedRooms[index];
+    if (!item) return;
+    setPolishingSuggestedIdx(index);
+    try {
+      const polished = await generate({
+        action: 'polish',
+        entityType: 'room',
+        currentText: item.description,
+        details: {
+          name: item.name,
+          category: draft.category,
+          location: draft.location,
+        },
+      });
+      if (polished) {
+        updateSuggestedRoom(index, { description: polished });
+        toast.success('Description polished with AI');
+      }
+    } catch {
+      toast.error('Could not polish description');
+    } finally {
+      setPolishingSuggestedIdx(null);
+    }
+  };
+
+  const addSuggestedRoom = (index: number) => {
+    const item = suggestedRooms[index];
+    if (!item) return;
+
+    const currencies: CurrencyCode[] = (item.currencies && item.currencies.length > 0)
+      ? item.currencies
+      : ['USD', 'MWK'];
+
+    const prices: Partial<Record<CurrencyCode, number>> = {};
+    if (currencies.includes('USD')) {
+      prices.USD = Number(item.suggestedPriceUsd) || 60;
+    }
+    if (currencies.includes('MWK')) {
+      prices.MWK = Number(item.suggestedPriceMwk) || convertUsdToMwk(item.suggestedPriceUsd || 60);
+    }
+
+    const newRoom: RoomInput = {
+      name: item.name.trim() || 'Guest Room',
+      description: item.description?.trim() || '',
+      currencies,
+      prices,
+      maxGuests: Number(item.maxGuests) || 2,
+      quantity: 1,
+      imageUrl: '',
+      galleryUrls: [],
+    };
+    set('rooms', [...(draft.rooms || []), newRoom]);
+    setSuggestedRooms(prev => prev.filter((_, i) => i !== index));
+    toast.success(`Added ${newRoom.name} (${currencies.map(c => CURRENCIES[c].symbol).join(' & ')})`);
+  };
+
+  const addAllSuggestedRooms = () => {
+    if (suggestedRooms.length === 0) return;
+    const newRooms: RoomInput[] = suggestedRooms.map(item => {
+      const currencies: CurrencyCode[] = (item.currencies && item.currencies.length > 0)
+        ? item.currencies
+        : ['USD', 'MWK'];
+
+      const prices: Partial<Record<CurrencyCode, number>> = {};
+      if (currencies.includes('USD')) {
+        prices.USD = Number(item.suggestedPriceUsd) || 60;
+      }
+      if (currencies.includes('MWK')) {
+        prices.MWK = Number(item.suggestedPriceMwk) || convertUsdToMwk(item.suggestedPriceUsd || 60);
+      }
+
+      return {
+        name: item.name.trim() || 'Guest Room',
+        description: item.description?.trim() || '',
+        currencies,
+        prices,
+        maxGuests: Number(item.maxGuests) || 2,
+        quantity: 1,
+        imageUrl: '',
+        galleryUrls: [],
+      };
+    });
+    set('rooms', [...(draft.rooms || []), ...newRooms]);
+    setSuggestedRooms([]);
+    toast.success(`Added ${newRooms.length} room types with dual-currency rates!`);
+  };
+
+  // AI Rate Advisor for individual room
+  const handleOpenAIRateAdvisor = async (roomIdx: number) => {
+    const room = draft.rooms?.[roomIdx];
+    if (!room) return;
+    setAiRateRoomIdx(roomIdx);
+    setAiRateLoading(true);
+    setAiRateData(null);
+
+    try {
+      const res = await generateDetailed<{
+        suggestedPriceUsd: number;
+        suggestedPriceMwk: number;
+        reasoning: string;
+      }>({
+        action: 'suggest_rate',
+        entityType: 'room',
+        details: {
+          name: room.name || 'Standard Room',
+          category: draft.category,
+          location: draft.location,
+          capacity: Number(room.maxGuests) || 2,
+          extraNotes: draft.name ? `Property name: ${draft.name}` : undefined,
+        },
+      });
+
+      if (res?.data && (res.data.suggestedPriceUsd || res.data.suggestedPriceMwk)) {
+        const usd = Number(res.data.suggestedPriceUsd) || 75;
+        const mwk = Number(res.data.suggestedPriceMwk) || convertUsdToMwk(usd);
+        setAiRateData({
+          usd,
+          mwk,
+          reasoning: res.data.reasoning || `Recommended rates for ${room.name || 'this room'} based on local Malawian hospitality standards.`,
+        });
+      } else {
+        const fallbackUsd = 75;
+        setAiRateData({
+          usd: fallbackUsd,
+          mwk: convertUsdToMwk(fallbackUsd),
+          reasoning: `Competitive benchmark rate for ${draft.category || 'accommodation'} in ${draft.location || 'Malawi'}.`,
+        });
+      }
+    } catch {
+      toast.error('Could not fetch AI rate recommendation');
+    } finally {
+      setAiRateLoading(false);
+    }
+  };
+
+  const handleApplyAIRates = (roomIdx: number) => {
+    if (!aiRateData) return;
+    const updated = [...(draft.rooms || [])];
+    const room = updated[roomIdx];
+    if (!room) return;
+
+    const currs: CurrencyCode[] = Array.from(new Set([...(room.currencies || []), 'USD', 'MWK'])) as CurrencyCode[];
+    updated[roomIdx] = {
+      ...room,
+      currencies: currs,
+      prices: {
+        ...room.prices,
+        USD: aiRateData.usd,
+        MWK: aiRateData.mwk,
+      },
+    };
+    set('rooms', updated);
+    setAiRateRoomIdx(null);
+    setAiRateData(null);
+    toast.success(`Applied $${aiRateData.usd} USD & MK ${aiRateData.mwk.toLocaleString()} to ${room.name || 'room'}`);
+  };
+
+  // Optional AI Helper: Review listing appeal before submission
+  const handleReviewListing = async () => {
+    setReviewingListing(true);
+    try {
+      const res = await generate({
+        action: 'review_listing',
+        entityType: 'property',
+        currentText: draft.description,
+        details: {
+          name: draft.name,
+          location: draft.location,
+          category: draft.category,
+          amenities: draft.amenities,
+          roomsCount: draft.rooms?.length || 0,
+          extraNotes: `${1 + draft.galleryUrls.length} photos provided. Check-in ${draft.checkInTime || '14:00'}, check-out ${draft.checkOutTime || '10:00'}.`,
+        },
+      });
+      if (res) {
+        setListingReview(res);
+      }
+    } catch {
+      toast.error('Could not complete listing review');
+    } finally {
+      setReviewingListing(false);
+    }
   };
 
   const handleEnableHosting = async () => {
@@ -397,7 +781,52 @@ export default function ListProperty() {
           {step === 1 && (
             <div className="space-y-8">
               <div>
-                <label className={labelClass} htmlFor="listing-description">Describe the stay</label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className={labelClass} htmlFor="listing-description">Describe the stay</label>
+                  <AIAssistantButton
+                    value={draft.description}
+                    onChange={text => set('description', text)}
+                    entityType="property"
+                    context={{
+                      name: draft.name,
+                      location: draft.location,
+                      locationNotes: draft.locationNotes,
+                      category: draft.category,
+                      amenities: draft.amenities,
+                    }}
+                    fieldLabel="property description"
+                  />
+                </div>
+
+                {!draft.description.trim() && !!draft.name?.trim() && aiStatus.enabled && aiStatus.available && (
+                  <div className="mb-3 p-3.5 bg-stone-50 border border-stone-200/90 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                    <div className="flex items-center gap-2 text-stone-600">
+                      <FileText className="w-4 h-4 text-stone-500 shrink-0" />
+                      <span>
+                        Short on time? Let the assistant draft a welcoming starter based on <strong>{draft.name}</strong>.
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleDraftStarter}
+                      disabled={draftingStarter}
+                      className="shrink-0 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-stone-900 hover:bg-stone-800 text-white font-semibold rounded-xl transition text-xs disabled:opacity-50"
+                    >
+                      {draftingStarter ? (
+                        <>
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                          <span>Drafting starter...</span>
+                        </>
+                      ) : (
+                        <>
+                          <FileText className="w-3 h-3" />
+                          <span>Draft starter description</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
+
                 <textarea
                   id="listing-description"
                   rows={7}
@@ -419,7 +848,74 @@ export default function ListProperty() {
               </div>
 
               <div>
-                <span className={labelClass}>What is on offer?</span>
+                <div className="flex items-center justify-between mb-2">
+                  <span className={labelClass}>What is on offer?</span>
+                  {aiStatus.enabled && aiStatus.available && (
+                    <button
+                      type="button"
+                      onClick={handleSuggestAmenities}
+                      disabled={suggestingAmenities}
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-600 hover:text-stone-900 bg-stone-100 hover:bg-stone-200/80 px-3 py-1.5 rounded-full transition disabled:opacity-50"
+                    >
+                      {suggestingAmenities ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-stone-500" />
+                      ) : (
+                        <Check className="w-3.5 h-3.5 text-stone-500" />
+                      )}
+                      <span>Suggest amenities</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Optional Suggested Amenities Tray */}
+                {suggestedAmenities.length > 0 && (
+                  <div className="mb-4 p-4 bg-stone-50 border border-stone-200 rounded-2xl space-y-2.5 animate-in fade-in">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-semibold text-stone-800 flex items-center gap-1.5">
+                        <Check className="w-3.5 h-3.5 text-stone-500" />
+                        Suggested for {draft.category || 'stay'} in {draft.location || 'Malawi'}:
+                      </span>
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={addAllSuggestedAmenities}
+                          className="text-[11px] font-bold text-stone-900 hover:underline"
+                        >
+                          Add all
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSuggestedAmenities([])}
+                          className="text-stone-400 hover:text-stone-600"
+                          title="Dismiss suggestions"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {suggestedAmenities.map(am => {
+                        const isSelected = draft.amenities.includes(am);
+                        return (
+                          <button
+                            key={am}
+                            type="button"
+                            onClick={() => toggleAmenity(am)}
+                            className={`text-xs px-3 py-1 rounded-full border transition flex items-center gap-1.5 font-medium ${
+                              isSelected
+                                ? 'bg-stone-900 text-white border-stone-900'
+                                : 'bg-white text-stone-700 border-stone-200 hover:border-stone-400'
+                            }`}
+                          >
+                            <span>{isSelected ? '✓' : '+'}</span>
+                            <span>{am}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex flex-wrap gap-2">
                   {COMMON_AMENITIES.map(amenity => {
                     const selected = draft.amenities.includes(amenity);
@@ -519,181 +1015,836 @@ export default function ListProperty() {
 
           {step === 3 && (
             <div className="space-y-8">
-              <div className="rounded-2xl border border-stone-200 bg-stone-50 p-6">
-                <h3 className="text-lg font-serif font-bold text-stone-900 mb-2">What will guests book?</h3>
-                <p className="text-sm text-stone-600 mb-6">
-                  Add at least one room type (e.g. "Standard Double", "Lakeview Chalet").
-                  You can always add more later from your dashboard.
-                </p>
+              <div className="rounded-2xl border border-stone-200 bg-stone-50 p-6 space-y-6">
+                <div>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <h3 className="text-lg font-serif font-bold text-stone-900">Room Types & Multi-Currency Pricing</h3>
+                      <p className="text-sm text-stone-600 mt-0.5">
+                        Set rates in US Dollars (USD) for international travelers, Malawi Kwacha (MK) for domestic guests, or both.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 self-start sm:self-auto bg-stone-200/60 px-3 py-1.5 rounded-full text-xs font-semibold text-stone-700">
+                      <Coins className="w-3.5 h-3.5 text-stone-500" />
+                      <span>Benchmark: ~1,750 MK per USD</span>
+                    </div>
+                  </div>
+                </div>
 
+                {/* Current Rooms Overview List */}
                 {(draft.rooms || []).length > 0 && (
-                  <div className="space-y-4 mb-6">
-                    {(draft.rooms || []).map((room, idx) => (
-                      <div key={idx} className="bg-white p-4 rounded-xl border border-stone-200 flex justify-between items-center shadow-sm">
-                        <div className="flex items-center gap-4">
-                          {room.imageUrl ? (
-                            <img src={room.imageUrl} className="w-16 h-12 rounded-lg object-cover" />
-                          ) : (
-                            <div className="w-16 h-12 bg-stone-100 rounded-lg flex items-center justify-center">
-                              <span className="text-[10px] text-stone-400">No photo</span>
+                  <div className="space-y-3">
+                    <p className="text-xs font-bold uppercase tracking-wider text-stone-500">
+                      Configured Rooms ({(draft.rooms || []).length})
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {(draft.rooms || []).map((room, idx) => (
+                        <div key={idx} className="bg-white p-3.5 rounded-xl border border-stone-200 flex items-center justify-between shadow-2xs">
+                          <div className="flex items-center gap-3 min-w-0">
+                            {room.imageUrl ? (
+                              <img src={room.imageUrl} alt={room.name} className="w-12 h-12 rounded-lg object-cover shrink-0" />
+                            ) : (
+                              <div className="w-12 h-12 bg-stone-100 rounded-lg flex items-center justify-center shrink-0 border border-stone-200">
+                                <Building2 className="w-5 h-5 text-stone-400" />
+                              </div>
+                            )}
+                            <div className="min-w-0">
+                              <h4 className="font-bold text-sm text-stone-900 truncate">
+                                {room.name || `Room ${idx + 1} (Unnamed)`}
+                              </h4>
+                              <div className="flex flex-wrap items-center gap-1.5 mt-0.5 text-xs text-stone-600">
+                                {room.prices?.USD ? (
+                                  <span className="font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
+                                    ${room.prices.USD} USD
+                                  </span>
+                                ) : null}
+                                {room.prices?.MWK ? (
+                                  <span className="font-semibold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">
+                                    MK {Number(room.prices.MWK).toLocaleString()}
+                                  </span>
+                                ) : null}
+                                {(!room.prices?.USD && !room.prices?.MWK) && (
+                                  <span className="text-amber-600 font-medium">Rate unconfigured</span>
+                                )}
+                                <span className="text-stone-400">·</span>
+                                <span className="text-stone-500">Sleeps {room.maxGuests || 2}</span>
+                              </div>
                             </div>
-                          )}
-                          <div>
-                            <h4 className="font-bold text-stone-900">{room.name}</h4>
-                            <p className="text-xs text-stone-500">
-                              {room.currencies?.[0]} {room.prices?.[room.currencies?.[0] || 'USD']} / night
-                            </p>
                           </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = [...(draft.rooms || [])];
+                              updated.splice(idx, 1);
+                              set('rooms', updated);
+                              toast.success('Room removed');
+                            }}
+                            className="text-stone-400 hover:text-red-600 p-2 hover:bg-red-50 rounded-lg transition shrink-0 ml-2"
+                            title="Remove room type"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const updated = [...(draft.rooms || [])];
-                            updated.splice(idx, 1);
-                            set('rooms', updated);
-                          }}
-                          className="text-red-500 p-2 hover:bg-red-50 rounded-lg transition"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
                 )}
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    set('rooms', [...(draft.rooms || []), {
-                      name: '',
-                      description: '',
-                      currencies: ['USD'],
-                      prices: { USD: 0 },
-                      maxGuests: 2,
-                      quantity: 1,
-                      imageUrl: '',
-                      galleryUrls: [],
-                    }]);
-                  }}
-                  className="w-full py-4 border-2 border-dashed border-stone-300 rounded-xl text-stone-600 font-semibold hover:border-stone-400 hover:bg-stone-100 transition"
-                >
-                  + Add a room type
-                </button>
+                {/* Add Actions Bar */}
+                <div className="flex flex-col sm:flex-row items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      set('rooms', [...(draft.rooms || []), {
+                        name: '',
+                        description: '',
+                        currencies: ['USD', 'MWK'],
+                        prices: { USD: 70, MWK: 120000 },
+                        maxGuests: 2,
+                        quantity: 1,
+                        imageUrl: '',
+                        galleryUrls: [],
+                      }]);
+                    }}
+                    className="w-full sm:flex-1 py-3.5 border-2 border-dashed border-stone-300 rounded-xl text-stone-700 font-semibold hover:border-stone-400 hover:bg-white transition text-xs flex items-center justify-center gap-2 bg-stone-100/50"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Add room type manually (Dual USD / MK)</span>
+                  </button>
+
+                  {aiStatus.enabled && aiStatus.available && (
+                    <button
+                      type="button"
+                      onClick={handleSuggestRoomTypes}
+                      disabled={suggestingRooms}
+                      className="w-full sm:w-auto py-3.5 px-5 bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold rounded-xl transition inline-flex items-center justify-center gap-2 border border-stone-900 disabled:opacity-50 shadow-2xs"
+                    >
+                      {suggestingRooms ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-stone-300" />
+                          <span>Crafting room configurations...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Building2 className="w-3.5 h-3.5 text-stone-300" />
+                          <span>Suggest Rooms for {draft.category || 'stay'}</span>
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
+
+                {/* Interactive Room Types Customizer Tray */}
+                {suggestedRooms.length > 0 && (
+                  <div className="p-5 bg-white border border-stone-300 rounded-2xl space-y-4 shadow-sm animate-in fade-in">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-100 pb-3">
+                      <div>
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-stone-900 flex items-center gap-1.5">
+                          <Building2 className="w-4 h-4 text-stone-700" />
+                          Suggested Room Setups for {draft.name || draft.location || 'Your Property'}
+                        </h4>
+                        <p className="text-[11px] text-stone-500 mt-0.5">
+                          Tweak room names, edit descriptions, adjust USD / MK rates, or add directly to your listing.
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={addAllSuggestedRooms}
+                          className="px-3 py-1.5 bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold rounded-lg transition flex items-center gap-1.5"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                          <span>Add all ({suggestedRooms.length})</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSuggestedRooms([])}
+                          className="text-stone-400 hover:text-stone-600 p-1"
+                          title="Dismiss suggestions"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                      {suggestedRooms.map((roomItem, rIdx) => (
+                        <div key={rIdx} className="bg-stone-50 border border-stone-200 rounded-xl p-4 flex flex-col justify-between space-y-3.5 shadow-2xs hover:border-stone-300 transition">
+                          <div className="space-y-2.5">
+                            {/* Room Name Input */}
+                            <div>
+                              <div className="flex items-center justify-between">
+                                <label className="text-[10px] font-bold uppercase tracking-wider text-stone-500">
+                                  Room Name
+                                </label>
+                                <span className="text-[10px] font-medium text-stone-400">
+                                  Editable
+                                </span>
+                              </div>
+                              <input
+                                type="text"
+                                value={roomItem.name}
+                                onChange={e => updateSuggestedRoom(rIdx, { name: e.target.value })}
+                                className="w-full mt-1 px-2.5 py-1.5 bg-white border border-stone-200 rounded-lg text-xs font-bold text-stone-900 focus:ring-1 focus:ring-stone-400"
+                                placeholder="e.g. Deluxe Lake Chalet"
+                              />
+                            </div>
+
+                            {/* Room Description & AI Polish */}
+                            <div>
+                              <div className="flex items-center justify-between mb-1">
+                                <label className="text-[10px] font-bold uppercase tracking-wider text-stone-500">
+                                  Description
+                                </label>
+                                <button
+                                  type="button"
+                                  onClick={() => handlePolishSuggestedDescription(rIdx)}
+                                  disabled={polishingSuggestedIdx === rIdx}
+                                  className="text-[10px] font-semibold text-stone-700 hover:text-stone-900 hover:underline flex items-center gap-1"
+                                >
+                                  {polishingSuggestedIdx === rIdx ? (
+                                    <Loader2 className="w-3 h-3 animate-spin text-stone-500" />
+                                  ) : (
+                                    <FileText className="w-3 h-3 text-stone-500" />
+                                  )}
+                                  <span>Polish description</span>
+                                </button>
+                              </div>
+                              <textarea
+                                value={roomItem.description}
+                                onChange={e => updateSuggestedRoom(rIdx, { description: e.target.value })}
+                                rows={2}
+                                className="w-full px-2.5 py-1.5 bg-white border border-stone-200 rounded-lg text-xs text-stone-700 focus:ring-1 focus:ring-stone-400"
+                                placeholder="Describe the atmosphere, views, and features..."
+                              />
+                            </div>
+
+                            {/* Currency & Dual Pricing Controls */}
+                            <div className="pt-2 border-t border-stone-200/70 space-y-2">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500">
+                                  Currencies & Rates
+                                </span>
+                                <div className="flex items-center gap-2">
+                                  <label className="inline-flex items-center gap-1 text-[11px] font-semibold text-stone-700 cursor-pointer">
+                                    <input
+                                      type="checkbox"
+                                      checked={roomItem.currencies.includes('USD')}
+                                      onChange={e => {
+                                        const currs = e.target.checked
+                                          ? [...roomItem.currencies, 'USD' as const]
+                                          : roomItem.currencies.filter(c => c !== 'USD');
+                                        if (currs.length > 0) updateSuggestedRoom(rIdx, { currencies: currs });
+                                      }}
+                                      className="rounded text-stone-900 focus:ring-stone-400 w-3.5 h-3.5"
+                                    />
+                                    <span>USD ($)</span>
+                                  </label>
+                                  <label className="inline-flex items-center gap-1 text-[11px] font-semibold text-stone-700 cursor-pointer">
+                                    <input
+                                      type="checkbox"
+                                      checked={roomItem.currencies.includes('MWK')}
+                                      onChange={e => {
+                                        const currs = e.target.checked
+                                          ? [...roomItem.currencies, 'MWK' as const]
+                                          : roomItem.currencies.filter(c => c !== 'MWK');
+                                        if (currs.length > 0) updateSuggestedRoom(rIdx, { currencies: currs });
+                                      }}
+                                      className="rounded text-stone-900 focus:ring-stone-400 w-3.5 h-3.5"
+                                    />
+                                    <span>MK (MWK)</span>
+                                  </label>
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                {roomItem.currencies.includes('USD') && (
+                                  <div className="bg-white p-2 rounded-lg border border-stone-200">
+                                    <div className="flex items-center justify-between text-[11px] text-stone-500 mb-1">
+                                      <span className="font-semibold text-emerald-800">USD Rate</span>
+                                      <div className="flex items-center gap-1">
+                                        <button
+                                          type="button"
+                                          onClick={() => adjustSuggestedPrice(rIdx, 'usd', -5)}
+                                          className="px-1 py-0.5 bg-stone-100 hover:bg-stone-200 rounded text-[10px] font-bold"
+                                        >
+                                          -$5
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => adjustSuggestedPrice(rIdx, 'usd', 5)}
+                                          className="px-1 py-0.5 bg-stone-100 hover:bg-stone-200 rounded text-[10px] font-bold"
+                                        >
+                                          +$5
+                                        </button>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                      <span className="text-xs font-bold text-stone-400">$</span>
+                                      <input
+                                        type="number"
+                                        value={roomItem.suggestedPriceUsd || ''}
+                                        onChange={e => {
+                                          const val = Number(e.target.value);
+                                          updateSuggestedRoom(rIdx, {
+                                            suggestedPriceUsd: val,
+                                            suggestedPriceMwk: convertUsdToMwk(val),
+                                          });
+                                        }}
+                                        className="w-full text-xs font-bold text-stone-900 bg-transparent outline-hidden"
+                                        min="0"
+                                      />
+                                      <span className="text-[10px] text-stone-400">/nt</span>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {roomItem.currencies.includes('MWK') && (
+                                  <div className="bg-white p-2 rounded-lg border border-stone-200">
+                                    <div className="flex items-center justify-between text-[11px] text-stone-500 mb-1">
+                                      <span className="font-semibold text-blue-800">MK Rate</span>
+                                      <div className="flex items-center gap-1">
+                                        <button
+                                          type="button"
+                                          onClick={() => adjustSuggestedPrice(rIdx, 'mwk', -10000)}
+                                          className="px-1 py-0.5 bg-stone-100 hover:bg-stone-200 rounded text-[10px] font-bold"
+                                        >
+                                          -10k
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => adjustSuggestedPrice(rIdx, 'mwk', 10000)}
+                                          className="px-1 py-0.5 bg-stone-100 hover:bg-stone-200 rounded text-[10px] font-bold"
+                                        >
+                                          +10k
+                                        </button>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                      <span className="text-[10px] font-bold text-stone-400">MK</span>
+                                      <input
+                                        type="number"
+                                        value={roomItem.suggestedPriceMwk || ''}
+                                        onChange={e => {
+                                          const val = Number(e.target.value);
+                                          updateSuggestedRoom(rIdx, {
+                                            suggestedPriceMwk: val,
+                                            suggestedPriceUsd: convertMwkToUsd(val),
+                                          });
+                                        }}
+                                        className="w-full text-xs font-bold text-stone-900 bg-transparent outline-hidden"
+                                        min="0"
+                                      />
+                                      <span className="text-[10px] text-stone-400">/nt</span>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Capacity */}
+                              <div className="flex items-center justify-between pt-1">
+                                <span className="text-[11px] text-stone-600">Max Guests:</span>
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => updateSuggestedRoom(rIdx, { maxGuests: Math.max(1, roomItem.maxGuests - 1) })}
+                                    className="w-6 h-6 flex items-center justify-center bg-white border border-stone-200 rounded font-bold text-xs hover:bg-stone-100"
+                                  >
+                                    -
+                                  </button>
+                                  <span className="text-xs font-bold text-stone-800">{roomItem.maxGuests}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => updateSuggestedRoom(rIdx, { maxGuests: Math.min(20, roomItem.maxGuests + 1) })}
+                                    className="w-6 h-6 flex items-center justify-center bg-white border border-stone-200 rounded font-bold text-xs hover:bg-stone-100"
+                                  >
+                                    +
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Add This Room Button */}
+                          <button
+                            type="button"
+                            onClick={() => addSuggestedRoom(rIdx)}
+                            className="w-full py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 shadow-2xs"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>Add this room to listing</span>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {(draft.rooms || []).map((room, idx) => (
-                <div key={idx} className="bg-white border border-blue-200 rounded-2xl p-6 shadow-sm relative space-y-6">
-                  <div className="absolute top-0 right-0 bg-blue-100 text-blue-800 text-[10px] font-bold px-3 py-1 rounded-bl-xl rounded-tr-xl uppercase tracking-widest">
-                    Room Type {idx + 1}
-                  </div>
-                  
-                  <div>
-                    <label className={labelClass}>Room Name</label>
-                    <input
-                      type="text"
-                      value={room.name || ''}
-                      onChange={e => {
-                        const updated = [...(draft.rooms || [])];
-                        updated[idx].name = e.target.value;
-                        set('rooms', updated);
-                      }}
-                      className={fieldClass}
-                      placeholder="e.g. Standard Double Room"
-                    />
-                  </div>
+              {/* Full Detailed Room Cards for Listing */}
+              {(draft.rooms || []).map((room, idx) => {
+                const roomCurrencies: CurrencyCode[] = room.currencies && room.currencies.length > 0
+                  ? room.currencies
+                  : ['USD', 'MWK'];
+                const hasUsd = roomCurrencies.includes('USD');
+                const hasMwk = roomCurrencies.includes('MWK');
 
-                  <div>
-                    <label className={labelClass}>Description</label>
-                    <textarea
-                      value={room.description || ''}
-                      onChange={e => {
-                        const updated = [...(draft.rooms || [])];
-                        updated[idx].description = e.target.value;
-                        set('rooms', updated);
-                      }}
-                      className={fieldClass}
-                      rows={2}
-                      placeholder="What makes this room special?"
-                    />
-                  </div>
+                return (
+                  <div key={idx} className="bg-white border border-stone-200 rounded-2xl p-6 shadow-sm relative space-y-6">
+                    <div className="flex items-center justify-between border-b border-stone-100 pb-4">
+                      <div className="flex items-center gap-2">
+                        <span className="bg-stone-900 text-white text-[11px] font-bold px-2.5 py-1 rounded-md uppercase tracking-wider">
+                          Room {idx + 1}
+                        </span>
+                        <h4 className="font-serif font-bold text-base text-stone-900">
+                          {room.name || 'Untitled Room Type'}
+                        </h4>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updated = [...(draft.rooms || [])];
+                          updated.splice(idx, 1);
+                          set('rooms', updated);
+                          toast.success('Room removed');
+                        }}
+                        className="text-stone-400 hover:text-red-600 p-1.5 hover:bg-red-50 rounded-lg transition flex items-center gap-1 text-xs font-semibold"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        <span className="hidden sm:inline">Remove Room</span>
+                      </button>
+                    </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Room Name */}
                     <div>
-                      <label className={labelClass}>Nightly Price (USD)</label>
+                      <label className={labelClass}>Room Name</label>
                       <input
-                        type="number"
-                        value={room.prices?.USD || ''}
+                        type="text"
+                        value={room.name || ''}
                         onChange={e => {
                           const updated = [...(draft.rooms || [])];
-                          updated[idx].prices = { ...updated[idx].prices, USD: Number(e.target.value) };
+                          updated[idx].name = e.target.value;
                           set('rooms', updated);
                         }}
                         className={fieldClass}
-                        min="0"
+                        placeholder="e.g. Lakeview Deluxe Chalet, Executive Suite, Safari Tent"
                       />
                     </div>
-                    <div>
-                      <label className={labelClass}>Quantity</label>
-                      <input
-                        type="number"
-                        value={room.quantity || ''}
-                        onChange={e => {
-                          const updated = [...(draft.rooms || [])];
-                          updated[idx].quantity = Number(e.target.value);
-                          set('rooms', updated);
-                        }}
-                        className={fieldClass}
-                        min="1"
-                      />
-                    </div>
-                    <div>
-                      <label className={labelClass}>Max Guests</label>
-                      <input
-                        type="number"
-                        value={room.maxGuests || ''}
-                        onChange={e => {
-                          const updated = [...(draft.rooms || [])];
-                          updated[idx].maxGuests = Number(e.target.value);
-                          set('rooms', updated);
-                        }}
-                        className={fieldClass}
-                        min="1"
-                        max="30"
-                      />
-                    </div>
-                  </div>
 
-                  <div className="pt-4 border-t border-stone-100">
-                    <ImageUpload
-                      label="Room Cover Photo"
-                      hint="Make it a well-lit, wide shot of the bed and room."
-                      tooltip="Guest View: This image appears as the primary thumbnail for this room type in the booking list on your property page."
-                      value={room.imageUrl || ''}
-                      onChange={url => {
-                        const updated = [...(draft.rooms || [])];
-                        updated[idx].imageUrl = url;
-                        set('rooms', updated);
-                      }}
-                      folder={`hotels/${draft.id}/rooms`}
-                    />
+                    {/* Room Description */}
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <label className={labelClass}>Description</label>
+                        <AIAssistantButton
+                          value={room.description || ''}
+                          onChange={text => {
+                            const updated = [...(draft.rooms || [])];
+                            updated[idx].description = text;
+                            set('rooms', updated);
+                          }}
+                          entityType="room"
+                          context={{
+                            name: room.name,
+                            capacity: typeof room.maxGuests === 'number' ? room.maxGuests : Number(room.maxGuests) || undefined,
+                            extraNotes: draft.name ? `Room at ${draft.name}, located in ${draft.location || 'Malawi'}` : undefined,
+                          }}
+                          fieldLabel="room description"
+                        />
+                      </div>
+                      <textarea
+                        value={room.description || ''}
+                        onChange={e => {
+                          const updated = [...(draft.rooms || [])];
+                          updated[idx].description = e.target.value;
+                          set('rooms', updated);
+                        }}
+                        className={fieldClass}
+                        rows={2}
+                        placeholder="What makes this room special? e.g. Private balcony overlooking Lake Malawi, en-suite bathroom with solar hot water..."
+                      />
+                    </div>
+
+                    {/* Currency & Nightly Rate Management */}
+                    <div className="p-5 bg-stone-50/80 border border-stone-200 rounded-xl space-y-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                          <label className="text-xs font-bold uppercase tracking-wider text-stone-800">
+                            Accepted Currencies & Nightly Rates
+                          </label>
+                          <p className="text-[11px] text-stone-500">
+                            Enable US Dollars ($), Malawi Kwacha (MK), or both for this room.
+                          </p>
+                        </div>
+
+                        {/* AI Rate Advisor Trigger Button */}
+                        {aiStatus.enabled && aiStatus.available && (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenAIRateAdvisor(idx)}
+                            disabled={aiRateLoading && aiRateRoomIdx === idx}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-stone-100 text-stone-800 text-xs font-semibold rounded-lg border border-stone-200 transition shadow-2xs self-start sm:self-auto disabled:opacity-50"
+                          >
+                            {aiRateLoading && aiRateRoomIdx === idx ? (
+                              <>
+                                <Loader2 className="w-3.5 h-3.5 animate-spin text-stone-500" />
+                                <span>Evaluating Malawi rates...</span>
+                              </>
+                            ) : (
+                              <>
+                                <DollarSign className="w-3.5 h-3.5 text-stone-600" />
+                                <span>Rate Advisor</span>
+                              </>
+                            )}
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Currency Checkboxes */}
+                      <div className="flex flex-wrap items-center gap-3">
+                        <label className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-semibold cursor-pointer transition ${
+                          hasUsd ? 'bg-white border-emerald-500 text-emerald-900 shadow-2xs' : 'bg-stone-100 border-stone-200 text-stone-500'
+                        }`}>
+                          <input
+                            type="checkbox"
+                            checked={hasUsd}
+                            onChange={e => {
+                              const updated = [...(draft.rooms || [])];
+                              const nextCurrs = e.target.checked
+                                ? Array.from(new Set([...roomCurrencies, 'USD' as CurrencyCode]))
+                                : roomCurrencies.filter(c => c !== 'USD');
+                              if (nextCurrs.length === 0) {
+                                toast.error('Pick at least one currency for this room.');
+                                return;
+                              }
+                              updated[idx].currencies = nextCurrs;
+                              if (e.target.checked && (!updated[idx].prices?.USD || updated[idx].prices?.USD === 0)) {
+                                updated[idx].prices = {
+                                  ...updated[idx].prices,
+                                  USD: convertMwkToUsd(updated[idx].prices?.MWK || 0) || 70,
+                                };
+                              }
+                              set('rooms', updated);
+                            }}
+                            className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4"
+                          />
+                          <span>US Dollar ($ USD)</span>
+                        </label>
+
+                        <label className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-semibold cursor-pointer transition ${
+                          hasMwk ? 'bg-white border-blue-500 text-blue-900 shadow-2xs' : 'bg-stone-100 border-stone-200 text-stone-500'
+                        }`}>
+                          <input
+                            type="checkbox"
+                            checked={hasMwk}
+                            onChange={e => {
+                              const updated = [...(draft.rooms || [])];
+                              const nextCurrs = e.target.checked
+                                ? Array.from(new Set([...roomCurrencies, 'MWK' as CurrencyCode]))
+                                : roomCurrencies.filter(c => c !== 'MWK');
+                              if (nextCurrs.length === 0) {
+                                toast.error('Pick at least one currency for this room.');
+                                return;
+                              }
+                              updated[idx].currencies = nextCurrs;
+                              if (e.target.checked && (!updated[idx].prices?.MWK || updated[idx].prices?.MWK === 0)) {
+                                updated[idx].prices = {
+                                  ...updated[idx].prices,
+                                  MWK: convertUsdToMwk(updated[idx].prices?.USD || 0) || 120000,
+                                };
+                              }
+                              set('rooms', updated);
+                            }}
+                            className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4"
+                          />
+                          <span>Malawi Kwacha (MK MWK)</span>
+                        </label>
+                      </div>
+
+                      {/* Price Inputs Grid */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                        {hasUsd && (
+                          <div>
+                            <label className="block text-xs font-semibold text-stone-700 mb-1">
+                              Nightly Price (USD)
+                            </label>
+                            <div className="relative">
+                              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400 font-bold text-sm">$</span>
+                              <input
+                                type="number"
+                                value={room.prices?.USD ?? ''}
+                                onChange={e => {
+                                  const updated = [...(draft.rooms || [])];
+                                  updated[idx].prices = { ...updated[idx].prices, USD: Number(e.target.value) };
+                                  set('rooms', updated);
+                                }}
+                                className={`${fieldClass} pl-8`}
+                                placeholder="e.g. 75"
+                                min="0"
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {hasMwk && (
+                          <div>
+                            <label className="block text-xs font-semibold text-stone-700 mb-1">
+                              Nightly Price (MK / Malawi Kwacha)
+                            </label>
+                            <div className="relative">
+                              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400 font-bold text-xs">MK</span>
+                              <input
+                                type="number"
+                                value={room.prices?.MWK ?? ''}
+                                onChange={e => {
+                                  const updated = [...(draft.rooms || [])];
+                                  updated[idx].prices = { ...updated[idx].prices, MWK: Number(e.target.value) };
+                                  set('rooms', updated);
+                                }}
+                                className={`${fieldClass} pl-10`}
+                                placeholder="e.g. 130000"
+                                min="0"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Dual-Currency Auto-Sync Helpers */}
+                      {hasUsd && hasMwk && (
+                        <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-stone-200 text-xs text-stone-500">
+                          <span className="font-medium">Quick sync:</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const usd = room.prices?.USD || 0;
+                              if (usd <= 0) {
+                                toast.error('Enter a USD rate first');
+                                return;
+                              }
+                              const calcMwk = convertUsdToMwk(usd);
+                              const updated = [...(draft.rooms || [])];
+                              updated[idx].prices = { ...updated[idx].prices, MWK: calcMwk };
+                              set('rooms', updated);
+                              toast.success(`Calculated MK ${calcMwk.toLocaleString()} from $${usd} USD`);
+                            }}
+                            className="px-2.5 py-1 bg-white hover:bg-stone-200/70 border border-stone-200 rounded-md font-semibold text-stone-700 transition"
+                          >
+                            ⚡ Calc MK from USD ($ {room.prices?.USD || 0} → MK {convertUsdToMwk(room.prices?.USD || 0).toLocaleString()})
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const mwk = room.prices?.MWK || 0;
+                              if (mwk <= 0) {
+                                toast.error('Enter an MK rate first');
+                                return;
+                              }
+                              const calcUsd = convertMwkToUsd(mwk);
+                              const updated = [...(draft.rooms || [])];
+                              updated[idx].prices = { ...updated[idx].prices, USD: calcUsd };
+                              set('rooms', updated);
+                              toast.success(`Calculated $${calcUsd} USD from MK ${mwk.toLocaleString()}`);
+                            }}
+                            className="px-2.5 py-1 bg-white hover:bg-stone-200/70 border border-stone-200 rounded-md font-semibold text-stone-700 transition"
+                          >
+                            ⚡ Calc USD from MK
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Rate Advisor Inline Card */}
+                      {aiRateRoomIdx === idx && aiRateData && (
+                        <div className="p-4 bg-white border border-stone-200 rounded-xl space-y-3 animate-in fade-in">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <DollarSign className="w-4 h-4 text-stone-600 shrink-0" />
+                              <h5 className="font-bold text-xs text-stone-900 uppercase tracking-wider">
+                                Market Rate Recommendation
+                              </h5>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAiRateRoomIdx(null);
+                                setAiRateData(null);
+                              }}
+                              className="text-stone-400 hover:text-stone-600"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3 bg-amber-50/50 p-3 rounded-lg border border-amber-100">
+                            <div>
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800">Suggested USD</span>
+                              <p className="text-lg font-bold text-stone-900">${aiRateData.usd} <span className="text-xs font-normal text-stone-500">/nt</span></p>
+                            </div>
+                            <div>
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-blue-800">Suggested MK</span>
+                              <p className="text-lg font-bold text-stone-900">MK {aiRateData.mwk.toLocaleString()} <span className="text-xs font-normal text-stone-500">/nt</span></p>
+                            </div>
+                          </div>
+
+                          <p className="text-xs text-stone-600 leading-relaxed">
+                            {aiRateData.reasoning}
+                          </p>
+
+                          <div className="flex items-center gap-2 pt-1">
+                            <button
+                              type="button"
+                              onClick={() => handleApplyAIRates(idx)}
+                              className="px-3.5 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-lg text-xs font-semibold transition flex items-center gap-1.5"
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                              <span>Apply These Rates</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAiRateRoomIdx(null);
+                                setAiRateData(null);
+                              }}
+                              className="px-3 py-2 text-xs font-semibold text-stone-500 hover:text-stone-800 transition"
+                            >
+                              Dismiss
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Capacity & Inventory */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className={labelClass}>Quantity (Available Rooms of this Type)</label>
+                        <input
+                          type="number"
+                          value={room.quantity || ''}
+                          onChange={e => {
+                            const updated = [...(draft.rooms || [])];
+                            updated[idx].quantity = Number(e.target.value);
+                            set('rooms', updated);
+                          }}
+                          className={fieldClass}
+                          min="1"
+                          placeholder="e.g. 4"
+                        />
+                      </div>
+                      <div>
+                        <label className={labelClass}>Max Guests (Sleeps)</label>
+                        <input
+                          type="number"
+                          value={room.maxGuests || ''}
+                          onChange={e => {
+                            const updated = [...(draft.rooms || [])];
+                            updated[idx].maxGuests = Number(e.target.value);
+                            set('rooms', updated);
+                          }}
+                          className={fieldClass}
+                          min="1"
+                          max="30"
+                          placeholder="e.g. 2"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Extra Guest Fees (Optional) */}
+                    <div className="pt-4 border-t border-stone-100 space-y-3">
+                      <div>
+                        <label className="text-xs font-bold uppercase tracking-wider text-stone-700">
+                          Extra Guest Fees (Optional)
+                        </label>
+                        <p className="text-[11px] text-stone-500">
+                          Additional charge per night for guests beyond the base occupancy.
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {hasUsd && (
+                          <div>
+                            <label className="block text-xs font-medium text-stone-600 mb-1">
+                              Extra Guest Fee (USD)
+                            </label>
+                            <div className="relative">
+                              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400 font-bold text-sm">$</span>
+                              <input
+                                type="number"
+                                value={room.extraGuestFees?.USD ?? ''}
+                                onChange={e => {
+                                  const updated = [...(draft.rooms || [])];
+                                  updated[idx].extraGuestFees = {
+                                    ...updated[idx].extraGuestFees,
+                                    USD: e.target.value ? Number(e.target.value) : undefined,
+                                  };
+                                  set('rooms', updated);
+                                }}
+                                className={`${fieldClass} pl-8`}
+                                placeholder="e.g. 20"
+                                min="0"
+                              />
+                            </div>
+                          </div>
+                        )}
+                        {hasMwk && (
+                          <div>
+                            <label className="block text-xs font-medium text-stone-600 mb-1">
+                              Extra Guest Fee (MK)
+                            </label>
+                            <div className="relative">
+                              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400 font-bold text-xs">MK</span>
+                              <input
+                                type="number"
+                                value={room.extraGuestFees?.MWK ?? ''}
+                                onChange={e => {
+                                  const updated = [...(draft.rooms || [])];
+                                  updated[idx].extraGuestFees = {
+                                    ...updated[idx].extraGuestFees,
+                                    MWK: e.target.value ? Number(e.target.value) : undefined,
+                                  };
+                                  set('rooms', updated);
+                                }}
+                                className={`${fieldClass} pl-10`}
+                                placeholder="e.g. 35000"
+                                min="0"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Room Photos */}
+                    <div className="pt-4 border-t border-stone-100">
+                      <ImageUpload
+                        label="Room Cover Photo"
+                        hint="Make it a well-lit, wide shot of the bed and room."
+                        tooltip="Guest View: This image appears as the primary thumbnail for this room type in the booking list on your property page."
+                        value={room.imageUrl || ''}
+                        onChange={url => {
+                          const updated = [...(draft.rooms || [])];
+                          updated[idx].imageUrl = url;
+                          set('rooms', updated);
+                        }}
+                        folder={`hotels/${draft.id}/rooms`}
+                      />
+                    </div>
+                    
+                    <div className="pt-4 border-t border-stone-100">
+                      <GalleryUpload
+                        label="Room Gallery"
+                        hint="Add photos of the en-suite bathroom, the view from this room, and specific room amenities."
+                        tooltip="Guest View: These photos form the image carousel when a guest clicks to view more details about this specific room type."
+                        value={room.galleryUrls || []}
+                        onChange={urls => {
+                          const updated = [...(draft.rooms || [])];
+                          updated[idx].galleryUrls = urls;
+                          set('rooms', updated);
+                        }}
+                        folder={`hotels/${draft.id}/rooms`}
+                      />
+                    </div>
                   </div>
-                  
-                  <div className="pt-4 border-t border-stone-100">
-                    <GalleryUpload
-                      label="Room Gallery"
-                      hint="Add photos of the en-suite bathroom, the view from this room, and specific room amenities."
-                      tooltip="Guest View: These photos form the image carousel when a guest clicks to view more details about this specific room type."
-                      value={room.galleryUrls || []}
-                      onChange={urls => {
-                        const updated = [...(draft.rooms || [])];
-                        updated[idx].galleryUrls = urls;
-                        set('rooms', updated);
-                      }}
-                      folder={`hotels/${draft.id}/rooms`}
-                    />
-                  </div>
-                </div>
-              ))}
+                );
+              })}
 
               <FieldError message={visible.rooms} />
             </div>
@@ -804,7 +1955,7 @@ export default function ListProperty() {
                 </div>
               ) : premiumEnabled ? (
                 <div className="rounded-2xl border border-stone-200 p-8 text-center bg-white shadow-sm">
-                  <Sparkles className="mx-auto h-12 w-12 text-blue-500 mb-4" />
+                  <Award className="mx-auto h-12 w-12 text-stone-700 mb-4" />
                   <h3 className="font-serif text-2xl text-stone-900 mb-2">Choose a Premium Plan</h3>
                   <p className="text-stone-600 mb-6">Unlock powerful features to get more bookings.</p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
@@ -902,8 +2053,121 @@ export default function ListProperty() {
                       </dd>
                     </div>
                   </dl>
+
+                  {/* Room Types & Pricing Summary in Review */}
+                  <div className="mt-6 border-t border-stone-100 pt-6">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-stone-800">
+                        Configured Room Types & Rates ({(draft.rooms || []).length})
+                      </h4>
+                      <button
+                        type="button"
+                        onClick={() => setStep(3)}
+                        className="text-xs font-semibold text-stone-700 hover:text-stone-900 hover:underline"
+                      >
+                        Edit Rooms &rarr;
+                      </button>
+                    </div>
+
+                    {(draft.rooms || []).length === 0 ? (
+                      <p className="text-xs text-amber-600 bg-amber-50 p-3 rounded-xl border border-amber-200">
+                        ⚠️ No room types added yet. Please add at least one room in Step 3 before publishing.
+                      </p>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {(draft.rooms || []).map((room, rIdx) => (
+                          <div key={rIdx} className="bg-stone-50 p-3.5 rounded-xl border border-stone-200 text-xs space-y-1.5">
+                            <div className="flex items-start justify-between gap-2">
+                              <span className="font-bold text-stone-900 text-sm">{room.name || `Room ${rIdx + 1}`}</span>
+                              <span className="text-[10px] font-semibold text-stone-500 bg-white px-2 py-0.5 rounded border border-stone-200">
+                                {room.quantity || 1} available
+                              </span>
+                            </div>
+                            <p className="text-stone-600 line-clamp-1">{room.description || 'No description provided'}</p>
+                            <div className="flex flex-wrap items-center gap-2 pt-1 font-semibold">
+                              {room.prices?.USD ? (
+                                <span className="text-emerald-800 bg-emerald-100/70 px-2 py-0.5 rounded">
+                                  ${room.prices.USD} USD / night
+                                </span>
+                              ) : null}
+                              {room.prices?.MWK ? (
+                                <span className="text-blue-800 bg-blue-100/70 px-2 py-0.5 rounded">
+                                  MK {Number(room.prices.MWK).toLocaleString()} / night
+                                </span>
+                              ) : null}
+                              <span className="text-stone-400 font-normal">· Sleeps {room.maxGuests || 2}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
+
+              {/* Optional AI Appeal & Guest Clarity Check */}
+              {aiStatus.enabled && aiStatus.available && (
+                <div className="rounded-2xl border border-stone-200 bg-stone-50/70 p-5 space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-stone-600 shrink-0" />
+                      <div>
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-stone-800">
+                          Listing Readiness & Appeal Check
+                        </h4>
+                        <p className="text-[11px] text-stone-500">
+                          Get quick, private feedback on how attractive and clear your listing is for travelers.
+                        </p>
+                      </div>
+                    </div>
+                    {!listingReview && (
+                      <button
+                        type="button"
+                        onClick={handleReviewListing}
+                        disabled={reviewingListing}
+                        className="shrink-0 inline-flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-stone-900 bg-white hover:bg-stone-100 rounded-xl border border-stone-200 transition shadow-2xs disabled:opacity-50"
+                      >
+                        {reviewingListing ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin text-stone-500" />
+                            <span>Reviewing draft...</span>
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle2 className="w-3.5 h-3.5 text-stone-600" />
+                            <span>Run Quick Check</span>
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </div>
+
+                  {listingReview && (
+                    <div className="space-y-3 pt-3 border-t border-stone-200/70 animate-in fade-in">
+                      <div className="p-4 bg-white rounded-xl border border-stone-200 text-xs leading-relaxed text-stone-700 whitespace-pre-line">
+                        {listingReview}
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <button
+                          type="button"
+                          onClick={() => setListingReview(null)}
+                          className="text-xs text-stone-400 hover:text-stone-600 transition"
+                        >
+                          Dismiss feedback
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setStep(1)}
+                          className="text-xs font-semibold text-stone-800 hover:underline inline-flex items-center gap-1"
+                        >
+                          <span>Edit description or amenities</span>
+                          <span>&rarr;</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
                 <p className="flex items-center gap-2 font-bold text-amber-900">
@@ -1035,7 +2299,7 @@ function HostIntro({
                 onClick={onSignUp}
                 className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-8 py-4 text-base font-bold text-stone-900 transition hover:bg-stone-100"
               >
-                <Sparkles className="h-4 w-4" /> Create your host account
+                <ArrowRight className="h-4 w-4" /> Create your host account
               </button>
             )}
             <p className="text-sm text-white/50">

@@ -88,7 +88,7 @@ export default function Modal({
   // button floats.
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-4"
+      className="fixed inset-0 z-[150] flex items-center justify-center p-4 sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby={titleId}

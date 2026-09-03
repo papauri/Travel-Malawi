@@ -1933,8 +1933,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Floating View Toggle Button */}
-      <div className="fixed bottom-24 md:bottom-12 right-6 md:right-12 z-50 pointer-events-none">
+      {/* Floating View Toggle Button - Positioned to the bottom-left */}
+      <div className="fixed bottom-6 sm:bottom-8 left-4 sm:left-8 z-40 pointer-events-none">
         <button
           onClick={() => {
             const newMode = viewMode === 'grid' ? 'map' : 'grid';
@@ -1943,17 +1943,18 @@ export default function Home() {
               document.getElementById(newMode === 'map' ? 'map-canvas' : 'grid-canvas')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }, 50);
           }}
-          className="pointer-events-auto flex items-center justify-center gap-2 bg-stone-900/95 backdrop-blur-md text-white rounded-full px-4 py-3 sm:px-5 shadow-[0_4px_24px_rgba(0,0,0,0.25)] hover:scale-105 hover:bg-stone-800 transition-all active:scale-95 border border-stone-700/50"
+          className="pointer-events-auto flex items-center justify-center gap-2 bg-stone-900/95 hover:bg-stone-900 backdrop-blur-md text-white rounded-full px-4 py-2.5 sm:px-5 sm:py-3 shadow-[0_4px_24px_rgba(0,0,0,0.25)] hover:scale-105 transition-all active:scale-95 border border-stone-700/70 select-none cursor-pointer"
+          aria-label={viewMode === 'grid' ? 'Switch to map view' : 'Switch to list view'}
         >
           {viewMode === 'grid' ? (
             <>
-              <span className="hidden sm:inline text-sm font-bold tracking-wide">Show Map</span>
-              <MapIcon className="w-5 h-5 sm:w-4 sm:h-4" />
+              <MapIcon className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span className="text-xs sm:text-sm font-bold tracking-wide">Show Map</span>
             </>
           ) : (
             <>
-              <span className="hidden sm:inline text-sm font-bold tracking-wide">Show List</span>
-              <LayoutGrid className="w-5 h-5 sm:w-4 sm:h-4" />
+              <LayoutGrid className="w-4 h-4 text-amber-400 shrink-0" />
+              <span className="text-xs sm:text-sm font-bold tracking-wide">Show List</span>
             </>
           )}
         </button>

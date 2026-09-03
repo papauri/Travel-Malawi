@@ -8,7 +8,7 @@ import {
   Shield, Building2, CheckCircle, XCircle, Clock, MapPin, 
   MapPinOff, Users, Edit2, Key, Trash2, Star, ExternalLink, 
   MessageSquare, MessageSquareOff, LayoutDashboard, CalendarRange, FileText, 
-  Search, Activity
+  Search, Activity, Cpu
 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import Pagination from '../components/Pagination';
@@ -16,6 +16,7 @@ import { PIN_PROBLEM_LABELS, mapLinkUrl, pinProblem } from '../lib/geo';
 import toast from 'react-hot-toast';
 import SmartImage from '../components/SmartImage';
 import ConfirmDialog from '../components/ConfirmDialog';
+import AdminAISettings from '../components/AdminAISettings';
 import { getHotelImage } from '../lib/images';
 import { isAdmin, isHotelManager, userRoles, toRoleFields } from '../lib/roles';
 import { formatMoney } from '../lib/booking';
@@ -23,7 +24,7 @@ import { Navigation, TrendingUp } from 'lucide-react';
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import PriceDisplay from '../components/PriceDisplay';
 
-type Tab = 'overview' | 'analytics' | 'properties' | 'users' | 'bookings' | 'destinations' | 'content';
+type Tab = 'overview' | 'analytics' | 'properties' | 'users' | 'bookings' | 'destinations' | 'content' | 'ai';
 
 export default function AdminDashboard() {
   const { user, loading: authLoading, resetPassword } = useAuth();
@@ -478,6 +479,15 @@ export default function AdminDashboard() {
             >
               <FileText className="w-5 h-5" />
               Content & Legal
+            </button>
+            <button 
+              onClick={() => setActiveTab('ai')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition ${
+                activeTab === 'ai' ? 'bg-stone-900 text-white' : 'text-stone-600 hover:bg-stone-100'
+              }`}
+            >
+              <Cpu className="w-5 h-5" />
+              AI Services & Keys
             </button>
         </nav>
       </div>
@@ -1420,6 +1430,11 @@ export default function AdminDashboard() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* ===================== AI CONFIGURATION TAB ===================== */}
+        {activeTab === 'ai' && (
+          <AdminAISettings />
         )}
 
         <ConfirmDialog

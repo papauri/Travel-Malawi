@@ -16,6 +16,7 @@ import Modal, { fieldClass, labelClass } from '../components/Modal';
 import Pagination from '../components/Pagination';
 import FieldError from '../components/FieldError';
 import BookingChat from '../components/BookingChat';
+import { useChatModal } from '../contexts/ChatModalContext';
 import StayVoucherModal from '../components/StayVoucherModal';
 import { MessageSquare, Megaphone, X } from 'lucide-react';
 import { getHotelImage } from '../lib/images';
@@ -38,7 +39,7 @@ export default function MyBookings() {
   const [voucherTarget, setVoucherTarget] = useState<EnrichedBooking | null>(null);
   const [reviewedBookingIds, setReviewedBookingIds] = useState<Set<string>>(new Set());
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [chatTarget, setChatTarget] = useState<EnrichedBooking | null>(null);
+  const { openBookingChat } = useChatModal();
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
@@ -435,8 +436,8 @@ export default function MyBookings() {
                         {(booking.status !== 'cancelled' && booking.status !== 'rejected') && (booking.hotel?.chatEnabled !== false && booking.hotel?.adminChatEnabled !== false) && (
                           <button
                             type="button"
-                            onClick={() => setChatTarget(booking)}
-                            className="text-xs font-semibold text-stone-900 border-2 border-stone-900 bg-white px-4 py-2 rounded-xl hover:bg-stone-900 hover:text-white transition flex items-center gap-1.5"
+                            onClick={() => openBookingChat(booking as unknown as Booking)}
+                            className="text-xs font-semibold text-stone-900 border-2 border-stone-900 bg-white px-4 py-2 rounded-xl hover:bg-stone-900 hover:text-white transition flex items-center gap-1.5 cursor-pointer"
                           >
                             <MessageSquare className="w-4 h-4" /> Contact host
                           </button>
@@ -522,18 +523,6 @@ export default function MyBookings() {
         onCancel={() => setCancelTarget(null)}
       />
 
-      {chatTarget && user && (
-        <Modal
-          open={true}
-          onClose={() => setChatTarget(null)}
-          title={"Message " + (chatTarget.hotel?.name || 'Property')}
-          description={"Reference: " + (chatTarget.reference || 'N/A')}
-        >
-          <div className="mt-2 h-[500px]">
-             <BookingChat booking={chatTarget} currentUser={user} />
-          </div>
-        </Modal>
-      )}
       <StayVoucherModal 
         booking={voucherTarget} 
         isOpen={!!voucherTarget} 

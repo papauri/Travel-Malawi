@@ -17,6 +17,7 @@ import Modal from '../components/Modal';
 import Pagination from '../components/Pagination';
 import BookingChat from '../components/BookingChat';
 import PropertyChat from '../components/PropertyChat';
+import { useChatModal } from '../contexts/ChatModalContext';
 import { MessageSquare, Megaphone, Presentation } from 'lucide-react';
 import SmartImage from '../components/SmartImage';
 import { getHotelImages, getHotelImage, getRoomImage, localImagesForName } from '../lib/images';
@@ -26,6 +27,7 @@ import AvailabilityCalendar from '../components/AvailabilityCalendar';
 import OpeningHoursEditor from '../components/OpeningHoursEditor';
 import MenuEditor, { emptyRestaurant } from '../components/MenuEditor';
 import MenuTemplateView from '../components/MenuTemplates';
+import AIAssistantButton from '../components/AIAssistantButton';
 import toast from 'react-hot-toast';
 import { addDays, formatDateStr, isValidDateStr, nightsBetween, nightsInRange, todayStr } from '../lib/dates';
 import { isRoomAvailable } from '../lib/availability';
@@ -189,9 +191,7 @@ export default function ManageHotel() {
   const [bookingFilter, setBookingFilter] = useState<'all' | 'pending' | 'confirmed' | 'cancelled'>('all');
   const [currentBookingPage, setCurrentBookingPage] = useState(1);
   const bookingsPerPage = 5;
-  const [chatTarget, setChatTarget] = useState<Booking | null>(null);
-  const [inquiryChatTarget, setInquiryChatTarget] = useState<any | null>(null);
-  useBodyScrollLock(!!inquiryChatTarget);
+  const { openInquiryChat, openBookingChat } = useChatModal();
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [savingRestaurant, setSavingRestaurant] = useState(false);
   const [togglingStatus, setTogglingStatus] = useState(false);
@@ -1046,7 +1046,20 @@ export default function ManageHotel() {
                 <p className="text-xs text-stone-400 mt-1">Property name cannot be changed after registration. Contact admin for assistance.</p>
               </div>
               <div className="md:col-span-2">
-                <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Description</label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider">Description</label>
+                  <AIAssistantButton
+                    value={editHotelData.description || ''}
+                    onChange={text => setEditHotelData({ ...editHotelData, description: text })}
+                    entityType="property"
+                    context={{
+                      name: editHotelData.name,
+                      location: editHotelData.location,
+                      amenities: editHotelData.amenities,
+                    }}
+                    fieldLabel="property description"
+                  />
+                </div>
                 <textarea required rows={4} value={editHotelData.description || ''} onChange={e => setEditHotelData({...editHotelData, description: e.target.value})} className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition" />
                 <FieldError message={detailProblems.description} />
               </div>
@@ -1633,7 +1646,21 @@ export default function ManageHotel() {
                     <FieldError message={roomErrors.name} />
                   </div>
                   <div className="md:col-span-2">
-                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Description</label>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider">Description</label>
+                      <AIAssistantButton
+                        value={editRoomData.description || ''}
+                        onChange={text => setEditRoomData({ ...editRoomData, description: text })}
+                        entityType="room"
+                        context={{
+                          name: editRoomData.name,
+                          capacity: editRoomData.maxGuests,
+                          amenities: editRoomData.amenities,
+                          extraNotes: editHotelData.name ? `Room at ${editHotelData.name}, located in ${editHotelData.location || 'Malawi'}` : undefined,
+                        }}
+                        fieldLabel="room description"
+                      />
+                    </div>
                     <textarea required rows={3} value={editRoomData.description || ''} onChange={e => setEditRoomData({...editRoomData, description: e.target.value})} className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition" />
                     <FieldError message={roomErrors.description} />
                   </div>
@@ -2296,8 +2323,8 @@ export default function ManageHotel() {
                           {booking.status !== 'cancelled' && booking.status !== 'rejected' && hotel?.adminChatEnabled !== false && (
                             <button
                               type="button"
-                              onClick={() => setChatTarget(booking)}
-                              className="ml-auto text-xs font-semibold text-stone-900 border-2 border-stone-200 bg-white px-3 py-1 rounded-lg hover:border-stone-900 transition inline-flex items-center gap-1"
+                              onClick={() => openBookingChat(booking)}
+                              className="ml-auto text-xs font-semibold text-stone-900 border-2 border-stone-200 bg-white px-3 py-1 rounded-lg hover:border-stone-900 transition inline-flex items-center gap-1 cursor-pointer"
                             >
                               <MessageSquare className="w-3.5 h-3.5" /> Message Guest
                             </button>
@@ -2542,8 +2569,8 @@ export default function ManageHotel() {
                         {hotel?.adminChatEnabled !== false && (
                           <button
                             type="button"
-                            onClick={() => setInquiryChatTarget(inquiry)}
-                            className="flex items-center gap-2 px-4 py-2.5 bg-stone-900 text-white hover:bg-stone-800 rounded-xl transition font-semibold text-xs shadow-sm"
+                            onClick={() => openInquiryChat(hotel, inquiry.guestId, inquiry.guestName)}
+                            className="flex items-center gap-2 px-4 py-2.5 bg-stone-900 text-white hover:bg-stone-800 rounded-xl transition font-semibold text-xs shadow-sm cursor-pointer"
                           >
                             <MessageSquare className="w-4 h-4" /> Open Chat
                           </button>
@@ -2650,32 +2677,6 @@ export default function ManageHotel() {
         onCancel={() => setPendingTab(null)}
       />
 
-            {chatTarget && user && (
-        <Modal
-          open={true}
-          onClose={() => setChatTarget(null)}
-          title={"Message " + (chatTarget.guestName || 'Guest')}
-          description={"Reference: " + (chatTarget.reference || 'N/A')}
-        >
-          <div className="mt-2 h-[500px]">
-             <BookingChat booking={chatTarget} currentUser={user} />
-          </div>
-        </Modal>
-      )}
-
-      {inquiryChatTarget && user && hotel && (
-        <div className="fixed inset-0 bg-stone-900/50 z-[100] flex items-center justify-center p-4">
-          <div className="w-full max-w-lg bg-transparent">
-            <PropertyChat 
-              hotel={hotel}
-              currentUser={user}
-              guestId={inquiryChatTarget.guestId}
-              guestName={inquiryChatTarget.guestName}
-              onClose={() => setInquiryChatTarget(null)}
-            />
-          </div>
-        </div>
-      )}
       <ConfirmDialog
         isOpen={!!bookingToDelete}
         title="Delete Booking"

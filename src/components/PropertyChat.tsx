@@ -494,7 +494,7 @@ export default function PropertyChat({
   })();
 
   return (
-    <div className="flex flex-col h-[530px] bg-white rounded-2xl shadow-2xl overflow-hidden border border-stone-200">
+    <div className="flex flex-col h-[500px] max-h-[calc(100dvh-7.5rem)] min-h-[350px] bg-white rounded-2xl shadow-2xl overflow-hidden border border-stone-200">
       {/* Header Bar */}
       <div className="p-3.5 sm:p-4 bg-stone-900 text-white flex justify-between items-center gap-2 select-none border-b border-stone-800">
         <div className="min-w-0 flex-1">

@@ -4,7 +4,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useAuthDialog } from '../contexts/AuthDialogContext';
 import { Search, LogIn, User as UserIcon, Briefcase, Building2, Heart, Menu, X, LogOut, Settings } from 'lucide-react';
-import { isHotelManager, isTraveller, describeRoles } from '../lib/roles';
+import { isHotelManager, isTraveller, describeRoles, isAdmin } from '../lib/roles';
 import { motion, AnimatePresence } from 'motion/react';
 
 export default function MobileNav() {
@@ -23,13 +23,16 @@ export default function MobileNav() {
   // Hide bottom nav on hotel details pages on mobile to make room for the sticky "Book" bar
   if (pathname.includes('/hotel/')) return null;
 
+  // If user is a manager or admin, they have the Concierge Assistant on bottom-right and full nav in the top Navbar avatar
+  if (user && (isManager || isAdmin(user))) return null;
+
   return (
     <>
       {/* Floating Action Button */}
-      <div className="md:hidden fixed bottom-6 right-6 z-40">
+      <div className="md:hidden fixed bottom-6 right-4 sm:bottom-8 sm:right-8 z-40">
         <button
           onClick={() => setIsOpen(true)}
-          className="bg-stone-900 text-white p-4 rounded-full shadow-2xl hover:bg-stone-800 transition-transform active:scale-95 flex items-center justify-center border border-stone-700/50"
+          className="bg-stone-900 text-white p-3.5 sm:p-4 rounded-full shadow-2xl hover:bg-stone-800 transition-transform active:scale-95 flex items-center justify-center border border-stone-700/50"
           aria-label="Menu"
         >
           <Menu className="w-6 h-6" />

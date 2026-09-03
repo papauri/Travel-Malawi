@@ -21,7 +21,6 @@ import {
   Check,
   Globe,
   Loader2,
-  Sparkles,
   ChevronRight,
   X,
   ExternalLink,
@@ -473,7 +472,7 @@ export default function LocationPicker({
         {/* Quick Region Presets Chips */}
         <div className="mb-3 flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-hide text-xs">
           <span className="text-stone-400 font-semibold uppercase text-[10px] shrink-0 mr-1 flex items-center gap-1">
-            <Sparkles className="h-3 w-3 text-amber-500" /> Jump to:
+            <Compass className="h-3 w-3 text-stone-500" /> Jump to:
           </span>
           {POPULAR_REGIONS.map(reg => (
             <button

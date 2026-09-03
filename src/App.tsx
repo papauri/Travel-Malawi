@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { createBrowserRouter, RouterProvider, Outlet, useLocation, Link } from 'react-router-dom';
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AuthDialogProvider } from './contexts/AuthDialogContext';
 import { ChatModalProvider } from './contexts/ChatModalContext';
 import { CompareProvider } from './contexts/CompareContext';
@@ -23,6 +23,7 @@ import Refunds from './pages/Refunds';
 import GlobalNotificationManager from './components/GlobalNotificationManager';
 import PageLoader from './components/PageLoader';
 import CompareWidget from './components/CompareWidget';
+import OperationsCopilot from './components/OperationsCopilot';
 import { Toaster } from 'react-hot-toast';
 import Lenis from 'lenis';
 
@@ -60,6 +61,37 @@ function ScrollToTop() {
   return null;
 }
 
+function RootContent({ children }: { children?: React.ReactNode }) {
+  const { user } = useAuth();
+  return (
+    <div className="min-h-screen bg-stone-50 flex flex-col font-sans">
+      <Navbar />
+      <Breadcrumbs />
+      <Toaster 
+        position="bottom-center"
+        toastOptions={{
+          style: {
+            background: '#1c1917',
+            color: '#fff',
+            borderRadius: '16px',
+            padding: '16px 24px',
+          }
+        }} 
+      />
+      <GlobalNotificationManager />
+      <CompareWidget />
+      {/* Strictly scoped to current authenticated session - unmounted and completely destroyed on logout or user switch */}
+      {user && <OperationsCopilot key={user.uid} />}
+      <PageLoader />
+      <main className="flex-1">
+        {children || <Outlet />}
+      </main>
+      <Footer />
+      <MobileNav />
+    </div>
+  );
+}
+
 function RootLayout({ children }: { children?: React.ReactNode }) {
   return (
       <AuthDialogProvider>
@@ -67,29 +99,7 @@ function RootLayout({ children }: { children?: React.ReactNode }) {
           <CompareProvider>
             <BreadcrumbProvider>
               <ScrollToTop />
-              <div className="min-h-screen bg-stone-50 flex flex-col font-sans">
-                <Navbar />
-                <Breadcrumbs />
-                <Toaster 
-                  position="bottom-center"
-                  toastOptions={{
-                    style: {
-                      background: '#1c1917',
-                      color: '#fff',
-                      borderRadius: '16px',
-                      padding: '16px 24px',
-                    }
-                  }} 
-                />
-                <GlobalNotificationManager />
-                <CompareWidget />
-                <PageLoader />
-                <main className="flex-1">
-                  {children || <Outlet />}
-                </main>
-                <Footer />
-                <MobileNav />
-              </div>
+              <RootContent>{children}</RootContent>
             </BreadcrumbProvider>
           </CompareProvider>
         </ChatModalProvider>

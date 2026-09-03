@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 import RoomGallery from './RoomGallery';
 import ImageUpload from './ImageUpload';
 import GalleryUpload from './GalleryUpload';
+import AIAssistantButton from './AIAssistantButton';
 
 interface Props {
   hotelId: string;
@@ -85,10 +86,23 @@ export default function ConferenceManager({ hotelId }: Props) {
                 <span className="text-sm font-semibold text-stone-900 mb-1.5 block">Room Name</span>
                 <input required type="text" value={editingRoom.name} onChange={e => setEditingRoom({ ...editingRoom, name: e.target.value })} className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all" placeholder="e.g. Grand Ballroom" />
               </label>
-              <label className="block">
-                <span className="text-sm font-semibold text-stone-900 mb-1.5 block">Description</span>
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-sm font-semibold text-stone-900 block">Description</span>
+                  <AIAssistantButton
+                    value={editingRoom.description || ''}
+                    onChange={text => setEditingRoom({ ...editingRoom, description: text })}
+                    entityType="conference"
+                    context={{
+                      name: editingRoom.name,
+                      capacity: editingRoom.capacity,
+                      amenities: editingRoom.amenities,
+                    }}
+                    fieldLabel="conference space description"
+                  />
+                </div>
                 <textarea required rows={3} value={editingRoom.description} onChange={e => setEditingRoom({ ...editingRoom, description: e.target.value })} className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all resize-none" placeholder="Describe the space..." />
-              </label>
+              </div>
             </div>
             
             <label className="block">

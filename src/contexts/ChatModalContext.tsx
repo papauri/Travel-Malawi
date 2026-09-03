@@ -1,12 +1,11 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { Hotel, Booking, HotelChat } from '../types';
 import PropertyChat from '../components/PropertyChat';
 import BookingChat from '../components/BookingChat';
 import Modal from '../components/Modal';
 import { useAuth } from './AuthContext';
 import { useManagerPresence } from '../hooks/usePresence';
-import { MessageSquare, Minus, X, Maximize2, Sparkles } from 'lucide-react';
+import { MessageSquare, Minus, X, Maximize2 } from 'lucide-react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
@@ -36,39 +35,26 @@ interface ChatModalContextType {
 
 const ChatModalContext = createContext<ChatModalContextType | undefined>(undefined);
 
-const LOCAL_STORAGE_KEY = 'kaza_active_chat_session_v1';
+const CHAT_STORAGE_PREFIX = 'kaza_active_chat_session_';
 
 export function ChatModalProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  
-  // Initialize from localStorage if available so navigating / refreshing keeps session
-  const [activeChat, setActiveChat] = useState<ActiveChatState>(() => {
-    try {
-      const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (stored) {
-        return JSON.parse(stored);
-      }
-    } catch (e) {
-      console.warn('Failed to parse stored chat session:', e);
-    }
-    return null;
-  });
-
+  const [activeChat, setActiveChat] = useState<ActiveChatState>(null);
   const [isMinimized, setIsMinimized] = useState<boolean>(false);
   const [liveHotelStatus, setLiveHotelStatus] = useState<{ isOnline?: boolean; name?: string }>({});
 
-  // Sync activeChat state to localStorage whenever it changes
+  // Reset active chat immediately whenever the logged-in user changes or logs out
+  // Ensures one user's chat never leaks to another user, and cleans up when session ends
   useEffect(() => {
+    setActiveChat(null);
+    setIsMinimized(false);
     try {
-      if (activeChat) {
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(activeChat));
-      } else {
-        localStorage.removeItem(LOCAL_STORAGE_KEY);
-      }
+      localStorage.removeItem('kaza_active_chat_session_v1');
+      sessionStorage.clear();
     } catch (e) {
-      console.warn('Failed to persist active chat session:', e);
+      // ignore
     }
-  }, [activeChat]);
+  }, [user?.uid]);
 
 
 
@@ -102,7 +88,8 @@ export function ChatModalProvider({ children }: { children: React.ReactNode }) {
     setActiveChat(null);
     setIsMinimized(false);
     try {
-      localStorage.removeItem(LOCAL_STORAGE_KEY);
+      localStorage.removeItem('kaza_active_chat_session_v1');
+      sessionStorage.clear();
     } catch (e) {
       // ignore
     }
@@ -113,8 +100,6 @@ export function ChatModalProvider({ children }: { children: React.ReactNode }) {
                           activeChat?.type === 'booking' ? activeChat.booking.managerId : undefined;
   const managerPresence = useManagerPresence(activeManagerId);
   const isOnline = managerPresence?.status === 'online';
-
-  useBodyScrollLock(!!activeChat && !isMinimized);
 
   return (
     <ChatModalContext.Provider
@@ -189,7 +174,7 @@ export function ChatModalProvider({ children }: { children: React.ReactNode }) {
             /* Expanded Floating Chat Card Docked at Bottom Right */
             <div 
               id="expanded-floating-chat-container"
-              className="fixed bottom-6 right-6 z-[200] w-[calc(100vw-32px)] sm:w-[410px] max-w-full origin-bottom-right animate-fadeIn"
+              className="fixed bottom-4 sm:bottom-6 right-3 sm:right-6 z-[200] w-[calc(100vw-24px)] sm:w-[410px] max-w-full max-h-[calc(100dvh-7.5rem)] origin-bottom-right animate-fadeIn flex flex-col"
             >
               {activeChat.type === 'inquiry' ? (
                 <PropertyChat
@@ -201,8 +186,8 @@ export function ChatModalProvider({ children }: { children: React.ReactNode }) {
                   onMinimize={minimizeChat}
                 />
               ) : (
-                <div className="bg-white rounded-2xl overflow-hidden shadow-2xl border border-stone-200">
-                  <div className="p-3 bg-stone-900 text-white flex justify-between items-center">
+                <div className="bg-white rounded-2xl overflow-hidden shadow-2xl border border-stone-200 flex flex-col max-h-[calc(100dvh-7.5rem)]">
+                  <div className="p-3 bg-stone-900 text-white flex justify-between items-center shrink-0">
                     <div className="flex items-center gap-2">
                       <MessageSquare className="w-4 h-4 text-emerald-400" />
                       <div>
@@ -218,7 +203,7 @@ export function ChatModalProvider({ children }: { children: React.ReactNode }) {
                       <button 
                         type="button" 
                         onClick={minimizeChat}
-                        className="p-1.5 hover:bg-stone-800 rounded-lg text-stone-400 hover:text-white"
+                        className="p-1.5 hover:bg-stone-800 rounded-lg text-stone-400 hover:text-white transition cursor-pointer"
                         title="Minimize"
                       >
                         <Minus className="w-4 h-4" />
@@ -226,14 +211,14 @@ export function ChatModalProvider({ children }: { children: React.ReactNode }) {
                       <button 
                         type="button" 
                         onClick={closeChat}
-                        className="p-1.5 hover:bg-stone-800 rounded-lg text-stone-400 hover:text-white"
+                        className="p-1.5 hover:bg-stone-800 rounded-lg text-stone-400 hover:text-white transition cursor-pointer"
                         title="Close"
                       >
                         <X className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
-                  <div className="h-[460px]">
+                  <div className="flex-1 min-h-0 h-[460px] max-h-[calc(100dvh-11rem)] min-h-[300px]">
                     <BookingChat booking={activeChat.booking} currentUser={user} />
                   </div>
                 </div>

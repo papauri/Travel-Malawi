@@ -251,7 +251,21 @@ export function validateProperty(
 }
 
 export function validateDraft(draft: ListingDraft): DraftErrors {
-  return validateProperty(draft, 'publish');
+  const errors = validateProperty(draft, 'publish');
+  if (!draft.rooms || draft.rooms.length === 0) {
+    errors.rooms = 'Add at least one room type for guests to book.';
+  } else {
+    for (let i = 0; i < draft.rooms.length; i++) {
+      const r = draft.rooms[i];
+      const rErrors = validateRoom(r);
+      if (Object.keys(rErrors).length > 0) {
+        const firstErr = Object.values(rErrors)[0];
+        errors.rooms = `Room #${i + 1} (${r.name || 'Unnamed'}): ${firstErr}`;
+        break;
+      }
+    }
+  }
+  return errors;
 }
 
 /** Only the errors belonging to one step of the wizard. */
