@@ -440,10 +440,10 @@ export default function AdminDashboard() {
           <p className="text-stone-500 text-xs sm:text-sm">Platform Management</p>
         </div>
         
-        <nav className="flex md:flex-col gap-1.5 overflow-x-auto pb-2 md:pb-0 scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        <nav className="flex md:flex-col gap-1.5 overflow-x-auto pb-2 md:pb-0 scrollbar-hide snap-x touch-pan-x -mx-4 px-4 sm:-mx-6 sm:px-6 md:mx-0 md:px-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           <button 
             onClick={() => setActiveTab('overview')}
-            className={`whitespace-nowrap shrink-0 md:w-full flex items-center gap-2.5 px-3.5 sm:px-4 py-2 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition ${
+            className={`whitespace-nowrap shrink-0 snap-start md:w-full flex items-center gap-2.5 px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold min-h-[44px] transition ${
               activeTab === 'overview' ? 'bg-stone-900 text-white shadow-xs' : 'text-stone-600 bg-stone-100/70 md:bg-transparent hover:bg-stone-100'
             }`}
           >
@@ -452,7 +452,7 @@ export default function AdminDashboard() {
           </button>
           <button 
             onClick={() => setActiveTab('analytics')}
-            className={`whitespace-nowrap shrink-0 md:w-full flex items-center gap-2.5 px-3.5 sm:px-4 py-2 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition ${
+            className={`whitespace-nowrap shrink-0 snap-start md:w-full flex items-center gap-2.5 px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold min-h-[44px] transition ${
               activeTab === 'analytics' ? 'bg-stone-900 text-white shadow-xs' : 'text-stone-600 bg-stone-100/70 md:bg-transparent hover:bg-stone-100'
             }`}
           >
@@ -461,21 +461,21 @@ export default function AdminDashboard() {
           </button>
           <button 
             onClick={() => setActiveTab('properties')}
-            className={`whitespace-nowrap shrink-0 md:w-full flex items-center gap-2.5 px-3.5 sm:px-4 py-2 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition ${
+            className={`whitespace-nowrap shrink-0 snap-start md:w-full flex items-center gap-2.5 px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold min-h-[44px] transition ${
               activeTab === 'properties' ? 'bg-stone-900 text-white shadow-xs' : 'text-stone-600 bg-stone-100/70 md:bg-transparent hover:bg-stone-100'
             }`}
           >
             <Building2 className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
             Properties
             {stats.pendingProperties > 0 && (
-              <span className="ml-1 sm:ml-auto bg-amber-500 text-white text-[10px] px-2 py-0.5 rounded-full">
+              <span className="ml-1 sm:ml-auto bg-amber-500 text-white text-[10px] px-2 py-0.5 rounded-full shrink-0 font-bold">
                 {stats.pendingProperties}
               </span>
             )}
           </button>
           <button 
             onClick={() => setActiveTab('users')}
-            className={`whitespace-nowrap shrink-0 md:w-full flex items-center gap-2.5 px-3.5 sm:px-4 py-2 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition ${
+            className={`whitespace-nowrap shrink-0 snap-start md:w-full flex items-center gap-2.5 px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold min-h-[44px] transition ${
               activeTab === 'users' ? 'bg-stone-900 text-white shadow-xs' : 'text-stone-600 bg-stone-100/70 md:bg-transparent hover:bg-stone-100'
             }`}
           >
@@ -484,7 +484,7 @@ export default function AdminDashboard() {
           </button>
           <button 
             onClick={() => setActiveTab('bookings')}
-            className={`whitespace-nowrap shrink-0 md:w-full flex items-center gap-2.5 px-3.5 sm:px-4 py-2 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition ${
+            className={`whitespace-nowrap shrink-0 snap-start md:w-full flex items-center gap-2.5 px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold min-h-[44px] transition ${
               activeTab === 'bookings' ? 'bg-stone-900 text-white shadow-xs' : 'text-stone-600 bg-stone-100/70 md:bg-transparent hover:bg-stone-100'
             }`}
           >
@@ -493,7 +493,7 @@ export default function AdminDashboard() {
           </button>
           <button 
             onClick={() => setActiveTab('destinations')}
-            className={`whitespace-nowrap shrink-0 md:w-full flex items-center gap-2.5 px-3.5 sm:px-4 py-2 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition ${
+            className={`whitespace-nowrap shrink-0 snap-start md:w-full flex items-center gap-2.5 px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold min-h-[44px] transition ${
               activeTab === 'destinations' ? 'bg-stone-900 text-white shadow-xs' : 'text-stone-600 bg-stone-100/70 md:bg-transparent hover:bg-stone-100'
             }`}
           >
@@ -502,7 +502,7 @@ export default function AdminDashboard() {
           </button>
           <button 
             onClick={() => setActiveTab('content')}
-            className={`whitespace-nowrap shrink-0 md:w-full flex items-center gap-2.5 px-3.5 sm:px-4 py-2 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition ${
+            className={`whitespace-nowrap shrink-0 snap-start md:w-full flex items-center gap-2.5 px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold min-h-[44px] transition ${
               activeTab === 'content' ? 'bg-stone-900 text-white shadow-xs' : 'text-stone-600 bg-stone-100/70 md:bg-transparent hover:bg-stone-100'
             }`}
           >
@@ -511,7 +511,7 @@ export default function AdminDashboard() {
           </button>
           <button 
             onClick={() => setActiveTab('ai')}
-            className={`whitespace-nowrap shrink-0 md:w-full flex items-center gap-2.5 px-3.5 sm:px-4 py-2 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition ${
+            className={`whitespace-nowrap shrink-0 snap-start md:w-full flex items-center gap-2.5 px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold min-h-[44px] transition ${
               activeTab === 'ai' ? 'bg-stone-900 text-white shadow-xs' : 'text-stone-600 bg-stone-100/70 md:bg-transparent hover:bg-stone-100'
             }`}
           >
@@ -827,15 +827,15 @@ export default function AdminDashboard() {
 
             <div className="space-y-6">
               {visibleHotels.slice((currentHotelPage - 1) * itemsPerPage, currentHotelPage * itemsPerPage).map((hotel, index) => (
-                <div key={`admin-hotel-${hotel.id || 'hotel'}-${index}`} className="bg-white rounded-3xl p-6 shadow-sm border border-stone-200 flex flex-col md:flex-row gap-6 hover:border-stone-300 transition">
-                  <div className="h-48 w-full md:w-64 bg-stone-100 rounded-2xl overflow-hidden shrink-0">
+                <div key={`admin-hotel-${hotel.id || 'hotel'}-${index}`} className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-sm border border-stone-200 flex flex-col md:flex-row gap-4 sm:gap-6 hover:border-stone-300 transition">
+                  <div className="h-44 sm:h-48 w-full md:w-64 bg-stone-100 rounded-xl sm:rounded-2xl overflow-hidden shrink-0">
                     <SmartImage src={getHotelImage(hotel)} alt={hotel.name} className="w-full h-full object-cover" />
                   </div>
                   
-                  <div className="flex-1 flex flex-col justify-between">
+                  <div className="flex-1 min-w-0 flex flex-col justify-between">
                     <div>
-                      <div className="flex justify-between items-start mb-2 gap-3">
-                        <h3 className="text-xl font-bold text-stone-900">{hotel.name}</h3>
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2 gap-2 sm:gap-3">
+                        <h3 className="text-lg sm:text-xl font-bold text-stone-900 truncate">{hotel.name}</h3>
                         <div className="flex flex-wrap items-center gap-2 shrink-0">
                         {hotel.featured && (
                           <span className="inline-flex items-center gap-1 bg-amber-400/20 text-amber-800 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
@@ -913,18 +913,18 @@ export default function AdminDashboard() {
                       </div>
                     </div>
                     
-                    <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-stone-100">
+                    <div className="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-stone-100">
                       {hotel.status === 'pending' && (
                         <>
                           <button 
                             onClick={() => handleUpdateStatus(hotel.id!, 'approved')}
-                            className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-emerald-700 transition"
+                            className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-emerald-700 transition min-h-[40px] flex items-center justify-center"
                           >
                             Approve
                           </button>
                           <button 
                             onClick={() => handleUpdateStatus(hotel.id!, 'rejected')}
-                            className="bg-stone-200 text-stone-700 px-4 py-2 rounded-xl text-sm font-medium hover:bg-stone-300 transition"
+                            className="bg-stone-200 text-stone-700 px-4 py-2 rounded-xl text-sm font-medium hover:bg-stone-300 transition min-h-[40px] flex items-center justify-center"
                           >
                             Reject
                           </button>
@@ -934,7 +934,7 @@ export default function AdminDashboard() {
                       {(!hotel.status || hotel.status === 'approved') && (
                         <button 
                           onClick={() => handleUpdateStatus(hotel.id!, 'pending')}
-                          className="bg-amber-100 text-amber-700 px-4 py-2 rounded-xl text-sm font-medium hover:bg-amber-200 transition"
+                          className="bg-amber-100 text-amber-700 px-4 py-2 rounded-xl text-sm font-medium hover:bg-amber-200 transition min-h-[40px] flex items-center justify-center"
                         >
                           Suspend
                         </button>
@@ -943,7 +943,7 @@ export default function AdminDashboard() {
                       {hotel.status === 'rejected' && (
                         <button 
                           onClick={() => handleUpdateStatus(hotel.id!, 'approved')}
-                          className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-emerald-700 transition"
+                          className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-emerald-700 transition min-h-[40px] flex items-center justify-center"
                         >
                           Approve
                         </button>
@@ -951,7 +951,7 @@ export default function AdminDashboard() {
 
                       <button
                         onClick={() => handleToggleFeatured(hotel)}
-                        className={`px-4 py-2 rounded-xl text-sm font-medium transition flex items-center gap-2 ${
+                        className={`px-4 py-2 rounded-xl text-sm font-medium transition min-h-[40px] flex items-center justify-center gap-2 ${
                           hotel.featured ? 'bg-amber-500 text-white hover:bg-amber-600' : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
                         }`}
                       >
@@ -971,7 +971,7 @@ export default function AdminDashboard() {
                             toast.error('Failed to update chat status');
                           }
                         }}
-                        className={`px-4 py-2 rounded-xl text-sm font-medium transition flex items-center gap-2 ${
+                        className={`px-4 py-2 rounded-xl text-sm font-medium transition min-h-[40px] flex items-center justify-center gap-2 ${
                           hotel.adminChatEnabled === false ? 'bg-red-100 text-red-700 hover:bg-red-200' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
                         }`}
                         title={hotel.adminChatEnabled === false ? "Enable Chat for this property" : "Disable Chat for this property"}
@@ -982,10 +982,11 @@ export default function AdminDashboard() {
 
                       <Link 
                         to={`/admin/hotel/${hotel.id}`}
-                        className="bg-stone-900 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-stone-800 transition flex items-center gap-2 ml-auto"
+                        className="bg-stone-900 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-stone-800 transition min-h-[40px] flex items-center justify-center gap-2 w-full sm:w-auto sm:ml-auto"
                       >
-                        <Edit2 className="h-4 w-4" /> Edit
+                        <Edit3 className="h-4 w-4" /> Manage Listing
                       </Link>
+                      
                       {confirmDeleteId === hotel.id ? (
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-bold text-red-600">Sure?</span>

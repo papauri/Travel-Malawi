@@ -581,30 +581,30 @@ export default function HotelDetails() {
         </div>
 
         {/* Mobile Quick Navigation */}
-        <div className="lg:hidden flex items-center gap-2 overflow-x-auto px-4 pb-3 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        <div className="lg:hidden flex items-center gap-2 overflow-x-auto px-4 pb-3 scrollbar-hide snap-x touch-pan-x [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           <a 
             href="#rooms-section" 
-            className="whitespace-nowrap px-4 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold rounded-full border border-stone-200/60 flex items-center gap-1.5 transition-colors"
+            className="whitespace-nowrap shrink-0 snap-start px-3.5 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold rounded-full border border-stone-200/60 flex items-center gap-1.5 transition-colors min-h-[38px]"
           >
             <BedDouble className="w-3.5 h-3.5 text-stone-400" /> Accommodations
           </a>
           {hotel.restaurant && hotel.restaurant.enabled !== false && (
             <a 
               href="#restaurant-menu" 
-              className="whitespace-nowrap px-4 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold rounded-full border border-stone-200/60 flex items-center gap-1.5 transition-colors"
+              className="whitespace-nowrap shrink-0 snap-start px-3.5 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold rounded-full border border-stone-200/60 flex items-center gap-1.5 transition-colors min-h-[38px]"
             >
               <UtensilsCrossed className="w-3.5 h-3.5 text-stone-400" /> Dining
             </a>
           )}
           <a 
             href="#reviews" 
-            className="whitespace-nowrap px-4 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold rounded-full border border-stone-200/60 flex items-center gap-1.5 transition-colors"
+            className="whitespace-nowrap shrink-0 snap-start px-3.5 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold rounded-full border border-stone-200/60 flex items-center gap-1.5 transition-colors min-h-[38px]"
           >
             <Star className="w-3.5 h-3.5 text-stone-400" /> Reviews
           </a>
           <a 
             href="#directions" 
-            className="whitespace-nowrap px-4 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold rounded-full border border-stone-200/60 flex items-center gap-1.5 transition-colors"
+            className="whitespace-nowrap shrink-0 snap-start px-3.5 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold rounded-full border border-stone-200/60 flex items-center gap-1.5 transition-colors min-h-[38px]"
           >
             <MapPin className="w-3.5 h-3.5 text-stone-400" /> Location
           </a>
@@ -805,16 +805,16 @@ export default function HotelDetails() {
           <div className="mb-16">
             <div id="rooms-section" className="scroll-mt-36 lg:scroll-mt-28 mb-10">
               {conferenceRooms.length > 0 ? (
-                <div className="flex items-center gap-6 border-b border-stone-200">
+                <div className="flex items-center gap-4 sm:gap-6 border-b border-stone-200 overflow-x-auto scrollbar-hide snap-x touch-pan-x -mx-4 px-4 sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                   <button 
                     onClick={() => setActiveSpaceTab('rooms')}
-                    className={`pb-4 text-xl md:text-2xl font-serif tracking-tight transition-colors border-b-2 ${activeSpaceTab === 'rooms' ? 'border-stone-900 text-stone-900' : 'border-transparent text-stone-400 hover:text-stone-600'}`}
+                    className={`pb-3 sm:pb-4 text-lg sm:text-xl md:text-2xl font-serif tracking-tight whitespace-nowrap shrink-0 snap-start min-h-[44px] transition-colors border-b-2 ${activeSpaceTab === 'rooms' ? 'border-stone-900 text-stone-900' : 'border-transparent text-stone-400 hover:text-stone-600'}`}
                   >
                     Accommodations
                   </button>
                   <button 
                     onClick={() => setActiveSpaceTab('conferences')}
-                    className={`pb-4 text-xl md:text-2xl font-serif tracking-tight transition-colors border-b-2 ${activeSpaceTab === 'conferences' ? 'border-stone-900 text-stone-900' : 'border-transparent text-stone-400 hover:text-stone-600'}`}
+                    className={`pb-3 sm:pb-4 text-lg sm:text-xl md:text-2xl font-serif tracking-tight whitespace-nowrap shrink-0 snap-start min-h-[44px] transition-colors border-b-2 ${activeSpaceTab === 'conferences' ? 'border-stone-900 text-stone-900' : 'border-transparent text-stone-400 hover:text-stone-600'}`}
                   >
                     Conference Spaces
                   </button>
@@ -963,7 +963,7 @@ export default function HotelDetails() {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true, margin: "-50px" }}
                     transition={{ duration: 0.5, ease: "easeOut" }}
-                    className="w-[85vw] sm:w-[400px] md:w-full shrink-0 snap-center grid grid-cols-1 md:grid-cols-[2fr_3fr] gap-6 p-5 md:p-6 lg:p-7 bg-white border border-stone-200 rounded-[24px] shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden"
+                    className="w-full grid grid-cols-1 md:grid-cols-[2fr_3fr] gap-6 p-5 md:p-6 lg:p-7 bg-white border border-stone-200 rounded-[24px] shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden"
                   >
                     <div className="w-full aspect-[4/3] overflow-hidden rounded-[16px] relative group">
                       <RoomGallery 

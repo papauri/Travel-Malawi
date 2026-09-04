@@ -310,19 +310,23 @@ export default function MyBookings() {
           </div>
         )}
 
-        <div className="flex gap-2 mb-10 border-b border-stone-200">
+        <div className="flex gap-2 mb-8 sm:mb-10 border-b border-stone-200 overflow-x-auto scrollbar-hide snap-x touch-pan-x -mx-6 px-6 sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           {tabs.map(tab => (
             <button
               key={tab.key}
               onClick={() => { setFilter(tab.key); setCurrentPage(1); }}
-              className={`px-5 py-3 text-sm font-semibold border-b-2 transition ${
+              className={`px-4 sm:px-5 py-3 text-sm font-semibold border-b-2 whitespace-nowrap shrink-0 snap-start min-h-[44px] transition ${
                 filter === tab.key
                   ? 'border-stone-900 text-stone-900'
                   : 'border-transparent text-stone-500 hover:text-stone-700'
               }`}
             >
               {tab.label}
-              <span className="ml-2 text-xs text-stone-400">{tab.count}</span>
+              <span className={`ml-2 text-xs px-2 py-0.5 rounded-full font-bold ${
+                filter === tab.key ? 'bg-stone-900 text-white' : 'bg-stone-100 text-stone-600'
+              }`}>
+                {tab.count}
+              </span>
             </button>
           ))}
         </div>
@@ -353,8 +357,8 @@ export default function MyBookings() {
               const nights = nightsBetween(booking.checkIn, booking.checkOut);
               const canReview = isStayComplete(booking) && booking.id && !reviewedBookingIds.has(booking.id);
               return (
-              <div key={booking.id} className="group flex flex-col md:flex-row bg-white border border-stone-200 rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                <div className="md:w-72 h-56 md:h-auto bg-stone-100 relative overflow-hidden">
+              <div key={booking.id} className="group flex flex-col md:flex-row bg-white border border-stone-200 rounded-2xl sm:rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                <div className="md:w-72 h-56 md:h-auto bg-stone-100 relative overflow-hidden shrink-0">
                   {/* Resolved centrally, so a record with no stored imageUrl
                       still gets bundled photography instead of "No Image". */}
                   <SmartImage
@@ -367,18 +371,18 @@ export default function MyBookings() {
                   </div>
                 </div>
 
-                <div className="p-6 md:p-8 flex-1 flex flex-col justify-between">
+                <div className="p-5 sm:p-6 md:p-8 flex-1 min-w-0 flex flex-col justify-between">
                   <div>
-                    <div className="flex justify-between items-start mb-2 gap-4">
+                    <div className="flex justify-between items-start mb-2 gap-3 min-w-0">
                       {booking.hotel?.id ? (
-                        <Link to={`/hotel/${booking.hotel.id}`} className="hover:text-emerald-600 transition">
-                          <h3 className="text-2xl font-serif font-bold text-stone-900 flex items-center gap-2">
-                            {booking.hotel.name}
-                            <ExternalLink className="w-4 h-4 text-stone-400 opacity-0 group-hover:opacity-100 transition" />
+                        <Link to={`/hotel/${booking.hotel.id}`} className="hover:text-emerald-600 transition min-w-0 flex-1">
+                          <h3 className="text-xl sm:text-2xl font-serif font-bold text-stone-900 flex items-center gap-2 truncate">
+                            <span className="truncate">{booking.hotel.name}</span>
+                            <ExternalLink className="w-4 h-4 shrink-0 text-stone-400 opacity-0 group-hover:opacity-100 transition" />
                           </h3>
                         </Link>
                       ) : (
-                        <h3 className="text-2xl font-serif font-bold text-stone-900">
+                        <h3 className="text-xl sm:text-2xl font-serif font-bold text-stone-900 truncate flex-1 min-w-0">
                           {booking.hotel?.name || 'Property no longer listed'}
                         </h3>
                       )}
@@ -393,11 +397,11 @@ export default function MyBookings() {
                         </button>
                       )}
                     </div>
-                    <div className="flex items-center text-stone-500 gap-1.5 mb-6 text-sm font-medium">
-                      <MapPin className="h-4 w-4" /> {booking.hotel?.location || 'Location'}
+                    <div className="flex items-center text-stone-500 gap-1.5 mb-6 text-sm font-medium truncate">
+                      <MapPin className="h-4 w-4 shrink-0" /> <span className="truncate">{booking.hotel?.location || 'Location'}</span>
                     </div>
 
-                    <div className="bg-stone-50 rounded-2xl p-4 border border-stone-100 flex flex-col sm:flex-row gap-4 sm:gap-8 mb-6">
+                    <div className="bg-stone-50 rounded-2xl p-3.5 sm:p-4 border border-stone-100 flex flex-col sm:flex-row gap-3 sm:gap-8 mb-6">
                       <div>
                         <p className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-1">Check-in</p>
                         {/* Formatted from local calendar parts: passing the raw
@@ -483,9 +487,9 @@ export default function MyBookings() {
                         )}
                       </div>
                     </div>
-                    <div className="text-right w-full sm:w-auto">
+                    <div className="text-left sm:text-right w-full sm:w-auto">
                       <p className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-1">Total Price</p>
-                      <div className="text-2xl font-serif font-bold text-stone-900">
+                      <div className="text-xl sm:text-2xl font-serif font-bold text-stone-900">
                         <PriceDisplay amount={booking.total ?? ((booking.room?.price ?? 0) * nights)} currency={booking.currency} />
                       </div>
                     </div>

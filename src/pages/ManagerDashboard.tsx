@@ -202,7 +202,7 @@ export default function ManagerDashboard() {
                 />
                 {/* Moderation status was previously only visible to admins, so a
                     manager had no way to tell whether their listing was live. */}
-                <span className={`absolute top-4 left-4 z-10 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[0.65rem] font-bold uppercase tracking-wider shadow-sm ${
+                <span className={`absolute top-3 left-3 sm:top-4 sm:left-4 z-10 inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-[0.65rem] font-bold uppercase tracking-wider shadow-sm pointer-events-auto ${
                   hotel.status === 'pending' ? 'bg-amber-100 text-amber-800' :
                   hotel.status === 'rejected' ? 'bg-red-100 text-red-700' :
                   'bg-emerald-100 text-emerald-700'
@@ -217,7 +217,7 @@ export default function ManagerDashboard() {
                   type="button"
                   onClick={(e) => handleToggleHotelOnline(e, hotel)}
                   disabled={togglingHotelId === hotel.id}
-                  className={`absolute top-4 right-4 z-10 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[0.65rem] font-bold uppercase tracking-wider shadow-sm backdrop-blur-md transition ${
+                  className={`absolute top-3 right-3 sm:top-4 sm:right-4 z-10 inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-[0.65rem] font-bold uppercase tracking-wider shadow-sm backdrop-blur-md transition pointer-events-auto ${
                     hotel.isOnline !== false
                       ? 'bg-emerald-950/80 text-emerald-300 hover:bg-emerald-900 border border-emerald-500/40'
                       : 'bg-stone-900/80 text-stone-300 hover:bg-stone-800 border border-stone-700/60'
@@ -228,9 +228,9 @@ export default function ManagerDashboard() {
                   <span>{hotel.isOnline !== false ? 'Online' : 'Offline'}</span>
                 </button>
               </div>
-              <div className="p-5 sm:p-6 md:p-8 flex-1 flex flex-col pointer-events-none">
-                <h3 className="text-2xl font-serif font-bold text-stone-900 mb-2">{hotel.name}</h3>
-                <p className="text-stone-500 mb-5">{hotel.location}</p>
+              <div className="p-4 sm:p-6 md:p-8 flex-1 flex flex-col pointer-events-none min-w-0">
+                <h3 className="text-xl sm:text-2xl font-serif font-bold text-stone-900 mb-1 sm:mb-2 truncate">{hotel.name}</h3>
+                <p className="text-stone-500 text-sm sm:text-base mb-4 sm:mb-5 truncate">{hotel.location}</p>
 
                 <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
                   <span className="flex items-center gap-1.5 text-stone-600">

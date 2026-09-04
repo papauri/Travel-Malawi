@@ -1595,7 +1595,7 @@ export default function Home() {
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {[...Array(8)].map((_, i) => (
                 <div key={`skeleton-${i}`} className="flex flex-col gap-3">
-                  <div className="animate-pulse bg-stone-200/80 rounded-2xl aspect-[4/3] w-full" />
+                  <div className="animate-pulse bg-stone-200/80 rounded-2xl aspect-[4/5] w-full" />
                   <div className="animate-pulse bg-stone-200/70 h-3 w-1/3 rounded-full mt-1" />
                   <div className="animate-pulse bg-stone-200/90 h-5 w-3/4 rounded-md" />
                   <div className="animate-pulse bg-stone-200/60 h-4 w-1/2 rounded-md" />

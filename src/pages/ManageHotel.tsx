@@ -972,8 +972,8 @@ export default function ManageHotel() {
 
       {/* Performance snapshot */}
       {canSeeFinancials && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
-          <div className="bg-white border border-stone-200 rounded-2xl p-5 shadow-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-8 sm:mb-10">
+          <div className="bg-white border border-stone-200 rounded-2xl p-4 sm:p-5 shadow-sm">
             <div className="flex items-center gap-2 text-stone-400 mb-2">
               <Percent className="h-4 w-4" />
               <span className="text-xs font-bold uppercase tracking-wider">Occupancy · 30d</span>
@@ -983,7 +983,7 @@ export default function ManageHotel() {
           </div>
           {canSeeFinancials && (
             <>
-              <div className="bg-white border border-stone-200 rounded-2xl p-5 shadow-sm">
+              <div className="bg-white border border-stone-200 rounded-2xl p-4 sm:p-5 shadow-sm">
                 <div className="flex items-center gap-2 text-stone-400 mb-2">
                   <Wallet className="h-4 w-4" />
                   <span className="text-xs font-bold uppercase tracking-wider">Upcoming revenue</span>
@@ -997,7 +997,7 @@ export default function ManageHotel() {
                 </div>
                 <p className="text-xs text-stone-400 mt-1">Confirmed stays not yet completed</p>
               </div>
-              <div className="bg-white border border-stone-200 rounded-2xl p-5 shadow-sm">
+              <div className="bg-white border border-stone-200 rounded-2xl p-4 sm:p-5 shadow-sm">
                 <div className="flex items-center gap-2 text-stone-400 mb-2">
                   <TrendingUp className="h-4 w-4" />
                   <span className="text-xs font-bold uppercase tracking-wider">All-time revenue</span>
@@ -1013,7 +1013,7 @@ export default function ManageHotel() {
               </div>
             </>
           )}
-          <div className="bg-white border border-stone-200 rounded-2xl p-5 shadow-sm">
+          <div className="bg-white border border-stone-200 rounded-2xl p-4 sm:p-5 shadow-sm">
             <div className="flex items-center gap-2 text-stone-400 mb-2">
               <Clock className="h-4 w-4" />
               <span className="text-xs font-bold uppercase tracking-wider">Awaiting reply</span>
@@ -1023,7 +1023,7 @@ export default function ManageHotel() {
           </div>
         </div>
       )}
-      <div className="sticky top-[121px] z-40 bg-stone-50 pt-2 pb-0 flex gap-1 border-b border-stone-200 mb-8 overflow-x-auto scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+      <div className="sticky top-[121px] z-40 bg-stone-50/95 backdrop-blur-md pt-2 pb-0 flex gap-1 border-b border-stone-200 mb-8 overflow-x-auto scrollbar-hide snap-x touch-pan-x [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
         {([
           { id: 'details' as Tab, label: 'Property details', icon: Building },
           { id: 'media' as Tab, label: 'Media', icon: Eye },
@@ -1047,7 +1047,7 @@ export default function ManageHotel() {
             <button
               key={tab.id}
               onClick={() => requestTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-3 border-b-2 text-sm font-medium whitespace-nowrap transition ${
+              className={`flex items-center gap-2 px-3.5 sm:px-4 py-2.5 sm:py-3 border-b-2 text-xs sm:text-sm font-semibold whitespace-nowrap shrink-0 snap-start min-h-[44px] transition ${
                 activeTab === tab.id
                   ? 'border-stone-900 text-stone-900'
                   : 'border-transparent text-stone-500 hover:text-stone-700'
@@ -1058,13 +1058,13 @@ export default function ManageHotel() {
                 <span title="Unsaved changes" className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
               )}
               {tab.id === 'restaurant' && hotel.restaurant?.enabled && (
-                <span className="bg-emerald-100 text-emerald-700 text-[0.6rem] font-bold px-1.5 py-0.5 rounded-full uppercase">Live</span>
+                <span className="bg-emerald-100 text-emerald-700 text-[0.6rem] font-bold px-1.5 py-0.5 rounded-full uppercase shrink-0">Live</span>
               )}
               {pendingCount > 0 && (
-                <span className="bg-emerald-500 text-white text-xs px-2 py-0.5 rounded-full">{pendingCount}</span>
+                <span className="bg-emerald-500 text-white text-xs px-2 py-0.5 rounded-full shrink-0 font-bold">{pendingCount}</span>
               )}
               {unreadInquiryCount > 0 && (
-                <span className="bg-blue-600 text-white text-xs px-2 py-0.5 rounded-full shadow-sm">
+                <span className="bg-blue-600 text-white text-xs px-2 py-0.5 rounded-full shadow-sm shrink-0 font-bold">
                   {unreadInquiryCount} new
                 </span>
               )}
@@ -2529,16 +2529,16 @@ export default function ManageHotel() {
                   )}
 
                   {booking.status === 'pending' && (
-                    <div className="flex gap-3 pt-2">
+                    <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3 pt-2">
                       <button
                         onClick={() => setConfirmModalBooking(booking.id!)}
-                        className="bg-stone-900 text-white px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-stone-800 transition flex items-center gap-2"
+                        className="bg-stone-900 text-white px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-stone-800 transition flex items-center justify-center gap-2 min-h-[44px]"
                       >
                         <Check className="h-4 w-4" /> Confirm Booking
                       </button>
                       <button
                         onClick={() => updateBookingStatus(booking.id!, 'rejected')}
-                        className="bg-red-50 text-red-600 px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-red-100 transition flex items-center gap-2"
+                        className="bg-red-50 text-red-600 px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-red-100 transition flex items-center justify-center gap-2 min-h-[44px]"
                       >
                         <X className="h-4 w-4" /> Decline
                       </button>
@@ -2548,10 +2548,10 @@ export default function ManageHotel() {
                   {/* A confirmed booking previously had no route back short of
                       deleting the record outright. */}
                   {booking.status === 'confirmed' && (
-                    <div className="flex gap-3 pt-2">
+                    <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3 pt-2">
                       <button
                         onClick={() => updateBookingStatus(booking.id!, 'cancelled')}
-                        className="bg-stone-100 text-stone-600 px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-red-50 hover:text-red-600 transition flex items-center gap-2"
+                        className="bg-stone-100 text-stone-600 px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-red-50 hover:text-red-600 transition flex items-center justify-center gap-2 min-h-[44px]"
                       >
                         <X className="h-4 w-4" /> Cancel this booking
                       </button>

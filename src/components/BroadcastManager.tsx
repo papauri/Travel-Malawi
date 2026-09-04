@@ -153,28 +153,28 @@ export default function BroadcastManager({ hotelId, managerId }: BroadcastManage
         <div className="grid grid-cols-1 gap-4">
           {broadcasts.map(broadcast => (
             <div key={broadcast.id} className={`p-5 rounded-2xl border transition-all ${broadcast.isActive ? 'bg-white border-stone-200 shadow-sm' : 'bg-stone-50 border-stone-200/60 opacity-60'}`}>
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex items-start gap-4 flex-1">
-                  <div className={`mt-1 p-2 rounded-full shrink-0 ${
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-4">
+                <div className="flex items-start gap-3 sm:gap-4 flex-1 min-w-0">
+                  <div className={`mt-0.5 p-2 rounded-full shrink-0 ${
                     broadcast.type === 'alert' ? 'bg-red-100 text-red-600' :
                     broadcast.type === 'event' ? 'bg-amber-100 text-amber-600' :
                     'bg-blue-100 text-blue-600'
                   }`}>
                     <Megaphone className="w-4 h-4" />
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <span className="text-xs font-bold uppercase tracking-wider text-stone-500">{broadcast.type}</span>
                       <span className="text-stone-300">•</span>
                       <span className="text-xs text-stone-500">{new Date(broadcast.createdAt).toLocaleString()}</span>
                     </div>
-                    <p className="text-stone-900 font-medium">{broadcast.message}</p>
+                    <p className="text-stone-900 font-medium text-sm sm:text-base break-words">{broadcast.message}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-2 shrink-0 self-end sm:self-start pt-1 sm:pt-0">
                   <button
                     onClick={() => handleToggleActive(broadcast.id!, broadcast.isActive)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition flex items-center gap-1.5 ${
+                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition flex items-center gap-1.5 min-h-[36px] ${
                       broadcast.isActive ? 'bg-stone-100 text-stone-600 hover:bg-stone-200' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
                     }`}
                   >
@@ -183,7 +183,7 @@ export default function BroadcastManager({ hotelId, managerId }: BroadcastManage
                   </button>
                   <button
                     onClick={() => setDeleteTargetId(broadcast.id!)}
-                    className="p-2 text-stone-400 hover:bg-red-50 hover:text-red-600 rounded-full transition"
+                    className="p-2 text-stone-400 hover:bg-red-50 hover:text-red-600 rounded-full transition min-h-[36px] min-w-[36px] flex items-center justify-center"
                     title="Delete broadcast"
                   >
                     <Trash2 className="w-4 h-4" />
