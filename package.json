@@ -69,6 +69,7 @@
     "esbuild": "^0.25.0",
     "firebase-admin": "^14.3.0",
     "firebase-tools": "^15.28.1",
+    "puppeteer-core": "^25.10.0",
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",
