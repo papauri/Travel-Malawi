@@ -37,7 +37,7 @@ import { validateBooking, errorsByField, BookingField, MAX_SPECIAL_REQUESTS } fr
 import { assessBooking, readSubmissionLog, recordSubmission } from '../lib/spam';
 import {
   CURRENCIES, currenciesForRooms, packagePrice, readStoredCurrency, resolveCurrency,
-  roomCurrencies, roomPrice, roomPrimaryCurrency, storeCurrency,
+  roomCurrencies, roomPrice, roomPrimaryCurrency, storeCurrency, onCurrencyChange,
 } from '../lib/currency';
 import Modal, { fieldClass, labelClass } from '../components/Modal';
 import Lightbox from '../components/Lightbox';
@@ -92,8 +92,12 @@ export default function HotelDetails() {
   const [reviewSort, setReviewSort] = useState<'recent' | 'highest'>('recent');
   const reviewsPerPage = 5;
   const [selectedPackages, setSelectedPackages] = useState<string[]>([]);
-  const [currency, setCurrency] = useState<CurrencyCode>(() => readStoredCurrency() ?? 'USD');
+  const [currency, setCurrency] = useState<CurrencyCode>(readStoredCurrency);
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<BookingField, string>>>({});
+
+  useEffect(() => {
+    return onCurrencyChange(setCurrency);
+  }, []);
   // A field positioned off-screen and hidden from assistive technology. No
   // person can fill it in; something submitting the form blindly will.
   const [honeypot, setHoneypot] = useState('');

@@ -8,6 +8,8 @@ import { isHotelManager, isTraveller, describeRoles, isAdmin } from '../lib/role
 import { motion, AnimatePresence } from 'motion/react';
 import { openAccessPermissionsModal } from './AccessRequestModal';
 import { useUnreadBroadcasts } from '../hooks/useUnreadBroadcasts';
+import { readStoredCurrency, storeCurrency, onCurrencyChange } from '../lib/currency';
+import { CurrencyCode } from '../types';
 
 export default function MobileNav() {
   const { pathname } = useLocation();
@@ -17,6 +19,11 @@ export default function MobileNav() {
   useBodyScrollLock(isOpen);
   const isManager = isHotelManager(user);
   const unreadBroadcasts = useUnreadBroadcasts();
+  const [currency, setCurrency] = useState<CurrencyCode>(readStoredCurrency);
+
+  useEffect(() => {
+    return onCurrencyChange(setCurrency);
+  }, []);
 
   // Close the sheet when location changes
   useEffect(() => {
@@ -77,10 +84,36 @@ export default function MobileNav() {
               className="md:hidden fixed bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.1)] z-[70] overflow-hidden flex flex-col pb-safe max-h-[85vh]"
             >
               <div className="p-5 flex items-center justify-between border-b border-stone-100 relative">
-                <h2 className="font-serif font-bold text-xl text-stone-900">Menu</h2>
+                <div className="flex items-center gap-3">
+                  <h2 className="font-serif font-bold text-xl text-stone-900">Menu</h2>
+                  <div className="flex items-center bg-stone-100 p-0.5 rounded-full border border-stone-200 text-xs font-bold">
+                    <button
+                      type="button"
+                      onClick={() => { setCurrency('MWK'); storeCurrency('MWK'); }}
+                      className={`px-2.5 py-1 rounded-full transition-all cursor-pointer ${
+                        currency === 'MWK'
+                          ? 'bg-white text-stone-900 shadow-xs'
+                          : 'text-stone-500 hover:text-stone-900'
+                      }`}
+                    >
+                      MWK
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setCurrency('USD'); storeCurrency('USD'); }}
+                      className={`px-2.5 py-1 rounded-full transition-all cursor-pointer ${
+                        currency === 'USD'
+                          ? 'bg-white text-stone-900 shadow-xs'
+                          : 'text-stone-500 hover:text-stone-900'
+                      }`}
+                    >
+                      USD
+                    </button>
+                  </div>
+                </div>
                 <button
                   onClick={() => setIsOpen(false)}
-                  className="p-2 rounded-full hover:bg-stone-100 transition text-stone-500 hover:text-stone-900"
+                  className="p-2 rounded-full hover:bg-stone-100 transition text-stone-500 hover:text-stone-900 cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -145,10 +178,15 @@ export default function MobileNav() {
                   ) : (
                     <Link
                       to="/list-your-property"
-                      className={`flex items-center gap-4 px-4 py-3.5 rounded-2xl transition ${pathname === '/list-your-property' ? 'bg-stone-100 text-stone-900 font-bold' : 'text-stone-600 hover:bg-stone-50 hover:text-stone-900'}`}
+                      className="flex items-center justify-between px-4 py-3.5 rounded-2xl transition bg-emerald-50 hover:bg-emerald-100 text-emerald-950 font-bold border border-emerald-200/80 shadow-2xs"
                     >
-                      <Building2 className="w-5 h-5" />
-                      <span>List your property</span>
+                      <div className="flex items-center gap-3">
+                        <Building2 className="w-5 h-5 text-emerald-700" />
+                        <span>List Your Property</span>
+                      </div>
+                      <span className="bg-emerald-600 text-white text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full">
+                        0% Fee
+                      </span>
                     </Link>
                   )}
 

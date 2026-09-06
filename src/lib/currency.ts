@@ -11,7 +11,7 @@
 
 import { CurrencyCode, RoomType } from '../types';
 
-export const CURRENCY_CODES: CurrencyCode[] = ['USD', 'MWK'];
+export const CURRENCY_CODES: CurrencyCode[] = ['MWK', 'USD'];
 
 interface CurrencyMeta {
   code: CurrencyCode;
@@ -24,17 +24,17 @@ interface CurrencyMeta {
 }
 
 export const CURRENCIES: Record<CurrencyCode, CurrencyMeta> = {
-  USD: { code: 'USD', label: 'US Dollar', symbol: '$', step: 0.01, decimals: 2 },
   MWK: { code: 'MWK', label: 'Malawi Kwacha', symbol: 'MK', step: 1000, decimals: 0 },
+  USD: { code: 'USD', label: 'US Dollar', symbol: '$', step: 0.01, decimals: 2 },
 };
 
 export function isCurrencyCode(value: unknown): value is CurrencyCode {
   return typeof value === 'string' && (CURRENCY_CODES as string[]).includes(value);
 }
 
-/** e.g. "$1,250" or "MK 2,150,000". */
-export function formatMoney(amount: number, currency: string = 'USD'): string {
-  const meta = isCurrencyCode(currency) ? CURRENCIES[currency] : CURRENCIES.USD;
+/** e.g. "MK 2,150,000" or "$1,250". */
+export function formatMoney(amount: number, currency: string = 'MWK'): string {
+  const meta = isCurrencyCode(currency) ? CURRENCIES[currency] : CURRENCIES.MWK;
   // Whole units unless the amount genuinely has a fractional part, so a round
   // price does not render as "$250.00".
   const hasFraction = meta.decimals > 0 && Math.abs(amount % 1) > 0.005;
@@ -85,7 +85,7 @@ type PackageLike = { price?: number; prices?: PriceMap };
  * A package with no price in the selected currency cannot honestly be sold in
  * that currency, so callers hide it rather than converting.
  */
-export function packagePrice(pkg: PackageLike, currency: CurrencyCode, roomCurrency: CurrencyCode = 'USD'): number | null {
+export function packagePrice(pkg: PackageLike, currency: CurrencyCode, roomCurrency: CurrencyCode = 'MWK'): number | null {
   const explicit = fromMap(pkg.prices, currency);
   if (explicit !== null) return explicit;
   if (currency === roomCurrency && typeof pkg.price === 'number') return pkg.price;
@@ -96,7 +96,7 @@ export function packagePrice(pkg: PackageLike, currency: CurrencyCode, roomCurre
 export function roomPrimaryCurrency(room: Pick<RoomType, 'currencies' | 'currency'>): CurrencyCode {
   const first = room.currencies?.find(isCurrencyCode);
   if (first) return first;
-  return isCurrencyCode(room.currency) ? room.currency : 'USD';
+  return isCurrencyCode(room.currency) ? room.currency : 'MWK';
 }
 
 /** Every currency the room is actually priced in, primary first. */
@@ -123,20 +123,36 @@ export function resolveCurrency(room: RoomType, requested: CurrencyCode | null |
 
 const STORAGE_KEY = 'travel-malawi:currency';
 
-/** Remembered per browser; a preference, never anything the price depends on. */
-export function readStoredCurrency(): CurrencyCode | null {
+/** Remembered per browser; a preference, defaulting to MWK. */
+export function readStoredCurrency(): CurrencyCode {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
-    return isCurrencyCode(stored) ? stored : null;
+    return isCurrencyCode(stored) ? stored : 'MWK';
   } catch {
-    return null;
+    return 'MWK';
   }
 }
 
 export function storeCurrency(currency: CurrencyCode): void {
   try {
     localStorage.setItem(STORAGE_KEY, currency);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('travel-malawi:currency-change', { detail: currency }));
+    }
   } catch {
     // Private windows and blocked site data are fine; the choice just does not persist.
   }
+}
+
+/** Subscribes to real-time currency changes across the app. */
+export function onCurrencyChange(listener: (currency: CurrencyCode) => void): () => void {
+  if (typeof window === 'undefined') return () => {};
+  const handler = (e: Event) => {
+    const custom = e as CustomEvent<CurrencyCode>;
+    if (custom.detail && isCurrencyCode(custom.detail)) {
+      listener(custom.detail);
+    }
+  };
+  window.addEventListener('travel-malawi:currency-change', handler);
+  return () => window.removeEventListener('travel-malawi:currency-change', handler);
 }

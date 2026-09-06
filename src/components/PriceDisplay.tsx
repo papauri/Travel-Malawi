@@ -8,7 +8,7 @@ interface Props {
   className?: string;
 }
 
-export default function PriceDisplay({ amount, currency = 'USD', className = '' }: Props) {
+export default function PriceDisplay({ amount, currency = 'MWK', className = '' }: Props) {
   if (amount == null) return null;
   
   const formatted = formatMoney(amount, currency);

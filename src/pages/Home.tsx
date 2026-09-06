@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import Pagination from '../components/Pagination';
-import { Search, MapPin, Calendar, Users, Star, LocateFixed, Locate, ChevronDown, Plus, Minus, ShieldCheck, MessageCircle, Smartphone, X, Clock, LayoutGrid, Map as MapIcon, Compass, Navigation, SlidersHorizontal, RotateCcw, Filter, Check, Car, ExternalLink, Route, ArrowRight } from 'lucide-react';
+import { Search, MapPin, Calendar, Users, Star, LocateFixed, Locate, ChevronDown, Plus, Minus, ShieldCheck, MessageCircle, Smartphone, X, Clock, LayoutGrid, Map as MapIcon, Compass, Navigation, SlidersHorizontal, RotateCcw, Filter, Check, Car, ExternalLink, Route, ArrowRight, Building2, CheckCircle2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { collection, getDocs, getDoc, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -14,7 +14,7 @@ import PriceRangeFilter from '../components/PriceRangeFilter';
 import { DECORATIVE_IMAGE, HERO_IMAGE, getHotelImage } from '../lib/images';
 import { BookingLike, lowestPrice, roomsMatching } from '../lib/availability';
 import { todayStr } from '../lib/dates';
-import { CURRENCY_CODES, CURRENCIES, currenciesForRooms, formatMoney, readStoredCurrency, storeCurrency } from '../lib/currency';
+import { CURRENCY_CODES, CURRENCIES, currenciesForRooms, formatMoney, readStoredCurrency, storeCurrency, onCurrencyChange } from '../lib/currency';
 import { PROPERTY_CATEGORIES, COMMON_AMENITIES } from '../lib/listing';
 import { distanceKm, isValidLatLng, resolveHotelCoordinates, LatLng, estimateTravelTime, getDirectionsUrl } from '../lib/geo';
 import { getCachedHotels, saveCachedHotels, getCachedRooms, saveCachedRooms } from '../lib/mapCache';
@@ -87,9 +87,13 @@ export default function Home() {
   const [sortKey, setSortKey] = useState<SortKey>('recommended');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6;
-  const [currency, setCurrency] = useState<CurrencyCode>(() => readStoredCurrency() ?? 'USD');
+  const [currency, setCurrency] = useState<CurrencyCode>(readStoredCurrency);
   const [viewMode, setViewMode] = useState<'grid' | 'map'>('grid');
   const [selectedMapLodgeId, setSelectedMapLodgeId] = useState<string | null>(null);
+
+  useEffect(() => {
+    return onCurrencyChange(setCurrency);
+  }, []);
 
   // Price Per Night Range Slider limits & state
   const { priceLimitMin, priceLimitMax, priceStep } = useMemo(() => {
@@ -101,8 +105,17 @@ export default function Home() {
   }, [currency]);
 
   const [priceRange, setPriceRange] = useState<[number, number]>(() => 
-    (readStoredCurrency() === 'MWK' ? [0, 1500000] : [0, 800])
+    (readStoredCurrency() === 'USD' ? [0, 800] : [0, 1500000])
   );
+
+  // Keep price range bounded within active currency limit when currency toggles
+  useEffect(() => {
+    if (currency === 'USD') {
+      setPriceRange(prev => (prev[1] > 800 ? [0, 800] : prev));
+    } else {
+      setPriceRange(prev => (prev[1] <= 800 ? [0, 1500000] : prev));
+    }
+  }, [currency]);
   const [includeUnpricedRooms, setIncludeUnpricedRooms] = useState<boolean>(true);
   const [showPriceFilterDrawer, setShowPriceFilterDrawer] = useState<boolean>(false);
 
@@ -637,6 +650,7 @@ export default function Home() {
             ? distanceKm(userLocation, coordinates)
             : null;
 
+        const secondaryCurrency: CurrencyCode = currency === 'MWK' ? 'USD' : 'MWK';
         return {
           hotel,
           matching,
@@ -647,6 +661,8 @@ export default function Home() {
           // rather than advertising a misleading zero. A listing not sold in the
           // chosen currency shows "rates on request" instead of a converted one.
           priceFrom: lowestPrice(matching.length ? matching : hotelRooms, currency),
+          secondaryPriceFrom: lowestPrice(matching.length ? matching : hotelRooms, secondaryCurrency),
+          secondaryCurrency,
           rating: ratingByHotel.get(hotel.id ?? '') ?? null,
           hasRooms: hotelRooms.length > 0,
         };
@@ -799,11 +815,18 @@ export default function Home() {
   const featuredHotels = useMemo(() => {
     if (featuredMode === 'disabled') return [];
 
-    const enriched = hotels.map(hotel => ({
-      hotel,
-      priceFrom: lowestPrice(roomsByHotel.get(hotel.id ?? '') ?? [], currency),
-      rating: ratingByHotel.get(hotel.id ?? '') ?? null,
-    }));
+    const secondaryCurrency: CurrencyCode = currency === 'MWK' ? 'USD' : 'MWK';
+
+    const enriched = hotels.map(hotel => {
+      const hotelRooms = roomsByHotel.get(hotel.id ?? '') ?? [];
+      return {
+        hotel,
+        priceFrom: lowestPrice(hotelRooms, currency),
+        secondaryPriceFrom: lowestPrice(hotelRooms, secondaryCurrency),
+        secondaryCurrency,
+        rating: ratingByHotel.get(hotel.id ?? '') ?? null,
+      };
+    });
 
     const promoted = enriched
       .filter(entry => entry.hotel.featured)
@@ -1315,10 +1338,17 @@ export default function Home() {
                       </h3>
                       <div className="flex items-center justify-between mt-0.5">
                         {entry.priceFrom ? (
-                          <p className="text-sm text-stone-600">
-                            <span className="text-stone-500 text-xs mr-1 font-medium">From</span><PriceDisplay className="text-stone-900" amount={entry.priceFrom} currency={currency} />
-                            <span className="text-stone-400 text-xs"> / night</span>
-                          </p>
+                          <div className="flex items-baseline flex-wrap gap-x-1.5">
+                            <p className="text-sm text-stone-600">
+                              <span className="text-stone-500 text-xs mr-1 font-medium">From</span><PriceDisplay className="text-stone-900" amount={entry.priceFrom} currency={currency} />
+                              <span className="text-stone-400 text-xs"> / night</span>
+                            </p>
+                            {entry.secondaryPriceFrom ? (
+                              <span className="text-xs text-stone-400 font-medium">
+                                ({formatMoney(entry.secondaryPriceFrom, entry.secondaryCurrency)})
+                              </span>
+                            ) : null}
+                          </div>
                         ) : (
                           <span className="text-xs text-stone-400">Ask the host for rates</span>
                         )}
@@ -1336,6 +1366,61 @@ export default function Home() {
             </div>
           </section>
         )}
+
+      {/* Lodge Acquisition CTA Banner */}
+      {!hasSearch && (
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-2 w-full">
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-stone-900 via-stone-850 to-emerald-950 text-white p-6 sm:p-8 md:p-10 shadow-xl border border-stone-800">
+            {/* Ambient Background Glows */}
+            <div className="absolute -right-16 -top-16 w-64 h-64 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute -left-16 -bottom-16 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+
+            <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6 md:gap-8">
+              <div className="max-w-2xl">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs font-bold uppercase tracking-wider mb-3">
+                  <Building2 className="w-3.5 h-3.5" />
+                  <span>For Lodge, Camp &amp; Resort Owners</span>
+                </div>
+                <h3 className="font-serif text-2xl sm:text-3xl md:text-4xl text-white tracking-tight leading-snug">
+                  Get direct bookings with <span className="text-emerald-400 underline decoration-emerald-500/50 underline-offset-4">0% commission</span>.
+                </h3>
+                <p className="text-stone-300 text-sm sm:text-base mt-2.5 leading-relaxed">
+                  Join Malawi&apos;s dedicated direct-booking hospitality network. Set simultaneous rates in MWK &amp; USD, receive instant inquiries directly on WhatsApp, and keep 100% of your earnings.
+                </p>
+
+                {/* Value chips */}
+                <div className="flex flex-wrap gap-2 sm:gap-3 mt-4 text-xs font-medium text-stone-200">
+                  <span className="inline-flex items-center gap-1.5 bg-white/10 px-3 py-1 rounded-full border border-white/10">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" /> Zero listing or commission fees
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 bg-white/10 px-3 py-1 rounded-full border border-white/10">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" /> Direct WhatsApp alerts
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 bg-white/10 px-3 py-1 rounded-full border border-white/10">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" /> Dual-currency pricing (MWK &amp; USD)
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row lg:flex-col gap-3 shrink-0 lg:min-w-[220px]">
+                <Link
+                  to="/list-your-property"
+                  className="inline-flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-stone-950 font-bold px-6 py-3.5 rounded-full text-sm transition-all shadow-lg hover:shadow-emerald-500/25 active:scale-95 text-center"
+                >
+                  <span>List Your Property Free</span>
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+                <Link
+                  to="/dashboard"
+                  className="inline-flex items-center justify-center gap-2 bg-white/10 hover:bg-white/15 text-white font-medium px-5 py-2.5 rounded-full text-xs transition border border-white/15 text-center"
+                >
+                  Already listed? Open Dashboard
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Main Property Listings & Map Section */}
       <section id="search-results" className="scroll-mt-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12 w-full flex-1">
@@ -1658,6 +1743,8 @@ export default function Home() {
                       index={index}
                       priceFrom={entry.priceFrom}
                       priceCurrency={currency}
+                      secondaryPriceFrom={entry.secondaryPriceFrom}
+                      secondaryCurrency={entry.secondaryCurrency}
                       rating={entry.rating}
                       searchParams={{
                         checkIn: appliedSearch.checkIn,

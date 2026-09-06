@@ -151,7 +151,7 @@ export function roomsMatching(
  * Nightly rate of the cheapest room priced in `currency`, or null when none is.
  * Rooms not sold in that currency are skipped rather than converted.
  */
-export function lowestPrice(rooms: RoomType[], currency: CurrencyCode = 'USD'): number | null {
+export function lowestPrice(rooms: RoomType[], currency: CurrencyCode = 'MWK'): number | null {
   const prices = rooms
     .map(room => roomPrice(room, currency))
     .filter((price): price is number => price !== null && price > 0);

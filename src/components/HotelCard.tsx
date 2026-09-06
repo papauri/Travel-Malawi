@@ -24,11 +24,23 @@ interface HotelCardProps {
   priceFrom?: number | null;
   /** The currency `priceFrom` is denominated in. */
   priceCurrency?: CurrencyCode;
+  /** Simultaneous secondary currency rate (e.g. USD if primary is MWK), if available. */
+  secondaryPriceFrom?: number | null;
+  secondaryCurrency?: CurrencyCode;
   /** Combined rating across imported and guest-written reviews. */
   rating?: { average: number; count: number } | null;
 }
 
-export default function HotelCard({ hotel, searchParams, index, priceFrom, priceCurrency = 'USD', rating }: HotelCardProps) {
+export default function HotelCard({
+  hotel,
+  searchParams,
+  index,
+  priceFrom,
+  priceCurrency = 'MWK',
+  secondaryPriceFrom,
+  secondaryCurrency,
+  rating
+}: HotelCardProps) {
   const [currentImageIdx, setCurrentImageIdx] = useState(0);
   const { savedHotelIds, toggleSave } = useWishlist();
   const { selectedHotels, toggleHotel } = useCompare();
@@ -217,13 +229,26 @@ export default function HotelCard({ hotel, searchParams, index, priceFrom, price
                         amount={priceFrom - (priceFrom * (promo.discountPercentage / 100))} 
                         currency={priceCurrency} 
                       />
+                      {secondaryPriceFrom && secondaryCurrency && (
+                        <span className="text-stone-400 text-xs font-normal">
+                          · (<PriceDisplay 
+                            amount={secondaryPriceFrom - (secondaryPriceFrom * (promo.discountPercentage / 100))} 
+                            currency={secondaryCurrency} 
+                          />)
+                        </span>
+                      )}
                       <span className="text-stone-400"> / night</span>
                     </div>
                   ) : (
-                    <p>
+                    <div className="flex items-baseline gap-1 flex-wrap">
                       <PriceDisplay className="text-stone-900 font-semibold" amount={priceFrom} currency={priceCurrency} />
+                      {secondaryPriceFrom && secondaryCurrency && (
+                        <span className="text-stone-400 text-xs font-normal">
+                          · (<PriceDisplay className="text-stone-500 font-medium" amount={secondaryPriceFrom} currency={secondaryCurrency} />)
+                        </span>
+                      )}
                       <span className="text-stone-400"> / night</span>
-                    </p>
+                    </div>
                   )}
                 </div>
               ) : (
