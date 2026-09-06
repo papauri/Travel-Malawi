@@ -35,6 +35,7 @@ import SmartImage from '../components/SmartImage';
 import FieldError from '../components/FieldError';
 import LocationPicker from '../components/LocationPicker';
 import AIAssistantButton from '../components/AIAssistantButton';
+import PropertyDocumentImporter from '../components/PropertyDocumentImporter';
 import { useAIAssistant } from '../hooks/useAIAssistant';
 import { DECORATIVE_IMAGE, getHotelImage } from '../lib/images';
 import { db } from '../lib/firebase';
@@ -158,6 +159,7 @@ export default function ListProperty() {
   const [aiRateData, setAiRateData] = useState<{ usd: number; mwk: number; reasoning: string } | null>(null);
   const [reviewingListing, setReviewingListing] = useState(false);
   const [listingReview, setListingReview] = useState<string | null>(null);
+  const [showPropertyImporter, setShowPropertyImporter] = useState(false);
 
   const isHost = isHotelManager(user);
 
@@ -956,15 +958,26 @@ export default function ListProperty() {
             </Link>
           </div>
 
-          <button
-            type="button"
-            onClick={handleDiscardDraft}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-400 hover:text-red-600 transition px-3 py-1.5 rounded-full hover:bg-red-50 border border-transparent hover:border-red-200 cursor-pointer"
-            title="Clear all fields and start a fresh draft"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-            <span>Discard Draft</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowPropertyImporter(true)}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-700 bg-white border border-stone-200 hover:border-stone-300 transition px-3 py-1.5 rounded-full shadow-sm cursor-pointer"
+              title="Import property details from a document"
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span>Import Document</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleDiscardDraft}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-400 hover:text-red-600 transition px-3 py-1.5 rounded-full hover:bg-red-50 border border-transparent hover:border-red-200 cursor-pointer"
+              title="Clear all fields and start a fresh draft"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Discard Draft</span>
+            </button>
+          </div>
         </div>
 
         <header className="mb-10">
@@ -3045,6 +3058,11 @@ function HostIntro({
           </ol>
         </div>
       </section>
+      <PropertyDocumentImporter 
+        open={showPropertyImporter} 
+        onClose={() => setShowPropertyImporter(false)} 
+        onImport={(data) => setDraft((curr) => ({ ...curr, ...data }))} 
+      />
     </div>
   );
 }

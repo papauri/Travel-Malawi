@@ -860,6 +860,13 @@ CONVERSATIONAL STYLE & PERSONALITY (CRITICAL — READ CAREFULLY)
      * If asked about rates, highlight differences between USD and MWK, or flag unpriced rooms.
    - NEVER use robotic clichés like "As an AI language model...", "As your Lodge Operations Copilot...", "I have live access to...", or "Top Boss Mode activated". Just be genuinely helpful and sharp.
 
+3. BE EXTREMELY CONCISE AND SPECIFIC (NO OVER-EXPLAINING):
+   - Your responses must be brief, punchy, and highly specific to the user's question or action.
+   - DO NOT explain how the system works or over-explain hospitality concepts unless specifically asked.
+   - Keep paragraphs short (1-2 sentences). Use bullet points for readability. Avoid filler words.
+   - If proposing an action (like updating a price), simply confirm what you are doing in one sentence and provide the action proposal.
+   - Get straight to the point. Less text is more.
+
 ================================================================================
 CRITICAL ROLE-BASED ACCESS CONTROL (RBAC) & SECURITY BOUNDARIES
 ================================================================================
@@ -1811,3 +1818,216 @@ Rules:
   }
 }
 
+export async function parsePropertyDocContent(
+  fileBuffer: Buffer,
+  mimeType: string,
+  fileName: string
+): Promise<{ extracted: any }> {
+  const config = loadAIConfig();
+  if (!config.enabled) {
+    throw new Error('Document scanning is currently disabled.');
+  }
+
+  const propertyPrompt = `You are a property data extraction expert. Extract hotel/property details from the provided content and return them as structured JSON.
+
+Return ONLY valid JSON in this exact format (no markdown, no explanation, no code fences):
+{
+  "extracted": {
+    "name": "Property Name",
+    "description": "A detailed summary of the property",
+    "amenities": ["Wifi", "Pool"],
+    "ownerName": "Name of the owner or manager",
+    "ownerEmail": "Email if present",
+    "ownerPhone": "Phone if present",
+    "rooms": [
+      {
+        "name": "Room Name",
+        "description": "Room description",
+        "priceUSD": 50,
+        "priceMWK": 50000,
+        "maxGuests": 2
+      }
+    ]
+  }
+}
+
+Rules:
+- Extract all property information visible.
+- If something is not present, omit the field or leave it empty.
+- For prices, detect USD or MWK and normalize them to numbers.
+- Return ONLY the JSON object, nothing else.`;
+
+  let contentForAI: string;
+  const isImage = mimeType.startsWith('image/') || mimeType === 'application/pdf';
+
+  if (isImage) {
+    const visionProviders: AIProviderId[] = ['gemini', 'openai', 'anthropic'];
+    const base64 = fileBuffer.toString('base64');
+
+    for (const providerId of visionProviders) {
+      const apiKey = getEffectiveApiKey(providerId);
+      if (!apiKey || apiKey.trim().length < 6) continue;
+      if (config.providers[providerId]?.isValid === false) continue;
+
+      try {
+        let extractedText: string;
+
+        if (providerId === 'gemini') {
+          const model = config.providers.gemini?.model || 'gemini-1.5-flash';
+          const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+          const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{
+                parts: [
+                  { text: propertyPrompt },
+                  { inline_data: { mime_type: mimeType, data: base64 } }
+                ]
+              }]
+            }),
+          });
+          if (!response.ok) {
+            const errText = await response.text();
+            throw new Error(`Gemini vision error ${response.status}: ${errText}`);
+          }
+          const result = await response.json();
+          extractedText = result?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        } else if (providerId === 'openai') {
+          const model = config.providers.openai?.model || 'gpt-4o-mini';
+          const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify({
+              model,
+              messages: [
+                { role: 'system', content: 'You extract structured property data from images.' },
+                {
+                  role: 'user',
+                  content: [
+                    { type: 'text', text: propertyPrompt },
+                    { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64}` } }
+                  ]
+                }
+              ],
+              max_tokens: 4096,
+            }),
+          });
+          if (!response.ok) throw new Error(`OpenAI vision error ${response.status}`);
+          const result = await response.json();
+          extractedText = result?.choices?.[0]?.message?.content || '';
+        } else {
+          const model = config.providers.anthropic?.model || 'claude-3-5-haiku-20241022';
+          const response = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-api-key': apiKey,
+              'anthropic-version': '2023-06-01',
+            },
+            body: JSON.stringify({
+              model,
+              max_tokens: 4096,
+              messages: [{
+                role: 'user',
+                content: [
+                  { type: 'image', source: { type: 'base64', media_type: mimeType, data: base64 } },
+                  { type: 'text', text: propertyPrompt }
+                ]
+              }],
+            }),
+          });
+          if (!response.ok) throw new Error(`Anthropic vision error ${response.status}`);
+          const result = await response.json();
+          extractedText = result?.content?.[0]?.text || '';
+        }
+
+        const cleaned = extractedText.replace(/```json/gi, '').replace(/```/g, '').trim();
+        try {
+          const parsed = JSON.parse(cleaned);
+          if (parsed.extracted) {
+            markProviderValidity(providerId, true);
+            return parsed;
+          }
+        } catch {
+          const match = extractedText.match(/\{[\s\S]*\}/);
+          if (match) {
+            const parsed = JSON.parse(match[0]);
+            if (parsed.extracted) {
+              markProviderValidity(providerId, true);
+              return parsed;
+            }
+          }
+        }
+        throw new Error('Could not parse property structure from response');
+      } catch (err: any) {
+        console.warn(`[Property OCR] ${providerId} failed: ${err.message}`);
+        continue;
+      }
+    }
+
+    throw new Error('No vision-capable provider available.');
+  } else {
+    if (mimeType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
+      contentForAI = `Excel file content (${fileName}):\n`;
+      const textParts: string[] = [];
+      const str = fileBuffer.toString('utf-8');
+      const xmlMatches = str.match(/>([^<]+)</g);
+      if (xmlMatches) {
+        textParts.push(...xmlMatches.map(m => m.slice(1, -1)).filter(s => s.trim().length > 1));
+      }
+      contentForAI += textParts.join('\n');
+    } else {
+      contentForAI = fileBuffer.toString('utf-8');
+    }
+
+    const providers = getAvailableProviders();
+    if (providers.length === 0) {
+      throw new Error('No provider configured.');
+    }
+
+    const fullPrompt = `${propertyPrompt}\n\n--- PROPERTY CONTENT ---\n${contentForAI.slice(0, 8000)}`;
+
+    for (const providerId of providers) {
+      try {
+        const apiKey = getEffectiveApiKey(providerId)!;
+        const model = config.providers[providerId]?.model || 'default';
+
+        let responseText: string;
+        if (providerId === 'gemini') {
+          responseText = await callGemini(providerId, apiKey, model || 'gemini-1.5-flash', 'You extract structured property data.', fullPrompt);
+        } else if (providerId === 'anthropic') {
+          responseText = await callAnthropic(providerId, apiKey, model || 'claude-3-5-haiku-20241022', 'You extract structured property data.', fullPrompt);
+        } else {
+          const endpoints: Record<string, string> = {
+            mistral: 'https://api.mistral.ai/v1/chat/completions',
+            openai: 'https://api.openai.com/v1/chat/completions',
+            groq: 'https://api.groq.com/openai/v1/chat/completions',
+            deepseek: 'https://api.deepseek.com/chat/completions',
+          };
+          responseText = await callOpenAICompatible(providerId, endpoints[providerId] || endpoints.openai, apiKey, model, 'You extract structured property data.', fullPrompt);
+        }
+
+        const cleaned = responseText.replace(/```json/gi, '').replace(/```/g, '').trim();
+        try {
+          const parsed = JSON.parse(cleaned);
+          if (parsed.extracted) return parsed;
+        } catch {
+          const match = responseText.match(/\{[\s\S]*\}/);
+          if (match) {
+            const parsed = JSON.parse(match[0]);
+            if (parsed.extracted) return parsed;
+          }
+        }
+        throw new Error('Could not parse property from response');
+      } catch (err: any) {
+        console.warn(`[Property Parse] ${providerId} failed: ${err.message}`);
+        continue;
+      }
+    }
+    throw new Error('All providers failed to extract property data.');
+  }
+}

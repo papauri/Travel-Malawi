@@ -1088,7 +1088,7 @@ export default function OperationsCopilot() {
             <div
               ref={chatScrollContainerRef}
               data-lenis-prevent="true"
-              className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-4.5 space-y-4 bg-stone-100/40 overscroll-contain"
+              className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden break-words p-4 sm:p-4.5 space-y-4 bg-stone-100/40 overscroll-contain"
             >
               {viewingMemory ? (
                 /* -------------------------------------------------- */

@@ -247,6 +247,38 @@ async function startServer() {
     }
   });
 
+  app.post('/api/ai/parse-property-doc', menuUpload.single('document'), async (req, res) => {
+    try {
+      const status = getPublicAIStatus();
+      if (!status.enabled || !status.available) {
+        return res.status(503).json({ error: 'Property parsing requires an active AI provider. Please configure one in the Admin Dashboard.' });
+      }
+
+      let buffer: Buffer;
+      let mimeType: string;
+      let fileName: string;
+
+      if (req.file) {
+        buffer = req.file.buffer;
+        mimeType = req.file.mimetype;
+        fileName = req.file.originalname;
+      } else if (req.body?.text && typeof req.body.text === 'string' && req.body.text.trim().length > 0) {
+        buffer = Buffer.from(req.body.text, 'utf-8');
+        mimeType = 'text/plain';
+        fileName = 'pasted-doc.txt';
+      } else {
+        return res.status(400).json({ error: 'No file uploaded or text provided' });
+      }
+
+      const { parsePropertyDocContent } = await import('./server/aiService');
+      const result = await parsePropertyDocContent(buffer, mimeType, fileName);
+      res.json(result);
+    } catch (err: any) {
+      console.error('Property doc parse error:', err);
+      res.status(500).json({ error: err?.message || 'Failed to parse property document' });
+    }
+  });
+
   // ----------------------------------------------------
   // BOOKING REMINDERS API
   // ----------------------------------------------------
