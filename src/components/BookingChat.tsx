@@ -214,6 +214,7 @@ export default function BookingChat({ booking, currentUser }: Props) {
           lastMessageText: newMessage.trim(),
           lastMessageSenderId: currentUser.uid,
           lastMessageSenderName: currentUser.displayName || (isManager ? 'Host' : 'Guest'),
+          [isManager ? 'managerLastSeenAt' : 'guestLastSeenAt']: now,
         }).catch(() => {});
 
       setNewMessage('');

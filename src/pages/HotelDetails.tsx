@@ -1,3 +1,4 @@
+import { getActivePromotion } from '../lib/promotions';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { doc, getDoc, collection, query, where, getDocs, addDoc, onSnapshot } from 'firebase/firestore';
@@ -31,7 +32,7 @@ import { mapEmbedUrl, mapLinkUrl, resolveHotelCoordinates, isValidLatLng } from 
 import { getSingleCachedHotel, saveSingleCachedHotel } from '../lib/mapCache';
 import DatePicker from '../components/DatePicker';
 import { computeBookingPricing, formatMoney, makeBookingReference } from '../lib/booking';
-import { isTraveller } from '../lib/roles';
+import { isTraveller, isAdmin, isHotelManager } from '../lib/roles';
 import { validateBooking, errorsByField, BookingField, MAX_SPECIAL_REQUESTS } from '../lib/validateBooking';
 import { assessBooking, readSubmissionLog, recordSubmission } from '../lib/spam';
 import {
@@ -437,8 +438,9 @@ export default function HotelDetails() {
 
       // Same helper that renders the on-screen breakdown, so the stored total
       // can never disagree with the price the guest was shown.
+      const activePromo = getActivePromotion(hotel, checkIn);
       const pricing = computeBookingPricing(
-        selectedRoom, checkIn, checkOut, guestsCount, 1, selectedPackages, currency
+        selectedRoom, checkIn, checkOut, guestsCount, 1, selectedPackages, currency, activePromo?.discountPercentage || 0
       );
       const reference = makeBookingReference();
 
@@ -472,6 +474,18 @@ export default function HotelDetails() {
       });
 
       recordSubmission();
+
+      if (hotel?.managerEmail) {
+        fetch('/api/notify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: hotel.managerEmail,
+            subject: `New booking request: ${guestName.trim()} at ${hotel.name}`,
+            message: `You have received a new booking request on Stay OS.\n\nGuest: ${guestName.trim()}\nDates: ${checkIn} to ${checkOut}\nRoom: ${selectedRoom.name}\nTotal: ${pricing.total} ${pricing.currency}\n\nPlease log in to review and confirm this booking.`
+          })
+        }).catch(err => console.error('Failed to trigger offline notification', err));
+      }
 
       // The reference is the only handle a signed-out guest has on the booking,
       // so it is surfaced rather than only stored.
@@ -1557,12 +1571,13 @@ export default function HotelDetails() {
       
       {/* Booking request */}
       {selectedRoom && (() => {
+        const activePromo = getActivePromotion(hotel, checkIn);
         const pricing = computeBookingPricing(
-          selectedRoom, checkIn, checkOut, guestsCount, 1, selectedPackages, currency
+          selectedRoom, checkIn, checkOut, guestsCount, 1, selectedPackages, currency, activePromo?.discountPercentage || 0
         );
         const {
           nights, basePrice, extraGuestFee, extraGuestsCount, packagesTotal,
-          total: grandTotal, currency: bookingCurrency,
+          total: grandTotal, currency: bookingCurrency, discountPercentage, discountAmount
         } = pricing;
         const roomPrimary = roomPrimaryCurrency(selectedRoom);
 
@@ -1854,6 +1869,13 @@ export default function HotelDetails() {
                         <span className="flex items-center"><span className="opacity-60">+</span><PriceDisplay amount={packagesTotal} currency={bookingCurrency} /></span>
                       </div>
                     )}
+                    
+                    {discountAmount > 0 && (
+                      <div className="flex justify-between text-red-600">
+                        <span>Promotion ({discountPercentage}% Off)</span>
+                        <span className="flex items-center"><span className="opacity-60">-</span><PriceDisplay amount={discountAmount} currency={bookingCurrency} /></span>
+                      </div>
+                    )}
 
                     <div className="flex justify-between items-baseline border-t border-stone-200 pt-3 mt-3">
                       <span className="font-semibold text-stone-900">Total</span>
@@ -1888,30 +1910,32 @@ export default function HotelDetails() {
       {/* Floating Chat Trigger Button.
           Hidden whenever a dialog is up or when chat is already open/active in the global persistent dock. */}
       {(hotel.chatEnabled !== false && hotel.adminChatEnabled !== false && user?.uid !== hotel.managerId) && !anyDialogOpen && !activeChat && (
-        <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
-          <button
+        <div 
+          className={`fixed bottom-6 z-50 pointer-events-none transition-all duration-200 ${
+            user && (isAdmin(user) || isHotelManager(user))
+              ? 'right-[4.75rem] sm:right-24'
+              : 'right-[4.75rem] md:right-8'
+          }`}
+        >
+          <motion.button
             type="button"
             id="btn-contact-host-floating"
             onClick={handleOpenChat}
-            className="bg-stone-900 text-white px-5 py-3.5 rounded-full shadow-2xl hover:bg-stone-800 transition-all hover:scale-105 flex items-center gap-2.5 border border-stone-700/60 cursor-pointer"
+            className="pointer-events-auto relative group flex items-center justify-center w-12 h-12 rounded-full bg-stone-900/95 hover:bg-stone-900 text-white shadow-[0_8px_30px_rgba(0,0,0,0.35)] border border-stone-700/80 hover:border-emerald-400/70 backdrop-blur-md transition-all cursor-pointer select-none"
+            whileHover={{ scale: 1.08 }}
+            whileTap={{ scale: 0.94 }}
+            title={managerPresence?.status === 'online' ? 'Chat with Host (Online)' : 'Chat with Host'}
+            aria-label="Chat with Host"
           >
             <div className="relative flex items-center justify-center">
-              <MessageSquare className="w-5 h-5 text-emerald-400" />
+              <MessageSquare className="w-5 h-5 text-emerald-400 group-hover:scale-110 transition-transform duration-200" />
               <span 
                 className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full ring-2 ring-stone-900 ${
-                  managerPresence?.status === 'online' ? 'bg-emerald-400 animate-pulse' : 'bg-stone-500'
+                  managerPresence?.status === 'online' ? 'bg-emerald-400 animate-pulse' : 'bg-stone-400'
                 }`} 
               />
             </div>
-            <div className="text-left">
-              <span className="font-bold text-xs block whitespace-nowrap">
-                Contact Host
-              </span>
-              <span className="text-[10px] text-stone-300 block -mt-0.5 whitespace-nowrap">
-                {managerPresence?.status === 'online' ? 'Online now' : 'Leave a message'}
-              </span>
-            </div>
-          </button>
+          </motion.button>
         </div>
       )}
 

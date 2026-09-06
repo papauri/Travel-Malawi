@@ -50,12 +50,13 @@ export default function GlobalNotificationManager() {
   const isMinimizedRef = useRef(isMinimized);
   isMinimizedRef.current = isMinimized;
 
+  // Track the timestamp when this app session started to prevent past messages from alerting on launch
+  const sessionStartTime = useRef<number>(Date.now());
+
   // Track known timestamps / statuses to avoid toasting existing records on first load
   const knownChatTimestamps = useRef<Record<string, number>>({});
   const knownBookingStatuses = useRef<Record<string, Booking['status']>>({});
   const knownBookingMessageTimestamps = useRef<Record<string, number>>({});
-  const isInitialChatLoad = useRef(true);
-  const isInitialBookingLoad = useRef(true);
   const hasPromptedPermission = useRef(false);
   
   // Track call listeners so we don't leak memory or duplicate ringing
@@ -88,8 +89,6 @@ export default function GlobalNotificationManager() {
       Object.values(callUnsubs.current).forEach(unsub => unsub());
       callUnsubs.current = {};
       stopRinging();
-      isInitialChatLoad.current = true;
-      isInitialBookingLoad.current = true;
       hasPromptedPermission.current = false;
       return;
     }
@@ -133,7 +132,7 @@ export default function GlobalNotificationManager() {
     // ==========================================
     // 1. CHAT DOCUMENT HANDLER
     // ==========================================
-    const handleChatDocChange = async (change: any) => {
+    const handleChatDocChange = async (change: any, isInitial: boolean) => {
       const data = change.doc.data() as any;
       const chatId = change.doc.id;
       const amIManager = data.managerId === user.uid;
@@ -151,6 +150,11 @@ export default function GlobalNotificationManager() {
               const callId = callChange.doc.id;
               
               if (callData.status === 'ringing') {
+                // Ignore stale calls left over from earlier or from before session start
+                if (callData.createdAt && (Date.now() - callData.createdAt > 45000 || callData.createdAt < sessionStartTime.current - 10000)) {
+                  return;
+                }
+
                 if (isChatCurrentlyOpen(data.hotelId, data.guestId, data)) {
                   return;
                 }
@@ -246,13 +250,27 @@ export default function GlobalNotificationManager() {
       const previousTimestamp = knownChatTimestamps.current[chatId] || 0;
       knownChatTimestamps.current[chatId] = updatedAt;
 
-      if (isInitialChatLoad.current) return;
+      // On initial snapshot of this listener, merely track the timestamps to avoid alerting on existing data
+      if (isInitial) return;
+
+      // Never alert for messages that were sent before the user launched/opened this session
+      if (updatedAt <= sessionStartTime.current) return;
+
+      // If the current user was the sender of the last message (they replied to it), do not notify!
+      if (!data.lastSenderId || data.lastSenderId === user.uid) return;
+
+      // If the message has already been seen or opened by the user
+      if (amIManager) {
+        if (data.managerLastOpenedAt && data.managerLastOpenedAt >= updatedAt) return;
+        if (data.managerLastSeenAt && data.managerLastSeenAt >= updatedAt) return;
+      } else {
+        if (data.guestLastOpenedAt && data.guestLastOpenedAt >= updatedAt) return;
+        if (data.guestLastSeenAt && data.guestLastSeenAt >= updatedAt) return;
+      }
 
       if (
         updatedAt > previousTimestamp &&
-        data.lastMessage &&
-        data.lastSenderId &&
-        data.lastSenderId !== user.uid
+        data.lastMessage
       ) {
         if (isChatCurrentlyOpen(data.hotelId, data.guestId, data)) {
           return;
@@ -349,7 +367,7 @@ export default function GlobalNotificationManager() {
     // ==========================================
     // 2. BOOKING DOCUMENT HANDLER
     // ==========================================
-    const handleBookingDocChange = async (change: any) => {
+    const handleBookingDocChange = async (change: any, isInitial: boolean) => {
       const booking = { id: change.doc.id, ...change.doc.data() } as Booking;
       const currentStatus = booking.status;
       const previousStatus = knownBookingStatuses.current[booking.id!];
@@ -361,10 +379,25 @@ export default function GlobalNotificationManager() {
       knownBookingStatuses.current[booking.id!] = currentStatus;
       knownBookingMessageTimestamps.current[booking.id!] = currentMessageAt;
 
-      if (isInitialBookingLoad.current) return;
+      // On initial snapshot load, track existing data and return immediately
+      if (isInitial) return;
       
       // NEW BOOKING MESSAGE
-      if (change.type === 'modified' && currentMessageAt > previousMessageAt && booking.lastMessageSenderId !== user.uid) {
+      if (
+        change.type === 'modified' &&
+        currentMessageAt > previousMessageAt &&
+        currentMessageAt > sessionStartTime.current &&
+        booking.lastMessageSenderId &&
+        booking.lastMessageSenderId !== user.uid
+      ) {
+        // If current user already saw this message
+        if (amIManager && booking.managerLastSeenAt && booking.managerLastSeenAt >= currentMessageAt) {
+          return;
+        }
+        if (!amIManager && booking.guestLastSeenAt && booking.guestLastSeenAt >= currentMessageAt) {
+          return;
+        }
+
         const chatContext = activeChatRef.current;
         if (chatContext?.type === 'booking' && chatContext.booking.id === booking.id && !isMinimizedRef.current) {
           // User is actively looking at it!
@@ -405,6 +438,11 @@ export default function GlobalNotificationManager() {
 
       // NEW PENDING BOOKING FOR MANAGER
       if (amIManager && change.type === 'added' && currentStatus === 'pending') {
+        const bookingCreatedAt = booking.createdAt || 0;
+        if (bookingCreatedAt && bookingCreatedAt <= sessionStartTime.current) {
+          return;
+        }
+
         playChime();
         const hotel = await fetchHotelData(booking.hotelId);
         showBrowserNotification(
@@ -469,6 +507,11 @@ export default function GlobalNotificationManager() {
 
       // BOOKING STATUS CHANGED FOR GUEST
       if (booking.guestId === user.uid && change.type === 'modified' && previousStatus && previousStatus !== currentStatus) {
+        const bookingUpdatedAt = (booking as any).updatedAt || (booking as any).createdAt || 0;
+        if (bookingUpdatedAt && bookingUpdatedAt <= sessionStartTime.current) {
+          return;
+        }
+
         playChime();
         if (currentStatus === 'confirmed' && previousStatus === 'pending') {
           showBrowserNotification(
@@ -526,41 +569,49 @@ export default function GlobalNotificationManager() {
     const unsubs: (() => void)[] = [];
 
     // Guest chats
+    let isInitialGuestChats = true;
     unsubs.push(onSnapshot(
       query(collection(db, 'hotel_chats'), where('guestId', '==', user.uid)),
       (snap) => {
-        snap.docChanges().forEach(change => handleChatDocChange(change));
-        if (isInitialChatLoad.current) isInitialChatLoad.current = false;
+        const isInitial = isInitialGuestChats;
+        isInitialGuestChats = false;
+        snap.docChanges().forEach(change => handleChatDocChange(change, isInitial));
       }
     ));
 
     // Manager chats
     if (isManager) {
+      let isInitialManagerChats = true;
       unsubs.push(onSnapshot(
         query(collection(db, 'hotel_chats'), where('managerId', '==', user.uid)),
         (snap) => {
-          snap.docChanges().forEach(change => handleChatDocChange(change));
-          if (isInitialChatLoad.current) isInitialChatLoad.current = false;
+          const isInitial = isInitialManagerChats;
+          isInitialManagerChats = false;
+          snap.docChanges().forEach(change => handleChatDocChange(change, isInitial));
         }
       ));
     }
 
     // Guest bookings
+    let isInitialGuestBookings = true;
     unsubs.push(onSnapshot(
       query(collection(db, 'bookings'), where('guestId', '==', user.uid)),
       (snap) => {
-        snap.docChanges().forEach(change => handleBookingDocChange(change));
-        if (isInitialBookingLoad.current) isInitialBookingLoad.current = false;
+        const isInitial = isInitialGuestBookings;
+        isInitialGuestBookings = false;
+        snap.docChanges().forEach(change => handleBookingDocChange(change, isInitial));
       }
     ));
 
     // Manager bookings
     if (isManager) {
+      let isInitialManagerBookings = true;
       unsubs.push(onSnapshot(
         query(collection(db, 'bookings'), where('managerId', '==', user.uid)),
         (snap) => {
-          snap.docChanges().forEach(change => handleBookingDocChange(change));
-          if (isInitialBookingLoad.current) isInitialBookingLoad.current = false;
+          const isInitial = isInitialManagerBookings;
+          isInitialManagerBookings = false;
+          snap.docChanges().forEach(change => handleBookingDocChange(change, isInitial));
         }
       ));
     }

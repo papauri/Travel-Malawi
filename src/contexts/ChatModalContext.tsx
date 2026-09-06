@@ -4,6 +4,7 @@ import PropertyChat from '../components/PropertyChat';
 import BookingChat from '../components/BookingChat';
 import Modal from '../components/Modal';
 import { useAuth } from './AuthContext';
+import { isAdmin, isHotelManager } from '../lib/roles';
 import { useManagerPresence } from '../hooks/usePresence';
 import { MessageSquare, Minus, X, Maximize2 } from 'lucide-react';
 import { doc, onSnapshot } from 'firebase/firestore';
@@ -119,54 +120,47 @@ export function ChatModalProvider({ children }: { children: React.ReactNode }) {
       {activeChat && user && (
         <>
           {isMinimized ? (
-            /* Minimized Floating Pill in bottom-right corner */
+            /* Minimized Floating Icon in bottom-right corner */
             <div 
               id="minimized-floating-chat-pill"
-              className="fixed bottom-6 right-6 z-[200] flex items-center gap-2 bg-stone-900 text-white pl-4 pr-2 py-2.5 rounded-full shadow-2xl border border-stone-700/80 cursor-pointer hover:bg-stone-800 transition-all hover:scale-105 select-none animate-fadeIn"
+              className={`fixed bottom-6 z-[140] pointer-events-none transition-all duration-200 ${
+                user && (isAdmin(user) || isHotelManager(user))
+                  ? 'right-[4.75rem] sm:right-24'
+                  : 'right-[4.75rem] md:right-8'
+              }`}
             >
-              <div 
-                onClick={maximizeChat}
-                className="flex items-center gap-2.5 min-w-0"
-              >
-                <div className="relative flex items-center justify-center">
-                  <div className="w-7 h-7 rounded-full bg-stone-800 flex items-center justify-center text-emerald-400">
-                    <MessageSquare className="w-4 h-4" />
-                  </div>
-                  <span 
-                    className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ring-2 ring-stone-900 ${
-                      isOnline ? 'bg-emerald-400 animate-pulse' : 'bg-stone-500'
-                    }`} 
-                  />
-                </div>
-
-                <div className="text-left min-w-0 max-w-[160px] sm:max-w-[200px]">
-                  <p className="text-xs font-bold text-white truncate">
-                    {activeChat.type === 'inquiry' 
-                      ? (activeChat.guestId ? `Chat: ${activeChat.guestName || 'Guest'}` : currentHotelName)
-                      : `Booking: ${activeChat.booking.guestName || 'Guest'}`}
-                  </p>
-                  <p className="text-[10px] text-stone-300 truncate">
-                    {isOnline ? 'Online • Tap to chat' : 'Away • Session active'}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-1 pl-1 border-l border-stone-700/80">
+              <div className="relative pointer-events-auto group">
                 <button
                   type="button"
                   onClick={maximizeChat}
-                  className="p-1.5 hover:bg-stone-700 text-stone-300 hover:text-white rounded-full transition"
-                  title="Expand chat window"
+                  className="relative flex items-center justify-center w-12 h-12 rounded-full bg-stone-900/95 hover:bg-stone-900 text-white shadow-[0_8px_30px_rgba(0,0,0,0.35)] border border-stone-700/80 hover:border-emerald-400/70 backdrop-blur-md transition-all hover:scale-105 active:scale-95 cursor-pointer select-none"
+                  title={activeChat.type === 'inquiry' 
+                    ? (activeChat.guestId ? `Chat: ${activeChat.guestName || 'Guest'}` : currentHotelName)
+                    : `Booking: ${activeChat.booking.guestName || 'Guest'}`}
+                  aria-label="Expand chat"
                 >
-                  <Maximize2 className="w-3.5 h-3.5" />
+                  <div className="relative flex items-center justify-center">
+                    <MessageSquare className="w-5 h-5 text-emerald-400 group-hover:scale-110 transition-transform duration-200" />
+                    <span 
+                      className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full ring-2 ring-stone-900 ${
+                        isOnline ? 'bg-emerald-400 animate-pulse' : 'bg-stone-400'
+                      }`} 
+                    />
+                  </div>
                 </button>
+
+                {/* Quick Close Button on hover */}
                 <button
                   type="button"
-                  onClick={closeChat}
-                  className="p-1.5 hover:bg-stone-700 text-stone-400 hover:text-white rounded-full transition"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    closeChat();
+                  }}
+                  className="absolute -top-1 -left-1 w-5 h-5 rounded-full bg-stone-800 border border-stone-600 text-stone-300 hover:text-white hover:bg-stone-700 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm cursor-pointer"
                   title="Close chat"
+                  aria-label="Close chat"
                 >
-                  <X className="w-3.5 h-3.5" />
+                  <X className="w-3 h-3" />
                 </button>
               </div>
             </div>

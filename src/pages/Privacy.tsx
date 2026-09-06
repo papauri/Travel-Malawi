@@ -10,7 +10,7 @@ export default function Privacy() {
   return (
     <div className="min-h-screen bg-stone-50 py-20 px-6">
       <Helmet>
-        <title>Privacy Policy - ProManaged IT Hotel Booking</title>
+        <title>Privacy Policy - Travel Malawi</title>
         <meta name="description" content="How we handle and protect your personal information." />
       </Helmet>
       

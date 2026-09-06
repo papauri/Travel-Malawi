@@ -901,9 +901,10 @@ export default function OperationsCopilot() {
       {/* ------------------------------------------------------------- */}
       {/* 1. CHARMING CONCIERGE AVATAR TRIGGER BUTTON (z-[140] on top)  */}
       {/* ------------------------------------------------------------- */}
-      <div className="fixed bottom-6 right-4 sm:bottom-8 sm:right-8 z-[140] flex flex-col items-end pointer-events-none">
+      <div className="fixed bottom-6 right-4 sm:bottom-8 sm:right-8 z-[140] pointer-events-none">
         <motion.button
           type="button"
+          id="btn-concierge-copilot-trigger"
           onClick={() => {
             if (!isOpen) {
               setIsOpen(true);
@@ -916,27 +917,21 @@ export default function OperationsCopilot() {
               setIsMinimized(true);
             }
           }}
-          className="pointer-events-auto group flex items-center gap-2 sm:gap-2.5 pl-1.5 sm:pl-2 pr-3 sm:pr-4 py-1.5 sm:py-2 bg-stone-900/95 hover:bg-stone-900 text-stone-100 rounded-full shadow-2xl border border-stone-700/70 hover:border-amber-400/50 backdrop-blur-md transition-all text-xs font-medium cursor-pointer select-none"
-          whileHover={{ scale: 1.03 }}
-          whileTap={{ scale: 0.97 }}
-          aria-label="Toggle Concierge Assistant"
+          className={`pointer-events-auto relative group flex items-center justify-center w-12 h-12 rounded-full bg-stone-900/95 hover:bg-stone-900 text-stone-100 shadow-[0_8px_30px_rgba(0,0,0,0.35)] border border-stone-700/80 hover:border-amber-400/70 backdrop-blur-md transition-all cursor-pointer select-none ${
+            isOpen && isMinimized ? 'ring-2 ring-amber-400/70 shadow-[0_0_20px_rgba(251,191,36,0.3)]' : ''
+          }`}
+          whileHover={{ scale: 1.08 }}
+          whileTap={{ scale: 0.94 }}
+          title={isOpen && !isMinimized ? 'Minimize Concierge' : isOpen && isMinimized ? 'Expand Concierge Assistant (Active)' : 'Concierge Assistant'}
+          aria-label="Concierge Assistant"
         >
           {/* Little Concierge Avatar Fella */}
           <ConciergeAvatar size="md" isOnline={true} />
 
-          <div className="flex flex-col text-left">
-            <span className="font-semibold text-xs text-stone-100 tracking-tight flex items-center gap-1 sm:gap-1.5">
-              {isOpen && !isMinimized ? 'Minimize' : userIsAdmin ? 'Concierge' : 'Concierge'}
-              <ConciergeBell className="w-3 h-3 text-amber-400/90 group-hover:rotate-12 transition-transform duration-200" />
-            </span>
-            <span className="text-[10px] text-stone-400 font-normal leading-tight hidden xs:block">
-              {isOpen && !isMinimized ? 'Tap to minimize' : isMinimized ? 'Active • Tap to expand' : 'At your service'}
-            </span>
-          </div>
-
-          <span className="text-[10px] text-stone-300 font-medium px-2 py-0.5 rounded-full bg-stone-800 border border-stone-700/70 ml-0.5 hidden sm:inline-block">
-            {userIsAdmin ? 'Admin' : `${properties.length} ${properties.length === 1 ? 'lodge' : 'lodges'}`}
-          </span>
+          {/* Active session pulse dot when minimized */}
+          {isOpen && isMinimized && (
+            <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-amber-400 ring-2 ring-stone-900 animate-pulse" />
+          )}
         </motion.button>
       </div>
 
@@ -1593,57 +1588,6 @@ export default function OperationsCopilot() {
           </motion.div>
         )}
 
-        {/* ------------------------------------------------------------- */}
-        {/* 3. MINIMIZED OPERATIONS DOCK PILL                             */}
-        {/* ------------------------------------------------------------- */}
-        {isOpen && isMinimized && (
-          <motion.div
-            initial={{ opacity: 0, y: 15, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 15, scale: 0.95 }}
-            transition={{ duration: 0.18, ease: 'easeOut' }}
-            className="fixed bottom-4 right-3 left-3 sm:left-auto sm:right-6 sm:bottom-20 z-[150] sm:w-[380px] bg-stone-900 text-white rounded-2xl shadow-2xl border border-stone-700/80 p-3 flex items-center justify-between cursor-pointer hover:bg-stone-850 transition-colors select-none"
-            onClick={() => setIsMinimized(false)}
-          >
-            <div className="flex items-center gap-2.5 min-w-0">
-              <ConciergeAvatar size="sm" isOnline={true} />
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <h4 className="text-xs font-bold text-stone-100 truncate">
-                    {userIsAdmin ? 'Platform Concierge' : 'Lodge Concierge'}
-                  </h4>
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-                </div>
-                <p className="text-[10px] text-stone-400 truncate">
-                  {messages.length > 0 
-                    ? `${messages.length} messages in session • Click to expand` 
-                    : 'Session minimized • Click to expand'}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-              <button
-                type="button"
-                onClick={() => setIsMinimized(false)}
-                className="p-1.5 hover:bg-stone-800 text-stone-300 hover:text-white rounded-lg transition cursor-pointer"
-                title="Expand Assistant"
-              >
-                <Maximize2 className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsOpen(false);
-                  setIsMinimized(false);
-                }}
-                className="p-1.5 hover:bg-stone-800 text-stone-400 hover:text-white rounded-lg transition cursor-pointer"
-                title="Close Assistant"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </motion.div>
-        )}
       </AnimatePresence>
     </>
   );

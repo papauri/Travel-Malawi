@@ -1567,16 +1567,58 @@ export default function Home() {
 
 
 
-        {/* Header for results */}
-        <div className="flex items-center justify-between border-b border-stone-200 pb-3 mb-6">
-          <div className="text-sm font-bold text-stone-900">
-            {viewMode === 'grid' ? `${filteredHotels.length} Stays Found` : `${lodgeMarkers.length} Stays on Map`}
+        {/* Header for results with seamlessly blended View Mode Switch */}
+        <div className="flex items-center justify-between border-b border-stone-200 pb-3 mb-6 gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <span className="text-sm font-bold text-stone-900">
+              {viewMode === 'grid' ? `${filteredHotels.length} Stays Found` : `${lodgeMarkers.length} Stays on Map`}
+            </span>
+            <span className="text-xs text-stone-500 hidden sm:inline">
+              {viewMode === 'grid' 
+                ? `· Page ${currentPage} of ${Math.max(1, Math.ceil(filteredHotels.length / itemsPerPage))}`
+                : `· Interactive clustered map`
+              }
+            </span>
           </div>
-          <div className="text-xs text-stone-500 hidden sm:block">
-            {viewMode === 'grid' 
-              ? `Showing page ${currentPage} of ${Math.max(1, Math.ceil(filteredHotels.length / itemsPerPage))}`
-              : `Interactive clustered map of Malawi stays`
-            }
+
+          {/* Seamless View Mode Segmented Switch (blends into the header bar without covering content on mobile) */}
+          <div className="flex items-center bg-stone-100 p-1 rounded-full border border-stone-200/90 shadow-2xs">
+            <button
+              type="button"
+              onClick={() => {
+                setViewMode('grid');
+                setTimeout(() => {
+                  document.getElementById('grid-canvas')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 50);
+              }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer select-none ${
+                viewMode === 'grid'
+                  ? 'bg-white text-stone-900 shadow-xs font-bold'
+                  : 'text-stone-500 hover:text-stone-900'
+              }`}
+              aria-label="List view"
+            >
+              <LayoutGrid className="w-3.5 h-3.5 text-stone-700" />
+              <span>List</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setViewMode('map');
+                setTimeout(() => {
+                  document.getElementById('map-canvas')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 50);
+              }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer select-none ${
+                viewMode === 'map'
+                  ? 'bg-white text-stone-900 shadow-xs font-bold'
+                  : 'text-stone-500 hover:text-stone-900'
+              }`}
+              aria-label="Map view"
+            >
+              <MapIcon className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Map</span>
+            </button>
           </div>
         </div>
         
@@ -1959,8 +2001,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Floating View Toggle Button - Positioned to the bottom-left */}
-      <div className="fixed bottom-6 sm:bottom-8 left-4 sm:left-8 z-40 pointer-events-none">
+      {/* Floating View Toggle Button - Positioned to the bottom-left (Hidden on mobile where the in-header segmented switch blends in seamlessly) */}
+      <div className="hidden md:block fixed bottom-6 sm:bottom-8 left-4 sm:left-8 z-40 pointer-events-none">
         <button
           onClick={() => {
             const newMode = viewMode === 'grid' ? 'map' : 'grid';

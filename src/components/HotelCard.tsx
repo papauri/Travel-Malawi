@@ -1,7 +1,8 @@
+import { getActivePromotion } from '../lib/promotions';
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronLeft, ChevronRight, Star, Heart, Scale } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Star, Heart, Scale, Tag } from 'lucide-react';
 import { Hotel } from '../types';
 import SmartImage from './SmartImage';
 import { getHotelImages } from '../lib/images';
@@ -195,23 +196,49 @@ export default function HotelCard({ hotel, searchParams, index, priceFrom, price
         <h3 className="font-serif text-xl sm:text-2xl text-stone-900 truncate group-hover:text-emerald-700 transition-colors duration-300 pr-1">
           {hotel.name}
         </h3>
-        <div className="flex items-center justify-between mt-1 gap-2 flex-wrap">
-          {priceFrom ? (
-            <p className="text-sm text-stone-600 truncate flex-1 min-w-0">
-              <PriceDisplay className="text-stone-900 font-semibold" amount={priceFrom} currency={priceCurrency} />
-              <span className="text-stone-400"> / night</span>
-            </p>
-          ) : (
-            <span className="text-sm text-stone-400">Rates on request</span>
-          )}
-          {rating && (
-            <span className="flex items-center gap-1 text-sm text-stone-600 shrink-0 ml-auto">
-              <Star className="w-3.5 h-3.5 fill-stone-900 text-stone-900" />
-              <span className="font-semibold text-stone-900">{rating.average.toFixed(1)}</span>
-              <span className="text-stone-400">({rating.count})</span>
-            </span>
-          )}
-        </div>
+        {(() => {
+          const promo = getActivePromotion(hotel, searchParams?.checkIn || new Date().toISOString().split('T')[0]);
+          return (
+            <div className="flex items-center justify-between mt-1 gap-2 flex-wrap">
+              {priceFrom ? (
+                <div className="text-sm text-stone-600 truncate flex-1 min-w-0">
+                  {promo ? (
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="bg-red-50 text-red-600 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">
+                        {promo.discountPercentage}% OFF
+                      </span>
+                      <PriceDisplay 
+                        className="text-stone-400 font-medium line-through decoration-stone-300 text-xs" 
+                        amount={priceFrom} 
+                        currency={priceCurrency} 
+                      />
+                      <PriceDisplay 
+                        className="text-red-600 font-semibold" 
+                        amount={priceFrom - (priceFrom * (promo.discountPercentage / 100))} 
+                        currency={priceCurrency} 
+                      />
+                      <span className="text-stone-400"> / night</span>
+                    </div>
+                  ) : (
+                    <p>
+                      <PriceDisplay className="text-stone-900 font-semibold" amount={priceFrom} currency={priceCurrency} />
+                      <span className="text-stone-400"> / night</span>
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <span className="text-sm text-stone-400">Rates on request</span>
+              )}
+              {rating && (
+                <span className="flex items-center gap-1 text-sm text-stone-600 shrink-0 ml-auto">
+                  <Star className="w-3.5 h-3.5 fill-stone-900 text-stone-900" />
+                  <span className="font-semibold text-stone-900">{rating.average.toFixed(1)}</span>
+                  <span className="text-stone-400">({rating.count})</span>
+                </span>
+              )}
+            </div>
+          );
+        })()}
       </div>
     </Link>
   );

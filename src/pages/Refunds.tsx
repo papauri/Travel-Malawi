@@ -10,7 +10,7 @@ export default function Refunds() {
   return (
     <div className="min-h-screen bg-stone-50 py-20 px-6">
       <Helmet>
-        <title>Refunds & Cancellations - ProManaged IT Hotel Booking</title>
+        <title>Refunds & Cancellations - Travel Malawi</title>
         <meta name="description" content="Information regarding booking cancellations and refunds." />
       </Helmet>
       

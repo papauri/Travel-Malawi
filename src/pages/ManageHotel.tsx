@@ -1,3 +1,5 @@
+import PromotionsManager from '../components/PromotionsManager';
+import { safeRunTransactionAvailability } from '../lib/transactions';
 import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
@@ -46,9 +48,9 @@ import PriceDisplay from '../components/PriceDisplay';
 
 
 
-type Tab = 'details' | 'media' | 'rooms' | 'conferences' | 'restaurant' | 'bookings' | 'inquiries' | 'stayos' | 'broadcasts';
+type Tab = 'details' | 'media' | 'promotions' | 'rooms' | 'conferences' | 'restaurant' | 'bookings' | 'inquiries' | 'stayos' | 'broadcasts';
 
-const TABS: Tab[] = ['details', 'media', 'rooms', 'conferences', 'restaurant', 'bookings', 'inquiries', 'stayos', 'broadcasts'];
+const TABS: Tab[] = ['details', 'media', 'promotions', 'rooms', 'conferences', 'restaurant', 'bookings', 'inquiries', 'stayos', 'broadcasts'];
 
 const isTab = (value: string | null): value is Tab => !!value && (TABS as string[]).includes(value);
 
@@ -854,21 +856,6 @@ export default function ManageHotel() {
     const booking = bookings.find(b => b.id === bookingId);
     if (!booking) return;
 
-    // Confirming commits inventory, so availability is re-checked against every
-    // other live booking first. Nothing stopped a manager confirming two
-    // overlapping requests for the same single room.
-    if (status === 'confirmed') {
-      const room = rooms.find(r => r.id === booking.roomTypeId);
-      if (room) {
-        const others = bookings.filter(b => b.id !== bookingId);
-        if (!isRoomAvailable(room, others, booking.checkIn, booking.checkOut, booking.quantity ?? 1)) {
-          toast.error(`${room.name} is already fully committed for ${formatDateStr(booking.checkIn)} – ${formatDateStr(booking.checkOut)}.`);
-          setConfirmModalBooking(null);
-          return;
-        }
-      }
-    }
-
     try {
       const patch: Record<string, unknown> = { status, updatedAt: Date.now() };
       if (status === 'cancelled') {
@@ -883,16 +870,42 @@ export default function ManageHotel() {
         patch.arrivalPin = newPin;
       }
       
-      await updateDoc(doc(db, 'bookings', bookingId), patch);
+      if (status === 'confirmed') {
+        const room = rooms.find(r => r.id === booking.roomTypeId);
+        if (room) {
+          // This mathematically guarantees no double booking can happen during confirmation.
+          await safeRunTransactionAvailability(
+            room.id!,
+            room,
+            booking.checkIn,
+            booking.checkOut,
+            booking.quantity ?? 1,
+            (transaction) => {
+              transaction.update(doc(db, 'bookings', bookingId), patch);
+            },
+            bookingId // ignore this booking when calculating live availability
+          );
+        } else {
+          await updateDoc(doc(db, 'bookings', bookingId), patch);
+        }
+      } else {
+        await updateDoc(doc(db, 'bookings', bookingId), patch);
+      }
+      
       setBookings(bookings.map(b => b.id === bookingId ? { ...b, ...patch } as Booking : b));
       setConfirmModalBooking(null);
       toast.success(
         status === 'confirmed' ? 'Booking confirmed.' :
         status === 'rejected' ? 'Booking declined.' : 'Booking cancelled.'
       );
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating booking:", error);
-      toast.error('Could not update this booking.');
+      if (error.message === 'ROOM_UNAVAILABLE') {
+        toast.error('Sorry, this room is already fully committed for these dates.');
+      } else {
+        toast.error('Could not update this booking.');
+      }
+      setConfirmModalBooking(null);
     }
   };
 
@@ -1027,6 +1040,7 @@ export default function ManageHotel() {
         {([
           { id: 'details' as Tab, label: 'Property details', icon: Building },
           { id: 'media' as Tab, label: 'Media', icon: Eye },
+          { id: 'promotions' as Tab, label: 'Promotions', icon: Percent },
           { id: 'stayos' as Tab, label: 'Stay OS', icon: ShieldCheck },
           { id: 'broadcasts' as Tab, label: 'Broadcasts', icon: Megaphone },
           { id: 'rooms' as Tab, label: 'Rooms & pricing', icon: BedDouble },
@@ -1747,6 +1761,15 @@ export default function ManageHotel() {
 
       {activeTab === 'conferences' && (
         <ConferenceManager hotelId={id!} />
+      )}
+
+      {activeTab === 'promotions' && (
+        <div className="space-y-6">
+          <PromotionsManager 
+            hotel={hotel} 
+            onUpdate={(promotions) => setHotel({ ...hotel, promotions })} 
+          />
+        </div>
       )}
 
       {activeTab === 'rooms' && (

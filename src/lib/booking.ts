@@ -20,6 +20,8 @@ export interface BookingPricing {
   extraGuestTotal: number;
   accommodationTotal: number;
   packagesTotal: number;
+  discountPercentage: number;
+  discountAmount: number;
   total: number;
   /** Packages that carry no price in this currency, so cannot be sold in it. */
   unavailablePackageIds: string[];
@@ -37,7 +39,8 @@ export function computeBookingPricing(
   guests: number,
   quantity: number,
   packageIds: string[],
-  requestedCurrency?: CurrencyCode
+  requestedCurrency?: CurrencyCode,
+  discountPercentage: number = 0
 ): BookingPricing {
   const currency = resolveCurrency(room, requestedCurrency);
   const primary = roomPrimaryCurrency(room);
@@ -64,6 +67,7 @@ export function computeBookingPricing(
     else if (pkg.type === 'per_room') packagesTotal += price * nights * quantity;
     else packagesTotal += price;
   }
+  const discountAmount = discountPercentage > 0 ? (accommodationTotal * discountPercentage) / 100 : 0;
 
   return {
     currency,
@@ -75,7 +79,9 @@ export function computeBookingPricing(
     extraGuestTotal,
     accommodationTotal,
     packagesTotal,
-    total: accommodationTotal + packagesTotal,
+    discountPercentage,
+    discountAmount,
+    total: accommodationTotal - discountAmount + packagesTotal,
     unavailablePackageIds,
   };
 }

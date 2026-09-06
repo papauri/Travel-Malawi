@@ -10,7 +10,7 @@ export default function Terms() {
   return (
     <div className="min-h-screen bg-stone-50 py-20 px-6">
       <Helmet>
-        <title>Terms of Service - ProManaged IT Hotel Booking</title>
+        <title>Terms of Service - Travel Malawi</title>
         <meta name="description" content="Terms and conditions for using our booking platform." />
       </Helmet>
       

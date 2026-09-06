@@ -5,6 +5,7 @@ import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
 import { getPublicAIStatus, getAdminAIConfig, loadAIConfig, saveAIConfig, AIProviderId } from './server/aiConfig';
 import { executeAIGeneration, executeOperationsAssistantChat, testProviderConnection } from './server/aiService';
+import { sendOfflineNotification } from './server/notifications';
 
 async function startServer() {
   const app = express();
@@ -69,6 +70,21 @@ async function startServer() {
     res.json({ success: true });
   });
 
+  // API route to send offline notifications
+  app.post('/api/notify', async (req, res) => {
+    try {
+      const { email, subject, message } = req.body;
+      if (!email || !subject || !message) {
+        return res.status(400).json({ error: 'Missing required fields' });
+      }
+      
+      await sendOfflineNotification(email, subject, message);
+      res.json({ success: true });
+    } catch (err: any) {
+      console.error('Notification Error:', err);
+      res.status(500).json({ error: 'Failed to send notification' });
+    }
+  });
   // ----------------------------------------------------
   // AI ASSISTANT API ROUTES (Server-side & Secure)
   // ----------------------------------------------------

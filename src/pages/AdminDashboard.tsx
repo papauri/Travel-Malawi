@@ -6,7 +6,7 @@ import { Hotel, User, Booking, Role } from '../types';
 import { SystemSettings } from '../hooks/useSystemSettings';
 import { 
   Shield, Building2, CheckCircle, CheckCircle2, XCircle, Clock, MapPin, 
-  MapPinOff, Users, Edit2, Key, Trash2, Star, ExternalLink, 
+  MapPinOff, Users, Edit2, Edit3, Key, Trash2, Star, ExternalLink, 
   MessageSquare, MessageSquareOff, LayoutDashboard, CalendarRange, FileText, 
   Search, Activity, Cpu
 } from 'lucide-react';

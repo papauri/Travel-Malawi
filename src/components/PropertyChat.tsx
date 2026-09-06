@@ -456,9 +456,22 @@ export default function PropertyChat({
         endedByName: isReactivating ? null : (chatDocData?.endedByName || null),
         [isManager ? 'managerTyping' : 'guestTyping']: false,
         [isManager ? 'managerLastSeenAt' : 'guestLastSeenAt']: now,
+        [isManager ? 'managerLastOpenedAt' : 'guestLastOpenedAt']: now,
         updatedAt: now
       }, { merge: true });
       
+      // Trigger offline notification if sending to offline manager
+      if (!isManager && !liveHotel.isOnline && liveHotel.managerEmail) {
+        fetch('/api/notify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: liveHotel.managerEmail,
+            subject: `New message from ${senderDisplayName}`,
+            message: `You have a new message on Stay OS from ${senderDisplayName} regarding ${liveHotel.name}:\n\n"${textToSend}"\n\nPlease log in to reply.`
+          })
+        }).catch(err => console.error('Failed to trigger offline notification', err));
+      }
       setNewMessage('');
     } catch (error: any) {
       console.error('Error sending message:', error);

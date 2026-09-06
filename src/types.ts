@@ -108,12 +108,21 @@ export interface DailyBoard {
   updatedAt?: number;
 }
 
+export interface Promotion {
+  id: string;
+  name: string;
+  discountPercentage: number;
+  startDate?: string;
+  endDate?: string;
+  isActive: boolean;
+}
 export interface Hotel {
   id?: string;
   status?: 'pending' | 'approved' | 'rejected';
   verificationStatus?: 'unverified' | 'community_verified' | 'verified_partner';
   infrastructure?: InfrastructureDetails;
   crew?: StayCrewMember[];
+  promotions?: Promotion[];
   dailyBoard?: DailyBoard;
   managerId: string;
   managerName?: string;
@@ -330,6 +339,8 @@ export interface Booking {
   lastMessageText?: string;
   lastMessageSenderId?: string;
   lastMessageSenderName?: string;
+  managerLastSeenAt?: number;
+  guestLastSeenAt?: number;
   
   // Stay OS: Digital Voucher Fields
   voucherIssued?: boolean;
