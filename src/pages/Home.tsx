@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import Pagination from '../components/Pagination';
-import { Search, MapPin, Calendar, Users, Star, LocateFixed, Locate, ChevronDown, Plus, Minus, ShieldCheck, MessageCircle, Smartphone, X, Clock, LayoutGrid, Map as MapIcon, Compass, Navigation, SlidersHorizontal, RotateCcw, Filter, Check, Car, ExternalLink, Route, ArrowRight, Building2, CheckCircle2 } from 'lucide-react';
+import { Search, MapPin, Calendar, Users, Star, LocateFixed, Locate, ChevronDown, Plus, Minus, ShieldCheck, MessageCircle, Smartphone, X, Clock, LayoutGrid, Map as MapIcon, Compass, Navigation, SlidersHorizontal, RotateCcw, Filter, Check, Car, ExternalLink, Route, ArrowRight, Building2, CheckCircle2, BookOpen } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { collection, getDocs, getDoc, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -1419,12 +1419,21 @@ export default function Home() {
                   <span>List Your Property Free</span>
                   <ArrowRight className="w-4 h-4" />
                 </Link>
-                <Link
-                  to="/dashboard"
-                  className="inline-flex items-center justify-center gap-2 bg-stone-800/80 hover:bg-stone-800 text-stone-300 hover:text-white font-medium px-5 py-2.5 rounded-full text-xs transition border border-stone-700 text-center"
-                >
-                  Already listed? Open Dashboard
-                </Link>
+                <div className="flex items-center justify-between sm:justify-center gap-2">
+                  <Link
+                    to="/host-guide"
+                    className="inline-flex items-center justify-center gap-1.5 bg-stone-800/80 hover:bg-stone-800 text-stone-300 hover:text-white font-medium px-4 py-2.5 rounded-full text-xs transition border border-stone-700 text-center flex-1 sm:flex-initial"
+                  >
+                    <BookOpen className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Host Starter Pack</span>
+                  </Link>
+                  <Link
+                    to="/dashboard"
+                    className="inline-flex items-center justify-center gap-1.5 bg-stone-800/80 hover:bg-stone-800 text-stone-300 hover:text-white font-medium px-4 py-2.5 rounded-full text-xs transition border border-stone-700 text-center flex-1 sm:flex-initial"
+                  >
+                    <span>Dashboard</span>
+                  </Link>
+                </div>
               </div>
             </div>
           </div>

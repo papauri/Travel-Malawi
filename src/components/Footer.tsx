@@ -8,7 +8,7 @@ export default function Footer() {
   const { settings } = useSystemSettings();
   return (
     <footer className="bg-stone-900 text-stone-300 pt-16 pb-28 md:py-16 border-t border-stone-800 mt-auto">
-      <div className="max-w-7xl mx-auto px-6 lg:px-8 grid grid-cols-1 md:grid-cols-4 gap-12">
+      <div className="max-w-7xl mx-auto px-6 lg:px-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-10">
         <div className="space-y-6">
           <Link to="/" className="flex items-center gap-2 text-white">
             <Palmtree className="h-8 w-8 text-white" />
@@ -23,9 +23,23 @@ export default function Footer() {
           <h4 className="text-white font-serif font-semibold text-lg mb-6">Explore</h4>
           <ul className="space-y-4 text-sm">
             <li><Link to="/?category=Lakefront" className="hover:text-white transition">Lake Malawi</Link></li>
-            <li><Link to="/?category=Safari Lodge" className="hover:text-white transition">Safari & Wildlife</Link></li>
+            <li><Link to="/?category=Safari Lodge" className="hover:text-white transition">Safari &amp; Wildlife</Link></li>
             <li><Link to="/?category=Boutique Hotel" className="hover:text-white transition">Romantic Escapes</Link></li>
             <li><Link to="/?category=Eco Camp" className="hover:text-white transition">Family Adventures</Link></li>
+          </ul>
+        </div>
+        
+        <div>
+          <h4 className="text-white font-serif font-semibold text-lg mb-6">For Lodge Owners</h4>
+          <ul className="space-y-4 text-sm">
+            <li>
+              <Link to="/host-guide" className="text-emerald-400 hover:text-emerald-300 transition font-medium flex items-center gap-1.5">
+                <span>Host Starter Pack</span>
+                <span className="bg-emerald-950 text-emerald-400 border border-emerald-800 text-[10px] font-bold px-1.5 py-0.2 rounded-full">New</span>
+              </Link>
+            </li>
+            <li><Link to="/list-your-property" className="hover:text-white transition">List Your Property (0% Fee)</Link></li>
+            <li><Link to="/dashboard" className="hover:text-white transition">Host Dashboard</Link></li>
           </ul>
         </div>
         

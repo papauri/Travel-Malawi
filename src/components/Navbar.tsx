@@ -7,7 +7,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useAuthDialog } from '../contexts/AuthDialogContext';
-import { LogOut, Bell, Palmtree, ChevronDown, LayoutDashboard, Briefcase, ShieldCheck, Building2, Volume2, VolumeX, Heart, UserCircle } from 'lucide-react';
+import { LogOut, Bell, Palmtree, ChevronDown, LayoutDashboard, Briefcase, ShieldCheck, Building2, Volume2, VolumeX, Heart, UserCircle, BookOpen } from 'lucide-react';
 import { isSoundEnabled, onSoundPreferenceChange, setSoundEnabled } from '../lib/notificationSound';
 import { readStoredCurrency, storeCurrency, onCurrencyChange } from '../lib/currency';
 import { CurrencyCode } from '../types';
@@ -248,6 +248,14 @@ export default function Navbar() {
                         >
                           {hosting ? <LayoutDashboard className="h-4 w-4" /> : <Building2 className="h-4 w-4" />}
                           {hosting ? 'Host dashboard' : 'List your property'}
+                        </Link>
+                        <Link
+                          to="/host-guide"
+                          onClick={() => setShowUserMenu(false)}
+                          className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-stone-600 hover:bg-stone-50 hover:text-stone-900 transition"
+                        >
+                          <BookOpen className="h-4 w-4 text-emerald-600" />
+                          <span>Host Starter Guide</span>
                         </Link>
                         {isAdmin(user) && (
                           <Link

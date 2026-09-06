@@ -72,6 +72,9 @@ function trailFor(pathname: string, label: string): Crumb[] {
   if (pathname === '/privacy') return [home, { label: 'Privacy Policy' }];
   if (pathname === '/terms') return [home, { label: 'Terms of Service' }];
   if (pathname === '/refunds') return [home, { label: 'Refunds & Cancellations' }];
+  if (pathname === '/host-guide' || pathname === '/starter-pack' || pathname === '/host-starter-pack') {
+    return [home, { label: 'Host Starter Pack & Guide' }];
+  }
 
   return [home, { label: 'Not found' }];
 }

@@ -16,13 +16,13 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
   ArrowLeft, ArrowRight, BadgeCheck, Building2, Check, ChevronRight, Clock,
   Images, Loader2, LocateFixed, Mail, MapPin, MessageCircle, Phone, Plus, Send,
   Award, FileText, CheckCircle2, Wallet, X, DollarSign, Coins, Trash2, Sliders, ChevronDown, ChevronUp,
-  RefreshCw, TrendingUp, HelpCircle, AlertTriangle,
+  RefreshCw, TrendingUp, HelpCircle, AlertTriangle, BookOpen,
   User, UserCheck, Shield, Building,
 } from 'lucide-react';
 
@@ -937,12 +937,22 @@ export default function ListProperty() {
     <div className="bg-stone-50">
       <div className="mx-auto w-full max-w-5xl px-6 lg:px-8 py-14">
         <div className="mb-8 flex items-center justify-between gap-4">
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="inline-flex items-center gap-2 text-sm font-semibold text-stone-500 transition hover:text-stone-900 cursor-pointer"
-          >
-            <ArrowLeft className="h-4 w-4" /> Back to your dashboard
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate('/dashboard')}
+              className="inline-flex items-center gap-2 text-sm font-semibold text-stone-500 transition hover:text-stone-900 cursor-pointer"
+            >
+              <ArrowLeft className="h-4 w-4" /> Back to your dashboard
+            </button>
+            <Link
+              to="/host-guide"
+              target="_blank"
+              className="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 px-3 py-1.5 rounded-full transition"
+            >
+              <BookOpen className="w-3.5 h-3.5 text-emerald-700" />
+              <span>Host Starter Pack</span>
+            </Link>
+          </div>
 
           <button
             type="button"
@@ -2983,6 +2993,15 @@ function HostIntro({
                 ? 'Keeps everything you have already booked — same login, one extra hat.'
                 : 'Free to list. Nothing to pay, ever.'}
             </p>
+          </div>
+
+          <div className="mt-6">
+            <Link
+              to="/host-guide"
+              className="inline-flex items-center gap-2 text-sm text-emerald-300 hover:text-emerald-200 transition underline underline-offset-4"
+            >
+              <BookOpen className="w-4 h-4" /> Read our Host Onboarding Starter Pack &amp; Guide
+            </Link>
           </div>
         </div>
       </section>

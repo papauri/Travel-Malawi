@@ -20,6 +20,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import Terms from './pages/Terms';
 import Privacy from './pages/Privacy';
 import Refunds from './pages/Refunds';
+import HostStarterPack from './pages/HostStarterPack';
 import GlobalNotificationManager from './components/GlobalNotificationManager';
 import PageLoader from './components/PageLoader';
 import CompareWidget from './components/CompareWidget';
@@ -131,6 +132,9 @@ const router = createBrowserRouter([
       { path: "terms", element: <Terms /> },
       { path: "privacy", element: <Privacy /> },
       { path: "refunds", element: <Refunds /> },
+      { path: "host-guide", element: <HostStarterPack /> },
+      { path: "starter-pack", element: <HostStarterPack /> },
+      { path: "host-starter-pack", element: <HostStarterPack /> },
       { path: "admin/hotel/:id", element: <ManageHotel /> },
       { path: "*", element: <NotFound /> }
     ]
