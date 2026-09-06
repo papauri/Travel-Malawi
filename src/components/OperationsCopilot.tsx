@@ -385,9 +385,12 @@ export default function OperationsCopilot() {
           return {
             id: p.id || '',
             name: p.name,
+            description: p.description,
             location: p.location,
+            locationNotes: p.locationNotes,
             category: p.categories?.[0] || 'Lodge',
             status: p.status || 'active',
+            verificationStatus: p.verificationStatus || 'unverified',
             featured: Boolean(p.featured),
             isOnline: p.isOnline !== false,
             outOfOfficeMessage: p.outOfOfficeMessage,
@@ -401,6 +404,22 @@ export default function OperationsCopilot() {
             contactWhatsapp: p.contactWhatsapp || p.contactPhone,
             contactEmail: p.contactEmail,
             contactPhone: p.contactPhone,
+            infrastructure: p.infrastructure ? {
+              powerSource: p.infrastructure.powerSource,
+              powerNotes: p.infrastructure.powerNotes,
+              waterSource: p.infrastructure.waterSource,
+              roadAccess: p.infrastructure.roadAccess,
+              internetSource: p.infrastructure.internetSource,
+              workspaceSetup: p.infrastructure.workspaceSetup,
+              wifiSSID: p.infrastructure.wifiSSID,
+              wifiPassword: p.infrastructure.wifiPassword,
+              shareWifiVoucher: p.infrastructure.shareWifiVoucher,
+              offlineTrustBadge: p.infrastructure.offlineTrustBadge,
+            } : undefined,
+            promotions: p.promotions?.filter(pr => pr.isActive).map(pr => ({
+              name: pr.name,
+              discountPercentage: pr.discountPercentage,
+            })),
             crew: p.crew?.map(c => ({
               name: c.name,
               role: c.role,
@@ -415,8 +434,19 @@ export default function OperationsCopilot() {
             restaurant: p.restaurant ? {
               enabled: Boolean(p.restaurant.enabled),
               name: p.restaurant.name,
+              description: p.restaurant.description,
               sectionsCount: p.restaurant.sections?.length || 0,
-              sampleItems: p.restaurant.sections?.flatMap(s => s.items.map(i => i.name)).slice(0, 6) || [],
+              sampleItems: p.restaurant.sections?.flatMap(s => s.items.map(i => i.name)).slice(0, 8) || [],
+              menuSections: p.restaurant.sections?.map(s => ({
+                name: s.name,
+                items: s.items?.map(item => ({
+                  name: item.name,
+                  description: item.description,
+                  priceUSD: item.prices?.USD,
+                  priceMWK: item.prices?.MWK,
+                  tags: item.tags,
+                })) || [],
+              })),
             } : undefined,
             conferences: propConfs.map(c => ({
               id: c.id || '',
@@ -433,6 +463,8 @@ export default function OperationsCopilot() {
             rooms: propRooms.map(r => ({
               id: r.id || '',
               name: r.name,
+              description: r.description,
+              amenities: r.amenities || [],
               priceUSD: r.prices?.USD ?? r.price,
               priceMWK: r.prices?.MWK ?? r.priceMWK,
               maxGuests: r.maxGuests,
@@ -440,6 +472,12 @@ export default function OperationsCopilot() {
               extraGuestFeeUSD: r.extraGuestFees?.USD,
               extraGuestFeeMWK: r.extraGuestFees?.MWK,
               blockedDates: (r as any).blockedDates || [],
+              packages: r.packages?.map(pkg => ({
+                name: pkg.name,
+                type: pkg.type,
+                priceUSD: pkg.prices?.USD ?? pkg.price,
+                priceMWK: pkg.prices?.MWK,
+              })),
             })),
           };
         }),
@@ -463,6 +501,8 @@ export default function OperationsCopilot() {
             status: b.status,
             currency: b.currency,
             total: b.total,
+            specialRequests: (b as any).specialRequests,
+            createdAt: (b as any).createdAt,
           };
         }),
         learnedRules: learnedRules.map(r => r.text),

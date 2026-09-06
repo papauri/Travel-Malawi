@@ -746,9 +746,12 @@ export interface OperationsAssistantRequest {
     properties: Array<{
       id: string;
       name: string;
+      description?: string;
       location?: string;
+      locationNotes?: string;
       category?: string;
       status?: string;
+      verificationStatus?: string;
       featured?: boolean;
       isOnline?: boolean;
       outOfOfficeMessage?: string;
@@ -763,6 +766,22 @@ export interface OperationsAssistantRequest {
       contactWhatsapp?: string;
       contactEmail?: string;
       contactPhone?: string;
+      infrastructure?: {
+        powerSource?: string;
+        powerNotes?: string;
+        waterSource?: string;
+        roadAccess?: string;
+        internetSource?: string;
+        workspaceSetup?: string;
+        wifiSSID?: string;
+        wifiPassword?: string;
+        shareWifiVoucher?: boolean;
+        offlineTrustBadge?: boolean;
+      };
+      promotions?: Array<{
+        name: string;
+        discountPercentage: number;
+      }>;
       crew?: Array<{ name: string; role: string; phone?: string; whatsapp?: string }>;
       checkInTime?: string;
       checkOutTime?: string;
@@ -772,8 +791,19 @@ export interface OperationsAssistantRequest {
       restaurant?: {
         enabled: boolean;
         name?: string;
+        description?: string;
         sectionsCount?: number;
         sampleItems?: string[];
+        menuSections?: Array<{
+          name: string;
+          items: Array<{
+            name: string;
+            description?: string;
+            priceUSD?: number;
+            priceMWK?: number;
+            tags?: string[];
+          }>;
+        }>;
       };
       conferences?: Array<{
         id: string;
@@ -790,6 +820,8 @@ export interface OperationsAssistantRequest {
       rooms?: Array<{
         id: string;
         name: string;
+        description?: string;
+        amenities?: string[];
         priceUSD?: number;
         priceMWK?: number;
         maxGuests?: number;
@@ -797,6 +829,12 @@ export interface OperationsAssistantRequest {
         extraGuestFeeUSD?: number;
         extraGuestFeeMWK?: number;
         blockedDates?: string[];
+        packages?: Array<{
+          name: string;
+          type?: string;
+          priceUSD?: number;
+          priceMWK?: number;
+        }>;
       }>;
     }>;
     bookings: Array<{
@@ -816,6 +854,8 @@ export interface OperationsAssistantRequest {
       status: string;
       currency?: string;
       total?: number;
+      specialRequests?: string;
+      createdAt?: number;
     }>;
     learnedRules?: string[];
     autonomousPatches?: Array<{
@@ -841,32 +881,45 @@ export interface OperationsAssistantResult {
   suggestedFollowUps?: string[];
 }
 
-const OPERATIONS_SYSTEM_PROMPT = `You are the executive Lodge Operations Copilot and Hospitality AI for the premier Malawian accommodations platform (The Warm Heart of Africa).
-You assist with real-time property operations, rooms, pricing in USD and MWK, restaurant menus, conference bookings, guest arrivals, checkouts, and front desk operations.
+const OPERATIONS_SYSTEM_PROMPT = `You are the all-rounder Concierge Buddy & Super Agent for Travel Malawi (The Warm Heart of Africa).
+You are fully versed with every single detail in our live database, super efficient and quick, and dynamically responsive to whatever the user needs — whether they need razor-sharp operational audits, creative tourism and guest itineraries, dynamic yield pricing, or calm step-by-step problem-solving.
 
 ================================================================================
-CONVERSATIONAL STYLE & PERSONALITY (CRITICAL — READ CAREFULLY)
+CONVERSATIONAL STYLE & PERSONALITY: THE ULTIMATE HOSPITALITY ALL-ROUNDER
 ================================================================================
-1. ZERO REPETITIVE GREETINGS ("STOP SAYING MONI ADMINISTRATOR"):
-   - NEVER start your messages with "Moni Administrator", "Moni", "Hello Administrator", or any repetitive formulaic greeting on every prompt.
-   - NEVER call the user "Administrator", "Global Administrator", or "Manager" as their title or name. Address them naturally in the second person ("you", "your properties"), or by their real first name if provided.
-   - If the user simply greets you (e.g. "hi", "hello", "hey"), DO NOT give a full property audit or unsolicited analysis. Greet them back warmly and concisely (1 short sentence) and ask how you can help.
-   - In an active conversation, jump straight into answering the user's question, providing analysis, or proposing changes. No robotic preamble, corporate throat-clearing, or repetitive welcome lines.
+1. SUPER EFFICIENT & QUICK (ZERO BLOAT, MAXIMUM VALUE):
+   - Deliver high-density, immediate value. No corporate throat-clearing, preamble, or boilerplate disclaimers.
+   - NEVER start your messages with formulaic greetings like "Moni Administrator", "Moni", "Hello Administrator", or "As an AI...".
+   - Address the user naturally in the second person ("you", "your lodge"), or by their clean first name if known.
+   - If the user simply says "hi" or "hello", greet them back warmly and concisely (1 short sentence) and ask how you can assist.
+   - Jump straight to answering with crisp formatting: bullet points, bold key-values, and compact summaries so users get answers in seconds.
 
-2. BE A GENUINE, VIBRANT, HIGH-CALIBER ASSISTANT (NOT BORING OR STATIC):
-   - Speak like a sharp, trusted hospitality operations partner or executive chief of staff standing right beside the user.
-   - Be human, observant, proactive, and direct. Add genuine hospitality intelligence:
-     * If there are zero arrivals scheduled for today, don't just dump "0 arrivals". Give practical operational context: "Front desk is quiet with zero check-ins today—a great window for housekeeping to do deep maintenance or get rooms staged for the weekend."
-     * If checkouts or arrivals are scheduled, point out guest names, room assignments, and whether payments are settled.
-     * If asked about rates, highlight differences between USD and MWK, or flag unpriced rooms.
-   - NEVER use robotic clichés like "As an AI language model...", "As your Lodge Operations Copilot...", "I have live access to...", or "Top Boss Mode activated". Just be genuinely helpful and sharp.
+2. A GENUINE CONCIERGE BUDDY & PASSIONATE LOCAL INSIDER:
+   - Talk like a trusted, witty, observant Malawian hospitality partner standing right beside the user.
+   - You have encyclopedic, localized knowledge of Malawi tourism and guest wonders:
+     * Lake Malawi: Cape Maclear (Thumbi West snorkeling, Otter Point, diving for endemic mbuna cichlids, catamaran sailing), Monkey Bay, Senga Bay (Salima fresh fish dinners on the sand), Nkhata Bay (cliff-jumping, Chikale beach), Likoma Island (pristine secluded bays, St. Peter's Cathedral, dhow sailing), Chizumulu Island, Mangochi palm resorts.
+     * Wildlife & Safari: Majete Wildlife Reserve (Big 5 success story, Mkulumadzi river rapids, walking safaris), Liwonde National Park (Shire River boat safaris past elephants and pods of hippos, cheetahs, black rhinos, Pel's fishing owl), Nyika Plateau (misty rolling montane grasslands, leopards, roan antelopes, mountain biking), Nkhotakota Reserve (breathtaking wilderness canoeing on the Bua River).
+     * Mountains & Highlands: Mount Mulanje (hiking from Likhubula to Lichenya or Sapitwa Peak 3,002m, natural rock plunge pools, cedar forests), Zomba Plateau (Emperor's View, Chingwe's Hole, potato path, trout streams), Dedza (prehistoric rock art and artisan pottery).
+     * Gastronomy & Culture: Fresh Lake Chambo grilled with lemon and peri-peri served with hot nsima or chips, Kampango catfish fillets, Usipa fish, Kondowole (cassava staple of the northern lake), Mzuzu highland coffee, Satemwa estate artisan black and white teas, Malawi Gin & tonic with a fresh lemon slice, Kuche Kuche beer.
+     * Logistics & Local Realities: Kamuzu Int'l Airport (LLW, Lilongwe) and Chileka Int'l Airport (BLZ, Blantyre) transfers, 4x4 road conditions during rainy season (Dec-April) vs dry season (May-Nov), Ilala and Chambo ferry schedules on Lake Malawi, local SIM cards (Airtel Malawi, TNM), mobile money (Airtel Money, TNM Mpamba).
 
-3. BE INTERACTIVE, FUN, AND HIGHLY EXPERT:
-   - Do NOT just act like a command prompt. Be an interactive, highly supportive, and fun world-class concierge and operations expert.
-   - You are well versed on everything in the system and hospitality in general.
-   - You should be encouraging, deeply knowledgeable, and enjoyable to interact with, while remaining grounded in hospitality realities.
-   - Format beautifully with markdown, emojis where appropriate (but not excessive), and clear actionable insights.
-   - You can be conversational, but make sure your responses bring tangible value.
+3. A SUPER AGENT OF PROPERTY MANAGEMENT & OPERATIONS:
+   - Revenue Management & Dual-Currency Strategy: Expert calibration between US Dollars ($ USD for international holidaymakers and safari guests) and Malawi Kwacha (MWK for domestic travelers, weekend escapes, and conferences). Yield management during peak holidays (Easter, Lake of Stars festival, Christmas/New Year) vs green season.
+   - Front Desk & StayOS: Managing room turns between check-out (10:00) and check-in (14:00), staging rooms, VIP welcome drinks, blocked dates for maintenance or private reservations.
+   - WhatsApp Inquiry Conversion: Crafting warm, high-converting WhatsApp replies for inquiries, securing 0% commission direct bookings.
+   - Dining & Menus: Dish of the day recommendations, pairing local fresh ingredients, menu engineering.
+   - Banqueting & Conferences: Seating layouts (theatre, classroom, boardroom), day delegate rates in USD and MWK, catering coordination.
+
+4. DYNAMIC ACCORDING TO USER NEEDS (FLUID GEAR SHIFTING):
+   - Effortlessly adapts tone and focus to match what the user is trying to accomplish:
+     * Operator Mindset: When asked for audits, arrivals, checkouts, or pricing checks -> delivers instant, razor-sharp facts and tables with zero fluff.
+     * Concierge Mindset: When asked for guest recommendations, excursions, or dining -> delivers warm, sensory, inspiring local suggestions.
+     * Strategist Mindset: When asked for business advice or listing reviews -> provides clear commercial guidance and revenue-optimizing tips.
+     * Problem-Solver Mindset: When an issue arises (power switch, rain, guest delay) -> offers calm, pragmatic, step-by-step hospitality solutions.
+
+5. FULLY VERSED WITH EVERYTHING IN OUR DATABASE:
+   - You have 100% comprehensive command of all property details in live context: infrastructure (power backup, solar, borehole, road access, Wi-Fi SSID and passwords), active promotions, dining menu sections with dish prices in USD and MWK, room packages, extra guest fees, inventory counts, crew contacts, and booking special requests.
+   - When asked anything about a property in your scope, cite the exact database facts accurately and confidently.
 
 ================================================================================
 CRITICAL ROLE-BASED ACCESS CONTROL (RBAC) & PERMISSION BOUNDARIES
@@ -1219,14 +1272,44 @@ async function executeOperationsChatWithProvider(
       const usdRate = r.priceUSD !== undefined ? `$${r.priceUSD} USD` : '';
       const mwkRate = r.priceMWK !== undefined ? `MWK ${r.priceMWK.toLocaleString()}` : '';
       const ratesStr = [usdRate, mwkRate].filter(Boolean).join(' / ') || 'Rate not set';
+      const extraFeeStr = r.extraGuestFeeUSD ? ` | Extra guest: $${r.extraGuestFeeUSD}` : (r.extraGuestFeeMWK ? ` | Extra guest: MWK ${r.extraGuestFeeMWK.toLocaleString()}` : '');
       const blockedStr = r.blockedDates && r.blockedDates.length > 0 ? ` | Blocked dates: [${r.blockedDates.join(', ')}]` : '';
-      return `    - Room: "${r.name}" (ID: ${r.id}) | Rates: ${ratesStr} | Max guests: ${r.maxGuests || 2} | Units: ${r.quantity || 1}${blockedStr}`;
+      const pkgStr = r.packages && r.packages.length > 0 ? ` | Packages: ${r.packages.map(pkg => `"${pkg.name}" ($${pkg.priceUSD ?? '-'}/MWK ${pkg.priceMWK?.toLocaleString() ?? '-'})`).join(', ')}` : '';
+      const amenitiesStr = r.amenities && r.amenities.length > 0 ? ` | Room Amenities: ${r.amenities.join(', ')}` : '';
+      const descStr = r.description ? ` | Info: "${r.description.slice(0, 120)}"` : '';
+      return `    - Room: "${r.name}" (ID: ${r.id}) | Rates: ${ratesStr}${extraFeeStr} | Max guests: ${r.maxGuests || 2} | Units: ${r.quantity || 1}${blockedStr}${pkgStr}${amenitiesStr}${descStr}`;
     }).join('\n');
 
     // Restaurant menu details
-    const diningSummary = p.restaurant?.enabled
-      ? `    - Restaurant: "${p.restaurant.name || 'On-site Dining'}" (Active, ${p.restaurant.sectionsCount || 0} menu sections, sample dishes: ${p.restaurant.sampleItems?.join(', ') || 'Various dishes'})`
-      : `    - Restaurant: None or currently inactive`;
+    let diningSummary = '    - Restaurant: None or currently inactive';
+    if (p.restaurant?.enabled) {
+      if (p.restaurant.menuSections && p.restaurant.menuSections.length > 0) {
+        const sectionsFormatted = p.restaurant.menuSections.map(s => {
+          const itemsStr = s.items.map(i => {
+            const priceParts = [i.priceUSD !== undefined ? `$${i.priceUSD}` : '', i.priceMWK !== undefined ? `MWK ${i.priceMWK.toLocaleString()}` : ''].filter(Boolean).join('/');
+            const tagStr = i.tags && i.tags.length > 0 ? ` (${i.tags.join(', ')})` : '';
+            return `${i.name} [${priceParts || 'unpriced'}${tagStr}]`;
+          }).join(', ');
+          return `${s.name}: ${itemsStr || 'no items'}`;
+        }).join(' | ');
+        diningSummary = `    - Dining: "${p.restaurant.name || 'Restaurant'}" (Active) | Menu: ${sectionsFormatted}`;
+      } else {
+        diningSummary = `    - Dining: "${p.restaurant.name || 'Restaurant'}" (Active, ${p.restaurant.sectionsCount || 0} sections, sample: ${p.restaurant.sampleItems?.join(', ') || 'various dishes'})`;
+      }
+    }
+
+    // Infrastructure, Power, Water, Internet & Wi-Fi credentials
+    let infraSummary = '';
+    if (p.infrastructure) {
+      const inf = p.infrastructure;
+      const wifiDetails = inf.wifiSSID ? ` | Wi-Fi: "${inf.wifiSSID}" (Pass: "${inf.wifiPassword || 'Ask at desk'}")` : '';
+      infraSummary = `    - Infrastructure & Utilities: Power: ${inf.powerSource || 'Grid + Backup'} (${inf.powerNotes || 'Reliable'}) | Water: ${inf.waterSource || 'Borehole / Purified'} | Road: ${inf.roadAccess || 'Accessible'} | Internet: ${inf.internetSource || 'Wi-Fi'}${wifiDetails}${inf.offlineTrustBadge ? ' | 🛡️ Verified Offline Reliability' : ''}`;
+    }
+
+    // Active Promotions & Special Offers
+    const promoSummary = p.promotions && p.promotions.length > 0
+      ? `    - Active Promotions: ${p.promotions.map(pr => `"${pr.name}" (${pr.discountPercentage}% OFF)`).join(', ')}`
+      : '';
 
     // Conference facilities
     const confSummary = p.conferences && p.conferences.length > 0
@@ -1258,15 +1341,17 @@ async function executeOperationsChatWithProvider(
     const dailyBoardSummary = p.dailyBoard?.dishOfTheDay || p.dailyBoard?.activities
       ? `    - Daily Board: Dish of Day: "${p.dailyBoard.dishOfTheDay || 'None'}", Activities: "${p.dailyBoard.activities || 'None'}"`
       : '';
+    const descSummary = p.description ? `    - About Property: "${p.description.slice(0, 180)}..."` : '';
+    const locationNotesSummary = p.locationNotes ? `    - Arrival / Location Notes: "${p.locationNotes}"` : '';
 
     return `• Property: "${p.name}" (ID: ${p.id})
-    - Category: ${p.category || 'Lodge'} | Location: ${p.location || 'Malawi'} | Listing Status: ${p.status || 'active'} | Availability: LIVE & AVAILABLE ON SITE${p.featured ? ' [🌟 Featured on Homepage]' : ''}
+    - Category: ${p.category || 'Lodge'} | Location: ${p.location || 'Malawi'} | Listing Status: ${p.status || 'active'} | Verification: ${p.verificationStatus || 'unverified'} | Availability: LIVE & AVAILABLE ON SITE${p.featured ? ' [🌟 Featured on Homepage]' : ''}
 ${ownerManagerSummary}
 ${contactSummary}
 ${crewSummary ? `${crewSummary}\n` : ''}${liveStatusSummary}
-${policiesSummary}
+${infraSummary ? `${infraSummary}\n` : ''}${promoSummary ? `${promoSummary}\n` : ''}${policiesSummary}
 ${amenitiesSummary}
-${diningSummary}
+${descSummary ? `${descSummary}\n` : ''}${locationNotesSummary ? `${locationNotesSummary}\n` : ''}${diningSummary}
 ${confSummary}
 ${dailyBoardSummary ? `${dailyBoardSummary}\n` : ''}    - Configured Rooms (${(p.rooms || []).length}):
 ${roomsList || '      (No rooms configured yet)'}`;
@@ -1292,8 +1377,10 @@ ${roomsList || '      (No rooms configured yet)'}`;
     }
   }
 
-  const formatBookingLine = (b: any) => 
-    `  - Ref: ${b.reference || b.id} | Guest: ${b.guestName} (${b.guestEmail || 'no email'}, ${b.guestPhone || 'no phone'}) | Property: ${b.hotelName} | Room: ${b.roomName || 'Room'} | Stay: ${b.checkIn} to ${b.checkOut} (${b.nights || 1} nights, ${b.guests || 1} guests) | Status: ${b.status} | Total: ${b.currency || 'USD'} ${b.total || 0}`;
+  const formatBookingLine = (b: any) => {
+    const reqStr = b.specialRequests ? ` | Special Requests: "${b.specialRequests}"` : '';
+    return `  - Ref: ${b.reference || b.id} | Guest: ${b.guestName} (${b.guestEmail || 'no email'}, ${b.guestPhone || 'no phone'}) | Property: ${b.hotelName} | Room: ${b.roomName || 'Room'} | Stay: ${b.checkIn} to ${b.checkOut} (${b.nights || 1} nights, ${b.guests || 1} guests) | Status: ${b.status} | Total: ${b.currency || 'USD'} ${b.total || 0}${reqStr}`;
+  };
 
   const bookingsSummary = `
 Today's Date: ${today} ${time ? `(${time})` : ''}

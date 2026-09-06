@@ -38,9 +38,12 @@ export interface OperationsChatPayload {
     properties: Array<{
       id: string;
       name: string;
+      description?: string;
       location?: string;
+      locationNotes?: string;
       category?: string;
       status?: string;
+      verificationStatus?: string;
       featured?: boolean;
       isOnline?: boolean;
       outOfOfficeMessage?: string;
@@ -55,6 +58,22 @@ export interface OperationsChatPayload {
       contactWhatsapp?: string;
       contactEmail?: string;
       contactPhone?: string;
+      infrastructure?: {
+        powerSource?: string;
+        powerNotes?: string;
+        waterSource?: string;
+        roadAccess?: string;
+        internetSource?: string;
+        workspaceSetup?: string;
+        wifiSSID?: string;
+        wifiPassword?: string;
+        shareWifiVoucher?: boolean;
+        offlineTrustBadge?: boolean;
+      };
+      promotions?: Array<{
+        name: string;
+        discountPercentage: number;
+      }>;
       crew?: Array<{ name: string; role: string; phone?: string; whatsapp?: string }>;
       checkInTime?: string;
       checkOutTime?: string;
@@ -64,8 +83,19 @@ export interface OperationsChatPayload {
       restaurant?: {
         enabled: boolean;
         name?: string;
+        description?: string;
         sectionsCount?: number;
         sampleItems?: string[];
+        menuSections?: Array<{
+          name: string;
+          items: Array<{
+            name: string;
+            description?: string;
+            priceUSD?: number;
+            priceMWK?: number;
+            tags?: string[];
+          }>;
+        }>;
       };
       conferences?: Array<{
         id: string;
@@ -82,6 +112,8 @@ export interface OperationsChatPayload {
       rooms?: Array<{
         id: string;
         name: string;
+        description?: string;
+        amenities?: string[];
         priceUSD?: number;
         priceMWK?: number;
         maxGuests?: number;
@@ -89,6 +121,12 @@ export interface OperationsChatPayload {
         extraGuestFeeUSD?: number;
         extraGuestFeeMWK?: number;
         blockedDates?: string[];
+        packages?: Array<{
+          name: string;
+          type?: string;
+          priceUSD?: number;
+          priceMWK?: number;
+        }>;
       }>;
     }>;
     bookings: Array<{
@@ -108,6 +146,8 @@ export interface OperationsChatPayload {
       status: string;
       currency?: string;
       total?: number;
+      specialRequests?: string;
+      createdAt?: number;
     }>;
     learnedRules?: string[];
     autonomousPatches?: Array<{
