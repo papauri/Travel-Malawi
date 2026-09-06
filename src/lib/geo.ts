@@ -590,3 +590,66 @@ export async function searchNominatim(queryStr: string, limit = 5): Promise<Geoc
     return [];
   }
 }
+
+export interface MalawiPlaceSuggestion {
+  id: string;
+  name: string;
+  location: string;
+  coordinates: { lat: number; lng: number };
+  category?: string;
+  type?: string;
+  district?: string;
+}
+
+/**
+ * Searches places strictly within Malawi using OpenStreetMap / Nominatim.
+ * Scoped to country code 'mw' and Malawi bounding box.
+ */
+export async function searchMalawiPlaces(queryStr: string, limit = 6): Promise<MalawiPlaceSuggestion[]> {
+  const text = queryStr.trim();
+  if (text.length < 2) return [];
+
+  try {
+    // Malawi bounding box: West 32.67, North -9.36, East 35.92, South -17.13
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(text)}&countrycodes=mw&viewbox=32.67,-9.36,35.92,-17.13&bounded=1&limit=${limit}&addressdetails=1`;
+    const response = await fetch(url, {
+      headers: {
+        'Accept-Language': 'en',
+      },
+    });
+    if (!response.ok) return [];
+    const data = await response.json();
+    if (!Array.isArray(data)) return [];
+
+    return data.map((item: any) => {
+      const lat = parseFloat(item.lat);
+      const lng = parseFloat(item.lon);
+      const addr = item.address || {};
+      
+      const cleanName = item.name || item.display_name.split(',')[0].trim();
+      
+      // Build a clean, concise Malawian location (e.g. "Cape Maclear, Mangochi" or "Lilongwe")
+      const locality = addr.suburb || addr.village || addr.town || addr.city || addr.municipality || '';
+      const district = addr.county || addr.state_district || addr.state || '';
+      
+      let locSummary = [locality, district].filter(Boolean).join(', ');
+      if (!locSummary) {
+        const parts = item.display_name.split(',').map((s: string) => s.trim());
+        locSummary = parts.slice(1, 3).join(', ') || 'Malawi';
+      }
+
+      return {
+        id: `mw-place-${item.place_id || item.osm_id || Math.random()}`,
+        name: cleanName,
+        location: locSummary,
+        coordinates: { lat, lng },
+        category: item.type || item.class || 'place',
+        type: item.type,
+        district,
+      };
+    });
+  } catch (err) {
+    console.error('Malawi places search failed:', err);
+    return [];
+  }
+}

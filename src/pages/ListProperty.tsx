@@ -22,7 +22,7 @@ import {
   ArrowLeft, ArrowRight, BadgeCheck, Building2, Check, ChevronRight, Clock,
   Images, Loader2, LocateFixed, Mail, MapPin, MessageCircle, Phone, Plus, Send,
   Award, FileText, CheckCircle2, Wallet, X, DollarSign, Coins, Trash2, Sliders, ChevronDown, ChevronUp,
-  RefreshCw, TrendingUp, HelpCircle, Sparkles, AlertTriangle,
+  RefreshCw, TrendingUp, HelpCircle, AlertTriangle,
   User, UserCheck, Shield, Building,
 } from 'lucide-react';
 
@@ -45,7 +45,7 @@ import {
   emptyDraft, errorsForStep, hasDuplicateListing, isStepComplete, validateDraft,
   findExistingProperty, ExistingPropertyMatch,
 } from '../lib/listing';
-import { searchNominatim } from '../lib/geo';
+import { searchNominatim, searchMalawiPlaces, MalawiPlaceSuggestion } from '../lib/geo';
 import { RoomInput } from '../lib/validateRoom';
 import { CURRENCIES, formatMoney } from '../lib/currency';
 import { CurrencyCode } from '../types';
@@ -125,6 +125,12 @@ export default function ListProperty() {
   // Real-time Database Duplicate & AI/Maps Discovery State
   const [existingMatch, setExistingMatch] = useState<ExistingPropertyMatch | null>(null);
   const [checkingExisting, setCheckingExisting] = useState(false);
+  // Google Maps (Malawi) Autocomplete State
+  const [placeSuggestions, setPlaceSuggestions] = useState<MalawiPlaceSuggestion[]>([]);
+  const [searchingPlaces, setSearchingPlaces] = useState(false);
+  const [showPlaceDropdown, setShowPlaceDropdown] = useState(false);
+  const placeDropdownRef = useRef<HTMLDivElement>(null);
+
   const [aiLookupLoading, setAiLookupLoading] = useState(false);
   const [aiPropertySuggestion, setAiPropertySuggestion] = useState<{
     matched: boolean;
@@ -292,6 +298,50 @@ export default function ListProperty() {
     return () => clearTimeout(timer);
   }, [draft.name, draft.id]);
 
+  // Close place suggestions dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (placeDropdownRef.current && !placeDropdownRef.current.contains(event.target as Node)) {
+        setShowPlaceDropdown(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Live autocomplete from Google Maps strictly within Malawi as user types
+  useEffect(() => {
+    const trimmed = draft.name.trim();
+    if (trimmed.length < 2) {
+      setPlaceSuggestions([]);
+      setShowPlaceDropdown(false);
+      return;
+    }
+
+    setSearchingPlaces(true);
+    const timer = setTimeout(async () => {
+      const results = await searchMalawiPlaces(trimmed, 6);
+      setPlaceSuggestions(results);
+      setShowPlaceDropdown(results.length > 0);
+      setSearchingPlaces(false);
+    }, 280);
+
+    return () => clearTimeout(timer);
+  }, [draft.name]);
+
+  // Handle selecting a place suggestion from Google Maps dropdown
+  const handleSelectMalawiPlace = (item: MalawiPlaceSuggestion) => {
+    setShowPlaceDropdown(false);
+    setDraft(prev => ({
+      ...prev,
+      name: item.name,
+      location: item.location || prev.location,
+      coordinates: item.coordinates,
+      locationNotes: prev.locationNotes || (item.district ? `Located in ${item.district}, Malawi` : ''),
+    }));
+    toast.success(`Matched "${item.name}" from Google Maps (Malawi)!`);
+  };
+
   // Look up property on Google Maps & AI Knowledge Base
   const handleLookupPropertyAI = async () => {
     const name = draft.name.trim();
@@ -374,7 +424,7 @@ export default function ListProperty() {
         });
         toast.success(`Found map coordinates for "${name}"!`);
       } else {
-        toast('No verified listing found on Maps or AI. You can enter details manually.', { icon: 'ℹ️' });
+        toast('No verified listing found on Maps. You can enter details manually.', { icon: 'ℹ️' });
       }
     } catch (err: any) {
       console.error('Property lookup error:', err);
@@ -952,26 +1002,10 @@ export default function ListProperty() {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className={labelClass} htmlFor="listing-name">Property name</label>
-                  {aiStatus.enabled && aiStatus.available && (
-                    <button
-                      type="button"
-                      onClick={handleLookupPropertyAI}
-                      disabled={aiLookupLoading || !draft.name.trim()}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-2xs"
-                    >
-                      {aiLookupLoading ? (
-                        <>
-                          <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-600" />
-                          <span>Searching Maps & AI...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>Look up on Google Maps & AI</span>
-                        </>
-                      )}
-                    </button>
-                  )}
+                  <span className="text-[11px] font-medium text-stone-500 flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-emerald-600" />
+                    Type to auto-suggest from Google Maps (Malawi)
+                  </span>
                 </div>
 
                 <div className="relative">
@@ -983,10 +1017,62 @@ export default function ListProperty() {
                     onChange={e => set('name', e.target.value)}
                     placeholder="e.g. Kaya Mawa, Sunbird Livingstonia, or Central Guest House"
                     className={fieldClass}
+                    autoComplete="off"
                   />
-                  {checkingExisting && (
-                    <div className="absolute right-3.5 top-3.5">
+                  <div className="absolute right-3.5 top-3.5 flex items-center gap-2">
+                    {(checkingExisting || searchingPlaces) ? (
                       <Loader2 className="w-4 h-4 text-stone-400 animate-spin" />
+                    ) : (
+                      <MapPin className="w-4 h-4 text-stone-300" />
+                    )}
+                  </div>
+
+                  {/* Google Maps (Malawi) Live Autocomplete Dropdown */}
+                  {showPlaceDropdown && placeSuggestions.length > 0 && (
+                    <div
+                      ref={placeDropdownRef}
+                      className="absolute left-0 right-0 top-full mt-1.5 z-40 bg-white rounded-2xl shadow-xl border border-stone-200 overflow-hidden animate-in fade-in slide-in-from-top-1"
+                    >
+                      <div className="px-4 py-2 bg-stone-50 border-b border-stone-100 flex items-center justify-between text-[11px] font-semibold text-stone-500 uppercase tracking-wider">
+                        <span className="flex items-center gap-1.5 text-stone-600">
+                          <MapPin className="w-3.5 h-3.5 text-emerald-600" />
+                          Google Maps Suggestions (Malawi)
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setShowPlaceDropdown(false)}
+                          className="text-stone-400 hover:text-stone-600 p-0.5 rounded-full hover:bg-stone-200/60"
+                          title="Close suggestions"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                      <ul className="max-h-60 overflow-y-auto divide-y divide-stone-100">
+                        {placeSuggestions.map(item => (
+                          <li key={item.id}>
+                            <button
+                              type="button"
+                              onClick={() => handleSelectMalawiPlace(item)}
+                              className="w-full text-left px-4 py-2.5 hover:bg-emerald-50/60 transition flex items-start gap-3 group cursor-pointer"
+                            >
+                              <div className="p-2 rounded-xl bg-stone-100 text-stone-600 group-hover:bg-emerald-100 group-hover:text-emerald-800 transition shrink-0 mt-0.5">
+                                <Building2 className="w-4 h-4" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold text-stone-900 group-hover:text-emerald-950 truncate">
+                                  {item.name}
+                                </p>
+                                <p className="text-xs text-stone-500 group-hover:text-stone-700 truncate mt-0.5">
+                                  {item.location}
+                                </p>
+                              </div>
+                              <span className="text-[11px] text-emerald-700 font-semibold bg-emerald-50 group-hover:bg-emerald-100 px-2.5 py-1 rounded-full shrink-0 self-center">
+                                Select
+                              </span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
                   )}
                 </div>
@@ -1007,12 +1093,12 @@ export default function ListProperty() {
                   </div>
                 )}
 
-                {/* AI & Google Maps Discovered Property Card */}
+                {/* Google Maps Discovered Property Card */}
                 {aiPropertySuggestion && (
                   <div className="mt-4 p-5 rounded-2xl bg-gradient-to-br from-emerald-50/90 via-stone-50 to-emerald-50/40 border border-emerald-200/80 text-stone-800 shadow-sm animate-in fade-in space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-100/80 text-emerald-900 font-bold text-[11px] uppercase tracking-wider">
-                        <Sparkles className="w-3 h-3 text-emerald-600" />
+                        <MapPin className="w-3.5 h-3.5 text-emerald-600" />
                         <span>Google Maps &amp; Tourism Registry Match</span>
                       </div>
                       <button
@@ -1073,8 +1159,8 @@ export default function ListProperty() {
                         onClick={handleApplyAISuggestion}
                         className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs shadow-sm transition active:scale-95 cursor-pointer"
                       >
-                        <Sparkles className="w-3.5 h-3.5" />
-                        <span>Auto-Fill Property Details (1-Click)</span>
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>Apply Location &amp; Details</span>
                       </button>
                       <button
                         type="button"
@@ -2253,7 +2339,7 @@ export default function ListProperty() {
                   <div>
                     <h3 className="font-semibold text-stone-900">Designated Property Manager & Host in Charge</h3>
                     <p className="text-xs text-stone-500 mt-0.5">
-                      The primary person managing on-site hospitality, guest check-ins, and operations. Our AI Concierge and travelers will know this person as the authorized manager.
+                      The primary person managing on-site hospitality, guest check-ins, and operations. Our support team and travelers will know this person as the authorized manager.
                     </p>
                   </div>
                 </div>

@@ -17,6 +17,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ChevronRight, Home } from 'lucide-react';
+import MaskedPlaceName from './MaskedPlaceName';
 
 interface Crumb {
   label: string;
@@ -109,7 +110,11 @@ export default function Breadcrumbs() {
                   aria-current={last ? 'page' : undefined}
                   className="max-w-[16rem] truncate px-1.5 py-1 font-semibold text-stone-900"
                 >
-                  {crumb.label}
+                  {last && (pathname.startsWith('/hotel/') || pathname.includes('/hotel/')) ? (
+                    <MaskedPlaceName name={crumb.label} fallback="[Your Lodge Name]" />
+                  ) : (
+                    crumb.label
+                  )}
                 </span>
               )}
             </li>

@@ -11,6 +11,7 @@ import { CurrencyCode } from '../types';
 import { useWishlist } from '../hooks/useWishlist';
 import { useCompare } from '../contexts/CompareContext';
 import PriceDisplay from './PriceDisplay';
+import MaskedPlaceName from './MaskedPlaceName';
 
 interface HotelCardProps {
   hotel: Hotel;
@@ -206,7 +207,10 @@ export default function HotelCard({
           </div>
         </div>
         <h3 className="font-serif text-xl sm:text-2xl text-stone-900 truncate group-hover:text-emerald-700 transition-colors duration-300 pr-1">
-          {hotel.name}
+          <MaskedPlaceName 
+            name={hotel.name} 
+            fallback={index === 0 ? '[Your Lodge Name]' : '[Partner Stay]'} 
+          />
         </h3>
         {(() => {
           const promo = getActivePromotion(hotel, searchParams?.checkIn || new Date().toISOString().split('T')[0]);

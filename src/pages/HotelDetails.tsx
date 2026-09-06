@@ -22,6 +22,7 @@ import DirectionsPanel from '../components/DirectionsPanel';
 import { ReviewModal } from '../components/ReviewModal';
 import InteractiveMap from '../components/InteractiveMap';
 import { useBreadcrumbLabel } from '../components/Breadcrumbs';
+import MaskedPlaceName from '../components/MaskedPlaceName';
 import { getHotelImage, getHotelImages, getRoomImage } from '../lib/images';
 import { formatDateStr, nightsBetween, todayStr } from '../lib/dates';
 import { formatTime, hasPublishedHours, isOpenAt, summariseHours } from '../lib/hours';
@@ -578,7 +579,9 @@ export default function HotelDetails() {
         }`}
       >
         <div className="mx-auto max-w-7xl px-4 lg:px-8 h-16 flex items-center justify-between">
-          <h2 className="font-serif text-lg md:text-xl font-bold text-stone-900 tracking-tight truncate pr-4">{hotel.name}</h2>
+          <h2 className="font-serif text-lg md:text-xl font-bold text-stone-900 tracking-tight truncate pr-4">
+            <MaskedPlaceName name={hotel.name} fallback="[Your Lodge Name]" />
+          </h2>
           <div className="flex items-center gap-2 sm:gap-3">
             <button
               onClick={handleShare}
@@ -657,7 +660,7 @@ export default function HotelDetails() {
                   className={`font-serif font-medium tracking-[-0.02em] text-white leading-[0.95] max-w-3xl
                     ${hasGallery ? 'text-[clamp(2rem,4.5vw,3.75rem)]' : 'text-[clamp(2.25rem,5.5vw,5rem)]'}`}
                 >
-                  {hotel.name}
+                  <MaskedPlaceName name={hotel.name} fallback="[Your Lodge Name]" />
                 </motion.h1>
               </div>
               

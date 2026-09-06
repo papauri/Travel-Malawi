@@ -19,7 +19,9 @@ import { PROPERTY_CATEGORIES, COMMON_AMENITIES } from '../lib/listing';
 import { distanceKm, isValidLatLng, resolveHotelCoordinates, LatLng, estimateTravelTime, getDirectionsUrl } from '../lib/geo';
 import { getCachedHotels, saveCachedHotels, getCachedRooms, saveCachedRooms } from '../lib/mapCache';
 import PriceDisplay from '../components/PriceDisplay';
+import MaskedPlaceName from '../components/MaskedPlaceName';
 import { openAccessPermissionsModal } from '../components/AccessRequestModal';
+import { useAuth } from '../contexts/AuthContext';
 
 type SortKey = 'recommended' | 'distance_asc' | 'price_asc' | 'price_desc' | 'rating' | 'name_asc';
 
@@ -90,6 +92,13 @@ export default function Home() {
   const [currency, setCurrency] = useState<CurrencyCode>(readStoredCurrency);
   const [viewMode, setViewMode] = useState<'grid' | 'map'>('grid');
   const [selectedMapLodgeId, setSelectedMapLodgeId] = useState<string | null>(null);
+  const { user } = useAuth();
+
+  // User has already listed a property in Travel Malawi
+  const hasUserListed = useMemo(() => {
+    if (!user?.uid) return false;
+    return hotels.some(h => h.managerId === user.uid);
+  }, [user?.uid, hotels]);
 
   useEffect(() => {
     return onCurrencyChange(setCurrency);
@@ -596,6 +605,7 @@ export default function Home() {
   }, [searchLocation, hotels]);
 
   const hasSearch = !!(appliedSearch.location || appliedSearch.coords || appliedSearch.checkIn || appliedSearch.guests);
+  const shouldShowAcquisitionBanner = !hasSearch && (!user || !hasUserListed);
 
   /**
    * The one-tap destinations under the search bar. Taken from the listings
@@ -1334,7 +1344,7 @@ export default function Home() {
                         {entry.hotel.location}
                       </p>
                       <h3 className="font-serif text-xl font-bold text-stone-900 truncate group-hover:text-emerald-700 transition-colors">
-                        {entry.hotel.name}
+                        <MaskedPlaceName name={entry.hotel.name} fallback="[Featured Stay]" />
                       </h3>
                       <div className="flex items-center justify-between mt-0.5">
                         {entry.priceFrom ? (
@@ -1368,35 +1378,34 @@ export default function Home() {
         )}
 
       {/* Lodge Acquisition CTA Banner */}
-      {!hasSearch && (
+      {shouldShowAcquisitionBanner && (
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-2 w-full">
-          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-stone-900 via-stone-850 to-emerald-950 text-white p-6 sm:p-8 md:p-10 shadow-xl border border-stone-800">
-            {/* Ambient Background Glows */}
-            <div className="absolute -right-16 -top-16 w-64 h-64 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute -left-16 -bottom-16 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="relative overflow-hidden rounded-3xl bg-stone-900 text-white p-6 sm:p-8 md:p-10 shadow-xl border border-stone-800">
+            {/* Subtle Ambient Background Accent */}
+            <div className="absolute -right-16 -top-16 w-64 h-64 bg-emerald-950/40 rounded-full blur-3xl pointer-events-none" />
 
             <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6 md:gap-8">
               <div className="max-w-2xl">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs font-bold uppercase tracking-wider mb-3">
-                  <Building2 className="w-3.5 h-3.5" />
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-stone-800/90 text-stone-300 border border-stone-700 text-xs font-semibold uppercase tracking-wider mb-3">
+                  <Building2 className="w-3.5 h-3.5 text-emerald-400" />
                   <span>For Lodge, Camp &amp; Resort Owners</span>
                 </div>
                 <h3 className="font-serif text-2xl sm:text-3xl md:text-4xl text-white tracking-tight leading-snug">
-                  Get direct bookings with <span className="text-emerald-400 underline decoration-emerald-500/50 underline-offset-4">0% commission</span>.
+                  Get direct bookings with <span className="text-emerald-300 underline decoration-emerald-500/30 underline-offset-4">0% commission</span>.
                 </h3>
                 <p className="text-stone-300 text-sm sm:text-base mt-2.5 leading-relaxed">
                   Join Malawi&apos;s dedicated direct-booking hospitality network. Set simultaneous rates in MWK &amp; USD, receive instant inquiries directly on WhatsApp, and keep 100% of your earnings.
                 </p>
 
                 {/* Value chips */}
-                <div className="flex flex-wrap gap-2 sm:gap-3 mt-4 text-xs font-medium text-stone-200">
-                  <span className="inline-flex items-center gap-1.5 bg-white/10 px-3 py-1 rounded-full border border-white/10">
+                <div className="flex flex-wrap gap-2 sm:gap-3 mt-4 text-xs font-medium text-stone-300">
+                  <span className="inline-flex items-center gap-1.5 bg-stone-800/60 px-3 py-1 rounded-full border border-stone-700/80">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" /> Zero listing or commission fees
                   </span>
-                  <span className="inline-flex items-center gap-1.5 bg-white/10 px-3 py-1 rounded-full border border-white/10">
+                  <span className="inline-flex items-center gap-1.5 bg-stone-800/60 px-3 py-1 rounded-full border border-stone-700/80">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" /> Direct WhatsApp alerts
                   </span>
-                  <span className="inline-flex items-center gap-1.5 bg-white/10 px-3 py-1 rounded-full border border-white/10">
+                  <span className="inline-flex items-center gap-1.5 bg-stone-800/60 px-3 py-1 rounded-full border border-stone-700/80">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" /> Dual-currency pricing (MWK &amp; USD)
                   </span>
                 </div>
@@ -1405,14 +1414,14 @@ export default function Home() {
               <div className="flex flex-col sm:flex-row lg:flex-col gap-3 shrink-0 lg:min-w-[220px]">
                 <Link
                   to="/list-your-property"
-                  className="inline-flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-stone-950 font-bold px-6 py-3.5 rounded-full text-sm transition-all shadow-lg hover:shadow-emerald-500/25 active:scale-95 text-center"
+                  className="inline-flex items-center justify-center gap-2 bg-emerald-700 hover:bg-emerald-600 text-white font-semibold px-6 py-3.5 rounded-full text-sm transition-all shadow-md active:scale-95 text-center"
                 >
                   <span>List Your Property Free</span>
                   <ArrowRight className="w-4 h-4" />
                 </Link>
                 <Link
                   to="/dashboard"
-                  className="inline-flex items-center justify-center gap-2 bg-white/10 hover:bg-white/15 text-white font-medium px-5 py-2.5 rounded-full text-xs transition border border-white/15 text-center"
+                  className="inline-flex items-center justify-center gap-2 bg-stone-800/80 hover:bg-stone-800 text-stone-300 hover:text-white font-medium px-5 py-2.5 rounded-full text-xs transition border border-stone-700 text-center"
                 >
                   Already listed? Open Dashboard
                 </Link>
@@ -1860,7 +1869,7 @@ export default function Home() {
                                 <div className="space-y-1">
                                   <div className="flex items-start justify-between gap-1.5">
                                     <h4 className="font-serif font-bold text-stone-900 truncate text-sm sm:text-base group-hover:text-emerald-800 transition-colors leading-tight">
-                                      {hotel.name}
+                                      <MaskedPlaceName name={hotel.name} fallback="[Featured Stay]" />
                                     </h4>
                                     {entry.rating && (
                                       <div className="flex items-center gap-1 text-xs font-bold text-stone-800 shrink-0 bg-stone-50 px-1.5 py-0.5 rounded-md border border-stone-100">

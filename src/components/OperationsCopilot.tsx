@@ -5,7 +5,7 @@ import {
   ChevronDown, ExternalLink, Calendar, Building, DollarSign, 
   TrendingUp, Clock, AlertCircle, Loader2, CheckCircle2, ShieldAlert,
   ArrowRight, Settings2, Sliders, Info, SlidersHorizontal, ConciergeBell,
-  Utensils, Coffee, Sparkles, Layers, ShieldCheck, Minus, Maximize2, Minimize2
+  Utensils, Coffee, CheckCheck, Layers, ShieldCheck, Minus, Maximize2, Minimize2
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import toast from 'react-hot-toast';
@@ -1306,7 +1306,7 @@ export default function OperationsCopilot() {
                                     onClick={() => handleSelectAllHotelsForProposal(msg.id)}
                                     className="text-[11px] text-amber-700 hover:text-amber-800 font-semibold underline flex items-center gap-1 pt-0.5 cursor-pointer"
                                   >
-                                    <Sparkles className="w-3 h-3" /> Apply to all {properties.length} properties instead
+                                    <CheckCheck className="w-3 h-3" /> Apply to all {properties.length} properties instead
                                   </button>
                                 )}
                               </div>

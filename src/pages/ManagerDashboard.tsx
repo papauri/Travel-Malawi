@@ -11,6 +11,7 @@ import toast from 'react-hot-toast';
 import SmartImage from '../components/SmartImage';
 import { getHotelImage } from '../lib/images';
 import { isHotelManager, isAdmin } from '../lib/roles';
+import MaskedPlaceName from '../components/MaskedPlaceName';
 
 import Pagination from '../components/Pagination';
 
@@ -229,7 +230,9 @@ export default function ManagerDashboard() {
                 </button>
               </div>
               <div className="p-4 sm:p-6 md:p-8 flex-1 flex flex-col pointer-events-none min-w-0">
-                <h3 className="text-xl sm:text-2xl font-serif font-bold text-stone-900 mb-1 sm:mb-2 truncate">{hotel.name}</h3>
+                <h3 className="text-xl sm:text-2xl font-serif font-bold text-stone-900 mb-1 sm:mb-2 truncate">
+                  <MaskedPlaceName name={hotel.name} fallback="[Your Listed Lodge]" />
+                </h3>
                 <p className="text-stone-500 text-sm sm:text-base mb-4 sm:mb-5 truncate">{hotel.location}</p>
 
                 <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
