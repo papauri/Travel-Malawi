@@ -1,9 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  MapPin, Mic, Video, X, Check, Locate, AlertCircle, 
-  Search, RefreshCw, Navigation, ShieldAlert, CheckCircle2
-} from 'lucide-react';
+import { MapPin, Mic, Video, X, Check, Locate, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { MALAWI_HUBS, MalawiHub, searchMalawiPlaces, MalawiPlaceSuggestion, LatLng } from '../lib/geo';
@@ -36,27 +33,25 @@ export function openLocationSettingsModal() {
 export default function AccessRequestModal() {
   const [isOpen, setIsOpen] = useState(false);
   useBodyScrollLock(isOpen);
-  
+
   const [activeTab, setActiveTab] = useState<'location' | 'permissions'>('location');
   const [locationEnabled, setLocationEnabled] = useState(true);
   const [microphoneEnabled, setMicrophoneEnabled] = useState(true);
   const [cameraEnabled, setCameraEnabled] = useState(true);
 
-  const [geoState, setGeoState] = useState<'granted' | 'denied' | 'prompt' | 'unsupported' | 'unknown'>('unknown');
-  const [isRetryingGPS, setIsRetryingGPS] = useState(false);
-  const [gpsErrorMsg, setGpsErrorMsg] = useState<string | null>(null);
+  const [isDetectingGPS, setIsDetectingGPS] = useState(false);
 
   // Manual search state
   const [searchQuery, setSearchQuery] = useState('');
-  const [searching, setSearching] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
   const [placeSuggestions, setPlaceSuggestions] = useState<MalawiPlaceSuggestion[]>([]);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Active selected location info
+  // Active selected location label
   const [activeLocationLabel, setActiveLocationLabel] = useState<string | null>(null);
 
   useEffect(() => {
-    // Read saved preferences
+    // Read saved permissions preferences
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
@@ -82,8 +77,6 @@ export default function AccessRequestModal() {
       // ignore
     }
 
-    checkPermissionStatus();
-
     const handleOpen = (e: Event) => {
       const customEvent = e as CustomEvent<{ tab?: 'location' | 'permissions' }>;
       if (customEvent.detail?.tab) {
@@ -92,39 +85,29 @@ export default function AccessRequestModal() {
         setActiveTab('location');
       }
       setIsOpen(true);
-      checkPermissionStatus();
+    };
+
+    const handleLocationUpdated = (e: Event) => {
+      const customEvent = e as CustomEvent<UserLocationEventDetail>;
+      if (customEvent.detail?.label) {
+        setActiveLocationLabel(customEvent.detail.label);
+      }
+    };
+
+    const handleLocationCleared = () => {
+      setActiveLocationLabel(null);
     };
 
     window.addEventListener('open-access-permissions-modal', handleOpen);
-    return () => window.removeEventListener('open-access-permissions-modal', handleOpen);
+    window.addEventListener('user-location-changed', handleLocationUpdated as EventListener);
+    window.addEventListener('user-location-cleared', handleLocationCleared);
+
+    return () => {
+      window.removeEventListener('open-access-permissions-modal', handleOpen);
+      window.removeEventListener('user-location-changed', handleLocationUpdated as EventListener);
+      window.removeEventListener('user-location-cleared', handleLocationCleared);
+    };
   }, []);
-
-  const checkPermissionStatus = () => {
-    if (typeof window === 'undefined') return;
-
-    if (!navigator.geolocation) {
-      setGeoState('unsupported');
-      return;
-    }
-
-    if (navigator.permissions && navigator.permissions.query) {
-      navigator.permissions.query({ name: 'geolocation' as PermissionName })
-        .then(res => {
-          setGeoState(res.state as any);
-          res.onchange = () => {
-            setGeoState(res.state as any);
-            if (res.state === 'granted') {
-              setGpsErrorMsg(null);
-            }
-          };
-        })
-        .catch(() => {
-          setGeoState('prompt');
-        });
-    } else {
-      setGeoState('prompt');
-    }
-  };
 
   // Debounced search for Malawi places
   const handleSearchChange = (text: string) => {
@@ -135,11 +118,11 @@ export default function AccessRequestModal() {
 
     if (text.trim().length < 2) {
       setPlaceSuggestions([]);
-      setSearching(false);
+      setIsSearching(false);
       return;
     }
 
-    setSearching(true);
+    setIsSearching(true);
     searchTimeoutRef.current = setTimeout(async () => {
       try {
         const results = await searchMalawiPlaces(text.trim(), 5);
@@ -147,7 +130,7 @@ export default function AccessRequestModal() {
       } catch {
         setPlaceSuggestions([]);
       } finally {
-        setSearching(false);
+        setIsSearching(false);
       }
     }, 280);
   };
@@ -163,48 +146,42 @@ export default function AccessRequestModal() {
       // ignore
     }
 
-    // Broadcast update to Home page and map
     window.dispatchEvent(
       new CustomEvent<UserLocationEventDetail>('user-location-changed', {
         detail: { coords, label, isManual }
       })
     );
 
-    toast.success(`Location set to ${label}! Travel times updated.`, { id: 'loc-toast' });
+    toast.success(`Location set to ${label}`, { id: 'loc-toast' });
     setIsOpen(false);
   };
 
-  const handleRetryGPS = () => {
-    if (!navigator.geolocation) {
+  const handleDetectGPS = () => {
+    if (!('geolocation' in navigator)) {
       toast.error('Geolocation is not supported by your browser.');
       return;
     }
 
-    setIsRetryingGPS(true);
-    setGpsErrorMsg(null);
+    setIsDetectingGPS(true);
 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        setIsRetryingGPS(false);
-        setGeoState('granted');
+        setIsDetectingGPS(false);
         const coords: LatLng = {
           lat: pos.coords.latitude,
-          lng: pos.coords.longitude
+          lng: pos.coords.longitude,
         };
-        handleSelectLocation(coords, 'Current GPS Location', false);
+        handleSelectLocation(coords, 'Live GPS', false);
       },
       (err) => {
-        setIsRetryingGPS(false);
+        setIsDetectingGPS(false);
         if (err.code === 1) {
-          setGeoState('denied');
-          setGpsErrorMsg('Permission was denied. Please allow location in your browser URL address bar.');
-        } else if (err.code === 3) {
-          setGpsErrorMsg('Location request timed out. Please try again or select a city below.');
+          toast.error('Location permission was denied in browser settings. You can pick a city below.');
         } else {
-          setGpsErrorMsg(err.message || 'Could not acquire GPS fix. Please choose a city below.');
+          toast.error('Could not get device GPS. You can pick a city below.');
         }
       },
-      { enableHighAccuracy: true, timeout: 9000, maximumAge: 30000 }
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 }
     );
   };
 
@@ -216,8 +193,7 @@ export default function AccessRequestModal() {
     }
     setActiveLocationLabel(null);
     window.dispatchEvent(new CustomEvent('user-location-cleared'));
-    toast.success('Location pin cleared.');
-    setIsOpen(false);
+    toast.success('Location reset');
   };
 
   const handleSavePreferences = () => {
@@ -231,11 +207,18 @@ export default function AccessRequestModal() {
     } catch {
       // ignore
     }
-    toast.success('Preferences saved.');
+
+    if (locationEnabled && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        () => {},
+        () => {},
+        { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 }
+      );
+    }
+
+    toast.success('Preferences saved');
     setIsOpen(false);
   };
-
-  const isSecure = typeof window !== 'undefined' ? (window.isSecureContext || window.location.hostname === 'localhost') : true;
 
   return (
     <AnimatePresence>
@@ -246,147 +229,104 @@ export default function AccessRequestModal() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setIsOpen(false)}
-            className="fixed inset-0 bg-stone-900/50 backdrop-blur-xs"
+            className="fixed inset-0 bg-stone-900/40 backdrop-blur-xs"
           />
 
           <motion.div
             initial={{ opacity: 0, scale: 0.96, y: 8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 8 }}
-            transition={{ duration: 0.16 }}
+            transition={{ duration: 0.15 }}
             id="access-request-dialog"
-            className="relative w-full max-w-lg bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-stone-200 overflow-hidden z-10 flex flex-col max-h-[90vh]"
+            className="relative w-full max-w-md bg-white rounded-2xl shadow-xl border border-stone-200 overflow-hidden z-10 flex flex-col max-h-[90vh]"
           >
             {/* Modal Header */}
-            <div className="px-5 pt-5 pb-3 border-b border-stone-100 flex items-center justify-between shrink-0 bg-stone-50/70">
+            <div className="px-5 pt-4 pb-3 border-b border-stone-100 flex items-center justify-between shrink-0 bg-white">
               <div>
-                <div className="flex items-center gap-2">
-                  <span className="p-1.5 rounded-xl bg-emerald-100 text-emerald-800">
-                    <MapPin className="w-4 h-4" />
-                  </span>
-                  <h3 className="text-base sm:text-lg font-serif font-bold text-stone-900">
-                    Location &amp; Travel Measurement
-                  </h3>
-                </div>
+                <h3 className="text-base font-semibold text-stone-900">
+                  Location &amp; Permissions
+                </h3>
                 <p className="text-xs text-stone-500 mt-0.5">
-                  Calculate real driving distance, estimated travel time, and route directions.
+                  Set your starting point or manage device permissions
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
-                className="p-1.5 rounded-xl text-stone-400 hover:text-stone-700 hover:bg-stone-200/60 transition cursor-pointer shrink-0"
+                className="p-1.5 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition cursor-pointer shrink-0"
+                aria-label="Close dialog"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Segmented Tabs */}
-            <div className="px-5 pt-3 pb-1 border-b border-stone-100 flex gap-2 shrink-0 bg-white">
-              <button
-                type="button"
-                onClick={() => setActiveTab('location')}
-                className={`pb-2 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5 cursor-pointer ${
-                  activeTab === 'location'
-                    ? 'border-emerald-700 text-emerald-800'
-                    : 'border-transparent text-stone-400 hover:text-stone-700'
-                }`}
-              >
-                <Locate className="w-3.5 h-3.5" />
-                <span>Choose Location / City</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveTab('permissions')}
-                className={`pb-2 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5 cursor-pointer ${
-                  activeTab === 'permissions'
-                    ? 'border-emerald-700 text-emerald-800'
-                    : 'border-transparent text-stone-400 hover:text-stone-700'
-                }`}
-              >
-                <ShieldAlert className="w-3.5 h-3.5" />
-                <span>Device Permissions</span>
-              </button>
+            {/* Segmented Pill Tabs */}
+            <div className="px-5 pt-3 shrink-0 bg-white">
+              <div className="flex bg-stone-100 p-1 rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('location')}
+                  className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                    activeTab === 'location'
+                      ? 'bg-white text-stone-900 shadow-xs'
+                      : 'text-stone-500 hover:text-stone-800'
+                  }`}
+                >
+                  Starting Location
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('permissions')}
+                  className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                    activeTab === 'permissions'
+                      ? 'bg-white text-stone-900 shadow-xs'
+                      : 'text-stone-500 hover:text-stone-800'
+                  }`}
+                >
+                  Device Permissions
+                </button>
+              </div>
             </div>
 
-            {/* Scrollable Content Body */}
-            <div className="p-5 overflow-y-auto space-y-5 text-xs text-stone-700 flex-1">
+            {/* Scrollable Content */}
+            <div className="p-5 overflow-y-auto space-y-4 text-xs text-stone-700 flex-1">
               {activeTab === 'location' ? (
                 <>
-                  {/* Status Banner: Browser Geolocation Diagnostic */}
-                  {!isSecure ? (
-                    <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 space-y-1">
-                      <div className="flex items-center gap-2 font-bold text-xs">
-                        <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-                        <span>Insecure Connection (HTTP)</span>
-                      </div>
-                      <p className="text-[11px] text-amber-800 leading-relaxed">
-                        Modern web browsers require HTTPS for live device GPS. You can pick any Malawian city or town below to immediately calculate distances!
-                      </p>
-                    </div>
-                  ) : geoState === 'denied' || gpsErrorMsg ? (
-                    <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 font-bold text-xs">
-                          <ShieldAlert className="w-4 h-4 text-rose-600 shrink-0" />
-                          <span>Browser Location Access is Blocked</span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={handleRetryGPS}
-                          disabled={isRetryingGPS}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-rose-100 text-rose-800 border border-rose-300 rounded-lg text-[11px] font-bold shadow-2xs transition"
-                        >
-                          <RefreshCw className={`w-3 h-3 ${isRetryingGPS ? 'animate-spin' : ''}`} />
-                          <span>{isRetryingGPS ? 'Checking...' : 'Retry GPS'}</span>
-                        </button>
-                      </div>
-                      <p className="text-[11px] text-rose-800 leading-relaxed">
-                        To enable live GPS: click the 🔒 lock or 🎛️ tune icon next to the URL bar &rarr; set <strong>Location</strong> to <strong>Allow</strong> &rarr; then tap Retry.
-                      </p>
-                      <p className="text-[11px] font-medium text-rose-900">
-                        <strong>No problem!</strong> You don&apos;t need GPS—simply choose your city hub below:
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="p-3 rounded-xl bg-emerald-50/80 border border-emerald-200 flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-emerald-900">
-                        <Navigation className="w-4 h-4 text-emerald-600 shrink-0" />
-                        <span className="text-xs font-semibold">
-                          {activeLocationLabel ? `Active Location: ${activeLocationLabel}` : 'Use live device GPS or select your starting hub'}
-                        </span>
+                  {/* One-Click Use Device GPS Button */}
+                  <button
+                    type="button"
+                    onClick={handleDetectGPS}
+                    disabled={isDetectingGPS}
+                    className="w-full py-2.5 px-4 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition cursor-pointer disabled:opacity-60 shadow-xs"
+                  >
+                    <Locate className={`w-4 h-4 shrink-0 ${isDetectingGPS ? 'animate-spin' : ''}`} />
+                    <span>{isDetectingGPS ? 'Detecting Device GPS...' : 'Use Device GPS'}</span>
+                  </button>
+
+                  {/* Active Location Indicator (if set) */}
+                  {activeLocationLabel && (
+                    <div className="p-2.5 rounded-xl bg-stone-50 border border-stone-200 flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2 text-stone-800 min-w-0">
+                        <MapPin className="w-3.5 h-3.5 text-stone-600 shrink-0" />
+                        <span className="truncate">Active: <strong>{activeLocationLabel}</strong></span>
                       </div>
                       <button
                         type="button"
-                        onClick={handleRetryGPS}
-                        disabled={isRetryingGPS}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg text-xs font-bold transition shadow-2xs cursor-pointer"
+                        onClick={handleClearLocation}
+                        className="text-[11px] font-medium text-stone-500 hover:text-stone-900 underline ml-2 shrink-0 cursor-pointer"
                       >
-                        <Locate className={`w-3.5 h-3.5 ${isRetryingGPS ? 'animate-spin' : ''}`} />
-                        <span>{isRetryingGPS ? 'Detecting...' : 'Use Device GPS'}</span>
+                        Clear
                       </button>
                     </div>
                   )}
 
-                  {/* 1-Click Popular Malawi Travel Hubs */}
-                  <div className="space-y-2.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold uppercase tracking-wider text-stone-500">
-                        Choose Starting Hub in Malawi
-                      </span>
-                      {activeLocationLabel && (
-                        <button
-                          type="button"
-                          onClick={handleClearLocation}
-                          className="text-[11px] font-medium text-stone-400 hover:text-stone-700 underline"
-                        >
-                          Clear custom pin
-                        </button>
-                      )}
-                    </div>
+                  {/* Malawi Travel Hubs Grid */}
+                  <div className="space-y-2">
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-stone-400 block">
+                      Malawi Travel Hubs
+                    </span>
 
-                    <div className="grid grid-cols-2 sm:grid-cols-2 gap-2 sm:gap-2.5">
+                    <div className="grid grid-cols-2 gap-2">
                       {MALAWI_HUBS.map((hub: MalawiHub) => {
                         const isSelected = activeLocationLabel === hub.name;
                         return (
@@ -394,40 +334,37 @@ export default function AccessRequestModal() {
                             key={hub.id}
                             type="button"
                             onClick={() => handleSelectLocation(hub.coords, hub.name, true)}
-                            className={`p-3 rounded-xl border text-left transition-all duration-150 cursor-pointer flex items-start gap-2.5 ${
+                            className={`p-2.5 rounded-xl border text-left transition cursor-pointer flex flex-col justify-center min-h-[56px] ${
                               isSelected
-                                ? 'bg-emerald-50/80 border-emerald-600 ring-2 ring-emerald-500/20 shadow-xs'
-                                : 'bg-stone-50/70 hover:bg-stone-100/90 border-stone-200/90 hover:border-stone-300'
+                                ? 'bg-stone-100 border-stone-900 ring-1 ring-stone-900 text-stone-900'
+                                : 'bg-white hover:bg-stone-50 border-stone-200 text-stone-800'
                             }`}
                           >
-                            <span className="text-xl shrink-0 mt-0.5">{hub.icon}</span>
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center justify-between gap-1">
-                                <span className="font-bold text-stone-900 text-xs sm:text-sm truncate">
-                                  {hub.name}
-                                </span>
-                                {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700 shrink-0" />}
-                              </div>
-                              <p className="text-[11px] text-stone-500 truncate mt-0.5">
-                                {hub.description}
-                              </p>
+                            <div className="flex items-center justify-between w-full">
+                              <span className="font-semibold text-stone-900 text-xs truncate">
+                                {hub.name}
+                              </span>
+                              {isSelected && <Check className="w-3.5 h-3.5 text-stone-900 shrink-0 ml-1" />}
                             </div>
+                            <span className="text-[11px] text-stone-500 truncate mt-0.5">
+                              {hub.region}
+                            </span>
                           </button>
                         );
                       })}
                     </div>
                   </div>
 
-                  {/* Custom Town Search in Malawi */}
+                  {/* Search Any Town / District in Malawi */}
                   <div className="space-y-2 pt-2 border-t border-stone-100">
-                    <span className="text-xs font-bold uppercase tracking-wider text-stone-500 block">
-                      Or Search Any Area in Malawi
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-stone-400 block">
+                      Search Any Place in Malawi
                     </span>
 
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-stone-400">
-                        {searching ? (
-                          <div className="w-3.5 h-3.5 border-2 border-stone-400 border-t-emerald-600 rounded-full animate-spin" />
+                        {isSearching ? (
+                          <div className="w-3.5 h-3.5 border-2 border-stone-300 border-t-stone-800 rounded-full animate-spin" />
                         ) : (
                           <Search className="w-3.5 h-3.5" />
                         )}
@@ -436,20 +373,20 @@ export default function AccessRequestModal() {
                         type="text"
                         value={searchQuery}
                         onChange={(e) => handleSearchChange(e.target.value)}
-                        placeholder="e.g. Kasungu, Mulanje, Dedza, Monkey Bay..."
-                        className="w-full pl-9 pr-3 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-xs text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-emerald-600 focus:bg-white transition"
+                        placeholder="e.g. Kasungu, Mulanje, Dedza, Karonga..."
+                        className="w-full pl-8 pr-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-stone-900 focus:bg-white transition"
                       />
                     </div>
 
-                    {/* Suggestions Dropdown */}
+                    {/* Search Suggestions */}
                     {placeSuggestions.length > 0 && (
-                      <div className="border border-stone-200 rounded-xl overflow-hidden bg-white shadow-md divide-y divide-stone-100">
+                      <div className="border border-stone-200 rounded-xl overflow-hidden bg-white shadow-xs divide-y divide-stone-100">
                         {placeSuggestions.map((place) => (
                           <button
                             key={place.id}
                             type="button"
                             onClick={() => handleSelectLocation(place.coordinates, place.name, true)}
-                            className="w-full text-left p-2.5 hover:bg-stone-50 transition flex items-center justify-between gap-2"
+                            className="w-full text-left p-2.5 hover:bg-stone-50 transition flex items-center justify-between gap-2 cursor-pointer"
                           >
                             <div className="min-w-0">
                               <span className="font-semibold text-stone-900 block truncate text-xs">
@@ -459,7 +396,7 @@ export default function AccessRequestModal() {
                                 {place.location}
                               </span>
                             </div>
-                            <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full shrink-0">
+                            <span className="text-[10px] font-semibold text-stone-800 bg-stone-100 px-2 py-0.5 rounded-md shrink-0">
                               Select
                             </span>
                           </button>
@@ -469,14 +406,14 @@ export default function AccessRequestModal() {
                   </div>
                 </>
               ) : (
-                /* Permissions Tab */
-                <div className="space-y-4">
+                /* Permissions Tab - Simple Default Permissions */
+                <div className="space-y-3">
                   {/* Location Toggle */}
-                  <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-stone-50 border border-stone-200/80">
+                  <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-stone-50 border border-stone-200">
                     <div className="flex items-start gap-2.5">
-                      <MapPin className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                      <MapPin className="w-4 h-4 text-stone-600 shrink-0 mt-0.5" />
                       <div>
-                        <div className="font-semibold text-stone-900">Geographic Location</div>
+                        <div className="font-medium text-stone-900">Geographic Location</div>
                         <p className="text-stone-500 text-[11px] mt-0.5">Calculate driving distance and estimated travel times.</p>
                       </div>
                     </div>
@@ -486,7 +423,7 @@ export default function AccessRequestModal() {
                       aria-checked={locationEnabled}
                       onClick={() => setLocationEnabled(!locationEnabled)}
                       className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ${
-                        locationEnabled ? 'bg-emerald-700' : 'bg-stone-300'
+                        locationEnabled ? 'bg-stone-900' : 'bg-stone-200'
                       }`}
                     >
                       <span
@@ -498,11 +435,11 @@ export default function AccessRequestModal() {
                   </div>
 
                   {/* Microphone Toggle */}
-                  <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-stone-50 border border-stone-200/80">
+                  <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-stone-50 border border-stone-200">
                     <div className="flex items-start gap-2.5">
                       <Mic className="w-4 h-4 text-stone-600 shrink-0 mt-0.5" />
                       <div>
-                        <div className="font-semibold text-stone-900">Microphone</div>
+                        <div className="font-medium text-stone-900">Microphone</div>
                         <p className="text-stone-500 text-[11px] mt-0.5">Voice messages and inquiries with property hosts.</p>
                       </div>
                     </div>
@@ -512,7 +449,7 @@ export default function AccessRequestModal() {
                       aria-checked={microphoneEnabled}
                       onClick={() => setMicrophoneEnabled(!microphoneEnabled)}
                       className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ${
-                        microphoneEnabled ? 'bg-stone-900' : 'bg-stone-300'
+                        microphoneEnabled ? 'bg-stone-900' : 'bg-stone-200'
                       }`}
                     >
                       <span
@@ -524,12 +461,12 @@ export default function AccessRequestModal() {
                   </div>
 
                   {/* Camera Toggle */}
-                  <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-stone-50 border border-stone-200/80">
+                  <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-stone-50 border border-stone-200">
                     <div className="flex items-start gap-2.5">
                       <Video className="w-4 h-4 text-stone-600 shrink-0 mt-0.5" />
                       <div>
-                        <div className="font-semibold text-stone-900">Camera</div>
-                        <p className="text-stone-500 text-[11px] mt-0.5">Optional video verification for lodge tours and room previews.</p>
+                        <div className="font-medium text-stone-900">Camera</div>
+                        <p className="text-stone-500 text-[11px] mt-0.5">Optional video preview for lodge facilities and rooms.</p>
                       </div>
                     </div>
                     <button
@@ -538,7 +475,7 @@ export default function AccessRequestModal() {
                       aria-checked={cameraEnabled}
                       onClick={() => setCameraEnabled(!cameraEnabled)}
                       className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ${
-                        cameraEnabled ? 'bg-stone-900' : 'bg-stone-300'
+                        cameraEnabled ? 'bg-stone-900' : 'bg-stone-200'
                       }`}
                     >
                       <span
@@ -553,11 +490,11 @@ export default function AccessRequestModal() {
             </div>
 
             {/* Modal Footer */}
-            <div className="px-5 py-3.5 bg-stone-50 border-t border-stone-100 flex items-center justify-between gap-2 text-xs shrink-0">
+            <div className="px-5 py-3 bg-stone-50 border-t border-stone-100 flex items-center justify-between text-xs shrink-0">
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
-                className="px-3.5 py-2 font-semibold text-stone-600 hover:text-stone-900 hover:bg-stone-200/60 rounded-xl transition cursor-pointer"
+                className="px-3 py-1.5 font-medium text-stone-500 hover:text-stone-900 transition cursor-pointer"
               >
                 Close
               </button>
@@ -566,7 +503,7 @@ export default function AccessRequestModal() {
                 <button
                   type="button"
                   onClick={handleSavePreferences}
-                  className="px-4 py-2 font-semibold bg-stone-900 hover:bg-stone-800 text-white rounded-xl transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                  className="px-4 py-1.5 font-semibold bg-stone-900 hover:bg-stone-800 text-white rounded-xl transition cursor-pointer flex items-center gap-1.5 shadow-xs"
                 >
                   <Check className="w-3.5 h-3.5" />
                   <span>Save Preferences</span>
@@ -575,7 +512,7 @@ export default function AccessRequestModal() {
                 <button
                   type="button"
                   onClick={() => setIsOpen(false)}
-                  className="px-4 py-2 font-semibold bg-stone-900 hover:bg-stone-800 text-white rounded-xl transition cursor-pointer shadow-2xs"
+                  className="px-4 py-1.5 font-semibold bg-stone-900 hover:bg-stone-800 text-white rounded-xl transition cursor-pointer shadow-xs"
                 >
                   Done
                 </button>

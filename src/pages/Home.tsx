@@ -163,7 +163,6 @@ export default function Home() {
       const err = 'Geolocation is not supported by your browser.';
       setUserLocationError(err);
       toast.error(err);
-      openAccessPermissionsModal('location');
       return;
     }
     setIsLocatingUser(true);
@@ -184,18 +183,19 @@ export default function Home() {
       (err) => {
         console.warn('Geolocation warning:', err);
         setIsLocatingUser(false);
-        let msg = 'Could not access your location. Please check browser permissions.';
+        let msg = 'Could not access your location.';
         if (err.code === 1) { // PERMISSION_DENIED
-          msg = 'Location permission was denied. Tap to review permissions or choose a city.';
-          openAccessPermissionsModal('location');
+          msg = 'Location permission was denied in browser settings. You can pick a city hub to calculate distances.';
+        } else if (err.code === 2) { // POSITION_UNAVAILABLE
+          msg = 'Location is currently unavailable. You can select a city hub.';
         } else if (err.code === 3) { // TIMEOUT
-          msg = 'Location request timed out. Please try again or pick a city.';
+          msg = 'Location request timed out. Please try again or select a city.';
         }
         setUserLocationError(msg);
         toast.error(msg);
         setTimeout(() => setUserLocationError(null), 6000);
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 }
     );
   };
 
@@ -574,10 +574,11 @@ export default function Home() {
         });
         toast.success(`Found your location! Showing places within ${searchProximity}km.`);
       },
-      () => {
-        toast.error("Could not get your location. Please check browser permissions.");
-        openAccessPermissionsModal('location');
-      }
+      (err) => {
+        console.warn('Near me geolocation warning:', err);
+        toast.error("Could not get your location. Please check browser permissions or select a city.");
+      },
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 }
     );
   };
 
@@ -2195,32 +2196,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Floating View Toggle Button - Positioned to the bottom-left (Hidden on mobile where the in-header segmented switch blends in seamlessly) */}
-      <div className="hidden md:block fixed bottom-6 sm:bottom-8 left-4 sm:left-8 z-40 pointer-events-none">
-        <button
-          onClick={() => {
-            const newMode = viewMode === 'grid' ? 'map' : 'grid';
-            setViewMode(newMode);
-            setTimeout(() => {
-              document.getElementById(newMode === 'map' ? 'map-canvas' : 'grid-canvas')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }, 50);
-          }}
-          className="pointer-events-auto flex items-center justify-center gap-2 bg-stone-900/95 hover:bg-stone-900 backdrop-blur-md text-white rounded-full px-4 py-2.5 sm:px-5 sm:py-3 shadow-[0_4px_24px_rgba(0,0,0,0.25)] hover:scale-105 transition-all active:scale-95 border border-stone-700/70 select-none cursor-pointer"
-          aria-label={viewMode === 'grid' ? 'Switch to map view' : 'Switch to list view'}
-        >
-          {viewMode === 'grid' ? (
-            <>
-              <MapIcon className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span className="text-xs sm:text-sm font-bold tracking-wide">Show Map</span>
-            </>
-          ) : (
-            <>
-              <LayoutGrid className="w-4 h-4 text-amber-400 shrink-0" />
-              <span className="text-xs sm:text-sm font-bold tracking-wide">Show List</span>
-            </>
-          )}
-        </button>
-      </div>
+
     </div>
   );
 }
