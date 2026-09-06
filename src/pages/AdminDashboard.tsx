@@ -18,14 +18,15 @@ import SmartImage from '../components/SmartImage';
 import ConfirmDialog from '../components/ConfirmDialog';
 import Modal from '../components/Modal';
 import AdminAISettings from '../components/AdminAISettings';
+import AdminDocsHub from '../components/AdminDocsHub';
 import { getHotelImage } from '../lib/images';
 import { isAdmin, isHotelManager, userRoles, toRoleFields } from '../lib/roles';
 import { formatMoney } from '../lib/booking';
-import { Navigation, TrendingUp } from 'lucide-react';
+import { Navigation, TrendingUp, BookOpen } from 'lucide-react';
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import PriceDisplay from '../components/PriceDisplay';
 
-type Tab = 'overview' | 'analytics' | 'properties' | 'users' | 'bookings' | 'destinations' | 'content' | 'ai';
+type Tab = 'overview' | 'analytics' | 'properties' | 'users' | 'bookings' | 'destinations' | 'content' | 'ai' | 'docs';
 
 export default function AdminDashboard() {
   const { user, loading: authLoading, resetPassword } = useAuth();
@@ -522,6 +523,18 @@ export default function AdminDashboard() {
             <Cpu className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
             AI Services &amp; Keys
           </button>
+          <button 
+            onClick={() => setActiveTab('docs')}
+            className={`whitespace-nowrap shrink-0 snap-start md:w-full flex items-center gap-2.5 px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold min-h-[44px] transition ${
+              activeTab === 'docs' ? 'bg-stone-900 text-white shadow-xs' : 'text-stone-600 bg-stone-100/70 md:bg-transparent hover:bg-stone-100'
+            }`}
+          >
+            <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+            Executive Docs (.txt)
+            <span className="ml-auto bg-emerald-500/20 text-emerald-800 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase hidden md:inline-block">
+              Admin
+            </span>
+          </button>
 
           <div className="pt-4 border-t border-stone-200 mt-2 space-y-1">
             <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 px-3 hidden md:block">Team Resources</span>
@@ -547,30 +560,17 @@ export default function AdminDashboard() {
               </div>
               <ExternalLink className="w-3 h-3 text-stone-400 hidden md:block" />
             </Link>
-            <a
-              href="/docs/marketing_presentation.md"
-              download="marketing_presentation.md"
-              className="whitespace-nowrap shrink-0 md:w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-stone-700 hover:bg-stone-100 transition"
-              title="Download Marketing Presentation in Markdown"
+            <button
+              onClick={() => setActiveTab('docs')}
+              className="whitespace-nowrap shrink-0 md:w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-stone-700 hover:bg-stone-100 transition cursor-pointer text-left"
+              title="Read or download executive docs in plain text or markdown"
             >
               <div className="flex items-center gap-2">
                 <FileText className="w-4 h-4 text-purple-600 shrink-0" />
-                <span>Marketing Deck (.md)</span>
+                <span>Strategy Docs (.txt)</span>
               </div>
-              <Download className="w-3 h-3 text-stone-400 hidden md:block" />
-            </a>
-            <a
-              href="/docs/operations_starter_pack.md"
-              download="operations_starter_pack.md"
-              className="whitespace-nowrap shrink-0 md:w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-stone-700 hover:bg-stone-100 transition"
-              title="Download Operations Starter Pack in Markdown"
-            >
-              <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4 text-blue-600 shrink-0" />
-                <span>Operations Pack (.md)</span>
-              </div>
-              <Download className="w-3 h-3 text-stone-400 hidden md:block" />
-            </a>
+              <span className="text-[10px] bg-stone-200 text-stone-700 font-bold px-1.5 py-0.5 rounded">4 Docs</span>
+            </button>
           </div>
         </nav>
       </div>
@@ -881,7 +881,7 @@ export default function AdminDashboard() {
 
             <div className="space-y-6">
               {visibleHotels.slice((currentHotelPage - 1) * itemsPerPage, currentHotelPage * itemsPerPage).map((hotel, index) => (
-                <div key={`admin-hotel-${hotel.id}`} className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-sm border border-stone-200 flex flex-col md:flex-row gap-4 sm:gap-6 hover:border-stone-300 transition">
+                <div key={`admin-hotel-${hotel.id || index}-${index}`} className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-sm border border-stone-200 flex flex-col md:flex-row gap-4 sm:gap-6 hover:border-stone-300 transition">
                   <div className="h-44 sm:h-48 w-full md:w-64 bg-stone-100 rounded-xl sm:rounded-2xl overflow-hidden shrink-0">
                     <SmartImage src={getHotelImage(hotel)} alt={hotel.name} className="w-full h-full object-cover" />
                   </div>
@@ -1138,7 +1138,7 @@ export default function AdminDashboard() {
                     {visibleUsers.slice((currentUserPage - 1) * itemsPerPage, currentUserPage * itemsPerPage).map((u, index) => {
                       const rolesList = userRoles(u);
                       return (
-                        <tr key={`admin-user-${u.uid}`} className="hover:bg-stone-50 transition">
+                        <tr key={`admin-user-${u.uid || index}-${index}`} className="hover:bg-stone-50 transition">
                           <td className="px-6 py-4">
                             <p className="font-bold text-stone-900">{u.displayName || 'No Name'}</p>
                             <p className="text-sm text-stone-500">{u.email}</p>
@@ -1341,7 +1341,7 @@ export default function AdminDashboard() {
                     {bookings.slice((currentBookingPage - 1) * itemsPerPage, currentBookingPage * itemsPerPage).map((b, index) => {
                       const hotelName = hotels.find(h => h.id === b.hotelId)?.name || 'Unknown Property';
                       return (
-                        <tr key={`admin-booking-${b.id}`} className="hover:bg-stone-50 transition">
+                        <tr key={`admin-booking-${b.id || index}-${index}`} className="hover:bg-stone-50 transition">
                           <td className="px-6 py-4 text-sm font-mono text-stone-500">{b.reference || 'N/A'}</td>
                           <td className="px-6 py-4 text-sm font-bold text-stone-900">{hotelName}</td>
                           <td className="px-6 py-4 text-sm text-stone-600">
@@ -1674,6 +1674,11 @@ export default function AdminDashboard() {
         {/* ===================== AI CONFIGURATION TAB ===================== */}
         {activeTab === 'ai' && (
           <AdminAISettings />
+        )}
+
+        {/* ===================== EXECUTIVE DOCS TAB ===================== */}
+        {activeTab === 'docs' && (
+          <AdminDocsHub />
         )}
 
         <ConfirmDialog

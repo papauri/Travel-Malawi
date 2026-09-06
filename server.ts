@@ -7,6 +7,7 @@ import { getPublicAIStatus, getAdminAIConfig, loadAIConfig, saveAIConfig, AIProv
 import { executeAIGeneration, executeOperationsAssistantChat, testProviderConnection } from './server/aiService';
 import { sendOfflineNotification } from './server/notifications';
 import { generateAutoReminders, createManualReminder, getRemindersForBooking, deleteReminder, checkAndFireReminders } from './server/reminders';
+import { getAdminDocsList, getAdminDocContent } from './server/docUtils';
 
 async function startServer() {
   const app = express();
@@ -298,8 +299,51 @@ async function startServer() {
     }
   }, 60_000);
 
-  // Serve markdown documentation files directly for marketing & operations
-  app.use('/docs', express.static(path.join(process.cwd(), 'public', 'docs')));
+  // ----------------------------------------------------
+  // GLOBAL ADMIN DOCUMENTATION API (RESTRICTED TO ADMIN)
+  // ----------------------------------------------------
+
+  // List available executive documents
+  app.get('/api/admin/docs', (req, res) => {
+    try {
+      const docs = getAdminDocsList();
+      res.json({ docs });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || 'Failed to list documents' });
+    }
+  });
+
+  // Get specific document in readable plain text (.txt) or markdown (.md)
+  app.get('/api/admin/docs/:id', (req, res) => {
+    try {
+      const format = req.query.format === 'md' || req.query.format === 'markdown' ? 'md' : 'text';
+      const isDownload = req.query.download === '1' || req.query.download === 'true';
+      const docResult = getAdminDocContent(req.params.id, format);
+
+      if (!docResult) {
+        return res.status(404).json({ error: 'Document not found' });
+      }
+
+      if (isDownload) {
+        const mimeType = format === 'text' ? 'text/plain; charset=utf-8' : 'text/markdown; charset=utf-8';
+        res.setHeader('Content-Type', mimeType);
+        res.setHeader('Content-Disposition', `attachment; filename="${docResult.filename}"`);
+        return res.send(docResult.content);
+      }
+
+      res.json(docResult);
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || 'Failed to read document' });
+    }
+  });
+
+  // Explicitly block any direct public access to internal docs paths or raw markdown files
+  app.use((req, res, next) => {
+    if (req.path.startsWith('/docs') || req.path.endsWith('.md')) {
+      return res.status(404).send('Not Found');
+    }
+    next();
+  });
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== 'production') {

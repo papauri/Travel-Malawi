@@ -350,7 +350,7 @@ Fresh Malawi Mango Smoothie - MWK 4,500`}
               </div>
 
               {extractedSections.map((section, sIdx) => (
-                <div key={section.id} className="border border-stone-200 rounded-lg overflow-hidden">
+                <div key={`ext-sec-${section.id || sIdx}-${sIdx}`} className="border border-stone-200 rounded-lg overflow-hidden">
                   <button
                     onClick={() => toggleSection(sIdx)}
                     className="w-full flex items-center justify-between p-3 bg-stone-50 hover:bg-stone-100 transition"
@@ -373,8 +373,8 @@ Fresh Malawi Mango Smoothie - MWK 4,500`}
 
                   {expandedSections.has(sIdx) && (
                     <div className="divide-y divide-stone-100">
-                      {section.items.map((item) => (
-                        <div key={item.id} className="p-3 flex justify-between items-start">
+                      {section.items.map((item, iIdx) => (
+                        <div key={`ext-item-${item.id || iIdx}-${sIdx}-${iIdx}`} className="p-3 flex justify-between items-start">
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-stone-700 truncate">{item.name}</p>
                             {item.description && (
@@ -383,15 +383,15 @@ Fresh Malawi Mango Smoothie - MWK 4,500`}
                             {item.tags && item.tags.length > 0 && (
                               <div className="flex gap-1 mt-1">
                                 {item.tags.map((tag, tIdx) => (
-                                  <span key={`${tag}-${tIdx}`} className="text-[10px] px-1.5 py-0.5 bg-stone-100 text-stone-500 rounded-full">{tag}</span>
+                                  <span key={`ext-tag-${tag}-${sIdx}-${iIdx}-${tIdx}`} className="text-[10px] px-1.5 py-0.5 bg-stone-100 text-stone-500 rounded-full">{tag}</span>
                                 ))}
                               </div>
                             )}
                           </div>
                           {item.prices && Object.keys(item.prices).length > 0 && (
                             <div className="text-right ml-3 shrink-0">
-                              {Object.entries(item.prices).map(([code, amount]) => (
-                                <p key={code} className="text-xs font-medium text-stone-600">
+                              {Object.entries(item.prices).map(([code, amount], pIdx) => (
+                                <p key={`ext-price-${code}-${sIdx}-${iIdx}-${pIdx}`} className="text-xs font-medium text-stone-600">
                                   {code === 'MWK' ? `MK ${Number(amount).toLocaleString()}` : `$${amount}`}
                                 </p>
                               ))}

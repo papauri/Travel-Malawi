@@ -232,7 +232,7 @@ export default function MenuEditor({ value, onChange, currencies }: Props) {
 
             <div className="space-y-6">
               {value.sections.map((section, sectionIndex) => (
-                <div key={section.id} className="rounded-2xl border border-stone-200 overflow-hidden">
+                <div key={`menu-sec-${section.id || sectionIndex}-${sectionIndex}`} className="rounded-2xl border border-stone-200 overflow-hidden">
                   <div className="flex items-center gap-2 bg-stone-50 px-4 py-3 border-b border-stone-200">
                     <GripVertical className="h-4 w-4 text-stone-300 shrink-0" />
                     <input
@@ -271,8 +271,8 @@ export default function MenuEditor({ value, onChange, currencies }: Props) {
                   </div>
 
                   <div className="p-4 space-y-3">
-                    {section.items.map(item => (
-                      <div key={item.id} className="rounded-xl border border-stone-100 bg-stone-50/60 p-3 space-y-2">
+                    {section.items.map((item, itemIndex) => (
+                      <div key={`menu-item-${item.id || itemIndex}-${sectionIndex}-${itemIndex}`} className="rounded-xl border border-stone-100 bg-stone-50/60 p-3 space-y-2">
                         <div className="flex gap-2">
                           <input
                             type="text"
@@ -300,8 +300,8 @@ export default function MenuEditor({ value, onChange, currencies }: Props) {
                         />
 
                         <div className="flex flex-wrap gap-3">
-                          {priced.map(code => (
-                            <div key={code} className="flex items-center gap-1.5">
+                          {priced.map((code, cIdx) => (
+                            <div key={`price-input-${code}-${sectionIndex}-${itemIndex}-${cIdx}`} className="flex items-center gap-1.5">
                               <span className="text-xs font-semibold text-stone-500 w-6 text-right">
                                 {CURRENCIES[code].symbol}
                               </span>

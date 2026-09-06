@@ -1728,8 +1728,8 @@ export default function ManageHotel() {
                 <div>
                   <p className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-3">Room Images</p>
                   <div className="space-y-6">
-                    {rooms.map(room => (
-                      <div key={`room-preview-${room.id}`} className="space-y-3">
+                    {rooms.map((room, rIdx) => (
+                      <div key={`room-preview-${room.id || rIdx}-${rIdx}`} className="space-y-3">
                         <p className="text-sm font-bold text-stone-700">{room.name}</p>
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                           {true && (
@@ -1739,7 +1739,7 @@ export default function ManageHotel() {
                             </div>
                           )}
                           {(room.galleryUrls || []).map((url, idx) => (
-                            <div key={`room-${room.id}-gal-${idx}`} className="relative aspect-video rounded-xl overflow-hidden border border-stone-200">
+                            <div key={`room-${room.id || rIdx}-gal-${idx}`} className="relative aspect-video rounded-xl overflow-hidden border border-stone-200">
                               <SmartImage src={url} alt={`Gallery ${idx + 1}`} className="w-full h-full object-cover" />
                               <span className="absolute top-2 left-2 bg-stone-900/70 text-white text-[10px] px-2 py-0.5 rounded-md">Gallery</span>
                             </div>
@@ -1811,7 +1811,7 @@ export default function ManageHotel() {
               {rooms.map((room, rIdx) => {
                 return (
                   <RoomMediaEditor 
-                    key={room.id || `room-media-${rIdx}`} 
+                    key={`room-media-${room.id || rIdx}-${rIdx}`} 
                     room={room} 
                     hotelId={id!} 
                     onUpdate={(updated) => setRooms(rooms.map(r => r.id === updated.id ? updated : r))} 
@@ -1890,12 +1890,12 @@ export default function ManageHotel() {
                   <div className="md:col-span-2">
                     <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Room Amenities</label>
                     <div className="flex flex-wrap gap-2 mb-3">
-                      {COMMON_AMENITIES.map(amenity => {
+                      {COMMON_AMENITIES.map((amenity, amIdx) => {
                         const current = editRoomData.amenities || [];
                         const selected = current.includes(amenity);
                         return (
                           <button
-                            key={amenity}
+                            key={`room-am-${amenity}-${amIdx}`}
                             type="button"
                             onClick={() => {
                               if (current.includes(amenity)) {

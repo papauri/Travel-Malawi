@@ -28,8 +28,12 @@ import {
   FileText
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useAuth } from '../contexts/AuthContext';
+import { isAdmin } from '../lib/roles';
 
 export default function MarketingDeck() {
+  const { user } = useAuth();
+  const isGlobalAdmin = isAdmin(user);
   const [copiedScript, setCopiedScript] = useState<string | null>(null);
 
   const copyToClipboard = (text: string, id: string) => {
@@ -53,15 +57,16 @@ export default function MarketingDeck() {
             <span className="text-stone-300 font-medium">Internal Marketing &amp; Operations Executive Brief</span>
           </div>
           <div className="flex items-center gap-4">
-            <a
-              href="/docs/marketing_presentation.md"
-              download="marketing_presentation.md"
-              className="inline-flex items-center gap-1.5 text-stone-300 hover:text-emerald-300 transition text-xs"
-              title="Download Marketing Presentation in Markdown format"
-            >
-              <Download className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Download .MD Deck</span>
-            </a>
+            {isGlobalAdmin && (
+              <Link
+                to="/admin"
+                className="inline-flex items-center gap-1.5 text-stone-300 hover:text-emerald-300 transition text-xs font-semibold"
+                title="Open Admin Executive Strategy Docs Hub (.txt & .md)"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Admin Strategy Hub (.txt)</span>
+              </Link>
+            )}
             <Link to="/host-guide" className="text-stone-400 hover:text-emerald-300 transition text-xs">
               View Host Starter Pack &rarr;
             </Link>
@@ -453,117 +458,150 @@ export default function MarketingDeck() {
           </div>
         </section>
 
-        {/* Section 8: Downloadable Markdown Resources for Marketing & Ops */}
+        {/* Section 8: Downloadable Strategic Resources (RESTRICTED TO GLOBAL ADMIN) */}
         <section className="p-8 sm:p-10 rounded-3xl bg-white border border-stone-200/90 shadow-sm">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-stone-200 pb-6 mb-8">
             <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">Internal Asset Hub</span>
+              <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold uppercase tracking-wider mb-2">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Restricted Access &bull; Global Admin Only</span>
+              </div>
               <h3 className="text-2xl sm:text-3xl font-serif font-bold text-stone-900 mt-1 tracking-tight">
-                Readily Available Marketing &amp; Operations Markdown Files
+                Executive Strategy &amp; Operations Documentation
               </h3>
               <p className="text-xs sm:text-sm text-stone-500 mt-1">
-                Download, print, or view the complete unformatted Markdown documents for your pitches, field guides, and operations playbook.
+                Internal strategic documents available in clean readable text format (.txt) or markdown, protected from public exposure.
               </p>
             </div>
+
+            {isGlobalAdmin && (
+              <Link
+                to="/admin"
+                className="self-start md:self-auto inline-flex items-center gap-2 px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-bold transition shadow-xs"
+              >
+                <span>Open Admin Strategy Hub</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            )}
           </div>
 
-          <div className="grid md:grid-cols-3 gap-6">
-            {/* Card 1: Marketing Presentation Deck */}
-            <div className="p-6 rounded-2xl bg-stone-50 border border-stone-200 flex flex-col justify-between hover:border-stone-300 transition">
-              <div>
-                <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold mb-4">
-                  <FileText className="w-5 h-5" />
+          {isGlobalAdmin ? (
+            <div className="grid md:grid-cols-3 gap-6">
+              {/* Card 1: Marketing Presentation Deck */}
+              <div className="p-6 rounded-2xl bg-stone-50 border border-stone-200 flex flex-col justify-between hover:border-stone-300 transition">
+                <div>
+                  <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold mb-4">
+                    <FileText className="w-5 h-5" />
+                  </div>
+                  <h4 className="font-serif font-bold text-stone-900 text-lg">Marketing Strategy Deck</h4>
+                  <p className="text-xs font-mono text-emerald-700 mt-0.5">marketing_presentation.txt</p>
+                  <p className="text-xs text-stone-600 mt-3 leading-relaxed">
+                    Executive market sizing, audience personas, competitive benchmarks, and the 30-60-90 day growth engine formatted for instant reading.
+                  </p>
                 </div>
-                <h4 className="font-serif font-bold text-stone-900 text-lg">Marketing Presentation Deck</h4>
-                <p className="text-xs font-mono text-emerald-700 mt-0.5">marketing_presentation.md</p>
-                <p className="text-xs text-stone-600 mt-3 leading-relaxed">
-                  Executive market sizing, audience personas, competitive benchmarks against OTAs, 0% commission pitch scripts, and the 30-60-90 day growth engine.
-                </p>
+                <div className="mt-6 pt-4 border-t border-stone-200 flex items-center gap-2">
+                  <a
+                    href="/api/admin/docs/marketing-presentation?format=text&download=1"
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 px-3 bg-emerald-700 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition shadow-xs"
+                    title="Download clean plain text (.txt)"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Download .TXT</span>
+                  </a>
+                  <a
+                    href="/api/admin/docs/marketing-presentation?format=md&download=1"
+                    className="py-2 px-3 bg-white hover:bg-stone-100 border border-stone-300 text-stone-700 rounded-xl text-xs font-semibold transition"
+                    title="Download raw markdown (.md)"
+                  >
+                    .MD
+                  </a>
+                </div>
               </div>
-              <div className="mt-6 pt-4 border-t border-stone-200 flex items-center gap-2">
-                <a
-                  href="/docs/marketing_presentation.md"
-                  download="marketing_presentation.md"
-                  className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 px-3 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-bold transition shadow-xs"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Download .MD</span>
-                </a>
-                <a
-                  href="/docs/marketing_presentation.md"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="py-2 px-3 bg-white hover:bg-stone-100 border border-stone-300 text-stone-700 rounded-xl text-xs font-semibold transition"
-                >
-                  View Raw
-                </a>
-              </div>
-            </div>
 
-            {/* Card 2: Operations Starter Pack */}
-            <div className="p-6 rounded-2xl bg-stone-50 border border-stone-200 flex flex-col justify-between hover:border-stone-300 transition">
-              <div>
-                <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-800 flex items-center justify-center font-bold mb-4">
-                  <FileText className="w-5 h-5" />
+              {/* Card 2: Operations Starter Pack */}
+              <div className="p-6 rounded-2xl bg-stone-50 border border-stone-200 flex flex-col justify-between hover:border-stone-300 transition">
+                <div>
+                  <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-800 flex items-center justify-center font-bold mb-4">
+                    <FileText className="w-5 h-5" />
+                  </div>
+                  <h4 className="font-serif font-bold text-stone-900 text-lg">Operations Starter Pack</h4>
+                  <p className="text-xs font-mono text-blue-700 mt-0.5">operations_starter_pack.txt</p>
+                  <p className="text-xs text-stone-600 mt-3 leading-relaxed">
+                    Complete operational playbook for onboarding lodges, field acquisition protocols, pricing rules, and WhatsApp templates.
+                  </p>
                 </div>
-                <h4 className="font-serif font-bold text-stone-900 text-lg">Operations Starter Pack</h4>
-                <p className="text-xs font-mono text-blue-700 mt-0.5">operations_starter_pack.md</p>
-                <p className="text-xs text-stone-600 mt-3 leading-relaxed">
-                  Complete operational playbook for onboarding lodges, field acquisition protocols, dual-currency pricing rules, photography checklists, and WhatsApp templates.
-                </p>
+                <div className="mt-6 pt-4 border-t border-stone-200 flex items-center gap-2">
+                  <a
+                    href="/api/admin/docs/operations-starter-pack?format=text&download=1"
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 px-3 bg-emerald-700 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition shadow-xs"
+                    title="Download clean plain text (.txt)"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Download .TXT</span>
+                  </a>
+                  <a
+                    href="/api/admin/docs/operations-starter-pack?format=md&download=1"
+                    className="py-2 px-3 bg-white hover:bg-stone-100 border border-stone-300 text-stone-700 rounded-xl text-xs font-semibold transition"
+                    title="Download raw markdown (.md)"
+                  >
+                    .MD
+                  </a>
+                </div>
               </div>
-              <div className="mt-6 pt-4 border-t border-stone-200 flex items-center gap-2">
-                <a
-                  href="/docs/operations_starter_pack.md"
-                  download="operations_starter_pack.md"
-                  className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 px-3 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-bold transition shadow-xs"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Download .MD</span>
-                </a>
-                <a
-                  href="/docs/operations_starter_pack.md"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="py-2 px-3 bg-white hover:bg-stone-100 border border-stone-300 text-stone-700 rounded-xl text-xs font-semibold transition"
-                >
-                  View Raw
-                </a>
-              </div>
-            </div>
 
-            {/* Card 3: Host Onboarding Starter Pack */}
-            <div className="p-6 rounded-2xl bg-stone-50 border border-stone-200 flex flex-col justify-between hover:border-stone-300 transition">
-              <div>
-                <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center font-bold mb-4">
-                  <FileText className="w-5 h-5" />
+              {/* Card 3: Host Onboarding Starter Pack */}
+              <div className="p-6 rounded-2xl bg-stone-50 border border-stone-200 flex flex-col justify-between hover:border-stone-300 transition">
+                <div>
+                  <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center font-bold mb-4">
+                    <FileText className="w-5 h-5" />
+                  </div>
+                  <h4 className="font-serif font-bold text-stone-900 text-lg">Host Onboarding Starter Pack</h4>
+                  <p className="text-xs font-mono text-amber-700 mt-0.5">host_onboarding_starter_pack.txt</p>
+                  <p className="text-xs text-stone-600 mt-3 leading-relaxed">
+                    Host guide explaining online presence benefits, 8-minute listing walkthroughs, smartphone photography tips, and FAQs.
+                  </p>
                 </div>
-                <h4 className="font-serif font-bold text-stone-900 text-lg">Host Onboarding Starter Pack</h4>
-                <p className="text-xs font-mono text-amber-700 mt-0.5">host_onboarding_starter_pack.md</p>
-                <p className="text-xs text-stone-600 mt-3 leading-relaxed">
-                  The client-facing host guide explaining why online presence is vital for Malawian stays, step-by-step listing walkthroughs, smartphone photography tips, and FAQs.
-                </p>
-              </div>
-              <div className="mt-6 pt-4 border-t border-stone-200 flex items-center gap-2">
-                <a
-                  href="/docs/host_onboarding_starter_pack.md"
-                  download="host_onboarding_starter_pack.md"
-                  className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 px-3 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-bold transition shadow-xs"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Download .MD</span>
-                </a>
-                <a
-                  href="/docs/host_onboarding_starter_pack.md"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="py-2 px-3 bg-white hover:bg-stone-100 border border-stone-300 text-stone-700 rounded-xl text-xs font-semibold transition"
-                >
-                  View Raw
-                </a>
+                <div className="mt-6 pt-4 border-t border-stone-200 flex items-center gap-2">
+                  <a
+                    href="/api/admin/docs/host-onboarding-pack?format=text&download=1"
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 px-3 bg-emerald-700 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition shadow-xs"
+                    title="Download clean plain text (.txt)"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Download .TXT</span>
+                  </a>
+                  <a
+                    href="/api/admin/docs/host-onboarding-pack?format=md&download=1"
+                    className="py-2 px-3 bg-white hover:bg-stone-100 border border-stone-300 text-stone-700 rounded-xl text-xs font-semibold transition"
+                    title="Download raw markdown (.md)"
+                  >
+                    .MD
+                  </a>
+                </div>
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="p-8 rounded-2xl bg-stone-50 border border-stone-200 text-center max-w-xl mx-auto my-4">
+              <div className="w-12 h-12 rounded-full bg-stone-200 text-stone-600 flex items-center justify-center mx-auto mb-3">
+                <ShieldCheck className="w-6 h-6 text-stone-500" />
+              </div>
+              <h4 className="font-serif font-bold text-stone-900 text-base sm:text-lg">
+                Confidential Strategic Documentation
+              </h4>
+              <p className="text-xs sm:text-sm text-stone-600 mt-2 leading-relaxed">
+                The full executive strategy decks, operations starter packs, and raw documentation are restricted exclusively to Global Administrators.
+              </p>
+              <div className="mt-5">
+                <Link
+                  to="/admin"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-bold transition shadow-xs"
+                >
+                  <span>Sign In as Global Admin</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+            </div>
+          )}
         </section>
 
         {/* Bottom CTA Banner */}

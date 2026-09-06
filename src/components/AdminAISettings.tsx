@@ -296,11 +296,11 @@ export default function AdminAISettings() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {Object.entries(config.providers).map(([pid, p]) => {
+          {Object.entries(config.providers).map(([pid, p], pIdx) => {
             const isActive = config.activeProvider === pid;
             return (
               <div
-                key={pid}
+                key={`active-prov-card-${pid}-${pIdx}`}
                 onClick={() => handleSelectActiveProvider(pid)}
                 className={`relative p-5 rounded-2xl border cursor-pointer transition-all ${
                   isActive
@@ -362,13 +362,13 @@ export default function AdminAISettings() {
         </div>
 
         <div className="space-y-6 divide-y divide-stone-100">
-          {Object.entries(config.providers).map(([pid, p]) => {
+          {Object.entries(config.providers).map(([pid, p], pIdx) => {
             const isEditingKey = showKey[pid];
             const hasInputValue = !!keyInputs[pid];
             const isTesting = testingProvider === pid;
 
             return (
-              <div key={pid} className="pt-6 first:pt-0 space-y-4">
+              <div key={`prov-config-row-${pid}-${pIdx}`} className="pt-6 first:pt-0 space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div className="flex items-center gap-2.5">
                     <span className="font-bold text-stone-900 text-sm">{p.name}</span>
@@ -477,11 +477,11 @@ export default function AdminAISettings() {
                       Recommended Models &amp; Sweet Spots:
                     </span>
                     <div className="flex flex-wrap gap-1.5">
-                      {p.recommendedModels.map((m) => {
+                      {p.recommendedModels.map((m, mIdx) => {
                         const isCurrent = (modelInputs[pid] ?? p.model) === m.id;
                         return (
                           <button
-                            key={m.id}
+                            key={`rec-model-${pid}-${m.id}-${mIdx}`}
                             type="button"
                             onClick={() => {
                               setModelInputs(prev => ({ ...prev, [pid]: m.id }));

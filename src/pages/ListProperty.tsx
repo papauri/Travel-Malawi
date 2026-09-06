@@ -1060,8 +1060,8 @@ export default function ListProperty() {
                         </button>
                       </div>
                       <ul className="max-h-60 overflow-y-auto divide-y divide-stone-100">
-                        {placeSuggestions.map(item => (
-                          <li key={item.id}>
+                        {placeSuggestions.map((item, psIdx) => (
+                          <li key={`place-sug-${item.id || psIdx}-${psIdx}`}>
                             <button
                               type="button"
                               onClick={() => handleSelectMalawiPlace(item)}
@@ -1529,7 +1529,7 @@ export default function ListProperty() {
                     </p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {(draft.rooms || []).map((room, idx) => (
-                        <div key={`configured-room-${room.id}`} className="bg-white p-3.5 rounded-xl border border-stone-200 flex items-center justify-between shadow-2xs">
+                        <div key={`configured-room-${room.id || idx}-${idx}`} className="bg-white p-3.5 rounded-xl border border-stone-200 flex items-center justify-between shadow-2xs">
                           <div className="flex items-center gap-3 min-w-0">
                             {room.imageUrl ? (
                               <img src={room.imageUrl} alt={room.name} className="w-12 h-12 rounded-lg object-cover shrink-0" />
@@ -1881,7 +1881,7 @@ export default function ListProperty() {
                 const hasMwk = roomCurrencies.includes('MWK');
 
                 return (
-                  <div key={`room-pricing-card-${room.id}`} className="bg-white border border-stone-200 rounded-2xl p-6 shadow-sm relative space-y-6">
+                  <div key={`room-pricing-card-${room.id || idx}-${idx}`} className="bg-white border border-stone-200 rounded-2xl p-6 shadow-sm relative space-y-6">
                     <div className="flex items-center justify-between border-b border-stone-100 pb-4">
                       <div className="flex items-center gap-2">
                         <span className="bg-stone-900 text-white text-[11px] font-bold px-2.5 py-1 rounded-md uppercase tracking-wider">
