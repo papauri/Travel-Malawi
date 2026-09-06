@@ -1,0 +1,39 @@
+rules_version = '2';
+
+// Photos for listings, rooms, galleries and menu logos.
+//
+// Reads are public because every image here is rendered on a public listing
+// page. Writes are constrained: signed in, an actual image, and small enough
+// that a stray video cannot be dropped into a bucket nobody is watching.
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isImage() {
+      return request.resource.contentType.matches('image/(jpeg|png|webp|avif|gif)');
+    }
+
+    // 8 MB. A photograph off a phone is comfortably under this; anything much
+    // larger is a mistake and would be slow on a Malawian connection anyway.
+    function isReasonableSize() {
+      return request.resource.size < 8 * 1024 * 1024;
+    }
+
+    // The folders the app writes to. Anything else is refused outright, so a
+    // compromised client cannot use the bucket as free storage.
+    match /{folder}/{fileName} {
+      allow read: if true;
+
+      allow write: if isAuthenticated()
+                   && folder in ['hotels', 'rooms', 'gallery', 'menu-logos', 'uploads']
+                   && isImage()
+                   && isReasonableSize();
+
+      // Replacing or removing a photo is part of editing a listing.
+      allow delete: if isAuthenticated();
+    }
+  }
+}

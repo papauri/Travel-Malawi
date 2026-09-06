@@ -1,0 +1,8 @@
+{
+  "name": "Travel Malawi",
+  "description": "A globally inclusive platform connecting the world to independent lodges and camps across Malawi.",
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ],
+  "requestFramePermissions": []
+}

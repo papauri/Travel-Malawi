@@ -1,0 +1,15 @@
+node_modules/
+build/
+# dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+
+# Firebase Admin service-account keys. These grant full, rules-bypassing access
+# to the project, so they must never be committed.
+service-account*.json
+*-firebase-adminsdk-*.json
+.firebase/
+dist/
