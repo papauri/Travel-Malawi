@@ -79,6 +79,27 @@ export interface OperationsChatPayload {
       checkOutTime?: string;
       cancellationPolicy?: string;
       paymentPolicy?: string;
+      conferenceCancellationPolicy?: string;
+      conferencePaymentPolicy?: string;
+      conferenceGuidelines?: string;
+      coordinates?: { lat?: number; lng?: number };
+      hours?: any;
+      reviewsSummary?: {
+        count: number;
+        averageRating: number;
+        recentReviews: Array<{
+          author: string;
+          rating: number;
+          comment: string;
+          date?: string;
+        }>;
+      };
+      activeBroadcasts?: Array<{
+        id?: string;
+        type: string;
+        message: string;
+        date?: string;
+      }>;
       amenities?: string[];
       restaurant?: {
         enabled: boolean;

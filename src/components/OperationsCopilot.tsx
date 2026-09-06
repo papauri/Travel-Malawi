@@ -15,7 +15,7 @@ import { isAdmin, isHotelManager } from '../lib/roles';
 import { useAIAssistant, OperationsChatPayload, OperationsChatResult, ActionProposal } from '../hooks/useAIAssistant';
 import { db } from '../lib/firebase';
 import { collection, getDocs, doc, updateDoc, query, where } from 'firebase/firestore';
-import { Hotel, RoomType, Booking } from '../types';
+import { Hotel, RoomType, Booking, Review, Broadcast } from '../types';
 import { 
   getLearnedDirectives, 
   syncDirectivesWithCloud,
@@ -113,6 +113,8 @@ export default function OperationsCopilot() {
   const [rooms, setRooms] = useState<RoomType[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [conferences, setConferences] = useState<any[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [broadcasts, setBroadcasts] = useState<Broadcast[]>([]);
   const [dataLoading, setDataLoading] = useState(false);
   const [hasFetched, setHasFetched] = useState(false);
 
@@ -162,19 +164,25 @@ export default function OperationsCopilot() {
       let roomDocs: RoomType[] = [];
       let bookingDocs: Booking[] = [];
       let confDocs: any[] = [];
+      let reviewDocs: Review[] = [];
+      let broadcastDocs: Broadcast[] = [];
 
       if (userIsAdmin) {
-        // Global Admins see all properties, rooms, conferences, and bookings platform-wide
-        const [hotelsSnap, roomsSnap, bookingsSnap, confSnap] = await Promise.all([
+        // Global Admins see all properties, rooms, conferences, bookings, reviews, and broadcasts platform-wide
+        const [hotelsSnap, roomsSnap, bookingsSnap, confSnap, reviewsSnap, broadcastsSnap] = await Promise.all([
           getDocs(collection(db, 'hotels')),
           getDocs(collection(db, 'room_types')),
           getDocs(collection(db, 'bookings')),
           getDocs(collection(db, 'conference_rooms')),
+          getDocs(collection(db, 'reviews')),
+          getDocs(collection(db, 'broadcasts')),
         ]);
         hotelDocs = hotelsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Hotel));
         roomDocs = roomsSnap.docs.map(d => ({ id: d.id, ...d.data() } as RoomType));
         bookingDocs = bookingsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Booking));
         confDocs = confSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
+        reviewDocs = reviewsSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) } as Review));
+        broadcastDocs = broadcastsSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) } as Broadcast));
       } else {
         // Property Managers: fetch all platform hotels to accurately identify the user's properties
         // Just because a property has no manager assigned, it DOES belong to the signed-in user!
@@ -207,10 +215,12 @@ export default function OperationsCopilot() {
         const hotelIds = hotelDocs.map(h => h.id).filter(Boolean) as string[];
 
         if (hotelIds.length > 0) {
-          const [roomsSnap, bookingsSnap, confSnap] = await Promise.all([
+          const [roomsSnap, bookingsSnap, confSnap, reviewsSnap, broadcastsSnap] = await Promise.all([
             getDocs(collection(db, 'room_types')),
             getDocs(collection(db, 'bookings')),
             getDocs(collection(db, 'conference_rooms')),
+            getDocs(collection(db, 'reviews')),
+            getDocs(collection(db, 'broadcasts')),
           ]);
           roomDocs = roomsSnap.docs
             .map(d => ({ id: d.id, ...d.data() } as RoomType))
@@ -221,6 +231,12 @@ export default function OperationsCopilot() {
           confDocs = confSnap.docs
             .map(d => ({ id: d.id, ...(d.data() as any) }))
             .filter((c: any) => hotelIds.includes(c.hotelId));
+          reviewDocs = reviewsSnap.docs
+            .map(d => ({ id: d.id, ...(d.data() as any) } as Review))
+            .filter((r: any) => hotelIds.includes(r.hotelId));
+          broadcastDocs = broadcastsSnap.docs
+            .map(d => ({ id: d.id, ...(d.data() as any) } as Broadcast))
+            .filter((b: any) => hotelIds.includes(b.hotelId));
         }
       }
 
@@ -228,6 +244,8 @@ export default function OperationsCopilot() {
       setRooms(roomDocs);
       setBookings(bookingDocs);
       setConferences(confDocs);
+      setReviews(reviewDocs);
+      setBroadcasts(broadcastDocs);
     } catch (err) {
       console.warn('Could not load live operations data:', err);
     } finally {
@@ -381,6 +399,10 @@ export default function OperationsCopilot() {
         properties: properties.map((p, pIdx) => {
           const propRooms = rooms.filter(r => r.hotelId === p.id);
           const propConfs = conferences.filter(c => c.hotelId === p.id);
+          const propReviews = reviews.filter(r => r.hotelId === p.id);
+          const propBroadcasts = broadcasts.filter(b => b.hotelId === p.id && b.isActive !== false);
+          const totalReviews = propReviews.length;
+          const avgRating = totalReviews > 0 ? Number((propReviews.reduce((sum, r) => sum + (r.rating || 5), 0) / totalReviews).toFixed(1)) : 0;
           const isUnassigned = !p.managerId || p.managerId === 'unassigned' || p.managerId === 'none' || p.managerId.trim() === '';
           return {
             id: p.id || '',
@@ -404,6 +426,8 @@ export default function OperationsCopilot() {
             contactWhatsapp: p.contactWhatsapp || p.contactPhone,
             contactEmail: p.contactEmail,
             contactPhone: p.contactPhone,
+            coordinates: p.coordinates ? { lat: p.coordinates.lat, lng: p.coordinates.lng } : undefined,
+            hours: p.hours,
             infrastructure: p.infrastructure ? {
               powerSource: p.infrastructure.powerSource,
               powerNotes: p.infrastructure.powerNotes,
@@ -430,6 +454,25 @@ export default function OperationsCopilot() {
             checkOutTime: p.checkOutTime || '10:00',
             cancellationPolicy: p.cancellationPolicy || 'Standard',
             paymentPolicy: p.paymentPolicy || 'Direct payment',
+            conferenceCancellationPolicy: p.conferenceCancellationPolicy,
+            conferencePaymentPolicy: p.conferencePaymentPolicy,
+            conferenceGuidelines: p.conferenceGuidelines,
+            reviewsSummary: totalReviews > 0 ? {
+              count: totalReviews,
+              averageRating: avgRating,
+              recentReviews: propReviews.slice(-5).map(r => ({
+                author: r.authorName || 'Guest',
+                rating: r.rating || 5,
+                comment: r.text || '',
+                date: r.createdAt ? new Date(r.createdAt).toLocaleDateString() : undefined,
+              })),
+            } : undefined,
+            activeBroadcasts: propBroadcasts.map(b => ({
+              id: b.id,
+              type: b.type,
+              message: b.message,
+              date: b.createdAt ? new Date(b.createdAt).toLocaleDateString() : undefined,
+            })),
             amenities: p.amenities || [],
             restaurant: p.restaurant ? {
               enabled: Boolean(p.restaurant.enabled),
@@ -1210,27 +1253,57 @@ export default function OperationsCopilot() {
                   {messages.map((msg, mIdx) => (
                     <div
                       key={`${msg.id}-${mIdx}`}
-                      className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
+                      className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} max-w-full min-w-0`}
                     >
                       <div
-                        className={`max-w-[90%] rounded-2xl p-3.5 text-xs leading-relaxed ${
+                        className={`max-w-[92%] sm:max-w-[88%] min-w-0 rounded-2xl p-3.5 text-xs leading-relaxed break-words [word-break:break-word] overflow-hidden ${
                           msg.role === 'user'
                             ? 'bg-stone-900 text-white rounded-br-xs'
                             : 'bg-white text-stone-800 border border-stone-200 shadow-2xs rounded-bl-xs'
                         }`}
                       >
                         {msg.role === 'assistant' ? (
-                          <div className="markdown-body space-y-1.5 text-stone-800">
+                          <div className="markdown-body space-y-1.5 text-stone-800 break-words [word-break:break-word] overflow-hidden max-w-full min-w-0">
                             <ReactMarkdown
                               components={{
+                                p: ({ children }) => (
+                                  <p className="leading-relaxed break-words [word-break:break-word]">{children}</p>
+                                ),
                                 a: ({ href, children }) => (
                                   <a
                                     href={href}
-                                    className="text-stone-900 underline font-semibold hover:text-amber-700 inline-flex items-center gap-0.5"
+                                    className="text-stone-900 underline font-semibold hover:text-amber-700 inline-flex items-center gap-0.5 break-all"
                                   >
                                     {children}
-                                    <ExternalLink className="w-2.5 h-2.5 inline opacity-70" />
+                                    <ExternalLink className="w-2.5 h-2.5 inline opacity-70 shrink-0" />
                                   </a>
+                                ),
+                                pre: ({ children }) => (
+                                  <pre className="overflow-x-auto max-w-full p-2 bg-stone-900 text-stone-100 rounded-lg text-[11px] my-1 scrollbar-thin">
+                                    {children}
+                                  </pre>
+                                ),
+                                code: ({ children }) => (
+                                  <code className="bg-stone-100 px-1 py-0.5 rounded text-[11px] font-mono break-all">
+                                    {children}
+                                  </code>
+                                ),
+                                table: ({ children }) => (
+                                  <div className="overflow-x-auto max-w-full my-2 border border-stone-200 rounded-lg">
+                                    <table className="min-w-full text-[11px] divide-y divide-stone-200">
+                                      {children}
+                                    </table>
+                                  </div>
+                                ),
+                                ul: ({ children }) => (
+                                  <ul className="list-disc pl-4 space-y-1 my-1 break-words">
+                                    {children}
+                                  </ul>
+                                ),
+                                ol: ({ children }) => (
+                                  <ol className="list-decimal pl-4 space-y-1 my-1 break-words">
+                                    {children}
+                                  </ol>
                                 ),
                               }}
                             >
@@ -1238,7 +1311,7 @@ export default function OperationsCopilot() {
                             </ReactMarkdown>
                           </div>
                         ) : (
-                          <p className="whitespace-pre-wrap">{msg.content}</p>
+                          <p className="whitespace-pre-wrap break-words [word-break:break-word] min-w-0">{msg.content}</p>
                         )}
                       </div>
 
@@ -1562,6 +1635,22 @@ export default function OperationsCopilot() {
                     >
                       Rates Audit
                     </button>
+                    <button
+                      key="admin-chip-reviews"
+                      type="button"
+                      onClick={() => handleSendMessage('What is guest sentiment and recent reviews across our properties?')}
+                      className="px-3 py-1.5 bg-white hover:bg-stone-100 active:bg-stone-200 border border-stone-200/90 hover:border-stone-300 text-stone-700 hover:text-stone-900 rounded-full text-xs font-medium transition-all shadow-2xs whitespace-nowrap shrink-0 cursor-pointer select-none"
+                    >
+                      Guest Reviews
+                    </button>
+                    <button
+                      key="admin-chip-tourism"
+                      type="button"
+                      onClick={() => handleSendMessage('Highlight top tourism experiences in Malawi for upcoming guests.')}
+                      className="px-3 py-1.5 bg-white hover:bg-stone-100 active:bg-stone-200 border border-stone-200/90 hover:border-stone-300 text-stone-700 hover:text-stone-900 rounded-full text-xs font-medium transition-all shadow-2xs whitespace-nowrap shrink-0 cursor-pointer select-none"
+                    >
+                      Malawi Tourism Guide
+                    </button>
                   </>
                 ) : (
                   <>
@@ -1588,6 +1677,30 @@ export default function OperationsCopilot() {
                       className="px-3 py-1.5 bg-white hover:bg-stone-100 active:bg-stone-200 border border-stone-200/90 hover:border-stone-300 text-stone-700 hover:text-stone-900 rounded-full text-xs font-medium transition-all shadow-2xs whitespace-nowrap shrink-0 cursor-pointer select-none"
                     >
                       My Room Rates
+                    </button>
+                    <button
+                      key="mgr-chip-guest-reviews"
+                      type="button"
+                      onClick={() => handleSendMessage('What are our guest reviews and average rating?')}
+                      className="px-3 py-1.5 bg-white hover:bg-stone-100 active:bg-stone-200 border border-stone-200/90 hover:border-stone-300 text-stone-700 hover:text-stone-900 rounded-full text-xs font-medium transition-all shadow-2xs whitespace-nowrap shrink-0 cursor-pointer select-none"
+                    >
+                      Guest Reviews
+                    </button>
+                    <button
+                      key="mgr-chip-excursions"
+                      type="button"
+                      onClick={() => handleSendMessage('Recommend local excursions, safari trips, and dining activities for our guests.')}
+                      className="px-3 py-1.5 bg-white hover:bg-stone-100 active:bg-stone-200 border border-stone-200/90 hover:border-stone-300 text-stone-700 hover:text-stone-900 rounded-full text-xs font-medium transition-all shadow-2xs whitespace-nowrap shrink-0 cursor-pointer select-none"
+                    >
+                      Guest Concierge Ideas
+                    </button>
+                    <button
+                      key="mgr-chip-wifi-power"
+                      type="button"
+                      onClick={() => handleSendMessage('What is our power backup, Wi-Fi password, and utility setup?')}
+                      className="px-3 py-1.5 bg-white hover:bg-stone-100 active:bg-stone-200 border border-stone-200/90 hover:border-stone-300 text-stone-700 hover:text-stone-900 rounded-full text-xs font-medium transition-all shadow-2xs whitespace-nowrap shrink-0 cursor-pointer select-none"
+                    >
+                      Wi-Fi & Power Setup
                     </button>
                   </>
                 )}

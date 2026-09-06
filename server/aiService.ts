@@ -243,7 +243,9 @@ async function callOpenAICompatible(
   apiKey: string,
   model: string,
   systemPrompt: string,
-  userPrompt: string
+  userPrompt: string,
+  temperature: number = 0.7,
+  maxTokens: number = 750
 ): Promise<string> {
   const maxRetries = 4;
 
@@ -260,8 +262,8 @@ async function callOpenAICompatible(
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt },
         ],
-        temperature: 0.7,
-        max_tokens: 750,
+        temperature,
+        max_tokens: maxTokens,
       }),
     });
 
@@ -321,7 +323,9 @@ async function callGemini(
   apiKey: string,
   model: string,
   systemPrompt: string,
-  userPrompt: string
+  userPrompt: string,
+  temperature: number = 0.7,
+  maxTokens: number = 750
 ): Promise<string> {
   const cleanModel = model.replace(/^models\//, '');
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${apiKey}`;
@@ -342,8 +346,8 @@ async function callGemini(
           },
         ],
         generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 750,
+          temperature,
+          maxOutputTokens: maxTokens,
         },
       }),
     });
@@ -401,7 +405,9 @@ async function callAnthropic(
   apiKey: string,
   model: string,
   systemPrompt: string,
-  userPrompt: string
+  userPrompt: string,
+  temperature: number = 0.7,
+  maxTokens: number = 750
 ): Promise<string> {
   const url = 'https://api.anthropic.com/v1/messages';
   const maxRetries = 4;
@@ -418,8 +424,8 @@ async function callAnthropic(
         model,
         system: systemPrompt,
         messages: [{ role: 'user', content: userPrompt }],
-        temperature: 0.7,
-        max_tokens: 750,
+        temperature,
+        max_tokens: maxTokens,
       }),
     });
 
@@ -787,6 +793,27 @@ export interface OperationsAssistantRequest {
       checkOutTime?: string;
       cancellationPolicy?: string;
       paymentPolicy?: string;
+      conferenceCancellationPolicy?: string;
+      conferencePaymentPolicy?: string;
+      conferenceGuidelines?: string;
+      coordinates?: { lat?: number; lng?: number };
+      hours?: any;
+      reviewsSummary?: {
+        count: number;
+        averageRating: number;
+        recentReviews: Array<{
+          author: string;
+          rating: number;
+          comment: string;
+          date?: string;
+        }>;
+      };
+      activeBroadcasts?: Array<{
+        id?: string;
+        type: string;
+        message: string;
+        date?: string;
+      }>;
       amenities?: string[];
       restaurant?: {
         enabled: boolean;
@@ -887,11 +914,13 @@ You are fully versed with every single detail in our live database, super effici
 ================================================================================
 CONVERSATIONAL STYLE & PERSONALITY: THE ULTIMATE HOSPITALITY ALL-ROUNDER
 ================================================================================
-1. SUPER EFFICIENT & QUICK (ZERO BLOAT, MAXIMUM VALUE):
+1. SUPER EFFICIENT, QUICK & SPECIFIC (ZERO BLOAT, MAXIMUM VALUE):
    - Deliver high-density, immediate value. No corporate throat-clearing, preamble, or boilerplate disclaimers.
    - NEVER start your messages with formulaic greetings like "Moni Administrator", "Moni", "Hello Administrator", or "As an AI...".
    - Address the user naturally in the second person ("you", "your lodge"), or by their clean first name if known.
    - If the user simply says "hi" or "hello", greet them back warmly and concisely (1 short sentence) and ask how you can assist.
+   - BE SPECIFIC & DIRECT (DO NOT OVER-EXPLAIN): When asked a factual question (e.g. room rates, arrivals, checkouts, Wi-Fi password, power source, manager contact, dish price, guest reviews), state the exact answer immediately in the first sentence.
+   - DO NOT write lengthy essays, history lessons, or explain basic hospitality theory unless the user explicitly requests an explanation or strategic rationale.
    - Jump straight to answering with crisp formatting: bullet points, bold key-values, and compact summaries so users get answers in seconds.
 
 2. A GENUINE CONCIERGE BUDDY & PASSIONATE LOCAL INSIDER:
@@ -906,6 +935,7 @@ CONVERSATIONAL STYLE & PERSONALITY: THE ULTIMATE HOSPITALITY ALL-ROUNDER
 3. A SUPER AGENT OF PROPERTY MANAGEMENT & OPERATIONS:
    - Revenue Management & Dual-Currency Strategy: Expert calibration between US Dollars ($ USD for international holidaymakers and safari guests) and Malawi Kwacha (MWK for domestic travelers, weekend escapes, and conferences). Yield management during peak holidays (Easter, Lake of Stars festival, Christmas/New Year) vs green season.
    - Front Desk & StayOS: Managing room turns between check-out (10:00) and check-in (14:00), staging rooms, VIP welcome drinks, blocked dates for maintenance or private reservations.
+   - Infrastructure & Utilities Resilience: Mastery of power backup (solar, inverters, backup generators during ESCOM load-shedding), borehole water purification, Starlink Wi-Fi credentials and vouchers.
    - WhatsApp Inquiry Conversion: Crafting warm, high-converting WhatsApp replies for inquiries, securing 0% commission direct bookings.
    - Dining & Menus: Dish of the day recommendations, pairing local fresh ingredients, menu engineering.
    - Banqueting & Conferences: Seating layouts (theatre, classroom, boardroom), day delegate rates in USD and MWK, catering coordination.
@@ -918,8 +948,20 @@ CONVERSATIONAL STYLE & PERSONALITY: THE ULTIMATE HOSPITALITY ALL-ROUNDER
      * Problem-Solver Mindset: When an issue arises (power switch, rain, guest delay) -> offers calm, pragmatic, step-by-step hospitality solutions.
 
 5. FULLY VERSED WITH EVERYTHING IN OUR DATABASE:
-   - You have 100% comprehensive command of all property details in live context: infrastructure (power backup, solar, borehole, road access, Wi-Fi SSID and passwords), active promotions, dining menu sections with dish prices in USD and MWK, room packages, extra guest fees, inventory counts, crew contacts, and booking special requests.
-   - When asked anything about a property in your scope, cite the exact database facts accurately and confidently.
+   - You have 100% comprehensive command of all property details in live context:
+     * Rooms & Inventory: names, capacities, inventory counts, blocked dates, extra guest fees, room packages.
+     * Dual-Currency Rates: exact nightly pricing in both USD ($) and MWK (Malawi Kwacha).
+     * Infrastructure & Utilities: power source (grid, solar, inverter, generator backup), water source (borehole, purified), road access (tar, 4x4 requirement), internet connection (Starlink, LTE), Wi-Fi SSID, Wi-Fi password, offline trust badge.
+     * Restaurant & Dining: active dining status, complete menu sections, item descriptions, dietary tags (vegetarian, vegan, gluten-free, local Malawian), prices in USD and MWK.
+     * Daily Board (StayOS): dish of the day, resort activities, operational notes.
+     * Conference Facilities: hall names, delegate capacities, equipment, daily rates in USD and MWK.
+     * Staff & Crew: names, roles (Caretaker, Boat Captain, Chef, Guide), phone numbers, WhatsApp.
+     * Active Promotions: promotion names, discount percentages, active status.
+     * Guest Sentiment & Reviews: average star rating, total review count, recent verified guest review quotes.
+     * Active Guest Broadcasts: announcements and alerts live for in-house guests (power switch notifications, dinner specials, lake excursions).
+     * Bookings & Schedule: guest names, contact emails/phones, check-in/out dates, nights, guests, status, currency, total cost, special requests.
+     * Front Desk Policies: check-in time, check-out time, cancellation policy, payment methods, WhatsApp contact.
+   - When asked anything about a property in your scope, cite the exact database facts accurately and confidently with zero guesswork.
 
 ================================================================================
 CRITICAL ROLE-BASED ACCESS CONTROL (RBAC) & PERMISSION BOUNDARIES
@@ -1335,7 +1377,36 @@ async function executeOperationsChatWithProvider(
       : '';
 
     // Policies & Front Desk details
-    const policiesSummary = `    - Policies: Check-in ${p.checkInTime || '14:00'}, Check-out ${p.checkOutTime || '10:00'} | Cancellation: "${p.cancellationPolicy || 'Standard'}" | WhatsApp: ${p.contactWhatsapp || 'Not configured'}`;
+    // Guest Reviews & Sentiment
+    let reviewsSummaryStr = '';
+    if (p.reviewsSummary && p.reviewsSummary.count > 0) {
+      const snippets = (p.reviewsSummary.recentReviews || [])
+        .map(r => `"${r.comment.slice(0, 80)}" (${r.rating}★, ${r.author})`)
+        .join('; ');
+      reviewsSummaryStr = `    - Verified Guest Reviews: ${p.reviewsSummary.averageRating}★ rating across ${p.reviewsSummary.count} verified stay reviews | Guest Voice: ${snippets || 'Delighted guests'}`;
+    }
+
+    // Active Guest Broadcasts & Notices
+    let broadcastsSummaryStr = '';
+    if (p.activeBroadcasts && p.activeBroadcasts.length > 0) {
+      const bList = p.activeBroadcasts.map(b => `[${b.type.toUpperCase()}] "${b.message}"`).join(' | ');
+      broadcastsSummaryStr = `    - Active Live Broadcasts & Guest Notices: ${bList}`;
+    }
+
+    // GPS Coordinates & Map
+    const coordsStr = p.coordinates && p.coordinates.lat && p.coordinates.lng
+      ? `    - GPS Coordinates: ${p.coordinates.lat}, ${p.coordinates.lng}`
+      : '';
+
+    // Policies & Front Desk details
+    const paymentStr = p.paymentPolicy ? ` | Payment Methods: "${p.paymentPolicy}"` : '';
+    const confPoliciesStr = [
+      p.conferenceCancellationPolicy ? `Conference Cancellation: "${p.conferenceCancellationPolicy}"` : '',
+      p.conferencePaymentPolicy ? `Conference Payment: "${p.conferencePaymentPolicy}"` : '',
+      p.conferenceGuidelines ? `Conference Guidelines: "${p.conferenceGuidelines}"` : '',
+    ].filter(Boolean).join(' | ');
+    const confPoliciesLine = confPoliciesStr ? `    - Conference Policies: ${confPoliciesStr}` : '';
+    const policiesSummary = `    - Policies: Check-in ${p.checkInTime || '14:00'}, Check-out ${p.checkOutTime || '10:00'} | Cancellation: "${p.cancellationPolicy || 'Standard'}" | WhatsApp: ${p.contactWhatsapp || 'Not configured'}${paymentStr}`;
     const liveStatusSummary = `    - Front Desk / Status: ${p.isOnline !== false ? '🟢 ONLINE (Available for live chats)' : `🌙 OFFLINE (Out of office: "${p.outOfOfficeMessage || 'Away'}")`}`;
     const amenitiesSummary = `    - Amenities: ${(p.amenities || []).join(', ') || 'Standard amenities'}`;
     const dailyBoardSummary = p.dailyBoard?.dishOfTheDay || p.dailyBoard?.activities
@@ -1350,7 +1421,7 @@ ${ownerManagerSummary}
 ${contactSummary}
 ${crewSummary ? `${crewSummary}\n` : ''}${liveStatusSummary}
 ${infraSummary ? `${infraSummary}\n` : ''}${promoSummary ? `${promoSummary}\n` : ''}${policiesSummary}
-${amenitiesSummary}
+${confPoliciesLine ? `${confPoliciesLine}\n` : ''}${coordsStr ? `${coordsStr}\n` : ''}${reviewsSummaryStr ? `${reviewsSummaryStr}\n` : ''}${broadcastsSummaryStr ? `${broadcastsSummaryStr}\n` : ''}${amenitiesSummary}
 ${descSummary ? `${descSummary}\n` : ''}${locationNotesSummary ? `${locationNotesSummary}\n` : ''}${diningSummary}
 ${confSummary}
 ${dailyBoardSummary ? `${dailyBoardSummary}\n` : ''}    - Configured Rooms (${(p.rooms || []).length}):
@@ -1444,7 +1515,9 @@ USER MESSAGE:
           apiKey,
           model || 'deepseek-chat',
           OPERATIONS_SYSTEM_PROMPT,
-          userPrompt
+          userPrompt,
+          0.4,
+          1200
         );
 
       case 'openai':
@@ -1454,7 +1527,9 @@ USER MESSAGE:
           apiKey,
           model || 'gpt-4o-mini',
           OPERATIONS_SYSTEM_PROMPT,
-          userPrompt
+          userPrompt,
+          0.4,
+          1200
         );
 
       case 'mistral':
@@ -1464,7 +1539,9 @@ USER MESSAGE:
           apiKey,
           model || 'mistral-small-latest',
           OPERATIONS_SYSTEM_PROMPT,
-          userPrompt
+          userPrompt,
+          0.4,
+          1200
         );
 
       case 'groq':
@@ -1474,7 +1551,9 @@ USER MESSAGE:
           apiKey,
           model || 'llama-3.3-70b-versatile',
           OPERATIONS_SYSTEM_PROMPT,
-          userPrompt
+          userPrompt,
+          0.4,
+          1200
         );
 
       case 'gemini':
@@ -1483,7 +1562,9 @@ USER MESSAGE:
           apiKey,
           model || 'gemini-1.5-flash',
           OPERATIONS_SYSTEM_PROMPT,
-          userPrompt
+          userPrompt,
+          0.4,
+          1200
         );
 
       case 'anthropic':
@@ -1492,7 +1573,9 @@ USER MESSAGE:
           apiKey,
           model || 'claude-3-5-haiku-20241022',
           OPERATIONS_SYSTEM_PROMPT,
-          userPrompt
+          userPrompt,
+          0.4,
+          1200
         );
 
       default:
