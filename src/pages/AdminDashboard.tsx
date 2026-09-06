@@ -8,7 +8,7 @@ import {
   Shield, Building2, CheckCircle, CheckCircle2, XCircle, Clock, MapPin, 
   MapPinOff, Users, Edit2, Edit3, Key, Trash2, Star, ExternalLink, 
   MessageSquare, MessageSquareOff, LayoutDashboard, CalendarRange, FileText, 
-  Search, Activity, Cpu
+  Search, Activity, Cpu, Target
 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import Pagination from '../components/Pagination';
@@ -520,8 +520,34 @@ export default function AdminDashboard() {
             }`}
           >
             <Cpu className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
-            AI Services & Keys
+            AI Services &amp; Keys
           </button>
+
+          <div className="pt-4 border-t border-stone-200 mt-2 space-y-1">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 px-3 hidden md:block">Team Resources</span>
+            <Link
+              to="/marketing"
+              target="_blank"
+              className="whitespace-nowrap shrink-0 md:w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-stone-700 hover:bg-stone-100 transition"
+            >
+              <div className="flex items-center gap-2">
+                <Target className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>Marketing Playbook</span>
+              </div>
+              <ExternalLink className="w-3 h-3 text-stone-400 hidden md:block" />
+            </Link>
+            <Link
+              to="/host-guide"
+              target="_blank"
+              className="whitespace-nowrap shrink-0 md:w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-stone-700 hover:bg-stone-100 transition"
+            >
+              <div className="flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>Host Starter Pack</span>
+              </div>
+              <ExternalLink className="w-3 h-3 text-stone-400 hidden md:block" />
+            </Link>
+          </div>
         </nav>
       </div>
 

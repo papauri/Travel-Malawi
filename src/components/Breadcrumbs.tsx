@@ -75,6 +75,9 @@ function trailFor(pathname: string, label: string): Crumb[] {
   if (pathname === '/host-guide' || pathname === '/starter-pack' || pathname === '/host-starter-pack') {
     return [home, { label: 'Host Starter Pack & Guide' }];
   }
+  if (pathname === '/marketing' || pathname === '/marketing-deck' || pathname === '/operations-guide') {
+    return [home, { label: 'Marketing & Operations Deck' }];
+  }
 
   return [home, { label: 'Not found' }];
 }

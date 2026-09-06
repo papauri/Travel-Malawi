@@ -13,3 +13,4 @@ service-account*.json
 *-firebase-adminsdk-*.json
 .firebase/
 dist/
+data/

@@ -40,6 +40,7 @@ export default function Footer() {
             </li>
             <li><Link to="/list-your-property" className="hover:text-white transition">List Your Property (0% Fee)</Link></li>
             <li><Link to="/dashboard" className="hover:text-white transition">Host Dashboard</Link></li>
+            <li><Link to="/marketing" className="text-stone-400 hover:text-white transition text-xs">Marketing Playbook</Link></li>
           </ul>
         </div>
         

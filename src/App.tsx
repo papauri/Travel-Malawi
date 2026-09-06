@@ -21,6 +21,7 @@ import Terms from './pages/Terms';
 import Privacy from './pages/Privacy';
 import Refunds from './pages/Refunds';
 import HostStarterPack from './pages/HostStarterPack';
+import MarketingDeck from './pages/MarketingDeck';
 import GlobalNotificationManager from './components/GlobalNotificationManager';
 import PageLoader from './components/PageLoader';
 import CompareWidget from './components/CompareWidget';
@@ -135,6 +136,9 @@ const router = createBrowserRouter([
       { path: "host-guide", element: <HostStarterPack /> },
       { path: "starter-pack", element: <HostStarterPack /> },
       { path: "host-starter-pack", element: <HostStarterPack /> },
+      { path: "marketing", element: <MarketingDeck /> },
+      { path: "marketing-deck", element: <MarketingDeck /> },
+      { path: "operations-guide", element: <MarketingDeck /> },
       { path: "admin/hotel/:id", element: <ManageHotel /> },
       { path: "*", element: <NotFound /> }
     ]
