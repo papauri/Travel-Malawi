@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import {
   User as FirebaseUser,
   onAuthStateChanged,
@@ -58,7 +58,7 @@ async function loadOrCreateUser(
     userData = {
       uid: firebaseUser.uid,
       email: firebaseUser.email,
-      displayName: firebaseUser.displayName,
+      displayName: firebaseUser.displayName || (firebaseUser.email ? firebaseUser.email.split('@')[0] : 'User'),
       ...toRoleFields(defaultRoles),
       createdAt: Date.now(),
     };
@@ -74,7 +74,7 @@ async function loadOrCreateUser(
       await setDoc(userDocRef, { ...userData }, { merge: true });
     }
   } else if (!userDoc.exists()) {
-    await setDoc(userDocRef, userData);
+    await setDoc(userDocRef, userData, { merge: true });
   }
 
   return userData;
@@ -83,9 +83,15 @@ async function loadOrCreateUser(
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const signingUpRef = useRef(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      // If sign-up is currently in flight, let signUp() complete the user profile setup
+      if (signingUpRef.current) {
+        return;
+      }
+
       if (firebaseUser) {
         try {
           const appUser = await loadOrCreateUser(firebaseUser);
@@ -96,7 +102,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUser({
             uid: firebaseUser.uid,
             email: firebaseUser.email,
-            displayName: firebaseUser.displayName,
+            displayName: firebaseUser.displayName || (firebaseUser.email ? firebaseUser.email.split('@')[0] : 'User'),
             role: 'traveller',
             roles: ['traveller'],
             createdAt: Date.now(),
@@ -110,25 +116,60 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return unsubscribe;
   }, []);
 
-
   const signIn = async (email: string, password: string) => {
-    const result = await signInWithEmailAndPassword(auth, email, password);
-    const appUser = await loadOrCreateUser(result.user);
-    setUser(appUser);
+    const cleanEmail = email.trim();
+    const result = await signInWithEmailAndPassword(auth, cleanEmail, password);
+    try {
+      const appUser = await loadOrCreateUser(result.user);
+      setUser(appUser);
+    } catch (err) {
+      console.error('Error loading user profile after sign-in:', err);
+      setUser({
+        uid: result.user.uid,
+        email: result.user.email || cleanEmail,
+        displayName: result.user.displayName || cleanEmail.split('@')[0] || 'User',
+        role: 'traveller',
+        roles: ['traveller'],
+        createdAt: Date.now(),
+      });
+    }
   };
 
   const signUp = async (email: string, password: string, displayName: string, roles: Role[]) => {
-    const result = await createUserWithEmailAndPassword(auth, email, password);
-    await updateProfile(result.user, { displayName });
-    const newUser: User = {
-      uid: result.user.uid,
-      email: result.user.email,
-      displayName,
-      ...toRoleFields(roles),
-      createdAt: Date.now(),
-    };
-    await setDoc(doc(db, 'users', result.user.uid), newUser);
-    setUser(newUser);
+    signingUpRef.current = true;
+    try {
+      const cleanEmail = email.trim();
+      const cleanName = displayName.trim();
+      const result = await createUserWithEmailAndPassword(auth, cleanEmail, password);
+      
+      if (cleanName) {
+        try {
+          await updateProfile(result.user, { displayName: cleanName });
+        } catch (profileErr) {
+          console.warn('Could not update Firebase profile displayName:', profileErr);
+        }
+      }
+
+      const roleFields = toRoleFields(roles);
+      const newUser: User = {
+        uid: result.user.uid,
+        email: result.user.email || cleanEmail,
+        displayName: cleanName || cleanEmail.split('@')[0] || 'User',
+        ...roleFields,
+        createdAt: Date.now(),
+      };
+
+      try {
+        await setDoc(doc(db, 'users', result.user.uid), newUser, { merge: true });
+      } catch (docErr) {
+        console.error('Error saving user profile to Firestore:', docErr);
+      }
+
+      setUser(newUser);
+    } finally {
+      signingUpRef.current = false;
+      setLoading(false);
+    }
   };
 
   const signInWithGoogle = async (roles: Role[] = ['traveller']) => {
@@ -138,7 +179,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const resetPassword = async (email: string) => {
-    await sendPasswordResetEmail(auth, email);
+    const cleanEmail = email.trim();
+    await sendPasswordResetEmail(auth, cleanEmail);
   };
 
   /**

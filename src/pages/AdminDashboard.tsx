@@ -16,6 +16,7 @@ import { PIN_PROBLEM_LABELS, mapLinkUrl, pinProblem } from '../lib/geo';
 import toast from 'react-hot-toast';
 import SmartImage from '../components/SmartImage';
 import ConfirmDialog from '../components/ConfirmDialog';
+import Modal from '../components/Modal';
 import AdminAISettings from '../components/AdminAISettings';
 import { getHotelImage } from '../lib/images';
 import { isAdmin, isHotelManager, userRoles, toRoleFields } from '../lib/roles';
@@ -83,6 +84,9 @@ export default function AdminDashboard() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [savingDestinations, setSavingDestinations] = useState(false);
   const [newDestination, setNewDestination] = useState('');
+  const [quickResetEmail, setQuickResetEmail] = useState('');
+  const [sendingQuickReset, setSendingQuickReset] = useState(false);
+  const [showQuickResetModal, setShowQuickResetModal] = useState(false);
   
   const itemsPerPage = 10;
 
@@ -1041,17 +1045,31 @@ export default function AdminDashboard() {
         {activeTab === 'users' && (
           <div className="space-y-6 animate-in fade-in duration-300">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <h2 className="text-3xl font-serif font-bold text-stone-900">User Management</h2>
+              <div>
+                <h2 className="text-3xl font-serif font-bold text-stone-900">User Management</h2>
+                <p className="text-sm text-stone-500 mt-1">Manage platform accounts, roles, and password recovery.</p>
+              </div>
               
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
-                <input
-                  type="text"
-                  placeholder="Search users..."
-                  value={userSearch}
-                  onChange={e => { setUserSearch(e.target.value); setCurrentUserPage(1); }}
-                  className="pl-9 pr-4 py-2 border border-stone-200 rounded-xl text-sm focus:outline-none focus:border-stone-900 w-full sm:w-64"
-                />
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+                  <input
+                    type="text"
+                    placeholder="Search users..."
+                    value={userSearch}
+                    onChange={e => { setUserSearch(e.target.value); setCurrentUserPage(1); }}
+                    className="pl-9 pr-4 py-2 border border-stone-200 rounded-xl text-sm focus:outline-none focus:border-stone-900 w-full sm:w-64"
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowQuickResetModal(true)}
+                  className="flex items-center justify-center gap-2 px-3.5 py-2 bg-stone-900 text-white rounded-xl text-xs font-semibold hover:bg-stone-800 transition shrink-0 shadow-sm"
+                >
+                  <Key className="h-3.5 w-3.5" />
+                  <span>Reset Any Password</span>
+                </button>
               </div>
             </div>
 
@@ -1084,17 +1102,17 @@ export default function AdminDashboard() {
                               {rolesList.includes('admin') && (
                                 <span className="bg-purple-100 text-purple-700 px-2.5 py-1 rounded-md text-xs font-bold tracking-wide">
                                   ADMIN
-                               </span>
+                                </span>
                               )}
                               {rolesList.includes('hotel_manager') && (
                                 <span className="bg-blue-100 text-blue-700 px-2.5 py-1 rounded-md text-xs font-bold tracking-wide">
                                   MANAGER
-                               </span>
+                                </span>
                               )}
                               {rolesList.includes('traveller') && (
                                 <span className="bg-stone-100 text-stone-600 px-2.5 py-1 rounded-md text-xs font-bold tracking-wide">
                                   TRAVELLER
-                               </span>
+                                </span>
                               )}
                             </div>
                           </td>
@@ -1121,17 +1139,28 @@ export default function AdminDashboard() {
                               {u.email && (
                                 <button
                                   onClick={async () => {
+                                    const ok = window.confirm(`Send a password reset email to ${u.email}?`);
+                                    if (!ok) return;
                                     try {
                                       await resetPassword(u.email!);
                                       toast.success(`Reset link sent to ${u.email}`);
-                                    } catch (err) {
-                                      toast.error('Failed to send reset link');
+                                    } catch (err: any) {
+                                      const errorMsg =
+                                        err?.code === 'auth/user-not-found'
+                                          ? 'No user found with this email in Firebase Auth.'
+                                          : err?.code === 'auth/invalid-email'
+                                          ? 'Invalid email format.'
+                                          : err?.code === 'auth/too-many-requests'
+                                          ? 'Too many reset attempts. Please wait a moment.'
+                                          : err?.message || 'Failed to send reset link';
+                                      toast.error(errorMsg);
                                     }
                                   }}
-                                  className="text-stone-500 hover:text-stone-900 transition p-1.5 rounded-lg bg-stone-100 hover:bg-stone-200"
-                                  title="Send Password Reset"
+                                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 hover:text-stone-900 transition border border-stone-200/80"
+                                  title={`Send password reset email to ${u.email}`}
                                 >
-                                  <Key className="h-4 w-4" />
+                                  <Key className="h-3.5 w-3.5 text-stone-500" />
+                                  <span>Reset Password</span>
                                 </button>
                               )}
                             </div>
@@ -1160,6 +1189,83 @@ export default function AdminDashboard() {
                 </div>
               )}
             </div>
+
+            {/* Quick Password Reset Modal */}
+            {showQuickResetModal && (
+              <Modal
+                open={showQuickResetModal}
+                onClose={() => { setShowQuickResetModal(false); setQuickResetEmail(''); }}
+                size="sm"
+                title="Send Password Reset"
+                description="Send a secure password recovery email to any registered user or manager."
+                footer={
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => { setShowQuickResetModal(false); setQuickResetEmail(''); }}
+                      className="flex-1 py-2.5 rounded-xl border border-stone-200 text-stone-600 font-semibold text-sm hover:bg-stone-50 transition"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      form="admin-quick-reset-form"
+                      disabled={sendingQuickReset || !quickResetEmail.trim()}
+                      className="flex-1 py-2.5 rounded-xl bg-stone-900 text-white font-semibold text-sm hover:bg-stone-800 disabled:opacity-50 transition shadow-sm"
+                    >
+                      {sendingQuickReset ? 'Sending…' : 'Send Link'}
+                    </button>
+                  </div>
+                }
+              >
+                <form
+                  id="admin-quick-reset-form"
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    const target = quickResetEmail.trim();
+                    if (!target) return;
+                    setSendingQuickReset(true);
+                    try {
+                      await resetPassword(target);
+                      toast.success(`Password reset email sent to ${target}`);
+                      setShowQuickResetModal(false);
+                      setQuickResetEmail('');
+                    } catch (err: any) {
+                      const msg =
+                        err?.code === 'auth/user-not-found'
+                          ? 'No account found with this email in Firebase Auth.'
+                          : err?.code === 'auth/invalid-email'
+                          ? 'Invalid email format.'
+                          : err?.code === 'auth/too-many-requests'
+                          ? 'Too many attempts. Please wait a moment.'
+                          : err?.message || 'Failed to send password reset email';
+                      toast.error(msg);
+                    } finally {
+                      setSendingQuickReset(false);
+                    }
+                  }}
+                  className="space-y-4"
+                >
+                  <div>
+                    <label className="block text-xs font-semibold text-stone-500 tracking-wide mb-1.5">
+                      User Email Address
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      autoFocus
+                      value={quickResetEmail}
+                      onChange={(e) => setQuickResetEmail(e.target.value)}
+                      placeholder="user@example.com"
+                      className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 text-sm text-stone-900 placeholder:text-stone-400 outline-none focus:bg-white focus:border-stone-900 focus:ring-4 focus:ring-stone-900/5 transition"
+                    />
+                  </div>
+                  <p className="text-xs text-stone-400 leading-relaxed">
+                    Firebase will email a secure link allowing the user to select a new password. The link expires after 1 hour.
+                  </p>
+                </form>
+              </Modal>
+            )}
           </div>
         )}
         {/* ===================== BOOKINGS TAB ===================== */}

@@ -1,4 +1,4 @@
-import nodemailer from 'nodemailer';
+// import nodemailer from 'nodemailer';
 
 // In a real app, you would configure SMTP with Env variables:
 // SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS
