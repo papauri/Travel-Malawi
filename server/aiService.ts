@@ -1,7 +1,7 @@
 import { AIProviderId, getEffectiveApiKey, loadAIConfig } from './aiConfig';
 
 export interface GenerationRequest {
-  action: 'draft' | 'polish' | 'shorten' | 'highlights' | 'suggest_amenities' | 'suggest_rooms' | 'review_listing' | 'suggest_rate';
+  action: 'draft' | 'polish' | 'shorten' | 'highlights' | 'suggest_amenities' | 'suggest_rooms' | 'review_listing' | 'suggest_rate' | 'lookup_property';
   entityType: 'property' | 'room' | 'conference' | 'dining';
   currentText?: string;
   details?: {
@@ -132,13 +132,47 @@ Do not output markdown code blocks or explanations.`);
 - Guest clarity: One question travelers might still have (e.g., power backup, meal options, boat/road transport).
 - Quick tip: One practical suggestion to increase inquiries.
 Keep the total response under 130 words in clear, friendly plain text without markdown headers.`);
+  } else if (action === 'lookup_property') {
+    parts.push(`Look up this accommodation property in Malawi using your knowledge of Malawi tourism, lodges, safari camps, hotels, guesthouses, and Google Maps:`);
+    parts.push(`Property Name to search: ${entityName}`);
+    if (location) parts.push(`Town / Area / Context: ${location}`);
+    if (extraNotes) parts.push(`Additional clues: ${extraNotes}`);
+    parts.push(`Your task is to identify this real Malawian property or propose accurate hospitality details for it in Malawi.
+Return ONLY a valid JSON object with the following fields:
+- "matched": boolean (true if you recognize this specific lodge/hotel/camp in Malawi, false otherwise)
+- "officialName": string (official recognized name of the property, e.g. "Kaya Mawa", "Sunbird Livingstonia Beach", "Mayoka Village")
+- "category": string (MUST be one of: "Lake & Beach" | "Safari & Wildlife" | "Romantic Escape" | "Family" | "Adventure" | "Luxury" | "Bed & Breakfast" | "Guest House")
+- "location": string (Town or area name in Malawi, e.g. "Likoma Island", "Cape Maclear", "Senga Bay, Salima", "Nkhata Bay", "Area 43, Lilongwe", "Liwonde")
+- "locationNotes": string (practical arrival instructions, road turns, or lakeside access)
+- "description": string (welcoming, authentic 1-2 paragraph description highlighting the setting, views, comforts, and atmosphere)
+- "amenities": string[] (array of amenities it offers, e.g. ["Lake view", "Restaurant", "Bar", "Free WiFi", "Swimming pool", "Airport transfer", "Boat trips"])
+- "coordinates": { "lat": number, "lng": number } | null (accurate GPS coordinates in Malawi if known)
+- "confidence": "high" | "medium" | "low"
+- "summary": string (1-sentence summary of what makes this stay special)
+
+Do not output any markdown code blocks, backticks, or explanatory text. Return strictly valid JSON.`);
   }
 
   return parts.join('\n\n');
 }
 
 /**
+ * Exponential backoff helper with jitter for API rate limits (HTTP 429).
+ */
+async function waitBackoff(attempt: number, retryHeader: string | null, baseMs = 1500): Promise<void> {
+  let ms = baseMs * Math.pow(2, attempt) + Math.round(Math.random() * 500);
+  if (retryHeader) {
+    const parsed = parseInt(retryHeader, 10);
+    if (!isNaN(parsed) && parsed > 0) {
+      ms = Math.min(12000, parsed * 1000);
+    }
+  }
+  await new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
  * Direct API caller for standard OpenAI-compatible endpoints (DeepSeek, OpenAI, Mistral, Groq)
+ * Equipped with automatic backoff retry on HTTP 429 rate limit responses.
  */
 async function callOpenAICompatible(
   apiUrl: string,
@@ -147,38 +181,62 @@ async function callOpenAICompatible(
   systemPrompt: string,
   userPrompt: string
 ): Promise<string> {
-  const response = await fetch(apiUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      temperature: 0.7,
-      max_tokens: 600,
-    }),
-  });
+  const maxRetries = 3;
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`API error (${response.status}): ${errorText.slice(0, 300)}`);
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        temperature: 0.7,
+        max_tokens: 750,
+      }),
+    });
+
+    if (response.status === 429) {
+      if (attempt < maxRetries) {
+        const retryHeader = response.headers.get('retry-after');
+        console.warn(`[AI Service] 429 Rate limit hit for model ${model}. Backing off and retrying (attempt ${attempt + 1}/${maxRetries})...`);
+        await waitBackoff(attempt, retryHeader, 1800);
+        continue;
+      }
+      throw new Error(`AI rate limit reached (${model}). Mistral/Provider allows 1 request per second on its free tier. Please wait 5-10 seconds and try again.`);
+    }
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      let cleanMsg = errorText.slice(0, 300);
+      try {
+        const parsed = JSON.parse(errorText);
+        if (parsed.message) cleanMsg = parsed.message;
+        else if (parsed.error?.message) cleanMsg = parsed.error.message;
+      } catch {
+        // use slice
+      }
+      throw new Error(`API error (${response.status}): ${cleanMsg}`);
+    }
+
+    const data = await response.json();
+    const text = data?.choices?.[0]?.message?.content?.trim();
+    if (!text) {
+      throw new Error('No text generated from model');
+    }
+    return text;
   }
 
-  const data = await response.json();
-  const text = data?.choices?.[0]?.message?.content?.trim();
-  if (!text) {
-    throw new Error('No text generated from model');
-  }
-  return text;
+  throw new Error('AI request failed after multiple rate limit retries');
 }
 
 /**
- * Google Gemini REST caller
+ * Google Gemini REST caller with 429 backoff retry
  */
 async function callGemini(
   apiKey: string,
@@ -188,42 +246,62 @@ async function callGemini(
 ): Promise<string> {
   const cleanModel = model.replace(/^models\//, '');
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${apiKey}`;
+  const maxRetries = 3;
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      systemInstruction: {
-        parts: [{ text: systemPrompt }],
-      },
-      contents: [
-        {
-          role: 'user',
-          parts: [{ text: userPrompt }],
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        systemInstruction: {
+          parts: [{ text: systemPrompt }],
         },
-      ],
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 600,
-      },
-    }),
-  });
+        contents: [
+          {
+            role: 'user',
+            parts: [{ text: userPrompt }],
+          },
+        ],
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 750,
+        },
+      }),
+    });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Gemini API error (${response.status}): ${errorText.slice(0, 300)}`);
+    if (response.status === 429) {
+      if (attempt < maxRetries) {
+        const retryHeader = response.headers.get('retry-after');
+        console.warn(`[AI Service] Gemini 429 rate limit hit. Backing off and retrying (attempt ${attempt + 1}/${maxRetries})...`);
+        await waitBackoff(attempt, retryHeader, 1800);
+        continue;
+      }
+      throw new Error('Gemini API rate limit reached. Please wait a few seconds and try again.');
+    }
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      let cleanMsg = errorText.slice(0, 300);
+      try {
+        const parsed = JSON.parse(errorText);
+        if (parsed.error?.message) cleanMsg = parsed.error.message;
+      } catch {}
+      throw new Error(`Gemini API error (${response.status}): ${cleanMsg}`);
+    }
+
+    const data = await response.json();
+    const candidate = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    if (!candidate) {
+      throw new Error('No text generated by Gemini');
+    }
+    return candidate;
   }
 
-  const data = await response.json();
-  const candidate = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-  if (!candidate) {
-    throw new Error('No text generated by Gemini');
-  }
-  return candidate;
+  throw new Error('Gemini request failed after multiple retries');
 }
 
 /**
- * Anthropic Messages API caller
+ * Anthropic Messages API caller with 429 backoff retry
  */
 async function callAnthropic(
   apiKey: string,
@@ -232,34 +310,54 @@ async function callAnthropic(
   userPrompt: string
 ): Promise<string> {
   const url = 'https://api.anthropic.com/v1/messages';
+  const maxRetries = 3;
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: userPrompt }],
-      temperature: 0.7,
-      max_tokens: 600,
-    }),
-  });
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userPrompt }],
+        temperature: 0.7,
+        max_tokens: 750,
+      }),
+    });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Anthropic API error (${response.status}): ${errorText.slice(0, 300)}`);
+    if (response.status === 429) {
+      if (attempt < maxRetries) {
+        const retryHeader = response.headers.get('retry-after');
+        console.warn(`[AI Service] Anthropic 429 rate limit hit. Backing off and retrying (attempt ${attempt + 1}/${maxRetries})...`);
+        await waitBackoff(attempt, retryHeader, 1800);
+        continue;
+      }
+      throw new Error('Anthropic API rate limit reached. Please wait a moment and try again.');
+    }
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      let cleanMsg = errorText.slice(0, 300);
+      try {
+        const parsed = JSON.parse(errorText);
+        if (parsed.error?.message) cleanMsg = parsed.error.message;
+      } catch {}
+      throw new Error(`Anthropic API error (${response.status}): ${cleanMsg}`);
+    }
+
+    const data = await response.json();
+    const text = data?.content?.[0]?.text?.trim();
+    if (!text) {
+      throw new Error('No text generated by Anthropic');
+    }
+    return text;
   }
 
-  const data = await response.json();
-  const text = data?.content?.[0]?.text?.trim();
-  if (!text) {
-    throw new Error('No text generated by Anthropic');
-  }
-  return text;
+  throw new Error('Anthropic request failed after multiple retries');
 }
 
 export async function executeAIGeneration(
@@ -367,7 +465,7 @@ export async function executeAIGeneration(
         // Leave structuredData as null
       }
     }
-  } else if (req.action === 'suggest_rate') {
+  } else if (req.action === 'suggest_rate' || req.action === 'lookup_property') {
     try {
       const cleaned = generatedText
         .replace(/```json/gi, '')

@@ -9,7 +9,7 @@ export interface AIStatus {
 }
 
 export interface AIGenerateOptions {
-  action: 'draft' | 'polish' | 'shorten' | 'highlights' | 'suggest_amenities' | 'suggest_rooms' | 'review_listing' | 'suggest_rate';
+  action: 'draft' | 'polish' | 'shorten' | 'highlights' | 'suggest_amenities' | 'suggest_rooms' | 'review_listing' | 'suggest_rate' | 'lookup_property';
   entityType: 'property' | 'room' | 'conference' | 'dining';
   currentText?: string;
   details?: {
@@ -248,6 +248,10 @@ export function useAIAssistant() {
   }, [fetchStatus]);
 
   const generate = useCallback(async (options: AIGenerateOptions): Promise<string | null> => {
+    if (generating) {
+      toast('An AI request is already processing. Please wait a moment...', { icon: '⏳' });
+      return null;
+    }
     setGenerating(true);
     try {
       const res = await fetch('/api/ai/generate', {
@@ -258,7 +262,10 @@ export function useAIAssistant() {
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
-        const errMsg = errData.error || `Generation failed (${res.status})`;
+        let errMsg = errData.error || `Generation failed (${res.status})`;
+        if (res.status === 429 || errMsg.toLowerCase().includes('rate limit')) {
+          errMsg = 'AI Rate Limit: The free provider allows 1 request per second. Please wait a few seconds and try again.';
+        }
         toast.error(errMsg);
         return null;
       }
@@ -272,9 +279,13 @@ export function useAIAssistant() {
     } finally {
       setGenerating(false);
     }
-  }, []);
+  }, [generating]);
 
   const generateDetailed = useCallback(async <T = any>(options: AIGenerateOptions): Promise<{ text: string; data?: T } | null> => {
+    if (generating) {
+      toast('An AI request is already processing. Please wait a moment...', { icon: '⏳' });
+      return null;
+    }
     setGenerating(true);
     try {
       const res = await fetch('/api/ai/generate', {
@@ -285,7 +296,10 @@ export function useAIAssistant() {
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
-        const errMsg = errData.error || `Generation failed (${res.status})`;
+        let errMsg = errData.error || `Generation failed (${res.status})`;
+        if (res.status === 429 || errMsg.toLowerCase().includes('rate limit')) {
+          errMsg = 'AI Rate Limit: The free provider allows 1 request per second. Please wait a few seconds and try again.';
+        }
         toast.error(errMsg);
         return null;
       }
@@ -299,7 +313,7 @@ export function useAIAssistant() {
     } finally {
       setGenerating(false);
     }
-  }, []);
+  }, [generating]);
 
   const operationsChat = useCallback(async (payload: OperationsChatPayload): Promise<OperationsChatResult | null> => {
     setGenerating(true);

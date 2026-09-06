@@ -15,14 +15,14 @@
  * steps, and land on the room editor for the property that was just created.
  */
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
   ArrowLeft, ArrowRight, BadgeCheck, Building2, Check, ChevronRight, Clock,
   Images, Loader2, LocateFixed, Mail, MapPin, MessageCircle, Phone, Plus, Send,
   Award, FileText, CheckCircle2, Wallet, X, DollarSign, Coins, Trash2, Sliders, ChevronDown, ChevronUp,
-  RefreshCw, TrendingUp, HelpCircle,
+  RefreshCw, TrendingUp, HelpCircle, Sparkles, AlertTriangle,
   User, UserCheck, Shield, Building,
 } from 'lucide-react';
 
@@ -43,7 +43,9 @@ import {
   CATEGORY_HINTS, COMMON_AMENITIES, DESCRIPTION_MAX, DESCRIPTION_MIN, ListingDraft,
   MALAWI_LOCATIONS, NAME_MAX, PROPERTY_CATEGORIES, PropertyCategory, createListing,
   emptyDraft, errorsForStep, hasDuplicateListing, isStepComplete, validateDraft,
+  findExistingProperty, ExistingPropertyMatch,
 } from '../lib/listing';
+import { searchNominatim } from '../lib/geo';
 import { RoomInput } from '../lib/validateRoom';
 import { CURRENCIES, formatMoney } from '../lib/currency';
 import { CurrencyCode } from '../types';
@@ -70,7 +72,9 @@ export interface SuggestedRoomItem {
   isCustomizing?: boolean;
 }
 
-const DRAFT_KEY = 'listingDraft';
+function getDraftStorageKey(uid?: string | null): string {
+  return uid ? `travel_malawi_listing_draft_${uid}` : 'travel_malawi_listing_draft_guest';
+}
 
 const STEPS = [
   { title: 'The basics', blurb: 'What it is called, and where it is.' },
@@ -85,10 +89,11 @@ const STEPS = [
 /** Every step that carries fields — used to find the first one still wrong. */
 const FIELD_STEPS = [0, 1, 2, 3, 4];
 
-/** Survives the round trip through a Google sign-in popup. */
-function readDraft(): ListingDraft {
+/** Survives the round trip through a Google sign-in popup or page refresh, scoped to user. */
+function readDraftForUser(uid?: string | null): ListingDraft {
   try {
-    const stored = localStorage.getItem(DRAFT_KEY);
+    const key = getDraftStorageKey(uid);
+    const stored = localStorage.getItem(key);
     if (stored) return { ...emptyDraft(), ...JSON.parse(stored) };
   } catch {
     // A corrupt draft is not worth reporting; start clean.
@@ -107,7 +112,8 @@ export default function ListProperty() {
   const { openAuth } = useAuthDialog();
   const navigate = useNavigate();
 
-  const [draft, setDraft] = useState<ListingDraft>(readDraft);
+  const prevUserUidRef = useRef<string | undefined>(user?.uid);
+  const [draft, setDraft] = useState<ListingDraft>(() => readDraftForUser(user?.uid));
   const [step, setStep] = useState(0);
   const [showErrors, setShowErrors] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -115,6 +121,23 @@ export default function ListProperty() {
   const [amenityInput, setAmenityInput] = useState('');
   const [premiumEnabled, setPremiumEnabled] = useState(false);
   const [checkingPremium, setCheckingPremium] = useState(true);
+
+  // Real-time Database Duplicate & AI/Maps Discovery State
+  const [existingMatch, setExistingMatch] = useState<ExistingPropertyMatch | null>(null);
+  const [checkingExisting, setCheckingExisting] = useState(false);
+  const [aiLookupLoading, setAiLookupLoading] = useState(false);
+  const [aiPropertySuggestion, setAiPropertySuggestion] = useState<{
+    matched: boolean;
+    officialName: string;
+    category?: PropertyCategory | string;
+    location?: string;
+    locationNotes?: string;
+    description?: string;
+    amenities?: string[];
+    coordinates?: { lat: number; lng: number } | null;
+    confidence?: string;
+    summary?: string;
+  } | null>(null);
 
   // Subtle, optional AI Assistant features
   const { status: aiStatus, generate, generateDetailed } = useAIAssistant();
@@ -148,16 +171,58 @@ export default function ListProperty() {
     fetchPremiumStatus();
   }, []);
 
-  // Nothing typed is lost to a sign-in, a refresh, or a mis-click on Back.
+  // Multi-user draft isolation & account synchronization
+  useEffect(() => {
+    const prevUid = prevUserUidRef.current;
+    const currentUid = user?.uid;
+
+    if (prevUid !== currentUid) {
+      prevUserUidRef.current = currentUid;
+      if (currentUid) {
+        const userSavedDraft = readDraftForUser(currentUid);
+        const hasExisting = Boolean(userSavedDraft.name || userSavedDraft.location || userSavedDraft.description);
+
+        if (hasExisting) {
+          // Switch to this user's stored draft
+          setDraft(userSavedDraft);
+        } else if (!prevUid) {
+          // User just signed in from an anonymous guest session: adopt what was typed, but update manager details
+          setDraft(curr => ({
+            ...curr,
+            managerName: user.displayName || curr.managerName,
+            managerEmail: user.email || curr.managerEmail,
+            contactEmail: user.email || curr.contactEmail,
+            managerPhone: user.phone || curr.managerPhone,
+            contactPhone: user.phone || curr.contactPhone,
+          }));
+        } else {
+          // User switched accounts (from User A to User B)! Clear User A's data and start fresh for User B
+          const fresh = emptyDraft();
+          fresh.managerName = user.displayName || '';
+          fresh.managerEmail = user.email || '';
+          fresh.contactEmail = user.email || '';
+          fresh.managerPhone = user.phone || '';
+          fresh.contactPhone = user.phone || '';
+          setDraft(fresh);
+        }
+      } else {
+        // User logged out
+        setDraft(emptyDraft());
+      }
+    }
+  }, [user]);
+
+  // Persist draft keyed strictly by active user
   useEffect(() => {
     try {
-      localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+      const key = getDraftStorageKey(user?.uid);
+      localStorage.setItem(key, JSON.stringify(draft));
     } catch {
       // Private browsing; the draft simply will not persist.
     }
-  }, [draft]);
+  }, [draft, user?.uid]);
 
-  // Pre-fill manager and contact details from signed-in host if empty
+  // Pre-fill manager and contact details for signed-in host if empty
   useEffect(() => {
     if (!user) return;
     setDraft(current => {
@@ -186,6 +251,163 @@ export default function ListProperty() {
       return changed ? next : current;
     });
   }, [user]);
+
+  // Explicitly discard draft and start fresh
+  const handleDiscardDraft = () => {
+    if (window.confirm('Discard this draft and start fresh? All unsubmitted changes will be cleared.')) {
+      try {
+        localStorage.removeItem(getDraftStorageKey(user?.uid));
+      } catch {}
+      const fresh = emptyDraft();
+      if (user) {
+        fresh.managerName = user.displayName || '';
+        fresh.managerEmail = user.email || '';
+        fresh.contactEmail = user.email || '';
+        fresh.managerPhone = user.phone || '';
+        fresh.contactPhone = user.phone || '';
+      }
+      setDraft(fresh);
+      setStep(0);
+      setExistingMatch(null);
+      setAiPropertySuggestion(null);
+      toast.success('Draft cleared. Starting fresh!');
+    }
+  };
+
+  // Real-time check against Firestore database for duplicate or existing property
+  useEffect(() => {
+    const trimmed = draft.name.trim();
+    if (trimmed.length < 3) {
+      setExistingMatch(null);
+      return;
+    }
+
+    setCheckingExisting(true);
+    const timer = setTimeout(async () => {
+      const result = await findExistingProperty(trimmed, draft.id);
+      setExistingMatch(result);
+      setCheckingExisting(false);
+    }, 450);
+
+    return () => clearTimeout(timer);
+  }, [draft.name, draft.id]);
+
+  // Look up property on Google Maps & AI Knowledge Base
+  const handleLookupPropertyAI = async () => {
+    const name = draft.name.trim();
+    if (!name) {
+      toast.error('Please enter a property name to look up');
+      return;
+    }
+
+    setAiLookupLoading(true);
+    setAiPropertySuggestion(null);
+
+    try {
+      // Concurrently query Nominatim/OpenStreetMap for coordinates and AI Knowledge Base for property data
+      const [osmResults, aiResult] = await Promise.all([
+        searchNominatim(`${name} Malawi`, 3).catch(() => []),
+        generateDetailed<{
+          matched: boolean;
+          officialName: string;
+          category?: string;
+          location?: string;
+          locationNotes?: string;
+          description?: string;
+          amenities?: string[];
+          coordinates?: { lat: number; lng: number } | null;
+          confidence?: string;
+          summary?: string;
+        }>({
+          action: 'lookup_property',
+          entityType: 'property',
+          details: {
+            name,
+            location: draft.location || undefined,
+            extraNotes: 'Search Google Maps, OpenStreetMap and tourism directory across Malawi',
+          },
+        }),
+      ]);
+
+      const aiData = aiResult?.data;
+      let matchedCoords: { lat: number; lng: number } | null = null;
+      let matchedLocation = draft.location;
+
+      if (osmResults && osmResults.length > 0) {
+        matchedCoords = osmResults[0].coordinates;
+        if (!matchedLocation) {
+          const parts = osmResults[0].location.split(',');
+          matchedLocation = parts.slice(0, 2).join(',').trim();
+        }
+      }
+
+      if (aiData?.coordinates && (!matchedCoords || aiData.confidence === 'high')) {
+        matchedCoords = aiData.coordinates;
+      }
+
+      if (aiData && (aiData.matched || aiData.officialName)) {
+        setAiPropertySuggestion({
+          matched: aiData.matched ?? true,
+          officialName: aiData.officialName || name,
+          category: (aiData.category as PropertyCategory) || draft.category || 'Guest House',
+          location: aiData.location || matchedLocation || '',
+          locationNotes: aiData.locationNotes || '',
+          description: aiData.description || '',
+          amenities: Array.isArray(aiData.amenities) ? aiData.amenities : [],
+          coordinates: matchedCoords,
+          confidence: aiData.confidence || 'medium',
+          summary: aiData.summary || '',
+        });
+        toast.success(`Found hospitality details for "${aiData.officialName || name}"!`);
+      } else if (matchedCoords) {
+        setAiPropertySuggestion({
+          matched: true,
+          officialName: name,
+          category: draft.category || 'Guest House',
+          location: matchedLocation || '',
+          locationNotes: `Found on map in ${matchedLocation}`,
+          description: '',
+          amenities: [],
+          coordinates: matchedCoords,
+          confidence: 'medium',
+          summary: `Location coordinates verified via OpenStreetMap & Google Maps.`,
+        });
+        toast.success(`Found map coordinates for "${name}"!`);
+      } else {
+        toast('No verified listing found on Maps or AI. You can enter details manually.', { icon: 'ℹ️' });
+      }
+    } catch (err: any) {
+      console.error('Property lookup error:', err);
+      toast.error('Could not complete property lookup. You can continue manually.');
+    } finally {
+      setAiLookupLoading(false);
+    }
+  };
+
+  // 1-Click apply AI & Maps suggestion
+  const handleApplyAISuggestion = () => {
+    if (!aiPropertySuggestion) return;
+    const s = aiPropertySuggestion;
+
+    setDraft(current => {
+      const next = { ...current };
+      if (s.officialName) next.name = s.officialName;
+      if (s.category && PROPERTY_CATEGORIES.includes(s.category as PropertyCategory)) {
+        next.category = s.category as PropertyCategory;
+      }
+      if (s.location) next.location = s.location;
+      if (s.locationNotes && !current.locationNotes) next.locationNotes = s.locationNotes;
+      if (s.description && !current.description) next.description = s.description;
+      if (s.coordinates) next.coordinates = s.coordinates;
+      if (s.amenities && s.amenities.length > 0) {
+        next.amenities = Array.from(new Set([...current.amenities, ...s.amenities]));
+      }
+      return next;
+    });
+
+    toast.success(`Applied verified details for "${s.officialName}"!`);
+    setAiPropertySuggestion(null);
+  };
 
   const set = useCallback(<K extends keyof ListingDraft>(key: K, value: ListingDraft[K]) => {
     setDraft(current => ({ ...current, [key]: value }));
@@ -626,7 +848,7 @@ export default function ListProperty() {
 
       const id = await createListing(draft, user.uid);
       try {
-        localStorage.removeItem(DRAFT_KEY);
+        localStorage.removeItem(getDraftStorageKey(user.uid));
       } catch {
         // Nothing to do; the draft is replaced on the next listing anyway.
       }
@@ -664,12 +886,24 @@ export default function ListProperty() {
   return (
     <div className="bg-stone-50">
       <div className="mx-auto w-full max-w-5xl px-6 lg:px-8 py-14">
-        <button
-          onClick={() => navigate('/dashboard')}
-          className="mb-8 inline-flex items-center gap-2 text-sm font-semibold text-stone-500 transition hover:text-stone-900"
-        >
-          <ArrowLeft className="h-4 w-4" /> Back to your dashboard
-        </button>
+        <div className="mb-8 flex items-center justify-between gap-4">
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="inline-flex items-center gap-2 text-sm font-semibold text-stone-500 transition hover:text-stone-900 cursor-pointer"
+          >
+            <ArrowLeft className="h-4 w-4" /> Back to your dashboard
+          </button>
+
+          <button
+            type="button"
+            onClick={handleDiscardDraft}
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-400 hover:text-red-600 transition px-3 py-1.5 rounded-full hover:bg-red-50 border border-transparent hover:border-red-200 cursor-pointer"
+            title="Clear all fields and start a fresh draft"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>Discard Draft</span>
+          </button>
+        </div>
 
         <header className="mb-10">
           <p className="mb-3 text-[0.7rem] font-bold uppercase tracking-[0.22em] text-emerald-700">
@@ -716,16 +950,141 @@ export default function ListProperty() {
           {step === 0 && (
             <div className="space-y-8">
               <div>
-                <label className={labelClass} htmlFor="listing-name">Property name</label>
-                <input
-                  id="listing-name"
-                  type="text"
-                  maxLength={NAME_MAX}
-                  value={draft.name}
-                  onChange={e => set('name', e.target.value)}
-                  placeholder="e.g. Nkhata Bay Beach Lodge or Central Guest House"
-                  className={fieldClass}
-                />
+                <div className="flex items-center justify-between mb-2">
+                  <label className={labelClass} htmlFor="listing-name">Property name</label>
+                  <button
+                    type="button"
+                    onClick={handleLookupPropertyAI}
+                    disabled={aiLookupLoading || !draft.name.trim()}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-2xs"
+                  >
+                    {aiLookupLoading ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-600" />
+                        <span>Searching Maps & AI...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Look up on Google Maps & AI</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                <div className="relative">
+                  <input
+                    id="listing-name"
+                    type="text"
+                    maxLength={NAME_MAX}
+                    value={draft.name}
+                    onChange={e => set('name', e.target.value)}
+                    placeholder="e.g. Kaya Mawa, Sunbird Livingstonia, or Central Guest House"
+                    className={fieldClass}
+                  />
+                  {checkingExisting && (
+                    <div className="absolute right-3.5 top-3.5">
+                      <Loader2 className="w-4 h-4 text-stone-400 animate-spin" />
+                    </div>
+                  )}
+                </div>
+
+                {/* Duplicate / Existing Property Warning */}
+                {existingMatch?.exists && (
+                  <div className="mt-3 p-3.5 rounded-2xl bg-amber-50 border border-amber-200/90 text-amber-900 text-xs flex items-start gap-3 animate-in fade-in">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold">
+                        Property Already Registered on Travel Malawi
+                      </p>
+                      <p className="mt-0.5 text-amber-800 leading-relaxed">
+                        &quot;<strong>{existingMatch.hotel?.name}</strong>&quot; in {existingMatch.hotel?.location} already exists in our directory (Status: <span className="font-semibold uppercase">{existingMatch.hotel?.status || 'pending'}</span>).
+                        If you are the owner or authorized manager of this property, please sign in with your registered account or contact support.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* AI & Google Maps Discovered Property Card */}
+                {aiPropertySuggestion && (
+                  <div className="mt-4 p-5 rounded-2xl bg-gradient-to-br from-emerald-50/90 via-stone-50 to-emerald-50/40 border border-emerald-200/80 text-stone-800 shadow-sm animate-in fade-in space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-100/80 text-emerald-900 font-bold text-[11px] uppercase tracking-wider">
+                        <Sparkles className="w-3 h-3 text-emerald-600" />
+                        <span>Google Maps &amp; Tourism Registry Match</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setAiPropertySuggestion(null)}
+                        className="text-stone-400 hover:text-stone-600 p-1 rounded-full hover:bg-stone-200/60 transition"
+                        title="Dismiss"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <div>
+                      <h4 className="font-serif text-lg font-bold text-stone-900">
+                        {aiPropertySuggestion.officialName}
+                      </h4>
+                      <div className="flex flex-wrap items-center gap-2 mt-1.5 text-xs">
+                        {aiPropertySuggestion.location && (
+                          <span className="inline-flex items-center gap-1 text-stone-600 bg-white px-2.5 py-1 rounded-full border border-stone-200 font-medium">
+                            <MapPin className="w-3 h-3 text-emerald-600" />
+                            {aiPropertySuggestion.location}
+                          </span>
+                        )}
+                        {aiPropertySuggestion.category && (
+                          <span className="inline-flex items-center gap-1 text-stone-600 bg-white px-2.5 py-1 rounded-full border border-stone-200 font-medium">
+                            <Building2 className="w-3 h-3 text-emerald-600" />
+                            {aiPropertySuggestion.category}
+                          </span>
+                        )}
+                        {aiPropertySuggestion.coordinates && (
+                          <span className="inline-flex items-center gap-1 text-emerald-700 bg-emerald-100/60 px-2.5 py-1 rounded-full font-medium">
+                            <CheckCircle2 className="w-3 h-3" />
+                            GPS Coordinates Verified ({aiPropertySuggestion.coordinates.lat.toFixed(3)}, {aiPropertySuggestion.coordinates.lng.toFixed(3)})
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {aiPropertySuggestion.summary && (
+                      <p className="text-xs text-stone-600 leading-relaxed italic bg-white/80 p-2.5 rounded-xl border border-stone-100">
+                        &quot;{aiPropertySuggestion.summary}&quot;
+                      </p>
+                    )}
+
+                    {aiPropertySuggestion.amenities && aiPropertySuggestion.amenities.length > 0 && (
+                      <div className="flex flex-wrap gap-1 pt-1">
+                        {aiPropertySuggestion.amenities.slice(0, 6).map((a, i) => (
+                          <span key={i} className="text-[10px] bg-white text-stone-600 px-2 py-0.5 rounded-md border border-stone-200 font-medium">
+                            + {a}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="pt-2 flex flex-col sm:flex-row items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleApplyAISuggestion}
+                        className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs shadow-sm transition active:scale-95 cursor-pointer"
+                      >
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span>Auto-Fill Property Details (1-Click)</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAiPropertySuggestion(null)}
+                        className="w-full sm:w-auto text-xs text-stone-500 hover:text-stone-800 px-3 py-2 font-medium cursor-pointer"
+                      >
+                        Keep Manual Input
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 <p className="mt-2 text-xs text-stone-400">
                   This is fixed once the listing is created — an admin can change it later if you need.
                 </p>

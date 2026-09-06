@@ -336,6 +336,82 @@ export async function hasDuplicateListing(managerId: string, name: string): Prom
   return snap.docs.some(d => String(d.data().name ?? '').trim().toLowerCase() === wanted);
 }
 
+export interface ExistingPropertyMatch {
+  exists: boolean;
+  exact: boolean;
+  hotel?: {
+    id: string;
+    name: string;
+    location: string;
+    status?: string;
+    managerEmail?: string;
+    managerId?: string;
+  };
+}
+
+/**
+ * Checks if a property with a matching or very similar name already exists
+ * in the database across all managers, to prevent accidental duplicate registration.
+ */
+export async function findExistingProperty(name: string, excludeId?: string): Promise<ExistingPropertyMatch> {
+  const queryText = name.trim().toLowerCase();
+  if (queryText.length < 3) {
+    return { exists: false, exact: false };
+  }
+
+  try {
+    const snap = await getDocs(query(collection(db, 'hotels'), limit(150)));
+    let closestMatch: { id: string; name: string; location: string; status?: string; managerEmail?: string; managerId?: string } | null = null;
+
+    for (const doc of snap.docs) {
+      if (doc.id === excludeId) continue;
+      const data = doc.data();
+      const hName = String(data.name || '').trim().toLowerCase();
+      if (!hName) continue;
+
+      if (hName === queryText) {
+        return {
+          exists: true,
+          exact: true,
+          hotel: {
+            id: doc.id,
+            name: String(data.name || ''),
+            location: String(data.location || ''),
+            status: data.status,
+            managerEmail: data.managerEmail || data.contactEmail,
+            managerId: data.managerId,
+          },
+        };
+      }
+
+      // Check if one contains the other (e.g. "Kaya Mawa" in "Kaya Mawa Lodge")
+      if (queryText.length >= 5 && (hName.includes(queryText) || queryText.includes(hName))) {
+        closestMatch = {
+          id: doc.id,
+          name: String(data.name || ''),
+          location: String(data.location || ''),
+          status: data.status,
+          managerEmail: data.managerEmail || data.contactEmail,
+          managerId: data.managerId,
+        };
+      }
+    }
+
+    if (closestMatch) {
+      return {
+        exists: true,
+        exact: false,
+        hotel: closestMatch,
+      };
+    }
+
+    return { exists: false, exact: false };
+  } catch (err) {
+    console.warn('Could not check existing properties:', err);
+    return { exists: false, exact: false };
+  }
+}
+
 /** The document written to Firestore, with the defaults a listing needs. */
 export function draftToHotel(draft: ListingDraft, managerId: string): Omit<Hotel, 'id'> {
   const amenities = [...new Set(draft.amenities.map(a => a.trim()).filter(Boolean))];
