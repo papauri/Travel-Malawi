@@ -713,6 +713,7 @@ export default function ListProperty() {
     }
 
     const newRoom: RoomInput = {
+      id: crypto.randomUUID(),
       name: item.name.trim() || 'Guest Room',
       description: item.description?.trim() || '',
       currencies,
@@ -743,6 +744,7 @@ export default function ListProperty() {
       }
 
       return {
+        id: crypto.randomUUID(),
         name: item.name.trim() || 'Guest Room',
         description: item.description?.trim() || '',
         currencies,
@@ -1527,7 +1529,7 @@ export default function ListProperty() {
                     </p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {(draft.rooms || []).map((room, idx) => (
-                        <div key={`configured-room-${room.id || idx}-${idx}`} className="bg-white p-3.5 rounded-xl border border-stone-200 flex items-center justify-between shadow-2xs">
+                        <div key={`configured-room-${room.id}`} className="bg-white p-3.5 rounded-xl border border-stone-200 flex items-center justify-between shadow-2xs">
                           <div className="flex items-center gap-3 min-w-0">
                             {room.imageUrl ? (
                               <img src={room.imageUrl} alt={room.name} className="w-12 h-12 rounded-lg object-cover shrink-0" />
@@ -1584,6 +1586,7 @@ export default function ListProperty() {
                     type="button"
                     onClick={() => {
                       set('rooms', [...(draft.rooms || []), {
+                        id: crypto.randomUUID(),
                         name: '',
                         description: '',
                         currencies: ['USD', 'MWK'],
@@ -1657,7 +1660,7 @@ export default function ListProperty() {
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                       {suggestedRooms.map((roomItem, rIdx) => (
-                        <div key={`suggested-room-${roomItem.name || rIdx}-${rIdx}`} className="bg-stone-50 border border-stone-200 rounded-xl p-4 flex flex-col justify-between space-y-3.5 shadow-2xs hover:border-stone-300 transition">
+                        <div key={`suggested-room-${rIdx}`} className="bg-stone-50 border border-stone-200 rounded-xl p-4 flex flex-col justify-between space-y-3.5 shadow-2xs hover:border-stone-300 transition">
                           <div className="space-y-2.5">
                             {/* Room Name Input */}
                             <div>
@@ -1878,7 +1881,7 @@ export default function ListProperty() {
                 const hasMwk = roomCurrencies.includes('MWK');
 
                 return (
-                  <div key={`room-pricing-card-${room.id || idx}-${idx}`} className="bg-white border border-stone-200 rounded-2xl p-6 shadow-sm relative space-y-6">
+                  <div key={`room-pricing-card-${room.id}`} className="bg-white border border-stone-200 rounded-2xl p-6 shadow-sm relative space-y-6">
                     <div className="flex items-center justify-between border-b border-stone-100 pb-4">
                       <div className="flex items-center gap-2">
                         <span className="bg-stone-900 text-white text-[11px] font-bold px-2.5 py-1 rounded-md uppercase tracking-wider">

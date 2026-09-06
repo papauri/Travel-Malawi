@@ -178,6 +178,12 @@ export default function ManageHotel() {
   const [confirmModalBooking, setConfirmModalBooking] = useState<string | null>(null);
   const [bookingToDelete, setBookingToDelete] = useState<string | null>(null);
 
+  // Reminder states
+  const [bookingReminders, setBookingReminders] = useState<Record<string, any[]>>({});
+  const [showRemindersFor, setShowRemindersFor] = useState<string | null>(null);
+  const [manualReminderMsg, setManualReminderMsg] = useState('');
+  const [manualReminderDate, setManualReminderDate] = useState('');
+
   // Data states
   const [hotel, setHotel] = useState<Hotel | null>(null);
   const [rooms, setRooms] = useState<RoomType[]>([]);
@@ -851,6 +857,43 @@ export default function ManageHotel() {
     }
   };
 
+  const fetchReminders = async (bookingId: string) => {
+    try {
+      const res = await fetch(`/api/reminders/${bookingId}`);
+      const data = await res.json();
+      setBookingReminders(prev => ({ ...prev, [bookingId]: data.reminders || [] }));
+    } catch { /* ignore */ }
+  };
+
+  const handleAddManualReminder = async (booking: any) => {
+    if (!manualReminderMsg.trim() || !manualReminderDate) return;
+    try {
+      await fetch('/api/reminders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bookingId: booking.id,
+          bookingRef: booking.reference || booking.id?.slice(0, 6),
+          hotelId: hotel?.id || '',
+          hotelName: hotel?.name || '',
+          guestName: booking.guestName,
+          guestEmail: booking.guestEmail,
+          guestPhone: booking.guestPhone,
+          guestWhatsapp: booking.guestWhatsapp,
+          recipientType: 'manager',
+          message: manualReminderMsg,
+          scheduledFor: new Date(manualReminderDate).toISOString(),
+        }),
+      });
+      toast.success('Reminder scheduled');
+      setManualReminderMsg('');
+      setManualReminderDate('');
+      fetchReminders(booking.id!);
+    } catch {
+      toast.error('Failed to create reminder');
+    }
+  };
+
   // --- BOOKING HANDLERS ---
   const updateBookingStatus = async (bookingId: string, status: 'confirmed' | 'rejected' | 'cancelled') => {
     const booking = bookings.find(b => b.id === bookingId);
@@ -898,6 +941,27 @@ export default function ManageHotel() {
         status === 'confirmed' ? 'Booking confirmed.' :
         status === 'rejected' ? 'Booking declined.' : 'Booking cancelled.'
       );
+
+      if (status === 'confirmed') {
+        try {
+          await fetch('/api/reminders/auto-generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id: bookingId,
+              reference: booking.reference,
+              hotelId: hotel?.id,
+              hotelName: hotel?.name,
+              guestName: booking.guestName,
+              guestEmail: booking.guestEmail,
+              guestPhone: booking.guestPhone,
+              guestWhatsapp: booking.guestWhatsapp,
+              checkIn: booking.checkIn,
+              checkOut: booking.checkOut,
+            }),
+          });
+        } catch { /* non-critical */ }
+      }
     } catch (error: any) {
       console.error("Error updating booking:", error);
       if (error.message === 'ROOM_UNAVAILABLE') {
@@ -2453,7 +2517,7 @@ export default function ManageHotel() {
           ) : (
             <ul className="divide-y divide-stone-100">
               {visibleBookings.slice((currentBookingPage - 1) * bookingsPerPage, currentBookingPage * bookingsPerPage).map((booking, bIdx) => (
-                <li key={`mgmt-booking-${booking.id || 'booking'}-${bIdx}`} className="p-6 md:p-8 hover:bg-stone-50 transition">
+                <li key={`mgmt-booking-${booking.id}`} className="p-6 md:p-8 hover:bg-stone-50 transition">
                   <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-4">
                     <div>
                       <div className="flex items-center gap-3 mb-1 flex-wrap">
@@ -2580,6 +2644,83 @@ export default function ManageHotel() {
                       </button>
                     </div>
                   )}
+
+                  {/* Reminders Section */}
+                  <div className="mt-3 border-t border-stone-100 pt-3">
+                    <button
+                      onClick={() => {
+                        if (showRemindersFor === booking.id) {
+                          setShowRemindersFor(null);
+                        } else {
+                          setShowRemindersFor(booking.id!);
+                          fetchReminders(booking.id!);
+                        }
+                      }}
+                      className="text-xs font-medium text-stone-500 hover:text-stone-700 flex items-center gap-1"
+                    >
+                      <Clock className="w-3.5 h-3.5" />
+                      {showRemindersFor === booking.id ? 'Hide Reminders' : 'View Reminders'}
+                    </button>
+                    {showRemindersFor === booking.id && (
+                      <div className="mt-2 space-y-2">
+                        {(bookingReminders[booking.id!] || []).length === 0 ? (
+                          <p className="text-xs text-stone-400">No reminders set for this booking.</p>
+                        ) : (
+                          (bookingReminders[booking.id!] || []).map((rem: any, remIdx: number) => (
+                            <div key={`rem-${booking.id || 'b'}-${rem.id || remIdx}-${remIdx}`} className={`text-xs p-2 rounded-lg border ${rem.sent ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'}`}>
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <span className={`font-medium ${rem.sent ? 'text-green-700' : 'text-amber-700'}`}>
+                                    {rem.type === 'check_in_3d' ? '3-Day Prep' :
+                                     rem.type === 'check_in_24h' ? '24h Arrival' :
+                                     rem.type === 'check_out' ? 'Check-out' : 'Custom'}
+                                  </span>
+                                  <span className="text-stone-400 ml-2">
+                                    → {rem.recipientType === 'guest' ? 'Guest' : 'Manager'}
+                                  </span>
+                                </div>
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${rem.sent ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'}`}>
+                                  {rem.sent ? '✓ Sent' : 'Pending'}
+                                </span>
+                              </div>
+                              <p className="text-stone-600 mt-1">{rem.message}</p>
+                              <p className="text-stone-400 mt-0.5">
+                                Scheduled: {new Date(rem.scheduledFor).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                              </p>
+                            </div>
+                          ))
+                        )}
+                        {/* Manual Reminder Form */}
+                        {booking.status === 'confirmed' && (
+                          <div className="mt-2 p-2 bg-stone-50 rounded-lg border border-stone-200">
+                            <p className="text-xs font-medium text-stone-600 mb-1.5">Add Custom Reminder</p>
+                            <input
+                              type="text"
+                              value={manualReminderMsg}
+                              onChange={e => setManualReminderMsg(e.target.value)}
+                              placeholder="Reminder message..."
+                              className="w-full text-xs p-2 rounded border border-stone-200 mb-1.5"
+                            />
+                            <div className="flex gap-2">
+                              <input
+                                type="datetime-local"
+                                value={manualReminderDate}
+                                onChange={e => setManualReminderDate(e.target.value)}
+                                className="flex-1 text-xs p-2 rounded border border-stone-200"
+                              />
+                              <button
+                                onClick={() => handleAddManualReminder(booking)}
+                                disabled={!manualReminderMsg.trim() || !manualReminderDate}
+                                className="text-xs px-3 py-2 bg-stone-800 text-white rounded hover:bg-stone-700 disabled:opacity-40"
+                              >
+                                Schedule
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </li>
               ))}
             </ul>

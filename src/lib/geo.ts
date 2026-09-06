@@ -653,3 +653,47 @@ export async function searchMalawiPlaces(queryStr: string, limit = 6): Promise<M
     return [];
   }
 }
+
+export interface MalawiHub {
+  id: string;
+  name: string;
+  region: string;
+  description: string;
+  coords: LatLng;
+  icon: string;
+}
+
+export const MALAWI_HUBS: MalawiHub[] = [
+  { id: 'lilongwe', name: 'Lilongwe', region: 'Central Hub', description: 'Capital city & Airport', coords: { lat: -13.9626, lng: 33.7741 }, icon: '🏙️' },
+  { id: 'blantyre', name: 'Blantyre', region: 'Southern Hub', description: 'Commercial & Cultural centre', coords: { lat: -15.7861, lng: 35.0058 }, icon: '🏢' },
+  { id: 'cape-maclear', name: 'Cape Maclear / Mangochi', region: 'Lake Malawi South', description: 'Beachfront villas & Snorkeling', coords: { lat: -14.0267, lng: 34.8519 }, icon: '🏖️' },
+  { id: 'salima', name: 'Salima / Senga Bay', region: 'Central Lakeshore', description: 'Nearest lake beach to Lilongwe', coords: { lat: -13.7245, lng: 34.6225 }, icon: '🌊' },
+  { id: 'mzuzu', name: 'Mzuzu', region: 'Northern Hub', description: 'Viphya & Gateway to Nyika', coords: { lat: -11.4583, lng: 34.0167 }, icon: '🌿' },
+  { id: 'zomba', name: 'Zomba', region: 'Old Capital', description: 'Plateau viewpoints & Hiking', coords: { lat: -15.3642, lng: 35.3048 }, icon: '⛰️' },
+  { id: 'liwonde', name: 'Liwonde / Majete', region: 'Wildlife Reserves', description: 'Safari drives & River cruises', coords: { lat: -14.8512, lng: 35.2891 }, icon: '🦁' },
+  { id: 'nkhata-bay', name: 'Nkhata Bay', region: 'Northern Lakeshore', description: 'Likoma ferry & Scuba diving', coords: { lat: -11.6067, lng: 34.2908 }, icon: '⛵' },
+];
+
+/**
+ * Formats and sanitizes raw location strings from database records.
+ * Fixes typos such as "pumlani" -> "Lake Malawi National Park, Cape Maclear".
+ */
+export function formatLocationName(location?: string, _hotelName?: string): string {
+  if (!location) return 'Malawi';
+  const clean = location.trim();
+  const lower = clean.toLowerCase();
+
+  if (lower === 'pumlani' || (lower.includes('pumlani') && !lower.includes('pumulani'))) {
+    return 'Lake Malawi National Park, Cape Maclear';
+  }
+
+  // Capitalize if completely lowercase
+  if (clean === lower && clean.length > 2) {
+    return clean
+      .split(' ')
+      .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ');
+  }
+
+  return clean;
+}

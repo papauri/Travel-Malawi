@@ -1,4 +1,4 @@
-import { AIProviderId, getEffectiveApiKey, loadAIConfig, markProviderValidity } from './aiConfig';
+import { AIProviderId, getEffectiveApiKey, loadAIConfig, markProviderValidity, getAvailableProviders, AISystemConfig } from './aiConfig';
 
 export interface GenerationRequest {
   action: 'draft' | 'polish' | 'shorten' | 'highlights' | 'suggest_amenities' | 'suggest_rooms' | 'review_listing' | 'suggest_rate' | 'lookup_property';
@@ -468,18 +468,24 @@ async function callAnthropic(
   throw new Error('Anthropic request failed after multiple retries');
 }
 
-export async function executeAIGeneration(
+export function isAuthError(message: string): boolean {
+  const lower = (message || '').toLowerCase();
+  return (
+    lower.includes('401') ||
+    lower.includes('403') ||
+    lower.includes('unauthorized') ||
+    lower.includes('invalid api key') ||
+    lower.includes('key not found') ||
+    lower.includes('authentication') ||
+    lower.includes('invalid_api_key')
+  );
+}
+
+async function executeWithProvider(
+  providerId: AIProviderId,
   req: GenerationRequest,
-  overrideProvider?: AIProviderId
+  config: AISystemConfig
 ): Promise<GenerationResult> {
-  const config = loadAIConfig();
-
-  // Check Kill Switch
-  if (!config.enabled) {
-    throw new Error('AI Assistant is currently disabled by platform administration.');
-  }
-
-  const providerId = overrideProvider || config.activeProvider;
   const apiKey = getEffectiveApiKey(providerId);
 
   if (!apiKey || apiKey.trim().length < 6) {
@@ -620,6 +626,45 @@ export async function executeAIGeneration(
     model,
     data: structuredData,
   };
+}
+
+export async function executeAIGeneration(
+  req: GenerationRequest,
+  overrideProvider?: AIProviderId
+): Promise<GenerationResult> {
+  const config = loadAIConfig();
+  if (!config.enabled) {
+    throw new Error('AI Assistant is currently disabled by platform administration.');
+  }
+
+  if (overrideProvider) {
+    return executeWithProvider(overrideProvider, req, config);
+  }
+
+  const providers = getAvailableProviders();
+  if (providers.length === 0) {
+    throw new Error('No AI providers configured with valid API keys. Please configure an API key in the Admin Dashboard.');
+  }
+
+  let lastError: Error | null = null;
+  for (const providerId of providers) {
+    try {
+      const result = await executeWithProvider(providerId, req, config);
+      if (providerId !== config.activeProvider) {
+        console.log(`[AI Failover] Successfully failed over from ${config.activeProvider} to ${providerId}`);
+      }
+      return result;
+    } catch (err: any) {
+      lastError = err;
+      console.warn(`[AI Failover] Provider ${providerId} failed: ${err.message}. Trying next...`);
+      if (isAuthError(err.message)) {
+        markProviderValidity(providerId, false, err.message);
+      }
+      continue;
+    }
+  }
+
+  throw lastError || new Error('All AI providers failed.');
 }
 
 export interface ActionProposal {
@@ -1087,13 +1132,11 @@ You MUST ALWAYS append a \`\`\`suggested_follow_ups JSON block at the very end o
 
 Tone: Executive, warm, helpful, proactive, and respectful. Hospitality-focused. Always verify that actions stay strictly within the user's role limits.`;
 
-export async function executeOperationsAssistantChat(req: OperationsAssistantRequest): Promise<OperationsAssistantResult> {
-  const config = loadAIConfig();
-  if (!config.enabled) {
-    throw new Error('AI Assistant is currently disabled by platform administrator.');
-  }
-
-  const providerId = config.activeProvider;
+async function executeOperationsChatWithProvider(
+  providerId: AIProviderId,
+  req: OperationsAssistantRequest,
+  config: AISystemConfig
+): Promise<OperationsAssistantResult> {
   const apiKey = getEffectiveApiKey(providerId);
 
   if (!apiKey) {
@@ -1447,6 +1490,38 @@ USER MESSAGE:
   };
 }
 
+export async function executeOperationsAssistantChat(req: OperationsAssistantRequest): Promise<OperationsAssistantResult> {
+  const config = loadAIConfig();
+  if (!config.enabled) {
+    throw new Error('AI Assistant is currently disabled by platform administrator.');
+  }
+
+  const providers = getAvailableProviders();
+  if (providers.length === 0) {
+    throw new Error('No AI providers configured with valid API keys. Please configure an API key in the Admin Dashboard.');
+  }
+
+  let lastError: Error | null = null;
+  for (const providerId of providers) {
+    try {
+      const result = await executeOperationsChatWithProvider(providerId, req, config);
+      if (providerId !== config.activeProvider) {
+        console.log(`[AI Failover] Successfully failed over from ${config.activeProvider} to ${providerId} for Operations Chat`);
+      }
+      return result;
+    } catch (err: any) {
+      lastError = err;
+      console.warn(`[AI Failover] Provider ${providerId} failed in Operations Chat: ${err.message}. Trying next...`);
+      if (isAuthError(err.message)) {
+        markProviderValidity(providerId, false, err.message);
+      }
+      continue;
+    }
+  }
+
+  throw lastError || new Error('All AI providers failed.');
+}
+
 export async function testProviderConnection(providerId: AIProviderId): Promise<{
   success: boolean;
   sample?: string;
@@ -1494,12 +1569,7 @@ export async function testProviderConnection(providerId: AIProviderId): Promise<
     };
   } catch (err: any) {
     const errorMsg = err?.message || 'Connection failed';
-    if (
-      errorMsg.toLowerCase().includes('auth') ||
-      errorMsg.toLowerCase().includes('key') ||
-      errorMsg.toLowerCase().includes('401') ||
-      errorMsg.toLowerCase().includes('403')
-    ) {
+    if (isAuthError(errorMsg)) {
       markProviderValidity(providerId, false, errorMsg);
     }
     return {
@@ -1511,3 +1581,233 @@ export async function testProviderConnection(providerId: AIProviderId): Promise<
     };
   }
 }
+
+export async function parseMenuContent(
+  fileBuffer: Buffer,
+  mimeType: string,
+  fileName: string,
+  currencies: string[]
+): Promise<{ sections: any[] }> {
+  const config = loadAIConfig();
+  if (!config.enabled) {
+    throw new Error('Menu scanning is currently disabled.');
+  }
+
+  const currencyHint = currencies.length > 0
+    ? `Expected currencies: ${currencies.join(', ')}. For MWK (Malawi Kwacha), amounts are typically large numbers like 5000, 15000, 25000.`
+    : 'Try to detect prices in any currency. USD and MWK (Malawi Kwacha) are most likely.';
+
+  const menuPrompt = `You are a menu data extraction expert. Extract ALL menu items from the provided content and return them as structured JSON.
+
+Return ONLY valid JSON in this exact format (no markdown, no explanation, no code fences):
+{
+  "sections": [
+    {
+      "name": "Section Name (e.g., Starters, Main Course, Desserts, Beverages)",
+      "description": "Optional section description",
+      "items": [
+        {
+          "name": "Dish Name",
+          "description": "Brief description of the dish",
+          "prices": { "USD": 15, "MWK": 25000 },
+          "tags": ["v", "gf"]
+        }
+      ]
+    }
+  ]
+}
+
+Rules:
+- Group items into logical sections (Starters, Mains, Desserts, Drinks, etc.)
+- Extract ALL items, don't skip any
+- Include descriptions where visible
+- ${currencyHint}
+- Tags: "v" = vegetarian, "vg" = vegan, "gf" = gluten-free, "sf" = seafood, "s" = spicy. Only add if indicated.
+- If prices aren't visible, omit the prices field
+- Return ONLY the JSON object, nothing else`;
+
+  let contentForAI: string;
+  const isImage = mimeType.startsWith('image/') || mimeType === 'application/pdf';
+
+  if (isImage) {
+    // For images, we need a vision-capable provider
+    // Try Gemini first (native vision), then OpenAI, then Anthropic
+    const visionProviders: AIProviderId[] = ['gemini', 'openai', 'anthropic'];
+    const base64 = fileBuffer.toString('base64');
+
+    for (const providerId of visionProviders) {
+      const apiKey = getEffectiveApiKey(providerId);
+      if (!apiKey || apiKey.trim().length < 6) continue;
+      if (config.providers[providerId]?.isValid === false) continue;
+
+      try {
+        let extractedText: string;
+
+        if (providerId === 'gemini') {
+          const model = config.providers.gemini?.model || 'gemini-1.5-flash';
+          const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+          const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{
+                parts: [
+                  { text: menuPrompt },
+                  { inline_data: { mime_type: mimeType, data: base64 } }
+                ]
+              }]
+            }),
+          });
+          if (!response.ok) {
+            const errText = await response.text();
+            throw new Error(`Gemini vision error ${response.status}: ${errText}`);
+          }
+          const result = await response.json();
+          extractedText = result?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        } else if (providerId === 'openai') {
+          const model = config.providers.openai?.model || 'gpt-4o-mini';
+          const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify({
+              model,
+              messages: [
+                { role: 'system', content: 'You extract structured menu data from images.' },
+                {
+                  role: 'user',
+                  content: [
+                    { type: 'text', text: menuPrompt },
+                    { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64}` } }
+                  ]
+                }
+              ],
+              max_tokens: 4096,
+            }),
+          });
+          if (!response.ok) throw new Error(`OpenAI vision error ${response.status}`);
+          const result = await response.json();
+          extractedText = result?.choices?.[0]?.message?.content || '';
+        } else {
+          // Anthropic
+          const model = config.providers.anthropic?.model || 'claude-3-5-haiku-20241022';
+          const response = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-api-key': apiKey,
+              'anthropic-version': '2023-06-01',
+            },
+            body: JSON.stringify({
+              model,
+              max_tokens: 4096,
+              messages: [{
+                role: 'user',
+                content: [
+                  { type: 'image', source: { type: 'base64', media_type: mimeType, data: base64 } },
+                  { type: 'text', text: menuPrompt }
+                ]
+              }],
+            }),
+          });
+          if (!response.ok) throw new Error(`Anthropic vision error ${response.status}`);
+          const result = await response.json();
+          extractedText = result?.content?.[0]?.text || '';
+        }
+
+        // Parse the response
+        const cleaned = extractedText.replace(/```json/gi, '').replace(/```/g, '').trim();
+        try {
+          const parsed = JSON.parse(cleaned);
+          if (parsed.sections) {
+            markProviderValidity(providerId, true);
+            return parsed;
+          }
+        } catch {
+          const match = extractedText.match(/\{[\s\S]*\}/);
+          if (match) {
+            const parsed = JSON.parse(match[0]);
+            if (parsed.sections) {
+              markProviderValidity(providerId, true);
+              return parsed;
+            }
+          }
+        }
+        throw new Error('Could not parse menu structure from response');
+      } catch (err: any) {
+        console.warn(`[Menu OCR] ${providerId} failed: ${err.message}`);
+        continue;
+      }
+    }
+
+    throw new Error('No vision-capable provider available. Configure a Gemini, OpenAI, or Anthropic API key to scan menu images.');
+  } else {
+    // Text/CSV/Excel - read as text
+    if (mimeType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
+      // Excel: try basic text extraction
+      // Read the buffer as raw text, extracting visible strings
+      contentForAI = `Excel file content (${fileName}):\n`;
+      // Simple extraction: look for UTF-8 strings in the binary
+      const textParts: string[] = [];
+      const str = fileBuffer.toString('utf-8');
+      // Extract anything that looks like text between XML tags
+      const xmlMatches = str.match(/>([^<]+)</g);
+      if (xmlMatches) {
+        textParts.push(...xmlMatches.map(m => m.slice(1, -1)).filter(s => s.trim().length > 1));
+      }
+      contentForAI += textParts.join('\n');
+    } else {
+      contentForAI = fileBuffer.toString('utf-8');
+    }
+
+    // Use any text-based provider
+    const providers = getAvailableProviders();
+    if (providers.length === 0) {
+      throw new Error('No provider configured. Please add an API key in Admin Dashboard.');
+    }
+
+    const fullPrompt = `${menuPrompt}\n\n--- MENU CONTENT ---\n${contentForAI.slice(0, 8000)}`;
+
+    for (const providerId of providers) {
+      try {
+        const apiKey = getEffectiveApiKey(providerId)!;
+        const model = config.providers[providerId]?.model || 'default';
+
+        let responseText: string;
+        if (providerId === 'gemini') {
+          responseText = await callGemini(providerId, apiKey, model || 'gemini-1.5-flash', 'You extract structured menu data.', fullPrompt);
+        } else if (providerId === 'anthropic') {
+          responseText = await callAnthropic(providerId, apiKey, model || 'claude-3-5-haiku-20241022', 'You extract structured menu data.', fullPrompt);
+        } else {
+          const endpoints: Record<string, string> = {
+            mistral: 'https://api.mistral.ai/v1/chat/completions',
+            openai: 'https://api.openai.com/v1/chat/completions',
+            groq: 'https://api.groq.com/openai/v1/chat/completions',
+            deepseek: 'https://api.deepseek.com/chat/completions',
+          };
+          responseText = await callOpenAICompatible(providerId, endpoints[providerId] || endpoints.openai, apiKey, model, 'You extract structured menu data.', fullPrompt);
+        }
+
+        const cleaned = responseText.replace(/```json/gi, '').replace(/```/g, '').trim();
+        try {
+          const parsed = JSON.parse(cleaned);
+          if (parsed.sections) return parsed;
+        } catch {
+          const match = responseText.match(/\{[\s\S]*\}/);
+          if (match) {
+            const parsed = JSON.parse(match[0]);
+            if (parsed.sections) return parsed;
+          }
+        }
+        throw new Error('Could not parse menu from response');
+      } catch (err: any) {
+        console.warn(`[Menu Parse] ${providerId} failed: ${err.message}`);
+        continue;
+      }
+    }
+    throw new Error('All providers failed to extract menu data.');
+  }
+}
+

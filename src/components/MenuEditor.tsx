@@ -1,11 +1,12 @@
-import React from 'react';
-import { GripVertical, Plus, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
+import React, { useState } from 'react';
+import { GripVertical, Plus, Trash2, ChevronUp, ChevronDown, Upload } from 'lucide-react';
 import { CurrencyCode, MenuItem, MenuSection, Restaurant } from '../types';
 import { CURRENCIES, CURRENCY_CODES } from '../lib/currency';
 import { MENU_TEMPLATES } from './MenuTemplates';
 import OpeningHoursEditor from './OpeningHoursEditor';
 import ImageUpload from './ImageUpload';
 import { defaultWeek } from '../lib/hours';
+import MenuImporter from './MenuImporter';
 
 interface Props {
   value: Restaurant;
@@ -41,9 +42,17 @@ const inputClass =
  * kitchen quoting kwacha does not have to think in dollars.
  */
 export default function MenuEditor({ value, onChange, currencies }: Props) {
+  const [showImporter, setShowImporter] = useState(false);
   const priced = currencies.length > 0 ? currencies : (['USD'] as CurrencyCode[]);
 
   const patch = (changes: Partial<Restaurant>) => onChange({ ...value, ...changes });
+
+  const handleMenuImport = (importedSections: MenuSection[]) => {
+    // Merge with existing sections
+    const current = value.sections || [];
+    const merged = [...current, ...importedSections];
+    onChange({ ...value, sections: merged, enabled: true });
+  };
 
   const patchSection = (sectionId: string, changes: Partial<MenuSection>) =>
     patch({ sections: value.sections.map(s => (s.id === sectionId ? { ...s, ...changes } : s)) });
@@ -189,14 +198,31 @@ export default function MenuEditor({ value, onChange, currencies }: Props) {
           <div className="bg-white rounded-3xl border border-stone-200 p-6 md:p-8">
             <div className="flex items-center justify-between mb-6 gap-4">
               <h3 className="font-serif text-xl text-stone-900">Menu</h3>
-              <button
-                type="button"
-                onClick={() => patch({ sections: [...value.sections, { id: newId(), name: 'New section', items: [] }] })}
-                className="flex items-center gap-2 bg-stone-900 text-white px-4 py-2 rounded-full text-sm font-semibold hover:bg-stone-800 transition"
-              >
-                <Plus className="h-4 w-4" /> Add section
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowImporter(true)}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 rounded-full transition"
+                >
+                  <Upload className="w-4 h-4" />
+                  Import Existing Menu
+                </button>
+                <button
+                  type="button"
+                  onClick={() => patch({ sections: [...value.sections, { id: newId(), name: 'New section', items: [] }] })}
+                  className="flex items-center gap-2 bg-stone-900 text-white px-4 py-2 rounded-full text-sm font-semibold hover:bg-stone-800 transition"
+                >
+                  <Plus className="h-4 w-4" /> Add section
+                </button>
+              </div>
             </div>
+
+            <MenuImporter
+              open={showImporter}
+              onClose={() => setShowImporter(false)}
+              onImport={handleMenuImport}
+              currencies={currencies}
+            />
 
             {value.sections.length === 0 && (
               <p className="text-sm text-stone-500 border border-dashed border-stone-300 rounded-2xl p-8 text-center">

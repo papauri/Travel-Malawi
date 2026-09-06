@@ -43,6 +43,17 @@ export default function MyBookings() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
+  const [bookingReminders, setBookingReminders] = useState<Record<string, any[]>>({});
+  const [showRemindersFor, setShowRemindersFor] = useState<string | null>(null);
+
+  const fetchReminders = async (bookingId: string) => {
+    try {
+      const res = await fetch(`/api/reminders/${bookingId}`);
+      const data = await res.json();
+      setBookingReminders(prev => ({ ...prev, [bookingId]: data.reminders || [] }));
+    } catch { /* ignore */ }
+  };
+
   useEffect(() => {
     if (authLoading) return;
     if (!user || !isTraveller(user)) {
@@ -494,6 +505,51 @@ export default function MyBookings() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Guest Reminders Section */}
+                  {booking.status === 'confirmed' && (
+                    <div className="mt-4 border-t border-stone-100 pt-3">
+                      <button
+                        onClick={() => {
+                          if (showRemindersFor === booking.id) {
+                            setShowRemindersFor(null);
+                          } else {
+                            setShowRemindersFor(booking.id!);
+                            fetchReminders(booking.id!);
+                          }
+                        }}
+                        className="text-xs font-medium text-stone-500 hover:text-stone-700 flex items-center gap-1"
+                      >
+                        <Clock className="w-3.5 h-3.5" />
+                        {showRemindersFor === booking.id ? 'Hide Reminders' : 'View Upcoming Reminders'}
+                      </button>
+                      {showRemindersFor === booking.id && (
+                        <div className="mt-2 space-y-2">
+                          {(bookingReminders[booking.id!] || []).filter((r: any) => r.recipientType === 'guest').length === 0 ? (
+                            <p className="text-xs text-stone-400">No reminders scheduled for this booking.</p>
+                          ) : (
+                            (bookingReminders[booking.id!] || []).filter((r: any) => r.recipientType === 'guest').map((rem: any, remIdx: number) => (
+                              <div key={`rem-guest-${booking.id || 'b'}-${rem.id || remIdx}-${remIdx}`} className={`text-xs p-2 rounded-lg border ${rem.sent ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'}`}>
+                                <div className="flex justify-between items-start">
+                                  <span className={`font-medium ${rem.sent ? 'text-green-700' : 'text-amber-700'}`}>
+                                    {rem.type === 'check_in_24h' ? '24h Arrival Reminder' :
+                                     rem.type === 'check_out' ? 'Check-out Reminder' : 'Update'}
+                                  </span>
+                                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${rem.sent ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'}`}>
+                                    {rem.sent ? '✓ Sent' : 'Upcoming'}
+                                  </span>
+                                </div>
+                                <p className="text-stone-600 mt-1">{rem.message}</p>
+                                <p className="text-stone-400 mt-0.5">
+                                  Scheduled: {new Date(rem.scheduledFor).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                </p>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
               );

@@ -305,6 +305,29 @@ export function getEffectiveApiKey(provider: AIProviderId): string | undefined {
   return getEnvApiKey(provider);
 }
 
+export function getAvailableProviders(): AIProviderId[] {
+  const config = loadAIConfig();
+  const ordered: AIProviderId[] = [];
+  const allProviders = Object.keys(DEFAULT_PROVIDERS) as AIProviderId[];
+  
+  // Active provider first
+  const activeKey = getEffectiveApiKey(config.activeProvider);
+  if (activeKey && activeKey.trim().length > 5 && config.providers[config.activeProvider]?.isValid !== false) {
+    ordered.push(config.activeProvider);
+  }
+  
+  // Then remaining providers with valid keys
+  for (const pid of allProviders) {
+    if (pid === config.activeProvider) continue;
+    const key = getEffectiveApiKey(pid);
+    if (key && key.trim().length > 5 && config.providers[pid]?.isValid !== false) {
+      ordered.push(pid);
+    }
+  }
+  
+  return ordered;
+}
+
 export function getPublicAIStatus() {
   const config = loadAIConfig();
   const activeKey = getEffectiveApiKey(config.activeProvider);

@@ -399,3 +399,25 @@ export interface ConferenceRoom {
   policies?: string[];
   pricing?: string;
 }
+
+export type ReminderType = 'check_in_3d' | 'check_in_24h' | 'check_out' | 'custom';
+export type ReminderChannel = 'in_app' | 'whatsapp_link';
+export type ReminderRecipient = 'guest' | 'manager';
+
+export interface BookingReminder {
+  id: string;
+  bookingId: string;
+  hotelId: string;
+  hotelName: string;
+  guestName: string;
+  guestEmail?: string;
+  guestWhatsapp?: string;
+  type: ReminderType;
+  recipientType: ReminderRecipient;
+  channel: ReminderChannel;
+  scheduledFor: string; // ISO date string
+  message: string;
+  sent: boolean;
+  sentAt?: string;
+  createdAt: string;
+}

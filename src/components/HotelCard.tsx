@@ -12,6 +12,7 @@ import { useWishlist } from '../hooks/useWishlist';
 import { useCompare } from '../contexts/CompareContext';
 import PriceDisplay from './PriceDisplay';
 import MaskedPlaceName from './MaskedPlaceName';
+import { formatLocationName } from '../lib/geo';
 
 interface HotelCardProps {
   hotel: Hotel;
@@ -191,7 +192,7 @@ export default function HotelCard({
       <div className="flex flex-col gap-1 min-w-0">
         <div className="flex items-center justify-between gap-2 min-w-0">
           <p className="text-[0.65rem] font-bold tracking-[0.18em] text-stone-500 uppercase truncate flex-1 min-w-0">
-            {hotel.location}
+            {formatLocationName(hotel.location, hotel.name)}
           </p>
           <div className="flex items-center gap-1.5 shrink-0">
             {hotel.featured && (

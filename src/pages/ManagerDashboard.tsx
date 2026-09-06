@@ -191,7 +191,7 @@ export default function ManagerDashboard() {
                     : `/dashboard/hotel/${hotel.id}`;
             return (
             <div
-              key={`mgr-hotel-${hotel.id || hIdx}-${hIdx}`}
+              key={`mgr-hotel-${hotel.id}`}
               className="group bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden flex flex-col hover:border-stone-400 transition duration-300 relative"
             >
               <Link to={targetUrl} className="absolute inset-0 z-0" aria-label={`Manage ${hotel.name}`} />

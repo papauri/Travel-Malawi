@@ -87,7 +87,7 @@ export default function Footer() {
         <div className="flex flex-wrap items-center gap-6 mt-4 md:mt-0">
           <button
             type="button"
-            onClick={openAccessPermissionsModal}
+            onClick={() => openAccessPermissionsModal('permissions')}
             className="hover:text-white transition cursor-pointer text-left"
           >
             Device Permissions

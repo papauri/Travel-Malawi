@@ -16,11 +16,11 @@ import { BookingLike, lowestPrice, roomsMatching } from '../lib/availability';
 import { todayStr } from '../lib/dates';
 import { CURRENCY_CODES, CURRENCIES, currenciesForRooms, formatMoney, readStoredCurrency, storeCurrency, onCurrencyChange } from '../lib/currency';
 import { PROPERTY_CATEGORIES, COMMON_AMENITIES } from '../lib/listing';
-import { distanceKm, isValidLatLng, resolveHotelCoordinates, LatLng, estimateTravelTime, getDirectionsUrl } from '../lib/geo';
+import { distanceKm, isValidLatLng, resolveHotelCoordinates, LatLng, estimateTravelTime, getDirectionsUrl, formatLocationName } from '../lib/geo';
 import { getCachedHotels, saveCachedHotels, getCachedRooms, saveCachedRooms } from '../lib/mapCache';
 import PriceDisplay from '../components/PriceDisplay';
 import MaskedPlaceName from '../components/MaskedPlaceName';
-import { openAccessPermissionsModal } from '../components/AccessRequestModal';
+import { openAccessPermissionsModal, MANUAL_LOCATION_STORAGE_KEY, UserLocationEventDetail } from '../components/AccessRequestModal';
 import { useAuth } from '../contexts/AuthContext';
 
 type SortKey = 'recommended' | 'distance_asc' | 'price_asc' | 'price_desc' | 'rating' | 'name_asc';
@@ -141,6 +141,7 @@ export default function Home() {
   // User Current Live Location State
   const [showUserLocation, setShowUserLocation] = useState(false);
   const [userLocation, setUserLocation] = useState<LatLng | null>(null);
+  const [userLocationLabel, setUserLocationLabel] = useState<string | null>(null);
   const [userLocationAccuracy, setUserLocationAccuracy] = useState<number | null>(null);
   const [isLocatingUser, setIsLocatingUser] = useState(false);
   const [userLocationError, setUserLocationError] = useState<string | null>(null);
@@ -149,6 +150,7 @@ export default function Home() {
     if (showUserLocation) {
       setShowUserLocation(false);
       setUserLocation(null);
+      setUserLocationLabel(null);
       setUserLocationError(null);
       if (sortKey === 'distance_asc') {
         setSortKey('recommended');
@@ -161,17 +163,18 @@ export default function Home() {
       const err = 'Geolocation is not supported by your browser.';
       setUserLocationError(err);
       toast.error(err);
+      openAccessPermissionsModal('location');
       return;
     }
     setIsLocatingUser(true);
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        
         const coords: LatLng = {
           lat: position.coords.latitude,
           lng: position.coords.longitude,
         };
         setUserLocation(coords);
+        setUserLocationLabel('Live GPS');
         setUserLocationAccuracy(position.coords.accuracy || 75);
         setShowUserLocation(true);
         setIsLocatingUser(false);
@@ -183,10 +186,10 @@ export default function Home() {
         setIsLocatingUser(false);
         let msg = 'Could not access your location. Please check browser permissions.';
         if (err.code === 1) { // PERMISSION_DENIED
-          msg = 'Location permission was denied. Tap to review permissions.';
-          openAccessPermissionsModal();
+          msg = 'Location permission was denied. Tap to review permissions or choose a city.';
+          openAccessPermissionsModal('location');
         } else if (err.code === 3) { // TIMEOUT
-          msg = 'Location request timed out. Please try again.';
+          msg = 'Location request timed out. Please try again or pick a city.';
         }
         setUserLocationError(msg);
         toast.error(msg);
@@ -195,6 +198,54 @@ export default function Home() {
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
     );
   };
+
+  useEffect(() => {
+    // Restore persisted manual location on mount
+    try {
+      const saved = localStorage.getItem(MANUAL_LOCATION_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed?.coords?.lat && parsed?.coords?.lng) {
+          setUserLocation({ lat: parsed.coords.lat, lng: parsed.coords.lng });
+          setUserLocationLabel(parsed.label || 'Selected City');
+          setShowUserLocation(true);
+          setUserLocationAccuracy(500); // manual location, lower accuracy
+          setSortKey('distance_asc');
+        }
+      }
+    } catch { /* ignore corrupted storage */ }
+
+    // Listen for manual location selection from AccessRequestModal
+    const handleLocationChanged = (e: Event) => {
+      const detail = (e as CustomEvent<UserLocationEventDetail>).detail;
+      if (detail?.coords?.lat && detail?.coords?.lng) {
+        setUserLocation({ lat: detail.coords.lat, lng: detail.coords.lng });
+        setUserLocationLabel(detail.label || 'Selected Area');
+        setShowUserLocation(true);
+        setUserLocationAccuracy(detail.isManual ? 500 : 75);
+        setIsLocatingUser(false);
+        setSortKey('distance_asc');
+        toast.success(`Location set to ${detail.label || 'selected area'}. Distances updated!`);
+      }
+    };
+
+    const handleLocationCleared = () => {
+      setUserLocation(null);
+      setUserLocationLabel(null);
+      setShowUserLocation(false);
+      setUserLocationAccuracy(null);
+      if (sortKey === 'distance_asc') {
+        setSortKey('recommended');
+      }
+    };
+
+    window.addEventListener('user-location-changed', handleLocationChanged);
+    window.addEventListener('user-location-cleared', handleLocationCleared);
+    return () => {
+      window.removeEventListener('user-location-changed', handleLocationChanged);
+      window.removeEventListener('user-location-cleared', handleLocationCleared);
+    };
+  }, []);
 
   const [searchLocation, setSearchLocation] = useState('');
   const [searchCheckIn, setSearchCheckIn] = useState('');
@@ -525,7 +576,7 @@ export default function Home() {
       },
       () => {
         toast.error("Could not get your location. Please check browser permissions.");
-        openAccessPermissionsModal();
+        openAccessPermissionsModal('location');
       }
     );
   };
@@ -1628,29 +1679,46 @@ export default function Home() {
             )}
 
             
-              {/* Geolocation Toggle */}
-              <button
-                type="button"
-                onClick={handleToggleUserLocation}
-                disabled={isLocatingUser}
-                className={`flex items-center gap-1.5 border rounded-full px-3.5 py-1.5 text-xs font-semibold outline-none transition shadow-2xs ${
-                  showUserLocation
-                    ? 'bg-blue-50 text-blue-800 border-blue-200 hover:bg-blue-100'
-                    : 'bg-white border-stone-200 text-stone-700 hover:bg-stone-50'
-                }`}
-              >
-                {isLocatingUser ? (
-                  <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <div className="relative flex items-center justify-center">
-                    <Locate className="w-3.5 h-3.5" />
-                    {showUserLocation && (
-                      <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-blue-500 rounded-full animate-ping" />
-                    )}
-                  </div>
-                )}
-                <span className="hidden sm:inline">{showUserLocation ? 'GPS: ON' : 'Use GPS'}</span>
-              </button>
+              {/* Geolocation & Hub Controls */}
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={handleToggleUserLocation}
+                  disabled={isLocatingUser}
+                  className={`flex items-center gap-1.5 border rounded-full px-3.5 py-1.5 text-xs font-semibold outline-none transition shadow-2xs ${
+                    showUserLocation && userLocationLabel === 'Live GPS'
+                      ? 'bg-blue-50 text-blue-800 border-blue-200 hover:bg-blue-100'
+                      : 'bg-white border-stone-200 text-stone-700 hover:bg-stone-50'
+                  }`}
+                  title="Toggle device GPS location"
+                >
+                  {isLocatingUser ? (
+                    <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <div className="relative flex items-center justify-center">
+                      <Locate className="w-3.5 h-3.5" />
+                      {showUserLocation && userLocationLabel === 'Live GPS' && (
+                        <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-blue-500 rounded-full animate-ping" />
+                      )}
+                    </div>
+                  )}
+                  <span className="hidden sm:inline">{showUserLocation && userLocationLabel === 'Live GPS' ? 'GPS: ON' : 'Use GPS'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => openAccessPermissionsModal('location')}
+                  className={`flex items-center gap-1.5 border rounded-full px-3.5 py-1.5 text-xs font-semibold outline-none transition shadow-2xs ${
+                    showUserLocation && userLocationLabel && userLocationLabel !== 'Live GPS'
+                      ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+                      : 'bg-white border-stone-200 text-stone-700 hover:bg-stone-50'
+                  }`}
+                  title="Choose a Malawian travel hub or city for distance calculations"
+                >
+                  <MapPin className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>{userLocationLabel && userLocationLabel !== 'Live GPS' ? userLocationLabel : 'Pick City'}</span>
+                </button>
+              </div>
 
               {/* Sort Dropdown */}
             <label className="flex items-center gap-2 shrink-0">
@@ -1756,7 +1824,7 @@ export default function Home() {
                 <div id="grid-canvas" className="scroll-mt-24 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 gap-y-8">
                   {filteredHotels.length > 0 ? filteredHotels.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((entry, index) => (
                     <HotelCard
-                      key={`hotel-card-${entry.hotel.id || 'hotel'}-${index}`}
+                      key={`hotel-card-${entry.hotel.id || 'h'}-${index}`}
                       hotel={entry.hotel}
                       index={index}
                       priceFrom={entry.priceFrom}
@@ -1851,7 +1919,7 @@ export default function Home() {
 
                         return (
                           <div
-                            key={`map-hotel-${hotel.id || 'hotel'}-${index}`}
+                            key={`map-hotel-${hotel.id || 'h'}-${index}`}
                             id={`map-card-${hotel.id}`}
                             onClick={() => setSelectedMapLodgeId(isSelected ? null : hotel.id ?? null)}
                             className={`group p-3 sm:p-3.5 rounded-2xl border transition-all duration-200 cursor-pointer bg-white ${
@@ -1889,7 +1957,7 @@ export default function Home() {
                                   </div>
                                   <p className="text-xs text-stone-500 truncate flex items-center gap-1">
                                     <MapPin className="w-3 h-3 shrink-0 text-stone-400" />
-                                    <span className="truncate">{hotel.location}</span>
+                                    <span className="truncate">{formatLocationName(hotel.location, hotel.name)}</span>
                                   </p>
 
                                   {/* Proximity Distance Badge */}
@@ -1905,11 +1973,17 @@ export default function Home() {
                                   )}
                                 </div>
 
-                                <div className="flex items-center justify-between pt-2 mt-1 border-t border-stone-100">
+                                <div className="flex items-end justify-between gap-2 mt-2 pt-2 border-t border-stone-100">
                                   <div>
-                                    {priceDisplay ? (
-                                      <div className="text-xs sm:text-sm font-bold text-emerald-800">
-                                        {priceDisplay} <span className="text-[10px] text-stone-400 font-normal">/ night</span>
+                                    <div className="text-[10px] text-stone-400 font-medium">From</div>
+                                    {entry.priceFrom !== null && entry.priceFrom !== undefined ? (
+                                      <div className="flex items-baseline gap-1">
+                                        <PriceDisplay
+                                          amount={entry.priceFrom}
+                                          currency={currency}
+                                          className="font-bold text-sm text-stone-900"
+                                        />
+                                        <span className="text-[10px] text-stone-400">/ night</span>
                                       </div>
                                     ) : (
                                       <div className="text-[11px] text-stone-400">Rates on request</div>
@@ -1936,9 +2010,14 @@ export default function Home() {
                                         <Car className="w-3.5 h-3.5 text-emerald-700" />
                                         <span>Route & Travel Distance</span>
                                       </div>
-                                      <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full">
-                                        Live from GPS
-                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => openAccessPermissionsModal('location')}
+                                        className="text-[10px] font-semibold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 px-2 py-0.5 rounded-full transition cursor-pointer"
+                                        title="Click to change city or hub"
+                                      >
+                                        📍 {userLocationLabel || 'Live Location'} (Change)
+                                      </button>
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-2 text-xs">
@@ -1985,16 +2064,26 @@ export default function Home() {
                                   <div className="bg-blue-50/70 border border-blue-200/70 rounded-xl p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
                                     <div className="flex items-center gap-2 text-xs text-blue-900">
                                       <Locate className="w-4 h-4 text-blue-600 shrink-0" />
-                                      <span>Turn on location to view driving time & distance to this stay.</span>
+                                      <span>Turn on location or pick a Malawian city to calculate driving time & distance.</span>
                                     </div>
-                                    <button
-                                      type="button"
-                                      onClick={handleToggleUserLocation}
-                                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-xs transition shrink-0"
-                                    >
-                                      <Locate className="w-3.5 h-3.5" />
-                                      <span>Enable Location</span>
-                                    </button>
+                                    <div className="flex items-center gap-2 shrink-0">
+                                      <button
+                                        type="button"
+                                        onClick={handleToggleUserLocation}
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-xs transition"
+                                      >
+                                        <Locate className="w-3.5 h-3.5" />
+                                        <span>Use GPS</span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => openAccessPermissionsModal('location')}
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-stone-300 hover:bg-stone-50 text-stone-800 text-xs font-bold rounded-xl shadow-xs transition"
+                                      >
+                                        <MapPin className="w-3.5 h-3.5 text-emerald-600" />
+                                        <span>Pick City</span>
+                                      </button>
+                                    </div>
                                   </div>
                                 ) : null}
                               </div>

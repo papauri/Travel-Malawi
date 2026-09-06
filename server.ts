@@ -6,6 +6,7 @@ import { createServer as createViteServer } from 'vite';
 import { getPublicAIStatus, getAdminAIConfig, loadAIConfig, saveAIConfig, AIProviderId } from './server/aiConfig';
 import { executeAIGeneration, executeOperationsAssistantChat, testProviderConnection } from './server/aiService';
 import { sendOfflineNotification } from './server/notifications';
+import { generateAutoReminders, createManualReminder, getRemindersForBooking, deleteReminder, checkAndFireReminders } from './server/reminders';
 
 async function startServer() {
   const app = express();
@@ -197,6 +198,108 @@ async function startServer() {
       res.status(500).json({ error: err?.message || 'Connection test failed' });
     }
   });
+
+  // Menu file upload - temp storage
+  const menuUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 8 * 1024 * 1024 },
+  });
+
+  app.post('/api/ai/parse-menu', menuUpload.single('menu'), async (req, res) => {
+    try {
+      const status = getPublicAIStatus();
+      if (!status.enabled || !status.available) {
+        return res.status(503).json({ error: 'Menu scanning requires an active AI provider. Please configure one in the Admin Dashboard.' });
+      }
+
+      let buffer: Buffer;
+      let mimeType: string;
+      let fileName: string;
+
+      if (req.file) {
+        buffer = req.file.buffer;
+        mimeType = req.file.mimetype;
+        fileName = req.file.originalname;
+      } else if (req.body?.text && typeof req.body.text === 'string' && req.body.text.trim().length > 0) {
+        buffer = Buffer.from(req.body.text, 'utf-8');
+        mimeType = 'text/plain';
+        fileName = 'pasted-menu.txt';
+      } else {
+        return res.status(400).json({ error: 'No file uploaded or text provided' });
+      }
+
+      const currencies = (() => {
+        try {
+          if (Array.isArray(req.body.currencies)) return req.body.currencies;
+          return JSON.parse(req.body.currencies || '[]');
+        } catch {
+          return ['USD', 'MWK'];
+        }
+      })();
+
+      const { parseMenuContent } = await import('./server/aiService');
+      const result = await parseMenuContent(buffer, mimeType, fileName, currencies);
+      res.json(result);
+    } catch (err: any) {
+      console.error('Menu parse error:', err);
+      res.status(500).json({ error: err?.message || 'Failed to parse menu' });
+    }
+  });
+
+  // ----------------------------------------------------
+  // BOOKING REMINDERS API
+  // ----------------------------------------------------
+
+  // Generate auto-reminders when a booking is confirmed
+  app.post('/api/reminders/auto-generate', (req, res) => {
+    try {
+      const reminders = generateAutoReminders(req.body);
+      res.json({ success: true, reminders });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || 'Failed to generate reminders' });
+    }
+  });
+
+  // Get reminders for a specific booking
+  app.get('/api/reminders/:bookingId', (req, res) => {
+    try {
+      const reminders = getRemindersForBooking(req.params.bookingId);
+      res.json({ reminders });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || 'Failed to fetch reminders' });
+    }
+  });
+
+  // Create a manual reminder
+  app.post('/api/reminders', (req, res) => {
+    try {
+      const reminder = createManualReminder(req.body);
+      res.json({ success: true, reminder });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || 'Failed to create reminder' });
+    }
+  });
+
+  // Delete a reminder
+  app.delete('/api/reminders/:id', (req, res) => {
+    try {
+      const deleted = deleteReminder(req.params.id);
+      res.json({ success: deleted });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || 'Failed to delete reminder' });
+    }
+  });
+
+  // Start reminder cron (check every 60 seconds)
+  setInterval(() => {
+    const { fired } = checkAndFireReminders();
+    if (fired.length > 0) {
+      console.log(`[Reminders] Fired ${fired.length} reminder(s)`);
+    }
+  }, 60_000);
+
+  // Serve markdown documentation files directly for marketing & operations
+  app.use('/docs', express.static(path.join(process.cwd(), 'public', 'docs')));
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== 'production') {

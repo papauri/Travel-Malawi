@@ -416,7 +416,7 @@ export default function AvailabilityCalendar({
 
               return (
                 <button
-                  key={day.dateStr}
+                  key={`${day.dateStr}-${idx}`}
                   type="button"
                   onClick={() => handleDayClick(day)}
                   disabled={disabled}

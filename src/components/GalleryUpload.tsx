@@ -160,7 +160,7 @@ export default function GalleryUpload({ value = [], onChange, label = "Gallery",
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-6">
           {value.map((url, idx) => (
             <div
-              key={`${url}-${idx}`}
+              key={`gallery-${idx}`}
               draggable
               onDragStart={(e) => handleDragStart(e, idx)}
               onDragEnd={handleDragEnd}
