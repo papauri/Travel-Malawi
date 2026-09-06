@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   FileText, Download, Copy, Check, Printer, RefreshCw, 
-  Search, BookOpen, ShieldCheck, Sparkles, ExternalLink,
+  Search, BookOpen, ShieldCheck, ExternalLink,
   Layers, Compass, Target, ArrowRight, Eye, Code2
 } from 'lucide-react';
 import toast from 'react-hot-toast';

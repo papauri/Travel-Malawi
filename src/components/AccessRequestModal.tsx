@@ -346,7 +346,7 @@ export default function AccessRequestModal() {
                         To enable live GPS: click the 🔒 lock or 🎛️ tune icon next to the URL bar &rarr; set <strong>Location</strong> to <strong>Allow</strong> &rarr; then tap Retry.
                       </p>
                       <p className="text-[11px] font-medium text-rose-900">
-                        ✨ <strong>No problem!</strong> You don&apos;t need GPS—simply choose your city hub below:
+                        <strong>No problem!</strong> You don&apos;t need GPS—simply choose your city hub below:
                       </p>
                     </div>
                   ) : (

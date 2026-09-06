@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { Upload, FileText, Image, X, Check, Loader2, AlertCircle, ChevronDown, ChevronUp, ClipboardPaste, Sparkles } from 'lucide-react';
+import { Upload, FileText, Image, X, Check, Loader2, AlertCircle, ChevronDown, ChevronUp, ClipboardPaste } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { MenuSection, MenuItem, PriceMap } from '../types';
 

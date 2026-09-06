@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  X, Send, RotateCcw, Brain, Check, 
+  X, Send, RotateCcw, Check, 
   ChevronDown, ExternalLink, Calendar, Building, DollarSign, 
   TrendingUp, Clock, AlertCircle, Loader2, CheckCircle2, ShieldAlert,
   ArrowRight, Settings2, Sliders, Info, SlidersHorizontal, ConciergeBell,
@@ -476,7 +476,7 @@ export default function OperationsCopilot() {
       if (result.newLearnedRule && user.uid) {
         const saved = addLearnedDirective(user.uid, result.newLearnedRule, userIsAdmin ? 'admin' : 'hotel_manager');
         setLearnedRules(getLearnedDirectives(user.uid));
-        toast.success(`🧠 Copilot learned: "${saved.text.slice(0, 50)}..."`, { icon: '🧠' });
+        toast.success(`Directive saved: "${saved.text.slice(0, 50)}..."`);
       }
 
       // If the AI autonomously generated a patch from a mistake, persist it!
@@ -489,9 +489,8 @@ export default function OperationsCopilot() {
           patch.resolution
         );
         setLearnedRules(getLearnedDirectives(user.uid));
-        toast.success(`⚡ Autonomous Concierge Patch: "${savedPatch.text.slice(0, 50)}..."`, {
-          icon: '⚡',
-          duration: 5000,
+        toast.success(`Operational rule updated: "${savedPatch.text.slice(0, 50)}..."`, {
+          duration: 4000,
         });
       }
 
@@ -1098,8 +1097,8 @@ export default function OperationsCopilot() {
                   <div className="flex items-center justify-between">
                     <div>
                       <h4 className="text-xs font-bold text-stone-800 uppercase tracking-wider flex items-center gap-1.5">
-                        <Brain className="w-4 h-4 text-amber-600" />
-                        Learned Directives & Self-Patches
+                        <SlidersHorizontal className="w-4 h-4 text-amber-600" />
+                        Learned Directives & Operational Rules
                       </h4>
                       <p className="text-[11px] text-stone-500">
                         The AI remembers your rules, policies, and pricing preferences.
@@ -1217,7 +1216,7 @@ export default function OperationsCopilot() {
                           Boolean(proposal.amenity);
 
                         return (
-                          <div className="w-full max-w-[95%] mt-2.5 p-3 bg-stone-50 border border-stone-300/80 rounded-2xl space-y-2.5 animate-in fade-in">
+                          <div className="w-full max-w-[95%] mt-2.5 p-3 bg-stone-50 border border-stone-300/80 rounded-2xl space-y-2.5 animate-in fade-in shadow-2xs">
                             <div className="flex items-center justify-between gap-2">
                               <div className="flex items-center gap-1.5 text-stone-900 font-bold text-xs uppercase tracking-wider">
                                 {isAmenityProposal ? (
@@ -1237,19 +1236,24 @@ export default function OperationsCopilot() {
                                   {proposal.type === 'toggle_featured' && 'Homepage Featured Listing'}
                                 </span>
                               </div>
-                              <span className={`text-[10px] px-2 py-0.5 rounded-md font-medium ${
-                                isAllSelected 
-                                  ? 'bg-amber-100 text-amber-900 border border-amber-300/80' 
-                                  : effectiveTargetIds.length > 1 
-                                  ? 'bg-stone-200 text-stone-800' 
-                                  : 'bg-stone-200 text-stone-700'
-                              }`}>
-                                {isAllSelected 
-                                  ? `🌐 All ${properties.length} Properties` 
-                                  : effectiveTargetIds.length > 1 
-                                  ? `🌐 ${effectiveTargetIds.length} Properties` 
-                                  : '📍 Single Property'}
-                              </span>
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[10px] bg-amber-100/90 text-amber-900 border border-amber-300/80 px-2 py-0.5 rounded-md font-semibold">
+                                  Confirmation Required
+                                </span>
+                                <span className={`text-[10px] px-2 py-0.5 rounded-md font-medium ${
+                                  isAllSelected 
+                                    ? 'bg-stone-200 text-stone-800' 
+                                    : effectiveTargetIds.length > 1 
+                                    ? 'bg-stone-200 text-stone-800' 
+                                    : 'bg-stone-200 text-stone-700'
+                                }`}>
+                                  {isAllSelected 
+                                    ? `All ${properties.length} Properties` 
+                                    : effectiveTargetIds.length > 1 
+                                    ? `${effectiveTargetIds.length} Properties` 
+                                    : 'Single Property'}
+                                </span>
+                              </div>
                             </div>
 
                             {/* TARGET SELECTION CONTROLS (Allows applying changes to all properties or specific ones) */}
@@ -1327,8 +1331,9 @@ export default function OperationsCopilot() {
                                   <div className="text-[11px] text-stone-500">
                                     Target lodges: <strong className="text-stone-800">{targetProps.map(p => p.name).join(', ') || 'Selected properties'}</strong>
                                   </div>
-                                  <p className="text-[11px] text-emerald-700 font-medium pt-0.5">
-                                    ✨ Will be instantly published to live guest booking listings.
+                                  <p className="text-[11px] text-emerald-700 font-medium pt-0.5 flex items-center gap-1">
+                                    <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                                    <span>Will be published to live guest booking listings once confirmed.</span>
                                   </p>
                                 </div>
                               )}
@@ -1413,7 +1418,7 @@ export default function OperationsCopilot() {
                               {/* Featured status details */}
                               {proposal.type === 'toggle_featured' && (
                                 <div className="text-stone-700 text-xs">
-                                  {proposal.featured ? '🌟 Feature lodge on homepage' : 'Remove from featured row'}
+                                  {proposal.featured ? 'Feature lodge on homepage' : 'Remove from featured row'}
                                 </div>
                               )}
                             </div>
@@ -1444,7 +1449,7 @@ export default function OperationsCopilot() {
                                     <>
                                       <Check className="w-3.5 h-3.5 text-emerald-400" />
                                       <span>
-                                        Apply to {isAllSelected && properties.length > 1 ? `All ${properties.length} Properties` : effectiveTargetIds.length > 1 ? `${effectiveTargetIds.length} Selected Lodges` : (targetProps[0]?.name || 'Property')}
+                                        Confirm & Apply to {isAllSelected && properties.length > 1 ? `All ${properties.length} Properties` : effectiveTargetIds.length > 1 ? `${effectiveTargetIds.length} Selected Lodges` : (targetProps[0]?.name || 'Property')}
                                       </span>
                                     </>
                                   )}
@@ -1454,7 +1459,7 @@ export default function OperationsCopilot() {
                                   onClick={() => handleDismissAction(msg.id)}
                                   className="py-2 px-3 bg-white hover:bg-stone-100 text-stone-600 border border-stone-200 rounded-xl text-xs font-medium transition cursor-pointer"
                                 >
-                                  Dismiss
+                                  Cancel
                                 </button>
                               </div>
                             )}
@@ -1477,18 +1482,18 @@ export default function OperationsCopilot() {
               )}
             </div>
 
-            {/* QUICK ACTION PROMPT CHIPS */}
+            {/* QUICK ACTION PROMPT CHIPS (CLEAN, EASY PILL UI) */}
             {!viewingMemory && (
-              <div className="bg-stone-50/90 border-t border-stone-200 px-3 py-2 flex flex-wrap items-center gap-1.5">
+              <div className="bg-stone-50/95 border-t border-stone-200/80 px-3 py-2 flex items-center gap-1.5 overflow-x-auto scrollbar-none">
                 {dynamicSuggestions && dynamicSuggestions.length > 0 ? (
                   dynamicSuggestions.map((suggestion, idx) => (
                     <button
                       key={`suggestion-${idx}-${suggestion.slice(0, 15)}`}
                       type="button"
                       onClick={() => handleSendMessage(suggestion)}
-                      className="px-2.5 py-1 bg-white hover:bg-stone-100 border border-stone-200 text-stone-700 rounded-lg text-[11px] font-medium transition shadow-2xs cursor-pointer"
+                      className="px-3 py-1.5 bg-white hover:bg-stone-100 active:bg-stone-200 border border-stone-200/90 hover:border-stone-300 text-stone-700 hover:text-stone-900 rounded-full text-xs font-medium transition-all shadow-2xs whitespace-nowrap shrink-0 cursor-pointer select-none"
                     >
-                      ✨ {suggestion}
+                      {suggestion}
                     </button>
                   ))
                 ) : userIsAdmin ? (
@@ -1497,25 +1502,25 @@ export default function OperationsCopilot() {
                       key="admin-chip-exec-summary"
                       type="button"
                       onClick={() => handleSendMessage('Give me an executive summary of today: platform arrivals, checkouts, and active listings.')}
-                      className="px-2.5 py-1 bg-white hover:bg-stone-100 border border-stone-200 text-stone-700 rounded-lg text-[11px] font-medium transition shadow-2xs cursor-pointer"
+                      className="px-3 py-1.5 bg-white hover:bg-stone-100 active:bg-stone-200 border border-stone-200/90 hover:border-stone-300 text-stone-700 hover:text-stone-900 rounded-full text-xs font-medium transition-all shadow-2xs whitespace-nowrap shrink-0 cursor-pointer select-none"
                     >
-                      📊 Executive Summary
+                      Executive Summary
                     </button>
                     <button
                       key="admin-chip-all-props"
                       type="button"
                       onClick={() => handleSendMessage('List all properties on the platform with their statuses and manager details.')}
-                      className="px-2.5 py-1 bg-white hover:bg-stone-100 border border-stone-200 text-stone-700 rounded-lg text-[11px] font-medium transition shadow-2xs cursor-pointer"
+                      className="px-3 py-1.5 bg-white hover:bg-stone-100 active:bg-stone-200 border border-stone-200/90 hover:border-stone-300 text-stone-700 hover:text-stone-900 rounded-full text-xs font-medium transition-all shadow-2xs whitespace-nowrap shrink-0 cursor-pointer select-none"
                     >
-                      🏢 All Properties
+                      All Properties
                     </button>
                     <button
                       key="admin-chip-rates-audit"
                       type="button"
                       onClick={() => handleSendMessage('Audit all room rates across the platform.')}
-                      className="px-2.5 py-1 bg-white hover:bg-stone-100 border border-stone-200 text-stone-700 rounded-lg text-[11px] font-medium transition shadow-2xs cursor-pointer"
+                      className="px-3 py-1.5 bg-white hover:bg-stone-100 active:bg-stone-200 border border-stone-200/90 hover:border-stone-300 text-stone-700 hover:text-stone-900 rounded-full text-xs font-medium transition-all shadow-2xs whitespace-nowrap shrink-0 cursor-pointer select-none"
                     >
-                      💰 Rates Audit
+                      Rates Audit
                     </button>
                   </>
                 ) : (
@@ -1524,25 +1529,25 @@ export default function OperationsCopilot() {
                       key="mgr-chip-today-arrivals"
                       type="button"
                       onClick={() => handleSendMessage('Do I have any arrivals or bookings scheduled for today?')}
-                      className="px-2.5 py-1 bg-white hover:bg-stone-100 border border-stone-200 text-stone-700 rounded-lg text-[11px] font-medium transition shadow-2xs cursor-pointer"
+                      className="px-3 py-1.5 bg-white hover:bg-stone-100 active:bg-stone-200 border border-stone-200/90 hover:border-stone-300 text-stone-700 hover:text-stone-900 rounded-full text-xs font-medium transition-all shadow-2xs whitespace-nowrap shrink-0 cursor-pointer select-none"
                     >
-                      📅 Today's Arrivals
+                      Today's Arrivals
                     </button>
                     <button
                       key="mgr-chip-today-checkouts"
                       type="button"
                       onClick={() => handleSendMessage('Who is scheduled to check out today?')}
-                      className="px-2.5 py-1 bg-white hover:bg-stone-100 border border-stone-200 text-stone-700 rounded-lg text-[11px] font-medium transition shadow-2xs cursor-pointer"
+                      className="px-3 py-1.5 bg-white hover:bg-stone-100 active:bg-stone-200 border border-stone-200/90 hover:border-stone-300 text-stone-700 hover:text-stone-900 rounded-full text-xs font-medium transition-all shadow-2xs whitespace-nowrap shrink-0 cursor-pointer select-none"
                     >
-                      🚪 Checkouts Today
+                      Checkouts Today
                     </button>
                     <button
                       key="mgr-chip-my-rates"
                       type="button"
                       onClick={() => handleSendMessage('Show me all my room rates.')}
-                      className="px-2.5 py-1 bg-white hover:bg-stone-100 border border-stone-200 text-stone-700 rounded-lg text-[11px] font-medium transition shadow-2xs cursor-pointer"
+                      className="px-3 py-1.5 bg-white hover:bg-stone-100 active:bg-stone-200 border border-stone-200/90 hover:border-stone-300 text-stone-700 hover:text-stone-900 rounded-full text-xs font-medium transition-all shadow-2xs whitespace-nowrap shrink-0 cursor-pointer select-none"
                     >
-                      💰 My Room Rates
+                      My Room Rates
                     </button>
                   </>
                 )}
