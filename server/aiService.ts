@@ -1,4 +1,4 @@
-import { AIProviderId, getEffectiveApiKey, loadAIConfig } from './aiConfig';
+import { AIProviderId, getEffectiveApiKey, loadAIConfig, markProviderValidity } from './aiConfig';
 
 export interface GenerationRequest {
   action: 'draft' | 'polish' | 'shorten' | 'highlights' | 'suggest_amenities' | 'suggest_rooms' | 'review_listing' | 'suggest_rate' | 'lookup_property';
@@ -157,31 +157,95 @@ Do not output any markdown code blocks, backticks, or explanatory text. Return s
 }
 
 /**
- * Exponential backoff helper with jitter for API rate limits (HTTP 429).
+ * Rate limit spacing per provider (in milliseconds).
+ * Mistral free tier strictly limits accounts to 1 request per second (1 RPS).
+ * 1250ms spacing enforces a safe ~0.8 RPS ceiling, preventing 429 errors proactively.
  */
-async function waitBackoff(attempt: number, retryHeader: string | null, baseMs = 1500): Promise<void> {
-  let ms = baseMs * Math.pow(2, attempt) + Math.round(Math.random() * 500);
+const PROVIDER_RATE_LIMITS_MS: Record<AIProviderId, number> = {
+  mistral: 1250,   // 0.8 RPS (safely below 1.0 RPS free tier limit)
+  gemini: 1200,    // 15 RPM
+  groq: 1000,      // 30 RPM
+  deepseek: 500,
+  openai: 500,
+  anthropic: 500,
+};
+
+// Sequential FIFO promise chains per provider to guarantee request spacing
+const providerQueues: Record<string, Promise<any>> = {};
+const lastCallTimestamps: Record<string, number> = {};
+
+/**
+ * Serializes and paces outgoing AI calls per provider to strictly prevent 429 rate limits.
+ */
+async function enqueueAIRequest<T>(provider: AIProviderId, fn: () => Promise<T>): Promise<T> {
+  const minGap = PROVIDER_RATE_LIMITS_MS[provider] || 500;
+  const previous = providerQueues[provider] || Promise.resolve();
+
+  const runCurrent = previous
+    .catch(() => {}) // never fail chain on previous rejection
+    .then(async () => {
+      const now = Date.now();
+      const lastTime = lastCallTimestamps[provider] || 0;
+      const elapsed = now - lastTime;
+      if (elapsed < minGap) {
+        const waitMs = minGap - elapsed;
+        await new Promise(r => setTimeout(r, waitMs));
+      }
+      try {
+        const res = await fn();
+        lastCallTimestamps[provider] = Date.now();
+        return res;
+      } catch (err) {
+        lastCallTimestamps[provider] = Date.now();
+        throw err;
+      }
+    });
+
+  providerQueues[provider] = runCurrent;
+  return runCurrent;
+}
+
+// In-memory cache for deterministic requests (e.g. lookup_property, suggest_amenities, suggest_rate)
+interface CacheEntry {
+  text: string;
+  data?: any;
+  timestamp: number;
+}
+const responseCache = new Map<string, CacheEntry>();
+const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+function buildCacheKey(provider: string, model: string, req: GenerationRequest): string {
+  return `${provider}:${model}:${req.action}:${req.entityType}:${JSON.stringify(req.details || {})}:${(req.currentText || '').slice(0, 100)}`;
+}
+
+/**
+ * Exponential backoff helper with randomized jitter for API rate limits (HTTP 429).
+ */
+async function waitBackoff(attempt: number, retryHeader: string | null, baseMs = 2000): Promise<void> {
+  let ms = baseMs * Math.pow(1.8, attempt) + Math.round(Math.random() * 800);
   if (retryHeader) {
     const parsed = parseInt(retryHeader, 10);
     if (!isNaN(parsed) && parsed > 0) {
-      ms = Math.min(12000, parsed * 1000);
+      ms = Math.min(15000, (parsed + 0.5) * 1000);
     }
   }
+  console.warn(`[AI Service] 429 rate limit reached. Backing off for ${Math.round(ms)}ms before retry (attempt ${attempt + 1})...`);
   await new Promise(resolve => setTimeout(resolve, ms));
 }
 
 /**
  * Direct API caller for standard OpenAI-compatible endpoints (DeepSeek, OpenAI, Mistral, Groq)
- * Equipped with automatic backoff retry on HTTP 429 rate limit responses.
+ * Equipped with automatic backoff retry on HTTP 429 rate limit responses and auth failure tracking.
  */
 async function callOpenAICompatible(
+  providerId: AIProviderId,
   apiUrl: string,
   apiKey: string,
   model: string,
   systemPrompt: string,
   userPrompt: string
 ): Promise<string> {
-  const maxRetries = 3;
+  const maxRetries = 4;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     const response = await fetch(apiUrl, {
@@ -201,14 +265,25 @@ async function callOpenAICompatible(
       }),
     });
 
+    if (response.status === 401 || response.status === 403) {
+      const errorText = await response.text();
+      let cleanMsg = 'Invalid API key or unauthorized.';
+      try {
+        const parsed = JSON.parse(errorText);
+        if (parsed.message) cleanMsg = parsed.message;
+        else if (parsed.error?.message) cleanMsg = parsed.error.message;
+      } catch {}
+      markProviderValidity(providerId, false, cleanMsg);
+      throw new Error(`Authentication failed for ${providerId.toUpperCase()}: ${cleanMsg}`);
+    }
+
     if (response.status === 429) {
       if (attempt < maxRetries) {
-        const retryHeader = response.headers.get('retry-after');
-        console.warn(`[AI Service] 429 Rate limit hit for model ${model}. Backing off and retrying (attempt ${attempt + 1}/${maxRetries})...`);
-        await waitBackoff(attempt, retryHeader, 1800);
+        const retryHeader = response.headers.get('retry-after') || response.headers.get('x-ratelimit-reset');
+        await waitBackoff(attempt, retryHeader, 2200);
         continue;
       }
-      throw new Error(`AI rate limit reached (${model}). Mistral/Provider allows 1 request per second on its free tier. Please wait 5-10 seconds and try again.`);
+      throw new Error(`AI rate limit reached (${model}). The provider allows 1 request per second on its free tier. Please wait a few seconds and try again.`);
     }
 
     if (!response.ok) {
@@ -218,8 +293,9 @@ async function callOpenAICompatible(
         const parsed = JSON.parse(errorText);
         if (parsed.message) cleanMsg = parsed.message;
         else if (parsed.error?.message) cleanMsg = parsed.error.message;
-      } catch {
-        // use slice
+      } catch {}
+      if (cleanMsg.toLowerCase().includes('invalid api key') || cleanMsg.toLowerCase().includes('unauthorized')) {
+        markProviderValidity(providerId, false, cleanMsg);
       }
       throw new Error(`API error (${response.status}): ${cleanMsg}`);
     }
@@ -229,6 +305,8 @@ async function callOpenAICompatible(
     if (!text) {
       throw new Error('No text generated from model');
     }
+    // Mark provider as valid on successful generation
+    markProviderValidity(providerId, true);
     return text;
   }
 
@@ -236,9 +314,10 @@ async function callOpenAICompatible(
 }
 
 /**
- * Google Gemini REST caller with 429 backoff retry
+ * Google Gemini REST caller with 429 backoff retry and auth failure tracking
  */
 async function callGemini(
+  providerId: AIProviderId,
   apiKey: string,
   model: string,
   systemPrompt: string,
@@ -246,7 +325,7 @@ async function callGemini(
 ): Promise<string> {
   const cleanModel = model.replace(/^models\//, '');
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${apiKey}`;
-  const maxRetries = 3;
+  const maxRetries = 4;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     const response = await fetch(url, {
@@ -269,11 +348,21 @@ async function callGemini(
       }),
     });
 
+    if (response.status === 401 || response.status === 403) {
+      const errorText = await response.text();
+      let cleanMsg = 'Invalid Gemini API key.';
+      try {
+        const parsed = JSON.parse(errorText);
+        if (parsed.error?.message) cleanMsg = parsed.error.message;
+      } catch {}
+      markProviderValidity(providerId, false, cleanMsg);
+      throw new Error(`Authentication failed for Gemini: ${cleanMsg}`);
+    }
+
     if (response.status === 429) {
       if (attempt < maxRetries) {
         const retryHeader = response.headers.get('retry-after');
-        console.warn(`[AI Service] Gemini 429 rate limit hit. Backing off and retrying (attempt ${attempt + 1}/${maxRetries})...`);
-        await waitBackoff(attempt, retryHeader, 1800);
+        await waitBackoff(attempt, retryHeader, 2200);
         continue;
       }
       throw new Error('Gemini API rate limit reached. Please wait a few seconds and try again.');
@@ -286,6 +375,9 @@ async function callGemini(
         const parsed = JSON.parse(errorText);
         if (parsed.error?.message) cleanMsg = parsed.error.message;
       } catch {}
+      if (cleanMsg.toLowerCase().includes('api_key_invalid') || cleanMsg.toLowerCase().includes('invalid api key')) {
+        markProviderValidity(providerId, false, cleanMsg);
+      }
       throw new Error(`Gemini API error (${response.status}): ${cleanMsg}`);
     }
 
@@ -294,6 +386,7 @@ async function callGemini(
     if (!candidate) {
       throw new Error('No text generated by Gemini');
     }
+    markProviderValidity(providerId, true);
     return candidate;
   }
 
@@ -301,16 +394,17 @@ async function callGemini(
 }
 
 /**
- * Anthropic Messages API caller with 429 backoff retry
+ * Anthropic Messages API caller with 429 backoff retry and auth failure tracking
  */
 async function callAnthropic(
+  providerId: AIProviderId,
   apiKey: string,
   model: string,
   systemPrompt: string,
   userPrompt: string
 ): Promise<string> {
   const url = 'https://api.anthropic.com/v1/messages';
-  const maxRetries = 3;
+  const maxRetries = 4;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     const response = await fetch(url, {
@@ -329,11 +423,21 @@ async function callAnthropic(
       }),
     });
 
+    if (response.status === 401 || response.status === 403) {
+      const errorText = await response.text();
+      let cleanMsg = 'Invalid Anthropic API key.';
+      try {
+        const parsed = JSON.parse(errorText);
+        if (parsed.error?.message) cleanMsg = parsed.error.message;
+      } catch {}
+      markProviderValidity(providerId, false, cleanMsg);
+      throw new Error(`Authentication failed for Anthropic: ${cleanMsg}`);
+    }
+
     if (response.status === 429) {
       if (attempt < maxRetries) {
         const retryHeader = response.headers.get('retry-after');
-        console.warn(`[AI Service] Anthropic 429 rate limit hit. Backing off and retrying (attempt ${attempt + 1}/${maxRetries})...`);
-        await waitBackoff(attempt, retryHeader, 1800);
+        await waitBackoff(attempt, retryHeader, 2200);
         continue;
       }
       throw new Error('Anthropic API rate limit reached. Please wait a moment and try again.');
@@ -346,6 +450,9 @@ async function callAnthropic(
         const parsed = JSON.parse(errorText);
         if (parsed.error?.message) cleanMsg = parsed.error.message;
       } catch {}
+      if (cleanMsg.toLowerCase().includes('invalid_api_key')) {
+        markProviderValidity(providerId, false, cleanMsg);
+      }
       throw new Error(`Anthropic API error (${response.status}): ${cleanMsg}`);
     }
 
@@ -354,6 +461,7 @@ async function callAnthropic(
     if (!text) {
       throw new Error('No text generated by Anthropic');
     }
+    markProviderValidity(providerId, true);
     return text;
   }
 
@@ -374,77 +482,92 @@ export async function executeAIGeneration(
   const providerId = overrideProvider || config.activeProvider;
   const apiKey = getEffectiveApiKey(providerId);
 
-  if (!apiKey) {
+  if (!apiKey || apiKey.trim().length < 6) {
     throw new Error(`No API key configured for ${providerId.toUpperCase()}. Please configure an API key in the Admin Dashboard.`);
   }
 
   const model = config.providers[providerId]?.model || 'default';
+
+  // Check in-memory cache for deterministic actions to burn 0 tokens and 0 requests
+  const cacheKey = buildCacheKey(providerId, model, req);
+  const cached = responseCache.get(cacheKey);
+  if (cached && (Date.now() - cached.timestamp < CACHE_TTL_MS)) {
+    console.log(`[AI Service] Cache hit for ${req.action} (${providerId}/${model})`);
+    return {
+      text: cached.text,
+      provider: providerId,
+      model,
+      data: cached.data,
+    };
+  }
+
   const userPrompt = buildUserPrompt(req);
 
-  let generatedText = '';
+  // Execute request through the rate pacer queue
+  const generatedText = await enqueueAIRequest(providerId, async () => {
+    switch (providerId) {
+      case 'deepseek':
+        return callOpenAICompatible(
+          'deepseek',
+          'https://api.deepseek.com/chat/completions',
+          apiKey,
+          model || 'deepseek-chat',
+          SYSTEM_PROMPT,
+          userPrompt
+        );
 
-  switch (providerId) {
-    case 'deepseek':
-      generatedText = await callOpenAICompatible(
-        'https://api.deepseek.com/chat/completions',
-        apiKey,
-        model || 'deepseek-chat',
-        SYSTEM_PROMPT,
-        userPrompt
-      );
-      break;
+      case 'openai':
+        return callOpenAICompatible(
+          'openai',
+          'https://api.openai.com/v1/chat/completions',
+          apiKey,
+          model || 'gpt-4o-mini',
+          SYSTEM_PROMPT,
+          userPrompt
+        );
 
-    case 'openai':
-      generatedText = await callOpenAICompatible(
-        'https://api.openai.com/v1/chat/completions',
-        apiKey,
-        model || 'gpt-4o-mini',
-        SYSTEM_PROMPT,
-        userPrompt
-      );
-      break;
+      case 'mistral':
+        return callOpenAICompatible(
+          'mistral',
+          'https://api.mistral.ai/v1/chat/completions',
+          apiKey,
+          model || 'mistral-small-latest',
+          SYSTEM_PROMPT,
+          userPrompt
+        );
 
-    case 'mistral':
-      generatedText = await callOpenAICompatible(
-        'https://api.mistral.ai/v1/chat/completions',
-        apiKey,
-        model || 'mistral-small-latest',
-        SYSTEM_PROMPT,
-        userPrompt
-      );
-      break;
+      case 'groq':
+        return callOpenAICompatible(
+          'groq',
+          'https://api.groq.com/openai/v1/chat/completions',
+          apiKey,
+          model || 'llama-3.3-70b-versatile',
+          SYSTEM_PROMPT,
+          userPrompt
+        );
 
-    case 'groq':
-      generatedText = await callOpenAICompatible(
-        'https://api.groq.com/openai/v1/chat/completions',
-        apiKey,
-        model || 'llama-3.3-70b-versatile',
-        SYSTEM_PROMPT,
-        userPrompt
-      );
-      break;
+      case 'gemini':
+        return callGemini(
+          'gemini',
+          apiKey,
+          model || 'gemini-1.5-flash',
+          SYSTEM_PROMPT,
+          userPrompt
+        );
 
-    case 'gemini':
-      generatedText = await callGemini(
-        apiKey,
-        model || 'gemini-1.5-flash',
-        SYSTEM_PROMPT,
-        userPrompt
-      );
-      break;
+      case 'anthropic':
+        return callAnthropic(
+          'anthropic',
+          apiKey,
+          model || 'claude-3-5-haiku-20241022',
+          SYSTEM_PROMPT,
+          userPrompt
+        );
 
-    case 'anthropic':
-      generatedText = await callAnthropic(
-        apiKey,
-        model || 'claude-3-5-haiku-20241022',
-        SYSTEM_PROMPT,
-        userPrompt
-      );
-      break;
-
-    default:
-      throw new Error(`Unsupported AI provider: ${providerId}`);
-  }
+      default:
+        throw new Error(`Unsupported AI provider: ${providerId}`);
+    }
+  });
 
   let structuredData: any = null;
   if (req.action === 'suggest_amenities' || req.action === 'suggest_rooms') {
@@ -483,6 +606,13 @@ export async function executeAIGeneration(
       }
     }
   }
+
+  // Save to in-memory cache
+  responseCache.set(cacheKey, {
+    text: generatedText,
+    data: structuredData,
+    timestamp: Date.now(),
+  });
 
   return {
     text: generatedText,
@@ -1123,70 +1253,70 @@ USER MESSAGE:
 "${req.message}"
 `;
 
-  let rawGenerated = '';
+  const rawGenerated = await enqueueAIRequest(providerId, async () => {
+    switch (providerId) {
+      case 'deepseek':
+        return callOpenAICompatible(
+          'deepseek',
+          'https://api.deepseek.com/chat/completions',
+          apiKey,
+          model || 'deepseek-chat',
+          OPERATIONS_SYSTEM_PROMPT,
+          userPrompt
+        );
 
-  switch (providerId) {
-    case 'deepseek':
-      rawGenerated = await callOpenAICompatible(
-        'https://api.deepseek.com/chat/completions',
-        apiKey,
-        model || 'deepseek-chat',
-        OPERATIONS_SYSTEM_PROMPT,
-        userPrompt
-      );
-      break;
+      case 'openai':
+        return callOpenAICompatible(
+          'openai',
+          'https://api.openai.com/v1/chat/completions',
+          apiKey,
+          model || 'gpt-4o-mini',
+          OPERATIONS_SYSTEM_PROMPT,
+          userPrompt
+        );
 
-    case 'openai':
-      rawGenerated = await callOpenAICompatible(
-        'https://api.openai.com/v1/chat/completions',
-        apiKey,
-        model || 'gpt-4o-mini',
-        OPERATIONS_SYSTEM_PROMPT,
-        userPrompt
-      );
-      break;
+      case 'mistral':
+        return callOpenAICompatible(
+          'mistral',
+          'https://api.mistral.ai/v1/chat/completions',
+          apiKey,
+          model || 'mistral-small-latest',
+          OPERATIONS_SYSTEM_PROMPT,
+          userPrompt
+        );
 
-    case 'mistral':
-      rawGenerated = await callOpenAICompatible(
-        'https://api.mistral.ai/v1/chat/completions',
-        apiKey,
-        model || 'mistral-small-latest',
-        OPERATIONS_SYSTEM_PROMPT,
-        userPrompt
-      );
-      break;
+      case 'groq':
+        return callOpenAICompatible(
+          'groq',
+          'https://api.groq.com/openai/v1/chat/completions',
+          apiKey,
+          model || 'llama-3.3-70b-versatile',
+          OPERATIONS_SYSTEM_PROMPT,
+          userPrompt
+        );
 
-    case 'groq':
-      rawGenerated = await callOpenAICompatible(
-        'https://api.groq.com/openai/v1/chat/completions',
-        apiKey,
-        model || 'llama-3.3-70b-versatile',
-        OPERATIONS_SYSTEM_PROMPT,
-        userPrompt
-      );
-      break;
+      case 'gemini':
+        return callGemini(
+          'gemini',
+          apiKey,
+          model || 'gemini-1.5-flash',
+          OPERATIONS_SYSTEM_PROMPT,
+          userPrompt
+        );
 
-    case 'gemini':
-      rawGenerated = await callGemini(
-        apiKey,
-        model || 'gemini-1.5-flash',
-        OPERATIONS_SYSTEM_PROMPT,
-        userPrompt
-      );
-      break;
+      case 'anthropic':
+        return callAnthropic(
+          'anthropic',
+          apiKey,
+          model || 'claude-3-5-haiku-20241022',
+          OPERATIONS_SYSTEM_PROMPT,
+          userPrompt
+        );
 
-    case 'anthropic':
-      rawGenerated = await callAnthropic(
-        apiKey,
-        model || 'claude-3-5-haiku-20241022',
-        OPERATIONS_SYSTEM_PROMPT,
-        userPrompt
-      );
-      break;
-
-    default:
-      throw new Error(`Unsupported AI provider: ${providerId}`);
-  }
+      default:
+        throw new Error(`Unsupported AI provider: ${providerId}`);
+    }
+  });
 
   // Parse out action proposal
   let actionProposal: ActionProposal | null = null;
@@ -1353,6 +1483,7 @@ export async function testProviderConnection(providerId: AIProviderId): Promise<
 
     const result = await executeAIGeneration(testReq, providerId);
     const latencyMs = Date.now() - startTime;
+    markProviderValidity(providerId, true);
 
     return {
       success: true,
@@ -1362,12 +1493,21 @@ export async function testProviderConnection(providerId: AIProviderId): Promise<
       model: result.model,
     };
   } catch (err: any) {
+    const errorMsg = err?.message || 'Connection failed';
+    if (
+      errorMsg.toLowerCase().includes('auth') ||
+      errorMsg.toLowerCase().includes('key') ||
+      errorMsg.toLowerCase().includes('401') ||
+      errorMsg.toLowerCase().includes('403')
+    ) {
+      markProviderValidity(providerId, false, errorMsg);
+    }
     return {
       success: false,
       latencyMs: Date.now() - startTime,
       provider: providerId,
       model: '',
-      error: err?.message || 'Connection failed',
+      error: errorMsg,
     };
   }
 }

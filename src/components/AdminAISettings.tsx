@@ -5,12 +5,24 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
+interface RecommendedModel {
+  id: string;
+  name: string;
+  description: string;
+  isSweetSpot?: boolean;
+}
+
 interface ProviderView {
   name: string;
   website: string;
   model: string;
   defaultModel: string;
+  recommendedModels?: RecommendedModel[];
+  rateLimitNotice?: string;
   isConfigured: boolean;
+  isValid?: boolean;
+  lastValidated?: number;
+  validationError?: string;
   maskedKey: string;
   source: 'manual' | 'environment' | 'none';
 }
@@ -363,9 +375,25 @@ export default function AdminAISettings() {
                     <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-stone-100 text-stone-600 border border-stone-200">
                       ID: {pid}
                     </span>
-                    {p.isConfigured && (
-                      <span className="text-[11px] text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full font-medium">
-                        Ready
+                    {p.isConfigured ? (
+                      p.isValid === false ? (
+                        <span className="text-[11px] text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full font-semibold flex items-center gap-1">
+                          <AlertTriangle className="w-3 h-3 text-red-600" />
+                          <span>Invalid Key</span>
+                        </span>
+                      ) : p.isValid === true ? (
+                        <span className="text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full font-semibold flex items-center gap-1">
+                          <Check className="w-3 h-3 text-emerald-600" />
+                          <span>Verified & Ready</span>
+                        </span>
+                      ) : (
+                        <span className="text-[11px] text-stone-600 bg-stone-100 border border-stone-200 px-2 py-0.5 rounded-full font-medium">
+                          Configured
+                        </span>
+                      )
+                    ) : (
+                      <span className="text-[11px] text-stone-400 bg-stone-50 border border-stone-200 px-2 py-0.5 rounded-full font-medium">
+                        No Key
                       </span>
                     )}
                   </div>
@@ -376,7 +404,7 @@ export default function AdminAISettings() {
                         type="button"
                         disabled={isTesting}
                         onClick={() => handleRunTest(pid)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 rounded-xl transition border border-stone-200 disabled:opacity-50"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 rounded-xl transition border border-stone-200 disabled:opacity-50 cursor-pointer"
                       >
                         {isTesting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
                         <span>Test Connection</span>
@@ -411,7 +439,7 @@ export default function AdminAISettings() {
                       <button
                         type="button"
                         onClick={() => setShowKey(prev => ({ ...prev, [pid]: !prev[pid] }))}
-                        className="absolute right-3 top-2.5 text-stone-400 hover:text-stone-600"
+                        className="absolute right-3 top-2.5 text-stone-400 hover:text-stone-600 cursor-pointer"
                       >
                         {isEditingKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                       </button>
@@ -434,13 +462,75 @@ export default function AdminAISettings() {
                         type="button"
                         disabled={saving || (!hasInputValue && modelInputs[pid] === p.model)}
                         onClick={() => handleSaveProvider(pid)}
-                        className="px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold rounded-xl transition disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
+                        className="px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold rounded-xl transition disabled:opacity-30 disabled:cursor-not-allowed shrink-0 cursor-pointer"
                       >
                         Save
                       </button>
                     </div>
                   </div>
                 </div>
+
+                {/* Recommended Models & Sweet Spots */}
+                {p.recommendedModels && p.recommendedModels.length > 0 && (
+                  <div className="bg-stone-50/80 p-3 rounded-xl border border-stone-200/60 space-y-1.5">
+                    <span className="text-[10px] uppercase font-bold tracking-wider text-stone-400">
+                      Recommended Models &amp; Sweet Spots:
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {p.recommendedModels.map((m) => {
+                        const isCurrent = (modelInputs[pid] ?? p.model) === m.id;
+                        return (
+                          <button
+                            key={m.id}
+                            type="button"
+                            onClick={() => {
+                              setModelInputs(prev => ({ ...prev, [pid]: m.id }));
+                            }}
+                            className={`text-[11px] px-2.5 py-1 rounded-lg border transition cursor-pointer flex items-center gap-1.5 ${
+                              isCurrent
+                                ? 'bg-stone-900 text-white border-stone-900 font-semibold shadow-2xs'
+                                : 'bg-white hover:bg-stone-100 text-stone-700 border-stone-200'
+                            }`}
+                            title={m.description}
+                          >
+                            <span>{m.name}</span>
+                            {m.isSweetSpot && (
+                              <span className={`text-[9px] px-1.5 py-0.2 rounded font-bold uppercase tracking-wider ${
+                                isCurrent ? 'bg-amber-400 text-stone-950' : 'bg-amber-100 text-amber-900'
+                              }`}>
+                                Sweet Spot
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Rate Limit Strategy Notice */}
+                {p.rateLimitNotice && (
+                  <div className="text-[11px] text-stone-500 bg-stone-50 border border-stone-200/80 rounded-xl p-2.5 flex items-center gap-2">
+                    <span className="font-bold text-stone-700 uppercase text-[10px] tracking-wider shrink-0 bg-stone-200/80 px-1.5 py-0.5 rounded">
+                      Rate Strategy
+                    </span>
+                    <span>{p.rateLimitNotice}</span>
+                  </div>
+                )}
+
+                {/* Authentication Failure Notice */}
+                {p.isValid === false && p.validationError && (
+                  <div className="text-[11px] text-red-700 bg-red-50 border border-red-200 rounded-xl p-2.5 flex items-start gap-2 animate-in fade-in">
+                    <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-bold">Authentication Error: </span>
+                      <span>{p.validationError}</span>
+                      <p className="text-[10px] text-red-600 mt-0.5">
+                        Please update your API key above or select a different provider. AI features will remain safely suppressed until a valid key is provided.
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })}

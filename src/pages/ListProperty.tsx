@@ -952,24 +952,26 @@ export default function ListProperty() {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className={labelClass} htmlFor="listing-name">Property name</label>
-                  <button
-                    type="button"
-                    onClick={handleLookupPropertyAI}
-                    disabled={aiLookupLoading || !draft.name.trim()}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-2xs"
-                  >
-                    {aiLookupLoading ? (
-                      <>
-                        <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-600" />
-                        <span>Searching Maps & AI...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>Look up on Google Maps & AI</span>
-                      </>
-                    )}
-                  </button>
+                  {aiStatus.enabled && aiStatus.available && (
+                    <button
+                      type="button"
+                      onClick={handleLookupPropertyAI}
+                      disabled={aiLookupLoading || !draft.name.trim()}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-2xs"
+                    >
+                      {aiLookupLoading ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-600" />
+                          <span>Searching Maps & AI...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Look up on Google Maps & AI</span>
+                        </>
+                      )}
+                    </button>
+                  )}
                 </div>
 
                 <div className="relative">

@@ -163,7 +163,11 @@ async function startServer() {
         Object.entries(providerUpdates).forEach(([pid, update]: [string, any]) => {
           if (current.providers[pid as AIProviderId]) {
             if (typeof update.apiKey === 'string') {
-              current.providers[pid as AIProviderId].apiKey = update.apiKey.trim();
+              const trimmedKey = update.apiKey.trim();
+              current.providers[pid as AIProviderId].apiKey = trimmedKey;
+              // Reset validity status so the new key can be verified
+              current.providers[pid as AIProviderId].isValid = undefined;
+              current.providers[pid as AIProviderId].validationError = undefined;
             }
             if (typeof update.model === 'string' && update.model.trim()) {
               current.providers[pid as AIProviderId].model = update.model.trim();

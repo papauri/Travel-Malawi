@@ -6,6 +6,8 @@ export interface AIStatus {
   activeProvider: string;
   model: string;
   available: boolean;
+  isValid?: boolean;
+  validationError?: string;
 }
 
 export interface AIGenerateOptions {
@@ -263,6 +265,9 @@ export function useAIAssistant() {
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
         let errMsg = errData.error || `Generation failed (${res.status})`;
+        if (res.status === 401 || res.status === 403 || errMsg.toLowerCase().includes('auth') || errMsg.toLowerCase().includes('invalid api key')) {
+          fetchStatus();
+        }
         if (res.status === 429 || errMsg.toLowerCase().includes('rate limit')) {
           errMsg = 'AI Rate Limit: The free provider allows 1 request per second. Please wait a few seconds and try again.';
         }
@@ -297,6 +302,9 @@ export function useAIAssistant() {
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
         let errMsg = errData.error || `Generation failed (${res.status})`;
+        if (res.status === 401 || res.status === 403 || errMsg.toLowerCase().includes('auth') || errMsg.toLowerCase().includes('invalid api key')) {
+          fetchStatus();
+        }
         if (res.status === 429 || errMsg.toLowerCase().includes('rate limit')) {
           errMsg = 'AI Rate Limit: The free provider allows 1 request per second. Please wait a few seconds and try again.';
         }
@@ -313,7 +321,7 @@ export function useAIAssistant() {
     } finally {
       setGenerating(false);
     }
-  }, [generating]);
+  }, [generating, fetchStatus]);
 
   const operationsChat = useCallback(async (payload: OperationsChatPayload): Promise<OperationsChatResult | null> => {
     setGenerating(true);
@@ -327,6 +335,9 @@ export function useAIAssistant() {
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
         const errMsg = errData.error || `Operations assistant failed (${res.status})`;
+        if (res.status === 401 || res.status === 403 || errMsg.toLowerCase().includes('auth') || errMsg.toLowerCase().includes('invalid api key')) {
+          fetchStatus();
+        }
         toast.error(errMsg);
         return null;
       }

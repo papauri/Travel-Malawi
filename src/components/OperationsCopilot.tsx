@@ -896,6 +896,13 @@ export default function OperationsCopilot() {
     toast.success('Directive removed');
   };
 
+  // Strict AI Availability Check:
+  // If user is not authorized, or AI is disabled, or no valid API key is configured,
+  // do not render the concierge avatar, modal, or any background operations.
+  if (!isAuthorized || !aiStatus.enabled || !aiStatus.available) {
+    return null;
+  }
+
   return (
     <>
       {/* ------------------------------------------------------------- */}
