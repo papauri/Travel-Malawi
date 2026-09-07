@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   X, Send, RotateCcw, Check, 
-  ChevronDown, ChevronUp, Sparkles, ExternalLink, Calendar, Building, DollarSign, 
+  ChevronDown, Sparkles, ExternalLink, Calendar, Building, DollarSign, 
   TrendingUp, Clock, AlertCircle, Loader2, CheckCircle2, ShieldAlert,
   ArrowRight, Settings2, Sliders, Info, SlidersHorizontal, ConciergeBell,
   Utensils, Coffee, CheckCheck, Layers, ShieldCheck, Minus, Maximize2, Minimize2, Menu
@@ -127,7 +127,6 @@ export default function OperationsCopilot() {
   const [activeQueryText, setActiveQueryText] = useState<string>('');
   const [showPromptsMenu, setShowPromptsMenu] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const [isHeaderFolded, setIsHeaderFolded] = useState(false);
 
   // Tracks interactive hotel selection for each proposed action { [msgId]: hotelId[] }
   const [proposalHotelSelections, setProposalHotelSelections] = useState<Record<string, string[]>>({});
@@ -1281,15 +1280,13 @@ export default function OperationsCopilot() {
                         {userIsAdmin ? 'Admin' : 'Manager'}
                       </span>
                     </div>
-                    {!isHeaderFolded && (
-                      <p className="text-[10px] text-stone-400 truncate max-w-[170px] sm:max-w-[200px]">
-                        {userIsAdmin
-                          ? `Executive hospitality desk • ${properties.length} properties`
-                          : properties.length === 1
-                          ? `At your service at ${properties[0].name}`
-                          : `At your service • ${properties.length} assigned lodges`}
-                      </p>
-                    )}
+                    <p className="text-[10px] text-stone-400 truncate max-w-[170px] sm:max-w-[200px]">
+                      {userIsAdmin
+                        ? `Executive hospitality desk • ${properties.length} properties`
+                        : properties.length === 1
+                        ? `At your service at ${properties[0].name}`
+                        : `At your service • ${properties.length} assigned lodges`}
+                    </p>
                   </div>
                 </div>
 
@@ -1315,22 +1312,6 @@ export default function OperationsCopilot() {
 
                     {showMobileMenu && (
                       <div className="absolute right-0 top-full mt-2 w-60 bg-stone-900 border border-stone-800 rounded-2xl shadow-2xl py-1.5 z-50 text-xs animate-in fade-in zoom-in-95 duration-150">
-                        {/* Toggle header fold */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowMobileMenu(false);
-                            setIsHeaderFolded(prev => !prev);
-                          }}
-                          className="w-full text-left px-3.5 py-2.5 hover:bg-stone-800 text-stone-200 flex items-center justify-between gap-2 cursor-pointer"
-                        >
-                          <span className="flex items-center gap-2">
-                            {isHeaderFolded ? <ChevronDown className="w-3.5 h-3.5 text-amber-400" /> : <ChevronUp className="w-3.5 h-3.5 text-stone-400" />}
-                            <span>{isHeaderFolded ? 'Expand Header Details' : 'Fold Header (Minimal)'}</span>
-                          </span>
-                          <span className="text-[10px] text-stone-400">{isHeaderFolded ? 'Folded' : 'Normal'}</span>
-                        </button>
-
                         {/* Directives & Memory Rules */}
                         <button
                           type="button"
@@ -1338,7 +1319,7 @@ export default function OperationsCopilot() {
                             setShowMobileMenu(false);
                             setViewingMemory(prev => !prev);
                           }}
-                          className="w-full text-left px-3.5 py-2.5 hover:bg-stone-800 text-stone-200 flex items-center justify-between gap-2 border-t border-stone-800/80 cursor-pointer"
+                          className="w-full text-left px-3.5 py-2.5 hover:bg-stone-800 text-stone-200 flex items-center justify-between gap-2 cursor-pointer"
                         >
                           <span className="flex items-center gap-2">
                             <Sliders className="w-3.5 h-3.5 text-amber-400" />
@@ -1397,19 +1378,6 @@ export default function OperationsCopilot() {
 
                 {/* DESKTOP CONTROLS (hidden sm:flex) */}
                 <div className="hidden sm:flex items-center gap-1 text-stone-400 shrink-0">
-                  {/* Minimalist Header Fold Toggle */}
-                  <button
-                    type="button"
-                    onClick={() => setIsHeaderFolded(prev => !prev)}
-                    className={`p-1.5 rounded-lg transition cursor-pointer ${
-                      isHeaderFolded ? 'bg-stone-800 text-amber-400' : 'hover:bg-stone-800 hover:text-stone-200'
-                    }`}
-                    title={isHeaderFolded ? "Expand header details" : "Fold header details (minimalist view)"}
-                    aria-label={isHeaderFolded ? "Expand header details" : "Fold header details"}
-                  >
-                    {isHeaderFolded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
-                  </button>
-
                   {/* Rules & Directives tab toggle */}
                   <button
                     type="button"
