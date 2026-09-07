@@ -16,7 +16,7 @@ import { BookingLike, lowestPrice, roomsMatching } from '../lib/availability';
 import { todayStr } from '../lib/dates';
 import { CURRENCY_CODES, CURRENCIES, currenciesForRooms, formatMoney, readStoredCurrency, storeCurrency, onCurrencyChange } from '../lib/currency';
 import { PROPERTY_CATEGORIES, COMMON_AMENITIES } from '../lib/listing';
-import { distanceKm, isValidLatLng, resolveHotelCoordinates, LatLng, estimateTravelTime, getDirectionsUrl, formatLocationName } from '../lib/geo';
+import { distanceKm, isValidLatLng, resolveHotelCoordinates, LatLng, estimateTravelTime, getDirectionsUrl, formatLocationName, MALAWI_HUBS } from '../lib/geo';
 import { getCachedHotels, saveCachedHotels, getCachedRooms, saveCachedRooms } from '../lib/mapCache';
 import PriceDisplay from '../components/PriceDisplay';
 import MaskedPlaceName from '../components/MaskedPlaceName';
@@ -163,13 +163,19 @@ export default function Home() {
       return;
     }
 
+    setIsLocatingUser(true);
+    const defaultHub = MALAWI_HUBS[0]; // Lilongwe, Malawi
+
     if (!('geolocation' in navigator)) {
-      const err = 'Geolocation is not supported by your browser.';
-      setUserLocationError(err);
-      toast.error(err);
+      setIsLocatingUser(false);
+      setUserLocation(defaultHub.coords);
+      setUserLocationLabel(`${defaultHub.name} (Default)`);
+      setShowUserLocation(true);
+      setSortKey('distance_asc');
+      toast.success(`Using ${defaultHub.name} as default location.`);
       return;
     }
-    setIsLocatingUser(true);
+
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const coords: LatLng = {
@@ -182,24 +188,19 @@ export default function Home() {
         setShowUserLocation(true);
         setIsLocatingUser(false);
         setSortKey('distance_asc');
-        toast.success('Location found! Distance calculated for all stays.');
+        toast.success('Live location found! Distance calculated for all stays.');
       },
       (err) => {
-        console.warn('Geolocation warning:', err);
+        console.warn('GPS unavailable or blocked, falling back to default:', err);
         setIsLocatingUser(false);
-        let msg = 'Could not access your location.';
-        if (err.code === 1) { // PERMISSION_DENIED
-          msg = 'Location permission was denied in browser settings. You can pick a city hub to calculate distances.';
-        } else if (err.code === 2) { // POSITION_UNAVAILABLE
-          msg = 'Location is currently unavailable. You can select a city hub.';
-        } else if (err.code === 3) { // TIMEOUT
-          msg = 'Location request timed out. Please try again or select a city.';
-        }
-        setUserLocationError(msg);
-        toast.error(msg);
-        setTimeout(() => setUserLocationError(null), 6000);
+        setUserLocation(defaultHub.coords);
+        setUserLocationLabel(`${defaultHub.name} (Default)`);
+        setUserLocationAccuracy(null);
+        setShowUserLocation(true);
+        setSortKey('distance_asc');
+        toast.success(`Using ${defaultHub.name} as your default starting location.`);
       },
-      { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 }
+      { enableHighAccuracy: false, timeout: 6000, maximumAge: 60000 }
     );
   };
 
@@ -560,29 +561,34 @@ export default function Home() {
   };
 
   const handleNearMe = async () => {
+    const defaultHub = MALAWI_HUBS[0];
+    const applyCoords = (coords: LatLng, label: string) => {
+      setSearchLocation(label);
+      applySearch({
+        location: label,
+        checkIn: searchCheckIn,
+        checkOut: searchCheckOut,
+        guests: totalGuests,
+        coords: coords,
+        proximity: searchProximity,
+      });
+      toast.success(`Showing places near ${label} (${searchProximity}km).`);
+    };
+
     if (!navigator.geolocation) {
-      toast.error("Geolocation is not supported by your browser.");
+      applyCoords(defaultHub.coords, defaultHub.name);
       return;
     }
+
     navigator.geolocation.getCurrentPosition(
-      pos => {
-        
-        setSearchLocation('Near Me');
-        applySearch({
-          location: 'Near Me',
-          checkIn: searchCheckIn,
-          checkOut: searchCheckOut,
-          guests: totalGuests,
-          coords: { lat: pos.coords.latitude, lng: pos.coords.longitude },
-          proximity: searchProximity,
-        });
-        toast.success(`Found your location! Showing places within ${searchProximity}km.`);
+      (pos) => {
+        applyCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }, 'Near Me');
       },
       (err) => {
-        console.warn('Near me geolocation warning:', err);
-        toast.error("Could not get your location. Please check browser permissions or select a city.");
+        console.warn('Near me geolocation error, using default hub:', err);
+        applyCoords(defaultHub.coords, defaultHub.name);
       },
-      { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 }
+      { enableHighAccuracy: false, timeout: 6000, maximumAge: 60000 }
     );
   };
 
@@ -2061,7 +2067,7 @@ export default function Home() {
                                         className="text-[10px] font-semibold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 px-2 py-0.5 rounded-full transition cursor-pointer"
                                         title="Click to change city or hub"
                                       >
-                                        📍 {userLocationLabel || 'Live Location'} (Change)
+                                        {userLocationLabel || 'Live Location'} (Change)
                                       </button>
                                     </div>
 
@@ -2069,13 +2075,13 @@ export default function Home() {
                                       <div className="bg-white/80 rounded-lg p-2 border border-emerald-100">
                                         <span className="text-[10px] text-stone-500 font-medium block">Est. Drive Time</span>
                                         <span className="font-extrabold text-stone-900 text-sm">
-                                          ⏱️ {travelEstimate.drivingTimeFormatted}
+                                          {travelEstimate.drivingTimeFormatted}
                                         </span>
                                       </div>
                                       <div className="bg-white/80 rounded-lg p-2 border border-emerald-100">
                                         <span className="text-[10px] text-stone-500 font-medium block">Est. Road Distance</span>
                                         <span className="font-extrabold text-blue-700 text-sm">
-                                          🛣️ ~{travelEstimate.roadDistanceKm} km
+                                          ~{travelEstimate.roadDistanceKm} km
                                         </span>
                                       </div>
                                     </div>
