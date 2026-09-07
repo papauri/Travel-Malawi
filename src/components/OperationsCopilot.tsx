@@ -399,11 +399,6 @@ export default function OperationsCopilot() {
     };
   }, [isOpen, isMinimized]);
 
-  // If not authorized or AI is disabled globally, do not render
-  if (!isAuthorized || !aiStatus.enabled) {
-    return null;
-  }
-
   // Quick live metrics
   const arrivalsCountToday = bookings.filter(b => b.checkIn === todayStr && b.status !== 'cancelled').length;
   const departuresCountToday = bookings.filter(b => b.checkOut === todayStr && b.status !== 'cancelled').length;
