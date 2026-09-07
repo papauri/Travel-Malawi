@@ -988,6 +988,17 @@ CONVERSATIONAL STYLE & PERSONALITY: THE ULTIMATE HOSPITALITY ALL-ROUNDER
      * When asked to "audit rates" or "check pricing": Instantly produce the side-by-side pricing table, evaluate parity, spot missing USD or MWK rates, and suggest immediate adjustments.
      * When asked about arrivals, occupancy, or guest status: Deliver the definitive breakdown with names, dates, amounts, and operational alerts in the very first turn.
    - Deliver high-density, immediate value. No corporate throat-clearing, preamble, or boilerplate disclaimers.
+
+2. CONVERSATIONAL GEAR SHIFTING (CASUAL PLEASANTRIES VS OPERATIONAL AUDITS):
+   - Match the user's conversational intent dynamically:
+     * If the user is chatting, bantering, or exchanging casual pleasantries (e.g. "not too bad how are you", "doing well and you?", "good morning, how's things?"):
+       - Respond in 1 to 2 warm, concise, human sentences (e.g. "Glad to hear! Doing great on my side and ready for whatever is on your agenda today. What are we tackling?").
+       - NEVER start with "Hello!" or repetitive salutations in an ongoing conversation.
+       - NEVER dump an unprompted "Quick Status Check", listing table, or alerts block during simple pleasantries unless the user specifically asks for status, arrivals, or updates!
+     * If the user asks a factual question, comparison, or operational task ("compare package performance", "check arrivals", "audit pricing"):
+       - Take full charge, drive the complete analysis, and deliver the answer immediately with zero deferral.
+
+3. CLEAN TONE & NATURAL FLOW:
    - CRITICAL RULE: DO NOT say "Moni", "Muli bwanji", or insert Chichewa phrases in responses unless the user explicitly initiates greeting you in Chichewa first. Keep responses in natural, fluent English.
    - CRITICAL RULE: DO NOT repeat the user's name on every response! In an ongoing conversation, jump straight into the substance of the answer. Never start every message with "Hi [Name]", "Hello [Name]", or repetitive pleasantries.
    - ADDRESSING THE USER: Address the user naturally in the second person ("you", "your lodge", "your properties"). If the user has a configured Display Name, you may use it sparingly only when contextually natural (e.g. in a polite initial greeting or when distinguishing individuals). NEVER refer to the user by an email address, email username (e.g. "johnpaulchirwa"), or generic role titles (e.g. "Administrator", "Host", "Manager").
@@ -1316,19 +1327,31 @@ When a host asks to apply an update to ALL their properties (e.g. "add breakfast
 ================================================================================
 CONTINUOUS ADAPTIVE LEARNING ENGINE (MANDATORY — LEARN EVERY TIME)
 ================================================================================
-You are an all-rounder intelligent hospitality engine that gets sharper and more attuned with every single conversation.
-You must continuously extract and retain operational directives, host habits, meal policies, check-in timings, payment methods, and property rules.
-WHENEVER the user mentions or implies:
-- Any policy or standard (e.g. "we offer breakfast", "breakfast is free", "checkout is strictly 10am", "we require 50% deposit", "kids under 5 stay free", "we have solar backup power", "no smoking indoors")
-- Any operational guideline across single or multiple properties
-- Even if the user did NOT say "remember this":
-YOU MUST ALWAYS append a \`\`\`learned_rule JSON block at the very end of your response:
-\`\`\`learned_rule
-{
-  "rule": "Host provides complimentary breakfast across all properties."
-}
-\`\`\`
-This is your continuous memory mechanism. Always emit it whenever a host preference or rule is communicated.
+You are an intelligent, self-evolving hospitality partner that gets sharper and more attuned with every single interaction.
+You must continuously learn host habits, operational guidelines, property policies, AND COMMUNICATION / RESPONSE STYLE PREFERENCES.
+
+1. OPERATIONAL & PROPERTY POLICIES:
+- Any policy or rule (e.g. "we offer breakfast", "checkout is strictly 10am", "we require 50% deposit", "kids under 5 stay free", "we have solar backup power", "no smoking indoors") across single or multiple properties.
+
+2. COMMUNICATION STYLE & FLOW PREFERENCES (LEARN HOW TO RESPOND BACK):
+- WHENEVER the user expresses a preference or feedback on how you should respond back:
+  * E.g. "be more concise", "don't dump status checks during small talk", "stop saying hello every time", "keep answers under 3 sentences", "always show MWK first", "don't use tables", "give me bullets", "take full charge", "review AI flow and get way better".
+  * OR when the user corrects your pacing, tone, or response structure.
+- ALWAYS extract and emit a \`\`\`learned_rule JSON block:
+  \`\`\`learned_rule
+  {
+    "rule": "<Clear, permanent behavioral or communication rule>"
+  }
+  \`\`\`
+- If the user was correcting a response mistake or awkward flow, ALSO emit an \`\`\`autonomous_patch JSON block:
+  \`\`\`autonomous_patch
+  {
+    "trigger": "<Exact user feedback or flow correction>",
+    "patch": "<Permanent rule to prevent repeating this issue>",
+    "resolution": "<How the AI behavior is now permanently adapted>"
+  }
+  \`\`\`
+This is your continuous memory mechanism. Always emit it whenever a host preference or rule is communicated so it is permanently saved in the host's directives.
 
 ================================================================================
 DYNAMIC NEXT SUGGESTIONS (CLEAN & EASY UI — NO AI/STAR ICONS)
@@ -1362,7 +1385,8 @@ Tone: Executive, warm, helpful, proactive, and respectful. Hospitality-focused. 
 function sanitizeAssistantReply(
   rawText: string,
   resolvedDisplayName?: string,
-  userEmail?: string
+  userEmail?: string,
+  hasHistory = false
 ): string {
   // Strip code blocks for proposals/patches/rules/follow-ups
   let clean = rawText
@@ -1390,7 +1414,12 @@ function sanitizeAssistantReply(
     clean = clean.replace(new RegExp(`^(👋\\s*)?(hello|hi|hey|greetings|good\\s+(morning|afternoon|day|evening))[\\s,]+${local}[!.,:\\s-]*`, 'i'), '');
   }
 
-  // 4. Any remaining lone "Moni" or "Muli bwanji" at the start
+  // 4. In an ongoing conversation (hasHistory is true), strip repetitive opening greetings like "Hello!", "Hi!", "Good morning!"
+  if (hasHistory) {
+    clean = clean.replace(/^(👋\s*)?(hello|hi|hey|greetings|good\s+(morning|afternoon|day|evening))[!.,:\s-]*/i, '');
+  }
+
+  // 5. Any remaining lone "Moni" or "Muli bwanji" at the start
   clean = clean.replace(/^(👋\s*)?(moni|muli\s+bwanji)[!.,:\s-]+/i, '');
 
   clean = clean.trim();
@@ -1401,7 +1430,7 @@ function sanitizeAssistantReply(
   }
 
   if (!clean) {
-    clean = 'How can I assist you with your properties today?';
+    clean = 'Ready to assist with your properties. What would you like to review or update?';
   }
 
   return clean;
@@ -1449,7 +1478,13 @@ async function executeOperationsChatWithProvider(
     'hi there', 'hello there', 'muli bwanji', 'moni', 'bo', 'how are you', 'who are you',
     'what are you', 'sup', 'yo', 'greetings', 'morning', 'afternoon', 'evening',
     'thanks', 'thank you', 'cheers', 'howdy', 'what can you do', 'help', 'hi copilot',
-    'hello copilot', 'hey copilot'
+    'hello copilot', 'hey copilot',
+    'not too bad', 'not bad', 'doing well', 'doing good', 'all good', 'fine thanks',
+    'good thanks', 'pretty good', 'just checking in', 'chilling', 'nothing much',
+    'same old', 'whats up', "what's up", 'how are things', 'how is everything',
+    'how it going', "how's it going", "how's your day", 'how is your day',
+    'review the ai flow', 'review ai flow', 'how to respond', 'learn how to respond', 'get way better',
+    'learn constantly', 'how are you doing', 'im good', 'i am good', 'doing fine', 'not too bad how are you'
   ];
   const operationalTerms = [
     'package', 'packages', 'perform', 'performance', 'compare', 'comparison',
@@ -1465,7 +1500,9 @@ async function executeOperationsChatWithProvider(
     return reg.test(cleanMsg);
   });
 
-  const isExactGreeting = greetingPhrases.includes(cleanMsg) || greetingPhrases.some(p => cleanMsg === p || cleanMsg.startsWith(p + ' '));
+  const isAiFlowMsg = /\b(ai\s+flow|response\s+flow|flow|respond\s+back|learn\s+constantly|get\s+way\s+better|better\s+flow|how\s+to\s+respond|learn\s+how|copilot\s+flow)\b/i.test(cleanMsg);
+
+  const isExactGreeting = greetingPhrases.includes(cleanMsg) || greetingPhrases.some(p => cleanMsg === p || cleanMsg.startsWith(p + ' ')) || isAiFlowMsg;
   const isGreetingOrSmallTalk = !hasOperationalTerm && req.intent !== 'database_query' && req.intent !== 'database_action' && (isExactGreeting || (req.intent === 'greeting_or_chat' && !hasOperationalTerm));
 
   if (isGreetingOrSmallTalk) {
@@ -1474,19 +1511,43 @@ async function executeOperationsChatWithProvider(
       ? `Properties in host portfolio: ${quickPropNames.join(', ')}.`
       : `Platform context: Travel Malawi Lodges & Accommodations.`;
 
+    const hasHistory = (req.history || []).length > 0;
+
     const chatSystemPrompt = `You are the Warm, Polished & Professional Concierge for Travel Malawi hospitality platform.
-You are an intelligent, natural, and efficient hospitality partner.
+You are an intelligent, natural, and efficient hospitality partner that continuously learns and adapts to the host.
 
 CRITICAL CONVERSATIONAL & TONE RULES:
 1. Speak naturally, pleasantly, and directly. Maintain a smooth, human conversational flow.
-2. STRICT RULE: DO NOT say "Moni", "Muli bwanji", or formulaic greetings. Do NOT speak in Chichewa unless the user explicitly addresses you in Chichewa first. Keep responses in fluent English.
-3. STRICT RULE: DO NOT repeat or prepend the user's name on every response! Keep conversational flow natural without formulaic salutations or constant name repetition.
-4. If referring to the user, address them in the second person ("you", "your lodge", "your portfolio"). If they have a Display Name configured (${resolvedDisplayName ? `"${resolvedDisplayName}"` : 'display name if set'}), you may refer to them by that Display Name only when contextually natural (e.g. in a polite welcome). NEVER refer to the user by an email address, email username, or generic role title (like "Administrator" or "Host").
-5. Keep conversational replies concise and helpful (1 to 2 crisp, friendly sentences).
-6. DO NOT dump raw data, database records, full audits, or listing tables when merely greeted or having a brief conversational exchange.
-7. Conclude with a \`\`\`suggested_follow_ups JSON block containing 2-3 short, clean, actionable next steps (3-6 words max, NO emojis or icons).
+2. CONVERSATIONAL CONTINUITY & ONGOING EXCHANGES:
+   * When conversation history is present (${hasHistory ? 'YES' : 'NO'}), DO NOT start your response with "Hello!", "Hi!", or greeting salutations! Jump directly into the conversation.
+   * When the user shares or responds to casual pleasantries (e.g. "not too bad how are you", "doing well and you?", "good morning, how's things?"):
+     - Respond in 1 to 2 crisp, warm sentences (e.g. "Glad to hear! Doing great on my side and ready for whatever is on your agenda today. What are we tackling?").
+     - NEVER dump an unprompted "Quick Status Check", property audit, room listings, or alerts during casual pleasantries.
+3. STRICT RULE: DO NOT say "Moni", "Muli bwanji", or formulaic greetings. Do NOT speak in Chichewa unless the user explicitly addresses you in Chichewa first. Keep responses in fluent English.
+4. STRICT RULE: DO NOT repeat or prepend the user's name on every response! Keep conversational flow natural without formulaic salutations or constant name repetition.
+5. If referring to the user, address them in the second person ("you", "your lodge", "your portfolio"). If they have a Display Name configured (${resolvedDisplayName ? `"${resolvedDisplayName}"` : 'display name if set'}), you may refer to them by that Display Name only when contextually natural. NEVER refer to the user by an email address, email username, or generic role title (like "Administrator" or "Host").
+6. Keep conversational replies concise and helpful (1 to 2 crisp, friendly sentences).
+7. DO NOT dump raw data, database records, full audits, or listing tables when merely greeted or having a brief conversational exchange.
 
-Return your response followed by a \`\`\`suggested_follow_ups JSON block:
+CONTINUOUS LEARNING & RESPONSE STYLE ADAPTATION:
+If the user provides feedback, preferences, or rules on communication flow, tone, greetings, or how you should respond back (e.g. "review the AI flow and get way better", "let it learn constantly on how to respond back", "be more concise", "don't dump status checks during small talk", "stop saying hello every time"):
+- Acknowledge warmly and confirm the adaptation in 1-2 crisp sentences.
+- Emit a \`\`\`learned_rule JSON block:
+\`\`\`learned_rule
+{
+  "rule": "<The learned communication directive or policy>"
+}
+\`\`\`
+- Emit an \`\`\`autonomous_patch JSON block:
+\`\`\`autonomous_patch
+{
+  "trigger": "<Exact user feedback or request>",
+  "patch": "<Permanent rule to govern future responses>",
+  "resolution": "<How the assistant response behavior is now adapted>"
+}
+\`\`\`
+
+Return your response followed by any \`\`\`learned_rule / \`\`\`autonomous_patch blocks, and conclude with a \`\`\`suggested_follow_ups JSON block containing 2-3 short, clean, actionable next steps (3-6 words max, NO emojis or icons):
 \`\`\`suggested_follow_ups
 [
   "Check today's arrivals",
@@ -1495,11 +1556,23 @@ Return your response followed by a \`\`\`suggested_follow_ups JSON block:
 ]
 \`\`\``;
 
+    const learnedRulesSummary = req.context.learnedRules && req.context.learnedRules.length > 0
+      ? `Learned Directives & Custom Host Rules:\n${req.context.learnedRules.map((r, i) => `${i + 1}. ${r}`).join('\n')}`
+      : 'Learned Directives & Custom Host Rules: None yet.';
+
+    const autonomousPatchesSummary = req.context.autonomousPatches && req.context.autonomousPatches.length > 0
+      ? `\nActive Autonomous Concierge Patches:\n${req.context.autonomousPatches.map((p, i) => `${i + 1}. [Patch: ${p.trigger || 'Correction'}] ${p.patch}`).join('\n')}`
+      : '';
+
     const chatUserPrompt = `CURRENT CONTEXT:
 - Display Name: ${resolvedDisplayName || 'Not specified (refer naturally as "you")'}
 - Role: ${isAdminUser ? 'Platform Executive' : 'Lodge Manager/Host'}
 - ${propContextLine}
 - Date: ${today}
+- Conversation History Present: ${hasHistory ? 'YES (Continue naturally without repeating Hello/greetings)' : 'NO (First turn)'}
+
+${learnedRulesSummary}
+${autonomousPatchesSummary}
 
 CONVERSATION HISTORY:
 ${(req.history || []).slice(-4).map(h => `${h.role === 'user' ? 'User' : 'Assistant'}: ${h.content}`).join('\n')}
@@ -1526,6 +1599,54 @@ USER MESSAGE:
       }
     });
 
+    let newLearnedRule: string | null = null;
+    const ruleMatch = rawGenerated.match(/```learned_rule\s*([\s\S]*?)\s*```/);
+    if (ruleMatch) {
+      try {
+        const parsed = JSON.parse(ruleMatch[1].trim());
+        if (parsed?.rule) {
+          newLearnedRule = String(parsed.rule).trim();
+        }
+      } catch (e) {
+        console.error('Failed to parse learned rule JSON in quick chat:', e);
+      }
+    }
+
+    let autonomousPatch: { trigger?: string; patch: string; resolution?: string } | null = null;
+    const patchMatch = rawGenerated.match(/```autonomous_patch\s*([\s\S]*?)\s*```/);
+    if (patchMatch) {
+      try {
+        const parsed = JSON.parse(patchMatch[1].trim());
+        if (parsed?.patch) {
+          autonomousPatch = {
+            trigger: parsed.trigger || 'Host feedback on conversational flow',
+            patch: String(parsed.patch).trim(),
+            resolution: parsed.resolution || 'Response flow permanently adapted',
+          };
+          if (!newLearnedRule) {
+            newLearnedRule = autonomousPatch.patch;
+          }
+        }
+      } catch (e) {
+        console.error('Failed to parse autonomous patch JSON in quick chat:', e);
+      }
+    }
+
+    // Fallback: If user asked to improve flow or learn how to respond, guarantee rule is captured
+    if (!newLearnedRule) {
+      const lower = (req.message || '').toLowerCase();
+      if (lower.includes('flow') || lower.includes('respond back') || lower.includes('learn constantly') || lower.includes('get way better') || lower.includes('better flow')) {
+        newLearnedRule = 'Maintain natural, adaptive conversational flow: avoid repetitive greetings on ongoing turns, answer pleasantries crisply without unsolicited data dumps, and continuously match host communication style.';
+        if (!autonomousPatch) {
+          autonomousPatch = {
+            trigger: 'Host requested improved conversational flow and continuous learning for response style',
+            patch: newLearnedRule,
+            resolution: 'Continuously tuned response flow and memory retention.',
+          };
+        }
+      }
+    }
+
     let suggestedFollowUps: string[] = [];
     const followUpsMatch = rawGenerated.match(/```suggested_follow_ups\s*([\s\S]*?)\s*```/);
     if (followUpsMatch) {
@@ -1540,11 +1661,15 @@ USER MESSAGE:
       suggestedFollowUps = ["Check today's arrivals", "Review room rates", "View active listings"];
     }
 
-    const cleanReply = sanitizeAssistantReply(rawGenerated, resolvedDisplayName, req.userEmail);
+    const cleanReply = sanitizeAssistantReply(rawGenerated, resolvedDisplayName, req.userEmail, hasHistory);
 
     return {
       reply: cleanReply,
+      provider: providerId,
+      model,
       actionProposal: null,
+      newLearnedRule,
+      autonomousPatch,
       suggestedFollowUps,
     };
   }
@@ -1726,6 +1851,8 @@ CURRENT USER & CONTEXT:
   * Address the user naturally in the second person ("you", "your lodge"). If referring to the user, strictly use their Display Name ("${resolvedDisplayName || ''}") if provided; NEVER use an email username or email prefix.
   * DO NOT say "Moni" or "Muli bwanji" unless the user addresses you in Chichewa first.
   * DO NOT repeat the user's name on every response. Keep conversational flow natural and direct.
+  * ONGOING CONVERSATION STATUS: ${(req.history || []).length > 0 ? 'YES (History present: DO NOT start with "Hello", "Hi", or greeting salutations. Pick up conversation naturally.)' : 'NO (First turn)'}
+  * CASUAL PLEASANTRIES: If the user is sharing or answering pleasantries ("not too bad how are you", "doing well", etc.), respond in 1-2 warm sentences. DO NOT dump unprompted status audits or property overviews.
   * TAKE FULL CHARGE & DRIVE (NEVER DEFER OR MAKE HOLLOW PROMISES): NEVER say "Let me pull that up", "I'll check the metrics", or stall. You have 100% of the live property, room, package, pricing, and booking data right below. Answer immediately, thoroughly, and decisively. When asked to compare packages or performance, deliver the full breakdown, metrics, comparison, and revenue recommendations right now.
 - Access Level: ${isAdminUser ? 'Executive Platform Access (all platform properties)' : 'Property Manager (assigned properties only)'}
 - Scope Notice: ${isAdminUser ? 'Platform-wide authority. Listing reviews, platform rate audits, and system configuration allowed.' : 'Strictly restricted to their own assigned properties. Cannot edit other managers or accounts.'}
@@ -1887,7 +2014,7 @@ USER MESSAGE:
     }
   }
 
-  // Continuous Learning Fallback: If host mentions breakfast policy or rule across properties, learn it immediately
+  // Continuous Learning Fallback: If host mentions breakfast, checkout, or communication flow/adaptation, learn it immediately
   if (!newLearnedRule) {
     const lower = (req.message || '').toLowerCase();
     if (lower.includes('breakfast') && (lower.includes('all') || lower.includes('include') || lower.includes('add') || lower.includes('free'))) {
@@ -1896,6 +2023,15 @@ USER MESSAGE:
       const timeMatch = lower.match(/(1[0-2]|[1-9])\s*(am|pm)?/);
       if (timeMatch) {
         newLearnedRule = `Lodge checkout standard set to ${timeMatch[0]}.`;
+      }
+    } else if (lower.includes('flow') || lower.includes('respond back') || lower.includes('learn constantly') || lower.includes('get way better') || lower.includes('better flow')) {
+      newLearnedRule = 'Maintain natural, adaptive conversational flow: avoid repetitive greetings on ongoing turns, answer pleasantries crisply without unsolicited data dumps, and continuously match host communication style.';
+      if (!autonomousPatch) {
+        autonomousPatch = {
+          trigger: 'Host requested improved conversational flow and continuous learning for response style',
+          patch: newLearnedRule,
+          resolution: 'Continuously tuned response flow and memory retention.',
+        };
       }
     }
   }
@@ -1936,7 +2072,7 @@ USER MESSAGE:
   }
 
   // Clean the text to show the user with natural flow and no repetitive greetings/names
-  const cleanReply = sanitizeAssistantReply(rawGenerated, resolvedDisplayName, req.userEmail);
+  const cleanReply = sanitizeAssistantReply(rawGenerated, resolvedDisplayName, req.userEmail, (req.history || []).length > 0);
 
   return {
     reply: cleanReply,

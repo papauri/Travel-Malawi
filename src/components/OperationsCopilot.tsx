@@ -388,21 +388,34 @@ export default function OperationsCopilot() {
       return 'database_action';
     }
 
-    // 2. Explicit greetings and general conversational small-talk (STRICT)
+    // 2. Explicit greetings and general conversational pleasantries
     const standardGreetings = [
       'hi', 'hello', 'hey', 'good morning', 'good afternoon', 'good evening',
       'hi there', 'hello there', 'muli bwanji', 'moni', 'bo', 'sup', 'yo',
       'howdy', 'greetings', 'morning', 'afternoon', 'evening', 'hi copilot',
       'hello copilot', 'hey copilot'
     ];
-    const conversationalQueries = [
+    const conversationalPhrases = [
       'how are you', 'how r u', 'who are you', 'what are you', 'what can you do',
       'who made you', 'tell me a joke', 'thanks', 'thank you', 'cheers',
       'great', 'cool', 'ok', 'okay', 'nice', 'awesome', 'goodbye', 'bye', 'see you',
-      'help', 'what is your name', 'whats your name'
+      'help', 'what is your name', 'whats your name',
+      'not too bad', 'not bad', 'doing well', 'doing good', 'all good', 'fine thanks',
+      'good thanks', 'pretty good', 'just checking in', 'chilling', 'nothing much',
+      'same old', 'whats up', "what's up", 'how are things', 'how is everything',
+      'how it going', "how's it going", "how's your day", 'how is your day',
+      'review the ai flow', 'review ai flow', 'how to respond', 'learn how to respond', 'get way better',
+      'learn constantly'
     ];
 
-    const isPureGreeting = standardGreetings.includes(stripped) || conversationalQueries.some(q => stripped === q);
+    const isAiFlowOrFeedback = 
+      /\b(ai\s+flow|response\s+flow|flow|respond\s+back|learn\s+constantly|get\s+way\s+better|better\s+flow|how\s+to\s+respond|learn\s+how|copilot\s+flow)\b/i.test(clean);
+
+    const isConversational = 
+      isAiFlowOrFeedback ||
+      standardGreetings.some(g => stripped === g || stripped.startsWith(g + ' ')) ||
+      conversationalPhrases.some(p => clean.includes(p)) ||
+      (clean.split(/\s+/).length <= 4 && ['fine', 'good', 'well', 'alright', 'great', 'cool', 'ok', 'yes', 'no', 'sure', 'awesome'].includes(stripped));
 
     // Operational & Database Keywords
     const dbKeywords = [
@@ -422,7 +435,7 @@ export default function OperationsCopilot() {
       'property', 'properties', 'hotel', 'hotels', 'lodge', 'lodges'
     ];
 
-    const hasDbKeywords = dbKeywords.some(k => {
+    const hasDbKeywords = !isAiFlowOrFeedback && dbKeywords.some(k => {
       const regex = new RegExp(`\\b${k}\\b`, 'i');
       return regex.test(clean);
     });
@@ -443,8 +456,8 @@ export default function OperationsCopilot() {
       return 'tourism_inquiry';
     }
 
-    // 5. Only if it is explicitly a pure greeting or small talk query with NO operational intent
-    if (isPureGreeting) {
+    // 5. Casual pleasantries / small talk with no operational keywords
+    if (isConversational) {
       return 'greeting_or_chat';
     }
 
@@ -661,6 +674,14 @@ export default function OperationsCopilot() {
           };
         }),
         learnedRules: learnedRules.map(r => r.text),
+        autonomousPatches: learnedRules
+          .filter(r => r.type === 'autonomous_patch' || r.trigger)
+          .map(r => ({
+            id: r.id,
+            patch: r.text,
+            trigger: r.trigger,
+            resolution: r.resolution,
+          })),
       },
     };
 
