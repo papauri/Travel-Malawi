@@ -388,11 +388,12 @@ export default function OperationsCopilot() {
       return 'database_action';
     }
 
-    // 2. Explicit greetings and general conversational small-talk
+    // 2. Explicit greetings and general conversational small-talk (STRICT)
     const standardGreetings = [
       'hi', 'hello', 'hey', 'good morning', 'good afternoon', 'good evening',
       'hi there', 'hello there', 'muli bwanji', 'moni', 'bo', 'sup', 'yo',
-      'howdy', 'greetings', 'morning', 'afternoon', 'evening'
+      'howdy', 'greetings', 'morning', 'afternoon', 'evening', 'hi copilot',
+      'hello copilot', 'hey copilot'
     ];
     const conversationalQueries = [
       'how are you', 'how r u', 'who are you', 'what are you', 'what can you do',
@@ -401,20 +402,24 @@ export default function OperationsCopilot() {
       'help', 'what is your name', 'whats your name'
     ];
 
-    const isGreetingWord = standardGreetings.includes(stripped) || conversationalQueries.some(q => stripped === q || stripped.startsWith(q));
+    const isPureGreeting = standardGreetings.includes(stripped) || conversationalQueries.some(q => stripped === q);
 
-    // Check if there are explicit database / operational keywords
+    // Operational & Database Keywords
     const dbKeywords = [
+      'package', 'packages', 'perform', 'performance', 'compare', 'comparison',
+      'metric', 'metrics', 'audit', 'analytics', 'analyze', 'analysis', 'report',
+      'stat', 'stats', 'statistics', 'kpi', 'kpis', 'trend', 'trends', 'insight', 'insights',
+      'revenue', 'margin', 'yield', 'occupancy', 'vacan', 'availability', 'available', 'blocked',
       'rate', 'rates', 'price', 'prices', 'cost', 'pricing', 'mwk', 'usd',
       'booking', 'bookings', 'reservation', 'reservations', 'guest', 'guests',
       'arrival', 'arrivals', 'departure', 'departures', 'checkin', 'check-in', 'checkout', 'check-out',
-      'occupancy', 'vacan', 'availability', 'available', 'blocked',
       'room', 'rooms', 'suite', 'chalet', 'cottage', 'villa', 'dorm',
       'menu', 'dishes', 'dish', 'food', 'restaurant', 'dining', 'drink', 'breakfast', 'dinner', 'lunch',
       'review', 'reviews', 'rating', 'feedback',
       'wifi', 'wi-fi', 'password', 'power', 'solar', 'generator', 'water', 'road',
       'manager', 'owner', 'host', 'contact', 'whatsapp', 'phone', 'email', 'crew',
-      'revenue', 'financial', 'income', 'earning'
+      'financial', 'income', 'earning', 'earnings', 'sales', 'sold', 'best', 'top',
+      'property', 'properties', 'hotel', 'hotels', 'lodge', 'lodges'
     ];
 
     const hasDbKeywords = dbKeywords.some(k => {
@@ -422,21 +427,12 @@ export default function OperationsCopilot() {
       return regex.test(clean);
     });
 
-    if (isGreetingWord && !hasDbKeywords) {
-      return 'greeting_or_chat';
-    }
-
-    // If very short and no DB keywords (e.g. "hi!", "yo", "hey copilot")
-    if (stripped.length <= 4 && !hasDbKeywords) {
-      return 'greeting_or_chat';
-    }
-
-    // 3. Database / live operational queries
+    // 3. Database / live operational queries ALWAYS take precedence
     if (hasDbKeywords) {
       return 'database_query';
     }
 
-    // 4. Malawi tourism & travel guidance
+    // 4. Malawi tourism & travel guidance (general destination questions)
     const tourismKeywords = [
       'malawi', 'lake malawi', 'safari', 'wildlife', 'liwonde', 'nyika', 'cape maclear',
       'mulanje', 'hiking', 'national park', 'beach', 'diving', 'snorkeling', 'chambo',
@@ -447,11 +443,12 @@ export default function OperationsCopilot() {
       return 'tourism_inquiry';
     }
 
-    // Fallback for general conversational statements with no DB keywords
-    if (!hasDbKeywords && clean.split(/\s+/).length <= 4) {
+    // 5. Only if it is explicitly a pure greeting or small talk query with NO operational intent
+    if (isPureGreeting) {
       return 'greeting_or_chat';
     }
 
+    // 6. Default for everything else: full database query / operations analysis
     return 'database_query';
   };
 
@@ -530,7 +527,7 @@ export default function OperationsCopilot() {
             isOnline: p.isOnline !== false,
             outOfOfficeMessage: p.outOfOfficeMessage,
             managerId: isUnassigned ? (userIsAdmin ? 'unassigned' : user.uid) : p.managerId,
-            managerName: p.managerName || (!userIsAdmin ? (userFirstName || user.displayName || 'Host') : undefined),
+            managerName: p.managerName || (!userIsAdmin ? (userDisplayName || 'Host') : undefined),
             managerEmail: p.managerEmail || p.contactEmail || (!userIsAdmin ? user.email || undefined : undefined),
             managerPhone: p.managerPhone || p.contactPhone,
             ownerName: p.ownerName,

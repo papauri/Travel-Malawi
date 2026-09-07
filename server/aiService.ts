@@ -978,7 +978,15 @@ You are fully versed with every single detail in our live database, super effici
 ================================================================================
 CONVERSATIONAL STYLE & PERSONALITY: THE ULTIMATE HOSPITALITY ALL-ROUNDER
 ================================================================================
-1. NATURAL CONVERSATIONAL FLOW & IMMEDIATE VALUE (ZERO BLOAT, NO ROBOTIC GREETINGS):
+1. TAKE FULL CHARGE, DRIVE THE ANALYSIS & ANSWER COMPLETELY (ZERO HOLLOW PROMISES / NEVER DEFER):
+   - CRITICAL DIRECTIVE: You are an autonomous, high-caliber executive partner and property management leader. TAKE FULL CHARGE AND DRIVE.
+   - NEVER make empty promises or defer answers! NEVER say "Let me pull that up...", "I'll check the metrics for those properties...", "Let me look into that for you...", "Give me a second to gather the data...", or "Would you like me to...".
+   - You ALREADY have 100% of the live platform properties, rooms, packages, rates, bookings, guest details, and operational records directly in your context.
+   - Do NOT stall, do NOT promise future actions, and NEVER stop halfway. Execute the complete analysis, comparison, audit, or calculation IMMEDIATELY in your response.
+   - For example:
+     * When asked to "compare package performance": Immediately break down each property's room packages, prices (USD & MWK), inclusions, booking volume or uptake from the live bookings, compare margins and appeal (domestic vs international), state which packages are driving value, identify underperforming packages, and deliver proactive, concrete revenue recommendations right now.
+     * When asked to "audit rates" or "check pricing": Instantly produce the side-by-side pricing table, evaluate parity, spot missing USD or MWK rates, and suggest immediate adjustments.
+     * When asked about arrivals, occupancy, or guest status: Deliver the definitive breakdown with names, dates, amounts, and operational alerts in the very first turn.
    - Deliver high-density, immediate value. No corporate throat-clearing, preamble, or boilerplate disclaimers.
    - CRITICAL RULE: DO NOT say "Moni", "Muli bwanji", or insert Chichewa phrases in responses unless the user explicitly initiates greeting you in Chichewa first. Keep responses in natural, fluent English.
    - CRITICAL RULE: DO NOT repeat the user's name on every response! In an ongoing conversation, jump straight into the substance of the answer. Never start every message with "Hi [Name]", "Hello [Name]", or repetitive pleasantries.
@@ -1434,17 +1442,31 @@ async function executeOperationsChatWithProvider(
   }
 
   // High-Speed Concierge Chat Routing (Instant Sub-Second Greetings & Small Talk)
-  // If the user is simply greeting ("hi", "hello", "moni") or engaging in casual pleasantries,
-  // do NOT waste time formatting 20,000 tokens of raw property and booking schemas!
+  // ONLY for genuine, explicit greetings or pleasantries with NO operational requests!
   const cleanMsg = (req.message || '').trim().toLowerCase().replace(/[!.,?]/g, '');
   const greetingPhrases = [
     'hi', 'hello', 'hey', 'good morning', 'good afternoon', 'good evening',
     'hi there', 'hello there', 'muli bwanji', 'moni', 'bo', 'how are you', 'who are you',
     'what are you', 'sup', 'yo', 'greetings', 'morning', 'afternoon', 'evening',
-    'thanks', 'thank you', 'cheers', 'howdy', 'what can you do', 'help', 'hi copilot'
+    'thanks', 'thank you', 'cheers', 'howdy', 'what can you do', 'help', 'hi copilot',
+    'hello copilot', 'hey copilot'
   ];
-  const isDirectGreeting = greetingPhrases.includes(cleanMsg) || (cleanMsg.length <= 4 && !cleanMsg.includes('fee') && !cleanMsg.includes('rate'));
-  const isGreetingOrSmallTalk = req.intent === 'greeting_or_chat' || (isDirectGreeting && req.intent !== 'database_query' && req.intent !== 'database_action');
+  const operationalTerms = [
+    'package', 'packages', 'perform', 'performance', 'compare', 'comparison',
+    'metric', 'metrics', 'audit', 'report', 'analyze', 'analysis', 'kpi',
+    'stat', 'stats', 'rate', 'rates', 'price', 'prices', 'cost', 'pricing',
+    'room', 'rooms', 'booking', 'bookings', 'revenue', 'occupancy', 'guest',
+    'arrival', 'departure', 'checkout', 'checkin', 'stay', 'dish', 'menu',
+    'wifi', 'power', 'water', 'promo', 'promotion', 'property', 'properties',
+    'hotel', 'hotels', 'lodge', 'lodges'
+  ];
+  const hasOperationalTerm = operationalTerms.some(t => {
+    const reg = new RegExp(`\\b${t}\\b`, 'i');
+    return reg.test(cleanMsg);
+  });
+
+  const isExactGreeting = greetingPhrases.includes(cleanMsg) || greetingPhrases.some(p => cleanMsg === p || cleanMsg.startsWith(p + ' '));
+  const isGreetingOrSmallTalk = !hasOperationalTerm && req.intent !== 'database_query' && req.intent !== 'database_action' && (isExactGreeting || (req.intent === 'greeting_or_chat' && !hasOperationalTerm));
 
   if (isGreetingOrSmallTalk) {
     const quickPropNames = (req.context.properties || []).slice(0, 5).map(p => p.name).filter(Boolean);
@@ -1704,6 +1726,7 @@ CURRENT USER & CONTEXT:
   * Address the user naturally in the second person ("you", "your lodge"). If referring to the user, strictly use their Display Name ("${resolvedDisplayName || ''}") if provided; NEVER use an email username or email prefix.
   * DO NOT say "Moni" or "Muli bwanji" unless the user addresses you in Chichewa first.
   * DO NOT repeat the user's name on every response. Keep conversational flow natural and direct.
+  * TAKE FULL CHARGE & DRIVE (NEVER DEFER OR MAKE HOLLOW PROMISES): NEVER say "Let me pull that up", "I'll check the metrics", or stall. You have 100% of the live property, room, package, pricing, and booking data right below. Answer immediately, thoroughly, and decisively. When asked to compare packages or performance, deliver the full breakdown, metrics, comparison, and revenue recommendations right now.
 - Access Level: ${isAdminUser ? 'Executive Platform Access (all platform properties)' : 'Property Manager (assigned properties only)'}
 - Scope Notice: ${isAdminUser ? 'Platform-wide authority. Listing reviews, platform rate audits, and system configuration allowed.' : 'Strictly restricted to their own assigned properties. Cannot edit other managers or accounts.'}
 - Current Date & Time: ${today} ${time}
