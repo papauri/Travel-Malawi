@@ -7,7 +7,7 @@ import {
   ShieldCheck, Ticket, CheckCircle2, Clock, Key, 
   Wallet, XCircle, ChevronDown, ChevronUp, 
   Phone, Video, Minus, X, PhoneMissed, PhoneOff, Settings,
-  Trash2, MoreVertical
+  Trash2, MoreVertical, Menu
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ConfirmDialog from './ConfirmDialog';
@@ -632,14 +632,40 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
           </div>
         </div>
 
-        {/* Action Controls: Audio / Video Call, Manager Toggle, Details Toggle, Minimize, Close */}
+        {/* Action Controls */}
         <div className="flex items-center gap-1 shrink-0">
-          {/* Manager / Admin Quick Call Switch */}
+          {/* Quick Audio Call Button (Mobile & Desktop) */}
+          {canStartCall && (
+            <button
+              type="button"
+              onClick={() => handleStartCall(false)}
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-stone-300 hover:text-white hover:bg-stone-800 transition cursor-pointer"
+              title="Audio Call"
+              aria-label="Audio Call"
+            >
+              <Phone className="w-4 h-4" />
+            </button>
+          )}
+
+          {/* Desktop Only: Quick Video Call */}
+          {canStartCall && (
+            <button
+              type="button"
+              onClick={() => handleStartCall(true)}
+              className="hidden sm:flex w-8 h-8 rounded-lg items-center justify-center text-stone-300 hover:text-white hover:bg-stone-800 transition cursor-pointer"
+              title="Video Call"
+              aria-label="Video Call"
+            >
+              <Video className="w-4 h-4" />
+            </button>
+          )}
+
+          {/* Desktop Only: Manager / Admin Quick Call Switch */}
           {(isManager || isAdmin(currentUser)) && (
             <button
               type="button"
               onClick={handleToggleCalls}
-              className={`p-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1 cursor-pointer ${
+              className={`hidden sm:inline-flex p-1.5 rounded-lg text-xs font-semibold transition items-center gap-1 cursor-pointer ${
                 isCallsEnabled
                   ? 'text-emerald-400 hover:bg-emerald-950/60 border border-emerald-500/30'
                   : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800 border border-stone-700'
@@ -647,62 +673,108 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
               title={isCallsEnabled ? 'Calls enabled. Click to disable for this lodge.' : 'Calls disabled. Click to turn on.'}
             >
               <Phone className="w-3.5 h-3.5" />
-              <span className="text-[10px] hidden sm:inline">{isCallsEnabled ? 'Calls On' : 'Calls Off'}</span>
+              <span className="text-[10px]">{isCallsEnabled ? 'Calls On' : 'Calls Off'}</span>
             </button>
           )}
 
-          {/* Voice & Video Call Buttons */}
-          {canStartCall ? (
-            <>
-              <button
-                type="button"
-                onClick={() => handleStartCall(false)}
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-stone-300 hover:text-white hover:bg-stone-800 transition cursor-pointer"
-                title="Audio Call"
-                aria-label="Audio Call"
-              >
-                <Phone className="w-4 h-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => handleStartCall(true)}
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-stone-300 hover:text-white hover:bg-stone-800 transition cursor-pointer"
-                title="Video Call"
-                aria-label="Video Call"
-              >
-                <Video className="w-4 h-4" />
-              </button>
-            </>
-          ) : (
-            <span className="text-[10px] text-stone-500 hidden sm:inline px-1">
-              Calls off
-            </span>
-          )}
-
-          {/* Details toggle */}
+          {/* Desktop Only: Details toggle */}
           <button
             type="button"
             onClick={() => setShowDetailsPanel(!showDetailsPanel)}
-            className="p-1.5 text-stone-400 hover:text-white hover:bg-stone-800 rounded-lg transition cursor-pointer"
+            className="hidden sm:inline-flex p-1.5 text-stone-400 hover:text-white hover:bg-stone-800 rounded-lg transition cursor-pointer"
             title="Toggle reservation details"
           >
             {showDetailsPanel ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
 
-          {/* More options menu */}
+          {/* More / Hamburger Menu (Mobile uses Menu icon, Desktop uses MoreVertical) */}
           <div className="relative" ref={moreMenuRef}>
             <button
               type="button"
               id="btn-booking-chat-more"
               onClick={() => setShowMoreMenu(!showMoreMenu)}
-              className="p-1.5 text-stone-400 hover:text-white hover:bg-stone-800 rounded-lg transition cursor-pointer"
+              className={`w-8 h-8 rounded-lg flex items-center justify-center transition cursor-pointer ${
+                showMoreMenu ? 'bg-stone-800 text-white' : 'text-stone-400 hover:text-white hover:bg-stone-800'
+              }`}
               title="More options"
+              aria-label="More options"
             >
-              <MoreVertical className="w-4 h-4" />
+              <Menu className="w-4 h-4 sm:hidden" />
+              <MoreVertical className="w-4 h-4 hidden sm:block" />
             </button>
 
             {showMoreMenu && (
-              <div className="absolute right-0 top-full mt-1.5 w-48 bg-stone-900 border border-stone-800 rounded-xl shadow-2xl py-1 z-50 text-xs animate-fadeIn">
+              <div className="absolute right-0 top-full mt-1.5 w-52 bg-stone-900 border border-stone-800 rounded-2xl shadow-2xl py-1.5 z-50 text-xs animate-in fade-in zoom-in-95 duration-150">
+                {/* Mobile Only: Toggle reservation details */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowMoreMenu(false);
+                    setShowDetailsPanel(prev => !prev);
+                  }}
+                  className="sm:hidden w-full text-left px-3.5 py-2.5 text-stone-200 hover:bg-stone-800 flex items-center justify-between gap-2 cursor-pointer"
+                >
+                  <span className="flex items-center gap-2">
+                    {showDetailsPanel ? <ChevronUp className="w-3.5 h-3.5 text-stone-400" /> : <ChevronDown className="w-3.5 h-3.5 text-stone-400" />}
+                    <span>{showDetailsPanel ? 'Hide Stay Details' : 'View Stay Details'}</span>
+                  </span>
+                </button>
+
+                {/* Mobile Only: Video call in menu */}
+                {canStartCall && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowMoreMenu(false);
+                      handleStartCall(true);
+                    }}
+                    className="sm:hidden w-full text-left px-3.5 py-2.5 text-stone-200 hover:bg-stone-800 flex items-center gap-2 cursor-pointer border-t border-stone-800/80"
+                  >
+                    <Video className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Start Video Call</span>
+                  </button>
+                )}
+
+                {/* Manager / Admin Quick Call Switch */}
+                {(isManager || isAdmin(currentUser)) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowMoreMenu(false);
+                      handleToggleCalls();
+                    }}
+                    className="w-full text-left px-3.5 py-2.5 text-stone-200 hover:bg-stone-800 flex items-center justify-between gap-2 cursor-pointer border-t border-stone-800/80 sm:border-0"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Phone className="w-3.5 h-3.5 text-stone-400" />
+                      <span>Allow Guest Calls</span>
+                    </span>
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                      isCallsEnabled
+                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                        : 'bg-stone-800 text-stone-400 border border-stone-700'
+                    }`}>
+                      {isCallsEnabled ? 'ON' : 'OFF'}
+                    </span>
+                  </button>
+                )}
+
+                {/* Mobile Only: Minimize chat */}
+                {onMinimize && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowMoreMenu(false);
+                      onMinimize();
+                    }}
+                    className="sm:hidden w-full text-left px-3.5 py-2.5 text-stone-300 hover:bg-stone-800 flex items-center gap-2 cursor-pointer border-t border-stone-800/80"
+                  >
+                    <Minus className="w-3.5 h-3.5 text-stone-400" />
+                    <span>Minimize Chat</span>
+                  </button>
+                )}
+
+                {/* Clear Chat History */}
                 <button
                   type="button"
                   id="btn-clear-booking-chat-history"
@@ -710,7 +782,7 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
                     setShowMoreMenu(false);
                     setShowClearConfirm(true);
                   }}
-                  className="w-full text-left px-3 py-2 text-rose-400 hover:bg-stone-800 flex items-center gap-2 cursor-pointer"
+                  className="w-full text-left px-3.5 py-2.5 text-rose-400 hover:bg-stone-800 flex items-center gap-2 cursor-pointer border-t border-stone-800/80"
                 >
                   <Trash2 className="w-3.5 h-3.5 text-rose-400" />
                   <span>Clear Chat History</span>
@@ -719,18 +791,19 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
             )}
           </div>
 
-          {/* Minimize and Close controls */}
+          {/* Desktop Only: Minimize button */}
           {onMinimize && (
             <button 
               type="button" 
               onClick={onMinimize}
-              className="p-1.5 text-stone-400 hover:text-white hover:bg-stone-800 rounded-lg transition cursor-pointer"
+              className="hidden sm:flex p-1.5 text-stone-400 hover:text-white hover:bg-stone-800 rounded-lg transition cursor-pointer"
               title="Minimize chat"
             >
               <Minus className="w-4 h-4" />
             </button>
           )}
 
+          {/* Close control */}
           {onClose && (
             <button 
               type="button" 

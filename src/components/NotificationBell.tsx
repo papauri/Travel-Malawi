@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bell, Volume2, VolumeX, MessageSquare, CheckCheck, Sparkles, ExternalLink, Calendar } from 'lucide-react';
+import { Bell, Volume2, VolumeX, MessageSquare, CheckCheck, Sparkles, ExternalLink, Calendar, X } from 'lucide-react';
 import { useUnreadMessages, UnreadMessageItem } from '../hooks/useUnreadMessages';
 import { useUnreadBroadcasts } from '../hooks/useUnreadBroadcasts';
 import { useChatModal } from '../contexts/ChatModalContext';
@@ -143,56 +143,77 @@ export default function NotificationBell() {
           title="Chat & Notifications"
           description="Direct guest messages, booking inquiries & call alerts live right here."
           arrowPosition="top-right"
-          className="absolute top-full right-0 mt-2.5 w-64 sm:w-72 max-w-[calc(100vw-2.5rem)] pointer-events-auto z-50"
+          className="fixed top-16 right-3 sm:absolute sm:top-full sm:right-0 mt-2.5 w-64 sm:w-72 max-w-[calc(100vw-1.5rem)] pointer-events-auto z-50"
         />
       )}
 
       {/* Floating Notifications Popover */}
       <AnimatePresence>
         {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: 8, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 6, scale: 0.96 }}
-            transition={{ duration: 0.16, ease: 'easeOut' }}
-            className="absolute right-0 mt-2.5 w-[330px] sm:w-[380px] max-w-[92vw] bg-white/95 backdrop-blur-xl border border-stone-200/90 rounded-2xl shadow-2xl py-0 z-50 overflow-hidden"
-          >
-            {/* Header */}
-            <div className="px-4 py-3 bg-gradient-to-r from-stone-900 to-stone-850 text-white flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-amber-400/20 text-amber-400 flex items-center justify-center">
-                  <Bell className="w-3.5 h-3.5" />
+          <>
+            {/* Mobile backdrop to dismiss cleanly */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="fixed inset-0 bg-stone-950/40 backdrop-blur-xs z-40 sm:hidden"
+              onClick={() => setIsOpen(false)}
+            />
+
+            <motion.div
+              initial={{ opacity: 0, y: 8, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 6, scale: 0.96 }}
+              transition={{ duration: 0.16, ease: 'easeOut' }}
+              className="fixed top-16 inset-x-3 sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2.5 sm:w-[380px] max-w-[calc(100vw-1.5rem)] sm:max-w-[420px] bg-white/95 backdrop-blur-xl border border-stone-200/90 rounded-2xl shadow-2xl py-0 z-50 overflow-hidden max-h-[calc(100dvh-5rem)] flex flex-col"
+            >
+              {/* Header */}
+              <div className="px-4 py-3 bg-gradient-to-r from-stone-900 to-stone-850 text-white flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-full bg-amber-400/20 text-amber-400 flex items-center justify-center">
+                    <Bell className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <h3 className="font-serif font-bold text-sm tracking-tight">Notifications</h3>
+                  </div>
+                  {unreadCount > 0 && (
+                    <span className="ml-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-500 text-white shadow-xs">
+                      {unreadCount} new
+                    </span>
+                  )}
                 </div>
-                <div>
-                  <h3 className="font-serif font-bold text-sm tracking-tight">Notifications</h3>
+
+                {/* Quick Sound Toggle & Close Controls */}
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={handleToggleSound}
+                    className={`p-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1 cursor-pointer ${
+                      soundOn
+                        ? 'text-amber-300 hover:bg-white/10'
+                        : 'text-stone-400 hover:text-white hover:bg-white/10'
+                    }`}
+                    title={soundOn ? 'Mute notification chimes' : 'Enable notification chimes'}
+                  >
+                    {soundOn ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
+                    <span className="text-[10px] hidden sm:inline">{soundOn ? 'Ding On' : 'Muted'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsOpen(false)}
+                    className="p-1.5 text-stone-400 hover:text-white hover:bg-white/10 rounded-lg transition cursor-pointer"
+                    title="Close notifications"
+                    aria-label="Close notifications"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
                 </div>
-                {unreadCount > 0 && (
-                  <span className="ml-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-500 text-white shadow-xs">
-                    {unreadCount} new
-                  </span>
-                )}
               </div>
 
-              {/* Quick Sound Toggle & Test Button */}
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={handleToggleSound}
-                  className={`p-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1 cursor-pointer ${
-                    soundOn
-                      ? 'text-amber-300 hover:bg-white/10'
-                      : 'text-stone-400 hover:text-white hover:bg-white/10'
-                  }`}
-                  title={soundOn ? 'Mute notification chimes' : 'Enable notification chimes'}
-                >
-                  {soundOn ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
-                  <span className="text-[10px] hidden sm:inline">{soundOn ? 'Ding On' : 'Muted'}</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Content List */}
-            <div className="max-h-[360px] overflow-y-auto scrollbar-slim divide-y divide-stone-100">
+              {/* Content List */}
+              <div className="flex-1 overflow-y-auto scrollbar-slim divide-y divide-stone-100 max-h-[min(420px,calc(100dvh-10rem))]">
               {unreadItems.length > 0 ? (
                 <div className="p-2 space-y-1">
                   <div className="px-2 py-1 flex items-center justify-between text-[11px] font-semibold text-stone-400 uppercase tracking-wider">
@@ -329,8 +350,9 @@ export default function NotificationBell() {
               )}
             </div>
           </motion.div>
-        )}
-      </AnimatePresence>
+        </>
+      )}
+    </AnimatePresence>
     </div>
   );
 }

@@ -36,7 +36,8 @@ import {
   PhoneMissed,
   Wallet,
   ChevronDown,
-  MoreVertical
+  MoreVertical,
+  Menu
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { chimeForIncoming, newChimeState } from '../lib/notificationSound';
@@ -686,47 +687,73 @@ export default function PropertyChat({
 
         {/* Action Controls */}
         <div className="flex items-center gap-1 shrink-0">
-          {/* Audio & Video Call Buttons */}
+          {/* Quick Call Button (Mobile & Desktop) */}
           {!isChatEnded && currentUser && (
             (liveHotel.callsEnabled !== false && liveHotel.adminCallsEnabled !== false) || isManager || isAdmin(currentUser)
           ) && (
-            <div className="flex items-center gap-0.5">
-              <button
-                type="button"
-                onClick={() => handleStartCall(false)}
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-stone-300 hover:text-white hover:bg-stone-800 transition-colors cursor-pointer"
-                title="Audio Call"
-              >
-                <Phone className="w-4 h-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => handleStartCall(true)}
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-stone-300 hover:text-white hover:bg-stone-800 transition-colors cursor-pointer"
-                title="Video Call"
-              >
-                <Video className="w-4 h-4" />
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => handleStartCall(false)}
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-stone-300 hover:text-white hover:bg-stone-800 transition-colors cursor-pointer"
+              title="Audio Call"
+              aria-label="Audio Call"
+            >
+              <Phone className="w-4 h-4" />
+            </button>
           )}
 
-          {/* More / Folded Options Menu */}
+          {/* Desktop Only: Direct Video Call Button */}
+          {!isChatEnded && currentUser && (
+            (liveHotel.callsEnabled !== false && liveHotel.adminCallsEnabled !== false) || isManager || isAdmin(currentUser)
+          ) && (
+            <button
+              type="button"
+              onClick={() => handleStartCall(true)}
+              className="hidden sm:flex w-8 h-8 rounded-lg items-center justify-center text-stone-300 hover:text-white hover:bg-stone-800 transition-colors cursor-pointer"
+              title="Video Call"
+              aria-label="Video Call"
+            >
+              <Video className="w-4 h-4" />
+            </button>
+          )}
+
+          {/* More / Hamburger Options Menu (Mobile uses Menu icon, Desktop uses MoreVertical) */}
           {currentUser && (!isChatEnded || isManager || isAdmin(currentUser)) && (
             <div className="relative" ref={moreMenuRef}>
               <button
                 type="button"
+                id="btn-property-chat-menu"
                 onClick={() => setShowMoreMenu(v => !v)}
                 className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${
                   showMoreMenu ? 'bg-stone-800 text-white' : 'text-stone-400 hover:text-white hover:bg-stone-800'
                 }`}
-                title="More chat options"
-                aria-label="More chat options"
+                title="Chat options"
+                aria-label="Chat options"
               >
-                <MoreVertical className="w-4 h-4" />
+                {/* Hamburger on mobile, MoreVertical on desktop */}
+                <Menu className="w-4 h-4 sm:hidden" />
+                <MoreVertical className="w-4 h-4 hidden sm:block" />
               </button>
 
               {showMoreMenu && (
-                <div className="absolute right-0 mt-1.5 w-52 bg-stone-900 border border-stone-700 rounded-xl shadow-xl py-1 z-50 text-xs">
+                <div className="absolute right-0 mt-1.5 w-52 bg-stone-900 border border-stone-800 rounded-2xl shadow-2xl py-1.5 z-50 text-xs animate-in fade-in zoom-in-95 duration-150">
+                  {/* Mobile Only: Video Call in Menu */}
+                  {!isChatEnded && (
+                    (liveHotel.callsEnabled !== false && liveHotel.adminCallsEnabled !== false) || isManager || isAdmin(currentUser)
+                  ) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowMoreMenu(false);
+                        handleStartCall(true);
+                      }}
+                      className="sm:hidden w-full text-left px-3.5 py-2.5 text-stone-200 hover:bg-stone-800 flex items-center gap-2 cursor-pointer"
+                    >
+                      <Video className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Start Video Call</span>
+                    </button>
+                  )}
+
                   {/* Manager / Admin Call Functionality Toggle */}
                   {(isManager || isAdmin(currentUser)) && liveHotel.id && (
                     <button
@@ -735,7 +762,7 @@ export default function PropertyChat({
                         handleToggleCalls();
                         setShowMoreMenu(false);
                       }}
-                      className="w-full text-left px-3 py-2 text-stone-200 hover:bg-stone-800 flex items-center justify-between gap-2 cursor-pointer"
+                      className="w-full text-left px-3.5 py-2.5 text-stone-200 hover:bg-stone-800 flex items-center justify-between gap-2 cursor-pointer border-t border-stone-800/80 sm:border-0"
                     >
                       <span className="flex items-center gap-2">
                         <Phone className="w-3.5 h-3.5 text-stone-400" />
@@ -760,10 +787,25 @@ export default function PropertyChat({
                         setShowMoreMenu(false);
                         setShowEndChatConfirm(true);
                       }}
-                      className="w-full text-left px-3 py-2 text-stone-200 hover:bg-stone-800 flex items-center gap-2 cursor-pointer"
+                      className="w-full text-left px-3.5 py-2.5 text-stone-200 hover:bg-stone-800 flex items-center gap-2 cursor-pointer border-t border-stone-800/80"
                     >
                       <PhoneOff className="w-3.5 h-3.5 text-amber-400" />
                       <span>End Chat Session</span>
+                    </button>
+                  )}
+
+                  {/* Mobile Only: Minimize chat */}
+                  {onMinimize && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowMoreMenu(false);
+                        onMinimize();
+                      }}
+                      className="sm:hidden w-full text-left px-3.5 py-2.5 text-stone-300 hover:bg-stone-800 flex items-center gap-2 cursor-pointer border-t border-stone-800/80"
+                    >
+                      <Minus className="w-3.5 h-3.5 text-stone-400" />
+                      <span>Minimize Chat</span>
                     </button>
                   )}
 
@@ -775,7 +817,7 @@ export default function PropertyChat({
                       setShowMoreMenu(false);
                       setShowDeleteConfirm(true);
                     }}
-                    className="w-full text-left px-3 py-2 text-rose-400 hover:bg-stone-800 flex items-center gap-2 cursor-pointer border-t border-stone-800 mt-1"
+                    className="w-full text-left px-3.5 py-2.5 text-rose-400 hover:bg-stone-800 flex items-center gap-2 cursor-pointer border-t border-stone-800/80"
                   >
                     <Trash2 className="w-3.5 h-3.5 text-rose-400" />
                     <span>Clear Chat History</span>
@@ -785,12 +827,12 @@ export default function PropertyChat({
             </div>
           )}
 
-          {/* Minimize Button */}
+          {/* Desktop Only: Minimize Button */}
           {onMinimize && (
             <button 
               type="button"
               onClick={onMinimize} 
-              className="p-1.5 hover:bg-stone-800 rounded-lg transition text-stone-400 hover:text-white cursor-pointer"
+              className="hidden sm:flex p-1.5 hover:bg-stone-800 rounded-lg transition text-stone-400 hover:text-white cursor-pointer"
               title="Minimize chat"
             >
               <Minus className="w-4 h-4" />

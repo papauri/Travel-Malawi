@@ -5,7 +5,7 @@ import {
   ChevronDown, ChevronUp, Sparkles, ExternalLink, Calendar, Building, DollarSign, 
   TrendingUp, Clock, AlertCircle, Loader2, CheckCircle2, ShieldAlert,
   ArrowRight, Settings2, Sliders, Info, SlidersHorizontal, ConciergeBell,
-  Utensils, Coffee, CheckCheck, Layers, ShieldCheck, Minus, Maximize2, Minimize2
+  Utensils, Coffee, CheckCheck, Layers, ShieldCheck, Minus, Maximize2, Minimize2, Menu
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import toast from 'react-hot-toast';
@@ -126,6 +126,7 @@ export default function OperationsCopilot() {
   const [activeQueryIntent, setActiveQueryIntent] = useState<QueryIntent>('greeting_or_chat');
   const [activeQueryText, setActiveQueryText] = useState<string>('');
   const [showPromptsMenu, setShowPromptsMenu] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [isHeaderFolded, setIsHeaderFolded] = useState(false);
 
   // Tracks interactive hotel selection for each proposed action { [msgId]: hotelId[] }
@@ -135,22 +136,26 @@ export default function OperationsCopilot() {
   const chatScrollContainerRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<HTMLInputElement>(null);
   const promptsMenuRef = useRef<HTMLDivElement>(null);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
   const hasInitializedWelcomeRef = useRef(false);
 
-  // Close prompts dropdown when clicking outside
+  // Close prompts & mobile dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (promptsMenuRef.current && !promptsMenuRef.current.contains(e.target as Node)) {
         setShowPromptsMenu(false);
       }
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(e.target as Node)) {
+        setShowMobileMenu(false);
+      }
     };
-    if (showPromptsMenu) {
+    if (showPromptsMenu || showMobileMenu) {
       document.addEventListener('mousedown', handleClickOutside);
     }
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [showPromptsMenu]);
+  }, [showPromptsMenu, showMobileMenu]);
 
   const userIsAdmin = isAdmin(user);
   const userIsManager = isHotelManager(user);
@@ -1288,7 +1293,110 @@ export default function OperationsCopilot() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-0.5 sm:gap-1 text-stone-400 shrink-0">
+                {/* MOBILE UNBURDENED CONTROLS (sm:hidden) */}
+                <div className="flex items-center gap-1 text-stone-400 shrink-0 sm:hidden">
+                  {/* Hamburger Menu Trigger */}
+                  <div className="relative" ref={mobileMenuRef}>
+                    <button
+                      type="button"
+                      id="btn-copilot-mobile-menu"
+                      onClick={() => setShowMobileMenu(prev => !prev)}
+                      className={`p-1.5 rounded-lg transition cursor-pointer flex items-center justify-center ${
+                        showMobileMenu ? 'bg-stone-800 text-white ring-1 ring-stone-700' : 'hover:bg-stone-800 hover:text-stone-200'
+                      }`}
+                      title="Menu options"
+                      aria-label="Menu options"
+                    >
+                      <Menu className="w-4 h-4" />
+                      {learnedRules.length > 0 && (
+                        <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-amber-400" />
+                      )}
+                    </button>
+
+                    {showMobileMenu && (
+                      <div className="absolute right-0 top-full mt-2 w-60 bg-stone-900 border border-stone-800 rounded-2xl shadow-2xl py-1.5 z-50 text-xs animate-in fade-in zoom-in-95 duration-150">
+                        {/* Toggle header fold */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowMobileMenu(false);
+                            setIsHeaderFolded(prev => !prev);
+                          }}
+                          className="w-full text-left px-3.5 py-2.5 hover:bg-stone-800 text-stone-200 flex items-center justify-between gap-2 cursor-pointer"
+                        >
+                          <span className="flex items-center gap-2">
+                            {isHeaderFolded ? <ChevronDown className="w-3.5 h-3.5 text-amber-400" /> : <ChevronUp className="w-3.5 h-3.5 text-stone-400" />}
+                            <span>{isHeaderFolded ? 'Expand Header Details' : 'Fold Header (Minimal)'}</span>
+                          </span>
+                          <span className="text-[10px] text-stone-400">{isHeaderFolded ? 'Folded' : 'Normal'}</span>
+                        </button>
+
+                        {/* Directives & Memory Rules */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowMobileMenu(false);
+                            setViewingMemory(prev => !prev);
+                          }}
+                          className="w-full text-left px-3.5 py-2.5 hover:bg-stone-800 text-stone-200 flex items-center justify-between gap-2 border-t border-stone-800/80 cursor-pointer"
+                        >
+                          <span className="flex items-center gap-2">
+                            <Sliders className="w-3.5 h-3.5 text-amber-400" />
+                            <span>Learned Rules & Memory</span>
+                          </span>
+                          {learnedRules.length > 0 && (
+                            <span className="bg-amber-400/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold px-1.5 py-0.2 rounded-full">
+                              {learnedRules.length}
+                            </span>
+                          )}
+                        </button>
+
+                        {/* Clear conversation */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowMobileMenu(false);
+                            handleClearCopilotChat();
+                          }}
+                          className="w-full text-left px-3.5 py-2.5 hover:bg-stone-800 text-rose-400 flex items-center gap-2 border-t border-stone-800/80 cursor-pointer"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5 text-rose-400" />
+                          <span>Clear Conversation</span>
+                        </button>
+
+                        {/* Minimize window */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowMobileMenu(false);
+                            setIsMinimized(true);
+                          }}
+                          className="w-full text-left px-3.5 py-2.5 hover:bg-stone-800 text-stone-300 flex items-center gap-2 border-t border-stone-800/80 cursor-pointer"
+                        >
+                          <Minus className="w-3.5 h-3.5 text-stone-400" />
+                          <span>Minimize Window</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Close window */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsOpen(false);
+                      setIsMinimized(false);
+                    }}
+                    className="p-1.5 hover:bg-stone-800 hover:text-stone-200 rounded-lg transition cursor-pointer"
+                    title="Close Assistant"
+                    aria-label="Close Assistant"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* DESKTOP CONTROLS (hidden sm:flex) */}
+                <div className="hidden sm:flex items-center gap-1 text-stone-400 shrink-0">
                   {/* Minimalist Header Fold Toggle */}
                   <button
                     type="button"
