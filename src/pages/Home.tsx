@@ -278,6 +278,49 @@ export default function Home() {
   });
   const [showRecentSearches, setShowRecentSearches] = useState(false);
   const locationSearchRef = useRef<HTMLDivElement>(null);
+  const mapStaysListRef = useRef<HTMLDivElement>(null);
+
+  // Prevent scroll chaining to the outer page when cursor is within the Map View stays list
+  useEffect(() => {
+    const el = mapStaysListRef.current;
+    if (!el || viewMode !== 'map') return;
+
+    const handleWheel = (e: WheelEvent) => {
+      const { scrollTop, scrollHeight, clientHeight } = el;
+      const isScrollingUp = e.deltaY < 0;
+      const isScrollingDown = e.deltaY > 0;
+
+      // If at top or bottom boundary, prevent outer page from scrolling
+      if (scrollTop <= 0 && isScrollingUp) {
+        e.preventDefault();
+        return;
+      }
+      if (scrollTop + clientHeight >= scrollHeight - 1 && isScrollingDown) {
+        e.preventDefault();
+        return;
+      }
+
+      // Stop propagation so outer document wheel listeners don't trigger page movement
+      e.stopPropagation();
+    };
+
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    return () => {
+      el.removeEventListener('wheel', handleWheel);
+    };
+  }, [viewMode, filteredHotels.length]);
+
+  // Smooth scroll within the sidebar container when a map marker is selected
+  useEffect(() => {
+    if (selectedMapLodgeId && mapStaysListRef.current && viewMode === 'map') {
+      const cardEl = document.getElementById(`map-card-${selectedMapLodgeId}`);
+      if (cardEl && mapStaysListRef.current) {
+        const container = mapStaysListRef.current;
+        const cardTop = cardEl.offsetTop - container.offsetTop;
+        container.scrollTo({ top: Math.max(0, cardTop - 40), behavior: 'smooth' });
+      }
+    }
+  }, [selectedMapLodgeId, viewMode]);
 
   const [heroIndex, setHeroIndex] = useState(0);
   const [customDestinations, setCustomDestinations] = useState<string[]>([]);
@@ -1924,9 +1967,12 @@ export default function Home() {
               <div className="space-y-4">
                 {/* Main Map View: Left Cards List + Right Map Canvas */}
                 <div id="map-canvas" className="scroll-mt-24 grid grid-cols-1 lg:grid-cols-[380px_1fr] xl:grid-cols-[420px_1fr] gap-4 lg:gap-6 items-start">
-                  {/* Lodge Cards Feed (Natural flow on mobile, scrollable sidebar on desktop) */}
-                  <div className="order-2 lg:order-1 lg:h-[560px] lg:overflow-y-auto pr-0 lg:pr-1 space-y-3 scrollbar-slim">
-                    <div className="flex items-center justify-between px-1 text-xs text-stone-500 font-medium">
+                  {/* Lodge Cards Feed (Isolated internal scroll container) */}
+                  <div
+                    ref={mapStaysListRef}
+                    className="order-2 lg:order-1 h-[520px] sm:h-[560px] lg:h-[600px] xl:h-[650px] overflow-y-auto overscroll-contain pr-0 lg:pr-1 space-y-3 scrollbar-slim touch-pan-y"
+                  >
+                    <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-xs py-2 px-1 border-b border-stone-100 flex items-center justify-between text-xs text-stone-500 font-medium shadow-2xs">
                       <span>
                         Showing <strong>{lodgeMarkers.length}</strong> {lodgeMarkers.length === 1 ? 'stay' : 'stays'} on map
                       </span>
@@ -2156,7 +2202,7 @@ export default function Home() {
                   </div>
 
                   {/* Interactive Clustered Map */}
-                  <div className="order-1 lg:order-2 sticky top-[72px] lg:top-20 z-10 h-[50vh] min-h-[380px] sm:h-[450px] lg:h-[560px] w-full rounded-2xl overflow-hidden shadow-sm border border-stone-200 bg-stone-100">
+                  <div className="order-1 lg:order-2 sticky top-[72px] lg:top-20 z-10 h-[520px] sm:h-[560px] lg:h-[600px] xl:h-[650px] w-full rounded-2xl overflow-hidden shadow-sm border border-stone-200 bg-stone-100 overscroll-contain">
                     <InteractiveMap
                       lodges={lodgeMarkers}
                       enableClustering={false}
