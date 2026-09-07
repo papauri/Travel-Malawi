@@ -89,23 +89,23 @@ export const DEFAULT_PROVIDERS: Record<AIProviderId, ProviderConfig> = {
     ],
   },
   groq: {
-    enabled: true,
-    model: 'llama-3.3-70b-versatile',
-    defaultModel: 'llama-3.3-70b-versatile',
+    enabled: false,
+    model: 'llama-3.1-8b-instant',
+    defaultModel: 'llama-3.1-8b-instant',
     name: 'Groq (Llama)',
     website: 'https://console.groq.com',
     rateLimitNotice: 'Free Tier: 30 req/min, blazing LPU inference speeds.',
     recommendedModels: [
       {
-        id: 'llama-3.3-70b-versatile',
-        name: 'Llama 3.3 70B Versatile',
-        description: '⚡ Sweet Spot: Near-instant inference with state-of-the-art reasoning',
+        id: 'llama-3.1-8b-instant',
+        name: 'Llama 3.1 8B Instant',
+        description: '⚡ Sweet Spot: Ultra-fast edge inference with universal availability on Groq LPU',
         isSweetSpot: true,
       },
       {
-        id: 'llama-3.1-8b-instant',
-        name: 'Llama 3.1 8B Instant',
-        description: '🚀 Ultra-lightweight model with lowest latency',
+        id: 'llama-3.3-70b-versatile',
+        name: 'Llama 3.3 70B (Tier 2+)',
+        description: '🧠 High-reasoning 70B model (requires paid tier on GroqCloud)',
       },
     ],
   },
@@ -271,6 +271,12 @@ export function loadAIConfig(): AISystemConfig {
         currentGeminiModel === 'gemini-flash-latest'
       ) {
         inMemoryConfig!.providers.gemini.model = 'gemini-2.0-flash';
+        saveAIConfig(inMemoryConfig!);
+      }
+
+      // Auto-migrate retired llama-3.3-70b-versatile to supported llama-3.1-8b-instant
+      if (inMemoryConfig!.providers.groq?.model === 'llama-3.3-70b-versatile') {
+        inMemoryConfig!.providers.groq.model = 'llama-3.1-8b-instant';
         saveAIConfig(inMemoryConfig!);
       }
 

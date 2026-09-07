@@ -610,7 +610,7 @@ async function executeWithProvider(
           'groq',
           'https://api.groq.com/openai/v1/chat/completions',
           apiKey,
-          model || 'llama-3.3-70b-versatile',
+          model || 'llama-3.1-8b-instant',
           SYSTEM_PROMPT,
           userPrompt,
           0.7,
@@ -1435,7 +1435,7 @@ USER MESSAGE:
         case 'mistral':
           return callOpenAICompatible('mistral', 'https://api.mistral.ai/v1/chat/completions', apiKey, model || 'mistral-small-latest', chatSystemPrompt, chatUserPrompt, 0.5, 300);
         case 'groq':
-          return callOpenAICompatible('groq', 'https://api.groq.com/openai/v1/chat/completions', apiKey, model || 'llama-3.3-70b-versatile', chatSystemPrompt, chatUserPrompt, 0.5, 300);
+          return callOpenAICompatible('groq', 'https://api.groq.com/openai/v1/chat/completions', apiKey, model || 'llama-3.1-8b-instant', chatSystemPrompt, chatUserPrompt, 0.5, 300);
         case 'gemini':
           return callGemini('gemini', apiKey, model || 'gemini-2.0-flash', chatSystemPrompt, chatUserPrompt, 0.5, 300);
         case 'anthropic':
@@ -1711,7 +1711,7 @@ USER MESSAGE:
           'groq',
           'https://api.groq.com/openai/v1/chat/completions',
           apiKey,
-          model || 'llama-3.3-70b-versatile',
+          model || 'llama-3.1-8b-instant',
           OPERATIONS_SYSTEM_PROMPT,
           finalUserPrompt,
           0.4,
