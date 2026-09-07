@@ -15,6 +15,7 @@ interface RecommendedModel {
 interface ProviderView {
   name: string;
   website: string;
+  enabled: boolean;
   model: string;
   defaultModel: string;
   recommendedModels?: RecommendedModel[];
@@ -98,6 +99,40 @@ export default function AdminAISettings() {
       }
     } catch {
       toast.error('Network error updating AI status');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleToggleProviderEnabled = async (providerId: string, currentEnabled: boolean) => {
+    setSaving(true);
+    const newEnabled = !currentEnabled;
+    try {
+      const updates: any = {
+        [providerId]: {
+          enabled: newEnabled,
+        },
+      };
+      const res = await fetch('/api/admin/ai-config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ providerUpdates: updates }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setConfig(data.config);
+        const name = data.config.providers[providerId]?.name || providerId;
+        if (newEnabled) {
+          toast.success(`${name} API enabled`);
+        } else {
+          toast.success(`${name} API completely disabled and suppressed`);
+        }
+      } else {
+        toast.error('Failed to update provider status');
+      }
+    } catch {
+      toast.error('Error updating provider status');
     } finally {
       setSaving(false);
     }
@@ -298,19 +333,34 @@ export default function AdminAISettings() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {Object.entries(config.providers).map(([pid, p], pIdx) => {
             const isActive = config.activeProvider === pid;
+            const isEnabled = p.enabled !== false;
             return (
               <div
                 key={`active-prov-card-${pid}-${pIdx}`}
-                onClick={() => handleSelectActiveProvider(pid)}
+                onClick={() => {
+                  if (!isEnabled) {
+                    toast('Enabling ' + p.name + ' and setting as active AI engine...', { icon: '⚡' });
+                  }
+                  handleSelectActiveProvider(pid);
+                }}
                 className={`relative p-5 rounded-2xl border cursor-pointer transition-all ${
                   isActive
                     ? 'border-stone-900 bg-stone-50/80 ring-2 ring-stone-900 shadow-sm'
+                    : !isEnabled
+                    ? 'border-stone-200 bg-stone-100/50 hover:border-stone-300 opacity-60'
                     : 'border-stone-200 bg-white hover:border-stone-400 hover:bg-stone-50/50'
                 }`}
               >
                 <div className="flex items-start justify-between">
                   <div className="space-y-1">
-                    <h4 className="font-bold text-sm text-stone-900">{p.name}</h4>
+                    <div className="flex items-center gap-1.5">
+                      <h4 className="font-bold text-sm text-stone-900">{p.name}</h4>
+                      {!isEnabled && (
+                        <span className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-stone-200 text-stone-600">
+                          Disabled
+                        </span>
+                      )}
+                    </div>
                     <p className="text-[11px] font-mono text-stone-500">{p.model}</p>
                   </div>
                   {isActive ? (
@@ -324,7 +374,7 @@ export default function AdminAISettings() {
 
                 <div className="mt-4 pt-3 border-t border-stone-100 flex items-center justify-between text-xs">
                   {p.isConfigured ? (
-                    <span className="inline-flex items-center gap-1 text-emerald-600 font-medium">
+                    <span className={`inline-flex items-center gap-1 font-medium ${isEnabled ? 'text-emerald-600' : 'text-stone-400'}`}>
                       <CheckCircle2 className="w-3.5 h-3.5" />
                       <span>{p.source === 'environment' ? 'Env Variable' : 'Key configured'}</span>
                     </span>
@@ -357,7 +407,7 @@ export default function AdminAISettings() {
         <div>
           <h3 className="font-serif font-bold text-xl text-stone-900">Provider Credentials & Models</h3>
           <p className="text-stone-500 text-xs md:text-sm mt-1">
-            Store API keys securely on the server. Keys are masked and never exposed to client browsers.
+            Store API keys securely on the server. Keys are masked and never exposed to client browsers. Enable or completely disable individual AI APIs as desired.
           </p>
         </div>
 
@@ -366,35 +416,55 @@ export default function AdminAISettings() {
             const isEditingKey = showKey[pid];
             const hasInputValue = !!keyInputs[pid];
             const isTesting = testingProvider === pid;
+            const isEnabled = p.enabled !== false;
 
             return (
-              <div key={`prov-config-row-${pid}-${pIdx}`} className="pt-6 first:pt-0 space-y-4">
+              <div key={`prov-config-row-${pid}-${pIdx}`} className={`pt-6 first:pt-0 space-y-4 ${!isEnabled ? 'opacity-75' : ''}`}>
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div className="flex items-center gap-2.5">
+                  <div className="flex flex-wrap items-center gap-2.5">
                     <span className="font-bold text-stone-900 text-sm">{p.name}</span>
                     <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-stone-100 text-stone-600 border border-stone-200">
                       ID: {pid}
                     </span>
-                    {p.isConfigured ? (
-                      p.isValid === false ? (
-                        <span className="text-[11px] text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full font-semibold flex items-center gap-1">
-                          <AlertTriangle className="w-3 h-3 text-red-600" />
-                          <span>Invalid Key</span>
-                        </span>
-                      ) : p.isValid === true ? (
-                        <span className="text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full font-semibold flex items-center gap-1">
-                          <Check className="w-3 h-3 text-emerald-600" />
-                          <span>Verified & Ready</span>
-                        </span>
+
+                    {/* Enable / Disable Status Button */}
+                    <button
+                      type="button"
+                      disabled={saving}
+                      onClick={() => handleToggleProviderEnabled(pid, isEnabled)}
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold transition border cursor-pointer ${
+                        isEnabled
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100'
+                          : 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100'
+                      }`}
+                      title={isEnabled ? 'Click to completely disable this AI API' : 'Click to enable this AI API'}
+                    >
+                      <Power className="w-2.5 h-2.5" />
+                      <span>{isEnabled ? 'API Enabled' : 'API Disabled'}</span>
+                    </button>
+
+                    {isEnabled && (
+                      p.isConfigured ? (
+                        p.isValid === false ? (
+                          <span className="text-[11px] text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full font-semibold flex items-center gap-1">
+                            <AlertTriangle className="w-3 h-3 text-red-600" />
+                            <span>Invalid Key</span>
+                          </span>
+                        ) : p.isValid === true ? (
+                          <span className="text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full font-semibold flex items-center gap-1">
+                            <Check className="w-3 h-3 text-emerald-600" />
+                            <span>Verified & Ready</span>
+                          </span>
+                        ) : (
+                          <span className="text-[11px] text-stone-600 bg-stone-100 border border-stone-200 px-2 py-0.5 rounded-full font-medium">
+                            Configured
+                          </span>
+                        )
                       ) : (
-                        <span className="text-[11px] text-stone-600 bg-stone-100 border border-stone-200 px-2 py-0.5 rounded-full font-medium">
-                          Configured
+                        <span className="text-[11px] text-stone-400 bg-stone-50 border border-stone-200 px-2 py-0.5 rounded-full font-medium">
+                          No Key
                         </span>
                       )
-                    ) : (
-                      <span className="text-[11px] text-stone-400 bg-stone-50 border border-stone-200 px-2 py-0.5 rounded-full font-medium">
-                        No Key
-                      </span>
                     )}
                   </div>
 
@@ -421,6 +491,25 @@ export default function AdminAISettings() {
                     </a>
                   </div>
                 </div>
+
+                {!isEnabled && (
+                  <div className="text-[11px] text-stone-600 bg-stone-100/90 border border-dashed border-stone-300 rounded-xl p-3 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 text-stone-400 shrink-0" />
+                      <span>
+                        <strong>API Completely Disabled:</strong> {p.name} is silenced and suppressed from chat, listing generation, vision OCR, and fallback chains.
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={saving}
+                      onClick={() => handleToggleProviderEnabled(pid, false)}
+                      className="px-3 py-1 bg-stone-900 hover:bg-stone-800 text-white rounded-lg text-xs font-semibold shrink-0 cursor-pointer"
+                    >
+                      Enable {p.name}
+                    </button>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* API Key Field */}

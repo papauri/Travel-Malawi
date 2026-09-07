@@ -11,6 +11,7 @@ export interface RecommendedModel {
 }
 
 export interface ProviderConfig {
+  enabled?: boolean;
   apiKey?: string;
   model: string;
   defaultModel: string;
@@ -35,6 +36,7 @@ const CONFIG_FILE = path.join(CONFIG_DIR, 'ai_config.json');
 
 export const DEFAULT_PROVIDERS: Record<AIProviderId, ProviderConfig> = {
   mistral: {
+    enabled: true,
     model: 'mistral-small-latest',
     defaultModel: 'mistral-small-latest',
     name: 'Mistral AI',
@@ -61,6 +63,7 @@ export const DEFAULT_PROVIDERS: Record<AIProviderId, ProviderConfig> = {
     ],
   },
   gemini: {
+    enabled: true,
     model: 'gemini-2.0-flash',
     defaultModel: 'gemini-2.0-flash',
     name: 'Google Gemini',
@@ -86,6 +89,7 @@ export const DEFAULT_PROVIDERS: Record<AIProviderId, ProviderConfig> = {
     ],
   },
   groq: {
+    enabled: true,
     model: 'llama-3.3-70b-versatile',
     defaultModel: 'llama-3.3-70b-versatile',
     name: 'Groq (Llama)',
@@ -106,6 +110,7 @@ export const DEFAULT_PROVIDERS: Record<AIProviderId, ProviderConfig> = {
     ],
   },
   deepseek: {
+    enabled: true,
     model: 'deepseek-chat',
     defaultModel: 'deepseek-chat',
     name: 'DeepSeek',
@@ -126,6 +131,7 @@ export const DEFAULT_PROVIDERS: Record<AIProviderId, ProviderConfig> = {
     ],
   },
   openai: {
+    enabled: true,
     model: 'gpt-4o-mini',
     defaultModel: 'gpt-4o-mini',
     name: 'OpenAI (ChatGPT)',
@@ -146,6 +152,7 @@ export const DEFAULT_PROVIDERS: Record<AIProviderId, ProviderConfig> = {
     ],
   },
   anthropic: {
+    enabled: true,
     model: 'claude-3-5-haiku-20241022',
     defaultModel: 'claude-3-5-haiku-20241022',
     name: 'Anthropic Claude',
@@ -189,18 +196,26 @@ function getEnvApiKey(provider: AIProviderId): string | undefined {
 let inMemoryConfig: AISystemConfig | null = null;
 
 function autoSelectWorkingProvider(config: AISystemConfig) {
-  const currentKey = config.providers[config.activeProvider]?.apiKey?.trim() || getEnvApiKey(config.activeProvider);
-  const isCurrentValid = config.providers[config.activeProvider]?.isValid !== false;
+  const activeConf = config.providers[config.activeProvider];
+  const activeEnabled = activeConf?.enabled !== false;
+  const currentKey = activeConf?.apiKey?.trim() || getEnvApiKey(config.activeProvider);
 
-  if (!currentKey || !isCurrentValid) {
-    const providers = Object.keys(DEFAULT_PROVIDERS) as AIProviderId[];
-    for (const pid of providers) {
-      const key = config.providers[pid]?.apiKey?.trim() || getEnvApiKey(pid);
-      const isValid = config.providers[pid]?.isValid !== false;
-      if (key && isValid && key.length > 5) {
-        config.activeProvider = pid;
-        break;
-      }
+  // If the active provider is enabled AND has an API key, NEVER automatically switch away from it!
+  // Transient rate limit errors or temporary errors should not hijack user preference to Groq/Llama or any other engine.
+  if (activeEnabled && currentKey && currentKey.length > 5) {
+    return;
+  }
+
+  // Only if current active provider is explicitly disabled or completely missing an API key,
+  // find another enabled provider with a valid key.
+  const providers = Object.keys(DEFAULT_PROVIDERS) as AIProviderId[];
+  for (const pid of providers) {
+    if (config.providers[pid]?.enabled === false) continue;
+    const key = config.providers[pid]?.apiKey?.trim() || getEnvApiKey(pid);
+    const isValid = config.providers[pid]?.isValid !== false;
+    if (key && isValid && key.length > 5) {
+      config.activeProvider = pid;
+      break;
     }
   }
 }
@@ -227,7 +242,7 @@ export function loadAIConfig(): AISystemConfig {
       // Merge with defaults
       inMemoryConfig = {
         enabled: parsed.enabled ?? true,
-        activeProvider: parsed.activeProvider || 'mistral',
+        activeProvider: parsed.activeProvider || 'gemini',
         providers: {
           ...DEFAULT_PROVIDERS,
           ...(parsed.providers || {}),
@@ -235,11 +250,13 @@ export function loadAIConfig(): AISystemConfig {
         updatedAt: parsed.updatedAt || Date.now(),
       };
       
-      // Ensure each provider has latest recommendedModels & rateLimitNotice
+      // Ensure each provider has latest recommendedModels, rateLimitNotice, and respects enabled state
       (Object.keys(DEFAULT_PROVIDERS) as AIProviderId[]).forEach(pid => {
+        const parsedProvider = parsed.providers?.[pid] || {};
         inMemoryConfig!.providers[pid] = {
           ...DEFAULT_PROVIDERS[pid],
-          ...inMemoryConfig!.providers[pid],
+          ...parsedProvider,
+          enabled: parsedProvider.enabled !== undefined ? parsedProvider.enabled : (DEFAULT_PROVIDERS[pid].enabled ?? true),
           recommendedModels: DEFAULT_PROVIDERS[pid].recommendedModels,
           rateLimitNotice: DEFAULT_PROVIDERS[pid].rateLimitNotice,
         };
@@ -272,7 +289,7 @@ export function loadAIConfig(): AISystemConfig {
   // Initialize fresh config
   inMemoryConfig = {
     enabled: true,
-    activeProvider: 'mistral',
+    activeProvider: 'gemini',
     providers: { ...DEFAULT_PROVIDERS },
     updatedAt: Date.now(),
   };
@@ -310,8 +327,11 @@ export function maskApiKey(key?: string): string {
   return `${key.slice(0, 4)}••••••••${key.slice(-4)}`;
 }
 
-export function getEffectiveApiKey(provider: AIProviderId): string | undefined {
+export function getEffectiveApiKey(provider: AIProviderId, ignoreDisabled = false): string | undefined {
   const config = loadAIConfig();
+  if (!ignoreDisabled && config.providers[provider]?.enabled === false) {
+    return undefined;
+  }
   const configuredKey = config.providers[provider]?.apiKey?.trim();
   if (configuredKey) return configuredKey;
   return getEnvApiKey(provider);
@@ -322,15 +342,19 @@ export function getAvailableProviders(): AIProviderId[] {
   const ordered: AIProviderId[] = [];
   const allProviders = Object.keys(DEFAULT_PROVIDERS) as AIProviderId[];
   
-  // Active provider first
-  const activeKey = getEffectiveApiKey(config.activeProvider);
-  if (activeKey && activeKey.trim().length > 5 && config.providers[config.activeProvider]?.isValid !== false) {
-    ordered.push(config.activeProvider);
+  // Active provider first (if enabled and configured)
+  const activeConf = config.providers[config.activeProvider];
+  if (activeConf?.enabled !== false) {
+    const activeKey = getEffectiveApiKey(config.activeProvider);
+    if (activeKey && activeKey.trim().length > 5 && activeConf?.isValid !== false) {
+      ordered.push(config.activeProvider);
+    }
   }
   
-  // Then remaining providers with valid keys
+  // Then remaining enabled providers with valid keys
   for (const pid of allProviders) {
     if (pid === config.activeProvider) continue;
+    if (config.providers[pid]?.enabled === false) continue;
     const key = getEffectiveApiKey(pid);
     if (key && key.trim().length > 5 && config.providers[pid]?.isValid !== false) {
       ordered.push(pid);
@@ -342,16 +366,19 @@ export function getAvailableProviders(): AIProviderId[] {
 
 export function getPublicAIStatus() {
   const config = loadAIConfig();
-  const activeKey = getEffectiveApiKey(config.activeProvider);
   const providerConf = config.providers[config.activeProvider];
+  const isProviderEnabled = providerConf?.enabled !== false;
+  const activeKey = getEffectiveApiKey(config.activeProvider);
 
   // Key must exist, be trimmed, non-placeholder, and not invalidated by authentication failure
   const hasValidKeyFormat = !!activeKey && activeKey.trim().length > 5 && !activeKey.includes('placeholder') && !activeKey.includes('your_');
   const isNotInvalidated = providerConf?.isValid !== false;
-  const available = !!config.enabled && hasValidKeyFormat && isNotInvalidated;
+  const available = !!config.enabled && isProviderEnabled && hasValidKeyFormat && isNotInvalidated;
 
   return {
-    enabled: !!config.enabled,
+    enabled: !!config.enabled && isProviderEnabled,
+    systemEnabled: !!config.enabled,
+    providerEnabled: isProviderEnabled,
     activeProvider: config.activeProvider,
     model: providerConf?.model || DEFAULT_PROVIDERS[config.activeProvider].defaultModel,
     available,
@@ -366,13 +393,14 @@ export function getAdminAIConfig() {
   const providersView: Record<string, any> = {};
   (Object.keys(DEFAULT_PROVIDERS) as AIProviderId[]).forEach((pid) => {
     const p = config.providers[pid] || DEFAULT_PROVIDERS[pid];
-    const effectiveKey = getEffectiveApiKey(pid);
+    const effectiveKey = getEffectiveApiKey(pid, true);
     const hasConfiguredKey = !!p.apiKey?.trim();
     const hasEnvKey = !!getEnvApiKey(pid);
 
     providersView[pid] = {
       name: p.name || DEFAULT_PROVIDERS[pid].name,
       website: p.website || DEFAULT_PROVIDERS[pid].website,
+      enabled: p.enabled !== false,
       model: p.model || DEFAULT_PROVIDERS[pid].defaultModel,
       defaultModel: DEFAULT_PROVIDERS[pid].defaultModel,
       recommendedModels: DEFAULT_PROVIDERS[pid].recommendedModels || [],

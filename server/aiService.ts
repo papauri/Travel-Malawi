@@ -538,6 +538,10 @@ async function executeWithProvider(
   req: GenerationRequest,
   config: AISystemConfig
 ): Promise<GenerationResult> {
+  if (config.providers[providerId]?.enabled === false) {
+    throw new Error(`AI provider ${providerId.toUpperCase()} is completely disabled in Admin settings.`);
+  }
+
   const apiKey = getEffectiveApiKey(providerId);
 
   if (!apiKey || apiKey.trim().length < 6) {
@@ -703,6 +707,9 @@ export async function executeAIGeneration(
   }
 
   if (overrideProvider) {
+    if (config.providers[overrideProvider]?.enabled === false) {
+      throw new Error(`AI provider ${overrideProvider} is disabled in Admin settings.`);
+    }
     return executeWithProvider(overrideProvider, req, config);
   }
 
@@ -1340,6 +1347,10 @@ async function executeOperationsChatWithProvider(
   req: OperationsAssistantRequest,
   config: AISystemConfig
 ): Promise<OperationsAssistantResult> {
+  if (config.providers[providerId]?.enabled === false) {
+    throw new Error(`AI provider ${providerId.toUpperCase()} is completely disabled in Admin settings.`);
+  }
+
   const apiKey = getEffectiveApiKey(providerId);
 
   if (!apiKey) {
@@ -2005,6 +2016,7 @@ Rules:
     const base64 = fileBuffer.toString('base64');
 
     for (const providerId of visionProviders) {
+      if (config.providers[providerId]?.enabled === false) continue;
       const apiKey = getEffectiveApiKey(providerId);
       if (!apiKey || apiKey.trim().length < 6) continue;
       if (config.providers[providerId]?.isValid === false) continue;
@@ -2228,6 +2240,7 @@ Rules:
     const base64 = fileBuffer.toString('base64');
 
     for (const providerId of visionProviders) {
+      if (config.providers[providerId]?.enabled === false) continue;
       const apiKey = getEffectiveApiKey(providerId);
       if (!apiKey || apiKey.trim().length < 6) continue;
       if (config.providers[providerId]?.isValid === false) continue;

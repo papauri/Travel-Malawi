@@ -3,7 +3,7 @@ import path from 'path';
 import multer from 'multer';
 import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
-import { getPublicAIStatus, getAdminAIConfig, loadAIConfig, saveAIConfig, AIProviderId } from './server/aiConfig';
+import { getPublicAIStatus, getAdminAIConfig, loadAIConfig, saveAIConfig, AIProviderId, getEffectiveApiKey } from './server/aiConfig';
 import { executeAIGeneration, executeOperationsAssistantChat, testProviderConnection } from './server/aiService';
 import { sendOfflineNotification } from './server/notifications';
 import { generateAutoReminders, createManualReminder, getRemindersForBooking, deleteReminder, checkAndFireReminders } from './server/reminders';
@@ -168,11 +168,25 @@ async function startServer() {
         current.enabled = enabled;
       }
       if (activeProvider && current.providers[activeProvider as AIProviderId]) {
+        // Automatically ensure selected active provider is enabled
+        current.providers[activeProvider as AIProviderId].enabled = true;
         current.activeProvider = activeProvider as AIProviderId;
       }
       if (providerUpdates && typeof providerUpdates === 'object') {
         Object.entries(providerUpdates).forEach(([pid, update]: [string, any]) => {
           if (current.providers[pid as AIProviderId]) {
+            if (typeof update.enabled === 'boolean') {
+              current.providers[pid as AIProviderId].enabled = update.enabled;
+              // If the currently active provider is disabled, auto-switch to another enabled provider if possible
+              if (!update.enabled && current.activeProvider === pid) {
+                const other = (Object.keys(current.providers) as AIProviderId[]).find(
+                  otherPid => otherPid !== pid && current.providers[otherPid]?.enabled !== false && (current.providers[otherPid]?.apiKey?.trim() || getEffectiveApiKey(otherPid))
+                );
+                if (other) {
+                  current.activeProvider = other;
+                }
+              }
+            }
             if (typeof update.apiKey === 'string') {
               const trimmedKey = update.apiKey.trim();
               current.providers[pid as AIProviderId].apiKey = trimmedKey;
