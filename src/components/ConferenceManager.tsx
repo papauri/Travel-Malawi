@@ -187,8 +187,8 @@ export default function ConferenceManager({ hotelId }: Props) {
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-6">
-          {rooms.map((room) => (
-            <div key={room.id} className="bg-white rounded-2xl border border-stone-200 shadow-sm flex flex-col md:flex-row md:items-start gap-5 p-5 group transition hover:shadow-md">
+          {rooms.map((room, rIdx) => (
+            <div key={`${room.id || 'room'}-${rIdx}`} className="bg-white rounded-2xl border border-stone-200 shadow-sm flex flex-col md:flex-row md:items-start gap-5 p-5 group transition hover:shadow-md">
               <div className="w-full h-48 md:w-64 md:h-48 object-cover rounded-xl overflow-hidden bg-stone-100 shrink-0 relative">
                 <RoomGallery images={Array.from(new Set([room.imageUrl, ...(room.galleryUrls || [])]))} altPrefix={room.name} />
               </div>

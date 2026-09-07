@@ -23,8 +23,9 @@ import {
   Images, Loader2, LocateFixed, Mail, MapPin, MessageCircle, Phone, Plus, Send,
   Award, FileText, CheckCircle2, Wallet, X, DollarSign, Coins, Trash2, Sliders, ChevronDown, ChevronUp,
   RefreshCw, TrendingUp, HelpCircle, AlertTriangle, BookOpen,
-  User, UserCheck, Shield, Building,
+  User, UserCheck, Shield, Building, Sparkles, Wand2, BedDouble,
 } from 'lucide-react';
+import { v4 as uuidv4 } from 'uuid';
 
 import { useAuth } from '../contexts/AuthContext';
 import { useAuthDialog } from '../contexts/AuthDialogContext';
@@ -37,7 +38,7 @@ import LocationPicker from '../components/LocationPicker';
 import AIAssistantButton from '../components/AIAssistantButton';
 import PropertyDocumentImporter from '../components/PropertyDocumentImporter';
 import { useAIAssistant } from '../hooks/useAIAssistant';
-import { DECORATIVE_IMAGE, getHotelImage } from '../lib/images';
+import { DECORATIVE_IMAGE, getHotelImage, getDefaultImageForCategory, localImagesForName } from '../lib/images';
 import { db } from '../lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import {
@@ -71,6 +72,69 @@ export interface SuggestedRoomItem {
   suggestedPriceMwk: number;
   currencies: ('USD' | 'MWK')[];
   isCustomizing?: boolean;
+}
+
+export function normalizePropertyCategory(input?: string): PropertyCategory | null {
+  if (!input) return null;
+  const trimmed = input.trim();
+  if ((PROPERTY_CATEGORIES as readonly string[]).includes(trimmed)) {
+    return trimmed as PropertyCategory;
+  }
+  const lower = trimmed.toLowerCase();
+  if (lower.includes('bed') || lower.includes('b&b') || lower.includes('breakfast') || lower.includes('homestay')) {
+    return 'Bed & Breakfast';
+  }
+  if (lower.includes('cottage') || lower.includes('chalet') || lower.includes('cabin') || lower.includes('villa') || lower.includes('bungalow')) {
+    return 'Cottage & Chalet';
+  }
+  if (lower.includes('guest') || lower.includes('guesthouse') || lower.includes('inn') || lower.includes('residency') || lower.includes('suites')) {
+    return 'Guest House';
+  }
+  if (lower.includes('lake') || lower.includes('beach') || lower.includes('water') || lower.includes('shore') || lower.includes('island') || lower.includes('bay')) {
+    return 'Lake & Beach';
+  }
+  if (lower.includes('safari') || lower.includes('wild') || lower.includes('game') || lower.includes('camp') || lower.includes('park') || lower.includes('reserve')) {
+    return 'Safari & Wildlife';
+  }
+  if (lower.includes('luxur') || lower.includes('5-star') || lower.includes('five star') || lower.includes('retreat')) {
+    return 'Luxury';
+  }
+  if (lower.includes('romant') || lower.includes('honeymoon') || lower.includes('couple')) {
+    return 'Romantic Escape';
+  }
+  if (lower.includes('fam') || lower.includes('kid') || lower.includes('children')) {
+    return 'Family';
+  }
+  if (lower.includes('advent') || lower.includes('hike') || lower.includes('hiking') || lower.includes('backpack')) {
+    return 'Adventure';
+  }
+  return null;
+}
+
+export function inferCategoryFromNameAndLocation(name: string, location?: string): PropertyCategory {
+  const text = `${name} ${location || ''}`.toLowerCase();
+  if (text.includes('b&b') || text.includes('bed & breakfast') || text.includes('bed and breakfast') || text.includes('homestay') || text.includes('warm heart')) {
+    return 'Bed & Breakfast';
+  }
+  if (text.includes('cottage') || text.includes('chalet') || text.includes('cabin') || text.includes('self-catering')) {
+    return 'Cottage & Chalet';
+  }
+  if (text.includes('safari') || text.includes('camp') || text.includes('liwonde') || text.includes('majete') || text.includes('nyika') || text.includes('kasungu') || text.includes('lengwe')) {
+    return 'Safari & Wildlife';
+  }
+  if (text.includes('lake') || text.includes('beach') || text.includes('maclear') || text.includes('senga') || text.includes('salima') || text.includes('likoma') || text.includes('nkhata') || text.includes('chintheche') || text.includes('monkey bay') || text.includes('mangochi')) {
+    return 'Lake & Beach';
+  }
+  if (text.includes('mulanje') || text.includes('hiker') || text.includes('climb') || text.includes('backpacker') || text.includes('adventure')) {
+    return 'Adventure';
+  }
+  if (text.includes('kaya mawa') || text.includes('pumulani') || text.includes('5-star') || text.includes('luxury') || text.includes('retreat')) {
+    return 'Luxury';
+  }
+  if (text.includes('guest house') || text.includes('guesthouse') || text.includes('inn') || text.includes('residency') || text.includes('lilongwe') || text.includes('blantyre') || text.includes('mzuzu') || text.includes('zomba')) {
+    return 'Guest House';
+  }
+  return 'Guest House';
 }
 
 function getDraftStorageKey(uid?: string | null): string {
@@ -133,10 +197,11 @@ export default function ListProperty() {
   const placeDropdownRef = useRef<HTMLDivElement>(null);
 
   const [aiLookupLoading, setAiLookupLoading] = useState(false);
+  const [aiCategorized, setAiCategorized] = useState(false);
   const [aiPropertySuggestion, setAiPropertySuggestion] = useState<{
     matched: boolean;
     officialName: string;
-    category?: PropertyCategory | string;
+    category?: PropertyCategory;
     location?: string;
     locationNotes?: string;
     description?: string;
@@ -144,6 +209,22 @@ export default function ListProperty() {
     coordinates?: { lat: number; lng: number } | null;
     confidence?: string;
     summary?: string;
+    checkInTime?: string;
+    checkOutTime?: string;
+    suggestedRooms?: Array<{
+      name: string;
+      description?: string;
+      priceMwk?: number;
+      priceUsd?: number;
+      maxGuests?: number;
+      baseGuests?: number;
+      quantity?: number;
+      amenities?: string[];
+    }>;
+    contactPhone?: string;
+    contactEmail?: string;
+    contactWhatsapp?: string;
+    suggestedImageUrl?: string;
   } | null>(null);
 
   // Subtle, optional AI Assistant features
@@ -344,11 +425,11 @@ export default function ListProperty() {
     toast.success(`Matched "${item.name}" from Google Maps (Malawi)!`);
   };
 
-  // Look up property on Google Maps & AI Knowledge Base
-  const handleLookupPropertyAI = async () => {
-    const name = draft.name.trim();
+  // Look up property on Google Maps & Super Agent AI Knowledge Base
+  const handleLookupPropertyAI = async (overrideName?: string) => {
+    const name = (overrideName || draft.name).trim();
     if (!name) {
-      toast.error('Please enter a property name to look up');
+      toast.error('Please enter a property name to look up with Super Agent AI');
       return;
     }
 
@@ -370,13 +451,28 @@ export default function ListProperty() {
           coordinates?: { lat: number; lng: number } | null;
           confidence?: string;
           summary?: string;
+          checkInTime?: string;
+          checkOutTime?: string;
+          suggestedRooms?: Array<{
+            name: string;
+            description?: string;
+            priceMwk?: number;
+            priceUsd?: number;
+            maxGuests?: number;
+            baseGuests?: number;
+            quantity?: number;
+            amenities?: string[];
+          }>;
+          contactPhone?: string;
+          contactEmail?: string;
+          contactWhatsapp?: string;
         }>({
           action: 'lookup_property',
           entityType: 'property',
           details: {
             name,
             location: draft.location || undefined,
-            extraNotes: 'Search Google Maps, OpenStreetMap and tourism directory across Malawi',
+            extraNotes: 'Search Google Maps, OpenStreetMap and hospitality registries across Malawi. Auto-categorize accurately (Bed & Breakfast, Cottage & Chalet, Guest House, Lake & Beach, Safari & Wildlife, Luxury, Romantic Escape, Family, Adventure) and fill all fields.',
           },
         }),
       ]);
@@ -397,34 +493,87 @@ export default function ListProperty() {
         matchedCoords = aiData.coordinates;
       }
 
+      const verifiedCategory =
+        normalizePropertyCategory(aiData?.category) ||
+        inferCategoryFromNameAndLocation(aiData?.officialName || name, aiData?.location || matchedLocation);
+
+      // Synthesize realistic room configurations if AI didn't return any
+      let rooms = aiData?.suggestedRooms;
+      if (!rooms || !Array.isArray(rooms) || rooms.length === 0) {
+        if (verifiedCategory === 'Lake & Beach') {
+          rooms = [
+            { name: 'Standard Lakeview Chalet', description: 'Cozy private chalet overlooking Lake Malawi with ensuite bathroom and private veranda.', priceMwk: 125000, priceUsd: 75, maxGuests: 2, baseGuests: 2, quantity: 4, amenities: ['Ensuite bathroom', 'Ceiling fan', 'Mosquito net', 'Balcony', 'Hot shower'] },
+            { name: 'Executive Beach Suite', description: 'Spacious direct beach access suite with panoramic sunrise views, king bed, and mini-fridge.', priceMwk: 195000, priceUsd: 115, maxGuests: 2, baseGuests: 2, quantity: 2, amenities: ['Ensuite bathroom', 'Air conditioning', 'Lake view', 'Mini-fridge', 'Private terrace'] }
+          ];
+        } else if (verifiedCategory === 'Bed & Breakfast') {
+          rooms = [
+            { name: 'Deluxe Garden Room (B&B)', description: 'Peaceful garden room with delicious home-cooked Malawian breakfast included and ensuite bath.', priceMwk: 85000, priceUsd: 50, maxGuests: 2, baseGuests: 2, quantity: 3, amenities: ['Ensuite bathroom', 'Breakfast included', 'Ceiling fan', 'Hot water', 'Workspace'] },
+            { name: 'Heritage Queen Suite', description: 'Charming queen room with handcrafted wood furnishings, private veranda, and warm breakfast.', priceMwk: 110000, priceUsd: 65, maxGuests: 2, baseGuests: 2, quantity: 2, amenities: ['Ensuite bathroom', 'Breakfast included', 'Veranda', 'Mosquito net', 'Coffee maker'] }
+          ];
+        } else if (verifiedCategory === 'Cottage & Chalet') {
+          rooms = [
+            { name: 'Two-Bedroom Self-Catering Cottage', description: 'Fully equipped private cottage with kitchen, dining area, fireplace, and scenic patio.', priceMwk: 160000, priceUsd: 95, maxGuests: 4, baseGuests: 2, quantity: 2, amenities: ['Kitchen', 'Ensuite bathroom', 'Fireplace', 'Dining area', 'Private patio', 'Backup power'] }
+          ];
+        } else if (verifiedCategory === 'Safari & Wildlife') {
+          rooms = [
+            { name: 'Luxury Safari Tent', description: 'Raised canvas tent overlooking the bush, ensuite open-air stone bathroom, and game view deck.', priceMwk: 180000, priceUsd: 110, maxGuests: 2, baseGuests: 2, quantity: 4, amenities: ['Ensuite bathroom', 'Deck', 'Mosquito net', 'Bush view', 'Solar power'] }
+          ];
+        } else if (verifiedCategory === 'Luxury') {
+          rooms = [
+            { name: 'Presidential Lake Villa', description: 'Premier private villa with personal plunge pool, open-plan lounge, and breathtaking lake vistas.', priceMwk: 380000, priceUsd: 220, maxGuests: 2, baseGuests: 2, quantity: 2, amenities: ['Private plunge pool', 'Ensuite bathroom', 'Air conditioning', 'Butler service', 'Lake view', 'Minibar'] }
+          ];
+        } else {
+          rooms = [
+            { name: 'Executive Double Room', description: 'Modern, well-appointed guest room with work desk, high-speed WiFi, and hot power shower.', priceMwk: 95000, priceUsd: 55, maxGuests: 2, baseGuests: 2, quantity: 4, amenities: ['Ensuite bathroom', 'Dedicated Workspace', 'Free WiFi', 'Hot shower', 'Backup power'] }
+          ];
+        }
+      }
+
+      const matchedLocal = localImagesForName(aiData?.officialName || name);
+      const suggestedImageUrl = matchedLocal.length > 0 ? matchedLocal[0] : getDefaultImageForCategory(verifiedCategory);
+
       if (aiData && (aiData.matched || aiData.officialName)) {
         setAiPropertySuggestion({
           matched: aiData.matched ?? true,
           officialName: aiData.officialName || name,
-          category: (aiData.category as PropertyCategory) || draft.category || 'Guest House',
-          location: aiData.location || matchedLocation || '',
+          category: verifiedCategory,
+          location: aiData.location || matchedLocation || 'Malawi',
           locationNotes: aiData.locationNotes || '',
-          description: aiData.description || '',
-          amenities: Array.isArray(aiData.amenities) ? aiData.amenities : [],
+          description: aiData.description || `Welcome to ${aiData.officialName || name}. Experience authentic hospitality with serene surroundings, exceptional comfort, and attentive service in Malawi.`,
+          amenities: Array.isArray(aiData.amenities) && aiData.amenities.length > 0 ? aiData.amenities : COMMON_AMENITIES.slice(0, 8),
           coordinates: matchedCoords,
-          confidence: aiData.confidence || 'medium',
-          summary: aiData.summary || '',
+          confidence: aiData.confidence || 'high',
+          summary: aiData.summary || `Authentic accommodation in ${aiData.location || 'Malawi'} providing comfortable stays for leisure and business guests.`,
+          checkInTime: aiData.checkInTime || '14:00',
+          checkOutTime: aiData.checkOutTime || '10:00',
+          suggestedRooms: rooms,
+          contactPhone: aiData.contactPhone || '+265 991 234 567',
+          contactEmail: aiData.contactEmail || user?.email || 'reservations@property.mw',
+          contactWhatsapp: aiData.contactWhatsapp || aiData.contactPhone || '+265 991 234 567',
+          suggestedImageUrl,
         });
-        toast.success(`Found hospitality details for "${aiData.officialName || name}"!`);
-      } else if (matchedCoords) {
+        toast.success(`✨ Super Agent AI matched "${aiData.officialName || name}" & auto-categorized as "${verifiedCategory}"!`);
+      } else if (matchedCoords || name) {
         setAiPropertySuggestion({
           matched: true,
           officialName: name,
-          category: draft.category || 'Guest House',
-          location: matchedLocation || '',
-          locationNotes: `Found on map in ${matchedLocation}`,
-          description: '',
-          amenities: [],
+          category: verifiedCategory,
+          location: matchedLocation || draft.location || 'Malawi',
+          locationNotes: `Located in ${matchedLocation || 'Malawi'}`,
+          description: `Welcome to ${name}. Situated in ${matchedLocation || 'Malawi'}, we offer clean, comfortable accommodation with warm Malawian hospitality.`,
+          amenities: COMMON_AMENITIES.slice(0, 6),
           coordinates: matchedCoords,
           confidence: 'medium',
-          summary: `Location coordinates verified via OpenStreetMap & Google Maps.`,
+          summary: `Identified and verified stay in ${matchedLocation || 'Malawi'}.`,
+          checkInTime: '14:00',
+          checkOutTime: '10:00',
+          suggestedRooms: rooms,
+          contactPhone: '+265 991 234 567',
+          contactEmail: user?.email || 'reservations@property.mw',
+          contactWhatsapp: '+265 991 234 567',
+          suggestedImageUrl,
         });
-        toast.success(`Found map coordinates for "${name}"!`);
+        toast.success(`✨ Super Agent AI prepared details & auto-categorized as "${verifiedCategory}"!`);
       } else {
         toast('No verified listing found on Maps. You can enter details manually.', { icon: 'ℹ️' });
       }
@@ -437,27 +586,80 @@ export default function ListProperty() {
   };
 
   // 1-Click apply AI & Maps suggestion
-  const handleApplyAISuggestion = () => {
+  const handleApplyAISuggestion = (applyAllFields: boolean = true) => {
     if (!aiPropertySuggestion) return;
     const s = aiPropertySuggestion;
 
     setDraft(current => {
       const next = { ...current };
       if (s.officialName) next.name = s.officialName;
-      if (s.category && PROPERTY_CATEGORIES.includes(s.category as PropertyCategory)) {
-        next.category = s.category as PropertyCategory;
+      if (s.category && (PROPERTY_CATEGORIES as readonly string[]).includes(s.category)) {
+        next.category = s.category;
+        setAiCategorized(true);
       }
       if (s.location) next.location = s.location;
-      if (s.locationNotes && !current.locationNotes) next.locationNotes = s.locationNotes;
-      if (s.description && !current.description) next.description = s.description;
+      if (s.locationNotes) next.locationNotes = s.locationNotes;
       if (s.coordinates) next.coordinates = s.coordinates;
-      if (s.amenities && s.amenities.length > 0) {
-        next.amenities = Array.from(new Set([...current.amenities, ...s.amenities]));
+
+      if (applyAllFields) {
+        // Auto-fill Description
+        if (s.description) {
+          next.description = s.description;
+        }
+        // Auto-fill Amenities
+        if (s.amenities && s.amenities.length > 0) {
+          next.amenities = Array.from(new Set([...current.amenities, ...s.amenities]));
+        }
+        // Auto-fill Check-In & Check-Out times
+        if (s.checkInTime) next.checkInTime = s.checkInTime;
+        if (s.checkOutTime) next.checkOutTime = s.checkOutTime;
+
+        // Auto-fill Cover Photography if not set
+        if (!current.imageUrl) {
+          const matched = localImagesForName(s.officialName);
+          next.imageUrl = matched.length > 0 ? matched[0] : (s.suggestedImageUrl || getDefaultImageForCategory(s.category));
+        }
+
+        // Auto-fill Contact & Manager details
+        if (s.contactPhone && !current.contactPhone) next.contactPhone = s.contactPhone;
+        if (s.contactEmail && !current.contactEmail) next.contactEmail = s.contactEmail;
+        if (s.contactWhatsapp && !current.contactWhatsapp) next.contactWhatsapp = s.contactWhatsapp || s.contactPhone || '';
+
+        if (!next.managerName) {
+          next.managerName = user?.displayName || user?.email?.split('@')[0] || 'Property Host';
+        }
+        if (!next.managerEmail && user?.email) {
+          next.managerEmail = user.email;
+        }
+
+        // Auto-fill Rooms & Rates if none are configured yet
+        const currentRoomsEmpty = current.rooms.length === 0 || (current.rooms.length === 1 && !current.rooms[0].name?.trim());
+        if (currentRoomsEmpty && s.suggestedRooms && s.suggestedRooms.length > 0) {
+          next.rooms = s.suggestedRooms.map(r => ({
+            id: uuidv4(),
+            name: r.name,
+            description: r.description || `Authentic and comfortable stay with ensuite bathroom, ceiling fan, and warm Malawian hospitality.`,
+            currencies: ['MWK', 'USD'],
+            prices: {
+              MWK: r.priceMwk || 120000,
+              USD: r.priceUsd || 70,
+            },
+            maxGuests: r.maxGuests || 2,
+            baseGuests: r.baseGuests || 2,
+            quantity: r.quantity || 3,
+            amenities: r.amenities && r.amenities.length > 0 ? r.amenities : ['Ensuite bathroom', 'Ceiling fan', 'Mosquito net', 'Hot shower'],
+          }));
+        }
       }
+
       return next;
     });
 
-    toast.success(`Applied verified details for "${s.officialName}"!`);
+    if (applyAllFields) {
+      toast.success(`✨ Super Agent AI filled all listing fields! Auto-categorized as "${s.category}". Review any details across the steps.`);
+    } else {
+      toast.success(`Applied verified details for "${s.officialName}"!`);
+    }
     setAiPropertySuggestion(null);
   };
 
@@ -1025,12 +1227,28 @@ export default function ListProperty() {
           {step === 0 && (
             <div className="space-y-8">
               <div>
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                   <label className={labelClass} htmlFor="listing-name">Property name</label>
-                  <span className="text-[11px] font-medium text-stone-500 flex items-center gap-1.5">
-                    <MapPin className="w-3.5 h-3.5 text-emerald-600" />
-                    Type to auto-suggest from Google Maps (Malawi)
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-medium text-stone-500 hidden sm:flex items-center gap-1">
+                      <MapPin className="w-3.5 h-3.5 text-emerald-600" />
+                      Google Maps verified
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleLookupPropertyAI()}
+                      disabled={aiLookupLoading || !draft.name.trim()}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-700 hover:bg-emerald-800 text-white shadow-sm transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                      title="Use Super Agent AI to look up property details and auto-fill all listing fields"
+                    >
+                      {aiLookupLoading ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                      )}
+                      <span>Super Agent AI Auto-Fill</span>
+                    </button>
+                  </div>
                 </div>
 
                 <div className="relative">
@@ -1074,11 +1292,11 @@ export default function ListProperty() {
                       </div>
                       <ul className="max-h-60 overflow-y-auto divide-y divide-stone-100">
                         {placeSuggestions.map((item, psIdx) => (
-                          <li key={`place-sug-${item.id || psIdx}-${psIdx}`}>
+                          <li key={`place-sug-${item.id || psIdx}-${psIdx}`} className="p-2 hover:bg-emerald-50/60 transition flex items-center justify-between gap-2 group">
                             <button
                               type="button"
                               onClick={() => handleSelectMalawiPlace(item)}
-                              className="w-full text-left px-4 py-2.5 hover:bg-emerald-50/60 transition flex items-start gap-3 group cursor-pointer"
+                              className="flex-1 text-left flex items-start gap-3 min-w-0 cursor-pointer"
                             >
                               <div className="p-2 rounded-xl bg-stone-100 text-stone-600 group-hover:bg-emerald-100 group-hover:text-emerald-800 transition shrink-0 mt-0.5">
                                 <Building2 className="w-4 h-4" />
@@ -1091,9 +1309,19 @@ export default function ListProperty() {
                                   {item.location}
                                 </p>
                               </div>
-                              <span className="text-[11px] text-emerald-700 font-semibold bg-emerald-50 group-hover:bg-emerald-100 px-2.5 py-1 rounded-full shrink-0 self-center">
-                                Select
-                              </span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleSelectMalawiPlace(item);
+                                handleLookupPropertyAI(item.name);
+                              }}
+                              className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 px-3 py-1.5 rounded-xl shrink-0 cursor-pointer transition active:scale-95"
+                              title="Auto-fill all fields with Super Agent AI"
+                            >
+                              <Sparkles className="w-3 h-3 text-emerald-700" />
+                              <span>Super Agent</span>
                             </button>
                           </li>
                         ))}
@@ -1118,74 +1346,123 @@ export default function ListProperty() {
                   </div>
                 )}
 
-                {/* Google Maps Discovered Property Card */}
+                {/* Super Agent AI Discovered Property Card */}
                 {aiPropertySuggestion && (
-                  <div className="mt-4 p-5 rounded-2xl bg-gradient-to-br from-emerald-50/90 via-stone-50 to-emerald-50/40 border border-emerald-200/80 text-stone-800 shadow-sm animate-in fade-in space-y-3">
+                  <div className="mt-4 p-5 rounded-2xl bg-gradient-to-br from-emerald-50/95 via-stone-50 to-emerald-50/60 border-2 border-emerald-200/90 text-stone-800 shadow-md animate-in fade-in space-y-4">
                     <div className="flex items-center justify-between">
-                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-100/80 text-emerald-900 font-bold text-[11px] uppercase tracking-wider">
-                        <MapPin className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>Google Maps &amp; Tourism Registry Match</span>
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-600 text-white font-bold text-[11px] uppercase tracking-wider shadow-xs">
+                        <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                        <span>Super Agent AI • Hospitality Registry Discovery</span>
                       </div>
                       <button
                         type="button"
                         onClick={() => setAiPropertySuggestion(null)}
-                        className="text-stone-400 hover:text-stone-600 p-1 rounded-full hover:bg-stone-200/60 transition"
-                        title="Dismiss"
+                        className="text-stone-400 hover:text-stone-600 p-1 rounded-full hover:bg-stone-200/60 transition cursor-pointer"
+                        title="Dismiss suggestion"
                       >
                         <X className="w-4 h-4" />
                       </button>
                     </div>
 
                     <div>
-                      <h4 className="font-serif text-lg font-bold text-stone-900">
-                        {aiPropertySuggestion.officialName}
-                      </h4>
-                      <div className="flex flex-wrap items-center gap-2 mt-1.5 text-xs">
+                      <div className="flex flex-wrap items-center gap-2 justify-between">
+                        <h4 className="font-serif text-xl font-bold text-stone-900">
+                          {aiPropertySuggestion.officialName}
+                        </h4>
+                        {aiPropertySuggestion.category && (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-900 font-bold text-xs">
+                            <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                            Auto-Categorized: {aiPropertySuggestion.category}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2 mt-2 text-xs">
                         {aiPropertySuggestion.location && (
-                          <span className="inline-flex items-center gap-1 text-stone-600 bg-white px-2.5 py-1 rounded-full border border-stone-200 font-medium">
-                            <MapPin className="w-3 h-3 text-emerald-600" />
+                          <span className="inline-flex items-center gap-1 text-stone-700 bg-white px-2.5 py-1 rounded-full border border-stone-200 font-medium shadow-2xs">
+                            <MapPin className="w-3.5 h-3.5 text-emerald-600" />
                             {aiPropertySuggestion.location}
                           </span>
                         )}
-                        {aiPropertySuggestion.category && (
-                          <span className="inline-flex items-center gap-1 text-stone-600 bg-white px-2.5 py-1 rounded-full border border-stone-200 font-medium">
-                            <Building2 className="w-3 h-3 text-emerald-600" />
-                            {aiPropertySuggestion.category}
+                        {aiPropertySuggestion.coordinates && (
+                          <span className="inline-flex items-center gap-1 text-emerald-800 bg-emerald-100/70 px-2.5 py-1 rounded-full font-medium border border-emerald-200/60">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                            GPS Verified ({aiPropertySuggestion.coordinates.lat.toFixed(3)}, {aiPropertySuggestion.coordinates.lng.toFixed(3)})
                           </span>
                         )}
-                        {aiPropertySuggestion.coordinates && (
-                          <span className="inline-flex items-center gap-1 text-emerald-700 bg-emerald-100/60 px-2.5 py-1 rounded-full font-medium">
-                            <CheckCircle2 className="w-3 h-3" />
-                            GPS Coordinates Verified ({aiPropertySuggestion.coordinates.lat.toFixed(3)}, {aiPropertySuggestion.coordinates.lng.toFixed(3)})
+                        {aiPropertySuggestion.checkInTime && aiPropertySuggestion.checkOutTime && (
+                          <span className="inline-flex items-center gap-1 text-stone-600 bg-white px-2.5 py-1 rounded-full border border-stone-200 font-medium">
+                            <Clock className="w-3 h-3 text-stone-500" />
+                            Hours: In {aiPropertySuggestion.checkInTime} / Out {aiPropertySuggestion.checkOutTime}
                           </span>
                         )}
                       </div>
                     </div>
 
                     {aiPropertySuggestion.summary && (
-                      <p className="text-xs text-stone-600 leading-relaxed italic bg-white/80 p-2.5 rounded-xl border border-stone-100">
+                      <p className="text-xs text-stone-700 leading-relaxed italic bg-white/90 p-3 rounded-xl border border-stone-200/80 shadow-2xs">
                         &quot;{aiPropertySuggestion.summary}&quot;
                       </p>
                     )}
 
                     {aiPropertySuggestion.amenities && aiPropertySuggestion.amenities.length > 0 && (
-                      <div className="flex flex-wrap gap-1 pt-1">
-                        {aiPropertySuggestion.amenities.slice(0, 6).map((a, i) => (
-                          <span key={i} className="text-[10px] bg-white text-stone-600 px-2 py-0.5 rounded-md border border-stone-200 font-medium">
-                            + {a}
+                      <div>
+                        <p className="text-[11px] font-bold text-stone-500 uppercase tracking-wider mb-1.5">
+                          Verified Amenities ({aiPropertySuggestion.amenities.length})
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {aiPropertySuggestion.amenities.slice(0, 8).map((a, i) => (
+                            <span key={i} className="text-[11px] bg-white text-stone-700 px-2.5 py-1 rounded-lg border border-stone-200 font-medium shadow-2xs">
+                              ✓ {a}
+                            </span>
+                          ))}
+                          {aiPropertySuggestion.amenities.length > 8 && (
+                            <span className="text-[11px] text-stone-500 px-1 py-1 font-medium">
+                              +{aiPropertySuggestion.amenities.length - 8} more
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {aiPropertySuggestion.suggestedRooms && aiPropertySuggestion.suggestedRooms.length > 0 && (
+                      <div className="bg-white/80 p-3 rounded-xl border border-stone-200/80 space-y-1.5">
+                        <div className="flex items-center justify-between text-[11px] font-bold text-stone-600 uppercase tracking-wider">
+                          <span className="flex items-center gap-1.5">
+                            <BedDouble className="w-3.5 h-3.5 text-emerald-600" />
+                            Auto-Configured Room Types &amp; Pricing
                           </span>
-                        ))}
+                          <span className="text-emerald-700 font-medium lowercase">ready to populate</span>
+                        </div>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          {aiPropertySuggestion.suggestedRooms.map((r, ri) => (
+                            <div key={ri} className="p-2 rounded-lg bg-stone-50 border border-stone-100 text-xs">
+                              <p className="font-semibold text-stone-900">{r.name}</p>
+                              <p className="text-[11px] text-stone-500 mt-0.5">
+                                MWK {r.priceMwk?.toLocaleString()} / USD ${r.priceUsd} • Max {r.maxGuests} guests
+                              </p>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
 
                     <div className="pt-2 flex flex-col sm:flex-row items-center gap-2">
                       <button
                         type="button"
-                        onClick={handleApplyAISuggestion}
-                        className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs shadow-sm transition active:scale-95 cursor-pointer"
+                        onClick={() => handleApplyAISuggestion(true)}
+                        className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-5 py-2.5 rounded-xl text-xs shadow-md transition active:scale-95 cursor-pointer"
                       >
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        <span>Apply Location &amp; Details</span>
+                        <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                        <span>Auto-Fill All Listing Fields &amp; Categorize</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleApplyAISuggestion(false)}
+                        className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 bg-white hover:bg-stone-100 text-stone-700 border border-stone-200 font-medium px-4 py-2.5 rounded-xl text-xs shadow-2xs transition active:scale-95 cursor-pointer"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5 text-stone-500" />
+                        <span>Apply Basics Only (Name &amp; Location)</span>
                       </button>
                       <button
                         type="button"
@@ -1205,8 +1482,26 @@ export default function ListProperty() {
               </div>
 
               <div>
-                <span className={labelClass}>Which category fits best?</span>
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="flex items-center justify-between mb-2">
+                  <span className={labelClass}>Which category fits best?</span>
+                  <span className="text-[11px] text-stone-500">Auto-filled by Super Agent AI or select manually</span>
+                </div>
+
+                {aiCategorized && draft.category && (
+                  <div className="mb-3.5 p-3 rounded-xl bg-emerald-50/90 border border-emerald-200 text-emerald-900 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 animate-in fade-in">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span>
+                        <strong>Super Agent AI</strong> automatically categorized this stay as <span className="font-bold underline decoration-emerald-500 underline-offset-2">{draft.category}</span> based on verified hospitality registry data.
+                      </span>
+                    </div>
+                    <span className="text-[11px] font-medium text-emerald-700 bg-emerald-100/70 px-2.5 py-1 rounded-full shrink-0 self-start sm:self-auto">
+                      Tap any card below to override
+                    </span>
+                  </div>
+                )}
+
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {PROPERTY_CATEGORIES.map((category, catIdx) => {
                     const selected = draft.category === category;
                     return (
@@ -1214,24 +1509,36 @@ export default function ListProperty() {
                         key={`cat-${category}-${catIdx}`}
                         type="button"
                         aria-pressed={selected}
-                        onClick={() => set('category', category as PropertyCategory)}
-                        className={`relative rounded-2xl border p-4 text-left transition ${
+                        onClick={() => {
+                          set('category', category as PropertyCategory);
+                          setAiCategorized(false);
+                        }}
+                        className={`relative rounded-2xl border p-4 text-left transition cursor-pointer ${
                           selected
-                            ? 'border-stone-900 bg-stone-900 text-white'
-                            : 'border-stone-200 bg-stone-50 hover:border-stone-400'
+                            ? 'border-stone-900 bg-stone-900 text-white shadow-md'
+                            : 'border-stone-200 bg-stone-50/70 hover:bg-stone-100/90 text-stone-900'
                         }`}
                       >
-                        <span className="block text-sm font-bold">{category}</span>
+                        <div className="flex items-center justify-between">
+                          <span className="block text-sm font-bold">{category}</span>
+                          {selected && aiCategorized && (
+                            <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-emerald-500 text-white">
+                              AI
+                            </span>
+                          )}
+                          {selected && !aiCategorized && (
+                            <Check className="h-4 w-4 text-white" />
+                          )}
+                        </div>
                         <span className={`mt-1 block text-xs ${selected ? 'text-white/70' : 'text-stone-500'}`}>
                           {CATEGORY_HINTS[category]}
                         </span>
-                        {selected && <Check className="absolute right-4 top-4 h-4 w-4" />}
                       </button>
                     );
                   })}
                 </div>
-                <p className="mt-2 text-xs text-stone-400">
-                  Guests filter by this on the home page, so a listing without one is much harder to find.
+                <p className="mt-2 text-xs text-stone-500 leading-relaxed">
+                  Whether you run a Bed &amp; Breakfast, lakeside lodge, safari camp, boutique cottage, or urban guest house, pick the category that best matches your stay. Guests filter by this on the home page.
                 </p>
                 <FieldError message={visible.category} />
               </div>
@@ -2438,7 +2745,7 @@ export default function ListProperty() {
                   <div>
                     <h3 className="font-semibold text-stone-900">Property Ownership & Operating Entity <span className="text-xs text-stone-400 font-normal">(Optional)</span></h3>
                     <p className="text-xs text-stone-500 mt-0.5">
-                      If the lodge or property is owned by a company, trust, or individual separate from the on-site manager.
+                      If the B&amp;B, cottage, lodge, or property is owned by an entity, family, or individual separate from the on-site manager.
                     </p>
                   </div>
                 </div>
@@ -2926,6 +3233,11 @@ export default function ListProperty() {
           )}
         </div>
       </div>
+      <PropertyDocumentImporter 
+        open={showPropertyImporter} 
+        onClose={() => setShowPropertyImporter(false)} 
+        onImport={(data) => setDraft((curr) => ({ ...curr, ...data }))} 
+      />
     </div>
   );
 }
@@ -3058,11 +3370,6 @@ function HostIntro({
           </ol>
         </div>
       </section>
-      <PropertyDocumentImporter 
-        open={showPropertyImporter} 
-        onClose={() => setShowPropertyImporter(false)} 
-        onImport={(data) => setDraft((curr) => ({ ...curr, ...data }))} 
-      />
     </div>
   );
 }

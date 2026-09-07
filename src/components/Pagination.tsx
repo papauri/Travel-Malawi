@@ -22,9 +22,9 @@ export default function Pagination({ currentPage, totalPages, onPageChange }: Pr
       </button>
       
       <div className="flex items-center gap-1">
-        {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page, pIdx) => (
           <button
-            key={page}
+            key={`page-${page}-${pIdx}`}
             onClick={() => onPageChange(page)}
             className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium transition ${
               currentPage === page

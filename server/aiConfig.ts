@@ -61,27 +61,27 @@ export const DEFAULT_PROVIDERS: Record<AIProviderId, ProviderConfig> = {
     ],
   },
   gemini: {
-    model: 'gemini-1.5-flash',
-    defaultModel: 'gemini-1.5-flash',
+    model: 'gemini-3.8-flash',
+    defaultModel: 'gemini-3.8-flash',
     name: 'Google Gemini',
     website: 'https://aistudio.google.com',
-    rateLimitNotice: 'Free Tier: 15 req/min, 1M tokens/min, 1,500 req/day.',
+    rateLimitNotice: 'Generous free tier with ultra-fast latency and multi-turn capabilities.',
     recommendedModels: [
       {
-        id: 'gemini-1.5-flash',
-        name: 'Gemini 1.5 Flash',
-        description: '⚡ Sweet Spot: Fast, generous free quota (15 RPM, 1M TPM)',
+        id: 'gemini-3.8-flash',
+        name: 'Gemini 3.8 Flash',
+        description: '⚡ Sweet Spot: State-of-the-art speed, multi-turn reasoning, ultra-fast 2-3s responses',
         isSweetSpot: true,
       },
       {
-        id: 'gemini-2.0-flash',
-        name: 'Gemini 2.0 Flash',
-        description: '🚀 Next-generation multimodal speed and low latency',
+        id: 'gemini-flash-latest',
+        name: 'Gemini Flash (Latest)',
+        description: '🚀 Lowest latency endpoint for rapid conversational chat',
       },
       {
-        id: 'gemini-1.5-pro',
-        name: 'Gemini 1.5 Pro',
-        description: '🧠 Complex analysis and 2M token context window',
+        id: 'gemini-3.1-pro-preview',
+        name: 'Gemini 3.1 Pro',
+        description: '🧠 Deep reasoning, complex hospitality analysis and high token context window',
       },
     ],
   },
@@ -244,6 +244,12 @@ export function loadAIConfig(): AISystemConfig {
           rateLimitNotice: DEFAULT_PROVIDERS[pid].rateLimitNotice,
         };
       });
+
+      // Auto-migrate slow experimental thinking checkpoints to blazing-fast production Flash
+      if (inMemoryConfig!.providers.gemini?.model === 'gemini-3.6-flash' || inMemoryConfig!.providers.gemini?.model === 'gemini-2.5-flash') {
+        inMemoryConfig!.providers.gemini.model = 'gemini-3.8-flash';
+        saveAIConfig(inMemoryConfig!);
+      }
 
       const oldProvider = inMemoryConfig.activeProvider;
       autoSelectWorkingProvider(inMemoryConfig);

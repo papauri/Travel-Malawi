@@ -151,8 +151,8 @@ export default function BroadcastManager({ hotelId, managerId }: BroadcastManage
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4">
-          {broadcasts.map(broadcast => (
-            <div key={broadcast.id} className={`p-5 rounded-2xl border transition-all ${broadcast.isActive ? 'bg-white border-stone-200 shadow-sm' : 'bg-stone-50 border-stone-200/60 opacity-60'}`}>
+          {broadcasts.map((broadcast, bIdx) => (
+            <div key={`${broadcast.id || 'bc'}-${bIdx}`} className={`p-5 rounded-2xl border transition-all ${broadcast.isActive ? 'bg-white border-stone-200 shadow-sm' : 'bg-stone-50 border-stone-200/60 opacity-60'}`}>
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-4">
                 <div className="flex items-start gap-3 sm:gap-4 flex-1 min-w-0">
                   <div className={`mt-0.5 p-2 rounded-full shrink-0 ${

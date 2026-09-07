@@ -112,13 +112,10 @@ export default function Navbar() {
                   // /dashboard bounces a non-host back to the home page.
                   <Link
                     to="/list-your-property"
-                    className="hidden md:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200/80 text-xs font-semibold shadow-2xs transition hover:scale-105 active:scale-95"
+                    className="hidden md:inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-stone-200 hover:border-stone-300 bg-stone-50 hover:bg-stone-100 text-stone-700 hover:text-stone-900 text-xs font-medium transition shadow-2xs"
                   >
-                    <Building2 className="w-3.5 h-3.5 text-emerald-700" />
-                    <span>List Your Lodge</span>
-                    <span className="bg-emerald-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider">
-                      0% Fee
-                    </span>
+                    <Building2 className="w-3.5 h-3.5 text-stone-500" />
+                    <span>List Your Property</span>
                   </Link>
                 )}
                 {isAdmin(user) && (
@@ -241,22 +238,35 @@ export default function Navbar() {
                             </Link>
                           </>
                         )}
-                        <Link
-                          to={hosting ? '/dashboard' : '/list-your-property'}
-                          onClick={() => setShowUserMenu(false)}
-                          className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-stone-600 hover:bg-stone-50 hover:text-stone-900 transition"
-                        >
-                          {hosting ? <LayoutDashboard className="h-4 w-4" /> : <Building2 className="h-4 w-4" />}
-                          {hosting ? 'Host dashboard' : 'List your property'}
-                        </Link>
-                        <Link
-                          to="/host-guide"
-                          onClick={() => setShowUserMenu(false)}
-                          className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-stone-600 hover:bg-stone-50 hover:text-stone-900 transition"
-                        >
-                          <BookOpen className="h-4 w-4 text-emerald-600" />
-                          <span>Host Starter Guide</span>
-                        </Link>
+                        {hosting ? (
+                          <>
+                            <Link
+                              to="/dashboard"
+                              onClick={() => setShowUserMenu(false)}
+                              className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-stone-600 hover:bg-stone-50 hover:text-stone-900 transition"
+                            >
+                              <LayoutDashboard className="h-4 w-4" />
+                              <span>Host dashboard</span>
+                            </Link>
+                            <Link
+                              to="/host-guide"
+                              onClick={() => setShowUserMenu(false)}
+                              className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-stone-600 hover:bg-stone-50 hover:text-stone-900 transition"
+                            >
+                              <BookOpen className="h-4 w-4 text-stone-500" />
+                              <span>Host Starter Guide</span>
+                            </Link>
+                          </>
+                        ) : (
+                          <Link
+                            to="/list-your-property"
+                            onClick={() => setShowUserMenu(false)}
+                            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-stone-600 hover:bg-stone-50 hover:text-stone-900 transition"
+                          >
+                            <Building2 className="h-4 w-4" />
+                            <span>List your property</span>
+                          </Link>
+                        )}
                         {isAdmin(user) && (
                           <Link
                             to="/admin"
@@ -351,13 +361,10 @@ export default function Navbar() {
 
                 <Link
                   to="/list-your-property"
-                  className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200/80 text-xs font-semibold shadow-2xs transition hover:scale-105 active:scale-95"
+                  className="hidden sm:inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-stone-200 hover:border-stone-300 bg-stone-50 hover:bg-stone-100 text-stone-700 hover:text-stone-900 text-xs font-medium transition shadow-2xs"
                 >
-                  <Building2 className="w-3.5 h-3.5 text-emerald-700" />
-                  <span>List Your Lodge</span>
-                  <span className="bg-emerald-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider">
-                    0% Fee
-                  </span>
+                  <Building2 className="w-3.5 h-3.5 text-stone-500" />
+                  <span>List Your Property</span>
                 </Link>
                 <button
                   onClick={() => openAuth('signin')}

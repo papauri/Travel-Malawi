@@ -208,11 +208,11 @@ export default function PriceRangeFilter({
               Popular Budget Tiers
             </span>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
-              {presets.map(preset => {
+              {presets.map((preset, pIdx) => {
                 const isSelected = minPrice === preset.min && maxPrice === preset.max;
                 return (
                   <button
-                    key={preset.label}
+                    key={`${preset.label}-${pIdx}`}
                     type="button"
                     onClick={() => onPriceChange(preset.min, preset.max)}
                     className={`text-left p-2.5 rounded-xl border transition-all duration-200 cursor-pointer ${

@@ -370,8 +370,8 @@ export default function AvailabilityCalendar({
         <div className="px-6 py-6">
           {/* Day name headers */}
           <div className="grid grid-cols-7 mb-2">
-            {DAY_NAMES.map(d => (
-              <div key={d} className="text-center text-xs font-semibold text-stone-400 uppercase tracking-wider py-2">
+            {DAY_NAMES.map((d, dIdx) => (
+              <div key={`${d}-${dIdx}`} className="text-center text-xs font-semibold text-stone-400 uppercase tracking-wider py-2">
                 {d}
               </div>
             ))}
@@ -449,8 +449,8 @@ export default function AvailabilityCalendar({
           {/* Legend */}
           <div className="flex items-center gap-6 mt-6 pt-4 border-t border-stone-100 flex-wrap">
             <span className="text-xs font-semibold text-stone-400 uppercase tracking-wider">Legend</span>
-            {legend.map(({ avail, label }) => (
-              <div key={avail} className="flex items-center gap-1.5">
+            {legend.map(({ avail, label }, lIdx) => (
+              <div key={`${avail}-${lIdx}`} className="flex items-center gap-1.5">
                 <span className={`h-2.5 w-2.5 rounded-full ${avail === 'blocked' ? 'bg-stone-800' : dotStyles[avail]}`} />
                 <span className="text-xs text-stone-500">{label}</span>
               </div>

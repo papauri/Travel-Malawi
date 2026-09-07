@@ -3,7 +3,7 @@ import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useAuthDialog } from '../contexts/AuthDialogContext';
-import { Search, LogIn, User as UserIcon, Briefcase, Building2, Heart, Menu, X, LogOut, Settings, ShieldCheck } from 'lucide-react';
+import { Search, LogIn, User as UserIcon, Briefcase, Building2, Heart, Menu, X, LogOut, Settings, ShieldCheck, BookOpen } from 'lucide-react';
 import { isHotelManager, isTraveller, describeRoles, isAdmin } from '../lib/roles';
 import { motion, AnimatePresence } from 'motion/react';
 import { openAccessPermissionsModal } from './AccessRequestModal';
@@ -168,25 +168,31 @@ export default function MobileNav() {
 
                 <div className="space-y-1">
                   {isManager ? (
-                    <Link
-                      to="/dashboard"
-                      className={`flex items-center gap-4 px-4 py-3.5 rounded-2xl transition ${pathname.startsWith('/dashboard') ? 'bg-stone-100 text-stone-900 font-bold' : 'text-stone-600 hover:bg-stone-50 hover:text-stone-900'}`}
-                    >
-                      <Building2 className="w-5 h-5" />
-                      <span>Host Dashboard</span>
-                    </Link>
+                    <>
+                      <Link
+                        to="/dashboard"
+                        className={`flex items-center gap-4 px-4 py-3.5 rounded-2xl transition ${pathname.startsWith('/dashboard') ? 'bg-stone-100 text-stone-900 font-bold' : 'text-stone-600 hover:bg-stone-50 hover:text-stone-900'}`}
+                      >
+                        <Building2 className="w-5 h-5 text-stone-700" />
+                        <span>Host Dashboard</span>
+                      </Link>
+                      <Link
+                        to="/host-guide"
+                        className={`flex items-center gap-4 px-4 py-3.5 rounded-2xl transition ${pathname === '/host-guide' ? 'bg-stone-100 text-stone-900 font-bold' : 'text-stone-600 hover:bg-stone-50 hover:text-stone-900'}`}
+                      >
+                        <BookOpen className="w-5 h-5 text-stone-500" />
+                        <span>Host Starter Pack</span>
+                      </Link>
+                    </>
                   ) : (
                     <Link
                       to="/list-your-property"
-                      className="flex items-center justify-between px-4 py-3.5 rounded-2xl transition bg-emerald-50 hover:bg-emerald-100 text-emerald-950 font-bold border border-emerald-200/80 shadow-2xs"
+                      className="flex items-center justify-between px-4 py-3.5 rounded-2xl transition bg-stone-100 hover:bg-stone-200/70 text-stone-800 font-medium border border-stone-200/80"
                     >
                       <div className="flex items-center gap-3">
-                        <Building2 className="w-5 h-5 text-emerald-700" />
+                        <Building2 className="w-5 h-5 text-stone-500" />
                         <span>List Your Property</span>
                       </div>
-                      <span className="bg-emerald-600 text-white text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full">
-                        0% Fee
-                      </span>
                     </Link>
                   )}
 

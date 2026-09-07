@@ -135,6 +135,35 @@ export function getHotelImage(hotel: { name?: string; imageUrl?: string; gallery
 }
 
 /**
+ * Default authentic photography tailored to a property category when creating drafts.
+ */
+export function getDefaultImageForCategory(category?: string): string {
+  switch (category) {
+    case 'Lake & Beach':
+      return '/hotels/kaya_main.jpg';
+    case 'Safari & Wildlife':
+      return 'https://images.unsplash.com/photo-1516426122078-c23e76319801?q=80&w=2936&auto=format&fit=crop';
+    case 'Luxury':
+      return '/hotels/pumulani_main.jpg';
+    case 'Bed & Breakfast':
+      return '/hotels/rosalyn_main.jpg';
+    case 'Guest House':
+      return '/hotels/rosalyn_gal1.jpg';
+    case 'Cottage & Chalet':
+      return '/hotels/makokola_gal1.jpg';
+    case 'Romantic Escape':
+      return '/hotels/kaya_gal1.jpg';
+    case 'Family':
+      return '/hotels/makokola_main.jpg';
+    case 'Adventure':
+      return 'https://upload.wikimedia.org/wikipedia/commons/1/15/Mulunguzi_dam_on_Zomba_Plateau.jpg';
+    default:
+      return '/hotels/rosalyn_main.jpg';
+  }
+}
+
+
+/**
  * The best image for a room type. Room records overwhelmingly have an empty
  * `imageUrl`, so this falls back to the parent hotel's photography before the
  * placeholder.

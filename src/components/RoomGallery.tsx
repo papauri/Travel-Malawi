@@ -34,7 +34,7 @@ export default function RoomGallery({ images, altPrefix }: Props) {
         className="w-full h-full flex overflow-x-auto snap-x snap-mandatory scrollbar-none"
       >
         {images.map((imgUrl, i) => (
-          <div key={i} className="min-w-full h-full shrink-0 snap-center relative">
+          <div key={`gallery-img-${imgUrl ? imgUrl.slice(-20) : 'img'}-${i}`} className="min-w-full h-full shrink-0 snap-center relative">
             <SmartImage
               src={imgUrl}
               alt={`${altPrefix} photo ${i + 1}`}

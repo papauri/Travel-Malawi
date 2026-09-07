@@ -281,10 +281,10 @@ export default function MyBookings() {
               <Megaphone className="w-5 h-5" /> Live Updates
             </h2>
             <div className="grid grid-cols-1 gap-4">
-              {broadcasts.filter(b => !hiddenBroadcastIds.includes(b.id!)).map(broadcast => {
+              {broadcasts.filter(b => !hiddenBroadcastIds.includes(b.id!)).map((broadcast, bIdx) => {
                 const hotel = grouped.upcoming.find(b => b.hotelId === broadcast.hotelId)?.hotel;
                 return (
-                  <div key={broadcast.id} className="bg-white border border-stone-200 rounded-3xl p-5 shadow-sm flex items-start gap-4">
+                  <div key={`${broadcast.id || 'bc'}-${bIdx}`} className="bg-white border border-stone-200 rounded-3xl p-5 shadow-sm flex items-start gap-4">
                     <div className={`mt-1 p-2 rounded-full shrink-0 ${
                       broadcast.type === 'alert' ? 'bg-red-100 text-red-600' :
                       broadcast.type === 'event' ? 'bg-amber-100 text-amber-600' :
@@ -322,9 +322,9 @@ export default function MyBookings() {
         )}
 
         <div className="flex gap-2 mb-8 sm:mb-10 border-b border-stone-200 overflow-x-auto scrollbar-hide snap-x touch-pan-x -mx-6 px-6 sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-          {tabs.map(tab => (
+          {tabs.map((tab, tIdx) => (
             <button
-              key={tab.key}
+              key={`${tab.key}-${tIdx}`}
               onClick={() => { setFilter(tab.key); setCurrentPage(1); }}
               className={`px-4 sm:px-5 py-3 text-sm font-semibold border-b-2 whitespace-nowrap shrink-0 snap-start min-h-[44px] transition ${
                 filter === tab.key
@@ -363,12 +363,12 @@ export default function MyBookings() {
           </div>
         ) : (
           <div className="space-y-6">
-            {visible.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map(booking => {
+            {visible.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((booking, bkIdx) => {
               const terms = cancellationTerms(booking);
               const nights = nightsBetween(booking.checkIn, booking.checkOut);
               const canReview = isStayComplete(booking) && booking.id && !reviewedBookingIds.has(booking.id);
               return (
-              <div key={booking.id} className="group flex flex-col md:flex-row bg-white border border-stone-200 rounded-2xl sm:rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+              <div key={`${booking.id || 'booking'}-${bkIdx}`} className="group flex flex-col md:flex-row bg-white border border-stone-200 rounded-2xl sm:rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                 <div className="md:w-72 h-56 md:h-auto bg-stone-100 relative overflow-hidden shrink-0">
                   {/* Resolved centrally, so a record with no stored imageUrl
                       still gets bundled photography instead of "No Image". */}

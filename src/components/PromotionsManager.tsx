@@ -68,8 +68,8 @@ export default function PromotionsManager({ hotel, onUpdate }: PromotionsManager
           </div>
         ) : (
           <div className="space-y-4">
-            {promotions.map(promo => (
-              <div key={promo.id} className="bg-white border border-stone-200 rounded-xl p-5 relative">
+            {promotions.map((promo, pIdx) => (
+              <div key={`${promo.id || 'promo'}-${pIdx}`} className="bg-white border border-stone-200 rounded-xl p-5 relative">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-1">Campaign Name</label>

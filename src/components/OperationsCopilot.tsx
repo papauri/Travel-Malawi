@@ -370,7 +370,38 @@ export default function OperationsCopilot() {
   const departuresCountToday = bookings.filter(b => b.checkOut === todayStr && b.status !== 'cancelled').length;
 
   const lastAssistantMsg = [...messages].reverse().find(m => m.role === 'assistant');
+  const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
   const dynamicSuggestions = lastAssistantMsg?.suggestedFollowUps;
+
+  const getGeneratingStatusText = (userText: string) => {
+    const clean = (userText || '').trim().toLowerCase().replace(/[!.,?]/g, '');
+    const greetings = [
+      'hi', 'hello', 'hey', 'good morning', 'good afternoon', 'good evening',
+      'hi there', 'hello there', 'muli bwanji', 'moni', 'how are you', 'who are you',
+      'sup', 'yo', 'greetings', 'morning', 'afternoon'
+    ];
+    if (greetings.includes(clean) || clean.length <= 4) {
+      return 'Concierge is replying...';
+    }
+    if (
+      clean.includes('rate') || clean.includes('price') || clean.includes('cost') ||
+      clean.includes('booking') || clean.includes('arrival') || clean.includes('checkout') ||
+      clean.includes('room') || clean.includes('occupan') || clean.includes('guest') ||
+      clean.includes('review') || clean.includes('menu') || clean.includes('food') ||
+      clean.includes('dish') || clean.includes('who') || clean.includes('owner') ||
+      clean.includes('manager') || clean.includes('wifi') || clean.includes('power')
+    ) {
+      return 'Consulting lodge records & bookings...';
+    }
+    if (
+      clean.includes('update') || clean.includes('change') || clean.includes('add') ||
+      clean.includes('set') || clean.includes('policy') || clean.includes('cancel') ||
+      clean.includes('confirm') || clean.includes('remove')
+    ) {
+      return 'Preparing operational proposal...';
+    }
+    return 'Concierge is thinking...';
+  };
 
   const handleSendMessage = async (textToSend?: string) => {
     const text = (textToSend || inputMessage).trim();
@@ -1584,9 +1615,9 @@ export default function OperationsCopilot() {
 
                   {/* Generating Spinner */}
                   {generating && (
-                    <div className="flex items-center gap-2 text-stone-500 text-xs p-2.5 bg-white rounded-2xl border border-stone-200 w-fit">
+                    <div className="flex items-center gap-2 text-stone-500 text-xs p-2.5 bg-white rounded-2xl border border-stone-200 w-fit animate-pulse">
                       <Loader2 className="w-3.5 h-3.5 animate-spin text-stone-400" />
-                      <span>Consulting live lodge records...</span>
+                      <span>{getGeneratingStatusText(lastUserMsg?.content || '')}</span>
                     </div>
                   )}
 

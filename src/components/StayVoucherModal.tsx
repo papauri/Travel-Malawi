@@ -48,7 +48,11 @@ export default function StayVoucherModal({ booking, isOpen, onClose }: Props) {
 
   if (!booking || !booking.hotel) return null;
   const hotel = booking.hotel;
-  const isLocked = booking.arrivalPin && !isUnlocked;
+
+  const todayStr = new Date().toISOString().split('T')[0];
+  const isArrivalDayOrLater = Boolean(booking?.checkIn && booking.checkIn <= todayStr);
+  const isUnlockedEffective = isUnlocked || isArrivalDayOrLater;
+  const isLocked = Boolean(booking?.arrivalPin && !isUnlockedEffective);
 
 
   return (
@@ -132,9 +136,9 @@ export default function StayVoucherModal({ booking, isOpen, onClose }: Props) {
                   <div className="w-16 h-16 bg-white rounded-2xl shadow-sm border border-stone-200 flex items-center justify-center mx-auto mb-4">
                     <Lock className="w-8 h-8 text-amber-500" />
                   </div>
-                  <h3 className="font-serif font-bold text-2xl text-stone-900 mb-2">Premium Features Locked</h3>
-                  <p className="text-stone-500 max-w-md mx-auto mb-6">
-                    Enter the 4-digit Arrival PIN provided by your host to unlock the WiFi password, daily board, and on-property perks.
+                  <h3 className="font-serif font-bold text-2xl text-stone-900 mb-2">Property Credentials Gated</h3>
+                  <p className="text-stone-500 max-w-md mx-auto mb-6 text-xs sm:text-sm leading-relaxed">
+                    Enter the 4-digit Arrival PIN provided by your host in chat, or these credentials (Wi-Fi QR, Daily Board &amp; perks) will unlock automatically on your check-in date ({booking.checkIn ? formatDateStr(booking.checkIn) : 'arrival'}).
                   </p>
                   
                   <form onSubmit={handleUnlock} className="flex flex-col items-center gap-4">
@@ -330,8 +334,8 @@ export default function StayVoucherModal({ booking, isOpen, onClose }: Props) {
                     <Users className="w-5 h-5 text-emerald-600" /> On-site Team
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {hotel.crew.map((member) => (
-                      <div key={member.id} className="border border-stone-200 rounded-2xl p-4 flex items-center gap-4 bg-white">
+                    {hotel.crew.map((member, mIdx) => (
+                      <div key={`${member.id || 'crew'}-${mIdx}`} className="border border-stone-200 rounded-2xl p-4 flex items-center gap-4 bg-white">
                         <div className="w-12 h-12 rounded-full bg-stone-100 flex items-center justify-center shrink-0">
                           <Users className="w-6 h-6 text-stone-400" />
                         </div>

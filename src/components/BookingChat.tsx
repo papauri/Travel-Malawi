@@ -1,21 +1,36 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { collection, query, orderBy, onSnapshot, addDoc, doc, setDoc, updateDoc } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, addDoc, doc, setDoc, updateDoc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { Booking, Message, User, ChatPresenceState } from '../types';
-import { Send, Loader2, MessageSquare, Eye, Check, CheckCheck } from 'lucide-react';
+import { Booking, Message, User, ChatPresenceState, Hotel, RoomType } from '../types';
+import { 
+  Send, Loader2, MessageSquare, Eye, Check, CheckCheck, 
+  ShieldCheck, Ticket, CheckCircle2, Clock, Key, Wifi, 
+  Wallet, XCircle, ChevronDown, ChevronUp, MapPin, 
+  Sparkles, Phone, AlertCircle
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 import { chimeForIncoming, newChimeState } from '../lib/notificationSound';
+import { formatDateStr, nightsBetween } from '../lib/dates';
+import PriceDisplay from './PriceDisplay';
+import StayVoucherModal from './StayVoucherModal';
 
 interface Props {
-  booking: Booking;
+  booking: Booking & { hotel?: Hotel; room?: RoomType };
   currentUser: User;
 }
 
 export default function BookingChat({ booking, currentUser }: Props) {
+  const [liveBooking, setLiveBooking] = useState<Booking & { hotel?: Hotel; room?: RoomType }>(booking);
+  const [hotel, setHotel] = useState<Hotel | null>(booking.hotel || null);
+  const [room, setRoom] = useState<RoomType | null>(booking.room || null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [showVoucherModal, setShowVoucherModal] = useState(false);
+  const [showDepositMenu, setShowDepositMenu] = useState(false);
+  const [showDetailsPanel, setShowDetailsPanel] = useState(false);
   const [presenceState, setPresenceState] = useState<ChatPresenceState | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -23,16 +38,58 @@ export default function BookingChat({ booking, currentUser }: Props) {
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastTypingSentRef = useRef<number>(0);
 
-  const isManager = currentUser.uid === booking.managerId;
-  const otherParticipantName = isManager ? booking.guestName : 'Host';
+  const isManager = currentUser.uid === liveBooking.managerId;
+  const otherParticipantName = isManager ? liveBooking.guestName : (hotel?.name || 'Host');
 
-  // 1. Listen to messages and presence in real-time
+  // 1. Fetch hotel and room if not provided on the initial booking object
+  useEffect(() => {
+    if (booking.hotel) {
+      setHotel(booking.hotel);
+    } else if (booking.hotelId) {
+      getDoc(doc(db, 'hotels', booking.hotelId))
+        .then(snap => {
+          if (snap.exists()) setHotel({ id: snap.id, ...snap.data() } as Hotel);
+        })
+        .catch(err => console.warn('Error fetching hotel for chat:', err));
+    }
+  }, [booking.hotel, booking.hotelId]);
+
+  useEffect(() => {
+    if (booking.room) {
+      setRoom(booking.room);
+    } else if (booking.roomTypeId) {
+      getDoc(doc(db, 'room_types', booking.roomTypeId))
+        .then(snap => {
+          if (snap.exists()) setRoom({ id: snap.id, ...snap.data() } as RoomType);
+        })
+        .catch(err => console.warn('Error fetching room for chat:', err));
+    }
+  }, [booking.room, booking.roomTypeId]);
+
+  // 2. Real-time listener on the booking document itself
   useEffect(() => {
     if (!booking.id) return;
-    
-    const presenceDocRef = doc(db, 'bookings', booking.id, 'presence', 'chat_state');
+    const unsub = onSnapshot(doc(db, 'bookings', booking.id), (snap) => {
+      if (snap.exists()) {
+        const data = snap.data() as Booking;
+        setLiveBooking(prev => ({
+          ...prev,
+          ...data,
+          id: snap.id,
+        }));
+      }
+    }, (err) => {
+      console.warn('Error listening to live booking updates:', err);
+    });
+    return () => unsub();
+  }, [booking.id]);
 
-    // Mark current user as inChat & update opened/seen timestamps
+  // 3. Listen to messages and presence in real-time
+  useEffect(() => {
+    if (!liveBooking.id) return;
+    
+    const presenceDocRef = doc(db, 'bookings', liveBooking.id, 'presence', 'chat_state');
+
     const setInitialPresence = async () => {
       try {
         const now = Date.now();
@@ -55,7 +112,6 @@ export default function BookingChat({ booking, currentUser }: Props) {
       setDoc(presenceDocRef, payload, { merge: true }).catch(() => {});
     }, 10000);
 
-    // Listen to presence updates (typing, opened, active)
     const unsubPresence = onSnapshot(presenceDocRef, (snap) => {
       if (snap.exists()) {
         setPresenceState(snap.data() as ChatPresenceState);
@@ -64,9 +120,8 @@ export default function BookingChat({ booking, currentUser }: Props) {
       console.warn('Error listening to booking chat presence:', err);
     });
 
-    // Listen to messages
     const q = query(
-      collection(db, 'bookings', booking.id, 'messages'),
+      collection(db, 'bookings', liveBooking.id, 'messages'),
       orderBy('createdAt', 'asc')
     );
     
@@ -76,7 +131,6 @@ export default function BookingChat({ booking, currentUser }: Props) {
       chimeForIncoming(msgs, currentUser?.uid, seenMessages);
       setLoading(false);
 
-      // Update last seen timestamp if new messages arrived
       if (msgs.length > 0) {
         const lastMsg = msgs[msgs.length - 1];
         if (lastMsg.senderId !== currentUser.uid) {
@@ -100,35 +154,34 @@ export default function BookingChat({ booking, currentUser }: Props) {
       unsubPresence();
       clearInterval(presenceInterval);
 
-      // Clear presence on unmount
       updateDoc(presenceDocRef, {
         [isManager ? 'managerInChat' : 'guestInChat']: false,
         [isManager ? 'managerTyping' : 'guestTyping']: false
       }).catch(() => {});
     };
-  }, [booking.id, currentUser.uid, isManager]);
+  }, [liveBooking.id, currentUser.uid, isManager]);
 
   // Handle typing state
   const setTypingState = useCallback(async (isTyping: boolean) => {
-    if (!booking.id) return;
+    if (!liveBooking.id) return;
     try {
-      const presenceDocRef = doc(db, 'bookings', booking.id, 'presence', 'chat_state');
+      const presenceDocRef = doc(db, 'bookings', liveBooking.id, 'presence', 'chat_state');
       const field = isManager ? 'managerTyping' : 'guestTyping';
       const atField = isManager ? 'managerTypingAt' : 'guestTypingAt';
       await updateDoc(presenceDocRef, {
         [field]: isTyping,
         [atField]: isTyping ? Date.now() : 0
       });
-    } catch (e) {
+    } catch {
       // ignore transient error
     }
-  }, [booking.id, isManager]);
+  }, [liveBooking.id, isManager]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const text = e.target.value;
     setNewMessage(text);
 
-    if (!booking.id) return;
+    if (!liveBooking.id) return;
 
     if (text.trim().length > 0) {
       const now = Date.now();
@@ -158,7 +211,7 @@ export default function BookingChat({ booking, currentUser }: Props) {
     setTypingState(false);
   };
 
-  // Determine typing & presence of other participant
+  // Participant presence info
   const otherIsTypingRaw = isManager ? presenceState?.guestTyping : presenceState?.managerTyping;
   const otherTypingAt = isManager ? (presenceState?.guestTypingAt || 0) : (presenceState?.managerTypingAt || 0);
   const isOtherTyping = Boolean(otherIsTypingRaw && (Date.now() - otherTypingAt < 5000));
@@ -178,9 +231,167 @@ export default function BookingChat({ booking, currentUser }: Props) {
     return `${d.toLocaleDateString([], { month: 'short', day: 'numeric' })}, ${timeStr}`;
   };
 
+  // --- ACTIONS: Approve & Issue Voucher ---
+  const handleApproveAndIssueVoucher = async () => {
+    if (!liveBooking.id) return;
+    setActionLoading(true);
+    try {
+      const newPin = liveBooking.arrivalPin || Math.floor(1000 + Math.random() * 9000).toString();
+      const now = Date.now();
+      
+      const patch = {
+        status: 'confirmed' as const,
+        arrivalPin: newPin,
+        voucherIssued: true,
+        updatedAt: now,
+      };
+
+      await updateDoc(doc(db, 'bookings', liveBooking.id), patch);
+      setLiveBooking(prev => ({ ...prev, ...patch }));
+
+      const voucherNoticeText = `🎉 Reservation Confirmed! Your Stay OS Digital Voucher has been issued.\n\n• Ref: ${liveBooking.reference || liveBooking.id.slice(0, 8)}\n• Dates: ${formatDateStr(liveBooking.checkIn)} – ${formatDateStr(liveBooking.checkOut)}\n• Room: ${room?.name || 'Selected Room'}\n• Balance Due: ${liveBooking.currency} ${liveBooking.total?.toLocaleString() ?? 0} (Payment on arrival)\n\nTap "View Digital Voucher" to access your verified booking pass, directions, and arrival PIN.`;
+
+      await addDoc(collection(db, 'bookings', liveBooking.id, 'messages'), {
+        bookingId: liveBooking.id,
+        hotelId: liveBooking.hotelId,
+        managerId: liveBooking.managerId,
+        guestId: liveBooking.guestId,
+        senderId: currentUser.uid,
+        senderName: currentUser.displayName || 'Host',
+        text: voucherNoticeText,
+        isVoucherNotice: true,
+        createdAt: now,
+      });
+
+      await updateDoc(doc(db, 'bookings', liveBooking.id), {
+        lastMessageAt: now,
+        lastMessageText: '🎉 Booking Confirmed! Digital Voucher Issued.',
+        lastMessageSenderId: currentUser.uid,
+        lastMessageSenderName: currentUser.displayName || 'Host',
+      }).catch(() => {});
+
+      try {
+        await fetch('/api/reminders/auto-generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            hotelId: liveBooking.hotelId,
+            guestName: liveBooking.guestName,
+            guestPhone: liveBooking.guestPhone || liveBooking.guestWhatsapp || '',
+            guestEmail: liveBooking.guestEmail || '',
+            checkIn: liveBooking.checkIn,
+            checkOut: liveBooking.checkOut,
+            bookingId: liveBooking.id,
+            roomName: room?.name,
+          }),
+        });
+      } catch {
+        // non-blocking
+      }
+
+      toast.success('Booking confirmed & Digital Voucher issued!');
+    } catch (err) {
+      console.error('Failed to confirm booking:', err);
+      toast.error('Failed to approve booking.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // --- ACTIONS: Insert Deposit Request Snippet ---
+  const handleInsertDepositSnippet = (type: 'mobile_money' | 'bank' | 'general') => {
+    const guestFirstName = liveBooking.guestName ? liveBooking.guestName.split(' ')[0] : 'there';
+    const dates = `${formatDateStr(liveBooking.checkIn)} to ${formatDateStr(liveBooking.checkOut)}`;
+    
+    let text = '';
+    if (type === 'mobile_money') {
+      text = `Hello ${guestFirstName}! We have received your booking request for ${dates}. To secure your room, please transfer a deposit via Airtel Money or TNM Mpamba:\n\n• Airtel Money: [Phone Number & Registered Name]\n• TNM Mpamba: [Phone Number & Registered Name]\n\nKindly reply with your transaction reference or screenshot, and I will confirm your Digital Voucher right away!`;
+    } else if (type === 'bank') {
+      text = `Hello ${guestFirstName}! We are pleased to hold your room for ${dates}. To confirm your reservation, please send a deposit via bank transfer:\n\n• Bank: [Bank Name]\n• Account Name: [Account Name]\n• Account Number: [Account Number]\n\nPlease send the deposit slip or confirmation code here so I can issue your voucher!`;
+    } else {
+      text = `Hello ${guestFirstName}! We have received your booking request for ${room?.name || 'the room'}. To confirm your reservation, we require a deposit. Would you prefer Airtel Money, TNM Mpamba, or Bank Transfer?`;
+    }
+
+    setNewMessage(text);
+    setShowDepositMenu(false);
+    toast.success('Deposit request template loaded. Edit details and send!');
+  };
+
+  // --- ACTIONS: Share Check-in Credentials (PIN & Wi-Fi) ---
+  const handleShareCredentials = async () => {
+    if (!liveBooking.id) return;
+    setActionLoading(true);
+    try {
+      const now = Date.now();
+      const pin = liveBooking.arrivalPin || 'Available on arrival';
+      const wifiSSID = hotel?.infrastructure?.wifiSSID || 'Available at reception';
+      const wifiPass = hotel?.infrastructure?.wifiPassword ? `\n• Wi-Fi Password: ${hotel.infrastructure.wifiPassword}` : '';
+      
+      const credText = `🔑 Check-in Credentials for ${hotel?.name || 'your stay'}:\n\n• Arrival PIN: ${pin}\n• Wi-Fi Network: ${wifiSSID}${wifiPass}\n• Check-in time: 14:00 onwards\n• Location: ${hotel?.location || 'See voucher for directions'}\n\nPresent your digital voucher at the front desk when you arrive. Safe travels!`;
+
+      await addDoc(collection(db, 'bookings', liveBooking.id, 'messages'), {
+        bookingId: liveBooking.id,
+        hotelId: liveBooking.hotelId,
+        managerId: liveBooking.managerId,
+        guestId: liveBooking.guestId,
+        senderId: currentUser.uid,
+        senderName: currentUser.displayName || 'Host',
+        text: credText,
+        isCredentialNotice: true,
+        createdAt: now,
+      });
+
+      await updateDoc(doc(db, 'bookings', liveBooking.id), {
+        lastMessageAt: now,
+        lastMessageText: '🔑 Check-in Credentials sent.',
+        lastMessageSenderId: currentUser.uid,
+        lastMessageSenderName: currentUser.displayName || 'Host',
+      }).catch(() => {});
+
+      toast.success('Check-in credentials shared with guest!');
+    } catch (err) {
+      console.error('Failed to share credentials:', err);
+      toast.error('Failed to send credentials.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // --- ACTIONS: Decline Booking ---
+  const handleDeclineBooking = async () => {
+    if (!window.confirm('Are you sure you want to decline this reservation request?')) return;
+    setActionLoading(true);
+    try {
+      const now = Date.now();
+      await updateDoc(doc(db, 'bookings', liveBooking.id), {
+        status: 'rejected',
+        updatedAt: now,
+      });
+
+      await addDoc(collection(db, 'bookings', liveBooking.id, 'messages'), {
+        bookingId: liveBooking.id,
+        hotelId: liveBooking.hotelId,
+        managerId: liveBooking.managerId,
+        guestId: liveBooking.guestId,
+        senderId: currentUser.uid,
+        senderName: currentUser.displayName || 'Host',
+        text: `The host was unable to accept this booking request for the requested dates (${formatDateStr(liveBooking.checkIn)} – ${formatDateStr(liveBooking.checkOut)}).`,
+        createdAt: now,
+      });
+
+      toast('Booking request declined.', { icon: 'ℹ️' });
+    } catch (err) {
+      console.error('Failed to decline booking:', err);
+      toast.error('Failed to decline request.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // --- Regular Send Message ---
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !booking.id) return;
+    if (!newMessage.trim() || !liveBooking.id) return;
     
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
@@ -189,36 +400,34 @@ export default function BookingChat({ booking, currentUser }: Props) {
     setSending(true);
     try {
       const now = Date.now();
-      await addDoc(collection(db, 'bookings', booking.id, 'messages'), {
-        bookingId: booking.id,
-        hotelId: booking.hotelId,
-        managerId: booking.managerId,
-        guestId: booking.guestId,
+      await addDoc(collection(db, 'bookings', liveBooking.id, 'messages'), {
+        bookingId: liveBooking.id,
+        hotelId: liveBooking.hotelId,
+        managerId: liveBooking.managerId,
+        guestId: liveBooking.guestId,
         senderId: currentUser.uid,
         senderName: currentUser.displayName || (isManager ? 'Host' : 'Guest'),
         text: newMessage.trim(),
         createdAt: now,
       });
 
-              // Update presence
-        const presenceDocRef = doc(db, 'bookings', booking.id, 'presence', 'chat_state');
-        await updateDoc(presenceDocRef, {
-          [isManager ? 'managerTyping' : 'guestTyping']: false,
-          [isManager ? 'managerLastSeenAt' : 'guestLastSeenAt']: now
-        }).catch(() => {});
+      const presenceDocRef = doc(db, 'bookings', liveBooking.id, 'presence', 'chat_state');
+      await updateDoc(presenceDocRef, {
+        [isManager ? 'managerTyping' : 'guestTyping']: false,
+        [isManager ? 'managerLastSeenAt' : 'guestLastSeenAt']: now
+      }).catch(() => {});
 
-        // Update the booking document with latest message so GlobalNotificationManager can catch it
-        const bookingRef = doc(db, 'bookings', booking.id);
-        await updateDoc(bookingRef, {
-          lastMessageAt: now,
-          lastMessageText: newMessage.trim(),
-          lastMessageSenderId: currentUser.uid,
-          lastMessageSenderName: currentUser.displayName || (isManager ? 'Host' : 'Guest'),
-          [isManager ? 'managerLastSeenAt' : 'guestLastSeenAt']: now,
-        }).catch(() => {});
+      const bookingRef = doc(db, 'bookings', liveBooking.id);
+      await updateDoc(bookingRef, {
+        lastMessageAt: now,
+        lastMessageText: newMessage.trim(),
+        lastMessageSenderId: currentUser.uid,
+        lastMessageSenderName: currentUser.displayName || (isManager ? 'Host' : 'Guest'),
+        [isManager ? 'managerLastSeenAt' : 'guestLastSeenAt']: now,
+      }).catch(() => {});
 
       setNewMessage('');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error sending message:', error);
       toast.error('Failed to send message.');
     } finally {
@@ -226,7 +435,6 @@ export default function BookingChat({ booking, currentUser }: Props) {
     }
   };
 
-  // Find index of the last message sent by me
   const lastMyMessageIndex = (() => {
     for (let i = messages.length - 1; i >= 0; i--) {
       if (messages[i].senderId === currentUser.uid) {
@@ -236,78 +444,232 @@ export default function BookingChat({ booking, currentUser }: Props) {
     return -1;
   })();
 
+  const nights = nightsBetween(liveBooking.checkIn, liveBooking.checkOut);
+
   return (
-    <div className="flex flex-col h-full bg-white rounded-3xl border border-stone-200 shadow-sm overflow-hidden min-h-[420px] max-h-[620px]">
-      {/* Header Bar */}
-      <div className="p-4 border-b border-stone-100 bg-stone-50/90">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="relative">
-              <div className="w-8 h-8 rounded-xl bg-stone-200 flex items-center justify-center text-stone-700 shrink-0">
-                <MessageSquare className="w-4 h-4" />
-              </div>
-              <span 
-                className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ring-2 ring-stone-50 transition-colors ${
-                  otherInChat ? 'bg-emerald-500 animate-pulse' : 'bg-stone-300'
-                }`}
-              />
+    <div className="flex flex-col h-full bg-white rounded-3xl border border-stone-200 shadow-sm overflow-hidden min-h-[440px] max-h-[640px] relative">
+      
+      {/* 1. Top Header Bar with Live Presence */}
+      <div className="px-4 py-3 border-b border-stone-100 bg-stone-50/95 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="relative shrink-0">
+            <div className="w-8 h-8 rounded-xl bg-stone-200 flex items-center justify-center text-stone-700">
+              <MessageSquare className="w-4 h-4" />
             </div>
-            <div>
-              <h3 className="font-bold text-stone-900 text-sm">
-                Chat with {otherParticipantName}
-              </h3>
-              
-              {/* Dynamic Status */}
-              <div className="flex items-center gap-1 mt-0.5">
-                {isOtherTyping ? (
-                  <span className="text-[11px] text-emerald-600 font-medium flex items-center gap-1 animate-pulse">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
-                    {otherParticipantName} is typing...
-                  </span>
-                ) : otherInChat ? (
-                  <span className="text-[11px] text-emerald-600 font-medium flex items-center gap-1">
-                    <Eye className="w-3 h-3 text-emerald-500 animate-pulse" />
-                    In chat right now
-                  </span>
-                ) : otherLastOpenedAt ? (
-                  <span className="text-[11px] text-stone-500">
-                    Opened {formatReceiptTime(otherLastOpenedAt)}
-                  </span>
-                ) : (
-                  <span className="text-[11px] text-stone-500">
-                    Booking ref: {booking.reference || booking.id.slice(0, 8)}
-                  </span>
-                )}
-              </div>
+            <span 
+              className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ring-2 ring-stone-50 transition-colors ${
+                otherInChat ? 'bg-emerald-500 animate-pulse' : 'bg-stone-300'
+              }`}
+            />
+          </div>
+          <div className="min-w-0">
+            <h3 className="font-bold text-stone-900 text-sm truncate">
+              {isManager ? liveBooking.guestName : (hotel?.name || 'Host')}
+            </h3>
+            
+            <div className="flex items-center gap-1.5 mt-0.2 text-[11px] text-stone-500 truncate">
+              {isOtherTyping ? (
+                <span className="text-emerald-600 font-medium flex items-center gap-1 animate-pulse">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+                  typing...
+                </span>
+              ) : otherInChat ? (
+                <span className="text-emerald-600 font-medium flex items-center gap-1">
+                  <Eye className="w-3 h-3 text-emerald-500 animate-pulse" />
+                  In chat now
+                </span>
+              ) : otherLastOpenedAt ? (
+                <span>Opened {formatReceiptTime(otherLastOpenedAt)}</span>
+              ) : (
+                <span>Ref: {liveBooking.reference || liveBooking.id.slice(0, 8)}</span>
+              )}
             </div>
           </div>
+        </div>
+
+        {/* Status Badge & Details Toggle */}
+        <div className="flex items-center gap-2 shrink-0">
+          {liveBooking.status === 'confirmed' ? (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Confirmed</span>
+            </span>
+          ) : liveBooking.status === 'pending' ? (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200/80">
+              <Clock className="w-3.5 h-3.5 text-amber-600" />
+              <span>Pending</span>
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-stone-100 text-stone-600">
+              <XCircle className="w-3.5 h-3.5" />
+              <span className="capitalize">{liveBooking.status}</span>
+            </span>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setShowDetailsPanel(!showDetailsPanel)}
+            className="p-1 text-stone-400 hover:text-stone-700 hover:bg-stone-200/50 rounded-lg transition"
+            title="Toggle reservation details"
+          >
+            {showDetailsPanel ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </button>
         </div>
       </div>
-      
-      {/* Active in chat banner */}
-      {otherInChat && !isOtherTyping && (
-        <div className="bg-emerald-50/70 border-b border-emerald-100 px-3.5 py-1.5 flex items-center justify-between text-xs text-emerald-800 animate-fadeIn">
-          <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-[11px] font-medium">{otherParticipantName} has opened this chat</span>
-          </div>
-          <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-100/70 px-2 py-0.5 rounded-full">
-            Active
-          </span>
-        </div>
-      )}
 
-      {/* Messages Scroll Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3.5 bg-stone-50/30">
+      {/* 2. Interactive Booking Gate & Action Bar */}
+      <div className="bg-stone-100/75 border-b border-stone-200/80 px-4 py-2.5 text-xs text-stone-700">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          {/* Stay Quick Summary */}
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-stone-900">
+              {formatDateStr(liveBooking.checkIn)} – {formatDateStr(liveBooking.checkOut)}
+            </span>
+            <span className="text-stone-300">·</span>
+            <span className="text-stone-500">
+              {nights} night{nights === 1 ? '' : 's'} · {liveBooking.guests} guest{liveBooking.guests === 1 ? '' : 's'}
+            </span>
+            <span className="text-stone-300">·</span>
+            <PriceDisplay amount={liveBooking.total ?? 0} currency={liveBooking.currency} className="font-bold text-stone-900" />
+          </div>
+
+          {/* Action Triggers */}
+          <div className="flex items-center gap-1.5">
+            {liveBooking.status === 'confirmed' ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setShowVoucherModal(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg shadow-2xs transition text-xs cursor-pointer"
+                >
+                  <Ticket className="w-3.5 h-3.5" /> View Voucher
+                </button>
+
+                {isManager && (
+                  <button
+                    type="button"
+                    onClick={handleShareCredentials}
+                    disabled={actionLoading}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white hover:bg-stone-50 border border-stone-200 text-stone-700 font-medium rounded-lg shadow-2xs transition text-xs cursor-pointer disabled:opacity-50"
+                    title="Send Arrival PIN & Wi-Fi into chat"
+                  >
+                    <Key className="w-3.5 h-3.5 text-amber-500" /> Share PIN &amp; Wi-Fi
+                  </button>
+                )}
+              </>
+            ) : liveBooking.status === 'pending' && isManager ? (
+              <>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setShowDepositMenu(!showDepositMenu)}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-stone-50 border border-stone-200 text-stone-700 font-medium rounded-lg shadow-2xs transition text-xs cursor-pointer"
+                  >
+                    <Wallet className="w-3.5 h-3.5 text-stone-500" /> Request Deposit
+                    <ChevronDown className="w-3 h-3 text-stone-400" />
+                  </button>
+
+                  {/* Deposit Menu Dropdown */}
+                  {showDepositMenu && (
+                    <div className="absolute right-0 top-full mt-1 w-56 bg-white border border-stone-200 rounded-xl shadow-lg p-1.5 z-30 space-y-1 animate-fadeIn">
+                      <p className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-stone-400">
+                        Deposit Instructions
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => handleInsertDepositSnippet('mobile_money')}
+                        className="w-full text-left px-2 py-1.5 rounded-lg text-xs hover:bg-stone-100 text-stone-800 transition"
+                      >
+                        📱 Airtel Money / Mpamba
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleInsertDepositSnippet('bank')}
+                        className="w-full text-left px-2 py-1.5 rounded-lg text-xs hover:bg-stone-100 text-stone-800 transition"
+                      >
+                        🏦 Bank Transfer Wire
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleInsertDepositSnippet('general')}
+                        className="w-full text-left px-2 py-1.5 rounded-lg text-xs hover:bg-stone-100 text-stone-800 transition"
+                      >
+                        💬 General Deposit Prompt
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleApproveAndIssueVoucher}
+                  disabled={actionLoading}
+                  className="inline-flex items-center gap-1 px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg shadow-2xs transition text-xs cursor-pointer disabled:opacity-50"
+                >
+                  {actionLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                  Approve &amp; Issue Voucher
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleDeclineBooking}
+                  disabled={actionLoading}
+                  className="p-1 text-stone-400 hover:text-red-600 rounded transition cursor-pointer"
+                  title="Decline request"
+                >
+                  <XCircle className="w-4 h-4" />
+                </button>
+              </>
+            ) : liveBooking.status === 'pending' && !isManager ? (
+              <span className="text-[11px] text-amber-700 font-medium">
+                Waiting for host confirmation &amp; voucher
+              </span>
+            ) : null}
+          </div>
+        </div>
+
+        {/* Expandable Details Panel */}
+        {showDetailsPanel && (
+          <div className="mt-3 pt-3 border-t border-stone-200/60 grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
+            <div className="bg-white/80 p-2 rounded-lg border border-stone-200/60">
+              <span className="text-stone-400 block text-[10px] uppercase font-bold">Room Type</span>
+              <span className="font-semibold text-stone-900 truncate block">{room?.name || 'Reserved Room'}</span>
+            </div>
+            <div className="bg-white/80 p-2 rounded-lg border border-stone-200/60">
+              <span className="text-stone-400 block text-[10px] uppercase font-bold">Property</span>
+              <span className="font-semibold text-stone-900 truncate block">{hotel?.name || 'Property'}</span>
+            </div>
+            <div className="bg-white/80 p-2 rounded-lg border border-stone-200/60">
+              <span className="text-stone-400 block text-[10px] uppercase font-bold">Arrival PIN</span>
+              <span className="font-mono font-bold text-stone-900">
+                {liveBooking.status === 'confirmed' 
+                  ? (liveBooking.arrivalPin || 'Generated')
+                  : 'Gated until confirmed'}
+              </span>
+            </div>
+            <div className="bg-white/80 p-2 rounded-lg border border-stone-200/60">
+              <span className="text-stone-400 block text-[10px] uppercase font-bold">Payment Method</span>
+              <span className="font-semibold text-stone-900">Direct / On Arrival</span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 3. Messages Scroll Area */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-3.5 bg-stone-50/40">
         {loading ? (
           <div className="h-full flex items-center justify-center">
             <Loader2 className="w-6 h-6 text-stone-300 animate-spin" />
           </div>
         ) : messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-stone-400 py-8">
-            <MessageSquare className="w-8 h-8 text-stone-300 mb-2" />
-            <p className="text-sm font-semibold text-stone-600">No messages yet</p>
-            <p className="text-xs text-stone-400 mt-0.5">Send a message regarding this reservation.</p>
+            <div className="w-12 h-12 rounded-2xl bg-stone-100 flex items-center justify-center text-stone-400 mb-3">
+              <MessageSquare className="w-6 h-6" />
+            </div>
+            <p className="text-sm font-semibold text-stone-700">No messages yet</p>
+            <p className="text-xs text-stone-400 mt-1 max-w-xs text-center">
+              Chat directly regarding dates, mobile money deposits, directions, and arrival arrangements.
+            </p>
           </div>
         ) : (
           messages.map((msg, index) => {
@@ -324,18 +686,81 @@ export default function BookingChat({ booking, currentUser }: Props) {
               )
             );
 
+            // Special Interactive Cards
+            const isVoucherMessage = (msg as any).isVoucherNotice || msg.text?.includes('Stay OS Digital Voucher');
+            const isCredentialMessage = (msg as any).isCredentialNotice || msg.text?.includes('Arrival PIN:');
+
             return (
-              <div key={msg.id || index} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-fadeIn`}>
+              <div key={`${msg.id || 'msg'}-${index}`} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-fadeIn`}>
                 <span className="text-[10px] text-stone-400 mb-1 px-1">{msg.senderName}</span>
-                <div 
-                  className={`px-4 py-2.5 rounded-2xl max-w-[85%] text-sm shadow-2xs leading-relaxed ${
-                    isMe 
-                      ? 'bg-stone-900 text-white rounded-tr-xs' 
-                      : 'bg-white border border-stone-200 text-stone-800 rounded-tl-xs'
-                  }`}
-                >
-                  {msg.text}
-                </div>
+                
+                {isVoucherMessage ? (
+                  // Interactive Digital Voucher Card in Chat
+                  <div className="bg-emerald-950 text-white rounded-2xl p-4 max-w-[90%] sm:max-w-md shadow-md border border-emerald-800 space-y-3">
+                    <div className="flex items-center justify-between border-b border-emerald-800/80 pb-2.5">
+                      <div className="flex items-center gap-2">
+                        <ShieldCheck className="w-5 h-5 text-emerald-400" />
+                        <span className="font-serif font-bold text-sm tracking-wide text-white">
+                          Stay OS Digital Voucher
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-mono font-bold bg-emerald-900 text-emerald-300 px-2 py-0.5 rounded">
+                        REF: {liveBooking.reference || liveBooking.id.slice(0, 8)}
+                      </span>
+                    </div>
+
+                    <div className="space-y-1 text-xs">
+                      <p className="font-semibold text-white text-sm">{hotel?.name || 'Confirmed Stay'}</p>
+                      <p className="text-emerald-200">
+                        {formatDateStr(liveBooking.checkIn)} – {formatDateStr(liveBooking.checkOut)} · {room?.name || 'Selected Room'}
+                      </p>
+                      <p className="text-[11px] text-emerald-300">
+                        Balance due on arrival: {liveBooking.currency} {liveBooking.total?.toLocaleString() ?? 0}
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowVoucherModal(true)}
+                      className="w-full py-2 bg-emerald-500 hover:bg-emerald-400 text-stone-950 font-bold text-xs rounded-xl shadow transition flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <Ticket className="w-4 h-4" /> Open Digital Voucher
+                    </button>
+                  </div>
+                ) : isCredentialMessage ? (
+                  // Interactive Check-in Credentials Card
+                  <div className="bg-amber-950 text-white rounded-2xl p-4 max-w-[90%] sm:max-w-md shadow-md border border-amber-800 space-y-2.5">
+                    <div className="flex items-center gap-2 border-b border-amber-800/80 pb-2">
+                      <Key className="w-4 h-4 text-amber-400" />
+                      <span className="font-serif font-bold text-xs tracking-wide text-amber-200">
+                        Arrival Credentials &amp; Access
+                      </span>
+                    </div>
+                    <p className="text-xs text-amber-100 whitespace-pre-wrap leading-relaxed">
+                      {msg.text}
+                    </p>
+                    {liveBooking.status === 'confirmed' && (
+                      <button
+                        type="button"
+                        onClick={() => setShowVoucherModal(true)}
+                        className="w-full mt-1 py-1.5 bg-amber-500 hover:bg-amber-400 text-stone-950 font-semibold text-xs rounded-lg transition flex items-center justify-center gap-1 cursor-pointer"
+                      >
+                        <Ticket className="w-3.5 h-3.5" /> Unlock in Voucher
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  // Regular message bubble
+                  <div 
+                    className={`px-4 py-2.5 rounded-2xl max-w-[85%] text-sm shadow-2xs leading-relaxed whitespace-pre-wrap ${
+                      isMe 
+                        ? 'bg-stone-900 text-white rounded-tr-xs' 
+                        : 'bg-white border border-stone-200 text-stone-800 rounded-tl-xs'
+                    }`}
+                  >
+                    {msg.text}
+                  </div>
+                )}
 
                 {/* Timestamp & Read receipts */}
                 <div className="flex items-center gap-1 mt-0.5 px-1 text-[10px]">
@@ -387,7 +812,7 @@ export default function BookingChat({ booking, currentUser }: Props) {
         <div ref={messagesEndRef} />
       </div>
       
-      {/* Input bar */}
+      {/* 4. Chat Input Bar */}
       <div className="p-3 bg-white border-t border-stone-100">
         <form onSubmit={handleSend} className="flex gap-2">
           <input
@@ -395,7 +820,11 @@ export default function BookingChat({ booking, currentUser }: Props) {
             value={newMessage}
             onChange={handleInputChange}
             onBlur={handleInputBlur}
-            placeholder="Type your message..."
+            placeholder={
+              isManager 
+                ? "Reply to guest or discuss deposit/arrival..." 
+                : "Ask about payment, transport, or arrival..."
+            }
             className="flex-1 bg-stone-100 border border-transparent focus:border-stone-400 focus:bg-white focus:ring-0 rounded-xl px-4 py-2.5 text-sm transition outline-none"
             disabled={sending}
           />
@@ -409,6 +838,19 @@ export default function BookingChat({ booking, currentUser }: Props) {
           </button>
         </form>
       </div>
+
+      {/* 5. Stay Voucher Modal Integration */}
+      {showVoucherModal && (
+        <StayVoucherModal
+          booking={{
+            ...liveBooking,
+            hotel: hotel || undefined,
+            room: room || undefined,
+          }}
+          isOpen={showVoucherModal}
+          onClose={() => setShowVoucherModal(false)}
+        />
+      )}
     </div>
   );
 }

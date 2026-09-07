@@ -45,6 +45,15 @@ async function startServer() {
   // Parse JSON bodies for API routes
   app.use(express.json());
 
+  // Health check routes for Cloud Run / AI Studio container probes
+  app.get('/api/health', (req, res) => {
+    res.status(200).json({ status: 'ok', time: new Date().toISOString() });
+  });
+
+  app.get('/health', (req, res) => {
+    res.status(200).json({ status: 'ok', time: new Date().toISOString() });
+  });
+
   // API route for upload
   app.post('/api/upload', upload.single('image'), (req, res) => {
     if (!req.file) {

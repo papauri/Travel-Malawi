@@ -33,6 +33,7 @@ export const PROPERTY_CATEGORIES = [
   'Luxury',
   'Bed & Breakfast',
   'Guest House',
+  'Cottage & Chalet',
 ] as const;
 
 export type PropertyCategory = (typeof PROPERTY_CATEGORIES)[number];
@@ -47,6 +48,7 @@ export const CATEGORY_HINTS: Record<PropertyCategory, string> = {
   Luxury: 'Premium rooms, full service, higher rates.',
   'Bed & Breakfast': 'Homely atmosphere with breakfast included.',
   'Guest House': 'Comfortable, private, and independent lodging.',
+  'Cottage & Chalet': 'Self-catering or hosted private cottage or chalet.',
 };
 
 /** Offered as one-tap chips; a host can still type anything else. */

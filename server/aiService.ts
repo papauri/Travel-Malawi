@@ -133,20 +133,52 @@ Do not output markdown code blocks or explanations.`);
 - Quick tip: One practical suggestion to increase inquiries.
 Keep the total response under 130 words in clear, friendly plain text without markdown headers.`);
   } else if (action === 'lookup_property') {
-    parts.push(`Look up this accommodation property in Malawi using your knowledge of Malawi tourism, lodges, safari camps, hotels, guesthouses, and Google Maps:`);
+    parts.push(`Look up this accommodation property in Malawi using your deep knowledge of Malawi tourism, lodges, B&Bs, cottages, guest houses, safari camps, lake retreats, and Google Maps:`);
     parts.push(`Property Name to search: ${entityName}`);
     if (location) parts.push(`Town / Area / Context: ${location}`);
     if (extraNotes) parts.push(`Additional clues: ${extraNotes}`);
-    parts.push(`Your task is to identify this real Malawian property or propose accurate hospitality details for it in Malawi.
+    parts.push(`Your task is to identify this real Malawian property (or synthesize highly authentic, realistic Malawian hospitality data for it) and fill in almost ALL listing fields.
+CRITICAL: You MUST accurately auto-categorize the property based on its characteristics.
+
 Return ONLY a valid JSON object with the following fields:
-- "matched": boolean (true if you recognize this specific lodge/hotel/camp in Malawi, false otherwise)
-- "officialName": string (official recognized name of the property, e.g. "Kaya Mawa", "Sunbird Livingstonia Beach", "Mayoka Village")
-- "category": string (MUST be one of: "Lake & Beach" | "Safari & Wildlife" | "Romantic Escape" | "Family" | "Adventure" | "Luxury" | "Bed & Breakfast" | "Guest House")
-- "location": string (Town or area name in Malawi, e.g. "Likoma Island", "Cape Maclear", "Senga Bay, Salima", "Nkhata Bay", "Area 43, Lilongwe", "Liwonde")
-- "locationNotes": string (practical arrival instructions, road turns, or lakeside access)
-- "description": string (welcoming, authentic 1-2 paragraph description highlighting the setting, views, comforts, and atmosphere)
-- "amenities": string[] (array of amenities it offers, e.g. ["Lake view", "Restaurant", "Bar", "Free WiFi", "Swimming pool", "Airport transfer", "Boat trips"])
+- "matched": boolean (true if you recognize this specific lodge/stay in Malawi, false if proposing best-fit defaults)
+- "officialName": string (official recognized or properly formatted name of the property, e.g. "Kaya Mawa", "Kumbali Country Lodge", "Warm Heart B&B", "Mayoka Village", "Zomba Forest Lodge")
+- "category": string (MUST be EXACTLY one of:
+    "Bed & Breakfast" | "Guest House" | "Cottage & Chalet" | "Lake & Beach" | "Safari & Wildlife" | "Romantic Escape" | "Family" | "Adventure" | "Luxury"
+  Categorization guidance:
+  • "Bed & Breakfast": Properties with B&B, Bed & Breakfast, homestay, or intimate breakfast-included stays.
+  • "Cottage & Chalet": Self-catering cottages, lakeside chalets, mountain cabins, private villas.
+  • "Guest House": City, suburban, or transit guest houses (e.g. Area 10/43 Lilongwe, Blantyre, Mzuzu, Zomba).
+  • "Lake & Beach": Stays located on Lake Malawi (Cape Maclear, Senga Bay, Salima, Mangochi, Likoma Island, Nkhata Bay, Chintheche, Monkey Bay).
+  • "Safari & Wildlife": Stays in or near national parks, game reserves, or safari areas (Liwonde, Majete, Nyika, Kasungu, Lengwe, Vwaza).
+  • "Luxury": High-end 5-star premier lodges/resorts with private plunge pools, fine dining, or exclusive lakeview suites.
+  • "Romantic Escape": Intimate couple hideaways, honeymoon suites, secluded hillside/lakeside retreats.
+  • "Family": Family resorts with multi-bedroom chalets and child-friendly amenities.
+  • "Adventure": Backpackers, diving lodges, hiking bases, eco-camps.
+)
+- "location": string (Town, district or specific area name in Malawi, e.g. "Likoma Island", "Cape Maclear", "Senga Bay, Salima", "Nkhata Bay", "Area 43, Lilongwe", "Liwonde")
+- "locationNotes": string (practical arrival directions, road turns, landmarks, dirt road distances, or lakeside boat instructions)
+- "description": string (welcoming, authentic 1-2 paragraph description of 80 to 180 words highlighting the setting, views, hospitality, comfort, and atmosphere)
+- "amenities": string[] (array of 6 to 12 relevant amenities it offers, chosen from: "Free WiFi", "Breakfast included", "Swimming pool", "Restaurant", "Bar", "Air conditioning", "Hot water", "Backup power", "Secure parking", "Airport transfer", "Lake view", "Private beach", "Boat trips", "Room service", "Laundry", "Family rooms", "Dedicated Workspace")
 - "coordinates": { "lat": number, "lng": number } | null (accurate GPS coordinates in Malawi if known)
+- "checkInTime": string (standard check-in time, e.g. "14:00")
+- "checkOutTime": string (standard check-out time, e.g. "10:00" or "11:00")
+- "suggestedRooms": array of 1 to 3 realistic room types tailored to this property with:
+    [
+      {
+        "name": string (e.g. "Deluxe Double Room (B&B)" or "Lakeview Chalet" or "Executive Suite" or "Safari Tent"),
+        "description": string (1-2 sentences on comforts, bed setup, and views),
+        "priceMwk": number (realistic nightly rate in MWK, e.g. 95000 to 280000),
+        "priceUsd": number (realistic nightly rate in USD, e.g. 55 to 160),
+        "maxGuests": number (e.g. 2, 3, or 4),
+        "baseGuests": number (typically 2),
+        "quantity": number (e.g. 2 to 5),
+        "amenities": string[] (e.g. ["Ensuite bathroom", "Ceiling fan", "Mosquito net", "Hot shower"])
+      }
+    ]
+- "contactPhone": string (e.g. "+265 991 234 567" or formatted Malawian phone)
+- "contactEmail": string (e.g. "reservations@property.mw" or clean contact email)
+- "contactWhatsapp": string (e.g. "+265 991 234 567")
 - "confidence": "high" | "medium" | "low"
 - "summary": string (1-sentence summary of what makes this stay special)
 
@@ -327,7 +359,11 @@ async function callGemini(
   temperature: number = 0.7,
   maxTokens: number = 750
 ): Promise<string> {
-  const cleanModel = model.replace(/^models\//, '');
+  let cleanModel = model.replace(/^models\//, '');
+  // Auto-upgrade legacy/slow experimental thinking checkpoints to blazing-fast production Flash
+  if (cleanModel === 'gemini-3.6-flash' || cleanModel === 'gemini-2.5-flash') {
+    cleanModel = 'gemini-3.8-flash';
+  }
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${apiKey}`;
   const maxRetries = 4;
 
@@ -348,6 +384,7 @@ async function callGemini(
         generationConfig: {
           temperature,
           maxOutputTokens: maxTokens,
+          ...(cleanModel.includes('flash') ? { thinkingConfig: { thinkingBudget: 100 } } : {}),
         },
       }),
     });
@@ -504,7 +541,6 @@ async function executeWithProvider(
   const cacheKey = buildCacheKey(providerId, model, req);
   const cached = responseCache.get(cacheKey);
   if (cached && (Date.now() - cached.timestamp < CACHE_TTL_MS)) {
-    console.log(`[AI Service] Cache hit for ${req.action} (${providerId}/${model})`);
     return {
       text: cached.text,
       provider: providerId,
@@ -514,6 +550,8 @@ async function executeWithProvider(
   }
 
   const userPrompt = buildUserPrompt(req);
+
+  const targetMaxTokens = req.action === 'lookup_property' ? 1800 : 750;
 
   // Execute request through the rate pacer queue
   const generatedText = await enqueueAIRequest(providerId, async () => {
@@ -525,7 +563,9 @@ async function executeWithProvider(
           apiKey,
           model || 'deepseek-chat',
           SYSTEM_PROMPT,
-          userPrompt
+          userPrompt,
+          0.7,
+          targetMaxTokens
         );
 
       case 'openai':
@@ -535,7 +575,9 @@ async function executeWithProvider(
           apiKey,
           model || 'gpt-4o-mini',
           SYSTEM_PROMPT,
-          userPrompt
+          userPrompt,
+          0.7,
+          targetMaxTokens
         );
 
       case 'mistral':
@@ -545,7 +587,9 @@ async function executeWithProvider(
           apiKey,
           model || 'mistral-small-latest',
           SYSTEM_PROMPT,
-          userPrompt
+          userPrompt,
+          0.7,
+          targetMaxTokens
         );
 
       case 'groq':
@@ -555,16 +599,20 @@ async function executeWithProvider(
           apiKey,
           model || 'llama-3.3-70b-versatile',
           SYSTEM_PROMPT,
-          userPrompt
+          userPrompt,
+          0.7,
+          targetMaxTokens
         );
 
       case 'gemini':
         return callGemini(
           'gemini',
           apiKey,
-          model || 'gemini-1.5-flash',
+          model || 'gemini-3.8-flash',
           SYSTEM_PROMPT,
-          userPrompt
+          userPrompt,
+          0.7,
+          targetMaxTokens
         );
 
       case 'anthropic':
@@ -573,7 +621,9 @@ async function executeWithProvider(
           apiKey,
           model || 'claude-3-5-haiku-20241022',
           SYSTEM_PROMPT,
-          userPrompt
+          userPrompt,
+          0.7,
+          targetMaxTokens
         );
 
       default:
@@ -656,13 +706,9 @@ export async function executeAIGeneration(
   for (const providerId of providers) {
     try {
       const result = await executeWithProvider(providerId, req, config);
-      if (providerId !== config.activeProvider) {
-        console.log(`[AI Failover] Successfully failed over from ${config.activeProvider} to ${providerId}`);
-      }
       return result;
     } catch (err: any) {
       lastError = err;
-      console.warn(`[AI Failover] Provider ${providerId} failed: ${err.message}. Trying next...`);
       if (isAuthError(err.message)) {
         markProviderValidity(providerId, false, err.message);
       }
@@ -1506,6 +1552,40 @@ USER MESSAGE:
 "${req.message}"
 `;
 
+  const cleanMsg = (req.message || '').trim().toLowerCase().replace(/[!.,?]/g, '');
+  const isGreeting = [
+    'hi', 'hello', 'hey', 'good morning', 'good afternoon', 'good evening',
+    'hi there', 'hello there', 'muli bwanji', 'moni', 'how are you', 'who are you',
+    'sup', 'yo', 'greetings', 'morning', 'afternoon'
+  ].includes(cleanMsg);
+
+  const greetingPrompt = `
+CURRENT USER & CONTEXT:
+- Name: ${cleanFirstName || 'Partner'}
+- Access Level: ${isAdminUser ? 'Executive Platform Access (all platform properties)' : 'Property Manager'}
+- Properties Managed (${req.context.properties.length}): ${req.context.properties.map(p => `"${p.name}" (${p.location})`).join(', ') || 'None registered yet'}
+- Quick Booking Status: ${arrivalsToday.length} arrivals today, ${departuresToday.length} departures today
+- Current Date & Time: ${today} ${time}
+
+${learnedRulesSummary}
+${autonomousPatchesSummary}
+
+CONVERSATION HISTORY:
+${(req.history || []).slice(-4).map(h => `${h.role === 'user' ? 'User' : 'Assistant'}: ${h.content}`).join('\n')}
+
+USER GREETING:
+"${req.message}"
+
+INSTRUCTIONS:
+1. Greet the user warmly and respectfully by name (${cleanFirstName || 'Host'}) with authentic Malawian hospitality (e.g. *Moni!* or *Muli bwanji!*).
+2. Introduce yourself briefly as their dedicated Lodge Concierge for Travel Malawi.
+3. Proactively mention 2-3 quick operational things you can assist with right now (e.g. reviewing arrivals/checkouts for today, checking room rates in USD/MWK, adjusting property status, or guest concierge recommendations).
+4. Keep the greeting concise and welcoming (2-3 sentences).
+5. Append the \`\`\`suggested_follow_ups JSON block with 3 clean follow-up questions tailored to their properties.
+`;
+
+  const finalUserPrompt = isGreeting ? greetingPrompt : userPrompt;
+
   const rawGenerated = await enqueueAIRequest(providerId, async () => {
     switch (providerId) {
       case 'deepseek':
@@ -1515,7 +1595,7 @@ USER MESSAGE:
           apiKey,
           model || 'deepseek-chat',
           OPERATIONS_SYSTEM_PROMPT,
-          userPrompt,
+          finalUserPrompt,
           0.4,
           1200
         );
@@ -1527,7 +1607,7 @@ USER MESSAGE:
           apiKey,
           model || 'gpt-4o-mini',
           OPERATIONS_SYSTEM_PROMPT,
-          userPrompt,
+          finalUserPrompt,
           0.4,
           1200
         );
@@ -1539,7 +1619,7 @@ USER MESSAGE:
           apiKey,
           model || 'mistral-small-latest',
           OPERATIONS_SYSTEM_PROMPT,
-          userPrompt,
+          finalUserPrompt,
           0.4,
           1200
         );
@@ -1551,7 +1631,7 @@ USER MESSAGE:
           apiKey,
           model || 'llama-3.3-70b-versatile',
           OPERATIONS_SYSTEM_PROMPT,
-          userPrompt,
+          finalUserPrompt,
           0.4,
           1200
         );
@@ -1560,9 +1640,9 @@ USER MESSAGE:
         return callGemini(
           'gemini',
           apiKey,
-          model || 'gemini-1.5-flash',
+          model || 'gemini-3.8-flash',
           OPERATIONS_SYSTEM_PROMPT,
-          userPrompt,
+          finalUserPrompt,
           0.4,
           1200
         );
@@ -1573,7 +1653,7 @@ USER MESSAGE:
           apiKey,
           model || 'claude-3-5-haiku-20241022',
           OPERATIONS_SYSTEM_PROMPT,
-          userPrompt,
+          finalUserPrompt,
           0.4,
           1200
         );
@@ -1727,13 +1807,9 @@ export async function executeOperationsAssistantChat(req: OperationsAssistantReq
   for (const providerId of providers) {
     try {
       const result = await executeOperationsChatWithProvider(providerId, req, config);
-      if (providerId !== config.activeProvider) {
-        console.log(`[AI Failover] Successfully failed over from ${config.activeProvider} to ${providerId} for Operations Chat`);
-      }
       return result;
     } catch (err: any) {
       lastError = err;
-      console.warn(`[AI Failover] Provider ${providerId} failed in Operations Chat: ${err.message}. Trying next...`);
       if (isAuthError(err.message)) {
         markProviderValidity(providerId, false, err.message);
       }
@@ -1866,7 +1942,7 @@ Rules:
         let extractedText: string;
 
         if (providerId === 'gemini') {
-          const model = config.providers.gemini?.model || 'gemini-1.5-flash';
+          const model = config.providers.gemini?.model || 'gemini-3.8-flash';
           const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
           const response = await fetch(url, {
             method: 'POST',
@@ -1999,7 +2075,7 @@ Rules:
 
         let responseText: string;
         if (providerId === 'gemini') {
-          responseText = await callGemini(providerId, apiKey, model || 'gemini-1.5-flash', 'You extract structured menu data.', fullPrompt);
+          responseText = await callGemini(providerId, apiKey, model || 'gemini-3.8-flash', 'You extract structured menu data.', fullPrompt);
         } else if (providerId === 'anthropic') {
           responseText = await callAnthropic(providerId, apiKey, model || 'claude-3-5-haiku-20241022', 'You extract structured menu data.', fullPrompt);
         } else {
@@ -2088,7 +2164,7 @@ Rules:
         let extractedText: string;
 
         if (providerId === 'gemini') {
-          const model = config.providers.gemini?.model || 'gemini-1.5-flash';
+          const model = config.providers.gemini?.model || 'gemini-3.8-flash';
           const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
           const response = await fetch(url, {
             method: 'POST',
@@ -2213,7 +2289,7 @@ Rules:
 
         let responseText: string;
         if (providerId === 'gemini') {
-          responseText = await callGemini(providerId, apiKey, model || 'gemini-1.5-flash', 'You extract structured property data.', fullPrompt);
+          responseText = await callGemini(providerId, apiKey, model || 'gemini-3.8-flash', 'You extract structured property data.', fullPrompt);
         } else if (providerId === 'anthropic') {
           responseText = await callAnthropic(providerId, apiKey, model || 'claude-3-5-haiku-20241022', 'You extract structured property data.', fullPrompt);
         } else {

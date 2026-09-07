@@ -5,13 +5,6 @@
 // We simulate email for this preview, or use Ethereal for testing.
 
 export async function sendOfflineNotification(email: string, subject: string, message: string) {
-  console.log(`\n==============================================`);
-  console.log(`📧 OFFLINE NOTIFICATION (Email)`);
-  console.log(`To: ${email}`);
-  console.log(`Subject: ${subject}`);
-  console.log(`Message: ${message}`);
-  console.log(`==============================================\n`);
-  
   // Real implementation would look like this:
   /*
   const transporter = nodemailer.createTransport({

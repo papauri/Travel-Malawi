@@ -32,7 +32,7 @@ const CustomSelect = ({ value, options, onChange, placeholder }: { value: string
           }}
           className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-stone-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none"
         >
-          {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          {options.map((o, oIdx) => <option key={`${o.value}-${oIdx}`} value={o.value}>{o.label}</option>)}
           <option value="__CUSTOM__">Other (Custom)...</option>
         </select>
       ) : (
@@ -336,8 +336,8 @@ export default function StayOSManager({ hotel }: StayOSManagerProps) {
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {crew.map((c) => (
-              <div key={c.id} className="bg-white border border-stone-200 rounded-2xl p-6 shadow-sm relative group">
+            {crew.map((c, cIdx) => (
+              <div key={`${c.id || 'crew'}-${cIdx}`} className="bg-white border border-stone-200 rounded-2xl p-6 shadow-sm relative group">
                 <button
                   onClick={() => removeCrew(c.id)}
                   className="absolute top-4 right-4 p-2 text-stone-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition opacity-0 group-hover:opacity-100"

@@ -193,22 +193,6 @@ export function checkAndFireReminders(): { fired: ServerReminder[] } {
       r.sent = true;
       r.sentAt = now.toISOString();
       fired.push(r);
-
-      // Log the reminder (since email is mocked)
-      const recipientLabel = r.recipientType === 'guest' ? r.guestName : `Manager of ${r.hotelName}`;
-      console.log(`\n🔔 REMINDER FIRED`);
-      console.log(`  To: ${recipientLabel}${r.guestEmail ? ` (${r.guestEmail})` : ''}`);
-      console.log(`  Type: ${r.type}`);
-      console.log(`  Message: ${r.message}`);
-      console.log(`  Booking: ${r.bookingRef}`);
-
-      // If WhatsApp available, log the link
-      if (r.guestWhatsapp) {
-        const phone = r.guestWhatsapp.replace(/[^0-9]/g, '');
-        const waMsg = encodeURIComponent(r.message);
-        console.log(`  WhatsApp: https://wa.me/${phone}?text=${waMsg}`);
-      }
-      console.log('');
     }
   }
 

@@ -713,9 +713,9 @@ export default function HotelDetails() {
           {/* Active Property Broadcasts / Live Alerts - Strictly for logged-in guests with a stay booking */}
           {user && hasStayBooking && broadcasts.length > 0 && (
             <div className="mt-6 space-y-3">
-              {broadcasts.map(b => (
+              {broadcasts.map((b, bIdx) => (
                 <div
-                  key={b.id}
+                  key={`${b.id || 'bc'}-${bIdx}`}
                   className={`flex items-start gap-3.5 rounded-2xl p-4 sm:p-5 border transition-all ${
                     b.type === 'alert'
                       ? 'bg-red-50 border-red-200 text-red-950'
@@ -767,9 +767,9 @@ export default function HotelDetails() {
           {offeredCurrencies.length > 1 && (
             <div className="mt-6 flex items-center gap-2">
               <span className="text-xs font-semibold text-stone-400 uppercase tracking-wider mr-1">Prices in</span>
-              {offeredCurrencies.map(code => (
+              {offeredCurrencies.map((code, cIdx) => (
                 <button
-                  key={code}
+                  key={`${code}-${cIdx}`}
                   type="button"
                   onClick={() => chooseCurrency(code)}
                   aria-pressed={currency === code}
@@ -919,8 +919,8 @@ export default function HotelDetails() {
                             </span>
                             <span className="text-stone-500 uppercase text-[10px] font-bold">/ night</span>
                           </div>
-                          {roomCurrencies(room).filter(c => c !== roomDisplayCurrency).map(code => (
-                            <div key={code} className="text-xs text-stone-400 mt-1 font-medium">
+                          {roomCurrencies(room).filter(c => c !== roomDisplayCurrency).map((code, cIdx) => (
+                            <div key={`${code}-${cIdx}`} className="text-xs text-stone-400 mt-1 font-medium">
                               or <PriceDisplay amount={roomPrice(room, code) ?? 0} currency={code} /> / night
                             </div>
                           ))}
@@ -1835,9 +1835,9 @@ export default function HotelDetails() {
                       authored in that currency, not by converting this total. */}
                   {roomCurrencies(selectedRoom).length > 1 && (
                     <div className="flex gap-1 mt-3">
-                      {roomCurrencies(selectedRoom).map(code => (
+                      {roomCurrencies(selectedRoom).map((code, cIdx) => (
                         <button
-                          key={code}
+                          key={`${code}-${cIdx}`}
                           type="button"
                           onClick={() => chooseCurrency(code)}
                           aria-pressed={bookingCurrency === code}

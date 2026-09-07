@@ -474,9 +474,9 @@ export default function LocationPicker({
           <span className="text-stone-400 font-semibold uppercase text-[10px] shrink-0 mr-1 flex items-center gap-1">
             <Compass className="h-3 w-3 text-stone-500" /> Jump to:
           </span>
-          {POPULAR_REGIONS.map(reg => (
+          {POPULAR_REGIONS.map((reg, regIdx) => (
             <button
-              key={reg.label}
+              key={`${reg.label}-${regIdx}`}
               type="button"
               onClick={() => {
                 onChange(reg.coords);

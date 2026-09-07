@@ -1,6 +1,6 @@
 {
   "name": "Travel Malawi",
-  "description": "A globally inclusive platform connecting the world to independent lodges and camps across Malawi.",
+  "description": "A direct booking platform connecting travelers with independent lodges, B&Bs, cottages, guest houses, and safari camps across Malawi.",
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
   ],

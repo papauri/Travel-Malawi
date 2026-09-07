@@ -85,7 +85,7 @@ function RootContent({ children }: { children?: React.ReactNode }) {
       <AccessRequestModal />
       <CompareWidget />
       {/* Strictly scoped to current authenticated session - unmounted and completely destroyed on logout or user switch */}
-      {user && <OperationsCopilot key={user.uid} />}
+      {user && <OperationsCopilot key={`operations-copilot-${user.uid}`} />}
       <PageLoader />
       <main className="flex-1">
         {children || <Outlet />}

@@ -360,11 +360,11 @@ export default function DirectionsPanel({
         {/* Airport & City preset origins */}
         <div className="flex flex-wrap items-center gap-2 mb-4">
           <span className="text-xs text-stone-400 font-medium">Or from:</span>
-          {COMMON_ORIGINS.map(origin => {
+          {COMMON_ORIGINS.map((origin, oIdx) => {
             const isSelected = selectedOriginName === origin.label;
             return (
               <button
-                key={origin.label}
+                key={`${origin.label}-${oIdx}`}
                 type="button"
                 onClick={() => handleSelectPresetOrigin(origin)}
                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition ${

@@ -95,7 +95,7 @@ export default function MarketingDeck() {
           </h1>
 
           <p className="mt-6 text-stone-300 text-base sm:text-xl max-w-3xl leading-relaxed font-light">
-            You were brought on to lead everything outside of coding—lodge acquisition, brand growth, guest concierge, and community partnerships. This playbook gives you the complete picture of our product, value proposition, and operational roadmap.
+            You were brought on to lead everything outside of coding—host and property acquisition, brand growth, guest concierge, and community partnerships. This playbook gives you the complete picture of our product, value proposition, and operational roadmap.
           </p>
 
           <div className="mt-8 flex flex-wrap items-center gap-3 text-xs text-stone-400">
@@ -301,7 +301,7 @@ export default function MarketingDeck() {
                 <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
                   1
                 </div>
-                <h3 className="font-serif font-bold text-stone-900 text-lg">Lodge Acquisition</h3>
+                <h3 className="font-serif font-bold text-stone-900 text-lg">Property &amp; Host Acquisition</h3>
               </div>
               <p className="text-stone-600 text-xs sm:text-sm leading-relaxed">
                 Identify and contact top-tier and mid-tier accommodations across Mangochi, Cape Maclear, Likoma, Zomba, Liwonde, and Lilongwe. Reach out via WhatsApp or phone, pitch the 0% commission advantage, and guide them to list on <code className="bg-stone-100 px-1 py-0.5 rounded text-stone-800 text-xs">/list-your-property</code>.
@@ -366,10 +366,10 @@ export default function MarketingDeck() {
           <div className="max-w-3xl">
             <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider">4. Outreach Scripts</span>
             <h2 className="text-2xl sm:text-3xl font-serif text-stone-900 mt-2 font-bold tracking-tight">
-              Lodge Acquisition Pitch Scripts
+              Host &amp; Property Acquisition Pitch Scripts
             </h2>
             <p className="text-stone-600 mt-3 text-base leading-relaxed">
-              When contacting lodge owners or general managers, use these battle-tested scripts. Click to copy directly to your clipboard:
+              When contacting lodge, B&amp;B, cottage, or guest house owners or general managers, use these battle-tested scripts. Click to copy directly to your clipboard:
             </p>
           </div>
 
@@ -387,7 +387,7 @@ export default function MarketingDeck() {
                     <span>{copiedScript === 'scriptWA' ? 'Copied' : 'Copy Script'}</span>
                   </button>
                 </div>
-                <h4 className="font-serif font-bold text-stone-900 text-base mb-2">WhatsApp to Lodge GM / Reservations</h4>
+                <h4 className="font-serif font-bold text-stone-900 text-base mb-2">WhatsApp to Property Host / Reservations</h4>
                 <p className="text-stone-600 text-xs sm:text-sm italic leading-relaxed bg-white p-4 rounded-xl border border-stone-200/60 font-mono">
                   &ldquo;Hello [Manager Name]! My name is [Your Name], Head of Operations at Travel Malawi (travelmalawi.com). We&apos;ve launched Malawi&apos;s dedicated direct-booking platform connecting domestic and international travelers directly to premier accommodations. Unlike international booking sites that charge 15-20% commission, Travel Malawi is 100% 0% commission. Guests pay you directly via your own Airtel Money, Mpamba, or bank transfer, and inquiries go straight to your WhatsApp. We would love to feature [Lodge Name] at no cost. Would you like me to send the 5-minute listing link, or can I set up your profile for you if you share your rates and photos?&rdquo;
                 </p>

@@ -52,14 +52,12 @@ export async function uploadImage(
   let fileToUpload = file;
   try {
     if (file.type !== 'image/gif') {
-      console.log('Starting image compression...');
       fileToUpload = await imageCompression(file, {
         maxSizeMB: 0.4, 
         maxWidthOrHeight: 1920, 
         useWebWorker: false,
         fileType: 'image/webp'
       });
-          console.log('Image compression finished.');
     }
   } catch (error) {
     console.warn('Image compression failed, falling back to original file', error);

@@ -178,11 +178,11 @@ export default function AdminDocsHub() {
           </div>
 
           <div className="space-y-2">
-            {filteredDocs.map((doc) => {
+            {filteredDocs.map((doc, dIdx) => {
               const isSelected = doc.id === selectedDocId;
               return (
                 <button
-                  key={doc.id}
+                  key={`${doc.id || 'doc'}-${dIdx}`}
                   onClick={() => setSelectedDocId(doc.id)}
                   className={`w-full text-left p-4 rounded-2xl border transition text-left cursor-pointer flex flex-col justify-between gap-3 ${
                     isSelected

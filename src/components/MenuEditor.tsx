@@ -170,11 +170,11 @@ export default function MenuEditor({ value, onChange, currencies }: Props) {
               The same dishes, presented six ways. Changing this never changes what is on the menu.
             </p>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {MENU_TEMPLATES.map(template => {
+              {MENU_TEMPLATES.map((template, tIdx) => {
                 const selected = value.template === template.id;
                 return (
                   <button
-                    key={template.id}
+                    key={`${template.id || 'tpl'}-${tIdx}`}
                     type="button"
                     onClick={() => patch({ template: template.id })}
                     aria-pressed={selected}

@@ -15,7 +15,7 @@ export default function Footer() {
             <span className="text-2xl font-serif font-bold tracking-tight">Travel Malawi</span>
           </Link>
           <p className="text-stone-400 text-sm leading-relaxed">
-            Discover the warm heart of Africa. We curate the finest luxury lodges, boutique hotels, and wilderness camps across Malawi for your perfect getaway.
+            Discover the warm heart of Africa. Explore independent lodges, B&Bs, cottages, guest houses, and safari camps across Malawi for your perfect getaway.
           </p>
         </div>
         
@@ -30,15 +30,15 @@ export default function Footer() {
         </div>
         
         <div>
-          <h4 className="text-white font-serif font-semibold text-lg mb-6">For Lodge Owners</h4>
+          <h4 className="text-white font-serif font-semibold text-lg mb-6">For Property Owners</h4>
           <ul className="space-y-4 text-sm">
             <li>
-              <Link to="/host-guide" className="text-emerald-400 hover:text-emerald-300 transition font-medium flex items-center gap-1.5">
+              <Link to="/host-guide" className="hover:text-white transition flex items-center gap-1.5">
                 <span>Host Starter Pack</span>
-                <span className="bg-emerald-950 text-emerald-400 border border-emerald-800 text-[10px] font-bold px-1.5 py-0.2 rounded-full">New</span>
+                <span className="bg-stone-800 text-stone-300 border border-stone-700 text-[10px] font-medium px-1.5 py-0.5 rounded-full">Host Only</span>
               </Link>
             </li>
-            <li><Link to="/list-your-property" className="hover:text-white transition">List Your Property (0% Fee)</Link></li>
+            <li><Link to="/list-your-property" className="hover:text-white transition">List Your Property</Link></li>
             <li><Link to="/dashboard" className="hover:text-white transition">Host Dashboard</Link></li>
             <li><Link to="/marketing" className="text-stone-400 hover:text-white transition text-xs">Marketing Playbook</Link></li>
           </ul>

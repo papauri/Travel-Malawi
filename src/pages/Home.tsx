@@ -22,6 +22,8 @@ import PriceDisplay from '../components/PriceDisplay';
 import MaskedPlaceName from '../components/MaskedPlaceName';
 import { openAccessPermissionsModal, MANUAL_LOCATION_STORAGE_KEY, UserLocationEventDetail } from '../components/AccessRequestModal';
 import { useAuth } from '../contexts/AuthContext';
+import { useAuthDialog } from '../contexts/AuthDialogContext';
+import { isHotelManager } from '../lib/roles';
 
 type SortKey = 'recommended' | 'distance_asc' | 'price_asc' | 'price_desc' | 'rating' | 'name_asc';
 
@@ -93,6 +95,8 @@ export default function Home() {
   const [viewMode, setViewMode] = useState<'grid' | 'map'>('grid');
   const [selectedMapLodgeId, setSelectedMapLodgeId] = useState<string | null>(null);
   const { user } = useAuth();
+  const { openAuth } = useAuthDialog();
+  const isHost = isHotelManager(user);
 
   // User has already listed a property in Travel Malawi
   const hasUserListed = useMemo(() => {
@@ -950,7 +954,7 @@ export default function Home() {
               Find your <span className="italic font-light text-amber-100/90">quiet escape.</span>
             </h1>
             <p className="mt-3 text-xs sm:text-sm md:text-base text-stone-300/85 font-light max-w-lg leading-relaxed mx-auto text-balance">
-              Handpicked boutique lodges, guest houses, serene lakefront retreats, and wild safari camps across the Warm Heart of Africa.
+              Handpicked boutique lodges, B&amp;Bs, cottages, guest houses, and safari camps across the Warm Heart of Africa.
             </p>
           </motion.div>
         </div>
@@ -1433,60 +1437,100 @@ export default function Home() {
       {shouldShowAcquisitionBanner && (
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-2 w-full">
           <div className="relative overflow-hidden rounded-3xl bg-stone-900 text-white p-6 sm:p-8 md:p-10 shadow-xl border border-stone-800">
-            {/* Subtle Ambient Background Accent */}
-            <div className="absolute -right-16 -top-16 w-64 h-64 bg-emerald-950/40 rounded-full blur-3xl pointer-events-none" />
-
             <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6 md:gap-8">
               <div className="max-w-2xl">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-stone-800/90 text-stone-300 border border-stone-700 text-xs font-semibold uppercase tracking-wider mb-3">
-                  <Building2 className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>For Lodge, Camp &amp; Resort Owners</span>
+                  <Building2 className="w-3.5 h-3.5 text-stone-400" />
+                  <span>For Lodge, B&amp;B, Cottage &amp; Stay Owners</span>
                 </div>
                 <h3 className="font-serif text-2xl sm:text-3xl md:text-4xl text-white tracking-tight leading-snug">
-                  Get direct bookings with <span className="text-emerald-300 underline decoration-emerald-500/30 underline-offset-4">0% commission</span>.
+                  Get direct bookings with 0% commission.
                 </h3>
                 <p className="text-stone-300 text-sm sm:text-base mt-2.5 leading-relaxed">
-                  Join Malawi&apos;s dedicated direct-booking hospitality network. Set simultaneous rates in MWK &amp; USD, receive instant inquiries directly on WhatsApp, and keep 100% of your earnings.
+                  Join Malawi&apos;s dedicated direct-booking hospitality network for lodges, B&amp;Bs, holiday cottages, and safari camps. Set simultaneous rates in MWK &amp; USD, receive instant inquiries directly on WhatsApp, and keep 100% of your earnings.
                 </p>
 
                 {/* Value chips */}
                 <div className="flex flex-wrap gap-2 sm:gap-3 mt-4 text-xs font-medium text-stone-300">
                   <span className="inline-flex items-center gap-1.5 bg-stone-800/60 px-3 py-1 rounded-full border border-stone-700/80">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" /> Zero listing or commission fees
+                    <CheckCircle2 className="w-3.5 h-3.5 text-stone-400 shrink-0" /> Zero listing or commission fees
                   </span>
                   <span className="inline-flex items-center gap-1.5 bg-stone-800/60 px-3 py-1 rounded-full border border-stone-700/80">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" /> Direct WhatsApp alerts
+                    <CheckCircle2 className="w-3.5 h-3.5 text-stone-400 shrink-0" /> Direct WhatsApp alerts
                   </span>
                   <span className="inline-flex items-center gap-1.5 bg-stone-800/60 px-3 py-1 rounded-full border border-stone-700/80">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" /> Dual-currency pricing (MWK &amp; USD)
+                    <CheckCircle2 className="w-3.5 h-3.5 text-stone-400 shrink-0" /> Dual-currency pricing (MWK &amp; USD)
                   </span>
                 </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row lg:flex-col gap-3 shrink-0 lg:min-w-[220px]">
-                <Link
-                  to="/list-your-property"
-                  className="inline-flex items-center justify-center gap-2 bg-emerald-700 hover:bg-emerald-600 text-white font-semibold px-6 py-3.5 rounded-full text-sm transition-all shadow-md active:scale-95 text-center"
-                >
-                  <span>List Your Property Free</span>
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
-                <div className="flex items-center justify-between sm:justify-center gap-2">
-                  <Link
-                    to="/host-guide"
-                    className="inline-flex items-center justify-center gap-1.5 bg-stone-800/80 hover:bg-stone-800 text-stone-300 hover:text-white font-medium px-4 py-2.5 rounded-full text-xs transition border border-stone-700 text-center flex-1 sm:flex-initial"
+              {/* Conditional Options: Host Starter Pack and Dashboard are only accessible once signed up as a property owner */}
+              {!user ? (
+                <div className="flex flex-col sm:flex-row lg:flex-col gap-2.5 shrink-0 lg:min-w-[230px]">
+                  <button
+                    type="button"
+                    onClick={() => openAuth('host')}
+                    className="inline-flex items-center justify-center gap-2 bg-white hover:bg-stone-100 text-stone-900 font-semibold px-6 py-3.5 rounded-full text-sm transition-all shadow-sm active:scale-95 text-center cursor-pointer"
                   >
-                    <BookOpen className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>Host Starter Pack</span>
+                    <span>Sign Up as Property Owner</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                  <Link
+                    to="/list-your-property"
+                    className="inline-flex items-center justify-center gap-1.5 bg-stone-800 hover:bg-stone-750 text-stone-300 hover:text-white font-medium px-4 py-2.5 rounded-full text-xs transition border border-stone-700 text-center"
+                  >
+                    <span>Learn About Listing</span>
                   </Link>
+                  <span className="text-[11px] text-stone-400 text-center lg:text-left">
+                    Sign up as host to unlock dashboard &amp; starter pack
+                  </span>
+                </div>
+              ) : !isHost ? (
+                <div className="flex flex-col sm:flex-row lg:flex-col gap-2.5 shrink-0 lg:min-w-[230px]">
+                  <button
+                    type="button"
+                    onClick={() => openAuth('host')}
+                    className="inline-flex items-center justify-center gap-2 bg-white hover:bg-stone-100 text-stone-900 font-semibold px-6 py-3.5 rounded-full text-sm transition-all shadow-sm active:scale-95 text-center cursor-pointer"
+                  >
+                    <span>Enable Property Owner Account</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                  <Link
+                    to="/list-your-property"
+                    className="inline-flex items-center justify-center gap-1.5 bg-stone-800 hover:bg-stone-750 text-stone-300 hover:text-white font-medium px-4 py-2.5 rounded-full text-xs transition border border-stone-700 text-center"
+                  >
+                    <span>List Your Property Free</span>
+                  </Link>
+                  <span className="text-[11px] text-stone-400 text-center lg:text-left">
+                    Signed in as Guest · Switch to host for dashboard tools
+                  </span>
+                </div>
+              ) : (
+                <div className="flex flex-col sm:flex-row lg:flex-col gap-3 shrink-0 lg:min-w-[230px]">
                   <Link
                     to="/dashboard"
-                    className="inline-flex items-center justify-center gap-1.5 bg-stone-800/80 hover:bg-stone-800 text-stone-300 hover:text-white font-medium px-4 py-2.5 rounded-full text-xs transition border border-stone-700 text-center flex-1 sm:flex-initial"
+                    className="inline-flex items-center justify-center gap-2 bg-white hover:bg-stone-100 text-stone-900 font-semibold px-6 py-3.5 rounded-full text-sm transition-all shadow-sm active:scale-95 text-center"
                   >
-                    <span>Dashboard</span>
+                    <span>Go to Host Dashboard</span>
+                    <ArrowRight className="w-4 h-4" />
                   </Link>
+                  <div className="flex items-center justify-between sm:justify-center gap-2">
+                    <Link
+                      to="/host-guide"
+                      className="inline-flex items-center justify-center gap-1.5 bg-stone-800 hover:bg-stone-750 text-stone-300 hover:text-white font-medium px-4 py-2.5 rounded-full text-xs transition border border-stone-700 text-center flex-1 sm:flex-initial"
+                    >
+                      <BookOpen className="w-3.5 h-3.5 text-stone-400" />
+                      <span>Host Starter Pack</span>
+                    </Link>
+                    <Link
+                      to="/list-your-property"
+                      className="inline-flex items-center justify-center gap-1.5 bg-stone-800 hover:bg-stone-750 text-stone-300 hover:text-white font-medium px-4 py-2.5 rounded-full text-xs transition border border-stone-700 text-center flex-1 sm:flex-initial"
+                    >
+                      <span>List Stay</span>
+                    </Link>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </section>
@@ -1502,7 +1546,7 @@ export default function Home() {
             <p className="text-stone-500 text-sm">
               {hasSearch
                 ? `${filteredHotels.length} propert${filteredHotels.length === 1 ? 'y' : 'ies'} can take you.`
-                : 'Independent lodges, camps and guesthouses — every one booked direct with its owner.'}
+                : 'Independent lodges, B&Bs, cottages and guesthouses — every one booked direct with its host.'}
             </p>
           </div>
 

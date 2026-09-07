@@ -4,9 +4,10 @@ import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/fire
 import { Booking, RoomType } from '../types';
 import { db } from '../lib/firebase';
 import { Hotel } from '../types';
-import { Building2, Plus, ChevronRight, Clock, CheckCircle2, XCircle, BedDouble, CalendarCheck } from 'lucide-react';
+import { Building2, Plus, ChevronRight, Clock, CheckCircle2, XCircle, BedDouble, CalendarCheck, Lock, Sparkles, UserCheck, ArrowRight, Check } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { useAuthDialog } from '../contexts/AuthDialogContext';
 
 import SmartImage from '../components/SmartImage';
 import { getHotelImage } from '../lib/images';
@@ -16,12 +17,14 @@ import MaskedPlaceName from '../components/MaskedPlaceName';
 import Pagination from '../components/Pagination';
 
 export default function ManagerDashboard() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, becomeHost } = useAuth();
+  const { openAuth } = useAuthDialog();
   const navigate = useNavigate();
   const [hotels, setHotels] = useState<Hotel[]>([]);
   const [rooms, setRooms] = useState<RoomType[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activating, setActivating] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [togglingHotelId, setTogglingHotelId] = useState<string | null>(null);
   const itemsPerPage = 6;
@@ -108,18 +111,24 @@ export default function ManagerDashboard() {
 
   useEffect(() => {
     if (authLoading) return;
-    // A signed-in traveller used to be bounced silently to the home page, with
-    // no hint that hosting was something they could switch on.
-    if (!user) {
-      navigate('/');
-      return;
-    }
-    if (!isHotelManager(user)) {
-      navigate('/list-your-property', { replace: true });
+    if (!user || !isHotelManager(user)) {
+      setLoading(false);
       return;
     }
     fetchMyHotels();
-  }, [user, authLoading, navigate]);
+  }, [user, authLoading]);
+
+  const handleActivateHost = async () => {
+    setActivating(true);
+    try {
+      await becomeHost();
+      toast.success('Property Owner tools activated! Loading your dashboard...');
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to activate property owner status.');
+    } finally {
+      setActivating(false);
+    }
+  };
 
   /** Room count and outstanding requests, per property. */
   const summaryByHotel = useMemo(() => {
@@ -136,6 +145,148 @@ export default function ManagerDashboard() {
 
   const totalPending = bookings.filter(b => b.status === 'pending').length;
 
+  if (authLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-stone-900 border-t-transparent"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-stone-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-2xl mx-auto">
+          <div className="bg-white rounded-3xl p-8 sm:p-12 border border-stone-200 shadow-sm text-center">
+            <div className="w-12 h-12 rounded-2xl bg-stone-100 flex items-center justify-center text-stone-800 mx-auto mb-5">
+              <Lock className="w-6 h-6" />
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-serif font-bold text-stone-900">
+              Host Dashboard Access
+            </h1>
+            <p className="text-stone-600 text-sm mt-3 max-w-md mx-auto leading-relaxed">
+              The Host Dashboard is reserved for registered Malawian property owners, B&B hosts, lodge managers, cottage operators, and safari camps.
+            </p>
+
+            <div className="mt-8 grid sm:grid-cols-2 gap-4 text-left">
+              <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200 text-xs space-y-2">
+                <div className="font-bold text-stone-900 flex items-center justify-between">
+                  <span>Guest Account</span>
+                  <span className="text-[10px] text-stone-500 uppercase">Traveler</span>
+                </div>
+                <ul className="text-stone-600 space-y-1.5">
+                  <li className="flex items-center gap-2">
+                    <Check className="w-3.5 h-3.5 text-stone-500 shrink-0" />
+                    <span>Browse stays, B&amp;Bs &amp; direct host chats</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="w-3.5 h-3.5 text-stone-500 shrink-0" />
+                    <span>Booking vouchers &amp; trip list</span>
+                  </li>
+                  <li className="text-stone-400 italic">
+                    (No dashboard or listing tools)
+                  </li>
+                </ul>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-stone-900 text-white border border-stone-800 text-xs space-y-2">
+                <div className="font-bold text-white flex items-center justify-between">
+                  <span>Property Owner Account</span>
+                  <span className="text-[10px] text-stone-300 uppercase font-semibold">Host</span>
+                </div>
+                <ul className="text-stone-300 space-y-1.5">
+                  <li className="flex items-center gap-2">
+                    <Check className="w-3.5 h-3.5 text-stone-300 shrink-0" />
+                    <span>Host Dashboard: Manage rooms &amp; rates</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="w-3.5 h-3.5 text-stone-300 shrink-0" />
+                    <span>Host Starter Pack &amp; response templates</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="w-3.5 h-3.5 text-stone-300 shrink-0" />
+                    <span>0% commission direct WhatsApp stays</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
+              <button
+                onClick={() => openAuth('host')}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-stone-900 hover:bg-stone-800 text-white font-semibold px-8 py-3.5 rounded-full text-sm transition shadow-sm cursor-pointer"
+              >
+                <span>Sign Up as Property Owner</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => openAuth('signin')}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-stone-100 hover:bg-stone-200 text-stone-800 font-medium px-6 py-3.5 rounded-full text-sm transition border border-stone-200 cursor-pointer"
+              >
+                <span>Sign In to Existing Account</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isHotelManager(user)) {
+    return (
+      <div className="min-h-screen bg-stone-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-2xl mx-auto">
+          <div className="bg-white rounded-3xl p-8 sm:p-12 border border-stone-200 shadow-sm text-center">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-stone-100 text-stone-700 border border-stone-200 text-xs font-medium mb-5">
+              <UserCheck className="w-3.5 h-3.5 text-stone-500" />
+              <span>Signed in as Guest ({user.email})</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-serif font-bold text-stone-900">
+              Property Owner Permissions Required
+            </h1>
+            <p className="text-stone-600 text-sm mt-3 max-w-md mx-auto leading-relaxed">
+              You are currently signed in with a Guest account. To view the Host Dashboard and list properties, activate your free host permissions below.
+            </p>
+
+            <div className="mt-6 p-4 rounded-2xl bg-stone-50 border border-stone-200 text-xs text-left space-y-2 max-w-md mx-auto">
+              <div className="font-semibold text-stone-900">What will be enabled:</div>
+              <ul className="text-stone-600 space-y-1.5">
+                <li className="flex items-center gap-2">
+                  <Check className="w-4 h-4 text-stone-800 shrink-0" />
+                  <span>Full access to this Host Dashboard</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check className="w-4 h-4 text-stone-800 shrink-0" />
+                  <span>Host Starter Pack &amp; onboarding toolkit</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check className="w-4 h-4 text-stone-800 shrink-0" />
+                  <span>Preserves all your current bookings &amp; favorites</span>
+                </li>
+              </ul>
+            </div>
+
+            <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
+              <button
+                onClick={handleActivateHost}
+                disabled={activating}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-stone-900 hover:bg-stone-800 text-white font-semibold px-8 py-3.5 rounded-full text-sm transition shadow-sm cursor-pointer disabled:opacity-50"
+              >
+                <Sparkles className="w-4 h-4 text-stone-300" />
+                <span>{activating ? 'Activating Host Tools…' : 'Activate Property Owner Account (Free)'}</span>
+              </button>
+              <Link
+                to="/"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-stone-100 hover:bg-stone-200 text-stone-800 font-medium px-6 py-3.5 rounded-full text-sm transition border border-stone-200"
+              >
+                <span>Back to Stays</span>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

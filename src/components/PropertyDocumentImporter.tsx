@@ -129,7 +129,23 @@ export default function PropertyDocumentImporter({ open, onClose, onImport }: Pr
 
   const handleApply = () => {
     if (extractedData) {
-      onImport(extractedData);
+      const normalizedData: Partial<ListingDraft> = {
+        ...extractedData,
+      };
+      if (Array.isArray(extractedData.rooms)) {
+        normalizedData.rooms = (extractedData.rooms as any[]).map((r: any) => ({
+          name: r.name || 'Standard Room',
+          description: r.description || '',
+          maxGuests: Number(r.maxGuests) || 2,
+          quantity: 1,
+          currencies: ['USD', 'MWK'],
+          prices: {
+            USD: Number(r.prices?.USD ?? r.priceUSD) || 50,
+            MWK: Number(r.prices?.MWK ?? r.priceMWK) || 85000,
+          },
+        }));
+      }
+      onImport(normalizedData);
       toast.success('Property details imported successfully!');
       handleClose();
     }
@@ -278,9 +294,13 @@ export default function PropertyDocumentImporter({ open, onClose, onImport }: Pr
                   <div>
                     <span className="text-[10px] font-bold text-stone-400 uppercase">Rooms ({extractedData.rooms.length})</span>
                     <ul className="text-xs text-stone-700 mt-1 space-y-1">
-                      {extractedData.rooms.map((r, i) => (
-                        <li key={i}>• {r.name} - ${r.priceUSD} / MK {r.priceMWK} (Max {r.maxGuests})</li>
-                      ))}
+                      {extractedData.rooms.map((r: any, i) => {
+                        const usd = r.prices?.USD ?? r.priceUSD ?? 0;
+                        const mwk = r.prices?.MWK ?? r.priceMWK ?? 0;
+                        return (
+                          <li key={`extracted-room-${r.name || 'room'}-${i}`}>• {r.name} - ${usd} / MK {Number(mwk).toLocaleString()} (Max {r.maxGuests ?? 2})</li>
+                        );
+                      })}
                     </ul>
                   </div>
                 )}

@@ -327,11 +327,11 @@ export default function AccessRequestModal() {
                     </span>
 
                     <div className="grid grid-cols-2 gap-2">
-                      {MALAWI_HUBS.map((hub: MalawiHub) => {
+                      {MALAWI_HUBS.map((hub: MalawiHub, hubIdx: number) => {
                         const isSelected = activeLocationLabel === hub.name;
                         return (
                           <button
-                            key={hub.id}
+                            key={`${hub.id || 'hub'}-${hubIdx}`}
                             type="button"
                             onClick={() => handleSelectLocation(hub.coords, hub.name, true)}
                             className={`p-2.5 rounded-xl border text-left transition cursor-pointer flex flex-col justify-center min-h-[56px] ${
@@ -381,9 +381,9 @@ export default function AccessRequestModal() {
                     {/* Search Suggestions */}
                     {placeSuggestions.length > 0 && (
                       <div className="border border-stone-200 rounded-xl overflow-hidden bg-white shadow-xs divide-y divide-stone-100">
-                        {placeSuggestions.map((place) => (
+                        {placeSuggestions.map((place, pIdx) => (
                           <button
-                            key={place.id}
+                            key={`${place.id || 'place'}-${pIdx}`}
                             type="button"
                             onClick={() => handleSelectLocation(place.coordinates, place.name, true)}
                             className="w-full text-left p-2.5 hover:bg-stone-50 transition flex items-center justify-between gap-2 cursor-pointer"

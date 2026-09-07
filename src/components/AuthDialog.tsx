@@ -21,6 +21,7 @@ import {
   EyeOff,
   AlertCircle,
   CheckCircle2,
+  Check,
 } from 'lucide-react';
 import Modal, { fieldClass, labelClass } from './Modal';
 import FieldError from './FieldError';
@@ -186,7 +187,7 @@ export default function AuthDialog({ open, intent, onClose, onAuthenticated }: P
     mode === 'reset'
       ? 'Reset your password'
       : mode === 'signup'
-        ? hosting ? 'Set up your host account' : 'Create your account'
+        ? hosting ? 'Create Property Owner Account' : 'Create Guest Account'
         : 'Welcome back';
 
   const description =
@@ -194,8 +195,8 @@ export default function AuthDialog({ open, intent, onClose, onAuthenticated }: P
       ? "We'll email you a secure link to choose a new password."
       : mode === 'signup'
         ? hosting
-          ? 'Takes a minute. Nothing is charged, now or later.'
-          : 'Keep your trips, bookings, and messages in one place.'
+          ? 'Sign up to unlock the Host Starter Pack, Host Dashboard, and direct 0% fee listings.'
+          : 'Browse lodges, B&Bs, cottages & stays, chat with verified hosts on WhatsApp, and manage bookings.'
         : 'Sign in to access your bookings and properties.';
 
   return (
@@ -209,8 +210,8 @@ export default function AuthDialog({ open, intent, onClose, onAuthenticated }: P
             className="w-full bg-stone-900 text-white py-3 rounded-xl font-semibold text-sm hover:bg-stone-800 transition disabled:opacity-50 active:scale-[0.99]"
           >
             {isSubmitting
-              ? mode === 'signin' ? 'Signing in…' : mode === 'signup' ? 'Creating account…' : 'Sending link…'
-              : mode === 'signin' ? 'Sign in' : mode === 'signup' ? 'Create account' : 'Send reset link'}
+              ? mode === 'signin' ? 'Signing in…' : mode === 'signup' ? (hosting ? 'Creating owner account…' : 'Creating guest account…') : 'Sending link…'
+              : mode === 'signin' ? 'Sign In' : mode === 'signup' ? (hosting ? 'Create Property Owner Account' : 'Create Guest Account') : 'Send reset link'}
           </button>
           {mode === 'reset' && (
             <button
@@ -227,9 +228,9 @@ export default function AuthDialog({ open, intent, onClose, onAuthenticated }: P
       {/* Mode toggle — a reset is a detour, not a third tab. */}
       {mode !== 'reset' && (
         <div className="flex bg-stone-100 rounded-xl p-1 mb-6 border border-stone-200/70">
-          {(['signin', 'signup'] as const).map(m => (
+          {(['signin', 'signup'] as const).map((m, mIdx) => (
             <button
-              key={m}
+              key={`${m}-${mIdx}`}
               type="button"
               onClick={() => { setMode(m); setError(''); setNotice(''); setShowErrors(false); }}
               className={`flex-1 py-2 rounded-lg text-sm font-semibold transition ${
@@ -330,34 +331,96 @@ export default function AuthDialog({ open, intent, onClose, onAuthenticated }: P
         )}
 
         {mode === 'signup' && (
-          <div>
-            <label className={labelClass}>I want to</label>
-            <div className="grid grid-cols-2 gap-1.5 p-1 bg-stone-100 rounded-xl border border-stone-200/80">
+          <div className="space-y-2.5 pt-1">
+            <label className={labelClass}>Choose Account Type</label>
+            <div className="grid grid-cols-2 gap-2.5">
               <button
                 type="button"
                 onClick={() => setRoles(['traveller'])}
-                className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold transition ${
+                className={`p-3 rounded-xl border text-left transition flex flex-col justify-between cursor-pointer ${
                   !hosting
-                    ? 'bg-white text-stone-900 shadow-sm'
-                    : 'text-stone-500 hover:text-stone-800'
+                    ? 'border-stone-900 bg-stone-900 text-white shadow-sm ring-1 ring-stone-900'
+                    : 'border-stone-200 bg-stone-50 hover:bg-stone-100/80 text-stone-700'
                 }`}
               >
-                <Compass className="h-3.5 w-3.5 shrink-0" />
-                <span>Book Stays</span>
+                <div className="flex items-center justify-between w-full mb-2">
+                  <div className={`p-1.5 rounded-lg ${!hosting ? 'bg-stone-800 text-white' : 'bg-stone-200/80 text-stone-700'}`}>
+                    <Compass className="h-4 w-4" />
+                  </div>
+                  {!hosting && <Check className="h-3.5 w-3.5 text-stone-300" />}
+                </div>
+                <div>
+                  <div className="text-xs font-bold tracking-tight">Guest Account</div>
+                  <div className={`text-[11px] leading-tight mt-0.5 ${!hosting ? 'text-stone-300' : 'text-stone-500'}`}>
+                    Traveler looking to book stays
+                  </div>
+                </div>
               </button>
 
               <button
                 type="button"
                 onClick={() => setRoles(['traveller', 'hotel_manager'])}
-                className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold transition ${
+                className={`p-3 rounded-xl border text-left transition flex flex-col justify-between cursor-pointer ${
                   hosting
-                    ? 'bg-white text-stone-900 shadow-sm'
-                    : 'text-stone-500 hover:text-stone-800'
+                    ? 'border-stone-900 bg-stone-900 text-white shadow-sm ring-1 ring-stone-900'
+                    : 'border-stone-200 bg-stone-50 hover:bg-stone-100/80 text-stone-700'
                 }`}
               >
-                <Building2 className="h-3.5 w-3.5 shrink-0" />
-                <span>Host a Property</span>
+                <div className="flex items-center justify-between w-full mb-2">
+                  <div className={`p-1.5 rounded-lg ${hosting ? 'bg-stone-800 text-white' : 'bg-stone-200/80 text-stone-700'}`}>
+                    <Building2 className="h-4 w-4" />
+                  </div>
+                  {hosting && <Check className="h-3.5 w-3.5 text-stone-300" />}
+                </div>
+                <div>
+                  <div className="text-xs font-bold tracking-tight">Property Owner</div>
+                  <div className={`text-[11px] leading-tight mt-0.5 ${hosting ? 'text-stone-300' : 'text-stone-500'}`}>
+                    Lodge, B&B, cottage, or stay host
+                  </div>
+                </div>
               </button>
+            </div>
+
+            {/* Explanatory breakdown of features available for each sign up option */}
+            <div className="p-3 rounded-xl bg-stone-100/80 border border-stone-200 text-xs space-y-1.5">
+              <div className="flex items-center justify-between font-semibold text-stone-900 text-[11px] uppercase tracking-wider">
+                <span>{hosting ? 'Owner Tools Included' : 'Guest Features Included'}</span>
+                <span className="font-normal text-[10px] text-stone-500 lowercase">
+                  {hosting ? 'complete host suite' : 'booking & vouchers'}
+                </span>
+              </div>
+              <ul className="text-[11px] text-stone-600 space-y-1 leading-snug">
+                {hosting ? (
+                  <>
+                    <li className="flex items-center gap-1.5 font-medium text-stone-900">
+                      <Check className="h-3 w-3 text-stone-800 shrink-0" />
+                      <span><strong>Host Starter Pack</strong>: Onboarding guide &amp; rate card</span>
+                    </li>
+                    <li className="flex items-center gap-1.5 font-medium text-stone-900">
+                      <Check className="h-3 w-3 text-stone-800 shrink-0" />
+                      <span><strong>Host Dashboard</strong>: Manage rooms, bookings &amp; pricing</span>
+                    </li>
+                    <li className="flex items-center gap-1.5 text-stone-700">
+                      <Check className="h-3 w-3 text-stone-800 shrink-0" />
+                      <span>0% commission on direct WhatsApp guest inquiries</span>
+                    </li>
+                  </>
+                ) : (
+                  <>
+                    <li className="flex items-center gap-1.5 text-stone-700">
+                      <Check className="h-3 w-3 text-stone-800 shrink-0" />
+                      <span>Direct WhatsApp chat with verified property hosts</span>
+                    </li>
+                    <li className="flex items-center gap-1.5 text-stone-700">
+                      <Check className="h-3 w-3 text-stone-800 shrink-0" />
+                      <span>Saved properties, trip itineraries &amp; booking vouchers</span>
+                    </li>
+                    <li className="flex items-center gap-1.5 text-stone-500 italic">
+                      <span>(Host Starter Pack &amp; Dashboard reserved for Property Owners)</span>
+                    </li>
+                  </>
+                )}
+              </ul>
             </div>
           </div>
         )}
@@ -383,7 +446,7 @@ export default function AuthDialog({ open, intent, onClose, onAuthenticated }: P
               <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
               <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
             </svg>
-            <span>Google</span>
+            <span>{mode === 'signup' ? (hosting ? 'Sign up as Property Owner with Google' : 'Sign up as Guest with Google') : 'Continue with Google'}</span>
           </button>
 
           <p className="text-center text-xs text-stone-400 mt-5 leading-relaxed">
