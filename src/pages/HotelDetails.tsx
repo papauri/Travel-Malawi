@@ -1913,7 +1913,7 @@ export default function HotelDetails() {
 
               <p className="flex items-start gap-2 text-xs text-stone-500 leading-relaxed">
                 <Info className="h-4 w-4 shrink-0 mt-px text-stone-400" />
-                Sending this reserves nothing yet — the property reviews every request and confirms by phone or WhatsApp. Free cancellation up to 7 days before arrival.
+                Sending this reserves nothing yet — no receipt upload or immediate payment is required. Payment confirmation is handled at the property manager&apos;s discretion upon direct verification. For your safety, always confirm stay details directly with the property before transferring any funds.
               </p>
             </form>
           </Modal>

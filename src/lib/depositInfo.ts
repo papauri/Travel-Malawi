@@ -93,7 +93,7 @@ export function formatDepositSnippet(
 
     const notes = depositInfo.instructions ? `\n📌 Note: ${depositInfo.instructions}\n` : '';
 
-    return `Hello ${guestFirstName}! We have received your reservation request ${stayDates}. To secure your room, please send a ${depositAmountText} via Mobile Money:\n\n${airtelLine}\n${mpambaLine}\n${refText}${notes}\nKindly reply here with your transaction reference ID or confirmation screenshot, and I will issue your verified Digital Stay Voucher right away!`;
+    return `Hello ${guestFirstName}! We have received your reservation request ${stayDates}. If you would like to place a ${depositAmountText} via Mobile Money, here are the official property accounts:\n\n${airtelLine}\n${mpambaLine}\n${refText}${notes}\n🔒 Guest Safety & Confirmation: Payment confirmation is handled directly at the property manager's discretion upon internal account verification. For your security, always confirm details directly with property management, and do not upload payment slips or sensitive receipts here. Once management verifies the transaction, your reservation will be updated right away!`;
   }
 
   if (type === 'bank') {
@@ -113,7 +113,7 @@ export function formatDepositSnippet(
     const swiftLine = depositInfo.bankSwiftCode ? `• SWIFT Code: ${depositInfo.bankSwiftCode}\n` : '';
     const notes = depositInfo.instructions ? `\n📌 Note: ${depositInfo.instructions}\n` : '';
 
-    return `Hello ${guestFirstName}! We are pleased to hold your room ${stayDates}. To confirm your reservation, please send a ${depositAmountText} via Bank Wire Transfer:\n\n${bankLine}\n${accountNameLine ? accountNameLine + '\n' : ''}${accountNumberLine}\n${branchLine}${swiftLine}${refText}${notes}\nPlease share your deposit slip or wire receipt here so we can activate your reservation and issue your Digital Stay Voucher!`;
+    return `Hello ${guestFirstName}! We are pleased to hold your room ${stayDates}. To coordinate a ${depositAmountText} via Bank Wire Transfer, here are the official banking details:\n\n${bankLine}\n${accountNameLine ? accountNameLine + '\n' : ''}${accountNumberLine}\n${branchLine}${swiftLine}${refText}${notes}\n🔒 Guest Safety & Confirmation: Payment confirmation is handled at the property manager's discretion once funds reflect in the property account. For your security, verify wire credentials directly with management before transferring. There is no need to upload bank slips or receipt documents here — simply notify us when initiated and management will verify and update your reservation.`;
   }
 
   // General Prompt
@@ -132,7 +132,7 @@ export function formatDepositSnippet(
     ? `\n\nAccepted Payment Options:\n${paymentMethods.join('\n')}\n`
     : '\n\nWe accept Airtel Money, TNM Mpamba, and direct Bank Wire transfers.\n';
 
-  return `Hello ${guestFirstName}! We have received your booking request ${stayDates}. To confirm and secure your reservation, a ${percentage}% deposit is required.${methodsList}\nWould you prefer Mobile Money or Bank Transfer? Let us know and we will assist you right away!`;
+  return `Hello ${guestFirstName}! We have received your booking request ${stayDates}. A ${percentage}% deposit may be arranged to secure your reservation.${methodsList}\n🔒 Guest Safety & Confirmation: Payment arrangements and confirmation are at the property manager's discretion. For your safety, always verify details directly with property management or discuss settling upon arrival. No receipt upload is required.\n\nPlease let us know how you would like to proceed!`;
 }
 
 /**
