@@ -26,11 +26,14 @@ export interface AIGenerateOptions {
   };
 }
 
+export type QueryIntent = 'greeting_or_chat' | 'tourism_inquiry' | 'database_query' | 'database_action';
+
 export interface OperationsChatPayload {
   userRole: 'admin' | 'hotel_manager';
   userName?: string;
   userEmail?: string;
   message: string;
+  intent?: QueryIntent;
   history?: Array<{ role: 'user' | 'assistant'; content: string }>;
   context: {
     currentDateStr: string;

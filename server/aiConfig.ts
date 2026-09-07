@@ -61,27 +61,27 @@ export const DEFAULT_PROVIDERS: Record<AIProviderId, ProviderConfig> = {
     ],
   },
   gemini: {
-    model: 'gemini-3.8-flash',
-    defaultModel: 'gemini-3.8-flash',
+    model: 'gemini-2.0-flash',
+    defaultModel: 'gemini-2.0-flash',
     name: 'Google Gemini',
     website: 'https://aistudio.google.com',
-    rateLimitNotice: 'Generous free tier with ultra-fast latency and multi-turn capabilities.',
+    rateLimitNotice: 'Generous free tier with ultra-fast sub-second latency and high throughput.',
     recommendedModels: [
       {
-        id: 'gemini-3.8-flash',
-        name: 'Gemini 3.8 Flash',
-        description: '⚡ Sweet Spot: State-of-the-art speed, multi-turn reasoning, ultra-fast 2-3s responses',
+        id: 'gemini-2.0-flash',
+        name: 'Gemini 2.0 Flash',
+        description: '⚡ Sweet Spot: State-of-the-art speed, multi-turn reasoning, ultra-fast sub-second responses',
         isSweetSpot: true,
       },
       {
-        id: 'gemini-flash-latest',
-        name: 'Gemini Flash (Latest)',
-        description: '🚀 Lowest latency endpoint for rapid conversational chat',
+        id: 'gemini-1.5-flash',
+        name: 'Gemini 1.5 Flash',
+        description: '🚀 Proven workhorse Flash model with generous 15 RPM / 1M TPM free tier',
       },
       {
-        id: 'gemini-3.1-pro-preview',
-        name: 'Gemini 3.1 Pro',
-        description: '🧠 Deep reasoning, complex hospitality analysis and high token context window',
+        id: 'gemini-1.5-pro',
+        name: 'Gemini 1.5 Pro',
+        description: '🧠 Deep reasoning, complex hospitality analysis and 2M token context window',
       },
     ],
   },
@@ -245,9 +245,15 @@ export function loadAIConfig(): AISystemConfig {
         };
       });
 
-      // Auto-migrate slow experimental thinking checkpoints to blazing-fast production Flash
-      if (inMemoryConfig!.providers.gemini?.model === 'gemini-3.6-flash' || inMemoryConfig!.providers.gemini?.model === 'gemini-2.5-flash') {
-        inMemoryConfig!.providers.gemini.model = 'gemini-3.8-flash';
+      // Auto-migrate legacy/invalid checkpoints to production gemini-2.0-flash
+      const currentGeminiModel = inMemoryConfig!.providers.gemini?.model;
+      if (
+        currentGeminiModel === 'gemini-3.6-flash' ||
+        currentGeminiModel === 'gemini-3.8-flash' ||
+        currentGeminiModel === 'gemini-2.5-flash' ||
+        currentGeminiModel === 'gemini-flash-latest'
+      ) {
+        inMemoryConfig!.providers.gemini.model = 'gemini-2.0-flash';
         saveAIConfig(inMemoryConfig!);
       }
 

@@ -12,7 +12,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { isAdmin, isHotelManager } from '../lib/roles';
-import { useAIAssistant, OperationsChatPayload, OperationsChatResult, ActionProposal } from '../hooks/useAIAssistant';
+import { useAIAssistant, OperationsChatPayload, OperationsChatResult, ActionProposal, QueryIntent } from '../hooks/useAIAssistant';
 import { db } from '../lib/firebase';
 import { collection, getDocs, doc, updateDoc, query, where } from 'firebase/firestore';
 import { Hotel, RoomType, Booking, Review, Broadcast } from '../types';
@@ -122,6 +122,8 @@ export default function OperationsCopilot() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [executingAction, setExecutingAction] = useState<string | null>(null);
+  const [activeQueryIntent, setActiveQueryIntent] = useState<QueryIntent>('greeting_or_chat');
+  const [activeQueryText, setActiveQueryText] = useState<string>('');
 
   // Tracks interactive hotel selection for each proposed action { [msgId]: hotelId[] }
   const [proposalHotelSelections, setProposalHotelSelections] = useState<Record<string, string[]>>({});
@@ -373,39 +375,107 @@ export default function OperationsCopilot() {
   const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
   const dynamicSuggestions = lastAssistantMsg?.suggestedFollowUps;
 
-  const getGeneratingStatusText = (userText: string) => {
-    const clean = (userText || '').trim().toLowerCase().replace(/[!.,?]/g, '');
-    const greetings = [
-      'hi', 'hello', 'hey', 'good morning', 'good afternoon', 'good evening',
-      'hi there', 'hello there', 'muli bwanji', 'moni', 'how are you', 'who are you',
-      'sup', 'yo', 'greetings', 'morning', 'afternoon'
+  const detectQueryIntent = (text: string): QueryIntent => {
+    const clean = (text || '').trim().toLowerCase();
+    const stripped = clean.replace(/[!.,?]/g, '').trim();
+
+    // 1. Action intents (modifications, updates, operations)
+    const actionKeywords = [
+      'update', 'change', 'set rate', 'set price', 'add room', 'add promo', 'add promotion',
+      'cancel booking', 'confirm booking', 'remove room', 'delete', 'publish', 'broadcast',
+      'out of office', 'block date', 'unblock date', 'modify', 'save rule', 'learn rule'
     ];
-    if (greetings.includes(clean) || clean.length <= 4) {
+    if (actionKeywords.some(k => clean.includes(k))) {
+      return 'database_action';
+    }
+
+    // 2. Explicit greetings and general conversational small-talk
+    const standardGreetings = [
+      'hi', 'hello', 'hey', 'good morning', 'good afternoon', 'good evening',
+      'hi there', 'hello there', 'muli bwanji', 'moni', 'bo', 'sup', 'yo',
+      'howdy', 'greetings', 'morning', 'afternoon', 'evening'
+    ];
+    const conversationalQueries = [
+      'how are you', 'how r u', 'who are you', 'what are you', 'what can you do',
+      'who made you', 'tell me a joke', 'thanks', 'thank you', 'cheers',
+      'great', 'cool', 'ok', 'okay', 'nice', 'awesome', 'goodbye', 'bye', 'see you',
+      'help', 'what is your name', 'whats your name'
+    ];
+
+    const isGreetingWord = standardGreetings.includes(stripped) || conversationalQueries.some(q => stripped === q || stripped.startsWith(q));
+
+    // Check if there are explicit database / operational keywords
+    const dbKeywords = [
+      'rate', 'rates', 'price', 'prices', 'cost', 'pricing', 'mwk', 'usd',
+      'booking', 'bookings', 'reservation', 'reservations', 'guest', 'guests',
+      'arrival', 'arrivals', 'departure', 'departures', 'checkin', 'check-in', 'checkout', 'check-out',
+      'occupancy', 'vacan', 'availability', 'available', 'blocked',
+      'room', 'rooms', 'suite', 'chalet', 'cottage', 'villa', 'dorm',
+      'menu', 'dishes', 'dish', 'food', 'restaurant', 'dining', 'drink', 'breakfast', 'dinner', 'lunch',
+      'review', 'reviews', 'rating', 'feedback',
+      'wifi', 'wi-fi', 'password', 'power', 'solar', 'generator', 'water', 'road',
+      'manager', 'owner', 'host', 'contact', 'whatsapp', 'phone', 'email', 'crew',
+      'revenue', 'financial', 'income', 'earning'
+    ];
+
+    const hasDbKeywords = dbKeywords.some(k => {
+      const regex = new RegExp(`\\b${k}\\b`, 'i');
+      return regex.test(clean);
+    });
+
+    if (isGreetingWord && !hasDbKeywords) {
+      return 'greeting_or_chat';
+    }
+
+    // If very short and no DB keywords (e.g. "hi!", "yo", "hey copilot")
+    if (stripped.length <= 4 && !hasDbKeywords) {
+      return 'greeting_or_chat';
+    }
+
+    // 3. Database / live operational queries
+    if (hasDbKeywords) {
+      return 'database_query';
+    }
+
+    // 4. Malawi tourism & travel guidance
+    const tourismKeywords = [
+      'malawi', 'lake malawi', 'safari', 'wildlife', 'liwonde', 'nyika', 'cape maclear',
+      'mulanje', 'hiking', 'national park', 'beach', 'diving', 'snorkeling', 'chambo',
+      'attractions', 'visit', 'weather', 'rainy season', 'dry season', 'culture',
+      'blantyre', 'lilongwe', 'mzuzu', 'salima', 'nkhata bay', 'mangochi', 'zomba'
+    ];
+    if (tourismKeywords.some(k => clean.includes(k))) {
+      return 'tourism_inquiry';
+    }
+
+    // Fallback for general conversational statements with no DB keywords
+    if (!hasDbKeywords && clean.split(/\s+/).length <= 4) {
+      return 'greeting_or_chat';
+    }
+
+    return 'database_query';
+  };
+
+  const getGeneratingStatusText = (intent: QueryIntent, userText: string) => {
+    if (intent === 'greeting_or_chat') {
       return 'Concierge is replying...';
     }
-    if (
-      clean.includes('rate') || clean.includes('price') || clean.includes('cost') ||
-      clean.includes('booking') || clean.includes('arrival') || clean.includes('checkout') ||
-      clean.includes('room') || clean.includes('occupan') || clean.includes('guest') ||
-      clean.includes('review') || clean.includes('menu') || clean.includes('food') ||
-      clean.includes('dish') || clean.includes('who') || clean.includes('owner') ||
-      clean.includes('manager') || clean.includes('wifi') || clean.includes('power')
-    ) {
-      return 'Consulting lodge records & bookings...';
+    if (intent === 'tourism_inquiry') {
+      return 'Concierge is preparing travel insights...';
     }
-    if (
-      clean.includes('update') || clean.includes('change') || clean.includes('add') ||
-      clean.includes('set') || clean.includes('policy') || clean.includes('cancel') ||
-      clean.includes('confirm') || clean.includes('remove')
-    ) {
+    if (intent === 'database_action') {
       return 'Preparing operational proposal...';
     }
-    return 'Concierge is thinking...';
+    return 'Consulting lodge records & bookings...';
   };
 
   const handleSendMessage = async (textToSend?: string) => {
     const text = (textToSend || inputMessage).trim();
     if (!text || generating) return;
+
+    const detectedIntent = detectQueryIntent(text);
+    setActiveQueryIntent(detectedIntent);
+    setActiveQueryText(text);
 
     const userMsg: ChatMessage = {
       id: `user_${Date.now()}`,
@@ -417,17 +487,29 @@ export default function OperationsCopilot() {
     setMessages(prev => [...prev, userMsg]);
     setInputMessage('');
 
+    const isLeanSmallTalk = detectedIntent === 'greeting_or_chat';
+
     // Prepare context payload for server
     const payload: OperationsChatPayload = {
       userRole: userIsAdmin ? 'admin' : 'hotel_manager',
       userName: userFirstName || user.displayName || user.email || 'Host',
       userEmail: user.email || undefined,
       message: text,
+      intent: detectedIntent,
       history: messages.slice(-8).map(m => ({ role: m.role, content: m.content })),
       context: {
         currentDateStr: todayStr,
         currentTimeStr: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        properties: properties.map((p, pIdx) => {
+        properties: isLeanSmallTalk
+          ? properties.slice(0, 15).map(p => ({
+              id: p.id || '',
+              name: p.name,
+              location: p.location,
+              category: p.categories?.[0] || 'Lodge',
+              status: p.status || 'active',
+              verificationStatus: p.verificationStatus || 'unverified',
+            }))
+          : properties.map((p, pIdx) => {
           const propRooms = rooms.filter(r => r.hotelId === p.id);
           const propConfs = conferences.filter(c => c.hotelId === p.id);
           const propReviews = reviews.filter(r => r.hotelId === p.id);
@@ -555,7 +637,9 @@ export default function OperationsCopilot() {
             })),
           };
         }),
-        bookings: bookings.map(b => {
+        bookings: isLeanSmallTalk
+          ? []
+          : bookings.map(b => {
           const hotel = properties.find(p => p.id === b.hotelId);
           const room = rooms.find(r => r.id === b.roomTypeId);
           return {
@@ -583,40 +667,44 @@ export default function OperationsCopilot() {
       },
     };
 
-    const result = await operationsChat(payload);
+    try {
+      const result = await operationsChat(payload);
 
-    if (result) {
-      // If the response learned a new rule, save it!
-      if (result.newLearnedRule && user.uid) {
-        const saved = addLearnedDirective(user.uid, result.newLearnedRule, userIsAdmin ? 'admin' : 'hotel_manager');
-        setLearnedRules(getLearnedDirectives(user.uid));
-        toast.success(`Directive saved: "${saved.text.slice(0, 50)}..."`);
+      if (result) {
+        // If the response learned a new rule, save it!
+        if (result.newLearnedRule && user.uid) {
+          const saved = addLearnedDirective(user.uid, result.newLearnedRule, userIsAdmin ? 'admin' : 'hotel_manager');
+          setLearnedRules(getLearnedDirectives(user.uid));
+          toast.success(`Directive saved: "${saved.text.slice(0, 50)}..."`);
+        }
+
+        // If the AI autonomously generated a patch from a mistake, persist it!
+        if (result.autonomousPatch && user.uid) {
+          const patch = result.autonomousPatch;
+          const savedPatch = addAutonomousPatch(
+            user.uid,
+            patch.patch,
+            patch.trigger,
+            patch.resolution
+          );
+          setLearnedRules(getLearnedDirectives(user.uid));
+          toast.success(`Operational rule updated: "${savedPatch.text.slice(0, 50)}..."`, {
+            duration: 4000,
+          });
+        }
+
+        const assistantMsg: ChatMessage = {
+          id: `assistant_${Date.now()}`,
+          role: 'assistant',
+          content: result.reply,
+          actionProposal: result.actionProposal,
+          suggestedFollowUps: result.suggestedFollowUps,
+          timestamp: Date.now(),
+        };
+        setMessages(prev => [...prev, assistantMsg]);
       }
-
-      // If the AI autonomously generated a patch from a mistake, persist it!
-      if (result.autonomousPatch && user.uid) {
-        const patch = result.autonomousPatch;
-        const savedPatch = addAutonomousPatch(
-          user.uid,
-          patch.patch,
-          patch.trigger,
-          patch.resolution
-        );
-        setLearnedRules(getLearnedDirectives(user.uid));
-        toast.success(`Operational rule updated: "${savedPatch.text.slice(0, 50)}..."`, {
-          duration: 4000,
-        });
-      }
-
-      const assistantMsg: ChatMessage = {
-        id: `assistant_${Date.now()}`,
-        role: 'assistant',
-        content: result.reply,
-        actionProposal: result.actionProposal,
-        suggestedFollowUps: result.suggestedFollowUps,
-        timestamp: Date.now(),
-      };
-      setMessages(prev => [...prev, assistantMsg]);
+    } finally {
+      setActiveQueryText('');
     }
   };
 
@@ -1617,7 +1705,7 @@ export default function OperationsCopilot() {
                   {generating && (
                     <div className="flex items-center gap-2 text-stone-500 text-xs p-2.5 bg-white rounded-2xl border border-stone-200 w-fit animate-pulse">
                       <Loader2 className="w-3.5 h-3.5 animate-spin text-stone-400" />
-                      <span>{getGeneratingStatusText(lastUserMsg?.content || '')}</span>
+                      <span>{getGeneratingStatusText(activeQueryIntent, activeQueryText || lastUserMsg?.content || '')}</span>
                     </div>
                   )}
 

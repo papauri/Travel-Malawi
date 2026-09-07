@@ -195,8 +195,8 @@ Do not output any markdown code blocks, backticks, or explanatory text. Return s
  */
 const PROVIDER_RATE_LIMITS_MS: Record<AIProviderId, number> = {
   mistral: 1250,   // 0.8 RPS (safely below 1.0 RPS free tier limit)
-  gemini: 1200,    // 15 RPM
-  groq: 1000,      // 30 RPM
+  gemini: 200,     // High throughput, instant response
+  groq: 500,       // 30 RPM
   deepseek: 500,
   openai: 500,
   anthropic: 500,
@@ -360,9 +360,18 @@ async function callGemini(
   maxTokens: number = 750
 ): Promise<string> {
   let cleanModel = model.replace(/^models\//, '');
-  // Auto-upgrade legacy/slow experimental thinking checkpoints to blazing-fast production Flash
-  if (cleanModel === 'gemini-3.6-flash' || cleanModel === 'gemini-2.5-flash') {
-    cleanModel = 'gemini-3.8-flash';
+  // Map legacy, typo, or experimental flash model names to production gemini-2.0-flash
+  if (
+    cleanModel === 'gemini-3.6-flash' ||
+    cleanModel === 'gemini-3.8-flash' ||
+    cleanModel === 'gemini-2.5-flash' ||
+    cleanModel === 'gemini-flash' ||
+    cleanModel === 'gemini-flash-latest' ||
+    !cleanModel
+  ) {
+    cleanModel = 'gemini-2.0-flash';
+  } else if (cleanModel.includes('pro') && (cleanModel.includes('3.1') || cleanModel.includes('3.0') || cleanModel.includes('preview'))) {
+    cleanModel = 'gemini-1.5-pro';
   }
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${apiKey}`;
   const maxRetries = 4;
@@ -384,7 +393,7 @@ async function callGemini(
         generationConfig: {
           temperature,
           maxOutputTokens: maxTokens,
-          ...(cleanModel.includes('flash') ? { thinkingConfig: { thinkingBudget: 100 } } : {}),
+          ...(cleanModel.includes('thinking') ? { thinkingConfig: { thinkingBudget: 100 } } : {}),
         },
       }),
     });
@@ -608,7 +617,7 @@ async function executeWithProvider(
         return callGemini(
           'gemini',
           apiKey,
-          model || 'gemini-3.8-flash',
+          model || 'gemini-2.0-flash',
           SYSTEM_PROMPT,
           userPrompt,
           0.7,
@@ -791,6 +800,7 @@ export interface OperationsAssistantRequest {
   userName?: string;
   userEmail?: string;
   message: string;
+  intent?: 'greeting_or_chat' | 'tourism_inquiry' | 'database_query' | 'database_action';
   history?: Array<{ role: 'user' | 'assistant'; content: string }>;
   context: {
     currentDateStr: string;
@@ -1354,6 +1364,99 @@ async function executeOperationsChatWithProvider(
     cleanFirstName = extracted.charAt(0).toUpperCase() + extracted.slice(1);
   }
 
+  // High-Speed Concierge Chat Routing (Instant Sub-Second Greetings & Small Talk)
+  // If the user is simply greeting ("hi", "hello", "moni") or engaging in casual pleasantries,
+  // do NOT waste time formatting 20,000 tokens of raw property and booking schemas!
+  const cleanMsg = (req.message || '').trim().toLowerCase().replace(/[!.,?]/g, '');
+  const greetingPhrases = [
+    'hi', 'hello', 'hey', 'good morning', 'good afternoon', 'good evening',
+    'hi there', 'hello there', 'muli bwanji', 'moni', 'bo', 'how are you', 'who are you',
+    'what are you', 'sup', 'yo', 'greetings', 'morning', 'afternoon', 'evening',
+    'thanks', 'thank you', 'cheers', 'howdy', 'what can you do', 'help', 'hi copilot'
+  ];
+  const isDirectGreeting = greetingPhrases.includes(cleanMsg) || (cleanMsg.length <= 4 && !cleanMsg.includes('fee') && !cleanMsg.includes('rate'));
+  const isGreetingOrSmallTalk = req.intent === 'greeting_or_chat' || (isDirectGreeting && req.intent !== 'database_query' && req.intent !== 'database_action');
+
+  if (isGreetingOrSmallTalk) {
+    const quickPropNames = (req.context.properties || []).slice(0, 5).map(p => p.name).filter(Boolean);
+    const propContextLine = quickPropNames.length > 0
+      ? `Properties in host portfolio: ${quickPropNames.join(', ')}.`
+      : `Platform context: Travel Malawi Lodges & Accommodations.`;
+
+    const chatSystemPrompt = `You are the Warm & Professional Concierge for Travel Malawi — Lake of Stars hospitality platform.
+You are an intelligent, delightful hospitality partner and property management concierge.
+
+Your tone is warm, polite, culturally respectful (e.g. Moni! Muli bwanji!), and efficient.
+When greeting or engaging in casual conversational chat:
+1. Respond warmly and concisely in 1 to 2 short sentences.
+2. Greet the host respectfully by name (${cleanFirstName || 'Host'}) with authentic Malawian warmth.
+3. Keep it conversational and supportive within the realm of hospitality and property management.
+4. DO NOT dump raw data, database records, full audits, or listing tables when merely greeted.
+5. Conclude with a \`\`\`suggested_follow_ups JSON block containing 2-3 short, clean, actionable next steps (3-6 words max, NO emojis, sparkles, or icons).
+
+Return your response followed by a \`\`\`suggested_follow_ups JSON block:
+\`\`\`suggested_follow_ups
+[
+  "Check today's arrivals",
+  "Review room rates",
+  "View active listings"
+]
+\`\`\``;
+
+    const chatUserPrompt = `CURRENT HOST:
+- Name: ${cleanFirstName || 'Host'}
+- Role: ${isAdminUser ? 'Platform Executive' : 'Lodge Manager/Host'}
+- ${propContextLine}
+- Date: ${today}
+
+CONVERSATION HISTORY:
+${(req.history || []).slice(-4).map(h => `${h.role === 'user' ? 'User' : 'Assistant'}: ${h.content}`).join('\n')}
+
+USER MESSAGE:
+"${req.message}"`;
+
+    const rawGenerated = await enqueueAIRequest(providerId, async () => {
+      switch (providerId) {
+        case 'deepseek':
+          return callOpenAICompatible('deepseek', 'https://api.deepseek.com/chat/completions', apiKey, model || 'deepseek-chat', chatSystemPrompt, chatUserPrompt, 0.5, 300);
+        case 'openai':
+          return callOpenAICompatible('openai', 'https://api.openai.com/v1/chat/completions', apiKey, model || 'gpt-4o-mini', chatSystemPrompt, chatUserPrompt, 0.5, 300);
+        case 'mistral':
+          return callOpenAICompatible('mistral', 'https://api.mistral.ai/v1/chat/completions', apiKey, model || 'mistral-small-latest', chatSystemPrompt, chatUserPrompt, 0.5, 300);
+        case 'groq':
+          return callOpenAICompatible('groq', 'https://api.groq.com/openai/v1/chat/completions', apiKey, model || 'llama-3.3-70b-versatile', chatSystemPrompt, chatUserPrompt, 0.5, 300);
+        case 'gemini':
+          return callGemini('gemini', apiKey, model || 'gemini-2.0-flash', chatSystemPrompt, chatUserPrompt, 0.5, 300);
+        case 'anthropic':
+          return callAnthropic('anthropic', apiKey, model || 'claude-3-5-haiku-20241022', chatSystemPrompt, chatUserPrompt, 0.5, 300);
+        default:
+          throw new Error(`Unsupported AI provider: ${providerId}`);
+      }
+    });
+
+    let suggestedFollowUps: string[] = [];
+    const followUpsMatch = rawGenerated.match(/```suggested_follow_ups\s*([\s\S]*?)\s*```/);
+    if (followUpsMatch) {
+      try {
+        const parsed = JSON.parse(followUpsMatch[1].trim());
+        if (Array.isArray(parsed)) {
+          suggestedFollowUps = parsed.map(s => String(s).replace(/^[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1FA00}-\u{1FA6F}\s*✨⭐🤖]+/gu, '').trim()).filter(Boolean).slice(0, 3);
+        }
+      } catch {}
+    }
+    if (suggestedFollowUps.length === 0) {
+      suggestedFollowUps = ["Check today's arrivals", "Review room rates", "View active listings"];
+    }
+
+    const cleanReply = rawGenerated.replace(/```[\s\S]*?```/g, '').trim();
+
+    return {
+      reply: cleanReply,
+      actionProposal: null,
+      suggestedFollowUps,
+    };
+  }
+
   const propertiesSummary = req.context.properties.map(p => {
     // Rooms & multi-currency rates
     const roomsList = (p.rooms || []).map(r => {
@@ -1552,39 +1655,7 @@ USER MESSAGE:
 "${req.message}"
 `;
 
-  const cleanMsg = (req.message || '').trim().toLowerCase().replace(/[!.,?]/g, '');
-  const isGreeting = [
-    'hi', 'hello', 'hey', 'good morning', 'good afternoon', 'good evening',
-    'hi there', 'hello there', 'muli bwanji', 'moni', 'how are you', 'who are you',
-    'sup', 'yo', 'greetings', 'morning', 'afternoon'
-  ].includes(cleanMsg);
-
-  const greetingPrompt = `
-CURRENT USER & CONTEXT:
-- Name: ${cleanFirstName || 'Partner'}
-- Access Level: ${isAdminUser ? 'Executive Platform Access (all platform properties)' : 'Property Manager'}
-- Properties Managed (${req.context.properties.length}): ${req.context.properties.map(p => `"${p.name}" (${p.location})`).join(', ') || 'None registered yet'}
-- Quick Booking Status: ${arrivalsToday.length} arrivals today, ${departuresToday.length} departures today
-- Current Date & Time: ${today} ${time}
-
-${learnedRulesSummary}
-${autonomousPatchesSummary}
-
-CONVERSATION HISTORY:
-${(req.history || []).slice(-4).map(h => `${h.role === 'user' ? 'User' : 'Assistant'}: ${h.content}`).join('\n')}
-
-USER GREETING:
-"${req.message}"
-
-INSTRUCTIONS:
-1. Greet the user warmly and respectfully by name (${cleanFirstName || 'Host'}) with authentic Malawian hospitality (e.g. *Moni!* or *Muli bwanji!*).
-2. Introduce yourself briefly as their dedicated Lodge Concierge for Travel Malawi.
-3. Proactively mention 2-3 quick operational things you can assist with right now (e.g. reviewing arrivals/checkouts for today, checking room rates in USD/MWK, adjusting property status, or guest concierge recommendations).
-4. Keep the greeting concise and welcoming (2-3 sentences).
-5. Append the \`\`\`suggested_follow_ups JSON block with 3 clean follow-up questions tailored to their properties.
-`;
-
-  const finalUserPrompt = isGreeting ? greetingPrompt : userPrompt;
+  const finalUserPrompt = userPrompt;
 
   const rawGenerated = await enqueueAIRequest(providerId, async () => {
     switch (providerId) {
@@ -1640,7 +1711,7 @@ INSTRUCTIONS:
         return callGemini(
           'gemini',
           apiKey,
-          model || 'gemini-3.8-flash',
+          model || 'gemini-2.0-flash',
           OPERATIONS_SYSTEM_PROMPT,
           finalUserPrompt,
           0.4,
@@ -1942,7 +2013,8 @@ Rules:
         let extractedText: string;
 
         if (providerId === 'gemini') {
-          const model = config.providers.gemini?.model || 'gemini-3.8-flash';
+          const rawModel = config.providers.gemini?.model || 'gemini-2.0-flash';
+          const model = (rawModel.includes('3.8') || rawModel.includes('3.6') || rawModel.includes('2.5') || !rawModel) ? 'gemini-2.0-flash' : rawModel;
           const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
           const response = await fetch(url, {
             method: 'POST',
@@ -2075,7 +2147,7 @@ Rules:
 
         let responseText: string;
         if (providerId === 'gemini') {
-          responseText = await callGemini(providerId, apiKey, model || 'gemini-3.8-flash', 'You extract structured menu data.', fullPrompt);
+          responseText = await callGemini(providerId, apiKey, model || 'gemini-2.0-flash', 'You extract structured menu data.', fullPrompt);
         } else if (providerId === 'anthropic') {
           responseText = await callAnthropic(providerId, apiKey, model || 'claude-3-5-haiku-20241022', 'You extract structured menu data.', fullPrompt);
         } else {
@@ -2164,7 +2236,8 @@ Rules:
         let extractedText: string;
 
         if (providerId === 'gemini') {
-          const model = config.providers.gemini?.model || 'gemini-3.8-flash';
+          const rawModel = config.providers.gemini?.model || 'gemini-2.0-flash';
+          const model = (rawModel.includes('3.8') || rawModel.includes('3.6') || rawModel.includes('2.5') || !rawModel) ? 'gemini-2.0-flash' : rawModel;
           const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
           const response = await fetch(url, {
             method: 'POST',
@@ -2289,7 +2362,7 @@ Rules:
 
         let responseText: string;
         if (providerId === 'gemini') {
-          responseText = await callGemini(providerId, apiKey, model || 'gemini-3.8-flash', 'You extract structured property data.', fullPrompt);
+          responseText = await callGemini(providerId, apiKey, model || 'gemini-2.0-flash', 'You extract structured property data.', fullPrompt);
         } else if (providerId === 'anthropic') {
           responseText = await callAnthropic(providerId, apiKey, model || 'claude-3-5-haiku-20241022', 'You extract structured property data.', fullPrompt);
         } else {
