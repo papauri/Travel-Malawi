@@ -1734,8 +1734,8 @@ USER MESSAGE:
         : `    - Management Status: Self-hosted / Open Manager (Available live on site)${ownerLine}`;
     } else {
       ownerManagerSummary = hasAssignedManager
-        ? `    - Property Ownership: Belongs to signed-in host (${cleanFirstName || 'Host'}) | Manager: "${p.managerName || cleanFirstName || 'Host'}" (UID: ${p.managerId})${ownerLine}`
-        : `    - Property Ownership: Belongs to signed-in user (${cleanFirstName || 'Host'}) | Manager Assignment: Directly hosted by current user${ownerLine}`;
+        ? `    - Property Ownership: Belongs to signed-in host (${resolvedDisplayName || 'Host'}) | Manager: "${p.managerName || resolvedDisplayName || 'Host'}" (UID: ${p.managerId})${ownerLine}`
+        : `    - Property Ownership: Belongs to signed-in user (${resolvedDisplayName || 'Host'}) | Manager Assignment: Directly hosted by current user${ownerLine}`;
     }
     const contactSummary = `    - Front Desk / Inquiries Contact: Email: ${p.contactEmail || p.managerEmail || 'N/A'} | Phone: ${p.contactPhone || p.contactWhatsapp || 'N/A'} | WhatsApp: ${p.contactWhatsapp || 'N/A'}`;
     const crewSummary = p.crew && p.crew.length > 0
@@ -2014,6 +2014,27 @@ USER MESSAGE:
     }
   }
 
+  // Parse out autonomous patch
+  let autonomousPatch: { trigger?: string; patch: string; resolution?: string } | null = null;
+  const patchMatch = rawGenerated.match(/```autonomous_patch\s*([\s\S]*?)\s*```/);
+  if (patchMatch) {
+    try {
+      const parsed = JSON.parse(patchMatch[1].trim());
+      if (parsed?.patch) {
+        autonomousPatch = {
+          trigger: parsed.trigger || 'User feedback / correction',
+          patch: String(parsed.patch).trim(),
+          resolution: parsed.resolution || 'Patched into persistent concierge memory',
+        };
+        if (!newLearnedRule) {
+          newLearnedRule = autonomousPatch.patch;
+        }
+      }
+    } catch (e) {
+      console.error('Failed to parse autonomous patch JSON:', e);
+    }
+  }
+
   // Continuous Learning Fallback: If host mentions breakfast, checkout, or communication flow/adaptation, learn it immediately
   if (!newLearnedRule) {
     const lower = (req.message || '').toLowerCase();
@@ -2033,27 +2054,6 @@ USER MESSAGE:
           resolution: 'Continuously tuned response flow and memory retention.',
         };
       }
-    }
-  }
-
-  // Parse out autonomous patch
-  let autonomousPatch: { trigger?: string; patch: string; resolution?: string } | null = null;
-  const patchMatch = rawGenerated.match(/```autonomous_patch\s*([\s\S]*?)\s*```/);
-  if (patchMatch) {
-    try {
-      const parsed = JSON.parse(patchMatch[1].trim());
-      if (parsed?.patch) {
-        autonomousPatch = {
-          trigger: parsed.trigger || 'User feedback / correction',
-          patch: String(parsed.patch).trim(),
-          resolution: parsed.resolution || 'Patched into persistent concierge memory',
-        };
-        if (!newLearnedRule) {
-          newLearnedRule = autonomousPatch.patch;
-        }
-      }
-    } catch (e) {
-      console.error('Failed to parse autonomous patch JSON:', e);
     }
   }
 

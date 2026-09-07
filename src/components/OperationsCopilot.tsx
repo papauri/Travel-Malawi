@@ -24,6 +24,7 @@ import {
   removeLearnedDirective, 
   LearnedDirective 
 } from '../lib/assistantMemory';
+import WalkthroughTooltip from './WalkthroughTooltip';
 
 interface ChatMessage {
   id: string;
@@ -1128,6 +1129,18 @@ export default function OperationsCopilot() {
       {/* 1. CHARMING CONCIERGE AVATAR TRIGGER BUTTON (z-[140] on top)  */}
       {/* ------------------------------------------------------------- */}
       <div className="fixed bottom-6 right-4 sm:bottom-8 sm:right-8 z-[140] pointer-events-none">
+        {/* Subtle, slowly vanishing walkthrough callout on app launch / first sighting */}
+        {!isOpen && (
+          <WalkthroughTooltip
+            id="walkthrough-concierge-trigger"
+            icon="🛎️"
+            title="Concierge Assistant"
+            description="Tap anytime for live room audits, revenue metrics & instant operations help."
+            arrowPosition="bottom-right"
+            className="absolute bottom-full right-0 mb-3 w-64 sm:w-72 max-w-[calc(100vw-2.5rem)] pointer-events-auto"
+          />
+        )}
+
         <motion.button
           type="button"
           id="btn-concierge-copilot-trigger"

@@ -9,6 +9,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { isHotelManager } from '../lib/roles';
 import { motion, AnimatePresence } from 'motion/react';
 import toast from 'react-hot-toast';
+import WalkthroughTooltip from './WalkthroughTooltip';
 
 function formatTimeAgo(timestamp: number): string {
   const diffSec = Math.max(0, Math.floor((Date.now() - timestamp) / 1000));
@@ -133,6 +134,18 @@ export default function NotificationBell() {
           </span>
         ) : null}
       </button>
+
+      {/* Subtle, slowly vanishing walkthrough callout on app launch / first sighting */}
+      {!isOpen && (
+        <WalkthroughTooltip
+          id="walkthrough-notification-bell"
+          icon="🔔"
+          title="Chat & Notifications"
+          description="Direct guest messages, booking inquiries & call alerts live right here."
+          arrowPosition="top-right"
+          className="absolute top-full right-0 mt-2.5 w-64 sm:w-72 max-w-[calc(100vw-2.5rem)] pointer-events-auto z-50"
+        />
+      )}
 
       {/* Floating Notifications Popover */}
       <AnimatePresence>

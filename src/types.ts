@@ -335,6 +335,8 @@ export interface Booking {
   /** Short human-quotable code, e.g. "TM-4F2A9C". */
   reference?: string;
   hotelId: string;
+  hotelName?: string;
+  hotel?: Hotel;
   managerId: string;
   roomTypeId: string;
   guestId: string;

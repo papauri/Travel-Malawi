@@ -22,6 +22,7 @@ import DirectionsPanel from '../components/DirectionsPanel';
 import { ReviewModal } from '../components/ReviewModal';
 import InteractiveMap from '../components/InteractiveMap';
 import { useBreadcrumbLabel } from '../components/Breadcrumbs';
+import WalkthroughTooltip from '../components/WalkthroughTooltip';
 import MaskedPlaceName from '../components/MaskedPlaceName';
 import { getHotelImage, getHotelImages, getRoomImage } from '../lib/images';
 import { formatDateStr, nightsBetween, todayStr } from '../lib/dates';
@@ -1256,14 +1257,25 @@ export default function HotelDetails() {
                 </div>
                 <div className="flex flex-wrap gap-2.5">
                   {(hotel.chatEnabled !== false && hotel.adminChatEnabled !== false && user?.uid !== hotel.managerId) && (
-                    <button
-                      type="button"
-                      onClick={handleOpenChat}
-                      className="inline-flex items-center gap-2 rounded-xl bg-stone-900 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-stone-800 shadow-2xs cursor-pointer"
-                    >
-                      <MessageSquare className="h-3.5 w-3.5 text-emerald-400" />
-                      <span>{managerPresence?.status === 'online' ? 'Live Host Chat' : 'Leave a Message'}</span>
-                    </button>
+                    <div className="relative inline-block">
+                      <button
+                        type="button"
+                        id="btn-hotel-host-chat"
+                        onClick={handleOpenChat}
+                        className="inline-flex items-center gap-2 rounded-xl bg-stone-900 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-stone-800 shadow-2xs cursor-pointer"
+                      >
+                        <MessageSquare className="h-3.5 w-3.5 text-emerald-400" />
+                        <span>{managerPresence?.status === 'online' ? 'Live Host Chat' : 'Leave a Message'}</span>
+                      </button>
+                      <WalkthroughTooltip
+                        id="walkthrough-hotel-host-chat"
+                        icon="💬"
+                        title="Direct Host Chat"
+                        description="Have questions before booking? Chat directly with the host right here."
+                        arrowPosition="top-center"
+                        className="absolute top-full left-0 sm:left-auto sm:right-0 mt-2.5 w-64 sm:w-72 max-w-[calc(100vw-2.5rem)] pointer-events-auto z-30"
+                      />
+                    </div>
                   )}
                   {telLink(hotel.contactPhone) && managerPresence?.status === "online" && (
                     <a
