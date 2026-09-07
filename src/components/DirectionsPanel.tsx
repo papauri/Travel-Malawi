@@ -21,6 +21,7 @@ import {
   LatLng,
   distanceKm,
   estimateDriveDuration,
+  estimateTravelTime,
   formatCoordinates,
   getCompassBearing,
   googleDirectionsUrl,
@@ -173,15 +174,17 @@ export default function DirectionsPanel({
     }
   };
 
-  // Route calculations
+  // Route calculations with terrain and road routing logic
   const routeStats =
     destCoords && guestLocation
       ? (() => {
-          const km = distanceKm(guestLocation, destCoords);
-          const miles = km * 0.621371;
-          const duration = estimateDriveDuration(km);
+          const directKm = distanceKm(guestLocation, destCoords);
+          const travel = estimateTravelTime(directKm, guestLocation, destCoords, hotelName);
+          const roadKm = travel.roadDistanceKm;
+          const miles = roadKm * 0.621371;
+          const duration = travel.drivingTimeFormatted;
           const bearing = getCompassBearing(guestLocation, destCoords);
-          return { km, miles, duration, bearing };
+          return { km: roadKm, directKm, miles, duration, bearing, notes: travel.notes };
         })()
       : null;
 
@@ -388,45 +391,53 @@ export default function DirectionsPanel({
 
         {/* Calculated Stats Banner */}
         {routeStats ? (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 bg-white rounded-2xl border border-stone-200/80 shadow-xs mb-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl">
-                <Car className="h-5 w-5" />
+          <div className="space-y-2 mb-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 bg-white rounded-2xl border border-stone-200/80 shadow-xs">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl">
+                  <Car className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-xs text-stone-400 uppercase font-bold tracking-wider">Highway Distance</p>
+                  <p className="text-base font-bold text-stone-900">
+                    ~{routeStats.km.toFixed(1)} km{' '}
+                    <span className="text-xs text-stone-500 font-normal">
+                      ({routeStats.miles.toFixed(1)} mi)
+                    </span>
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-xs text-stone-400 uppercase font-bold tracking-wider">Distance</p>
-                <p className="text-base font-bold text-stone-900">
-                  {routeStats.km.toFixed(1)} km{' '}
-                  <span className="text-xs text-stone-500 font-normal">
-                    ({routeStats.miles.toFixed(1)} mi)
-                  </span>
-                </p>
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl">
+                  <Clock className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-xs text-stone-400 uppercase font-bold tracking-wider">
+                    Est. Drive Time
+                  </p>
+                  <p className="text-base font-bold text-stone-900">~{routeStats.duration}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-amber-50 text-amber-600 rounded-xl">
+                  <Compass className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-xs text-stone-400 uppercase font-bold tracking-wider">
+                    Heading / Origin
+                  </p>
+                  <p className="text-sm font-bold text-stone-900 line-clamp-1">
+                    {routeStats.bearing} ({selectedOriginName || 'Origin'})
+                  </p>
+                </div>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl">
-                <Clock className="h-5 w-5" />
+            {routeStats.notes && (
+              <div className="px-3 py-1.5 bg-stone-50 rounded-xl border border-stone-200/60 text-xs text-stone-600 flex items-center justify-between">
+                <span>Direct aerial: <strong className="text-stone-800">{routeStats.directKm.toFixed(1)} km</strong></span>
+                <span className="font-medium text-emerald-800 truncate">{routeStats.notes}</span>
               </div>
-              <div>
-                <p className="text-xs text-stone-400 uppercase font-bold tracking-wider">
-                  Est. Drive Time
-                </p>
-                <p className="text-base font-bold text-stone-900">~{routeStats.duration}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-amber-50 text-amber-600 rounded-xl">
-                <Compass className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-xs text-stone-400 uppercase font-bold tracking-wider">
-                  Heading / Origin
-                </p>
-                <p className="text-sm font-bold text-stone-900 line-clamp-1">
-                  {routeStats.bearing} ({selectedOriginName || 'Origin'})
-                </p>
-              </div>
-            </div>
+            )}
           </div>
         ) : (
           <p className="text-xs text-stone-500 mb-2">

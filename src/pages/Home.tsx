@@ -1965,7 +1965,7 @@ export default function Home() {
                         const coords = resolveHotelCoordinates(hotel);
                         const hasCoords = isValidLatLng(coords);
                         const travelEstimate = (showUserLocation && isValidLatLng(userLocation) && hasCoords)
-                          ? estimateTravelTime(distanceKm(userLocation, coords!))
+                          ? estimateTravelTime(distanceKm(userLocation, coords!), userLocation, coords!, hotel.name)
                           : null;
 
                         return (
@@ -2099,7 +2099,7 @@ export default function Home() {
                                         className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs transition"
                                       >
                                         <Navigation className="w-3.5 h-3.5 fill-white" />
-                                        <span>Get Directions</span>
+                                        <span>Open in Google Maps</span>
                                         <ExternalLink className="w-3 h-3 opacity-80" />
                                       </a>
                                       <Link

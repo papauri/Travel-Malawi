@@ -4,9 +4,9 @@ import 'leaflet/dist/leaflet.css';
 import 'leaflet.markercluster';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
-import { LatLng, isValidLatLng, MALAWI_CENTRE, distanceKm, estimateTravelTime, getDirectionsUrl } from '../lib/geo';
+import { LatLng, isValidLatLng, MALAWI_CENTRE, distanceKm, estimateTravelTime, getDirectionsUrl, fetchRoadRoute, RoadRouteResult } from '../lib/geo';
 import { CurrencyCode } from '../types';
-import { Layers, Locate, Maximize2, Minimize2, ZoomIn, ZoomOut, Navigation, Star, MapPin, Car, ArrowRight, ExternalLink, X, Compass, Route, WifiOff, CloudDownload, Download } from 'lucide-react';
+import { Layers, Locate, Maximize2, Minimize2, ZoomIn, ZoomOut, Navigation, Star, MapPin, Car, ArrowRight, ExternalLink, X, Compass, Route, WifiOff, CloudDownload, Download, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 
@@ -232,11 +232,11 @@ export const createPopupHtml = (lodge: LodgeMarker) => {
 
 export default function InteractiveMap({
   center,
+  zoom = 7,
+  interactive = true,
   markerPosition,
   markerImage,
   onMarkerChange,
-  interactive = true,
-  zoom = 13,
   heightClass = 'h-72',
   popupText,
   origin,
@@ -263,14 +263,20 @@ export default function InteractiveMap({
   const originMarkerRef = useRef<L.Marker | null>(null);
   const userLocationMarkerRef = useRef<L.Marker | null>(null);
   const userLocationCircleRef = useRef<L.Circle | null>(null);
+  const userRouteCasingRef = useRef<L.Polyline | null>(null);
   const userRoutePolylineRef = useRef<L.Polyline | null>(null);
   const midpointMarkerRef = useRef<L.Marker | null>(null);
+  const polylineCasingRef = useRef<L.Polyline | null>(null);
   const polylineRef = useRef<L.Polyline | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   
   // Cluster and markers layer ref
   const clusterGroupRef = useRef<any>(null);
   const lodgeMarkersMapRef = useRef<Map<string, L.Marker>>(new Map());
+
+  const [userRoadRoute, setUserRoadRoute] = useState<RoadRouteResult | null>(null);
+  const [isCalculatingUserRoute, setIsCalculatingUserRoute] = useState(false);
+  const [originRoadRoute, setOriginRoadRoute] = useState<RoadRouteResult | null>(null);
 
   const [mapType, setMapType] = useState<'streets' | 'satellite'>('streets');
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -309,14 +315,64 @@ export default function InteractiveMap({
     return lodges.find(l => l.id === selectedLodgeId && isValidLatLng(l.coordinates)) || null;
   }, [selectedLodgeId, lodges]);
 
+  // Fetch real road route (via OSRM road network avoiding water bodies) when user and lodge are selected
+  useEffect(() => {
+    let cancelled = false;
+
+    if (showUserLocation && isValidLatLng(userLocation) && selectedLodge && isValidLatLng(selectedLodge.coordinates)) {
+      setIsCalculatingUserRoute(true);
+      fetchRoadRoute(userLocation, selectedLodge.coordinates, selectedLodge.name)
+        .then(route => {
+          if (!cancelled) {
+            setUserRoadRoute(route);
+            setIsCalculatingUserRoute(false);
+          }
+        })
+        .catch(err => {
+          if (!cancelled) {
+            console.warn('Road route fetch error:', err);
+            setIsCalculatingUserRoute(false);
+          }
+        });
+    } else {
+      setUserRoadRoute(null);
+      setIsCalculatingUserRoute(false);
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [showUserLocation, userLocation, selectedLodge]);
+
   // Compute live travel estimate between user location and selected lodge
+  // Prefers real road calculation from road network (OSRM), fallbacks to terrain-aware estimate
   const travelInfo = useMemo(() => {
     if (!showUserLocation || !userLocation || !selectedLodge || !isValidLatLng(userLocation) || !isValidLatLng(selectedLodge.coordinates)) {
       return null;
     }
+    if (userRoadRoute) {
+      return userRoadRoute;
+    }
     const straightKm = distanceKm(userLocation, selectedLodge.coordinates);
-    return estimateTravelTime(straightKm);
-  }, [showUserLocation, userLocation, selectedLodge]);
+    return estimateTravelTime(straightKm, userLocation, selectedLodge.coordinates, selectedLodge.name);
+  }, [showUserLocation, userLocation, selectedLodge, userRoadRoute]);
+
+  // Fetch road route for Origin -> Destination (single pin / directions mode)
+  useEffect(() => {
+    let cancelled = false;
+    if (isValidLatLng(origin) && isValidLatLng(markerPosition)) {
+      fetchRoadRoute(origin, markerPosition, popupText)
+        .then(route => {
+          if (!cancelled) setOriginRoadRoute(route);
+        })
+        .catch(() => {});
+    } else {
+      setOriginRoadRoute(null);
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [origin, markerPosition, popupText]);
 
   // Initialize Map
   useEffect(() => {
@@ -625,34 +681,58 @@ export default function InteractiveMap({
         originMarkerRef.current = marker;
       }
 
-      // Draw route connecting line
+      // Draw real road route connecting line
       if (isValidLatLng(markerPosition)) {
-        const latlngs: [number, number][] = [
-          [origin.lat, origin.lng],
-          [markerPosition.lat, markerPosition.lng],
-        ];
+        const roadCoords: [number, number][] =
+          originRoadRoute && originRoadRoute.coordinates.length > 1
+            ? originRoadRoute.coordinates
+            : [
+                [origin.lat, origin.lng],
+                [markerPosition.lat, markerPosition.lng],
+              ];
 
-        if (polylineRef.current) {
-          polylineRef.current.setLatLngs(latlngs);
+        // Google Maps blue route casing / shadow
+        if (polylineCasingRef.current) {
+          polylineCasingRef.current.setLatLngs(roadCoords);
         } else {
-          const polyline = L.polyline(latlngs, {
+          const casing = L.polyline(roadCoords, {
+            color: '#1e3a8a',
+            weight: 7.5,
+            opacity: 0.35,
+            lineCap: 'round',
+            lineJoin: 'round',
+          });
+          casing.addTo(map);
+          polylineCasingRef.current = casing;
+        }
+
+        // Google Maps vibrant blue road polyline
+        if (polylineRef.current) {
+          polylineRef.current.setLatLngs(roadCoords);
+        } else {
+          const polyline = L.polyline(roadCoords, {
             color: '#2563eb',
-            weight: 4,
-            dashArray: '6, 8',
-            opacity: 0.85,
+            weight: 4.5,
+            opacity: 0.95,
+            lineCap: 'round',
+            lineJoin: 'round',
           });
           polyline.addTo(map);
           polylineRef.current = polyline;
         }
 
-        // Fit bounds to both points
-        const bounds = L.latLngBounds(latlngs);
-        map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
+        // Fit bounds to entire road route
+        const bounds = L.latLngBounds(roadCoords);
+        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
       }
     } else {
       if (originMarkerRef.current) {
         map.removeLayer(originMarkerRef.current);
         originMarkerRef.current = null;
+      }
+      if (polylineCasingRef.current) {
+        map.removeLayer(polylineCasingRef.current);
+        polylineCasingRef.current = null;
       }
       if (polylineRef.current) {
         map.removeLayer(polylineRef.current);
@@ -670,7 +750,7 @@ export default function InteractiveMap({
         }
       }
     }
-  }, [mapReady, origin, markerPosition, originLabel, zoom]);
+  }, [mapReady, origin, markerPosition, originLabel, originRoadRoute, zoom]);
 
   // Update User Live Location Marker & Accuracy Circle
   useEffect(() => {
@@ -741,41 +821,67 @@ export default function InteractiveMap({
     }
   }, [mapReady, userLocation, showUserLocation, userLocationAccuracy, selectedLodgeId]);
 
-  // Connect User Location to Selected Lodge with Route Polyline & Distance Badge
+  // Connect User Location to Selected Lodge with Real Road Polyline & Road Distance Badge
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map || !mapReady) return;
 
     if (showUserLocation && isValidLatLng(userLocation) && selectedLodge && isValidLatLng(selectedLodge.coordinates)) {
-      const latlngs: [number, number][] = [
-        [userLocation.lat, userLocation.lng],
-        [selectedLodge.coordinates.lat, selectedLodge.coordinates.lng],
-      ];
+      const roadCoords: [number, number][] =
+        userRoadRoute && userRoadRoute.coordinates.length > 1
+          ? userRoadRoute.coordinates
+          : [
+              [userLocation.lat, userLocation.lng],
+              [selectedLodge.coordinates.lat, selectedLodge.coordinates.lng],
+            ];
 
-      // Draw route connecting polyline
-      if (userRoutePolylineRef.current) {
-        userRoutePolylineRef.current.setLatLngs(latlngs);
+      // Draw route underlayer casing (Google Maps route shadow)
+      if (userRouteCasingRef.current) {
+        userRouteCasingRef.current.setLatLngs(roadCoords);
       } else {
-        const polyline = L.polyline(latlngs, {
-          color: '#059669',
-          weight: 4,
-          dashArray: '6, 8',
-          opacity: 0.9,
+        const casing = L.polyline(roadCoords, {
+          color: '#1e3a8a',
+          weight: 7.5,
+          opacity: 0.35,
+          lineCap: 'round',
+          lineJoin: 'round',
+        });
+        casing.addTo(map);
+        userRouteCasingRef.current = casing;
+      }
+
+      // Draw route main polyline (Google Maps vibrant blue)
+      if (userRoutePolylineRef.current) {
+        userRoutePolylineRef.current.setLatLngs(roadCoords);
+      } else {
+        const polyline = L.polyline(roadCoords, {
+          color: '#2563eb',
+          weight: 4.5,
+          opacity: 0.95,
+          lineCap: 'round',
+          lineJoin: 'round',
         });
         polyline.addTo(map);
         userRoutePolylineRef.current = polyline;
       }
 
-      // Add midpoint distance & driving time badge
+      // Add midpoint distance & driving time badge along the actual road
       if (travelInfo) {
-        const midLat = (userLocation.lat + selectedLodge.coordinates.lat) / 2;
-        const midLng = (userLocation.lng + selectedLodge.coordinates.lng) / 2;
+        let midLat: number;
+        let midLng: number;
+        if (userRoadRoute && userRoadRoute.coordinates.length > 2) {
+          const midIdx = Math.floor(userRoadRoute.coordinates.length / 2);
+          midLat = userRoadRoute.coordinates[midIdx][0];
+          midLng = userRoadRoute.coordinates[midIdx][1];
+        } else {
+          midLat = (userLocation.lat + selectedLodge.coordinates.lat) / 2;
+          midLng = (userLocation.lng + selectedLodge.coordinates.lng) / 2;
+        }
 
         const badgeHtml = `
           <div class="relative flex items-center justify-center -translate-x-1/2 -translate-y-1/2 pointer-events-none">
-            <div class="px-2.5 py-1 bg-stone-900/95 text-white text-[11px] font-bold rounded-full shadow-2xl border border-emerald-400 flex items-center gap-1.5 whitespace-nowrap backdrop-blur-md">
-              <span class="text-emerald-400 font-extrabold flex items-center gap-1">
-                <span>🚗</span>
+            <div class="px-2.5 py-1 bg-stone-900/95 text-white text-[11px] font-bold rounded-full shadow-2xl border border-blue-500/80 flex items-center gap-1.5 whitespace-nowrap backdrop-blur-md">
+              <span class="text-blue-400 font-extrabold flex items-center gap-1">
                 <span>${travelInfo.drivingTimeFormatted}</span>
               </span>
               <span class="text-stone-500">·</span>
@@ -805,10 +911,14 @@ export default function InteractiveMap({
         }
       }
 
-      // Smoothly frame both User and Selected Lodge on the map
-      const bounds = L.latLngBounds(latlngs);
+      // Smoothly frame entire road route on the map
+      const bounds = L.latLngBounds(roadCoords);
       map.fitBounds(bounds, { padding: [60, 60], maxZoom: 15 });
     } else {
+      if (userRouteCasingRef.current) {
+        map.removeLayer(userRouteCasingRef.current);
+        userRouteCasingRef.current = null;
+      }
       if (userRoutePolylineRef.current) {
         map.removeLayer(userRoutePolylineRef.current);
         userRoutePolylineRef.current = null;
@@ -818,7 +928,7 @@ export default function InteractiveMap({
         midpointMarkerRef.current = null;
       }
     }
-  }, [showUserLocation, userLocation, selectedLodge, travelInfo]);
+  }, [showUserLocation, userLocation, selectedLodge, userRoadRoute, travelInfo]);
 
   // Recenter map when center or marker changes
   useEffect(() => {
@@ -1043,14 +1153,17 @@ export default function InteractiveMap({
             {/* Header: Title, Category, and Actions */}
             <div className="flex items-start justify-between gap-2.5">
               <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0 shadow-xs">
-                  <Car className="w-5 h-5" />
+                <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center shrink-0 shadow-xs">
+                  <Navigation className="w-4 h-4 fill-blue-600/20" />
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-800 bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded-md">
-                      Route Measurement
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-blue-800 bg-blue-50 border border-blue-200/80 px-2 py-0.5 rounded-md">
+                      Road Navigation
                     </span>
+                    {isCalculatingUserRoute && (
+                      <span className="text-[10px] text-stone-400 animate-pulse font-medium">Calculating road...</span>
+                    )}
                     {selectedLodge.category && (
                       <span className="text-[10px] text-stone-500 font-semibold truncate hidden xs:inline">
                         · {selectedLodge.category}
@@ -1091,17 +1204,17 @@ export default function InteractiveMap({
                 <div className="grid grid-cols-2 gap-2 bg-stone-50/90 rounded-xl p-2.5 border border-stone-100">
                   <div className="space-y-0.5">
                     <div className="text-[10px] font-semibold text-stone-500 uppercase tracking-wide flex items-center gap-1">
-                      <span>⏱️</span>
-                      <span>Est. Drive Time</span>
+                      <Clock className="w-3 h-3 text-stone-400" />
+                      <span>Driving Duration</span>
                     </div>
-                    <div className="text-sm sm:text-base font-black text-emerald-800 leading-tight">
+                    <div className="text-sm sm:text-base font-black text-stone-900 leading-tight">
                       {travelInfo.drivingTimeFormatted}
                     </div>
                   </div>
                   <div className="space-y-0.5">
                     <div className="text-[10px] font-semibold text-stone-500 uppercase tracking-wide flex items-center gap-1">
-                      <span>🛣️</span>
-                      <span>Est. Road Distance</span>
+                      <Route className="w-3 h-3 text-stone-400" />
+                      <span>Highway Distance</span>
                     </div>
                     <div className="text-sm sm:text-base font-black text-blue-700 leading-tight">
                       ~{travelInfo.roadDistanceKm} km
@@ -1109,13 +1222,13 @@ export default function InteractiveMap({
                   </div>
                 </div>
 
-                {/* Sub-metrics: Straight-line & Route Notes */}
+                {/* Sub-metrics: Direct Distance & Route Notes */}
                 <div className="flex items-center justify-between text-[11px] text-stone-600 bg-white/60 px-2 py-1 rounded-lg border border-stone-100">
                   <span className="text-stone-500">
                     Direct distance: <strong className="text-stone-800">{travelInfo.straightLineKm} km</strong>
                   </span>
                   <span className="text-stone-400">·</span>
-                  <span className="truncate text-emerald-800 font-medium">{travelInfo.notes}</span>
+                  <span className="truncate text-blue-800 font-medium">{travelInfo.notes}</span>
                 </div>
 
                 {/* Buttons Row: Google Directions + View Stay */}
@@ -1127,7 +1240,7 @@ export default function InteractiveMap({
                     className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs transition active:scale-[0.98]"
                   >
                     <Navigation className="w-3.5 h-3.5 fill-white" />
-                    <span>Get Directions</span>
+                    <span>Open in Google Maps</span>
                     <ExternalLink className="w-3 h-3 opacity-80" />
                   </a>
                   <a

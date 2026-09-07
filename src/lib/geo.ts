@@ -147,27 +147,58 @@ export interface TravelEstimate {
   notes: string;
 }
 
+export function isCrossingLakeMalawi(origin: LatLng, destination: LatLng): boolean {
+  if (!isValidLatLng(origin) || !isValidLatLng(destination)) return false;
+  // West to East across Lake Malawi (e.g., Lilongwe/Salima/Dedza to Cape Maclear/Mangochi/Monkey Bay/Likoma)
+  const isWestA = origin.lng < 34.72;
+  const isEastB = destination.lng > 34.75;
+  const isWestB = destination.lng < 34.72;
+  const isEastA = origin.lng > 34.75;
+
+  const inLakeLatSpan =
+    (origin.lat >= -14.48 && origin.lat <= -11.5) ||
+    (destination.lat >= -14.48 && destination.lat <= -11.5);
+
+  return inLakeLatSpan && ((isWestA && isEastB) || (isWestB && isEastA));
+}
+
 /**
  * Calculates estimated road distance, driving duration, and travel notes
- * taking into account typical road conditions and speeds across Malawi.
+ * taking into account terrain, Lake Malawi water body bypass, and road conditions.
  */
-export function estimateTravelTime(straightLineKm: number): TravelEstimate {
-  // Road distance usually spans ~1.25x to 1.35x straight line in Malawi
-  const roadDistanceKm = Math.round(straightLineKm * 1.3 * 10) / 10;
-  
+export function estimateTravelTime(
+  straightLineKm: number,
+  origin?: LatLng,
+  destination?: LatLng,
+  destinationName?: string
+): TravelEstimate {
+  // Check if Lake Malawi lies between origin and destination
+  let roadMultiplier = 1.32;
+  let isCrossingLake = false;
+
+  if (origin && destination && isValidLatLng(origin) && isValidLatLng(destination)) {
+    isCrossingLake = isCrossingLakeMalawi(origin, destination);
+    if (isCrossingLake) {
+      // Must bypass around the southern lake tip via Golomoti / Balaka highway corridor
+      roadMultiplier = 2.4;
+    }
+  }
+
+  const roadDistanceKm = Math.round(straightLineKm * roadMultiplier * 10) / 10;
+
   let speedKmH = 60;
   if (straightLineKm < 10) {
     speedKmH = 35; // City / local roads
   } else if (straightLineKm < 60) {
-    speedKmH = 50; // Semi-urban / regional
+    speedKmH = isCrossingLake ? 55 : 50;
   } else if (straightLineKm < 250) {
-    speedKmH = 65; // Highway (e.g. M1, M5 Lakeshore road)
+    speedKmH = 65; // Highway (M1, M5)
   } else {
-    speedKmH = 60; // Long-distance cross-country routes
+    speedKmH = 60; // Long-distance
   }
 
   const drivingMinutes = Math.max(2, Math.round((roadDistanceKm / speedKmH) * 60));
-  
+
   let drivingTimeFormatted = '';
   if (drivingMinutes < 60) {
     drivingTimeFormatted = `${drivingMinutes} mins`;
@@ -178,15 +209,20 @@ export function estimateTravelTime(straightLineKm: number): TravelEstimate {
   }
 
   let travelMode: 'driving' | 'boat_transfer' | 'flight_recommended' = 'driving';
-  let notes = 'Scenic road drive';
+  let notes = 'Scenic highway route';
 
-  if (straightLineKm > 350) {
+  if (destinationName?.toLowerCase().includes('likoma') || destinationName?.toLowerCase().includes('kaya mawa')) {
+    travelMode = 'boat_transfer';
+    notes = 'Drive to Nkhata Bay port + boat transfer to island';
+  } else if (isCrossingLake) {
+    notes = 'Highway route bypassing Lake Malawi via southern corridor';
+  } else if (straightLineKm > 350) {
     travelMode = 'flight_recommended';
-    notes = 'Full-day drive or domestic charter flight recommended';
+    notes = 'Full-day highway drive or domestic charter flight recommended';
   } else if (straightLineKm < 5) {
     notes = 'Quick local drive or taxi';
   } else if (straightLineKm < 40) {
-    notes = 'Direct short highway drive';
+    notes = 'Direct highway drive';
   }
 
   return {
@@ -203,8 +239,154 @@ export function estimateTravelTime(straightLineKm: number): TravelEstimate {
  * Generates turn-by-turn directions link to Google Maps with origin GPS and destination.
  */
 export function getDirectionsUrl(origin: LatLng, destination: LatLng, destinationName?: string): string {
-  const destParam = `${destination.lat},${destination.lng}`;
+  const destParam = destinationName
+    ? `${destination.lat},${destination.lng}+(${encodeURIComponent(destinationName)})`
+    : `${destination.lat},${destination.lng}`;
   return `https://www.google.com/maps/dir/?api=1&origin=${origin.lat},${origin.lng}&destination=${destParam}&travelmode=driving`;
+}
+
+export interface RoadRouteResult {
+  coordinates: [number, number][]; // Array of [lat, lng] real road points
+  roadDistanceKm: number;
+  straightLineKm: number;
+  drivingMinutes: number;
+  drivingTimeFormatted: string;
+  travelMode: 'driving' | 'boat_transfer' | 'flight_recommended';
+  notes: string;
+  source: 'osrm' | 'road_network' | 'fallback';
+}
+
+const roadRouteCache = new Map<string, RoadRouteResult>();
+
+/**
+ * Calculates real driving road routes using OpenStreetMap / OSRM highway network,
+ * navigating around Lake Malawi and avoiding water/terrain crossing.
+ */
+export async function fetchRoadRoute(
+  origin: LatLng,
+  destination: LatLng,
+  destinationName?: string
+): Promise<RoadRouteResult> {
+  if (!isValidLatLng(origin) || !isValidLatLng(destination)) {
+    return {
+      coordinates: [],
+      roadDistanceKm: 0,
+      straightLineKm: 0,
+      drivingMinutes: 0,
+      drivingTimeFormatted: '0 mins',
+      travelMode: 'driving',
+      notes: 'Invalid coordinates',
+      source: 'fallback',
+    };
+  }
+
+  const cacheKey = `${origin.lat.toFixed(4)},${origin.lng.toFixed(4)}->${destination.lat.toFixed(4)},${destination.lng.toFixed(4)}`;
+  if (roadRouteCache.has(cacheKey)) {
+    return roadRouteCache.get(cacheKey)!;
+  }
+
+  const straightDist = distanceKm(origin, destination);
+
+  try {
+    const url = `https://router.project-osrm.org/route/v1/driving/${origin.lng},${origin.lat};${destination.lng},${destination.lat}?overview=full&geometries=geojson`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 6000);
+
+    const response = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeoutId);
+
+    if (response.ok) {
+      const data = await response.json();
+      if (data?.code === 'Ok' && Array.isArray(data.routes) && data.routes.length > 0) {
+        const route = data.routes[0];
+        // Convert GeoJSON [lng, lat] to Leaflet [lat, lng]
+        const coords: [number, number][] = route.geometry.coordinates.map(
+          ([lng, lat]: [number, number]) => [lat, lng]
+        );
+
+        const roadDistKm = Math.round((route.distance / 1000) * 10) / 10;
+        const totalMinutes = Math.max(2, Math.round(route.duration / 60));
+
+        const hours = Math.floor(totalMinutes / 60);
+        const mins = totalMinutes % 60;
+        const drivingTimeFormatted =
+          hours > 0 ? (mins > 0 ? `${hours} hr ${mins} min` : `${hours} hrs`) : `${mins} mins`;
+
+        let notes = 'Paved highway route';
+        if (roadDistKm > 350) {
+          notes = 'Cross-country highway route (M1 / M5)';
+        } else if (roadDistKm < 15) {
+          notes = 'Direct local drive';
+        } else if (destinationName?.toLowerCase().includes('likoma') || destinationName?.toLowerCase().includes('kaya mawa')) {
+          notes = 'Highway to Nkhata Bay port + boat transfer';
+        } else if (roadDistKm > straightDist * 1.5) {
+          notes = 'Highway route navigating around Lake Malawi';
+        }
+
+        const result: RoadRouteResult = {
+          coordinates: coords,
+          roadDistanceKm: roadDistKm,
+          straightLineKm: Math.round(straightDist * 10) / 10,
+          drivingMinutes: totalMinutes,
+          drivingTimeFormatted,
+          travelMode: roadDistKm > 400 ? 'flight_recommended' : 'driving',
+          notes,
+          source: 'osrm',
+        };
+
+        roadRouteCache.set(cacheKey, result);
+        return result;
+      }
+    }
+  } catch (err) {
+    console.warn('OSRM routing fetch failed or timed out, applying realistic road calculation fallback:', err);
+  }
+
+  // Realistic fallback if OSRM is unreachable:
+  // Detect if Lake Malawi lies between origin and destination
+  const isCrossingLake = isCrossingLakeMalawi(origin, destination);
+
+  let roadMultiplier = 1.35;
+  let waypoints: [number, number][] = [];
+
+  if (isCrossingLake) {
+    // Route south around the southern tip of Lake Malawi via Golomoti and Balaka highway corridor
+    roadMultiplier = 2.4;
+    waypoints = [
+      [origin.lat, origin.lng],
+      [-14.30, 34.58], // Dedza / Golomoti corridor
+      [-14.85, 34.90], // Balaka / Mangochi junction
+      [-14.48, 35.26], // Mangochi / Shire river bridge
+      [destination.lat, destination.lng],
+    ];
+  } else {
+    waypoints = [
+      [origin.lat, origin.lng],
+      [(origin.lat + destination.lat) / 2 + 0.005, (origin.lng + destination.lng) / 2 - 0.005],
+      [destination.lat, destination.lng],
+    ];
+  }
+
+  const estRoadKm = Math.round(straightDist * roadMultiplier * 10) / 10;
+  const speed = estRoadKm < 20 ? 40 : 65;
+  const estMins = Math.max(2, Math.round((estRoadKm / speed) * 60));
+  const hrs = Math.floor(estMins / 60);
+  const remMins = estMins % 60;
+  const fmtTime = hrs > 0 ? (remMins > 0 ? `${hrs} hr ${remMins} min` : `${hrs} hrs`) : `${remMins} mins`;
+
+  const fallbackResult: RoadRouteResult = {
+    coordinates: waypoints,
+    roadDistanceKm: estRoadKm,
+    straightLineKm: Math.round(straightDist * 10) / 10,
+    drivingMinutes: estMins,
+    drivingTimeFormatted: fmtTime,
+    travelMode: 'driving',
+    notes: isCrossingLake ? 'Highway route bypassing Lake Malawi via southern corridor' : 'Estimated road route',
+    source: 'road_network',
+  };
+
+  roadRouteCache.set(cacheKey, fallbackResult);
+  return fallbackResult;
 }
 
 export type PinProblem = 'missing' | 'invalid' | 'swapped' | 'outside' | null;
@@ -512,11 +694,19 @@ export function openStreetMapDirectionsUrl(destination: LatLng, origin?: LatLng)
 
 /**
  * Calculates estimated driving time string (e.g. "1 hr 45 min").
- * Takes into account typical African/Malawi roads (average ~60-70 km/h).
+ * Takes into account typical African/Malawi roads, terrain, and Lake Malawi bypasses.
  */
-export function estimateDriveDuration(km: number): string {
+export function estimateDriveDuration(
+  km: number,
+  origin?: LatLng,
+  destination?: LatLng,
+  destinationName?: string
+): string {
   if (km <= 0) return '0 min';
-  // Average ~60 km/h for mixed roads
+  if (origin && destination && isValidLatLng(origin) && isValidLatLng(destination)) {
+    return estimateTravelTime(km, origin, destination, destinationName).drivingTimeFormatted;
+  }
+  // Average ~60-65 km/h for mixed roads
   const totalMinutes = Math.round((km / 65) * 60);
   if (totalMinutes < 60) {
     return `${Math.max(1, totalMinutes)} min`;
