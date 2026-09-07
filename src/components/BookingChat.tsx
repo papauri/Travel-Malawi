@@ -5,7 +5,7 @@ import { Booking, Message, User, ChatPresenceState, Hotel, RoomType, Call } from
 import { 
   Send, Loader2, MessageSquare, Eye, Check, CheckCheck, 
   ShieldCheck, Ticket, CheckCircle2, Clock, Key, 
-  Wallet, XCircle, ChevronDown, ChevronUp, 
+  Wallet, XCircle, ChevronDown, 
   Phone, Video, Minus, X, PhoneMissed, PhoneOff, Settings,
   Trash2, MoreVertical, Menu
 } from 'lucide-react';
@@ -39,7 +39,6 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
   const [actionLoading, setActionLoading] = useState(false);
   const [showVoucherModal, setShowVoucherModal] = useState(false);
   const [showDepositMenu, setShowDepositMenu] = useState(false);
-  const [showDetailsPanel, setShowDetailsPanel] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [isClearingChat, setIsClearingChat] = useState(false);
@@ -677,15 +676,6 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
             </button>
           )}
 
-          {/* Desktop Only: Details toggle */}
-          <button
-            type="button"
-            onClick={() => setShowDetailsPanel(!showDetailsPanel)}
-            className="hidden sm:inline-flex p-1.5 text-stone-400 hover:text-white hover:bg-stone-800 rounded-lg transition cursor-pointer"
-            title="Toggle reservation details"
-          >
-            {showDetailsPanel ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          </button>
 
           {/* More / Hamburger Menu (Mobile uses Menu icon, Desktop uses MoreVertical) */}
           <div className="relative" ref={moreMenuRef}>
@@ -705,20 +695,6 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
 
             {showMoreMenu && (
               <div className="absolute right-0 top-full mt-1.5 w-52 bg-stone-900 border border-stone-800 rounded-2xl shadow-2xl py-1.5 z-50 text-xs animate-in fade-in zoom-in-95 duration-150">
-                {/* Mobile Only: Toggle reservation details */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowMoreMenu(false);
-                    setShowDetailsPanel(prev => !prev);
-                  }}
-                  className="sm:hidden w-full text-left px-3.5 py-2.5 text-stone-200 hover:bg-stone-800 flex items-center justify-between gap-2 cursor-pointer"
-                >
-                  <span className="flex items-center gap-2">
-                    {showDetailsPanel ? <ChevronUp className="w-3.5 h-3.5 text-stone-400" /> : <ChevronDown className="w-3.5 h-3.5 text-stone-400" />}
-                    <span>{showDetailsPanel ? 'Hide Stay Details' : 'View Stay Details'}</span>
-                  </span>
-                </button>
 
                 {/* Mobile Only: Video call in menu */}
                 {canStartCall && (
@@ -948,32 +924,6 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
             ) : null}
           </div>
         </div>
-
-        {/* Collapsible Details Drawer */}
-        {showDetailsPanel && (
-          <div className="mt-2.5 pt-2.5 border-t border-stone-200/80 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs animate-fadeIn">
-            <div className="bg-white/90 p-2 rounded-lg border border-stone-200/60">
-              <span className="text-stone-400 block text-[10px] uppercase font-bold">Room</span>
-              <span className="font-semibold text-stone-900 truncate block">{room?.name || 'Selected Room'}</span>
-            </div>
-            <div className="bg-white/90 p-2 rounded-lg border border-stone-200/60">
-              <span className="text-stone-400 block text-[10px] uppercase font-bold">Property</span>
-              <span className="font-semibold text-stone-900 truncate block">{hotel?.name || 'Property'}</span>
-            </div>
-            <div className="bg-white/90 p-2 rounded-lg border border-stone-200/60">
-              <span className="text-stone-400 block text-[10px] uppercase font-bold">Arrival PIN</span>
-              <span className="font-mono font-bold text-stone-900">
-                {liveBooking.status === 'confirmed' 
-                  ? (liveBooking.arrivalPin || 'Generated')
-                  : 'Gated until confirmed'}
-              </span>
-            </div>
-            <div className="bg-white/90 p-2 rounded-lg border border-stone-200/60">
-              <span className="text-stone-400 block text-[10px] uppercase font-bold">Payment Method</span>
-              <span className="font-semibold text-stone-900">Direct / On Arrival</span>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* 3. Messages & Calls Scroll Area */}

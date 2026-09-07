@@ -1442,25 +1442,23 @@ export default function OperationsCopilot() {
             </div>
 
             {/* LIVE SNAPSHOT STATUS BAR */}
-            {!isHeaderFolded && (
-              <div className="bg-stone-50 border-b border-stone-200 px-3.5 py-1.5 flex items-center justify-between text-[11px] text-stone-600 shrink-0 animate-in fade-in duration-150">
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-3 h-3 text-stone-400" />
-                  <span className="font-semibold text-stone-700">{todayStr}</span>
-                  <span>•</span>
-                  <span>{properties.length} {properties.length === 1 ? 'property' : 'properties'}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className={`inline-flex items-center gap-1 font-medium ${arrivalsCountToday > 0 ? 'text-amber-700 font-bold' : 'text-stone-500'}`}>
-                    {arrivalsCountToday} arrival{arrivalsCountToday === 1 ? '' : 's'} today
-                  </span>
-                  <span>•</span>
-                  <span className={`inline-flex items-center gap-1 font-medium ${departuresCountToday > 0 ? 'text-stone-700' : 'text-stone-400'}`}>
-                    {departuresCountToday} out
-                  </span>
-                </div>
+            <div className="bg-stone-50 border-b border-stone-200 px-3.5 py-1.5 flex items-center justify-between text-[11px] text-stone-600 shrink-0">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-3 h-3 text-stone-400" />
+                <span className="font-semibold text-stone-700">{todayStr}</span>
+                <span>•</span>
+                <span>{properties.length} {properties.length === 1 ? 'property' : 'properties'}</span>
               </div>
-            )}
+              <div className="flex items-center gap-2">
+                <span className={`inline-flex items-center gap-1 font-medium ${arrivalsCountToday > 0 ? 'text-amber-700 font-bold' : 'text-stone-500'}`}>
+                  {arrivalsCountToday} arrival{arrivalsCountToday === 1 ? '' : 's'} today
+                </span>
+                <span>•</span>
+                <span className={`inline-flex items-center gap-1 font-medium ${departuresCountToday > 0 ? 'text-stone-700' : 'text-stone-400'}`}>
+                  {departuresCountToday} out
+                </span>
+              </div>
+            </div>
 
             {/* MAIN CONTENT AREA */}
             <div
