@@ -262,25 +262,24 @@ export default function OperationsCopilot() {
     }
   }, [user?.uid, isAuthorized, aiStatus.enabled, aiStatus.available]);
 
-  // Friendly clean first name for natural, non-robotic interaction
-  const userFirstName = useMemo(() => {
-    if (user?.displayName && user.displayName.trim()) {
-      const first = user.displayName.split(' ')[0];
-      if (!['administrator', 'admin', 'manager', 'host', 'user', 'owner'].includes(first.toLowerCase())) {
-        return first;
+  // User display name strictly honoring profile Display Name (never email username or generic titles)
+  const userDisplayName = useMemo(() => {
+    const raw = (user?.displayName || '').trim();
+    if (raw && !raw.includes('@')) {
+      const lower = raw.toLowerCase();
+      const isGenericRole = ['administrator', 'admin', 'manager', 'host', 'user', 'owner', 'top boss', 'boss'].includes(lower);
+      const isEmailPrefix = Boolean(user?.email && lower === user.email.split('@')[0].toLowerCase());
+      if (!isGenericRole && !isEmailPrefix) {
+        return raw;
       }
     }
-    if (user?.email) {
-      const local = user.email.split('@')[0].split(/[._-]/)[0];
-      return local.charAt(0).toUpperCase() + local.slice(1);
-    }
     return '';
-  }, [user]);
+  }, [user?.displayName, user?.email]);
 
   // Initial welcome message distinguishing Global Admin vs Manager
   useEffect(() => {
     if (messages.length === 0 && isAuthorized && hasFetched) {
-      const greeting = userFirstName ? `Hi ${userFirstName}` : 'Hello';
+      const greeting = userDisplayName ? `Hi ${userDisplayName}` : 'Hello';
       if (userIsAdmin) {
         const propText = properties.length > 0 ? `all **${properties.length} platform properties**` : `the platform`;
         setMessages([
@@ -303,7 +302,7 @@ export default function OperationsCopilot() {
         ]);
       }
     }
-  }, [user, isAuthorized, messages.length, userIsAdmin, properties, userFirstName, hasFetched]);
+  }, [user, isAuthorized, messages.length, userIsAdmin, properties, userDisplayName, hasFetched]);
 
   // Scroll chat messages container smoothly to bottom on new messages without scrolling the background window
   useEffect(() => {
@@ -492,8 +491,9 @@ export default function OperationsCopilot() {
     // Prepare context payload for server
     const payload: OperationsChatPayload = {
       userRole: userIsAdmin ? 'admin' : 'hotel_manager',
-      userName: userFirstName || user.displayName || user.email || 'Host',
-      userEmail: user.email || undefined,
+      displayName: userDisplayName || undefined,
+      userName: userDisplayName || undefined,
+      userEmail: user?.email || undefined,
       message: text,
       intent: detectedIntent,
       history: messages.slice(-8).map(m => ({ role: m.role, content: m.content })),

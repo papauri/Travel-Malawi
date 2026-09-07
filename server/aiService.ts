@@ -804,6 +804,7 @@ export interface ActionProposal {
 
 export interface OperationsAssistantRequest {
   userRole: 'admin' | 'hotel_manager';
+  displayName?: string;
   userName?: string;
   userEmail?: string;
   message: string;
@@ -977,11 +978,13 @@ You are fully versed with every single detail in our live database, super effici
 ================================================================================
 CONVERSATIONAL STYLE & PERSONALITY: THE ULTIMATE HOSPITALITY ALL-ROUNDER
 ================================================================================
-1. SUPER EFFICIENT, QUICK & SPECIFIC (ZERO BLOAT, MAXIMUM VALUE):
+1. NATURAL CONVERSATIONAL FLOW & IMMEDIATE VALUE (ZERO BLOAT, NO ROBOTIC GREETINGS):
    - Deliver high-density, immediate value. No corporate throat-clearing, preamble, or boilerplate disclaimers.
-   - NEVER start your messages with formulaic greetings like "Moni Administrator", "Moni", "Hello Administrator", or "As an AI...".
-   - Address the user naturally in the second person ("you", "your lodge"), or by their clean first name if known.
-   - If the user simply says "hi" or "hello", greet them back warmly and concisely (1 short sentence) and ask how you can assist.
+   - CRITICAL RULE: DO NOT say "Moni", "Muli bwanji", or insert Chichewa phrases in responses unless the user explicitly initiates greeting you in Chichewa first. Keep responses in natural, fluent English.
+   - CRITICAL RULE: DO NOT repeat the user's name on every response! In an ongoing conversation, jump straight into the substance of the answer. Never start every message with "Hi [Name]", "Hello [Name]", or repetitive pleasantries.
+   - ADDRESSING THE USER: Address the user naturally in the second person ("you", "your lodge", "your properties"). If the user has a configured Display Name, you may use it sparingly only when contextually natural (e.g. in a polite initial greeting or when distinguishing individuals). NEVER refer to the user by an email address, email username (e.g. "johnpaulchirwa"), or generic role titles (e.g. "Administrator", "Host", "Manager").
+   - NEVER start messages with formulaic greetings like "Moni [Name]", "Moni Administrator", "Hello [Name]", "Hi [Name], sure!", or "As an AI...".
+   - If the user simply says "hi" or "hello", greet them back pleasantly and concisely (1 short sentence) and ask how you can assist.
    - BE SPECIFIC & DIRECT (DO NOT OVER-EXPLAIN): When asked a factual question (e.g. room rates, arrivals, checkouts, Wi-Fi password, power source, manager contact, dish price, guest reviews), state the exact answer immediately in the first sentence.
    - DO NOT write lengthy essays, history lessons, or explain basic hospitality theory unless the user explicitly requests an explanation or strategic rationale.
    - Jump straight to answering with crisp formatting: bullet points, bold key-values, and compact summaries so users get answers in seconds.
@@ -1342,6 +1345,60 @@ RULES FOR SUGGESTIONS:
 
 Tone: Executive, warm, helpful, proactive, and respectful. Hospitality-focused. Always verify that actions stay strictly within the user's role limits, and always ask for confirmation before changes happen.`;
 
+/**
+ * Sanitizes assistant replies to guarantee a natural, non-repetitive flow:
+ * - Strips any unsolicited "Moni! Muli bwanji" or formulaic Chichewa openings.
+ * - Strips repetitive openings echoing the user's name, email username, or generic role titles.
+ * - Leaves natural conversational flow intact.
+ */
+function sanitizeAssistantReply(
+  rawText: string,
+  resolvedDisplayName?: string,
+  userEmail?: string
+): string {
+  // Strip code blocks for proposals/patches/rules/follow-ups
+  let clean = rawText
+    .replace(/```action_proposal[\s\S]*?```/g, '')
+    .replace(/```learned_rule[\s\S]*?```/g, '')
+    .replace(/```autonomous_patch[\s\S]*?```/g, '')
+    .replace(/```suggested_follow_ups[\s\S]*?```/g, '')
+    .trim();
+
+  // 1. Strip formulaic Chichewa greetings and repetitive robot openings at the start:
+  // Examples: "Moni! Muli bwanji!", "Moni muli bwanji John!", "Muli bwanji!", "Moni!"
+  clean = clean.replace(/^(👋\s*)?(moni[,\s!]+(muli\s+bwanji)?|muli\s+bwanji)([,\s]+[A-Za-z0-9_\-\.]+)*[!.,:\s-]*/i, '');
+
+  // 2. Strip repetitive greetings with generic role titles like "Moni Administrator", "Hello Manager", "Hi Admin", etc.
+  clean = clean.replace(/^(👋\s*)?(hello|hi|hey|greetings|good\s+(morning|afternoon|day|evening))[,\s]+(there|partner|host|administrator|global administrator|property manager|manager|admin|top boss|boss)[!.,:\s-]*/i, '');
+
+  // 3. Strip repetitive name salutations if AI echoed the user's name or username at the beginning:
+  if (resolvedDisplayName) {
+    const escapedFull = resolvedDisplayName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const firstName = resolvedDisplayName.split(' ')[0].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    clean = clean.replace(new RegExp(`^(👋\\s*)?(hello|hi|hey|greetings|good\\s+(morning|afternoon|day|evening))[\\s,]+(${escapedFull}|${firstName})[!.,:\\s-]*`, 'i'), '');
+  }
+  if (userEmail) {
+    const local = userEmail.split('@')[0].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    clean = clean.replace(new RegExp(`^(👋\\s*)?(hello|hi|hey|greetings|good\\s+(morning|afternoon|day|evening))[\\s,]+${local}[!.,:\\s-]*`, 'i'), '');
+  }
+
+  // 4. Any remaining lone "Moni" or "Muli bwanji" at the start
+  clean = clean.replace(/^(👋\s*)?(moni|muli\s+bwanji)[!.,:\s-]+/i, '');
+
+  clean = clean.trim();
+
+  // Ensure first character is properly capitalized if prefix was stripped
+  if (clean.length > 0) {
+    clean = clean.charAt(0).toUpperCase() + clean.slice(1);
+  }
+
+  if (!clean) {
+    clean = 'How can I assist you with your properties today?';
+  }
+
+  return clean;
+}
+
 async function executeOperationsChatWithProvider(
   providerId: AIProviderId,
   req: OperationsAssistantRequest,
@@ -1364,15 +1421,16 @@ async function executeOperationsChatWithProvider(
   const time = req.context.currentTimeStr || '';
   const isAdminUser = req.userRole === 'admin';
 
-  // Extract clean first name if available (avoiding generic role titles as names)
-  let cleanFirstName = '';
-  const rawName = (req.userName || '').trim();
-  if (rawName && !rawName.includes('@') && !['administrator', 'admin', 'manager', 'host', 'user', 'owner', 'top boss'].includes(rawName.toLowerCase())) {
-    cleanFirstName = rawName.split(' ')[0];
-  } else if (req.userEmail) {
-    const localPart = req.userEmail.split('@')[0];
-    const extracted = localPart.split(/[._-]/)[0];
-    cleanFirstName = extracted.charAt(0).toUpperCase() + extracted.slice(1);
+  // Resolve authentic Display Name (strictly prioritizing explicit Display Name, NEVER falling back to username/email)
+  let resolvedDisplayName = '';
+  const candidateName = (req.displayName || req.userName || '').trim();
+  if (candidateName && !candidateName.includes('@')) {
+    const lower = candidateName.toLowerCase();
+    const isGenericRole = ['administrator', 'admin', 'manager', 'host', 'user', 'owner', 'top boss', 'boss'].includes(lower);
+    const matchesEmailLocal = Boolean(req.userEmail && lower === req.userEmail.split('@')[0].toLowerCase());
+    if (!isGenericRole && !matchesEmailLocal) {
+      resolvedDisplayName = candidateName;
+    }
   }
 
   // High-Speed Concierge Chat Routing (Instant Sub-Second Greetings & Small Talk)
@@ -1394,16 +1452,17 @@ async function executeOperationsChatWithProvider(
       ? `Properties in host portfolio: ${quickPropNames.join(', ')}.`
       : `Platform context: Travel Malawi Lodges & Accommodations.`;
 
-    const chatSystemPrompt = `You are the Warm & Professional Concierge for Travel Malawi — Lake of Stars hospitality platform.
-You are an intelligent, delightful hospitality partner and property management concierge.
+    const chatSystemPrompt = `You are the Warm, Polished & Professional Concierge for Travel Malawi hospitality platform.
+You are an intelligent, natural, and efficient hospitality partner.
 
-Your tone is warm, polite, culturally respectful (e.g. Moni! Muli bwanji!), and efficient.
-When greeting or engaging in casual conversational chat:
-1. Respond warmly and concisely in 1 to 2 short sentences.
-2. Greet the host respectfully by name (${cleanFirstName || 'Host'}) with authentic Malawian warmth.
-3. Keep it conversational and supportive within the realm of hospitality and property management.
-4. DO NOT dump raw data, database records, full audits, or listing tables when merely greeted.
-5. Conclude with a \`\`\`suggested_follow_ups JSON block containing 2-3 short, clean, actionable next steps (3-6 words max, NO emojis, sparkles, or icons).
+CRITICAL CONVERSATIONAL & TONE RULES:
+1. Speak naturally, pleasantly, and directly. Maintain a smooth, human conversational flow.
+2. STRICT RULE: DO NOT say "Moni", "Muli bwanji", or formulaic greetings. Do NOT speak in Chichewa unless the user explicitly addresses you in Chichewa first. Keep responses in fluent English.
+3. STRICT RULE: DO NOT repeat or prepend the user's name on every response! Keep conversational flow natural without formulaic salutations or constant name repetition.
+4. If referring to the user, address them in the second person ("you", "your lodge", "your portfolio"). If they have a Display Name configured (${resolvedDisplayName ? `"${resolvedDisplayName}"` : 'display name if set'}), you may refer to them by that Display Name only when contextually natural (e.g. in a polite welcome). NEVER refer to the user by an email address, email username, or generic role title (like "Administrator" or "Host").
+5. Keep conversational replies concise and helpful (1 to 2 crisp, friendly sentences).
+6. DO NOT dump raw data, database records, full audits, or listing tables when merely greeted or having a brief conversational exchange.
+7. Conclude with a \`\`\`suggested_follow_ups JSON block containing 2-3 short, clean, actionable next steps (3-6 words max, NO emojis or icons).
 
 Return your response followed by a \`\`\`suggested_follow_ups JSON block:
 \`\`\`suggested_follow_ups
@@ -1414,8 +1473,8 @@ Return your response followed by a \`\`\`suggested_follow_ups JSON block:
 ]
 \`\`\``;
 
-    const chatUserPrompt = `CURRENT HOST:
-- Name: ${cleanFirstName || 'Host'}
+    const chatUserPrompt = `CURRENT CONTEXT:
+- Display Name: ${resolvedDisplayName || 'Not specified (refer naturally as "you")'}
 - Role: ${isAdminUser ? 'Platform Executive' : 'Lodge Manager/Host'}
 - ${propContextLine}
 - Date: ${today}
@@ -1459,7 +1518,7 @@ USER MESSAGE:
       suggestedFollowUps = ["Check today's arrivals", "Review room rates", "View active listings"];
     }
 
-    const cleanReply = rawGenerated.replace(/```[\s\S]*?```/g, '').trim();
+    const cleanReply = sanitizeAssistantReply(rawGenerated, resolvedDisplayName, req.userEmail);
 
     return {
       reply: cleanReply,
@@ -1640,7 +1699,11 @@ ${upcoming.length > 10 ? `  ...and ${upcoming.length - 10} more upcoming booking
 
   const userPrompt = `
 CURRENT USER & CONTEXT:
-- Name: ${cleanFirstName || 'Partner'}
+- Display Name: ${resolvedDisplayName || 'Not specified (address in second person "you")'}
+- Communication Directives:
+  * Address the user naturally in the second person ("you", "your lodge"). If referring to the user, strictly use their Display Name ("${resolvedDisplayName || ''}") if provided; NEVER use an email username or email prefix.
+  * DO NOT say "Moni" or "Muli bwanji" unless the user addresses you in Chichewa first.
+  * DO NOT repeat the user's name on every response. Keep conversational flow natural and direct.
 - Access Level: ${isAdminUser ? 'Executive Platform Access (all platform properties)' : 'Property Manager (assigned properties only)'}
 - Scope Notice: ${isAdminUser ? 'Platform-wide authority. Listing reviews, platform rate audits, and system configuration allowed.' : 'Strictly restricted to their own assigned properties. Cannot edit other managers or accounts.'}
 - Current Date & Time: ${today} ${time}
@@ -1849,19 +1912,8 @@ USER MESSAGE:
     }
   }
 
-  // Clean the text to show the user
-  let cleanReply = rawGenerated
-    .replace(/```action_proposal[\s\S]*?```/g, '')
-    .replace(/```learned_rule[\s\S]*?```/g, '')
-    .replace(/```autonomous_patch[\s\S]*?```/g, '')
-    .replace(/```suggested_follow_ups[\s\S]*?```/g, '')
-    .trim();
-
-  // Clean away any repetitive formulaic robot openings like "Moni Administrator!", "Moni!", "Hello Administrator!"
-  cleanReply = cleanReply
-    .replace(/^(👋\s*)?(Moni|Hello|Hi|Greetings|Good\s+(morning|afternoon|day|evening))[,\s]+(Administrator|Global Administrator|Property Manager|Manager|Admin|Top Boss|Boss)[!.,:\s-]*/i, '')
-    .replace(/^(👋\s*)?Moni[!.,\s]+/i, '')
-    .trim();
+  // Clean the text to show the user with natural flow and no repetitive greetings/names
+  const cleanReply = sanitizeAssistantReply(rawGenerated, resolvedDisplayName, req.userEmail);
 
   return {
     reply: cleanReply,

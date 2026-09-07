@@ -30,6 +30,7 @@ export type QueryIntent = 'greeting_or_chat' | 'tourism_inquiry' | 'database_que
 
 export interface OperationsChatPayload {
   userRole: 'admin' | 'hotel_manager';
+  displayName?: string;
   userName?: string;
   userEmail?: string;
   message: string;
