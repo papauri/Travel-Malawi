@@ -45,6 +45,7 @@ import { RoomErrors, firstError, hasErrors, validateRoom } from '../lib/validate
 import FieldError from '../components/FieldError';
 import SectionCard from '../components/SectionCard';
 import PriceDisplay from '../components/PriceDisplay';
+import { getHotelDepositInfo } from '../lib/depositInfo';
 
 
 
@@ -83,11 +84,51 @@ function hotelFormSnapshot(data: Partial<Hotel>): string {
     contactWhatsapp: data.contactWhatsapp ?? '',
     hours: data.hours ?? null,
     chatEnabled: data.chatEnabled !== false,
-      callsEnabled: data.callsEnabled !== false,
+    callsEnabled: data.callsEnabled !== false,
+    adminCallsEnabled: data.adminCallsEnabled !== false,
     adminChatEnabled: data.adminChatEnabled !== false,
     adminWifiVoucherEnabled: data.adminWifiVoucherEnabled !== false,
     isOnline: data.isOnline ?? true,
     outOfOfficeMessage: data.outOfOfficeMessage ?? '',
+    depositInfo: data.depositInfo ?? null,
+  });
+}
+
+function pickHotelFormData(data: Partial<Hotel>): Partial<Hotel> {
+  const amenities = Array.isArray(data.amenities)
+    ? data.amenities
+    : String(data.amenities ?? '').split(',').map(s => s.trim()).filter(Boolean);
+  return ({
+    description: data.description ?? '',
+    categories: data.categories ?? [],
+    location: data.location ?? '',
+    locationNotes: data.locationNotes ?? '',
+    coordinates: data.coordinates ?? null,
+    imageUrl: data.imageUrl ?? '',
+    galleryUrls: data.galleryUrls ?? [],
+    amenities,
+    checkInTime: data.checkInTime ?? '',
+    checkOutTime: data.checkOutTime ?? '',
+    cancellationPolicy: data.cancellationPolicy ?? '',
+    paymentPolicy: data.paymentPolicy ?? '',
+    managerName: data.managerName ?? '',
+    managerEmail: data.managerEmail ?? '',
+    managerPhone: data.managerPhone ?? '',
+    ownerName: data.ownerName ?? '',
+    ownerEmail: data.ownerEmail ?? '',
+    ownerPhone: data.ownerPhone ?? '',
+    contactEmail: data.contactEmail ?? '',
+    contactPhone: data.contactPhone ?? '',
+    contactWhatsapp: data.contactWhatsapp ?? '',
+    hours: data.hours ?? null,
+    chatEnabled: data.chatEnabled !== false,
+    callsEnabled: data.callsEnabled !== false,
+    adminCallsEnabled: data.adminCallsEnabled !== false,
+    adminChatEnabled: data.adminChatEnabled !== false,
+    adminWifiVoucherEnabled: data.adminWifiVoucherEnabled !== false,
+    isOnline: data.isOnline ?? true,
+    outOfOfficeMessage: data.outOfOfficeMessage ?? '',
+    depositInfo: getHotelDepositInfo(data as Hotel),
   });
 }
 
@@ -1572,8 +1613,7 @@ export default function ManageHotel() {
                         <strong>Premium Feature:</strong> Chat capabilities have been disabled for this listing by an administrator. Please contact support to upgrade or re-enable.
                       </div>
                     )}
-                    
-                    {isAdmin(user) && (
+                                {isAdmin(user) && (
                       <>
                         <label className="flex items-center gap-3 cursor-pointer mb-2 p-3 bg-red-50 border border-red-200 rounded-lg">
                           <input 
@@ -1583,6 +1623,15 @@ export default function ManageHotel() {
                             className="w-5 h-5 text-red-600 border-red-300 rounded focus:ring-red-600"
                           />
                           <span className="font-bold text-red-900">Admin: Enable Chat Service Globally</span>
+                        </label>
+                        <label className="flex items-center gap-3 cursor-pointer mb-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                          <input 
+                            type="checkbox" 
+                            checked={editHotelData.adminCallsEnabled !== false} 
+                            onChange={(e) => setEditHotelData({...editHotelData, adminCallsEnabled: e.target.checked})}
+                            className="w-5 h-5 text-red-600 border-red-300 rounded focus:ring-red-600"
+                          />
+                          <span className="font-bold text-red-900">Admin: Enable Audio &amp; Video Calling Globally</span>
                         </label>
                         <label className="flex items-center gap-3 cursor-pointer mb-6 p-3 bg-red-50 border border-red-200 rounded-lg">
                           <input 
@@ -1595,7 +1644,7 @@ export default function ManageHotel() {
                         </label>
                       </>
                     )}
-                    <label className="flex items-center gap-3 cursor-pointer mb-6">
+                    <label className="flex items-center gap-3 cursor-pointer mb-4">
                       <input 
                         type="checkbox" 
                         checked={editHotelData.chatEnabled !== false} 
@@ -1606,15 +1655,24 @@ export default function ManageHotel() {
                       <span className={`font-medium ${editHotelData.adminChatEnabled === false ? 'text-stone-400' : 'text-stone-700'}`}>Enable Pre-booking Chat</span>
                     </label>
                     
-                    <label className="flex items-center gap-3 cursor-pointer mb-6 ml-8">
+                    {/* Manager Audio & Video Calling Toggle */}
+                    <label className="flex items-center gap-3 cursor-pointer mb-4">
                       <input 
                         type="checkbox" 
+                        checked={editHotelData.callsEnabled !== false} 
+                        onChange={(e) => setEditHotelData({...editHotelData, callsEnabled: e.target.checked})}
                         className="w-5 h-5 text-stone-900 border-stone-300 rounded focus:ring-stone-900 disabled:opacity-50"
-                        disabled={editHotelData.chatEnabled === false || editHotelData.adminChatEnabled === false}
+                        disabled={editHotelData.adminCallsEnabled === false || editHotelData.chatEnabled === false}
                       />
+                      <div>
+                        <span className={`font-medium ${editHotelData.adminCallsEnabled === false || editHotelData.chatEnabled === false ? 'text-stone-400' : 'text-stone-700'}`}>
+                          Enable Audio &amp; Video Calls with Guests
+                        </span>
+                        <p className="text-xs text-stone-400">Allows guest to host voice and video calls through WebRTC.</p>
+                      </div>
                     </label>
 
-                    <label className="flex items-center gap-3 cursor-pointer">
+                    <label className="flex items-center gap-3 cursor-pointer mb-2">
                       <input 
                         type="checkbox" 
                         checked={editHotelData.isOnline ?? true} 
@@ -1624,7 +1682,7 @@ export default function ManageHotel() {
                       />
                       <span className={`font-medium ${editHotelData.chatEnabled === false || editHotelData.adminChatEnabled === false ? 'text-stone-400' : 'text-stone-700'}`}>Show as "Online"</span>
                     </label>
-                    <p className="text-xs text-stone-500 mt-2 ml-8">When offline, your out-of-office message is shown.</p>
+                    <p className="text-xs text-stone-500 mb-4 ml-8">When offline, your out-of-office message is shown.</p>
                   </div>
                   
                   <div>
@@ -1637,8 +1695,176 @@ export default function ManageHotel() {
                       placeholder="We're currently away. Leave a message and we'll reply soon!" 
                     />
                   </div>
+    </div>
+  </SectionCard>
 
+  {/* Deposit & Payment Instructions */}
+  <SectionCard title="Deposit & Payment Instructions" description="Configure Mobile Money and Bank Wire details so deposit request templates in chat automatically populate with your accounts.">
+    <div className="space-y-6">
+      {/* Mobile Money Accounts */}
+      <div>
+        <h4 className="text-xs font-bold uppercase tracking-wider text-stone-700 mb-3 flex items-center gap-1.5">
+          <span>📱 Mobile Money Accounts (Airtel Money &amp; TNM Mpamba)</span>
+        </h4>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-semibold text-stone-600 mb-1">Airtel Money Number</label>
+            <input
+              type="text"
+              value={editHotelData.depositInfo?.airtelMoneyNumber || ''}
+              onChange={(e) => setEditHotelData({
+                ...editHotelData,
+                depositInfo: { ...editHotelData.depositInfo, airtelMoneyNumber: e.target.value }
+              })}
+              placeholder="+265 999 000 000"
+              className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2 text-sm focus:bg-white focus:border-stone-900 transition outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-stone-600 mb-1">Airtel Money Registered Name</label>
+            <input
+              type="text"
+              value={editHotelData.depositInfo?.airtelMoneyName || ''}
+              onChange={(e) => setEditHotelData({
+                ...editHotelData,
+                depositInfo: { ...editHotelData.depositInfo, airtelMoneyName: e.target.value }
+              })}
+              placeholder="e.g. Blue Zebra Island Lodge Ltd"
+              className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2 text-sm focus:bg-white focus:border-stone-900 transition outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-stone-600 mb-1">TNM Mpamba Number</label>
+            <input
+              type="text"
+              value={editHotelData.depositInfo?.mpambaNumber || ''}
+              onChange={(e) => setEditHotelData({
+                ...editHotelData,
+                depositInfo: { ...editHotelData.depositInfo, mpambaNumber: e.target.value }
+              })}
+              placeholder="+265 888 000 000"
+              className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2 text-sm focus:bg-white focus:border-stone-900 transition outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-stone-600 mb-1">TNM Mpamba Registered Name</label>
+            <input
+              type="text"
+              value={editHotelData.depositInfo?.mpambaName || ''}
+              onChange={(e) => setEditHotelData({
+                ...editHotelData,
+                depositInfo: { ...editHotelData.depositInfo, mpambaName: e.target.value }
+              })}
+              placeholder="e.g. Blue Zebra Island Lodge"
+              className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2 text-sm focus:bg-white focus:border-stone-900 transition outline-none"
+            />
+          </div>
+        </div>
+      </div>
 
+      {/* Direct Bank Wire Transfer */}
+      <div className="pt-4 border-t border-stone-100">
+        <h4 className="text-xs font-bold uppercase tracking-wider text-stone-700 mb-3 flex items-center gap-1.5">
+          <span>🏦 Direct Bank Wire Transfer</span>
+        </h4>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-xs font-semibold text-stone-600 mb-1">Bank Name</label>
+            <input
+              type="text"
+              value={editHotelData.depositInfo?.bankName || ''}
+              onChange={(e) => setEditHotelData({
+                ...editHotelData,
+                depositInfo: { ...editHotelData.depositInfo, bankName: e.target.value }
+              })}
+              placeholder="e.g. National Bank of Malawi (NBM)"
+              className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2 text-sm focus:bg-white focus:border-stone-900 transition outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-stone-600 mb-1">Account Name</label>
+            <input
+              type="text"
+              value={editHotelData.depositInfo?.bankAccountName || ''}
+              onChange={(e) => setEditHotelData({
+                ...editHotelData,
+                depositInfo: { ...editHotelData.depositInfo, bankAccountName: e.target.value }
+              })}
+              placeholder="Account Name"
+              className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2 text-sm focus:bg-white focus:border-stone-900 transition outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-stone-600 mb-1">Account Number</label>
+            <input
+              type="text"
+              value={editHotelData.depositInfo?.bankAccountNumber || ''}
+              onChange={(e) => setEditHotelData({
+                ...editHotelData,
+                depositInfo: { ...editHotelData.depositInfo, bankAccountNumber: e.target.value }
+              })}
+              placeholder="Account Number"
+              className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2 text-sm focus:bg-white focus:border-stone-900 transition outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-stone-600 mb-1">Branch</label>
+            <input
+              type="text"
+              value={editHotelData.depositInfo?.bankBranch || ''}
+              onChange={(e) => setEditHotelData({
+                ...editHotelData,
+                depositInfo: { ...editHotelData.depositInfo, bankBranch: e.target.value }
+              })}
+              placeholder="Branch (e.g. Capital City Branch)"
+              className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2 text-sm focus:bg-white focus:border-stone-900 transition outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-stone-600 mb-1">SWIFT / Sort Code (Optional)</label>
+            <input
+              type="text"
+              value={editHotelData.depositInfo?.bankSwiftCode || ''}
+              onChange={(e) => setEditHotelData({
+                ...editHotelData,
+                depositInfo: { ...editHotelData.depositInfo, bankSwiftCode: e.target.value }
+              })}
+              placeholder="SWIFT (e.g. NBMAMWMW)"
+              className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2 text-sm focus:bg-white focus:border-stone-900 transition outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-stone-600 mb-1">Required Deposit (%)</label>
+            <input
+              type="number"
+              min="10"
+              max="100"
+              value={editHotelData.depositInfo?.depositPercentage ?? 50}
+              onChange={(e) => setEditHotelData({
+                ...editHotelData,
+                depositInfo: { ...editHotelData.depositInfo, depositPercentage: Number(e.target.value) }
+              })}
+              placeholder="50"
+              className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2 text-sm focus:bg-white focus:border-stone-900 transition outline-none"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Special Instructions */}
+      <div className="pt-4 border-t border-stone-100">
+        <label className="block text-xs font-semibold text-stone-600 mb-1">Additional Deposit Notes or Instructions for Guests</label>
+        <textarea
+          rows={2}
+          value={editHotelData.depositInfo?.instructions || ''}
+          onChange={(e) => setEditHotelData({
+            ...editHotelData,
+            depositInfo: { ...editHotelData.depositInfo, instructions: e.target.value }
+          })}
+          placeholder="e.g. Boat transfer included upon deposit confirmation, balance payable upon arrival."
+          className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2 text-sm focus:bg-white focus:border-stone-900 transition outline-none"
+        />
+      </div>
     </div>
   </SectionCard>
 

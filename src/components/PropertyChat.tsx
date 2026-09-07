@@ -33,13 +33,17 @@ import {
   CheckCheck,
   Phone,
   Video,
-  PhoneMissed
+  PhoneMissed,
+  Wallet,
+  ChevronDown
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { chimeForIncoming, newChimeState } from '../lib/notificationSound';
 import ConfirmDialog from './ConfirmDialog';
 import { useWebRTC } from '../lib/useWebRTC';
 import { CallModal } from './CallModal';
+import { getHotelDepositInfo, formatDepositSnippet } from '../lib/depositInfo';
+import { isAdmin } from '../lib/roles';
 
 interface Props {
   hotel: Hotel;
@@ -72,10 +76,13 @@ export default function PropertyChat({
 
   const [showEndChatConfirm, setShowEndChatConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showDepositMenu, setShowDepositMenu] = useState(false);
   const [isEndingChat, setIsEndingChat] = useState(false);
   const [isDeletingChat, setIsDeletingChat] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const depositMenuRef = useRef<HTMLDivElement>(null);
   const seenMessages = useRef(newChimeState());
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastTypingSentRef = useRef<number>(0);
@@ -101,11 +108,72 @@ export default function PropertyChat({
     endCall
   } = useWebRTC(chatId || '', currentUser?.uid || '', isManager ? (liveHotel.name || 'Manager') : activeGuestName);
 
+  const adjustTextareaHeight = () => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      const newHeight = Math.min(Math.max(textareaRef.current.scrollHeight, 40), 140);
+      textareaRef.current.style.height = `${newHeight}px`;
+    }
+  };
+
   const handleStartCall = (video: boolean) => {
     if (!currentUser) return;
-    const calleeId = isManager ? activeGuestId! : effectiveManagerId;
+    const calleeId = isManager ? activeGuestId : effectiveManagerId;
+    if (!calleeId) {
+      toast.error('Cannot initiate call. Participant details not found.');
+      return;
+    }
     startCall(calleeId, video);
   };
+
+  // Toggle call functionality on or off for managers and admins
+  const handleToggleCalls = async () => {
+    if (!liveHotel.id) return;
+    const isCurrentlyEnabled = liveHotel.callsEnabled !== false && liveHotel.adminCallsEnabled !== false;
+    const nextState = !isCurrentlyEnabled;
+    try {
+      await updateDoc(doc(db, 'hotels', liveHotel.id), { callsEnabled: nextState });
+      toast.success(nextState ? 'Audio & video calls enabled for guests! 📞' : 'Calls disabled for guests. 🔕');
+    } catch (e) {
+      console.error('Error updating call settings:', e);
+      toast.error('Failed to update call settings.');
+    }
+  };
+
+  // Insert deposit instructions template with real lodge details
+  const handleInsertDepositSnippet = (type: 'mobile_money' | 'bank' | 'general') => {
+    const depositInfo = getHotelDepositInfo(liveHotel);
+    const snippet = formatDepositSnippet(type, depositInfo, {
+      guestName: activeGuestName,
+      roomName: 'your stay'
+    });
+
+    setNewMessage(snippet);
+    setShowDepositMenu(false);
+    toast.success('Deposit request template loaded! Details visible in the chat box.');
+
+    setTimeout(() => {
+      adjustTextareaHeight();
+      textareaRef.current?.focus();
+    }, 50);
+  };
+
+  // Close deposit menu on click outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent | TouchEvent) {
+      if (depositMenuRef.current && !depositMenuRef.current.contains(event.target as Node)) {
+        setShowDepositMenu(false);
+      }
+    }
+    if (showDepositMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [showDepositMenu]);
 
   // 1. Listen in real-time to the Hotel doc for live online/offline status & out of office message
   useEffect(() => {
@@ -273,9 +341,10 @@ export default function PropertyChat({
     }
   }, [chatId, currentUser, isManager]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const text = e.target.value;
     setNewMessage(text);
+    adjustTextareaHeight();
 
     if (!chatId || !currentUser) return;
 
@@ -299,6 +368,13 @@ export default function PropertyChat({
         clearTimeout(typingTimeoutRef.current);
       }
       setTypingState(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend(e);
     }
   };
 
@@ -575,19 +651,46 @@ export default function PropertyChat({
 
         {/* Action Controls */}
         <div className="flex items-center gap-1 shrink-0">
+          {/* Manager / Admin Call Functionality Toggle */}
+          {(isManager || isAdmin(currentUser)) && liveHotel.id && (
+            <button
+              type="button"
+              onClick={handleToggleCalls}
+              className={`p-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1 cursor-pointer ${
+                liveHotel.callsEnabled !== false && liveHotel.adminCallsEnabled !== false
+                  ? 'text-emerald-400 hover:bg-emerald-950/60 border border-emerald-500/30'
+                  : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800 border border-stone-700'
+              }`}
+              title={
+                liveHotel.callsEnabled !== false && liveHotel.adminCallsEnabled !== false
+                  ? 'Calls are enabled for this property. Click to disable.'
+                  : 'Calls are disabled. Click to enable audio & video calls.'
+              }
+            >
+              <Phone className="w-3.5 h-3.5" />
+              <span className="text-[10px] hidden sm:inline">
+                {liveHotel.callsEnabled !== false && liveHotel.adminCallsEnabled !== false ? 'Calls On' : 'Calls Off'}
+              </span>
+            </button>
+          )}
+
           {/* Call Buttons */}
-          {!isChatEnded && currentUser && (liveHotel.callsEnabled !== false) && (
+          {!isChatEnded && currentUser && (
+            (liveHotel.callsEnabled !== false && liveHotel.adminCallsEnabled !== false) || isManager || isAdmin(currentUser)
+          ) && (
             <>
               <button
+                type="button"
                 onClick={() => handleStartCall(false)}
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-stone-300 hover:text-white hover:bg-stone-800 transition-colors"
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-stone-300 hover:text-white hover:bg-stone-800 transition-colors cursor-pointer"
                 title="Audio Call"
               >
                 <Phone className="w-4 h-4" />
               </button>
               <button
+                type="button"
                 onClick={() => handleStartCall(true)}
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-stone-300 hover:text-white hover:bg-stone-800 transition-colors"
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-stone-300 hover:text-white hover:bg-stone-800 transition-colors cursor-pointer"
                 title="Video Call"
               >
                 <Video className="w-4 h-4" />
@@ -877,36 +980,115 @@ export default function PropertyChat({
               </button>
             </div>
           ) : (
-            <form onSubmit={handleSend} className="flex gap-2">
-              <input
-                type="text"
-                value={newMessage}
-                onChange={handleInputChange}
-                onBlur={handleInputBlur}
-                placeholder={
-                  hostIsOnline 
-                    ? "Type your message..." 
-                    : "Host is away. Leave a message..."
-                }
-                className="flex-1 bg-stone-100 border border-transparent focus:border-stone-400 focus:bg-white focus:ring-0 rounded-xl px-4 py-2.5 text-sm transition outline-none"
-                disabled={sending}
-              />
-              <button
-                type="submit"
-                disabled={!newMessage.trim() || sending}
-                className="bg-stone-900 text-white p-2.5 sm:px-4 rounded-xl hover:bg-stone-800 disabled:opacity-50 transition shrink-0 flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
-                title="Send message"
-              >
-                {sending ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <>
-                    <Send className="w-4 h-4" />
-                    <span className="hidden sm:inline text-xs font-semibold">Send</span>
-                  </>
-                )}
-              </button>
-            </form>
+            <div>
+              {isManager && (
+                <div className="relative mb-2" ref={depositMenuRef}>
+                  <button
+                    type="button"
+                    onClick={() => setShowDepositMenu(!showDepositMenu)}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-stone-100 hover:bg-stone-200 text-stone-800 font-semibold rounded-lg text-xs transition cursor-pointer select-none"
+                    aria-expanded={showDepositMenu}
+                  >
+                    <Wallet className="w-3.5 h-3.5 text-amber-600" /> Send Deposit Details
+                    <ChevronDown className={`w-3 h-3 text-stone-400 transition-transform duration-200 ${showDepositMenu ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {showDepositMenu && (
+                    <div className="absolute left-0 bottom-full mb-1.5 w-72 max-w-[calc(100vw-2.5rem)] bg-white border border-stone-200 rounded-2xl shadow-xl p-2 z-50 animate-fadeIn space-y-1">
+                      <div className="px-2.5 py-1.5 border-b border-stone-100 flex items-center justify-between">
+                        <span className="text-[10.5px] font-bold uppercase tracking-wider text-stone-400">
+                          Deposit Instructions
+                        </span>
+                        {getHotelDepositInfo(liveHotel).depositPercentage && (
+                          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
+                            {getHotelDepositInfo(liveHotel).depositPercentage}% Policy
+                          </span>
+                        )}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleInsertDepositSnippet('mobile_money')}
+                        className="w-full text-left p-2 rounded-xl hover:bg-stone-50 text-stone-800 transition flex items-start gap-2.5 cursor-pointer group"
+                      >
+                        <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 mt-0.5 group-hover:bg-amber-100 font-bold text-xs">
+                          📱
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold text-stone-900">Airtel Money &amp; Mpamba</p>
+                          <p className="text-[11px] text-stone-500 truncate">
+                            {getHotelDepositInfo(liveHotel).airtelMoneyNumber || 'Airtel'} • {getHotelDepositInfo(liveHotel).mpambaNumber || 'Mpamba'}
+                          </p>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleInsertDepositSnippet('bank')}
+                        className="w-full text-left p-2 rounded-xl hover:bg-stone-50 text-stone-800 transition flex items-start gap-2.5 cursor-pointer group"
+                      >
+                        <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 mt-0.5 group-hover:bg-blue-100 font-bold text-xs">
+                          🏦
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold text-stone-900">Bank Wire Transfer</p>
+                          <p className="text-[11px] text-stone-500 truncate">
+                            {getHotelDepositInfo(liveHotel).bankName || 'Direct bank transfer'}
+                          </p>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleInsertDepositSnippet('general')}
+                        className="w-full text-left p-2 rounded-xl hover:bg-stone-50 text-stone-800 transition flex items-start gap-2.5 cursor-pointer group"
+                      >
+                        <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5 group-hover:bg-emerald-100 font-bold text-xs">
+                          💬
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold text-stone-900">General Payment Inquiry</p>
+                          <p className="text-[11px] text-stone-500 truncate">Ask preference &amp; share terms</p>
+                        </div>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <form onSubmit={handleSend} className="flex items-end gap-2">
+                <textarea
+                  ref={textareaRef}
+                  rows={1}
+                  value={newMessage}
+                  onChange={handleInputChange}
+                  onKeyDown={handleKeyDown}
+                  onBlur={handleInputBlur}
+                  placeholder={
+                    hostIsOnline 
+                      ? "Type your message... (Enter to send, Shift+Enter for newline)" 
+                      : "Host is away. Leave a message..."
+                  }
+                  className="flex-1 max-h-[140px] min-h-[42px] bg-stone-100 border border-transparent focus:border-stone-400 focus:bg-white focus:ring-0 rounded-xl px-4 py-2.5 text-sm transition outline-none resize-none leading-relaxed overflow-y-auto scrollbar-slim"
+                  disabled={sending}
+                />
+                <button
+                  type="submit"
+                  disabled={!newMessage.trim() || sending}
+                  className="bg-stone-900 text-white p-2.5 sm:px-4 rounded-xl hover:bg-stone-800 disabled:opacity-50 transition shrink-0 flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer mb-0.5"
+                  title="Send message (Enter)"
+                >
+                  {sending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4" />
+                      <span className="hidden sm:inline text-xs font-semibold">Send</span>
+                    </>
+                  )}
+                </button>
+              </form>
+            </div>
           )}
         </div>
       )}

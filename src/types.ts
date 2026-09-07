@@ -173,11 +173,27 @@ export interface Hotel {
   adminChatEnabled?: boolean;
   adminWifiVoucherEnabled?: boolean;
   callsEnabled?: boolean;
+  adminCallsEnabled?: boolean;
   isOnline?: boolean;
   outOfOfficeMessage?: string;
+  depositInfo?: DepositInfo;
   /** Absent, or `enabled: false`, means the property has no restaurant. */
   restaurant?: Restaurant;
   createdAt: number;
+}
+
+export interface DepositInfo {
+  airtelMoneyNumber?: string;
+  airtelMoneyName?: string;
+  mpambaNumber?: string;
+  mpambaName?: string;
+  bankName?: string;
+  bankAccountName?: string;
+  bankAccountNumber?: string;
+  bankBranch?: string;
+  bankSwiftCode?: string;
+  depositPercentage?: number;
+  instructions?: string;
 }
 
 export interface RoomType {

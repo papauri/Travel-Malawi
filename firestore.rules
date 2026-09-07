@@ -194,6 +194,25 @@ service cloud.firestore {
       );
     }
 
+    match /bookings/{bookingId}/calls/{callId} {
+      allow read, create, update: if isAuthenticated() && (
+        bookingDoc(bookingId).guestId == request.auth.uid ||
+        bookingDoc(bookingId).managerId == request.auth.uid ||
+        isManager(bookingDoc(bookingId).hotelId) ||
+        isAdmin()
+      );
+      allow delete: if isAdmin();
+      
+      match /{candidateType}/{candidateId} {
+        allow read, create, update, delete: if isAuthenticated() && (
+          bookingDoc(bookingId).guestId == request.auth.uid ||
+          bookingDoc(bookingId).managerId == request.auth.uid ||
+          isManager(bookingDoc(bookingId).hotelId) ||
+          isAdmin()
+        );
+      }
+    }
+
     match /bookings/{bookingId} {
       // NOTE: this remains public because the availability calendar and the
       // pre-booking availability check both run for signed-out guests, and

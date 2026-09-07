@@ -180,42 +180,12 @@ export function ChatModalProvider({ children }: { children: React.ReactNode }) {
                   onMinimize={minimizeChat}
                 />
               ) : (
-                <div className="bg-white rounded-t-3xl sm:rounded-2xl overflow-hidden shadow-2xl border border-stone-200 flex flex-col h-full">
-                  <div className="p-3 pt-[max(12px,env(safe-area-inset-top))] sm:pt-3 bg-stone-900 text-white flex justify-between items-center shrink-0">
-                    <div className="flex items-center gap-2">
-                      <MessageSquare className="w-4 h-4 text-emerald-400" />
-                      <div>
-                        <h4 className="font-bold text-xs">
-                          {activeChat.booking.guestName || 'Guest'}
-                        </h4>
-                        <span className="text-[10px] text-stone-300">
-                          Ref: {activeChat.booking.reference || activeChat.booking.id}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <button 
-                        type="button" 
-                        onClick={minimizeChat}
-                        className="p-1.5 hover:bg-stone-800 rounded-lg text-stone-400 hover:text-white transition cursor-pointer"
-                        title="Minimize"
-                      >
-                        <Minus className="w-4 h-4" />
-                      </button>
-                      <button 
-                        type="button" 
-                        onClick={closeChat}
-                        className="p-1.5 hover:bg-stone-800 rounded-lg text-stone-400 hover:text-white transition cursor-pointer"
-                        title="Close"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                  <div className="flex-1 min-h-0">
-                    <BookingChat booking={activeChat.booking} currentUser={user} />
-                  </div>
-                </div>
+                <BookingChat
+                  booking={activeChat.booking}
+                  currentUser={user!}
+                  onClose={closeChat}
+                  onMinimize={minimizeChat}
+                />
               )}
             </div>
           )}

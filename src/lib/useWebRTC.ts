@@ -16,7 +16,12 @@ const configuration = {
 
 export type NetworkQuality = 'excellent' | 'good' | 'fair' | 'poor' | 'unknown';
 
-export function useWebRTC(chatId: string, currentUserId: string, currentUserName: string) {
+export function useWebRTC(
+  chatId: string, 
+  currentUserId: string, 
+  currentUserName: string,
+  chatCollection: 'hotel_chats' | 'bookings' = 'hotel_chats'
+) {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [activeCall, setActiveCall] = useState<Call | null>(null);
@@ -32,7 +37,7 @@ export function useWebRTC(chatId: string, currentUserId: string, currentUserName
   useEffect(() => {
     if (!chatId || !currentUserId) return;
     
-    const callsRef = collection(db, 'hotel_chats', chatId, 'calls');
+    const callsRef = collection(db, chatCollection, chatId, 'calls');
     const q = query(
       callsRef, 
       where('calleeId', '==', currentUserId),
@@ -58,13 +63,13 @@ export function useWebRTC(chatId: string, currentUserId: string, currentUserName
     });
     
     return () => unsubscribe();
-  }, [chatId, currentUserId]);
+  }, [chatId, currentUserId, chatCollection]);
 
   // Listen for call status changes (for caller)
   useEffect(() => {
     if (!chatId || !activeCall?.id) return;
     
-    const callRef = doc(db, 'hotel_chats', chatId, 'calls', activeCall.id);
+    const callRef = doc(db, chatCollection, chatId, 'calls', activeCall.id);
     const unsubscribe = onSnapshot(callRef, async (snapshot) => {
       const data = snapshot.data() as Call;
       if (!data) return;
@@ -91,7 +96,7 @@ export function useWebRTC(chatId: string, currentUserId: string, currentUserName
     });
     
     return () => unsubscribe();
-  }, [chatId, activeCall?.id]);
+  }, [chatId, activeCall?.id, chatCollection]);
 
   // Listen for remote ICE candidates
   useEffect(() => {
@@ -100,7 +105,7 @@ export function useWebRTC(chatId: string, currentUserId: string, currentUserName
     const isCaller = activeCall.callerId === currentUserId;
     const candidatesCollection = isCaller ? 'calleeCandidates' : 'callerCandidates';
     
-    const candidatesRef = collection(db, 'hotel_chats', chatId, 'calls', activeCall.id, candidatesCollection);
+    const candidatesRef = collection(db, chatCollection, chatId, 'calls', activeCall.id, candidatesCollection);
     const unsubscribe = onSnapshot(candidatesRef, (snapshot) => {
       snapshot.docChanges().forEach((change) => {
         if (change.type === 'added') {
@@ -120,7 +125,7 @@ export function useWebRTC(chatId: string, currentUserId: string, currentUserName
     });
     
     return () => unsubscribe();
-  }, [chatId, activeCall?.id, currentUserId]);
+  }, [chatId, activeCall?.id, currentUserId, chatCollection]);
 
   const setupMedia = async (video: boolean = true) => {
     try {
@@ -176,7 +181,7 @@ export function useWebRTC(chatId: string, currentUserId: string, currentUserName
     pc.onicecandidate = (event) => {
       if (event.candidate) {
         const collectionName = isCaller ? 'callerCandidates' : 'calleeCandidates';
-        const candidatesRef = collection(db, 'hotel_chats', chatId, 'calls', callId, collectionName);
+        const candidatesRef = collection(db, chatCollection, chatId, 'calls', callId, collectionName);
         addDoc(candidatesRef, {
           candidate: event.candidate.candidate,
           sdpMid: event.candidate.sdpMid,
@@ -193,7 +198,7 @@ export function useWebRTC(chatId: string, currentUserId: string, currentUserName
     const stream = await setupMedia(video);
     if (!stream) return;
     
-    const callRef = doc(collection(db, 'hotel_chats', chatId, 'calls'));
+    const callRef = doc(collection(db, chatCollection, chatId, 'calls'));
     const callId = callRef.id;
     
     const pc = createPeerConnection(callId, true, stream);
@@ -239,7 +244,7 @@ export function useWebRTC(chatId: string, currentUserId: string, currentUserName
     const answerDescription = await pc.createAnswer();
     await pc.setLocalDescription(answerDescription);
     
-    const callRef = doc(db, 'hotel_chats', chatId, 'calls', call.id!);
+    const callRef = doc(db, chatCollection, chatId, 'calls', call.id!);
     await updateDoc(callRef, {
       status: 'connected',
       answer: {
@@ -255,7 +260,7 @@ export function useWebRTC(chatId: string, currentUserId: string, currentUserName
 
   const rejectCall = async (call: Call) => {
     setIncomingCall(null);
-    const callRef = doc(db, 'hotel_chats', chatId, 'calls', call.id!);
+    const callRef = doc(db, chatCollection, chatId, 'calls', call.id!);
     await updateDoc(callRef, {
       status: 'rejected',
       updatedAt: Date.now(),
@@ -265,7 +270,7 @@ export function useWebRTC(chatId: string, currentUserId: string, currentUserName
 
   const endCall = async () => {
     if (activeCall?.id) {
-      const callRef = doc(db, 'hotel_chats', chatId, 'calls', activeCall.id);
+      const callRef = doc(db, chatCollection, chatId, 'calls', activeCall.id);
       await updateDoc(callRef, {
         status: 'ended',
         updatedAt: Date.now(),
