@@ -4,25 +4,29 @@
  */
 
 import React, { useEffect, useState, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useAuthDialog } from '../contexts/AuthDialogContext';
-import { LogOut, Bell, Palmtree, ChevronDown, LayoutDashboard, Briefcase, ShieldCheck, Building2, Volume2, VolumeX, Heart, UserCircle, BookOpen } from 'lucide-react';
+import { LogOut, Bell, Palmtree, ChevronDown, LayoutDashboard, Briefcase, ShieldCheck, Building2, Volume2, VolumeX, Heart, UserCircle, BookOpen, MessageSquare } from 'lucide-react';
 import { isSoundEnabled, onSoundPreferenceChange, setSoundEnabled } from '../lib/notificationSound';
 import { readStoredCurrency, storeCurrency, onCurrencyChange } from '../lib/currency';
 import { CurrencyCode } from '../types';
 import { requestBrowserNotifications } from './GlobalNotificationManager';
 import { describeRoles, isAdmin, isHotelManager, isTraveller } from '../lib/roles';
 import { useUnreadBroadcasts } from '../hooks/useUnreadBroadcasts';
+import { useUnreadMessages } from '../hooks/useUnreadMessages';
 import { usePresence, PresenceStatus } from '../hooks/usePresence';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import NotificationBell from './NotificationBell';
+import ActiveChatsMenu from './ActiveChatsMenu';
 
 export default function Navbar() {
+  const navigate = useNavigate();
   const { user, logOut } = useAuth();
   const { openAuth } = useAuthDialog();
   const unreadBroadcasts = useUnreadBroadcasts();
+  const { activeChatsCount } = useUnreadMessages();
   const { presence, setManualStatus } = usePresence();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
@@ -176,9 +180,12 @@ export default function Navbar() {
                   </div>
                 </div>
 
-                {/* Notification Bell */}
+                {/* Active Chats & Notification Bell */}
                 {user && (
-                  <NotificationBell />
+                  <div className="flex items-center gap-1">
+                    <ActiveChatsMenu />
+                    <NotificationBell />
+                  </div>
                 )}
 
                 {/* User avatar + dropdown */}
@@ -275,6 +282,28 @@ export default function Navbar() {
                         >
                           <UserCircle className="h-4 w-4" /> Profile Settings
                         </Link>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowUserMenu(false);
+                            if (hosting) {
+                              navigate('/dashboard?tab=inquiries');
+                            } else {
+                              navigate('/my-bookings');
+                            }
+                          }}
+                          className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-stone-600 hover:bg-stone-50 hover:text-stone-900 transition text-left cursor-pointer"
+                        >
+                          <span className="flex items-center gap-2.5">
+                            <MessageSquare className="h-4 w-4 text-stone-500" />
+                            <span>{hosting ? 'Active Guest Chats' : 'Active Chats'}</span>
+                          </span>
+                          {activeChatsCount > 0 && (
+                            <span className="bg-stone-900 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                              {activeChatsCount}
+                            </span>
+                          )}
+                        </button>
                       </div>
 
                       {/* Chat notification sound. Off until asked for: a page

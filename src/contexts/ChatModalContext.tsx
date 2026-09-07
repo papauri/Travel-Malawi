@@ -32,6 +32,9 @@ interface ChatModalContextType {
   minimizeChat: () => void;
   maximizeChat: () => void;
   closeChat: () => void;
+  isChatOpen: (type: 'inquiry' | 'booking', idOrHotelId: string, guestId?: string) => boolean;
+  toggleInquiryChat: (hotel: Hotel, guestId?: string, guestName?: string) => void;
+  toggleBookingChat: (booking: Booking) => void;
 }
 
 const ChatModalContext = createContext<ChatModalContextType | undefined>(undefined);
@@ -57,7 +60,21 @@ export function ChatModalProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user?.uid]);
 
-
+  const isChatOpen = (type: 'inquiry' | 'booking', idOrHotelId: string, guestId?: string): boolean => {
+    if (!activeChat) return false;
+    if (type === 'inquiry' && activeChat.type === 'inquiry') {
+      const hotelMatch = activeChat.hotel?.id === idOrHotelId;
+      if (!hotelMatch) return false;
+      if (guestId && activeChat.guestId) {
+        return activeChat.guestId === guestId;
+      }
+      return true;
+    }
+    if (type === 'booking' && activeChat.type === 'booking') {
+      return activeChat.booking?.id === idOrHotelId;
+    }
+    return false;
+  };
 
   const openInquiryChat = (hotel: Hotel, guestId?: string, guestName?: string) => {
     setActiveChat({
@@ -75,6 +92,22 @@ export function ChatModalProvider({ children }: { children: React.ReactNode }) {
       booking,
     });
     setIsMinimized(false);
+  };
+
+  const toggleInquiryChat = (hotel: Hotel, guestId?: string, guestName?: string) => {
+    if (isChatOpen('inquiry', hotel.id || '', guestId)) {
+      closeChat();
+    } else {
+      openInquiryChat(hotel, guestId, guestName);
+    }
+  };
+
+  const toggleBookingChat = (booking: Booking) => {
+    if (isChatOpen('booking', booking.id)) {
+      closeChat();
+    } else {
+      openBookingChat(booking);
+    }
   };
 
   const minimizeChat = () => {
@@ -112,6 +145,9 @@ export function ChatModalProvider({ children }: { children: React.ReactNode }) {
         minimizeChat,
         maximizeChat,
         closeChat,
+        isChatOpen,
+        toggleInquiryChat,
+        toggleBookingChat,
       }}
     >
       {children}
