@@ -311,12 +311,12 @@ export default function GlobalNotificationManager() {
               } max-w-md w-full bg-stone-900 text-white shadow-2xl rounded-2xl pointer-events-auto flex flex-col p-4 border border-stone-800`}
             >
               <div className="flex items-start gap-3">
-                <div className="p-2.5 bg-emerald-600/20 text-emerald-400 rounded-xl shrink-0">
+                <div className="p-2.5 bg-stone-800 text-stone-200 border border-stone-700 rounded-xl shrink-0">
                   <MessageSquare className="w-5 h-5" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
-                    <p className="text-xs font-bold uppercase tracking-wider text-emerald-400">
+                    <p className="text-xs font-bold uppercase tracking-wider text-stone-300">
                       {amIManager ? 'New Guest Inquiry' : 'Host Reply'}
                     </p>
                     <button
@@ -329,7 +329,7 @@ export default function GlobalNotificationManager() {
                   <p className="text-sm font-semibold text-white mt-0.5 truncate">
                     {senderTitle} {data.hotelName ? `· ${data.hotelName}` : ''}
                   </p>
-                  <p className="text-xs text-stone-300 mt-1 line-clamp-2 italic bg-stone-800/80 p-2 rounded-lg border border-stone-700/50">
+                  <p className="text-xs text-stone-200 mt-1 line-clamp-2 bg-stone-800 p-2 rounded-lg border border-stone-700">
                     "{data.lastMessage}"
                   </p>
                 </div>
@@ -351,7 +351,7 @@ export default function GlobalNotificationManager() {
                       amIManager ? (data.guestName || undefined) : undefined
                     );
                   }}
-                  className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg shadow-sm transition flex items-center gap-1.5"
+                  className="px-4 py-1.5 bg-stone-100 hover:bg-white text-stone-950 text-xs font-bold rounded-lg shadow-sm transition flex items-center gap-1.5"
                 >
                   <MessageSquare className="w-3.5 h-3.5" />
                   Open Chat & Reply
@@ -414,18 +414,18 @@ export default function GlobalNotificationManager() {
               <div className="bg-stone-900 text-white p-4 rounded-2xl shadow-2xl flex flex-col gap-2 border border-stone-800 max-w-sm w-full pointer-events-auto">
                 <div className="flex items-center justify-between">
                    <div className="flex items-center gap-2">
-                       <MessageSquare className="w-5 h-5 text-indigo-400" />
+                       <MessageSquare className="w-5 h-5 text-stone-200" />
                        <span className="font-bold text-sm">New message from {booking.lastMessageSenderName || (amIManager ? 'Guest' : 'Host')}</span>
                    </div>
                    <button onClick={() => toast.dismiss(t.id)} className="text-stone-400 hover:text-white"><X className="w-4 h-4" /></button>
                 </div>
-                <p className="text-xs text-stone-300 italic px-7 line-clamp-2">"{booking.lastMessageText}"</p>
+                <p className="text-xs text-stone-200 px-7 line-clamp-2 bg-stone-800 p-2 rounded-lg border border-stone-700">"{booking.lastMessageText}"</p>
                 <button
                   onClick={() => {
                     toast.dismiss(t.id);
                     openBookingChat(booking);
                   }}
-                  className="ml-7 mt-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-sm self-start transition"
+                  className="ml-7 mt-2 px-3 py-1.5 bg-stone-100 hover:bg-white text-stone-950 font-bold text-xs rounded-xl shadow-sm self-start transition"
                 >
                   Open Chat
                 </button>

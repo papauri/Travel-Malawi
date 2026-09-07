@@ -169,41 +169,35 @@ export default function NotificationBell() {
               className="fixed top-16 inset-x-3 sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2.5 sm:w-[380px] max-w-[calc(100vw-1.5rem)] sm:max-w-[420px] bg-white/95 backdrop-blur-xl border border-stone-200/90 rounded-2xl shadow-2xl py-0 z-50 overflow-hidden max-h-[calc(100dvh-5rem)] flex flex-col"
             >
               {/* Header */}
-              <div className="px-4 py-3 bg-gradient-to-r from-stone-900 to-stone-850 text-white flex items-center justify-between shrink-0">
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-full bg-amber-400/20 text-amber-400 flex items-center justify-center">
+              <div className="px-4 py-3 bg-stone-900 text-white flex items-center justify-between shrink-0 border-b border-stone-800">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-full bg-stone-800 text-stone-200 border border-stone-700 flex items-center justify-center">
                     <Bell className="w-3.5 h-3.5" />
                   </div>
-                  <div>
-                    <h3 className="font-serif font-bold text-sm tracking-tight">Notifications</h3>
-                  </div>
+                  <h3 className="font-serif font-bold text-sm tracking-tight text-white">Notifications</h3>
                   {unreadCount > 0 && (
-                    <span className="ml-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-500 text-white shadow-xs">
+                    <span className="ml-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-600 text-white shadow-xs">
                       {unreadCount} new
                     </span>
                   )}
                 </div>
 
                 {/* Quick Sound Toggle & Close Controls */}
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={handleToggleSound}
-                    className={`p-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1 cursor-pointer ${
-                      soundOn
-                        ? 'text-amber-300 hover:bg-white/10'
-                        : 'text-stone-400 hover:text-white hover:bg-white/10'
-                    }`}
+                    className="px-2.5 py-1 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer bg-stone-800 hover:bg-stone-700 text-stone-200 hover:text-white border border-stone-700"
                     title={soundOn ? 'Mute notification chimes' : 'Enable notification chimes'}
                   >
-                    {soundOn ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
-                    <span className="text-[10px] hidden sm:inline">{soundOn ? 'Ding On' : 'Muted'}</span>
+                    {soundOn ? <Volume2 className="w-3.5 h-3.5 text-stone-300" /> : <VolumeX className="w-3.5 h-3.5 text-stone-400" />}
+                    <span className="text-[11px]">{soundOn ? 'Sound on' : 'Muted'}</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setIsOpen(false)}
-                    className="p-1.5 text-stone-400 hover:text-white hover:bg-white/10 rounded-lg transition cursor-pointer"
+                    className="p-1.5 text-stone-400 hover:text-white hover:bg-stone-800 rounded-lg transition cursor-pointer"
                     title="Close notifications"
                     aria-label="Close notifications"
                   >
@@ -215,8 +209,8 @@ export default function NotificationBell() {
               {/* Content List */}
               <div className="flex-1 overflow-y-auto scrollbar-slim divide-y divide-stone-100 max-h-[min(420px,calc(100dvh-10rem))]">
               {unreadItems.length > 0 ? (
-                <div className="p-2 space-y-1">
-                  <div className="px-2 py-1 flex items-center justify-between text-[11px] font-semibold text-stone-400 uppercase tracking-wider">
+                <div className="p-2 space-y-1.5">
+                  <div className="px-3 py-1.5 flex items-center justify-between text-[11px] font-bold text-stone-600 uppercase tracking-wider bg-stone-100/70 rounded-lg">
                     <span>Unread Messages</span>
                     <span>Click to reply</span>
                   </div>
@@ -228,43 +222,35 @@ export default function NotificationBell() {
                         key={item.id}
                         type="button"
                         onClick={() => handleOpenItem(item)}
-                        className="w-full text-left p-3 rounded-xl hover:bg-stone-50 border border-transparent hover:border-stone-200/80 transition-all flex items-start gap-3 group cursor-pointer"
+                        className="w-full text-left p-3 rounded-xl bg-white hover:bg-stone-50 border border-stone-200/70 hover:border-stone-300 transition-all flex items-start gap-3 group cursor-pointer shadow-2xs"
                       >
                         {/* Avatar */}
-                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-stone-800 to-stone-900 text-amber-300 font-bold text-xs flex items-center justify-center shrink-0 shadow-xs ring-1 ring-stone-200">
+                        <div className="w-9 h-9 rounded-full bg-stone-900 text-white font-bold text-xs flex items-center justify-center shrink-0 border border-stone-300 shadow-2xs">
                           {initials}
                         </div>
 
                         {/* Details */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between gap-1.5">
-                            <span className="text-xs font-bold text-stone-900 truncate">
+                            <span className="text-sm font-bold text-stone-950 truncate group-hover:text-black">
                               {item.senderName}
                             </span>
-                            <span className="text-[10px] text-stone-400 shrink-0">
+                            <span className="text-[11px] font-medium text-stone-500 shrink-0">
                               {formatTimeAgo(item.timestamp)}
                             </span>
                           </div>
 
-                          <div className="flex items-center gap-1.5 mt-0.5">
-                            <span
-                              className={`text-[9.5px] font-bold px-1.5 py-0.2 rounded-md ${
-                                item.senderRoleTag === 'Guest Inquiry'
-                                  ? 'bg-blue-50 text-blue-700 border border-blue-200/60'
-                                  : item.senderRoleTag === 'Host Reply'
-                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
-                                  : 'bg-amber-50 text-amber-700 border border-amber-200/60'
-                              }`}
-                            >
+                          <div className="flex items-center gap-1.5 mt-1">
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-stone-100 text-stone-800 border border-stone-300">
                               {item.senderRoleTag}
                             </span>
-                            <span className="text-[11px] text-stone-500 font-medium truncate">
+                            <span className="text-xs text-stone-600 font-medium truncate">
                               · {item.hotelName}
                             </span>
                           </div>
 
                           {/* Message snippet */}
-                          <p className="text-xs text-stone-600 mt-1 line-clamp-2 bg-stone-100/70 group-hover:bg-white p-1.5 rounded-lg border border-stone-200/50 transition">
+                          <p className="text-xs text-stone-900 font-normal leading-relaxed mt-1.5 line-clamp-2 bg-stone-100/80 group-hover:bg-white p-2 rounded-lg border border-stone-200 transition">
                             "{item.lastMessage}"
                           </p>
                         </div>
@@ -276,10 +262,10 @@ export default function NotificationBell() {
 
               {/* Trip Broadcasts */}
               {unreadBroadcasts > 0 && (
-                <div className="p-3 bg-amber-50/50">
+                <div className="p-3 bg-stone-50 border-t border-stone-200">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                    <span className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-stone-700" />
                       Lodge Guest Announcements ({unreadBroadcasts})
                     </span>
                     <button
@@ -288,7 +274,7 @@ export default function NotificationBell() {
                         setIsOpen(false);
                         navigate('/my-bookings');
                       }}
-                      className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 flex items-center gap-0.5 cursor-pointer"
+                      className="text-xs font-bold text-stone-800 hover:text-stone-950 underline flex items-center gap-0.5 cursor-pointer"
                     >
                       View in Bookings <ExternalLink className="w-3 h-3" />
                     </button>
@@ -299,26 +285,26 @@ export default function NotificationBell() {
               {/* Empty state when zero unread */}
               {unreadItems.length === 0 && unreadBroadcasts === 0 && (
                 <div className="py-8 px-6 text-center flex flex-col items-center justify-center">
-                  <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mb-2.5 shadow-2xs">
+                  <div className="w-12 h-12 rounded-full bg-stone-100 text-stone-700 flex items-center justify-center mb-2.5 border border-stone-200">
                     <CheckCheck className="w-6 h-6" />
                   </div>
                   <p className="text-sm font-serif font-bold text-stone-900">All caught up!</p>
-                  <p className="text-xs text-stone-500 mt-1 max-w-[240px]">
+                  <p className="text-xs text-stone-600 mt-1 max-w-[240px]">
                     You have no unread messages. When a guest or host messages you, this bell will chime and vibrate.
                   </p>
                   <button
                     type="button"
                     onClick={triggerDing}
-                    className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 rounded-full transition cursor-pointer"
+                    className="mt-3 inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-stone-800 bg-stone-100 hover:bg-stone-200 border border-stone-300 rounded-full transition cursor-pointer"
                   >
-                    <Bell className="w-3 h-3 text-amber-600" /> Test Bell Ding Sound
+                    <Bell className="w-3 h-3 text-stone-700" /> Test Bell Ding Sound
                   </button>
                 </div>
               )}
             </div>
 
             {/* Footer Navigation */}
-            <div className="p-2.5 bg-stone-50 border-t border-stone-100 flex items-center justify-between text-xs">
+            <div className="p-3 bg-stone-50 border-t border-stone-200 flex items-center justify-between text-xs">
               {isManager ? (
                 <button
                   type="button"
@@ -326,9 +312,9 @@ export default function NotificationBell() {
                     setIsOpen(false);
                     navigate('/dashboard');
                   }}
-                  className="font-medium text-stone-600 hover:text-stone-900 flex items-center gap-1 cursor-pointer"
+                  className="font-semibold text-stone-800 hover:text-stone-950 flex items-center gap-1.5 cursor-pointer"
                 >
-                  <MessageSquare className="w-3.5 h-3.5 text-stone-500" /> Open Host Dashboard
+                  <MessageSquare className="w-3.5 h-3.5 text-stone-600" /> Open Host Dashboard
                 </button>
               ) : (
                 <button
@@ -337,16 +323,17 @@ export default function NotificationBell() {
                     setIsOpen(false);
                     navigate('/my-bookings');
                   }}
-                  className="font-medium text-stone-600 hover:text-stone-900 flex items-center gap-1 cursor-pointer"
+                  className="font-semibold text-stone-800 hover:text-stone-950 flex items-center gap-1.5 cursor-pointer"
                 >
-                  <Calendar className="w-3.5 h-3.5 text-stone-500" /> My Trips & Bookings
+                  <Calendar className="w-3.5 h-3.5 text-stone-600" /> My Trips & Bookings
                 </button>
               )}
 
               {unreadCount > 0 && (
-                <span className="text-[11px] font-semibold text-emerald-700">
+                <div className="flex items-center gap-1.5 text-[11px] font-medium text-stone-600">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                   Live real-time sync
-                </span>
+                </div>
               )}
             </div>
           </motion.div>

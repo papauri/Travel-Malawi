@@ -20,7 +20,7 @@ import Pagination from '../components/Pagination';
 import BookingChat from '../components/BookingChat';
 import PropertyChat from '../components/PropertyChat';
 import { useChatModal } from '../contexts/ChatModalContext';
-import { MessageSquare, Megaphone, Presentation, Bell } from 'lucide-react';
+import { MessageSquare, Megaphone, Presentation, Bell, ChevronDown } from 'lucide-react';
 import SmartImage from '../components/SmartImage';
 import { getHotelImages, getHotelImage, getRoomImage, localImagesForName } from '../lib/images';
 import { useBreadcrumbLabel } from '../components/Breadcrumbs';
@@ -1154,56 +1154,109 @@ export default function ManageHotel() {
           </div>
         </div>
       )}
-      <div className="sticky top-[121px] z-40 bg-stone-50/95 backdrop-blur-md pt-2 pb-0 flex gap-1 border-b border-stone-200 mb-8 overflow-x-auto scrollbar-hide snap-x touch-pan-x [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
-        {([
-          { id: 'details' as Tab, label: 'Property details', icon: Building },
-          { id: 'media' as Tab, label: 'Media', icon: Eye },
-          { id: 'promotions' as Tab, label: 'Promotions', icon: Percent },
-          { id: 'stayos' as Tab, label: 'Stay OS', icon: ShieldCheck },
-          { id: 'broadcasts' as Tab, label: 'Broadcasts', icon: Megaphone },
-          { id: 'rooms' as Tab, label: 'Rooms & pricing', icon: BedDouble },
-          { id: 'conferences' as Tab, label: 'Conferences', icon: Presentation },
-          { id: 'restaurant' as Tab, label: 'Restaurant', icon: UtensilsCrossed },
-          { id: 'bookings' as Tab, label: 'Bookings', icon: Calendar },
-          { id: 'inquiries' as Tab, label: 'Inquiries', icon: MessageSquare },
-        ]).map(tab => {
-          const Icon = tab.icon;
-          const pendingCount = tab.id === 'bookings' ? bookings.filter(b => b.status === 'pending').length : 0;
-          const unreadInquiryCount = tab.id === 'inquiries' ? inquiries.filter(i => 
-            i.lastSenderId !== user?.uid && 
-            i.updatedAt && 
-            (!i.managerLastOpenedAt || i.updatedAt > i.managerLastOpenedAt)
-          ).length : 0;
-          
-          return (
-            <button
-              key={tab.id}
-              onClick={() => requestTab(tab.id)}
-              className={`flex items-center gap-2 px-3.5 sm:px-4 py-2.5 sm:py-3 border-b-2 text-xs sm:text-sm font-semibold whitespace-nowrap shrink-0 snap-start min-h-[44px] transition ${
-                activeTab === tab.id
-                  ? 'border-stone-900 text-stone-900'
-                  : 'border-transparent text-stone-500 hover:text-stone-700'
-              }`}
+      {/* Dashboard Section Navigation */}
+      <div className="sticky top-[121px] z-40 bg-stone-50/95 backdrop-blur-md py-2.5 mb-8 border-b border-stone-200/80">
+        {/* Mobile quick jump dropdown (< md) */}
+        <div className="md:hidden mb-2.5">
+          <label htmlFor="dashboard-tab-select" className="sr-only">Select dashboard section</label>
+          <div className="relative">
+            <select
+              id="dashboard-tab-select"
+              value={activeTab}
+              onChange={(e) => requestTab(e.target.value as Tab)}
+              className="w-full bg-white border border-stone-300 text-stone-900 font-bold text-sm rounded-xl px-3.5 py-2.5 shadow-xs focus:ring-2 focus:ring-stone-900 focus:outline-none appearance-none pr-9 cursor-pointer"
             >
-              <Icon className="h-4 w-4 shrink-0" /> {tab.label}
-              {dirtyOn(tab.id) && (
-                <span title="Unsaved changes" className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
-              )}
-              {tab.id === 'restaurant' && hotel.restaurant?.enabled && (
-                <span className="bg-emerald-100 text-emerald-700 text-[0.6rem] font-bold px-1.5 py-0.5 rounded-full uppercase shrink-0">Live</span>
-              )}
-              {pendingCount > 0 && (
-                <span className="bg-emerald-500 text-white text-xs px-2 py-0.5 rounded-full shrink-0 font-bold">{pendingCount}</span>
-              )}
-              {unreadInquiryCount > 0 && (
-                <span className="inline-flex items-center gap-1 bg-rose-600 text-white text-xs px-2 py-0.5 rounded-full shadow-sm shrink-0 font-bold">
-                  <Bell className="w-3 h-3 animate-bell-ring" />
-                  {unreadInquiryCount} new
-                </span>
-              )}
-            </button>
-          );
-        })}
+              {([
+                { id: 'details' as Tab, label: 'Property details' },
+                { id: 'media' as Tab, label: 'Media' },
+                { id: 'promotions' as Tab, label: 'Promotions' },
+                { id: 'stayos' as Tab, label: 'Stay OS' },
+                { id: 'broadcasts' as Tab, label: 'Broadcasts' },
+                { id: 'rooms' as Tab, label: 'Rooms & pricing' },
+                { id: 'conferences' as Tab, label: 'Conferences' },
+                { id: 'restaurant' as Tab, label: 'Restaurant' },
+                { id: 'bookings' as Tab, label: 'Bookings' },
+                { id: 'inquiries' as Tab, label: 'Inquiries' },
+              ]).map(tab => {
+                const pendingCount = tab.id === 'bookings' ? bookings.filter(b => b.status === 'pending').length : 0;
+                const unreadInquiryCount = tab.id === 'inquiries' ? inquiries.filter(i => 
+                  i.lastSenderId !== user?.uid && 
+                  i.updatedAt && 
+                  (!i.managerLastOpenedAt || i.updatedAt > i.managerLastOpenedAt)
+                ).length : 0;
+                const extra = pendingCount > 0 ? ` (${pendingCount} pending)` : unreadInquiryCount > 0 ? ` (${unreadInquiryCount} new)` : '';
+                return (
+                  <option key={tab.id} value={tab.id}>
+                    {tab.label}{extra}
+                  </option>
+                );
+              })}
+            </select>
+            <ChevronDown className="w-4 h-4 text-stone-500 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
+        </div>
+
+        {/* Wrapped Segmented Pills Navigation Bar (all tabs visible on all viewports without scrolling) */}
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 p-1.5 sm:p-2 bg-stone-100/90 rounded-2xl border border-stone-200 shadow-2xs">
+          {([
+            { id: 'details' as Tab, label: 'Property details', icon: Building },
+            { id: 'media' as Tab, label: 'Media', icon: Eye },
+            { id: 'promotions' as Tab, label: 'Promotions', icon: Percent },
+            { id: 'stayos' as Tab, label: 'Stay OS', icon: ShieldCheck },
+            { id: 'broadcasts' as Tab, label: 'Broadcasts', icon: Megaphone },
+            { id: 'rooms' as Tab, label: 'Rooms & pricing', icon: BedDouble },
+            { id: 'conferences' as Tab, label: 'Conferences', icon: Presentation },
+            { id: 'restaurant' as Tab, label: 'Restaurant', icon: UtensilsCrossed },
+            { id: 'bookings' as Tab, label: 'Bookings', icon: Calendar },
+            { id: 'inquiries' as Tab, label: 'Inquiries', icon: MessageSquare },
+          ]).map(tab => {
+            const Icon = tab.icon;
+            const pendingCount = tab.id === 'bookings' ? bookings.filter(b => b.status === 'pending').length : 0;
+            const unreadInquiryCount = tab.id === 'inquiries' ? inquiries.filter(i => 
+              i.lastSenderId !== user?.uid && 
+              i.updatedAt && 
+              (!i.managerLastOpenedAt || i.updatedAt > i.managerLastOpenedAt)
+            ).length : 0;
+            const isActive = activeTab === tab.id;
+            
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => requestTab(tab.id)}
+                className={`flex items-center gap-2 px-3 sm:px-3.5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+                  isActive
+                    ? 'bg-stone-900 text-white shadow-xs'
+                    : 'bg-white hover:bg-stone-50 text-stone-700 hover:text-stone-950 border border-stone-200/90 shadow-2xs'
+                }`}
+              >
+                <Icon className={`h-4 w-4 shrink-0 ${isActive ? 'text-white' : 'text-stone-500'}`} />
+                <span>{tab.label}</span>
+                {dirtyOn(tab.id) && (
+                  <span title="Unsaved changes" className="h-2 w-2 rounded-full bg-amber-500 shrink-0" />
+                )}
+                {tab.id === 'restaurant' && hotel.restaurant?.enabled && (
+                  <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full uppercase shrink-0 ${
+                    isActive ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-800'
+                  }`}>
+                    Live
+                  </span>
+                )}
+                {pendingCount > 0 && (
+                  <span className="bg-emerald-600 text-white text-[11px] px-2 py-0.5 rounded-full shrink-0 font-bold">
+                    {pendingCount}
+                  </span>
+                )}
+                {unreadInquiryCount > 0 && (
+                  <span className="inline-flex items-center gap-1 bg-rose-600 text-white text-[11px] px-2 py-0.5 rounded-full shadow-xs shrink-0 font-bold">
+                    <Bell className="w-3 h-3 animate-bell-ring" />
+                    {unreadInquiryCount} new
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* TAB CONTENT: DETAILS */}
