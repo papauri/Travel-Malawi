@@ -280,47 +280,6 @@ export default function Home() {
   const locationSearchRef = useRef<HTMLDivElement>(null);
   const mapStaysListRef = useRef<HTMLDivElement>(null);
 
-  // Prevent scroll chaining to the outer page when cursor is within the Map View stays list
-  useEffect(() => {
-    const el = mapStaysListRef.current;
-    if (!el || viewMode !== 'map') return;
-
-    const handleWheel = (e: WheelEvent) => {
-      const { scrollTop, scrollHeight, clientHeight } = el;
-      const isScrollingUp = e.deltaY < 0;
-      const isScrollingDown = e.deltaY > 0;
-
-      // If at top or bottom boundary, prevent outer page from scrolling
-      if (scrollTop <= 0 && isScrollingUp) {
-        e.preventDefault();
-        return;
-      }
-      if (scrollTop + clientHeight >= scrollHeight - 1 && isScrollingDown) {
-        e.preventDefault();
-        return;
-      }
-
-      // Stop propagation so outer document wheel listeners don't trigger page movement
-      e.stopPropagation();
-    };
-
-    el.addEventListener('wheel', handleWheel, { passive: false });
-    return () => {
-      el.removeEventListener('wheel', handleWheel);
-    };
-  }, [viewMode, filteredHotels.length]);
-
-  // Smooth scroll within the sidebar container when a map marker is selected
-  useEffect(() => {
-    if (selectedMapLodgeId && mapStaysListRef.current && viewMode === 'map') {
-      const cardEl = document.getElementById(`map-card-${selectedMapLodgeId}`);
-      if (cardEl && mapStaysListRef.current) {
-        const container = mapStaysListRef.current;
-        const cardTop = cardEl.offsetTop - container.offsetTop;
-        container.scrollTo({ top: Math.max(0, cardTop - 40), behavior: 'smooth' });
-      }
-    }
-  }, [selectedMapLodgeId, viewMode]);
 
   const [heroIndex, setHeroIndex] = useState(0);
   const [customDestinations, setCustomDestinations] = useState<string[]>([]);
@@ -918,6 +877,48 @@ export default function Home() {
       })
       .filter(l => isValidLatLng(l.coordinates));
   }, [filteredHotels, currency]);
+
+  // Prevent scroll chaining to the outer page when cursor is within the Map View stays list
+  useEffect(() => {
+    const el = mapStaysListRef.current;
+    if (!el || viewMode !== 'map') return;
+
+    const handleWheel = (e: WheelEvent) => {
+      const { scrollTop, scrollHeight, clientHeight } = el;
+      const isScrollingUp = e.deltaY < 0;
+      const isScrollingDown = e.deltaY > 0;
+
+      // If at top or bottom boundary, prevent outer page from scrolling
+      if (scrollTop <= 0 && isScrollingUp) {
+        e.preventDefault();
+        return;
+      }
+      if (scrollTop + clientHeight >= scrollHeight - 1 && isScrollingDown) {
+        e.preventDefault();
+        return;
+      }
+
+      // Stop propagation so outer document wheel listeners don't trigger page movement
+      e.stopPropagation();
+    };
+
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    return () => {
+      el.removeEventListener('wheel', handleWheel);
+    };
+  }, [viewMode, filteredHotels.length]);
+
+  // Smooth scroll within the sidebar container when a map marker is selected
+  useEffect(() => {
+    if (selectedMapLodgeId && mapStaysListRef.current && viewMode === 'map') {
+      const cardEl = document.getElementById(`map-card-${selectedMapLodgeId}`);
+      if (cardEl && mapStaysListRef.current) {
+        const container = mapStaysListRef.current;
+        const cardTop = cardEl.offsetTop - container.offsetTop;
+        container.scrollTo({ top: Math.max(0, cardTop - 40), behavior: 'smooth' });
+      }
+    }
+  }, [selectedMapLodgeId, viewMode]);
 
   /**
    * The three properties shown above the fold when nothing is being searched.
