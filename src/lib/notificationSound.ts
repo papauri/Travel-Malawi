@@ -17,10 +17,12 @@ const listeners = new Set<Listener>();
 
 export function isSoundEnabled(): boolean {
   try {
-    return localStorage.getItem(STORAGE_KEY) === 'true';
+    const val = localStorage.getItem(STORAGE_KEY);
+    // Notification sound is enabled by default unless user explicitly muted it ('false')
+    return val !== 'false';
   } catch {
     // Private browsing, or storage blocked entirely.
-    return false;
+    return true;
   }
 }
 
@@ -32,9 +34,7 @@ export function setSoundEnabled(enabled: boolean): void {
   }
   listeners.forEach(listener => listener(enabled));
 
-  // Turning it on is a click, which is the gesture browsers require before
-  // audio may play. Warming the context here means the first real message
-  // makes a sound instead of being silently dropped.
+  // Warming the context here ensures immediate playback
   if (enabled) void unlock();
 }
 
@@ -69,7 +69,7 @@ function ensureContext(): AudioContext | null {
 }
 
 /** Resumes the audio context, which starts suspended until a user gesture. */
-async function unlock(): Promise<void> {
+export async function unlock(): Promise<void> {
   const ctx = ensureContext();
   if (!ctx || ctx.state !== 'suspended') return;
   try {
@@ -79,45 +79,62 @@ async function unlock(): Promise<void> {
   }
 }
 
+// Auto-warm and unlock audio on the very first user interaction anywhere on the window
+if (typeof window !== 'undefined') {
+  const unlockEvents = ['click', 'touchstart', 'keydown', 'pointerdown'];
+  const onFirstInteraction = () => {
+    void unlock();
+    unlockEvents.forEach(evt => window.removeEventListener(evt, onFirstInteraction));
+  };
+  unlockEvents.forEach(evt => window.addEventListener(evt, onFirstInteraction, { passive: true, once: true }));
+}
+
 /**
- * Two soft notes, a fifth apart. Deliberately quiet and short — this fires
- * while someone is reading, not to summon them from another room.
+ * Plays a vibrant, crystal-clear concierge bell "DING!" notification chime.
+ * Synthesized using harmonic overtones resembling a physical brass counter bell.
  */
-export function playChime(): void {
+export function playDingSound(volume = 0.22): void {
   if (!isSoundEnabled()) return;
   const ctx = ensureContext();
   if (!ctx) return;
   if (ctx.state === 'suspended') {
-    // Nothing has been clicked yet this session; a chime here would be
-    // dropped by the browser regardless.
     void unlock();
     return;
   }
 
   const now = ctx.currentTime;
-  const notes = [
-    { frequency: 880, at: 0 },
-    { frequency: 1320, at: 0.11 },
+
+  // Harmonic layers of a bright crystal desk bell (fundamental strike + crystalline ring overtones)
+  const bellPartials = [
+    { freq: 1174.66, gain: volume * 0.9, decay: 0.85, type: 'sine' as OscillatorType },    // Fundamental strike (D6)
+    { freq: 2349.32, gain: volume * 0.55, decay: 0.55, type: 'sine' as OscillatorType },   // 1st harmonic (D7)
+    { freq: 3520.00, gain: volume * 0.30, decay: 0.35, type: 'triangle' as OscillatorType }, // Sparkle shimmer (A7)
+    { freq: 4698.64, gain: volume * 0.12, decay: 0.20, type: 'sine' as OscillatorType },   // High ping transient (D8)
   ];
 
-  for (const note of notes) {
-    const oscillator = ctx.createOscillator();
-    const gain = ctx.createGain();
+  for (const partial of bellPartials) {
+    const osc = ctx.createOscillator();
+    const gainNode = ctx.createGain();
 
-    oscillator.type = 'sine';
-    oscillator.frequency.value = note.frequency;
+    osc.type = partial.type;
+    osc.frequency.setValueAtTime(partial.freq, now);
 
-    const start = now + note.at;
+    // Instant attack for crisp strike, followed by exponential ring-down
+    gainNode.gain.setValueAtTime(0, now);
+    gainNode.gain.linearRampToValueAtTime(partial.gain, now + 0.003);
+    gainNode.gain.exponentialRampToValueAtTime(0.0001, now + partial.decay);
 
-    // A quick fade in and out; a square-edged tone clicks.
-    gain.gain.setValueAtTime(0, start);
-    gain.gain.linearRampToValueAtTime(0.09, start + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.22);
+    osc.connect(gainNode);
+    gainNode.connect(ctx.destination);
 
-    oscillator.connect(gain).connect(ctx.destination);
-    oscillator.start(start);
-    oscillator.stop(start + 0.24);
+    osc.start(now);
+    osc.stop(now + partial.decay + 0.05);
   }
+}
+
+/** Legacy alias for playDingSound */
+export function playChime(): void {
+  playDingSound();
 }
 
 let activeRinger: number | NodeJS.Timeout | null = null;

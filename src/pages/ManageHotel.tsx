@@ -20,7 +20,7 @@ import Pagination from '../components/Pagination';
 import BookingChat from '../components/BookingChat';
 import PropertyChat from '../components/PropertyChat';
 import { useChatModal } from '../contexts/ChatModalContext';
-import { MessageSquare, Megaphone, Presentation } from 'lucide-react';
+import { MessageSquare, Megaphone, Presentation, Bell } from 'lucide-react';
 import SmartImage from '../components/SmartImage';
 import { getHotelImages, getHotelImage, getRoomImage, localImagesForName } from '../lib/images';
 import { useBreadcrumbLabel } from '../components/Breadcrumbs';
@@ -1142,7 +1142,8 @@ export default function ManageHotel() {
                 <span className="bg-emerald-500 text-white text-xs px-2 py-0.5 rounded-full shrink-0 font-bold">{pendingCount}</span>
               )}
               {unreadInquiryCount > 0 && (
-                <span className="bg-blue-600 text-white text-xs px-2 py-0.5 rounded-full shadow-sm shrink-0 font-bold">
+                <span className="inline-flex items-center gap-1 bg-rose-600 text-white text-xs px-2 py-0.5 rounded-full shadow-sm shrink-0 font-bold">
+                  <Bell className="w-3 h-3 animate-bell-ring" />
                   {unreadInquiryCount} new
                 </span>
               )}

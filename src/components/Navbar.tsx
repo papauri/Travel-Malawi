@@ -17,6 +17,7 @@ import { useUnreadBroadcasts } from '../hooks/useUnreadBroadcasts';
 import { usePresence, PresenceStatus } from '../hooks/usePresence';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import NotificationBell from './NotificationBell';
 
 export default function Navbar() {
   const { user, logOut } = useAuth();
@@ -144,22 +145,7 @@ export default function Navbar() {
                 )}
 
                 {user && (
-                  <Link
-                    to="/my-bookings"
-                    onClick={() => {
-                      void requestBrowserNotifications();
-                    }}
-                    className="relative p-2 text-stone-500 hover:text-stone-900 transition hover:bg-stone-100 rounded-full"
-                    title="Notifications & Trips"
-                  >
-                    <Bell className="w-5 h-5" />
-                    {unreadBroadcasts > 0 && (
-                      <span className="absolute top-1 right-1 flex h-2.5 w-2.5">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
-                      </span>
-                    )}
-                  </Link>
+                  <NotificationBell />
                 )}
 
                 {/* Global Currency Switcher */}

@@ -3,11 +3,12 @@ import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useAuthDialog } from '../contexts/AuthDialogContext';
-import { Search, LogIn, User as UserIcon, Briefcase, Building2, Heart, Menu, X, LogOut, Settings, ShieldCheck, BookOpen } from 'lucide-react';
+import { Search, LogIn, User as UserIcon, Briefcase, Building2, Heart, Menu, X, LogOut, Settings, ShieldCheck, BookOpen, Bell } from 'lucide-react';
 import { isHotelManager, isTraveller, describeRoles, isAdmin } from '../lib/roles';
 import { motion, AnimatePresence } from 'motion/react';
 import { openAccessPermissionsModal } from './AccessRequestModal';
 import { useUnreadBroadcasts } from '../hooks/useUnreadBroadcasts';
+import { useUnreadMessages } from '../hooks/useUnreadMessages';
 import { readStoredCurrency, storeCurrency, onCurrencyChange } from '../lib/currency';
 import { CurrencyCode } from '../types';
 
@@ -19,6 +20,7 @@ export default function MobileNav() {
   useBodyScrollLock(isOpen);
   const isManager = isHotelManager(user);
   const unreadBroadcasts = useUnreadBroadcasts();
+  const { unreadCount, isVibrating } = useUnreadMessages();
   const [currency, setCurrency] = useState<CurrencyCode>(readStoredCurrency);
 
   useEffect(() => {
@@ -42,16 +44,25 @@ export default function MobileNav() {
       <div className="md:hidden fixed bottom-6 right-4 sm:bottom-8 sm:right-8 z-40">
         <button
           onClick={() => setIsOpen(true)}
-          className="relative bg-stone-900 text-white p-3.5 sm:p-4 rounded-full shadow-2xl hover:bg-stone-800 transition-transform active:scale-95 flex items-center justify-center border border-stone-700/50"
+          className={`relative bg-stone-900 text-white p-3.5 sm:p-4 rounded-full shadow-2xl hover:bg-stone-800 transition-transform active:scale-95 flex items-center justify-center border border-stone-700/50 ${
+            isVibrating ? 'animate-bell-ring' : ''
+          }`}
           aria-label="Menu"
         >
           <Menu className="w-6 h-6" />
-          {unreadBroadcasts > 0 && (
-            <span className="absolute top-1 right-1 flex h-3 w-3">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+          {unreadCount > 0 ? (
+            <span className="absolute -top-1 -right-1 flex items-center justify-center">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
+              <span className="relative flex items-center justify-center min-w-[20px] h-[20px] px-1 text-[11px] font-black text-white bg-rose-600 rounded-full shadow-sm border-2 border-stone-900">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
             </span>
-          )}
+          ) : unreadBroadcasts > 0 ? (
+            <span className="absolute top-1 right-1 flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500 border border-stone-900"></span>
+            </span>
+          ) : null}
         </button>
       </div>
 
@@ -154,11 +165,16 @@ export default function MobileNav() {
                           <Briefcase className="w-5 h-5" />
                           <span>My Trips</span>
                         </div>
-                        {unreadBroadcasts > 0 && (
-                          <span className="px-2 py-0.5 text-xs font-bold bg-red-500 text-white rounded-full">
+                        {unreadCount > 0 ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-black bg-rose-600 text-white rounded-full shadow-xs">
+                            <Bell className="w-3 h-3 animate-bell-ring" />
+                            {unreadCount} new
+                          </span>
+                        ) : unreadBroadcasts > 0 ? (
+                          <span className="px-2 py-0.5 text-xs font-bold bg-amber-500 text-white rounded-full">
                             {unreadBroadcasts}
                           </span>
-                        )}
+                        ) : null}
                       </Link>
                     </>
                   )}
