@@ -135,6 +135,7 @@ export default function OperationsCopilot() {
   const chatScrollContainerRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<HTMLInputElement>(null);
   const promptsMenuRef = useRef<HTMLDivElement>(null);
+  const hasInitializedWelcomeRef = useRef(false);
 
   // Close prompts dropdown when clicking outside
   useEffect(() => {
@@ -295,33 +296,47 @@ export default function OperationsCopilot() {
     return '';
   }, [user?.displayName, user?.email]);
 
+  const createWelcomeMessage = useCallback((isReset = false): ChatMessage => {
+    const greeting = userDisplayName ? `Hi ${userDisplayName}` : 'Hello';
+    const now = Date.now();
+    if (userIsAdmin) {
+      const propText = properties.length > 0 ? `all **${properties.length} platform properties**` : 'the platform';
+      return {
+        id: `welcome_${now}`,
+        role: 'assistant',
+        content: isReset
+          ? `${greeting}! Conversation cleared. I have live visibility across ${propText}.\n\nWhat would you like to review, audit, or adjust next?`
+          : `${greeting}! I have live visibility across ${propText}.\n\nWhat would you like to review, audit, or adjust today?`,
+        timestamp: now,
+      };
+    } else {
+      const propNames = properties.map(p => `**${p.name}**`).join(', ') || 'your properties';
+      return {
+        id: `welcome_${now}`,
+        role: 'assistant',
+        content: isReset
+          ? `${greeting}! Conversation cleared. Ready to assist with ${propNames}.\n\nWhat would you like to do next?`
+          : `${greeting}! Ready to assist with ${propNames}.\n\nWhat's on your agenda today?`,
+        timestamp: now,
+      };
+    }
+  }, [userDisplayName, userIsAdmin, properties]);
+
   // Initial welcome message distinguishing Global Admin vs Manager
   useEffect(() => {
-    if (messages.length === 0 && isAuthorized && hasFetched) {
-      const greeting = userDisplayName ? `Hi ${userDisplayName}` : 'Hello';
-      if (userIsAdmin) {
-        const propText = properties.length > 0 ? `all **${properties.length} platform properties**` : `the platform`;
-        setMessages([
-          {
-            id: 'welcome',
-            role: 'assistant',
-            content: `${greeting}! I have live visibility across ${propText}.\n\nWhat would you like to review, audit, or adjust today?`,
-            timestamp: Date.now(),
-          },
-        ]);
-      } else {
-        const propNames = properties.map(p => `**${p.name}**`).join(', ') || 'your properties';
-        setMessages([
-          {
-            id: 'welcome',
-            role: 'assistant',
-            content: `${greeting}! Ready to assist with ${propNames}.\n\nWhat's on your agenda today?`,
-            timestamp: Date.now(),
-          },
-        ]);
-      }
+    if (!hasInitializedWelcomeRef.current && messages.length === 0 && isAuthorized && hasFetched) {
+      hasInitializedWelcomeRef.current = true;
+      setMessages([createWelcomeMessage(false)]);
     }
-  }, [user, isAuthorized, messages.length, userIsAdmin, properties, userDisplayName, hasFetched]);
+  }, [isAuthorized, messages.length, hasFetched, createWelcomeMessage]);
+
+  const handleClearCopilotChat = useCallback(() => {
+    setMessages([createWelcomeMessage(true)]);
+    setInputMessage('');
+    setProposalHotelSelections({});
+    setShowPromptsMenu(false);
+    toast.success('Conversation cleared.');
+  }, [createWelcomeMessage]);
 
   // Scroll chat messages container smoothly to bottom on new messages without scrolling the background window
   useEffect(() => {
@@ -1317,10 +1332,7 @@ export default function OperationsCopilot() {
                   {/* Reset / End Chat */}
                   <button
                     type="button"
-                    onClick={() => {
-                      setMessages([]);
-                      toast.success('Session chat cleared.');
-                    }}
+                    onClick={handleClearCopilotChat}
                     className="p-1.5 hover:bg-stone-800 hover:text-stone-200 rounded-lg transition cursor-pointer"
                     title="Clear conversation"
                   >

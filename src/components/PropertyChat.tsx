@@ -480,7 +480,7 @@ export default function PropertyChat({
     }
   };
 
-  // Handle Deleting Chat History (Manager / Admin action)
+  // Handle Clearing/Deleting Chat History (Both Guest & Manager action)
   const handleDeleteChatHistory = async () => {
     if (!chatId || !currentUser || isDeletingChat) return;
     setIsDeletingChat(true);
@@ -488,18 +488,33 @@ export default function PropertyChat({
       // 1. Delete all messages inside the subcollection
       const messagesRef = collection(db, 'hotel_chats', chatId, 'messages');
       const messagesSnap = await getDocs(messagesRef);
-      const deletePromises = messagesSnap.docs.map(mDoc => deleteDoc(mDoc.ref));
-      await Promise.all(deletePromises);
+      await Promise.allSettled(messagesSnap.docs.map(mDoc => deleteDoc(mDoc.ref)));
 
-      // 2. Delete the chat parent document
-      await deleteDoc(doc(db, 'hotel_chats', chatId));
+      // 2. Delete all calls inside the subcollection
+      const callsRef = collection(db, 'hotel_chats', chatId, 'calls');
+      const callsSnap = await getDocs(callsRef);
+      await Promise.allSettled(callsSnap.docs.map(cDoc => deleteDoc(cDoc.ref)));
 
+      // 3. Reset or delete parent chat document
+      try {
+        await deleteDoc(doc(db, 'hotel_chats', chatId));
+      } catch {
+        await updateDoc(doc(db, 'hotel_chats', chatId), {
+          lastMessage: '',
+          lastSenderId: '',
+          lastSenderName: '',
+          updatedAt: Date.now()
+        }).catch(() => {});
+      }
+
+      setMessages([]);
+      setCalls([]);
       setShowDeleteConfirm(false);
-      toast.success('Chat history deleted permanently.');
+      toast.success('Chat history cleared successfully.');
       onClose();
     } catch (error) {
-      console.error('Error deleting chat history:', error);
-      toast.error('Failed to delete chat history. Ensure you have manager permissions.');
+      console.error('Error clearing chat history:', error);
+      toast.error('Failed to clear chat history.');
     } finally {
       setIsDeletingChat(false);
     }
@@ -752,21 +767,19 @@ export default function PropertyChat({
                     </button>
                   )}
 
-                  {/* Delete Chat History Option */}
-                  {isManager && (
-                    <button
-                      type="button"
-                      id="btn-delete-chat-history"
-                      onClick={() => {
-                        setShowMoreMenu(false);
-                        setShowDeleteConfirm(true);
-                      }}
-                      className="w-full text-left px-3 py-2 text-rose-400 hover:bg-stone-800 flex items-center gap-2 cursor-pointer border-t border-stone-800 mt-1"
-                    >
-                      <Trash2 className="w-3.5 h-3.5 text-rose-400" />
-                      <span>Delete Chat History</span>
-                    </button>
-                  )}
+                  {/* Clear Chat History Option */}
+                  <button
+                    type="button"
+                    id="btn-clear-chat-history"
+                    onClick={() => {
+                      setShowMoreMenu(false);
+                      setShowDeleteConfirm(true);
+                    }}
+                    className="w-full text-left px-3 py-2 text-rose-400 hover:bg-stone-800 flex items-center gap-2 cursor-pointer border-t border-stone-800 mt-1"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                    <span>Clear Chat History</span>
+                  </button>
                 </div>
               )}
             </div>
@@ -1152,12 +1165,12 @@ export default function PropertyChat({
         onCancel={() => setShowEndChatConfirm(false)}
       />
 
-      {/* Confirm Delete Chat History Dialog */}
+      {/* Confirm Clear Chat History Dialog */}
       <ConfirmDialog
         isOpen={showDeleteConfirm}
-        title="Delete Chat History"
-        message="Are you sure you want to permanently delete all messages and history for this guest? This cannot be undone."
-        confirmText="Delete History"
+        title="Clear Chat History"
+        message="Are you sure you want to permanently clear this chat history? All messages and call records in this chat will be removed."
+        confirmText="Clear History"
         cancelText="Cancel"
         isDestructive={true}
         onConfirm={handleDeleteChatHistory}

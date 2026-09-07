@@ -1,14 +1,16 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { collection, query, orderBy, onSnapshot, addDoc, doc, setDoc, updateDoc, getDoc } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, addDoc, doc, setDoc, updateDoc, getDoc, getDocs, deleteDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Booking, Message, User, ChatPresenceState, Hotel, RoomType, Call } from '../types';
 import { 
   Send, Loader2, MessageSquare, Eye, Check, CheckCheck, 
   ShieldCheck, Ticket, CheckCircle2, Clock, Key, 
   Wallet, XCircle, ChevronDown, ChevronUp, 
-  Phone, Video, Minus, X, PhoneMissed, PhoneOff, Settings
+  Phone, Video, Minus, X, PhoneMissed, PhoneOff, Settings,
+  Trash2, MoreVertical
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import ConfirmDialog from './ConfirmDialog';
 import { chimeForIncoming, newChimeState } from '../lib/notificationSound';
 import { formatDateStr, nightsBetween } from '../lib/dates';
 import PriceDisplay from './PriceDisplay';
@@ -38,11 +40,15 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
   const [showVoucherModal, setShowVoucherModal] = useState(false);
   const [showDepositMenu, setShowDepositMenu] = useState(false);
   const [showDetailsPanel, setShowDetailsPanel] = useState(false);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [isClearingChat, setIsClearingChat] = useState(false);
   const [presenceState, setPresenceState] = useState<ChatPresenceState | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const depositMenuRef = useRef<HTMLDivElement>(null);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
   const seenMessages = useRef(newChimeState());
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastTypingSentRef = useRef<number>(0);
@@ -206,14 +212,17 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
     };
   }, [liveBooking.id, currentUser.uid, isManager]);
 
-  // Close deposit dropdown when clicking outside
+  // Close deposit & more dropdowns when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent | TouchEvent) {
       if (depositMenuRef.current && !depositMenuRef.current.contains(event.target as Node)) {
         setShowDepositMenu(false);
       }
+      if (moreMenuRef.current && !moreMenuRef.current.contains(event.target as Node)) {
+        setShowMoreMenu(false);
+      }
     }
-    if (showDepositMenu) {
+    if (showDepositMenu || showMoreMenu) {
       document.addEventListener('mousedown', handleClickOutside);
       document.addEventListener('touchstart', handleClickOutside);
     }
@@ -221,7 +230,7 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('touchstart', handleClickOutside);
     };
-  }, [showDepositMenu]);
+  }, [showDepositMenu, showMoreMenu]);
 
   // Handle typing state
   const setTypingState = useCallback(async (isTyping: boolean) => {
@@ -513,6 +522,41 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
     }
   };
 
+  // Clear chat history for this booking
+  const handleClearChatHistory = async () => {
+    if (!liveBooking.id || !currentUser || isClearingChat) return;
+    setIsClearingChat(true);
+    try {
+      // 1. Delete all messages inside the subcollection
+      const messagesRef = collection(db, 'bookings', liveBooking.id, 'messages');
+      const messagesSnap = await getDocs(messagesRef);
+      await Promise.allSettled(messagesSnap.docs.map(mDoc => deleteDoc(mDoc.ref)));
+
+      // 2. Delete all calls inside the subcollection
+      const callsRef = collection(db, 'bookings', liveBooking.id, 'calls');
+      const callsSnap = await getDocs(callsRef);
+      await Promise.allSettled(callsSnap.docs.map(cDoc => deleteDoc(cDoc.ref)));
+
+      // 3. Reset booking preview text
+      await updateDoc(doc(db, 'bookings', liveBooking.id), {
+        lastMessageAt: Date.now(),
+        lastMessageText: '',
+        lastMessageSenderId: '',
+        lastMessageSenderName: ''
+      }).catch(() => {});
+
+      setMessages([]);
+      setCalls([]);
+      setShowClearConfirm(false);
+      toast.success('Chat history cleared successfully.');
+    } catch (error) {
+      console.error('Error clearing booking chat history:', error);
+      toast.error('Failed to clear chat history.');
+    } finally {
+      setIsClearingChat(false);
+    }
+  };
+
   // Find index of the last message sent by me
   const lastMyMessageIndex = (() => {
     for (let i = messages.length - 1; i >= 0; i--) {
@@ -644,6 +688,36 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
           >
             {showDetailsPanel ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
+
+          {/* More options menu */}
+          <div className="relative" ref={moreMenuRef}>
+            <button
+              type="button"
+              id="btn-booking-chat-more"
+              onClick={() => setShowMoreMenu(!showMoreMenu)}
+              className="p-1.5 text-stone-400 hover:text-white hover:bg-stone-800 rounded-lg transition cursor-pointer"
+              title="More options"
+            >
+              <MoreVertical className="w-4 h-4" />
+            </button>
+
+            {showMoreMenu && (
+              <div className="absolute right-0 top-full mt-1.5 w-48 bg-stone-900 border border-stone-800 rounded-xl shadow-2xl py-1 z-50 text-xs animate-fadeIn">
+                <button
+                  type="button"
+                  id="btn-clear-booking-chat-history"
+                  onClick={() => {
+                    setShowMoreMenu(false);
+                    setShowClearConfirm(true);
+                  }}
+                  className="w-full text-left px-3 py-2 text-rose-400 hover:bg-stone-800 flex items-center gap-2 cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                  <span>Clear Chat History</span>
+                </button>
+              </div>
+            )}
+          </div>
 
           {/* Minimize and Close controls */}
           {onMinimize && (
@@ -1089,6 +1163,18 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
         localStream={localStream}
         remoteStream={remoteStream}
         networkQuality={networkQuality}
+      />
+
+      {/* Confirm Clear Chat History Dialog */}
+      <ConfirmDialog
+        isOpen={showClearConfirm}
+        title="Clear Chat History"
+        message="Are you sure you want to permanently clear this chat history? All messages and call records for this reservation will be removed."
+        confirmText="Clear History"
+        cancelText="Cancel"
+        isDestructive={true}
+        onConfirm={handleClearChatHistory}
+        onCancel={() => setShowClearConfirm(false)}
       />
     </div>
   );

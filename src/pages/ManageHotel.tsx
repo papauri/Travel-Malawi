@@ -255,20 +255,33 @@ export default function ManageHotel() {
     if (!chatId || deletingInquiry) return;
     setDeletingInquiry(true);
     try {
-      // Delete messages subcollection
+      // 1. Delete all messages inside the subcollection
       const messagesRef = collection(db, 'hotel_chats', chatId, 'messages');
       const messagesSnap = await getDocs(messagesRef);
-      const deletePromises = messagesSnap.docs.map(mDoc => deleteDoc(mDoc.ref));
-      await Promise.all(deletePromises);
+      await Promise.allSettled(messagesSnap.docs.map(mDoc => deleteDoc(mDoc.ref)));
 
-      // Delete the chat document
-      await deleteDoc(doc(db, 'hotel_chats', chatId));
+      // 2. Delete all calls inside the subcollection
+      const callsRef = collection(db, 'hotel_chats', chatId, 'calls');
+      const callsSnap = await getDocs(callsRef);
+      await Promise.allSettled(callsSnap.docs.map(cDoc => deleteDoc(cDoc.ref)));
+
+      // 3. Delete or reset parent chat document
+      try {
+        await deleteDoc(doc(db, 'hotel_chats', chatId));
+      } catch {
+        await updateDoc(doc(db, 'hotel_chats', chatId), {
+          lastMessage: '',
+          lastSenderId: '',
+          lastSenderName: '',
+          updatedAt: Date.now()
+        }).catch(() => {});
+      }
 
       setInquiryToDelete(null);
-      toast.success('Chat history deleted successfully.');
+      toast.success('Chat history cleared successfully.');
     } catch (error) {
-      console.error('Error deleting inquiry chat history:', error);
-      toast.error('Failed to delete chat history.');
+      console.error('Error clearing inquiry chat history:', error);
+      toast.error('Failed to clear chat history.');
     } finally {
       setDeletingInquiry(false);
     }
