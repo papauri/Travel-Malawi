@@ -7,7 +7,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useAuthDialog } from '../contexts/AuthDialogContext';
-import { LogOut, Bell, Palmtree, ChevronDown, LayoutDashboard, Briefcase, ShieldCheck, Building2, Volume2, VolumeX, Heart, UserCircle, BookOpen } from 'lucide-react';
+import { LogOut, Bell, Palmtree, ChevronDown, ChevronUp, LayoutDashboard, Briefcase, ShieldCheck, Building2, Volume2, VolumeX, Heart, UserCircle, BookOpen, SlidersHorizontal } from 'lucide-react';
 import { isSoundEnabled, onSoundPreferenceChange, setSoundEnabled } from '../lib/notificationSound';
 import { readStoredCurrency, storeCurrency, onCurrencyChange } from '../lib/currency';
 import { CurrencyCode } from '../types';
@@ -29,6 +29,25 @@ export default function Navbar() {
   const [soundOn, setSoundOn] = useState(isSoundEnabled);
   const [currency, setCurrency] = useState<CurrencyCode>(readStoredCurrency);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  // Foldable top navbar options state (persisted to localStorage)
+  const [isNavFolded, setIsNavFolded] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('tp_navbar_folded') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleNavFolded = () => {
+    setIsNavFolded(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem('tp_navbar_folded', String(next));
+      } catch {}
+      return next;
+    });
+  };
 
   useEffect(() => {
     return onCurrencyChange(setCurrency);
@@ -79,7 +98,7 @@ export default function Navbar() {
   return (
     <nav className="sticky top-0 z-[100] w-full bg-white/95 backdrop-blur-md border-b border-stone-200/60 shadow-xs">
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
-        <div className="flex h-20 items-center justify-between">
+        <div className={`flex items-center justify-between transition-all duration-300 ${isNavFolded ? 'h-14 sm:h-16' : 'h-20'}`}>
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2.5 group">
             <div className="relative">
@@ -92,95 +111,124 @@ export default function Navbar() {
           </Link>
 
           {/* Right side */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-3 sm:space-x-4">
             {user ? (
-              <div className="flex items-center space-x-5">
-                {hosting ? (
-                  <Link
-                    to="/dashboard"
-                    className="hidden md:flex text-sm font-medium text-stone-600 hover:text-stone-900 transition items-center gap-1"
-                  >
-                    Dashboard
-                    {pendingCount > 0 && (
-                      <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full flex items-center justify-center">
-                        {pendingCount}
-                      </span>
+              <div className="flex items-center space-x-3 sm:space-x-4">
+                {/* Secondary navigation options (folded when isNavFolded is true) */}
+                {!isNavFolded && (
+                  <div className="hidden md:flex items-center space-x-5 animate-in fade-in duration-200">
+                    {hosting ? (
+                      <Link
+                        to="/dashboard"
+                        className="text-sm font-medium text-stone-600 hover:text-stone-900 transition flex items-center gap-1"
+                      >
+                        Dashboard
+                        {pendingCount > 0 && (
+                          <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full flex items-center justify-center">
+                            {pendingCount}
+                          </span>
+                        )}
+                      </Link>
+                    ) : (
+                      // Someone who joined to book a stay had no route to hosting at
+                      // all: this entry was shown only to signed-out visitors, and
+                      // /dashboard bounces a non-host back to the home page.
+                      <Link
+                        to="/list-your-property"
+                        className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-stone-200 hover:border-stone-300 bg-stone-50 hover:bg-stone-100 text-stone-700 hover:text-stone-900 text-xs font-medium transition shadow-2xs"
+                      >
+                        <Building2 className="w-3.5 h-3.5 text-stone-500" />
+                        <span>List Your Property</span>
+                      </Link>
                     )}
-                  </Link>
-                ) : (
-                  // Someone who joined to book a stay had no route to hosting at
-                  // all: this entry was shown only to signed-out visitors, and
-                  // /dashboard bounces a non-host back to the home page.
-                  <Link
-                    to="/list-your-property"
-                    className="hidden md:inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-stone-200 hover:border-stone-300 bg-stone-50 hover:bg-stone-100 text-stone-700 hover:text-stone-900 text-xs font-medium transition shadow-2xs"
-                  >
-                    <Building2 className="w-3.5 h-3.5 text-stone-500" />
-                    <span>List Your Property</span>
-                  </Link>
-                )}
-                {isAdmin(user) && (
-                  <Link
-                    to="/admin"
-                    className="hidden md:block text-sm font-medium text-stone-600 hover:text-stone-900 transition relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-stone-900 after:transition-all hover:after:w-full"
-                  >
-                    Admin
-                  </Link>
-                )}
-                {isTraveller(user) && (
-                  <>
-                    <Link
-                      to="/saved"
-                      className="hidden md:block text-sm font-medium text-stone-600 hover:text-stone-900 transition relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-stone-900 after:transition-all hover:after:w-full"
-                    >
-                      Saved
-                    </Link>
-                    <Link
-                      to="/my-bookings"
-                      className="hidden md:block text-sm font-medium text-stone-600 hover:text-stone-900 transition relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-stone-900 after:transition-all hover:after:w-full"
-                    >
-                      My Bookings
-                    </Link>
-                  </>
+                    {isAdmin(user) && (
+                      <Link
+                        to="/admin"
+                        className="text-sm font-medium text-stone-600 hover:text-stone-900 transition relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-stone-900 after:transition-all hover:after:w-full"
+                      >
+                        Admin
+                      </Link>
+                    )}
+                    {isTraveller(user) && (
+                      <>
+                        <Link
+                          to="/saved"
+                          className="text-sm font-medium text-stone-600 hover:text-stone-900 transition relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-stone-900 after:transition-all hover:after:w-full"
+                        >
+                          Saved
+                        </Link>
+                        <Link
+                          to="/my-bookings"
+                          className="text-sm font-medium text-stone-600 hover:text-stone-900 transition relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-stone-900 after:transition-all hover:after:w-full"
+                        >
+                          My Bookings
+                        </Link>
+                      </>
+                    )}
+
+                    {/* Global Currency Switcher */}
+                    <div className="flex items-center bg-stone-100 p-0.5 rounded-full border border-stone-200/90 text-xs font-bold shadow-2xs">
+                      <button
+                        type="button"
+                        onClick={() => { setCurrency('MWK'); storeCurrency('MWK'); }}
+                        className={`px-2.5 py-1 rounded-full transition-all cursor-pointer ${
+                          currency === 'MWK'
+                            ? 'bg-white text-stone-900 shadow-xs'
+                            : 'text-stone-500 hover:text-stone-900'
+                        }`}
+                        title="Malawi Kwacha (Default)"
+                      >
+                        MWK
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setCurrency('USD'); storeCurrency('USD'); }}
+                        className={`px-2.5 py-1 rounded-full transition-all cursor-pointer ${
+                          currency === 'USD'
+                            ? 'bg-white text-stone-900 shadow-xs'
+                            : 'text-stone-500 hover:text-stone-900'
+                        }`}
+                        title="US Dollar"
+                      >
+                        USD
+                      </button>
+                    </div>
+                  </div>
                 )}
 
+                {/* Notification Bell */}
                 {user && (
                   <NotificationBell />
                 )}
 
-                {/* Global Currency Switcher */}
-                <div className="flex items-center bg-stone-100 p-0.5 rounded-full border border-stone-200/90 text-xs font-bold shadow-2xs">
-                  <button
-                    type="button"
-                    onClick={() => { setCurrency('MWK'); storeCurrency('MWK'); }}
-                    className={`px-2.5 py-1 rounded-full transition-all cursor-pointer ${
-                      currency === 'MWK'
-                        ? 'bg-white text-stone-900 shadow-xs'
-                        : 'text-stone-500 hover:text-stone-900'
-                    }`}
-                    title="Malawi Kwacha (Default)"
-                  >
-                    MWK
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setCurrency('USD'); storeCurrency('USD'); }}
-                    className={`px-2.5 py-1 rounded-full transition-all cursor-pointer ${
-                      currency === 'USD'
-                        ? 'bg-white text-stone-900 shadow-xs'
-                        : 'text-stone-500 hover:text-stone-900'
-                    }`}
-                    title="US Dollar"
-                  >
-                    USD
-                  </button>
-                </div>
+                {/* Fold/Unfold Navbar Toggle Button */}
+                <button
+                  type="button"
+                  onClick={toggleNavFolded}
+                  className={`p-1.5 sm:px-2.5 sm:py-1 rounded-full border transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer select-none ${
+                    isNavFolded
+                      ? 'border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 hover:border-emerald-400 ring-1 ring-emerald-200'
+                      : 'border-stone-200 hover:border-stone-300 bg-stone-50 hover:bg-stone-100 text-stone-600 hover:text-stone-900'
+                  }`}
+                  title={isNavFolded ? "Expand top navbar options" : "Fold top navbar options (minimalist view)"}
+                  aria-label={isNavFolded ? "Expand navigation bar" : "Fold navigation bar"}
+                >
+                  <SlidersHorizontal className={`w-3.5 h-3.5 ${isNavFolded ? 'text-emerald-700' : 'text-stone-500'}`} />
+                  <span className="hidden xl:inline text-[11px] font-semibold">
+                    {isNavFolded ? 'Expand Nav' : 'Fold Nav'}
+                  </span>
+                  {isNavFolded ? (
+                    <ChevronDown className="w-3 h-3 opacity-70" />
+                  ) : (
+                    <ChevronUp className="w-3 h-3 opacity-70" />
+                  )}
+                </button>
 
                 {/* User avatar + dropdown */}
-                <div className="relative pl-5 border-l border-stone-200" ref={menuRef}>
+                <div className="relative pl-3 sm:pl-4 border-l border-stone-200" ref={menuRef}>
                   <button
                     onClick={() => setShowUserMenu(v => !v)}
-                    className="flex items-center gap-2.5 rounded-full px-3 py-1.5 hover:bg-stone-100 transition"
+                    className="flex items-center gap-2.5 rounded-full px-2 sm:px-3 py-1.5 hover:bg-stone-100 transition"
                   >
                     <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-600 text-white text-xs font-bold tracking-wide">
                       {initials}
@@ -202,10 +250,8 @@ export default function Navbar() {
                         <p className="text-xs text-stone-500 mt-0.5">{describeRoles(user)}</p>
                       </div>
 
-                      {/* The links above are hidden below `md`, so on a phone
-                          this menu was the only thing on screen and led
-                          nowhere but sign-out. */}
-                      <div className="md:hidden py-1 border-b border-stone-100">
+                      {/* The links below are shown when on mobile OR when desktop navbar is folded */}
+                      <div className={`${isNavFolded ? 'block' : 'md:hidden'} py-1 border-b border-stone-100`}>
                         {isTraveller(user) && (
                           <>
                             <Link
@@ -317,41 +363,70 @@ export default function Navbar() {
               </div>
             ) : (
               <div className="flex items-center space-x-3 sm:space-x-4">
-                {/* Global Currency Switcher */}
-                <div className="flex items-center bg-stone-100 p-0.5 rounded-full border border-stone-200/90 text-xs font-bold shadow-2xs">
-                  <button
-                    type="button"
-                    onClick={() => { setCurrency('MWK'); storeCurrency('MWK'); }}
-                    className={`px-2.5 py-1 rounded-full transition-all cursor-pointer ${
-                      currency === 'MWK'
-                        ? 'bg-white text-stone-900 shadow-xs'
-                        : 'text-stone-500 hover:text-stone-900'
-                    }`}
-                    title="Malawi Kwacha (Default)"
-                  >
-                    MWK
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setCurrency('USD'); storeCurrency('USD'); }}
-                    className={`px-2.5 py-1 rounded-full transition-all cursor-pointer ${
-                      currency === 'USD'
-                        ? 'bg-white text-stone-900 shadow-xs'
-                        : 'text-stone-500 hover:text-stone-900'
-                    }`}
-                    title="US Dollar"
-                  >
-                    USD
-                  </button>
-                </div>
+                {/* Secondary navigation options for visitors (folded when isNavFolded is true) */}
+                {!isNavFolded && (
+                  <div className="hidden sm:flex items-center space-x-3 sm:space-x-4 animate-in fade-in duration-200">
+                    {/* Global Currency Switcher */}
+                    <div className="flex items-center bg-stone-100 p-0.5 rounded-full border border-stone-200/90 text-xs font-bold shadow-2xs">
+                      <button
+                        type="button"
+                        onClick={() => { setCurrency('MWK'); storeCurrency('MWK'); }}
+                        className={`px-2.5 py-1 rounded-full transition-all cursor-pointer ${
+                          currency === 'MWK'
+                            ? 'bg-white text-stone-900 shadow-xs'
+                            : 'text-stone-500 hover:text-stone-900'
+                        }`}
+                        title="Malawi Kwacha (Default)"
+                      >
+                        MWK
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setCurrency('USD'); storeCurrency('USD'); }}
+                        className={`px-2.5 py-1 rounded-full transition-all cursor-pointer ${
+                          currency === 'USD'
+                            ? 'bg-white text-stone-900 shadow-xs'
+                            : 'text-stone-500 hover:text-stone-900'
+                        }`}
+                        title="US Dollar"
+                      >
+                        USD
+                      </button>
+                    </div>
 
-                <Link
-                  to="/list-your-property"
-                  className="hidden sm:inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-stone-200 hover:border-stone-300 bg-stone-50 hover:bg-stone-100 text-stone-700 hover:text-stone-900 text-xs font-medium transition shadow-2xs"
+                    <Link
+                      to="/list-your-property"
+                      className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-stone-200 hover:border-stone-300 bg-stone-50 hover:bg-stone-100 text-stone-700 hover:text-stone-900 text-xs font-medium transition shadow-2xs"
+                    >
+                      <Building2 className="w-3.5 h-3.5 text-stone-500" />
+                      <span>List Your Property</span>
+                    </Link>
+                  </div>
+                )}
+
+                {/* Fold/Unfold Navbar Toggle Button */}
+                <button
+                  type="button"
+                  onClick={toggleNavFolded}
+                  className={`p-1.5 sm:px-2.5 sm:py-1 rounded-full border transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer select-none ${
+                    isNavFolded
+                      ? 'border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 hover:border-emerald-400 ring-1 ring-emerald-200'
+                      : 'border-stone-200 hover:border-stone-300 bg-stone-50 hover:bg-stone-100 text-stone-600 hover:text-stone-900'
+                  }`}
+                  title={isNavFolded ? "Expand top navbar options" : "Fold top navbar options (minimalist view)"}
+                  aria-label={isNavFolded ? "Expand navigation bar" : "Fold navigation bar"}
                 >
-                  <Building2 className="w-3.5 h-3.5 text-stone-500" />
-                  <span>List Your Property</span>
-                </Link>
+                  <SlidersHorizontal className={`w-3.5 h-3.5 ${isNavFolded ? 'text-emerald-700' : 'text-stone-500'}`} />
+                  <span className="hidden xl:inline text-[11px] font-semibold">
+                    {isNavFolded ? 'Expand Nav' : 'Fold Nav'}
+                  </span>
+                  {isNavFolded ? (
+                    <ChevronDown className="w-3 h-3 opacity-70" />
+                  ) : (
+                    <ChevronUp className="w-3 h-3 opacity-70" />
+                  )}
+                </button>
+
                 <button
                   onClick={() => openAuth('signin')}
                   className="rounded-full bg-stone-900 px-5 sm:px-6 py-2 sm:py-2.5 text-xs sm:text-sm font-medium text-white hover:bg-stone-700 transition shadow-sm cursor-pointer"

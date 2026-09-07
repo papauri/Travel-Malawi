@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   X, Send, RotateCcw, Check, 
-  ChevronDown, ExternalLink, Calendar, Building, DollarSign, 
+  ChevronDown, ChevronUp, Sparkles, ExternalLink, Calendar, Building, DollarSign, 
   TrendingUp, Clock, AlertCircle, Loader2, CheckCircle2, ShieldAlert,
   ArrowRight, Settings2, Sliders, Info, SlidersHorizontal, ConciergeBell,
   Utensils, Coffee, CheckCheck, Layers, ShieldCheck, Minus, Maximize2, Minimize2
@@ -125,6 +125,8 @@ export default function OperationsCopilot() {
   const [executingAction, setExecutingAction] = useState<string | null>(null);
   const [activeQueryIntent, setActiveQueryIntent] = useState<QueryIntent>('greeting_or_chat');
   const [activeQueryText, setActiveQueryText] = useState<string>('');
+  const [showPromptsMenu, setShowPromptsMenu] = useState(false);
+  const [isHeaderFolded, setIsHeaderFolded] = useState(false);
 
   // Tracks interactive hotel selection for each proposed action { [msgId]: hotelId[] }
   const [proposalHotelSelections, setProposalHotelSelections] = useState<Record<string, string[]>>({});
@@ -132,6 +134,22 @@ export default function OperationsCopilot() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatScrollContainerRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<HTMLInputElement>(null);
+  const promptsMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close prompts dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (promptsMenuRef.current && !promptsMenuRef.current.contains(e.target as Node)) {
+        setShowPromptsMenu(false);
+      }
+    };
+    if (showPromptsMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showPromptsMenu]);
 
   const userIsAdmin = isAdmin(user);
   const userIsManager = isHotelManager(user);
@@ -374,6 +392,29 @@ export default function OperationsCopilot() {
   const lastAssistantMsg = [...messages].reverse().find(m => m.role === 'assistant');
   const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
   const dynamicSuggestions = lastAssistantMsg?.suggestedFollowUps;
+
+  const availableSuggestions = useMemo(() => {
+    if (dynamicSuggestions && dynamicSuggestions.length > 0) {
+      return dynamicSuggestions;
+    }
+    if (userIsAdmin) {
+      return [
+        'Give me an executive summary of today: platform arrivals, checkouts, and active listings.',
+        'List all properties on the platform with their statuses and manager details.',
+        'Audit all room rates across the platform.',
+        'What is guest sentiment and recent reviews across our properties?',
+        'Highlight top tourism experiences in Malawi for upcoming guests.'
+      ];
+    }
+    return [
+      "Do I have any arrivals or bookings scheduled for today?",
+      "Who is scheduled to check out today?",
+      "Show me all my room rates.",
+      "What are our guest reviews and average rating?",
+      "Recommend local excursions, safari trips, and dining activities for our guests.",
+      "What is our power backup, Wi-Fi password, and utility setup?"
+    ];
+  }, [dynamicSuggestions, userIsAdmin]);
 
   const detectQueryIntent = (text: string): QueryIntent => {
     const clean = (text || '').trim().toLowerCase();
@@ -1220,17 +1261,32 @@ export default function OperationsCopilot() {
                         {userIsAdmin ? 'Admin' : 'Manager'}
                       </span>
                     </div>
-                    <p className="text-[10px] text-stone-400 truncate max-w-[170px] sm:max-w-[200px]">
-                      {userIsAdmin
-                        ? `Executive hospitality desk • ${properties.length} properties`
-                        : properties.length === 1
-                        ? `At your service at ${properties[0].name}`
-                        : `At your service • ${properties.length} assigned lodges`}
-                    </p>
+                    {!isHeaderFolded && (
+                      <p className="text-[10px] text-stone-400 truncate max-w-[170px] sm:max-w-[200px]">
+                        {userIsAdmin
+                          ? `Executive hospitality desk • ${properties.length} properties`
+                          : properties.length === 1
+                          ? `At your service at ${properties[0].name}`
+                          : `At your service • ${properties.length} assigned lodges`}
+                      </p>
+                    )}
                   </div>
                 </div>
 
                 <div className="flex items-center gap-0.5 sm:gap-1 text-stone-400 shrink-0">
+                  {/* Minimalist Header Fold Toggle */}
+                  <button
+                    type="button"
+                    onClick={() => setIsHeaderFolded(prev => !prev)}
+                    className={`p-1.5 rounded-lg transition cursor-pointer ${
+                      isHeaderFolded ? 'bg-stone-800 text-amber-400' : 'hover:bg-stone-800 hover:text-stone-200'
+                    }`}
+                    title={isHeaderFolded ? "Expand header details" : "Fold header details (minimalist view)"}
+                    aria-label={isHeaderFolded ? "Expand header details" : "Fold header details"}
+                  >
+                    {isHeaderFolded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
+                  </button>
+
                   {/* Rules & Directives tab toggle */}
                   <button
                     type="button"
@@ -1298,23 +1354,25 @@ export default function OperationsCopilot() {
             </div>
 
             {/* LIVE SNAPSHOT STATUS BAR */}
-            <div className="bg-stone-50 border-b border-stone-200 px-3.5 py-1.5 flex items-center justify-between text-[11px] text-stone-600 shrink-0">
-              <div className="flex items-center gap-2">
-                <Calendar className="w-3 h-3 text-stone-400" />
-                <span className="font-semibold text-stone-700">{todayStr}</span>
-                <span>•</span>
-                <span>{properties.length} {properties.length === 1 ? 'property' : 'properties'}</span>
+            {!isHeaderFolded && (
+              <div className="bg-stone-50 border-b border-stone-200 px-3.5 py-1.5 flex items-center justify-between text-[11px] text-stone-600 shrink-0 animate-in fade-in duration-150">
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-3 h-3 text-stone-400" />
+                  <span className="font-semibold text-stone-700">{todayStr}</span>
+                  <span>•</span>
+                  <span>{properties.length} {properties.length === 1 ? 'property' : 'properties'}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`inline-flex items-center gap-1 font-medium ${arrivalsCountToday > 0 ? 'text-amber-700 font-bold' : 'text-stone-500'}`}>
+                    {arrivalsCountToday} arrival{arrivalsCountToday === 1 ? '' : 's'} today
+                  </span>
+                  <span>•</span>
+                  <span className={`inline-flex items-center gap-1 font-medium ${departuresCountToday > 0 ? 'text-stone-700' : 'text-stone-400'}`}>
+                    {departuresCountToday} out
+                  </span>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className={`inline-flex items-center gap-1 font-medium ${arrivalsCountToday > 0 ? 'text-amber-700 font-bold' : 'text-stone-500'}`}>
-                  {arrivalsCountToday} arrival{arrivalsCountToday === 1 ? '' : 's'} today
-                </span>
-                <span>•</span>
-                <span className={`inline-flex items-center gap-1 font-medium ${departuresCountToday > 0 ? 'text-stone-700' : 'text-stone-400'}`}>
-                  {departuresCountToday} out
-                </span>
-              </div>
-            </div>
+            )}
 
             {/* MAIN CONTENT AREA */}
             <div
@@ -1406,52 +1464,52 @@ export default function OperationsCopilot() {
                       className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} max-w-full min-w-0`}
                     >
                       <div
-                        className={`max-w-[92%] sm:max-w-[88%] min-w-0 rounded-2xl p-3.5 text-xs leading-relaxed break-words [word-break:break-word] overflow-hidden ${
+                        className={`max-w-[92%] sm:max-w-[88%] min-w-0 rounded-2xl p-3.5 sm:p-4 text-sm sm:text-[15px] leading-relaxed break-words [word-break:break-word] overflow-hidden ${
                           msg.role === 'user'
                             ? 'bg-stone-900 text-white rounded-br-xs'
                             : 'bg-white text-stone-800 border border-stone-200 shadow-2xs rounded-bl-xs'
                         }`}
                       >
                         {msg.role === 'assistant' ? (
-                          <div className="markdown-body space-y-1.5 text-stone-800 break-words [word-break:break-word] overflow-hidden max-w-full min-w-0">
+                          <div className="markdown-body space-y-2 text-stone-800 break-words [word-break:break-word] overflow-hidden max-w-full min-w-0 text-sm sm:text-[15px] leading-relaxed">
                             <ReactMarkdown
                               components={{
                                 p: ({ children }) => (
-                                  <p className="leading-relaxed break-words [word-break:break-word]">{children}</p>
+                                  <p className="leading-relaxed break-words [word-break:break-word] text-sm sm:text-[15px]">{children}</p>
                                 ),
                                 a: ({ href, children }) => (
                                   <a
                                     href={href}
-                                    className="text-stone-900 underline font-semibold hover:text-amber-700 inline-flex items-center gap-0.5 break-all"
+                                    className="text-stone-900 underline font-semibold hover:text-amber-700 inline-flex items-center gap-0.5 break-all text-sm sm:text-[15px]"
                                   >
                                     {children}
-                                    <ExternalLink className="w-2.5 h-2.5 inline opacity-70 shrink-0" />
+                                    <ExternalLink className="w-3 h-3 inline opacity-70 shrink-0" />
                                   </a>
                                 ),
                                 pre: ({ children }) => (
-                                  <pre className="overflow-x-auto max-w-full p-2 bg-stone-900 text-stone-100 rounded-lg text-[11px] my-1 scrollbar-thin">
+                                  <pre className="overflow-x-auto max-w-full p-2.5 bg-stone-900 text-stone-100 rounded-lg text-xs sm:text-[13px] my-1.5 scrollbar-thin">
                                     {children}
                                   </pre>
                                 ),
                                 code: ({ children }) => (
-                                  <code className="bg-stone-100 px-1 py-0.5 rounded text-[11px] font-mono break-all">
+                                  <code className="bg-stone-100 px-1.5 py-0.5 rounded text-xs sm:text-[13px] font-mono break-all">
                                     {children}
                                   </code>
                                 ),
                                 table: ({ children }) => (
                                   <div className="overflow-x-auto max-w-full my-2 border border-stone-200 rounded-lg">
-                                    <table className="min-w-full text-[11px] divide-y divide-stone-200">
+                                    <table className="min-w-full text-xs sm:text-sm divide-y divide-stone-200">
                                       {children}
                                     </table>
                                   </div>
                                 ),
                                 ul: ({ children }) => (
-                                  <ul className="list-disc pl-4 space-y-1 my-1 break-words">
+                                  <ul className="list-disc pl-5 space-y-1 my-1.5 break-words text-sm sm:text-[15px]">
                                     {children}
                                   </ul>
                                 ),
                                 ol: ({ children }) => (
-                                  <ol className="list-decimal pl-4 space-y-1 my-1 break-words">
+                                  <ol className="list-decimal pl-5 space-y-1 my-1.5 break-words text-sm sm:text-[15px]">
                                     {children}
                                   </ol>
                                 ),
@@ -1461,7 +1519,7 @@ export default function OperationsCopilot() {
                             </ReactMarkdown>
                           </div>
                         ) : (
-                          <p className="whitespace-pre-wrap break-words [word-break:break-word] min-w-0">{msg.content}</p>
+                          <p className="whitespace-pre-wrap break-words [word-break:break-word] min-w-0 text-sm sm:text-[15px] leading-relaxed">{msg.content}</p>
                         )}
                       </div>
 
@@ -1745,118 +1803,6 @@ export default function OperationsCopilot() {
               )}
             </div>
 
-            {/* QUICK ACTION PROMPT CHIPS (CLEAN, EASY PILL UI) */}
-            {!viewingMemory && (
-              <div className="bg-stone-50/95 border-t border-stone-200/80 px-3 py-2 flex items-center gap-1.5 overflow-x-auto scrollbar-none">
-                {dynamicSuggestions && dynamicSuggestions.length > 0 ? (
-                  dynamicSuggestions.map((suggestion, idx) => (
-                    <button
-                      key={`suggestion-${idx}-${suggestion.slice(0, 15)}`}
-                      type="button"
-                      onClick={() => handleSendMessage(suggestion)}
-                      className="px-3 py-1.5 bg-white hover:bg-stone-100 active:bg-stone-200 border border-stone-200/90 hover:border-stone-300 text-stone-700 hover:text-stone-900 rounded-full text-xs font-medium transition-all shadow-2xs whitespace-nowrap shrink-0 cursor-pointer select-none"
-                    >
-                      {suggestion}
-                    </button>
-                  ))
-                ) : userIsAdmin ? (
-                  <>
-                    <button
-                      key="admin-chip-exec-summary"
-                      type="button"
-                      onClick={() => handleSendMessage('Give me an executive summary of today: platform arrivals, checkouts, and active listings.')}
-                      className="px-3 py-1.5 bg-white hover:bg-stone-100 active:bg-stone-200 border border-stone-200/90 hover:border-stone-300 text-stone-700 hover:text-stone-900 rounded-full text-xs font-medium transition-all shadow-2xs whitespace-nowrap shrink-0 cursor-pointer select-none"
-                    >
-                      Executive Summary
-                    </button>
-                    <button
-                      key="admin-chip-all-props"
-                      type="button"
-                      onClick={() => handleSendMessage('List all properties on the platform with their statuses and manager details.')}
-                      className="px-3 py-1.5 bg-white hover:bg-stone-100 active:bg-stone-200 border border-stone-200/90 hover:border-stone-300 text-stone-700 hover:text-stone-900 rounded-full text-xs font-medium transition-all shadow-2xs whitespace-nowrap shrink-0 cursor-pointer select-none"
-                    >
-                      All Properties
-                    </button>
-                    <button
-                      key="admin-chip-rates-audit"
-                      type="button"
-                      onClick={() => handleSendMessage('Audit all room rates across the platform.')}
-                      className="px-3 py-1.5 bg-white hover:bg-stone-100 active:bg-stone-200 border border-stone-200/90 hover:border-stone-300 text-stone-700 hover:text-stone-900 rounded-full text-xs font-medium transition-all shadow-2xs whitespace-nowrap shrink-0 cursor-pointer select-none"
-                    >
-                      Rates Audit
-                    </button>
-                    <button
-                      key="admin-chip-reviews"
-                      type="button"
-                      onClick={() => handleSendMessage('What is guest sentiment and recent reviews across our properties?')}
-                      className="px-3 py-1.5 bg-white hover:bg-stone-100 active:bg-stone-200 border border-stone-200/90 hover:border-stone-300 text-stone-700 hover:text-stone-900 rounded-full text-xs font-medium transition-all shadow-2xs whitespace-nowrap shrink-0 cursor-pointer select-none"
-                    >
-                      Guest Reviews
-                    </button>
-                    <button
-                      key="admin-chip-tourism"
-                      type="button"
-                      onClick={() => handleSendMessage('Highlight top tourism experiences in Malawi for upcoming guests.')}
-                      className="px-3 py-1.5 bg-white hover:bg-stone-100 active:bg-stone-200 border border-stone-200/90 hover:border-stone-300 text-stone-700 hover:text-stone-900 rounded-full text-xs font-medium transition-all shadow-2xs whitespace-nowrap shrink-0 cursor-pointer select-none"
-                    >
-                      Malawi Tourism Guide
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button
-                      key="mgr-chip-today-arrivals"
-                      type="button"
-                      onClick={() => handleSendMessage('Do I have any arrivals or bookings scheduled for today?')}
-                      className="px-3 py-1.5 bg-white hover:bg-stone-100 active:bg-stone-200 border border-stone-200/90 hover:border-stone-300 text-stone-700 hover:text-stone-900 rounded-full text-xs font-medium transition-all shadow-2xs whitespace-nowrap shrink-0 cursor-pointer select-none"
-                    >
-                      Today's Arrivals
-                    </button>
-                    <button
-                      key="mgr-chip-today-checkouts"
-                      type="button"
-                      onClick={() => handleSendMessage('Who is scheduled to check out today?')}
-                      className="px-3 py-1.5 bg-white hover:bg-stone-100 active:bg-stone-200 border border-stone-200/90 hover:border-stone-300 text-stone-700 hover:text-stone-900 rounded-full text-xs font-medium transition-all shadow-2xs whitespace-nowrap shrink-0 cursor-pointer select-none"
-                    >
-                      Checkouts Today
-                    </button>
-                    <button
-                      key="mgr-chip-my-rates"
-                      type="button"
-                      onClick={() => handleSendMessage('Show me all my room rates.')}
-                      className="px-3 py-1.5 bg-white hover:bg-stone-100 active:bg-stone-200 border border-stone-200/90 hover:border-stone-300 text-stone-700 hover:text-stone-900 rounded-full text-xs font-medium transition-all shadow-2xs whitespace-nowrap shrink-0 cursor-pointer select-none"
-                    >
-                      My Room Rates
-                    </button>
-                    <button
-                      key="mgr-chip-guest-reviews"
-                      type="button"
-                      onClick={() => handleSendMessage('What are our guest reviews and average rating?')}
-                      className="px-3 py-1.5 bg-white hover:bg-stone-100 active:bg-stone-200 border border-stone-200/90 hover:border-stone-300 text-stone-700 hover:text-stone-900 rounded-full text-xs font-medium transition-all shadow-2xs whitespace-nowrap shrink-0 cursor-pointer select-none"
-                    >
-                      Guest Reviews
-                    </button>
-                    <button
-                      key="mgr-chip-excursions"
-                      type="button"
-                      onClick={() => handleSendMessage('Recommend local excursions, safari trips, and dining activities for our guests.')}
-                      className="px-3 py-1.5 bg-white hover:bg-stone-100 active:bg-stone-200 border border-stone-200/90 hover:border-stone-300 text-stone-700 hover:text-stone-900 rounded-full text-xs font-medium transition-all shadow-2xs whitespace-nowrap shrink-0 cursor-pointer select-none"
-                    >
-                      Guest Concierge Ideas
-                    </button>
-                    <button
-                      key="mgr-chip-wifi-power"
-                      type="button"
-                      onClick={() => handleSendMessage('What is our power backup, Wi-Fi password, and utility setup?')}
-                      className="px-3 py-1.5 bg-white hover:bg-stone-100 active:bg-stone-200 border border-stone-200/90 hover:border-stone-300 text-stone-700 hover:text-stone-900 rounded-full text-xs font-medium transition-all shadow-2xs whitespace-nowrap shrink-0 cursor-pointer select-none"
-                    >
-                      Wi-Fi & Power Setup
-                    </button>
-                  </>
-                )}
-              </div>
-            )}
-
             {/* INPUT BAR */}
             <div className="p-3 sm:p-3.5 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:pb-3.5 bg-white border-t border-stone-200 shrink-0">
               <form
@@ -1866,6 +1812,55 @@ export default function OperationsCopilot() {
                 }}
                 className="flex items-center gap-2"
               >
+                {/* Small optional dropdown button for suggestions */}
+                <div className="relative shrink-0" ref={promptsMenuRef}>
+                  <button
+                    type="button"
+                    onClick={() => setShowPromptsMenu(prev => !prev)}
+                    className="h-10 px-2.5 sm:px-3 flex items-center gap-1.5 text-xs font-semibold text-stone-600 hover:text-stone-900 bg-stone-100 hover:bg-stone-200/80 active:bg-stone-200 rounded-xl border border-stone-200 transition shadow-2xs cursor-pointer select-none"
+                    title="Suggested prompt ideas"
+                    aria-label="Suggested prompt ideas"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                    <span className="hidden sm:inline">Ideas</span>
+                    <ChevronDown className={`w-3 h-3 text-stone-400 transition-transform duration-200 ${showPromptsMenu ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {showPromptsMenu && (
+                    <div className="absolute bottom-full left-0 mb-2 w-72 sm:w-80 bg-white border border-stone-200 rounded-2xl shadow-xl p-2 z-50 animate-in fade-in slide-in-from-bottom-2 duration-150">
+                      <div className="px-2.5 py-1.5 border-b border-stone-100 flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-stone-500 uppercase tracking-wider flex items-center gap-1.5">
+                          <Sparkles className="w-3 h-3 text-amber-600" />
+                          Suggested Prompts
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setShowPromptsMenu(false)}
+                          className="text-stone-400 hover:text-stone-600 p-0.5 rounded cursor-pointer"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                      <div className="py-1 max-h-60 overflow-y-auto space-y-1 divide-y divide-stone-100/60">
+                        {availableSuggestions.map((suggestion, idx) => (
+                          <button
+                            key={`prompt-item-${idx}`}
+                            type="button"
+                            onClick={() => {
+                              handleSendMessage(suggestion);
+                              setShowPromptsMenu(false);
+                            }}
+                            className="w-full text-left px-2.5 py-2 rounded-lg text-xs font-medium text-stone-700 hover:bg-stone-100 hover:text-stone-900 transition flex items-start gap-2 cursor-pointer pt-2"
+                          >
+                            <span className="text-amber-500 font-bold shrink-0 mt-0.5">•</span>
+                            <span className="flex-1 leading-snug">{suggestion}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 <input
                   ref={chatInputRef}
                   type="text"
@@ -1877,7 +1872,7 @@ export default function OperationsCopilot() {
                       : 'Ask about bookings, checkouts, or adjust room rates...'
                   }
                   disabled={generating}
-                  className="flex-1 text-sm sm:text-xs px-3.5 py-2.5 bg-stone-50 border border-stone-200 rounded-xl focus:outline-none focus:bg-white focus:ring-2 focus:ring-stone-900/10 focus:border-stone-400 disabled:opacity-60 transition"
+                  className="flex-1 text-sm sm:text-[15px] px-3.5 py-2.5 bg-stone-50 border border-stone-200 rounded-xl focus:outline-none focus:bg-white focus:ring-2 focus:ring-stone-900/10 focus:border-stone-400 disabled:opacity-60 transition"
                 />
                 <button
                   type="submit"
