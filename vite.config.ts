@@ -39,8 +39,9 @@ export default defineConfig(() => {
           ]
         },
         workbox: {
-          maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
-          globPatterns: ['**/*.{js,css,html,ico,png,svg,jpg,jpeg}'],
+          maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+          globIgnores: ['**/server.cjs', '**/server.cjs.map', '**/host_app_*.png'],
+          globPatterns: ['**/*.{js,css,html,ico,svg,webmanifest}'],
           runtimeCaching: [
             {
               urlPattern: /^https:\/\/firestore\.googleapis\.com\/.*/i,

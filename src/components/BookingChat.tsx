@@ -19,6 +19,7 @@ import { useWebRTC } from '../lib/useWebRTC';
 import { CallModal } from './CallModal';
 import { getHotelDepositInfo, formatDepositSnippet, isCallingAllowed } from '../lib/depositInfo';
 import { isAdmin } from '../lib/roles';
+import { fastDeleteOrClearChat } from '../lib/chatDeletion';
 
 interface Props {
   booking: Booking & { hotel?: Hotel; room?: RoomType };
@@ -42,6 +43,8 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [isClearingChat, setIsClearingChat] = useState(false);
+  const [showEndChatConfirm, setShowEndChatConfirm] = useState(false);
+  const [isEndingChat, setIsEndingChat] = useState(false);
   const [presenceState, setPresenceState] = useState<ChatPresenceState | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -51,6 +54,8 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
   const seenMessages = useRef(newChimeState());
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastTypingSentRef = useRef<number>(0);
+
+  const isChatEnded = (liveBooking as any).chatStatus === 'ended' || (liveBooking as any).chatStatus === 'closed';
 
   const isManager = currentUser.uid === liveBooking.managerId || (hotel && hotel.managerId === currentUser.uid);
   const otherParticipantName = isManager ? liveBooking.guestName : (hotel?.name || 'Host');
@@ -392,14 +397,24 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            id: liveBooking.id,
+            bookingId: liveBooking.id,
+            reference: liveBooking.reference,
             hotelId: liveBooking.hotelId,
+            hotelName: hotel?.name || 'Your Property',
             guestName: liveBooking.guestName,
-            guestPhone: liveBooking.guestPhone || liveBooking.guestWhatsapp || '',
+            guestPhone: liveBooking.guestPhone || '',
+            guestWhatsapp: liveBooking.guestWhatsapp || liveBooking.guestPhone || '',
             guestEmail: liveBooking.guestEmail || '',
             checkIn: liveBooking.checkIn,
             checkOut: liveBooking.checkOut,
-            bookingId: liveBooking.id,
             roomName: room?.name,
+            totalPrice: liveBooking.total ? `${liveBooking.total} ${liveBooking.currency || 'MWK'}` : undefined,
+            automationSettings: hotel?.emailAutomationSettings,
+            wifiName: hotel?.infrastructure?.wifiSSID,
+            wifiPassword: hotel?.infrastructure?.wifiPassword,
+            managerPhone: hotel?.contactPhone || hotel?.managerPhone,
+            managerEmail: hotel?.contactEmail || hotel?.managerEmail,
           }),
         });
       } catch {
@@ -506,8 +521,14 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
       await updateDoc(doc(db, 'bookings', liveBooking.id), {
         lastMessageAt: now,
         lastMessageText: textToSend,
+        lastMessage: textToSend,
         lastMessageSenderId: currentUser.uid,
         lastMessageSenderName: currentUser.displayName || (isManager ? 'Host' : 'Guest'),
+        chatStatus: 'active',
+        chatClosedAt: null,
+        chatClosedBy: null,
+        chatClearedAt: null,
+        chatClearedBy: null,
       }).catch(() => {});
 
       setTypingState(false);
@@ -521,33 +542,64 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
     }
   };
 
+  // Close chat session
+  const handleEndChat = async () => {
+    if (!liveBooking.id || !currentUser || isEndingChat) return;
+    setIsEndingChat(true);
+    try {
+      const now = Date.now();
+      await updateDoc(doc(db, 'bookings', liveBooking.id), {
+        chatStatus: 'closed',
+        chatClosedAt: now,
+        chatClosedBy: currentUser.uid,
+      });
+      setShowEndChatConfirm(false);
+      toast.success('Chat closed and removed from active chats.');
+    } catch (err) {
+      console.error('Error closing booking chat:', err);
+      toast.error('Failed to close chat session.');
+    } finally {
+      setIsEndingChat(false);
+    }
+  };
+
+  // Reopen chat session
+  const handleRestartChat = async () => {
+    if (!liveBooking.id || !currentUser) return;
+    try {
+      await updateDoc(doc(db, 'bookings', liveBooking.id), {
+        chatStatus: 'active',
+        chatClosedAt: null,
+        chatClosedBy: null,
+        chatClearedAt: null,
+        chatClearedBy: null,
+      });
+      toast.success('Conversation reopened.');
+    } catch (err) {
+      console.error('Error reopening chat:', err);
+      toast.error('Failed to reopen conversation.');
+    }
+  };
+
   // Clear chat history for this booking
   const handleClearChatHistory = async () => {
     if (!liveBooking.id || !currentUser || isClearingChat) return;
     setIsClearingChat(true);
     try {
-      // 1. Delete all messages inside the subcollection
-      const messagesRef = collection(db, 'bookings', liveBooking.id, 'messages');
-      const messagesSnap = await getDocs(messagesRef);
-      await Promise.allSettled(messagesSnap.docs.map(mDoc => deleteDoc(mDoc.ref)));
-
-      // 2. Delete all calls inside the subcollection
-      const callsRef = collection(db, 'bookings', liveBooking.id, 'calls');
-      const callsSnap = await getDocs(callsRef);
-      await Promise.allSettled(callsSnap.docs.map(cDoc => deleteDoc(cDoc.ref)));
-
-      // 3. Reset booking preview text
-      await updateDoc(doc(db, 'bookings', liveBooking.id), {
-        lastMessageAt: Date.now(),
-        lastMessageText: '',
-        lastMessageSenderId: '',
-        lastMessageSenderName: ''
-      }).catch(() => {});
-
+      // Optimistic state reset
       setMessages([]);
       setCalls([]);
       setShowClearConfirm(false);
+
+      await fastDeleteOrClearChat({
+        chatType: 'booking',
+        id: liveBooking.id,
+        userId: currentUser.uid,
+        mode: 'clear'
+      });
+
       toast.success('Chat history cleared successfully.');
+      if (onClose) onClose();
     } catch (error) {
       console.error('Error clearing booking chat history:', error);
       toast.error('Failed to clear chat history.');
@@ -750,6 +802,38 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
                   </button>
                 )}
 
+                {/* End / Close Chat Session */}
+                {!isChatEnded && (
+                  <button
+                    type="button"
+                    id="btn-end-booking-chat"
+                    onClick={() => {
+                      setShowMoreMenu(false);
+                      setShowEndChatConfirm(true);
+                    }}
+                    className="w-full text-left px-3.5 py-2.5 text-stone-200 hover:bg-stone-800 flex items-center gap-2 cursor-pointer border-t border-stone-800/80"
+                  >
+                    <PhoneOff className="w-3.5 h-3.5 text-amber-400" />
+                    <span>End Chat Session</span>
+                  </button>
+                )}
+
+                {/* Reopen Chat if ended */}
+                {isChatEnded && (
+                  <button
+                    type="button"
+                    id="btn-reopen-booking-chat"
+                    onClick={() => {
+                      setShowMoreMenu(false);
+                      handleRestartChat();
+                    }}
+                    className="w-full text-left px-3.5 py-2.5 text-emerald-400 hover:bg-stone-800 flex items-center gap-2 cursor-pointer border-t border-stone-800/80"
+                  >
+                    <MessageSquare className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Reopen Chat</span>
+                  </button>
+                )}
+
                 {/* Clear Chat History */}
                 <button
                   type="button"
@@ -792,6 +876,23 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
           )}
         </div>
       </div>
+
+      {/* Closed Chat Notice Banner */}
+      {isChatEnded && (
+        <div className="bg-stone-900 text-stone-200 text-xs px-4 py-2.5 flex items-center justify-between gap-2 shrink-0 border-b border-stone-800 animate-in fade-in">
+          <div className="flex items-center gap-2 min-w-0">
+            <PhoneOff className="w-4 h-4 text-amber-400 shrink-0" />
+            <span className="truncate text-stone-300">This chat is closed. Send a message or reopen to continue.</span>
+          </div>
+          <button
+            type="button"
+            onClick={handleRestartChat}
+            className="px-2.5 py-1 bg-stone-800 hover:bg-stone-700 text-emerald-400 font-bold rounded-lg transition shrink-0 cursor-pointer"
+          >
+            Reopen Chat
+          </button>
+        </div>
+      )}
 
       {/* 2. Interactive Booking Action Bar */}
       <div className="bg-stone-100/95 border-b border-stone-200/90 px-3.5 py-2 text-xs text-stone-700 relative z-30 shadow-2xs">
@@ -927,7 +1028,7 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
       </div>
 
       {/* 3. Messages & Calls Scroll Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3.5 bg-stone-50/40">
+      <div data-lenis-prevent="true" className="flex-1 overflow-y-auto overscroll-contain p-4 space-y-3.5 bg-stone-50/40">
         {loading ? (
           <div className="h-full flex items-center justify-center">
             <Loader2 className="w-6 h-6 text-stone-300 animate-spin" />
@@ -1186,6 +1287,18 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
         localStream={localStream}
         remoteStream={remoteStream}
         networkQuality={networkQuality}
+      />
+
+      {/* Confirm End Chat Session Dialog */}
+      <ConfirmDialog
+        isOpen={showEndChatConfirm}
+        title="End Chat Session"
+        message="Are you sure you want to end and close this chat session? This will remove the conversation from active chats. You can reopen it anytime."
+        confirmText="End & Close"
+        cancelText="Cancel"
+        isDestructive={false}
+        onConfirm={handleEndChat}
+        onCancel={() => setShowEndChatConfirm(false)}
       />
 
       {/* Confirm Clear Chat History Dialog */}

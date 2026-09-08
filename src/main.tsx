@@ -23,10 +23,10 @@ import { HelmetProvider } from 'react-helmet-async';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 import './index.css';
 
-// Register PWA service worker
-if ('serviceWorker' in navigator) {
+// Register PWA service worker smoothly in production/preview
+if ('serviceWorker' in navigator && !window.location.host.includes('ais-dev-')) {
   import('virtual:pwa-register').then(({ registerSW }) => {
-    registerSW({ immediate: true });
+    registerSW();
   }).catch(() => {});
 }
 

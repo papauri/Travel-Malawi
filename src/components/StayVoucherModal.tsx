@@ -63,7 +63,8 @@ export default function StayVoucherModal({ booking, isOpen, onClose }: Props) {
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[95dvh] sm:max-h-[95vh] relative"
+            className="w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[95dvh] sm:max-h-[95vh] relative overscroll-contain"
+            data-lenis-prevent="true"
           >
             {/* Header / Ticket Top */}
             <div className="bg-stone-900 text-white p-6 relative shrink-0">
@@ -88,7 +89,7 @@ export default function StayVoucherModal({ booking, isOpen, onClose }: Props) {
             </div>
 
             {/* Scrollable Content */}
-            <div className="overflow-y-auto p-4 sm:p-6 space-y-6 sm:space-y-8 flex-1 scrollbar-slim">
+            <div data-lenis-prevent="true" className="overflow-y-auto overscroll-contain p-4 sm:p-6 space-y-6 sm:space-y-8 flex-1 scrollbar-slim">
               
               {/* Payment Status & Details */}
               <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 sm:p-5 flex items-start gap-3 sm:gap-4">

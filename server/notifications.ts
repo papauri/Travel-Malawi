@@ -1,28 +1,22 @@
-// import nodemailer from 'nodemailer';
-
-// In a real app, you would configure SMTP with Env variables:
-// SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS
-// We simulate email for this preview, or use Ethereal for testing.
+import { sendSystemEmail } from './emailConfig';
 
 export async function sendOfflineNotification(email: string, subject: string, message: string) {
-  // Real implementation would look like this:
-  /*
-  const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.ethereal.email',
-    port: parseInt(process.env.SMTP_PORT || '587'),
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  });
-  
-  await transporter.sendMail({
-    from: '"Stay OS" <noreply@stayos.app>',
-    to: email,
-    subject: subject,
-    text: message,
-  });
-  */
-  
-  return { success: true };
+  try {
+    const result = await sendSystemEmail({
+      to: email,
+      subject,
+      text: message,
+      html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; padding: 20px; color: #1c1917;">
+          <h2 style="color: #1c1917;">Travel Malawi Notification</h2>
+          <p style="font-size: 14px; line-height: 1.6; color: #44403c;">${message.replace(/\n/g, '<br/>')}</p>
+        </div>
+      `,
+    });
+    return result;
+  } catch (err: any) {
+    console.warn('[Notifications] Offline notification skipped (SMTP not configured or offline):', err?.message);
+    return { success: false, error: err?.message };
+  }
 }
+

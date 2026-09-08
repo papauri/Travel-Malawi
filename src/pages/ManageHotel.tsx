@@ -22,12 +22,17 @@ import PropertyChat from '../components/PropertyChat';
 import { useChatModal } from '../contexts/ChatModalContext';
 import { MessageSquare, Megaphone, Presentation, Bell, ChevronDown } from 'lucide-react';
 import SmartImage from '../components/SmartImage';
+import ReminderTemplatesModal from '../components/ReminderTemplatesModal';
+import ManagerEmailTemplatesHub from '../components/ManagerEmailTemplatesHub';
+import { useWhatsAppSettings } from '../hooks/useWhatsAppSettings';
+import { Sparkles } from 'lucide-react';
 import { getHotelImages, getHotelImage, getRoomImage, localImagesForName } from '../lib/images';
 import { useBreadcrumbLabel } from '../components/Breadcrumbs';
 import LocationPicker from '../components/LocationPicker';
 import AvailabilityCalendar from '../components/AvailabilityCalendar';
 import OpeningHoursEditor from '../components/OpeningHoursEditor';
 import MenuEditor, { emptyRestaurant } from '../components/MenuEditor';
+import { fastDeleteOrClearChat } from '../lib/chatDeletion';
 import MenuTemplateView from '../components/MenuTemplates';
 import AIAssistantButton from '../components/AIAssistantButton';
 import toast from 'react-hot-toast';
@@ -49,9 +54,9 @@ import { getHotelDepositInfo } from '../lib/depositInfo';
 
 
 
-type Tab = 'details' | 'media' | 'promotions' | 'rooms' | 'conferences' | 'restaurant' | 'bookings' | 'inquiries' | 'stayos' | 'broadcasts';
+type Tab = 'details' | 'media' | 'promotions' | 'rooms' | 'conferences' | 'restaurant' | 'bookings' | 'inquiries' | 'stayos' | 'broadcasts' | 'templates';
 
-const TABS: Tab[] = ['details', 'media', 'promotions', 'rooms', 'conferences', 'restaurant', 'bookings', 'inquiries', 'stayos', 'broadcasts'];
+const TABS: Tab[] = ['details', 'media', 'promotions', 'rooms', 'conferences', 'restaurant', 'bookings', 'inquiries', 'stayos', 'broadcasts', 'templates'];
 
 const isTab = (value: string | null): value is Tab => !!value && (TABS as string[]).includes(value);
 
@@ -224,6 +229,30 @@ export default function ManageHotel() {
   const [showRemindersFor, setShowRemindersFor] = useState<string | null>(null);
   const [manualReminderMsg, setManualReminderMsg] = useState('');
   const [manualReminderDate, setManualReminderDate] = useState('');
+  const [reminderModalBooking, setReminderModalBooking] = useState<Booking | null>(null);
+
+  // WhatsApp global settings & booking manager controls
+  const { whatsappEnabled } = useWhatsAppSettings();
+  const [editingWhatsappBookingId, setEditingWhatsappBookingId] = useState<string | null>(null);
+  const [tempWhatsappNumber, setTempWhatsappNumber] = useState<string>('');
+  const [savingBookingWhatsapp, setSavingBookingWhatsapp] = useState(false);
+
+  const handleSaveBookingWhatsapp = async (bookingId: string) => {
+    if (!bookingId) return;
+    setSavingBookingWhatsapp(true);
+    try {
+      await updateDoc(doc(db, 'bookings', bookingId), {
+        guestWhatsapp: tempWhatsappNumber.trim(),
+      });
+      setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, guestWhatsapp: tempWhatsappNumber.trim() } : b));
+      setEditingWhatsappBookingId(null);
+      toast.success('Guest WhatsApp number updated.');
+    } catch (err) {
+      toast.error('Failed to update WhatsApp number');
+    } finally {
+      setSavingBookingWhatsapp(false);
+    }
+  };
 
   // Data states
   const [hotel, setHotel] = useState<Hotel | null>(null);
@@ -252,36 +281,24 @@ export default function ManageHotel() {
   const [togglingStatus, setTogglingStatus] = useState(false);
 
   const deleteInquiryChat = async (chatId: string) => {
-    if (!chatId || deletingInquiry) return;
+    if (!chatId || deletingInquiry || !user) return;
     setDeletingInquiry(true);
     try {
-      // 1. Delete all messages inside the subcollection
-      const messagesRef = collection(db, 'hotel_chats', chatId, 'messages');
-      const messagesSnap = await getDocs(messagesRef);
-      await Promise.allSettled(messagesSnap.docs.map(mDoc => deleteDoc(mDoc.ref)));
-
-      // 2. Delete all calls inside the subcollection
-      const callsRef = collection(db, 'hotel_chats', chatId, 'calls');
-      const callsSnap = await getDocs(callsRef);
-      await Promise.allSettled(callsSnap.docs.map(cDoc => deleteDoc(cDoc.ref)));
-
-      // 3. Delete or reset parent chat document
-      try {
-        await deleteDoc(doc(db, 'hotel_chats', chatId));
-      } catch {
-        await updateDoc(doc(db, 'hotel_chats', chatId), {
-          lastMessage: '',
-          lastSenderId: '',
-          lastSenderName: '',
-          updatedAt: Date.now()
-        }).catch(() => {});
-      }
-
+      // Optimistic update
+      setInquiries(prev => prev.filter(i => i.id !== chatId));
       setInquiryToDelete(null);
-      toast.success('Chat history cleared successfully.');
+
+      await fastDeleteOrClearChat({
+        chatType: 'inquiry',
+        id: chatId,
+        userId: user.uid,
+        mode: 'delete'
+      });
+
+      toast.success('Inquiry chat deleted successfully.');
     } catch (error) {
-      console.error('Error clearing inquiry chat history:', error);
-      toast.error('Failed to clear chat history.');
+      console.error('Error deleting inquiry chat:', error);
+      toast.error('Failed to delete chat.');
     } finally {
       setDeletingInquiry(false);
     }
@@ -393,7 +410,9 @@ export default function ManageHotel() {
             where('managerId', '==', user?.uid)
           );
           unsubInquiries = onSnapshot(inquiriesQuery, (snap) => {
-            const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            const docs = snap.docs
+              .map(d => ({ id: d.id, ...d.data() }))
+              .filter((d: any) => d.status !== 'deleted' && d.status !== 'cleared' && (d.lastMessage || d.lastSenderId));
             docs.sort((a: any, b: any) => (b.updatedAt || 0) - (a.updatedAt || 0));
             setInquiries(docs);
           }, (err) => {
@@ -998,6 +1017,7 @@ export default function ManageHotel() {
 
       if (status === 'confirmed') {
         try {
+          const bookedRoom = rooms.find(r => r.id === booking.roomTypeId);
           await fetch('/api/reminders/auto-generate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1012,6 +1032,16 @@ export default function ManageHotel() {
               guestWhatsapp: booking.guestWhatsapp,
               checkIn: booking.checkIn,
               checkOut: booking.checkOut,
+              roomName: bookedRoom?.name || 'Standard Room',
+              totalPrice: booking.total ? `${booking.total} ${booking.currency || 'MWK'}` : undefined,
+              depositInstructions: hotel?.depositInfo?.airtelMoneyNumber 
+                ? `Airtel: ${hotel.depositInfo.airtelMoneyNumber} (${hotel.depositInfo.airtelMoneyName || hotel.name})`
+                : undefined,
+              wifiName: hotel?.infrastructure?.wifiSSID,
+              wifiPassword: hotel?.infrastructure?.wifiPassword,
+              managerPhone: hotel?.contactPhone || hotel?.managerPhone,
+              managerEmail: hotel?.contactEmail || hotel?.managerEmail,
+              automationSettings: hotel?.emailAutomationSettings,
             }),
           });
         } catch { /* non-critical */ }
@@ -1177,6 +1207,7 @@ export default function ManageHotel() {
                 { id: 'restaurant' as Tab, label: 'Restaurant' },
                 { id: 'bookings' as Tab, label: 'Bookings' },
                 { id: 'inquiries' as Tab, label: 'Inquiries' },
+                { id: 'templates' as Tab, label: 'Email templates & automation' },
               ]).map(tab => {
                 const pendingCount = tab.id === 'bookings' ? bookings.filter(b => b.status === 'pending').length : 0;
                 const unreadInquiryCount = tab.id === 'inquiries' ? inquiries.filter(i => 
@@ -1209,6 +1240,7 @@ export default function ManageHotel() {
             { id: 'restaurant' as Tab, label: 'Restaurant', icon: UtensilsCrossed },
             { id: 'bookings' as Tab, label: 'Bookings', icon: Calendar },
             { id: 'inquiries' as Tab, label: 'Inquiries', icon: MessageSquare },
+            { id: 'templates' as Tab, label: 'Email templates & automation', icon: Mail },
           ]).map(tab => {
             const Icon = tab.icon;
             const pendingCount = tab.id === 'bookings' ? bookings.filter(b => b.status === 'pending').length : 0;
@@ -1548,7 +1580,7 @@ export default function ManageHotel() {
               </div>
 
               {/* Guest Booking Contact */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
+              <div className={`grid grid-cols-1 ${whatsappEnabled ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-6 pt-2`}>
                   <div>
                     <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Public Booking Email</label>
                     <input
@@ -1571,17 +1603,19 @@ export default function ManageHotel() {
                     />
                     <FieldError message={contactProblems.contactPhone} />
                   </div>
-                  <div>
-                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">WhatsApp</label>
-                    <input
-                      type="tel"
-                      value={editHotelData.contactWhatsapp ?? ''}
-                      onChange={e => setEditHotelData({ ...editHotelData, contactWhatsapp: e.target.value })}
-                      className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition"
-                      placeholder="Same as phone"
-                    />
-                    <FieldError message={contactProblems.contactWhatsapp} />
-                  </div>
+                  {whatsappEnabled && (
+                    <div>
+                      <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">WhatsApp</label>
+                      <input
+                        type="tel"
+                        value={editHotelData.contactWhatsapp ?? ''}
+                        onChange={e => setEditHotelData({ ...editHotelData, contactWhatsapp: e.target.value })}
+                        className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition"
+                        placeholder="Same as phone"
+                      />
+                      <FieldError message={contactProblems.contactWhatsapp} />
+                    </div>
+                  )}
               </div>
 
               {/* These were hard-coded as "From 14:00" and "Until 11:00" on
@@ -2831,14 +2865,27 @@ export default function ManageHotel() {
                             </span>
                           )}
                           
-                          {booking.status !== 'cancelled' && booking.status !== 'rejected' && hotel?.adminChatEnabled !== false && (
-                            <button
-                              type="button"
-                              onClick={() => openBookingChat(booking)}
-                              className="ml-auto text-xs font-semibold text-stone-900 border-2 border-stone-200 bg-white px-3 py-1 rounded-lg hover:border-stone-900 transition inline-flex items-center gap-1 cursor-pointer"
-                            >
-                              <MessageSquare className="w-3.5 h-3.5" /> Message Guest
-                            </button>
+                          {booking.status !== 'cancelled' && booking.status !== 'rejected' && (
+                            <div className="ml-auto flex items-center gap-2 flex-wrap">
+                              <button
+                                type="button"
+                                onClick={() => setReminderModalBooking(booking)}
+                                className="text-xs font-semibold text-emerald-800 border-2 border-emerald-300 bg-emerald-50 px-3 py-1 rounded-lg hover:bg-emerald-100 hover:border-emerald-600 transition inline-flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                                title={whatsappEnabled ? "Open ready-to-go email & WhatsApp reminder templates (3-Day Arrival, 24h PIN, Deposit, Check-out)" : "Open ready-to-go email reminder templates"}
+                              >
+                                <Mail className="w-3.5 h-3.5 text-emerald-600" />
+                                {whatsappEnabled ? 'Reminders & Templates' : 'Email Templates'}
+                              </button>
+                              {hotel?.adminChatEnabled !== false && (
+                                <button
+                                  type="button"
+                                  onClick={() => openBookingChat(booking)}
+                                  className="text-xs font-semibold text-stone-900 border-2 border-stone-200 bg-white px-3 py-1 rounded-lg hover:border-stone-900 transition inline-flex items-center gap-1 cursor-pointer"
+                                >
+                                  <MessageSquare className="w-3.5 h-3.5" /> Message Guest
+                                </button>
+                              )}
+                            </div>
                           )}
                         </div>
                         <div className="flex items-center gap-2 mb-2 flex-wrap">
@@ -2856,15 +2903,82 @@ export default function ManageHotel() {
                           </span>
                         )}
                       </div>
-                      {(booking.guestEmail || booking.guestPhone || booking.guestWhatsapp) && (
-                        <div className="text-sm text-stone-500 mb-2 flex gap-4 flex-wrap">
+                      {(booking.guestEmail || booking.guestPhone || (whatsappEnabled && (booking.guestWhatsapp || true))) && (
+                        <div className="text-sm text-stone-500 mb-2 flex gap-4 flex-wrap items-center">
                           {booking.guestEmail && <span>✉️ {booking.guestEmail}</span>}
                           {booking.guestPhone && <span>📞 {booking.guestPhone}</span>}
-                          {booking.guestWhatsapp && (
-                            <a href={`https://wa.me/${booking.guestWhatsapp.replace(/[^0-9]/g, '')}`} target="_blank" rel="noreferrer" className="text-green-600 hover:underline flex items-center gap-1">
-                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>
-                              WhatsApp
-                            </a>
+                          
+                          {/* Manager WhatsApp controls (ONLY visible when WhatsApp is enabled in Admin Portal) */}
+                          {whatsappEnabled && (
+                            editingWhatsappBookingId === booking.id ? (
+                              <div className="inline-flex items-center gap-1.5 bg-emerald-50 p-1 rounded-lg border border-emerald-300">
+                                <MessageSquare className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                                <input
+                                  type="tel"
+                                  value={tempWhatsappNumber}
+                                  onChange={e => setTempWhatsappNumber(e.target.value)}
+                                  placeholder="+265 999 123 456"
+                                  className="text-xs bg-white border border-emerald-300 px-2 py-0.5 rounded text-stone-900 focus:outline-none w-36 font-mono"
+                                  autoFocus
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleSaveBookingWhatsapp(booking.id!)}
+                                  disabled={savingBookingWhatsapp}
+                                  className="text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-2 py-0.5 rounded cursor-pointer"
+                                >
+                                  {savingBookingWhatsapp ? '...' : 'Save'}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingWhatsappBookingId(null)}
+                                  className="text-xs text-stone-500 hover:text-stone-800 px-1 cursor-pointer"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="inline-flex items-center gap-1.5">
+                                {booking.guestWhatsapp ? (
+                                  <>
+                                    <a
+                                      href={`https://wa.me/${booking.guestWhatsapp.replace(/[^0-9]/g, '')}`}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="text-emerald-700 hover:underline inline-flex items-center gap-1 text-xs font-semibold"
+                                      title="Open guest WhatsApp chat"
+                                    >
+                                      <MessageSquare className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                      {booking.guestWhatsapp}
+                                    </a>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setEditingWhatsappBookingId(booking.id!);
+                                        setTempWhatsappNumber(booking.guestWhatsapp || '');
+                                      }}
+                                      className="text-[11px] text-stone-400 hover:text-stone-700 underline cursor-pointer"
+                                      title="Edit guest WhatsApp number"
+                                    >
+                                      Edit
+                                    </button>
+                                  </>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditingWhatsappBookingId(booking.id!);
+                                      setTempWhatsappNumber(booking.guestPhone || '+265');
+                                    }}
+                                    className="text-xs text-emerald-700 hover:text-emerald-800 font-semibold inline-flex items-center gap-1 cursor-pointer hover:underline"
+                                    title="Add WhatsApp number for this guest"
+                                  >
+                                    <MessageSquare className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                    + Add WhatsApp
+                                  </button>
+                                )}
+                              </div>
+                            )
                           )}
                         </div>
                       )}
@@ -2956,6 +3070,28 @@ export default function ManageHotel() {
                     </button>
                     {showRemindersFor === booking.id && (
                       <div className="mt-2 space-y-2">
+                        {/* Ready-to-go templates callout */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-emerald-50/80 border border-emerald-200 rounded-xl">
+                          <div className="flex items-center gap-2.5">
+                            <div className="p-2 bg-emerald-700 text-white rounded-lg shrink-0">
+                              <Sparkles className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold text-emerald-950">Ready-To-Go Reminder Templates</p>
+                              <p className="text-[11px] text-emerald-800">
+                                3-Day Welcome, 24h PIN Delivery, Deposit &amp; Payment, Check-out &amp; Review.
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setReminderModalBooking(booking)}
+                            className="px-3.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-xs shrink-0 cursor-pointer"
+                          >
+                            <Mail className="w-3.5 h-3.5" />
+                            Open Templates
+                          </button>
+                        </div>
                         {(bookingReminders[booking.id!] || []).length === 0 ? (
                           <p className="text-xs text-stone-400">No reminders set for this booking.</p>
                         ) : (
@@ -3181,6 +3317,18 @@ export default function ManageHotel() {
         </div>
       )}
 
+      {/* TAB CONTENT: EMAIL TEMPLATES & AUTOMATION */}
+      {activeTab === 'templates' && (
+        <ManagerEmailTemplatesHub
+          hotel={hotel}
+          onHotelUpdate={updated => {
+            setHotel(updated);
+            setEditHotelData(updated);
+          }}
+          currentUserEmail={user?.email}
+        />
+      )}
+
       {/* Confirm a pending request */}
       {confirmModalBooking && (() => {
         const booking = bookings.find(b => b.id === confirmModalBooking);
@@ -3289,6 +3437,21 @@ export default function ManageHotel() {
         }}
         onCancel={() => setInquiryToDelete(null)}
       />
+
+      {reminderModalBooking && hotel && (
+        <ReminderTemplatesModal
+          isOpen={!!reminderModalBooking}
+          onClose={() => setReminderModalBooking(null)}
+          booking={reminderModalBooking}
+          hotel={hotel}
+          roomName={rooms.find(r => r.id === reminderModalBooking.roomTypeId)?.name || 'Reserved Room'}
+          onReminderSent={() => {
+            if (reminderModalBooking.id) {
+              fetchReminders(reminderModalBooking.id);
+            }
+          }}
+        />
+      )}
     </div>
   );
 }

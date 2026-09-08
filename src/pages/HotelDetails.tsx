@@ -45,8 +45,10 @@ import Modal, { fieldClass, labelClass } from '../components/Modal';
 import Lightbox from '../components/Lightbox';
 import PriceDisplay from '../components/PriceDisplay';
 import RoomGallery from '../components/RoomGallery';
+import { useWhatsAppSettings } from '../hooks/useWhatsAppSettings';
 
 export default function HotelDetails() {
+  const { whatsappEnabled } = useWhatsAppSettings();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -1285,7 +1287,7 @@ export default function HotelDetails() {
                       <PhoneCall className="h-3.5 w-3.5" /> {hotel.contactPhone}
                     </a>
                   )}
-                  {whatsappLink(hotel.contactWhatsapp || hotel.contactPhone, `Hello ${hotel.name}, I have a question about staying with you.`) && (
+                  {whatsappEnabled && whatsappLink(hotel.contactWhatsapp || hotel.contactPhone, `Hello ${hotel.name}, I have a question about staying with you.`) && (
                     <a
                       href={whatsappLink(hotel.contactWhatsapp || hotel.contactPhone, `Hello ${hotel.name}, I have a question about staying with you.`)!}
                       target="_blank"
@@ -1677,7 +1679,7 @@ export default function HotelDetails() {
                 {fieldErrors.guestEmail && <p className="text-xs text-red-600 mt-1.5">{fieldErrors.guestEmail}</p>}
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className={`grid grid-cols-1 ${whatsappEnabled ? 'sm:grid-cols-2' : ''} gap-4`}>
                 <div>
                   <label className={labelClass}>Phone number</label>
                   <PhoneInput
@@ -1689,17 +1691,19 @@ export default function HotelDetails() {
                   />
                   {fieldErrors.guestPhone && <p className="text-xs text-red-600 mt-1.5">{fieldErrors.guestPhone}</p>}
                 </div>
-                <div>
-                  <label className={labelClass}>WhatsApp <span className="text-stone-400 font-normal">· optional</span></label>
-                  <PhoneInput
-                    international
-                    defaultCountry="MW"
-                    value={guestWhatsapp}
-                    onChange={(val) => setGuestWhatsapp(val || '')}
-                    className={`${fieldClass} ${fieldErrors.guestWhatsapp ? 'border-red-400 focus:border-red-500' : ''} !flex items-center`}
-                  />
-                  {fieldErrors.guestWhatsapp && <p className="text-xs text-red-600 mt-1.5">{fieldErrors.guestWhatsapp}</p>}
-                </div>
+                {whatsappEnabled && (
+                  <div>
+                    <label className={labelClass}>WhatsApp <span className="text-stone-400 font-normal">· optional</span></label>
+                    <PhoneInput
+                      international
+                      defaultCountry="MW"
+                      value={guestWhatsapp}
+                      onChange={(val) => setGuestWhatsapp(val || '')}
+                      className={`${fieldClass} ${fieldErrors.guestWhatsapp ? 'border-red-400 focus:border-red-500' : ''} !flex items-center`}
+                    />
+                    {fieldErrors.guestWhatsapp && <p className="text-xs text-red-600 mt-1.5">{fieldErrors.guestWhatsapp}</p>}
+                  </div>
+                )}
               </div>
 
               <div className="mb-4">

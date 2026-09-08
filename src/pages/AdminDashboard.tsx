@@ -19,20 +19,23 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import Modal from '../components/Modal';
 import AdminAISettings from '../components/AdminAISettings';
 import AdminDocsHub from '../components/AdminDocsHub';
+import AdminEmailSettings from '../components/AdminEmailSettings';
+import AdminWhatsAppSettings from '../components/AdminWhatsAppSettings';
 import { getHotelImage } from '../lib/images';
 import { isAdmin, isHotelManager, userRoles, toRoleFields } from '../lib/roles';
 import { formatMoney } from '../lib/booking';
-import { Navigation, TrendingUp, BookOpen } from 'lucide-react';
+import { Navigation, TrendingUp, BookOpen, Mail, Settings } from 'lucide-react';
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import PriceDisplay from '../components/PriceDisplay';
 
-type Tab = 'overview' | 'analytics' | 'properties' | 'users' | 'bookings' | 'destinations' | 'content' | 'ai' | 'docs';
+type Tab = 'overview' | 'analytics' | 'properties' | 'users' | 'bookings' | 'destinations' | 'content' | 'ai' | 'docs' | 'settings';
 
 export default function AdminDashboard() {
   const { user, loading: authLoading, resetPassword } = useAuth();
   const navigate = useNavigate();
   
   const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const [settingsSubTab, setSettingsSubTab] = useState<'email' | 'whatsapp'>('whatsapp');
   
   const [hotels, setHotels] = useState<Hotel[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -533,6 +536,18 @@ export default function AdminDashboard() {
             Executive Docs (.txt)
             <span className="ml-auto bg-emerald-500/20 text-emerald-800 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase hidden md:inline-block">
               Admin
+            </span>
+          </button>
+          <button 
+            onClick={() => setActiveTab('settings')}
+            className={`whitespace-nowrap shrink-0 snap-start md:w-full flex items-center gap-2.5 px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold min-h-[44px] transition ${
+              activeTab === 'settings' ? 'bg-stone-900 text-white shadow-xs' : 'text-stone-600 bg-stone-100/70 md:bg-transparent hover:bg-stone-100'
+            }`}
+          >
+            <Settings className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+            Channels &amp; Settings
+            <span className="ml-auto bg-stone-200 text-stone-700 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase hidden md:inline-block">
+              Super Admin
             </span>
           </button>
 
@@ -1679,6 +1694,40 @@ export default function AdminDashboard() {
         {/* ===================== EXECUTIVE DOCS TAB ===================== */}
         {activeTab === 'docs' && (
           <AdminDocsHub />
+        )}
+
+        {/* ===================== SETTINGS & CHANNELS CONFIGURATION TAB ===================== */}
+        {activeTab === 'settings' && (
+          <div className="space-y-6">
+            <div className="flex items-center gap-2 p-1.5 bg-stone-200/70 rounded-2xl w-fit flex-wrap">
+              <button
+                type="button"
+                onClick={() => setSettingsSubTab('whatsapp')}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+                  settingsSubTab === 'whatsapp'
+                    ? 'bg-white text-emerald-800 shadow-xs'
+                    : 'text-stone-600 hover:text-stone-900'
+                }`}
+              >
+                <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
+                WhatsApp Business &amp; Messaging
+              </button>
+              <button
+                type="button"
+                onClick={() => setSettingsSubTab('email')}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+                  settingsSubTab === 'email'
+                    ? 'bg-white text-stone-900 shadow-xs'
+                    : 'text-stone-600 hover:text-stone-900'
+                }`}
+              >
+                <Mail className="w-3.5 h-3.5" />
+                Email &amp; SMTP
+              </button>
+            </div>
+
+            {settingsSubTab === 'whatsapp' ? <AdminWhatsAppSettings /> : <AdminEmailSettings />}
+          </div>
         )}
 
         <ConfirmDialog

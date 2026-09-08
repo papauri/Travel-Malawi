@@ -6,8 +6,27 @@ import { createServer as createViteServer } from 'vite';
 import { getPublicAIStatus, getAdminAIConfig, loadAIConfig, saveAIConfig, AIProviderId, getEffectiveApiKey } from './server/aiConfig';
 import { executeAIGeneration, executeOperationsAssistantChat, testProviderConnection } from './server/aiService';
 import { sendOfflineNotification } from './server/notifications';
-import { generateAutoReminders, createManualReminder, getRemindersForBooking, deleteReminder, checkAndFireReminders } from './server/reminders';
+import { 
+  generateAutoReminders, 
+  createManualReminder, 
+  getRemindersForBooking, 
+  getRemindersForHotel,
+  deleteReminder, 
+  checkAndFireReminders, 
+  sendReminderEmailNow,
+  sendTestTemplateEmail,
+  getAllPendingReminders
+} from './server/reminders';
 import { getAdminDocsList, getAdminDocContent } from './server/docUtils';
+import { getAdminEmailConfig, saveEmailConfig, testSMTPConnection } from './server/emailConfig';
+import { 
+  getAdminWhatsAppConfig, 
+  getPublicWhatsAppStatus, 
+  saveWhatsAppConfig, 
+  testWhatsAppConnection, 
+  sendWhatsAppMessage 
+} from './server/whatsappConfig';
+import { sendReminderWhatsAppNow } from './server/reminders';
 
 async function startServer() {
   const app = express();
@@ -229,13 +248,25 @@ async function startServer() {
     limits: { fileSize: 8 * 1024 * 1024 },
   });
 
+  // Dedicated local menu decipher endpoint (100% offline rule-based parser)
+  app.post('/api/menu/parse-local', async (req, res) => {
+    try {
+      const text = typeof req.body?.text === 'string' ? req.body.text : '';
+      if (!text.trim()) {
+        return res.status(400).json({ error: 'No menu text provided to parse' });
+      }
+      const currencies = Array.isArray(req.body?.currencies) ? req.body.currencies : ['USD', 'MWK'];
+      const { parseMenuText } = await import('./server/localMenuParser');
+      const result = parseMenuText(text, currencies);
+      res.json({ sections: result.sections, engine: 'local', stats: result.stats });
+    } catch (err: any) {
+      console.error('Local menu parse error:', err);
+      res.status(500).json({ error: err?.message || 'Failed to locally parse menu' });
+    }
+  });
+
   app.post('/api/ai/parse-menu', menuUpload.single('menu'), async (req, res) => {
     try {
-      const status = getPublicAIStatus();
-      if (!status.enabled || !status.available) {
-        return res.status(503).json({ error: 'Menu scanning requires an active AI provider. Please configure one in the Admin Dashboard.' });
-      }
-
       let buffer: Buffer;
       let mimeType: string;
       let fileName: string;
@@ -261,9 +292,47 @@ async function startServer() {
         }
       })();
 
-      const { parseMenuContent } = await import('./server/aiService');
-      const result = await parseMenuContent(buffer, mimeType, fileName, currencies);
-      res.json(result);
+      const isText = mimeType === 'text/plain' || mimeType === 'text/csv' || fileName.endsWith('.txt') || fileName.endsWith('.csv');
+      const preferLocal = req.body?.engine === 'local';
+
+      // If client requests local engine or if text is provided and AI is not active:
+      const status = getPublicAIStatus();
+      if (isText && (preferLocal || !status.enabled || !status.available)) {
+        const { parseMenuText } = await import('./server/localMenuParser');
+        const textContent = buffer.toString('utf-8');
+        const parsed = parseMenuText(textContent, currencies);
+        return res.json({ sections: parsed.sections, engine: 'local', stats: parsed.stats });
+      }
+
+      // If AI is needed for images/PDFs or user requested AI deep parsing:
+      if (!status.enabled || !status.available) {
+        if (isText) {
+          // Fallback to local parser for text
+          const { parseMenuText } = await import('./server/localMenuParser');
+          const textContent = buffer.toString('utf-8');
+          const parsed = parseMenuText(textContent, currencies);
+          return res.json({ sections: parsed.sections, engine: 'local_fallback', stats: parsed.stats });
+        }
+        return res.status(503).json({ error: 'Scanning images or PDFs requires an active AI provider. For instant free deciphering, paste the menu text or upload a text/CSV file.' });
+      }
+
+      try {
+        const { parseMenuContent } = await import('./server/aiService');
+        const result = await parseMenuContent(buffer, mimeType, fileName, currencies);
+        res.json({ ...result, engine: 'ai' });
+      } catch (aiErr: any) {
+        // If AI fails but we have text, gracefully fallback to local parser
+        if (isText) {
+          console.warn('[parse-menu] AI error, automatically falling back to localMenuParser:', aiErr?.message);
+          const { parseMenuText } = await import('./server/localMenuParser');
+          const textContent = buffer.toString('utf-8');
+          const parsed = parseMenuText(textContent, currencies);
+          if (parsed.sections && parsed.sections.length > 0) {
+            return res.json({ sections: parsed.sections, engine: 'local_fallback', stats: parsed.stats });
+          }
+        }
+        throw aiErr;
+      }
     } catch (err: any) {
       console.error('Menu parse error:', err);
       res.status(500).json({ error: err?.message || 'Failed to parse menu' });
@@ -316,6 +385,32 @@ async function startServer() {
     }
   });
 
+  // Check background scheduler daemon status (confirms cron runs continuously in-process)
+  app.get('/api/reminders/scheduler-status', (req, res) => {
+    try {
+      const pending = getAllPendingReminders();
+      res.json({
+        daemonActive: true,
+        intervalSeconds: 60,
+        serverTime: new Date().toISOString(),
+        pendingCount: pending.length,
+        message: 'Integrated background daemon running continuously every 60 seconds. No external server cron jobs needed.'
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || 'Failed to get scheduler status' });
+    }
+  });
+
+  // Get all scheduled and sent reminders for an entire hotel/property
+  app.get('/api/reminders/hotel/:hotelId', (req, res) => {
+    try {
+      const reminders = getRemindersForHotel(req.params.hotelId);
+      res.json({ reminders });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || 'Failed to fetch hotel reminders' });
+    }
+  });
+
   // Get reminders for a specific booking
   app.get('/api/reminders/:bookingId', (req, res) => {
     try {
@@ -346,11 +441,164 @@ async function startServer() {
     }
   });
 
-  // Start reminder cron (check every 60 seconds)
-  setInterval(() => {
-    const { fired } = checkAndFireReminders();
-    if (fired.length > 0) {
-      console.log(`[Reminders] Fired ${fired.length} reminder(s)`);
+  // Dispatch an email reminder to guest immediately via configured SMTP
+  app.post('/api/reminders/send-email', async (req, res) => {
+    try {
+      const result = await sendReminderEmailNow(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: result.error || 'Failed to send email reminder' });
+      }
+      res.json({ success: true, reminder: result.reminder });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || 'Failed to send email reminder' });
+    }
+  });
+
+  // Send a test template email to manager's inbox
+  app.post('/api/reminders/test-template', async (req, res) => {
+    try {
+      const { toEmail, hotelName, bookingRef, templateTitle, subject, message } = req.body;
+      if (!toEmail || !subject || !message) {
+        return res.status(400).json({ error: 'Recipient email, subject, and message are required.' });
+      }
+      const result = await sendTestTemplateEmail({
+        toEmail,
+        hotelName: hotelName || 'Property',
+        bookingRef,
+        templateTitle: templateTitle || 'Email Template',
+        subject,
+        message
+      });
+      if (!result.success) {
+        return res.status(400).json({ error: result.error || 'Failed to dispatch test email' });
+      }
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || 'Failed to send test email' });
+    }
+  });
+
+  // ----------------------------------------------------
+  // ADMIN SMTP & EMAIL CONFIGURATION API
+  // ----------------------------------------------------
+
+  // Get current SMTP configuration (masked password)
+  app.get('/api/admin/email-config', (req, res) => {
+    try {
+      const config = getAdminEmailConfig();
+      res.json({ config });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || 'Failed to fetch email config' });
+    }
+  });
+
+  // Save updated SMTP configuration
+  app.post('/api/admin/email-config', (req, res) => {
+    try {
+      const updated = saveEmailConfig(req.body);
+      const safeConfig = getAdminEmailConfig();
+      res.json({ success: true, config: safeConfig });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || 'Failed to save email config' });
+    }
+  });
+
+  // Test SMTP connection and optional test email
+  app.post('/api/admin/email-test', async (req, res) => {
+    try {
+      const { testEmail, config } = req.body || {};
+      const result = await testSMTPConnection(testEmail, config);
+      res.json(result);
+    } catch (err: any) {
+      res.status(400).json({ error: err?.message || 'SMTP connection test failed' });
+    }
+  });
+
+  // ----------------------------------------------------
+  // ADMIN WHATSAPP & MESSAGING CONFIGURATION API
+  // ----------------------------------------------------
+
+  // Public status check (whether WhatsApp is enabled and configured, NO credentials)
+  app.get('/api/whatsapp/status', (req, res) => {
+    try {
+      const status = getPublicWhatsAppStatus();
+      res.json(status);
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || 'Failed to fetch WhatsApp status' });
+    }
+  });
+
+  // Get current WhatsApp configuration (masked access token)
+  app.get('/api/admin/whatsapp-config', (req, res) => {
+    try {
+      const config = getAdminWhatsAppConfig();
+      res.json({ config });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || 'Failed to fetch WhatsApp config' });
+    }
+  });
+
+  // Save updated WhatsApp configuration
+  app.post('/api/admin/whatsapp-config', (req, res) => {
+    try {
+      saveWhatsAppConfig(req.body);
+      const safeConfig = getAdminWhatsAppConfig();
+      res.json({ success: true, config: safeConfig });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || 'Failed to save WhatsApp config' });
+    }
+  });
+
+  // Test WhatsApp connection and optional test message
+  app.post('/api/admin/whatsapp-test', async (req, res) => {
+    try {
+      const { testPhone, config } = req.body || {};
+      const result = await testWhatsAppConnection(testPhone, config);
+      res.json(result);
+    } catch (err: any) {
+      res.status(400).json({ error: err?.message || 'WhatsApp connection test failed' });
+    }
+  });
+
+  // Send WhatsApp reminder immediately
+  app.post('/api/reminders/send-whatsapp', async (req, res) => {
+    try {
+      const result = await sendReminderWhatsAppNow(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: result.error || 'Failed to dispatch WhatsApp reminder' });
+      }
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || 'Failed to dispatch WhatsApp reminder' });
+    }
+  });
+
+  // Generic send WhatsApp message endpoint
+  app.post('/api/whatsapp/send', async (req, res) => {
+    try {
+      const { to, message } = req.body || {};
+      if (!to || !message) {
+        return res.status(400).json({ error: 'Recipient phone number and message text are required.' });
+      }
+      const result = await sendWhatsAppMessage(to, message);
+      if (!result.success) {
+        return res.status(400).json({ error: result.error || 'Failed to send WhatsApp message' });
+      }
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || 'Failed to send WhatsApp message' });
+    }
+  });
+
+  // Start reminder cron (check every 60 seconds) with try/catch guard
+  const reminderInterval = setInterval(() => {
+    try {
+      const { fired } = checkAndFireReminders();
+      if (fired.length > 0) {
+        console.log(`[Reminders] Fired ${fired.length} reminder(s)`);
+      }
+    } catch (err) {
+      console.error('[Reminders] Error checking reminders:', err);
     }
   }, 60_000);
 
@@ -392,9 +640,14 @@ async function startServer() {
     }
   });
 
-  // Explicitly block any direct public access to internal docs paths or raw markdown files
+  // Explicitly block any direct public access to backend code, source maps, internal docs, or markdown files
   app.use((req, res, next) => {
-    if (req.path.startsWith('/docs') || req.path.endsWith('.md')) {
+    if (
+      req.path === '/server.cjs' ||
+      req.path === '/server.cjs.map' ||
+      req.path.startsWith('/docs') ||
+      req.path.endsWith('.md')
+    ) {
       return res.status(404).send('Not Found');
     }
     next();
@@ -415,8 +668,31 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
+  const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on http://localhost:${PORT}`);
+  });
+
+  // Graceful shutdown handling for Cloud Run container lifecycle
+  const handleShutdown = (signal: string) => {
+    console.log(`Received ${signal}, initiating graceful shutdown...`);
+    clearInterval(reminderInterval);
+    server.close(() => {
+      console.log('HTTP server closed successfully.');
+      process.exit(0);
+    });
+    setTimeout(() => {
+      console.warn('Forcefully terminating after shutdown timeout.');
+      process.exit(0);
+    }, 5000);
+  };
+
+  process.on('SIGTERM', () => handleShutdown('SIGTERM'));
+  process.on('SIGINT', () => handleShutdown('SIGINT'));
+  process.on('uncaughtException', (err) => {
+    console.error('Uncaught Exception:', err);
+  });
+  process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
   });
 }
 

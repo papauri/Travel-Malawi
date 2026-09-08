@@ -15,6 +15,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Hotel, Message, User, HotelChat, Call } from '../types';
+import { fastDeleteOrClearChat } from '../lib/chatDeletion';
 import { 
   Send, 
   Loader2, 
@@ -430,10 +431,10 @@ export default function PropertyChat({
     return `${d.toLocaleDateString([], { month: 'short', day: 'numeric' })}, ${timeStr}`;
   };
 
-  // Is the chat session currently ended?
-  const isChatEnded = chatDocData?.status === 'ended';
+  // Is the chat session currently ended or closed?
+  const isChatEnded = chatDocData?.status === 'ended' || chatDocData?.status === 'closed';
 
-  // Handle Ending the Chat (by Manager or Guest)
+  // Handle Ending/Closing the Chat (by Manager or Guest)
   const handleEndChat = async () => {
     if (!chatId || !currentUser || isEndingChat) return;
     setIsEndingChat(true);
@@ -445,7 +446,10 @@ export default function PropertyChat({
       const endTimestamp = Date.now();
 
       await updateDoc(doc(db, 'hotel_chats', chatId), {
-        status: 'ended',
+        status: 'closed',
+        closedAt: endTimestamp,
+        closedBy: currentUser.uid,
+        closedByName: senderDisplayName,
         endedAt: endTimestamp,
         endedBy: isManager ? 'manager' : 'guest',
         endedByName: senderDisplayName,
@@ -454,7 +458,7 @@ export default function PropertyChat({
       });
 
       setShowEndChatConfirm(false);
-      toast.success('Chat session ended.');
+      toast.success('Chat conversation closed and removed from active chats.');
     } catch (error: any) {
       console.error('Error ending chat:', error);
       toast.error('Failed to end chat session.');
@@ -472,6 +476,11 @@ export default function PropertyChat({
         endedAt: null,
         endedBy: null,
         endedByName: null,
+        closedAt: null,
+        closedBy: null,
+        closedByName: null,
+        clearedAt: null,
+        clearedBy: null,
         updatedAt: Date.now(),
       });
       toast.success('Started a new conversation session!');
@@ -486,31 +495,18 @@ export default function PropertyChat({
     if (!chatId || !currentUser || isDeletingChat) return;
     setIsDeletingChat(true);
     try {
-      // 1. Delete all messages inside the subcollection
-      const messagesRef = collection(db, 'hotel_chats', chatId, 'messages');
-      const messagesSnap = await getDocs(messagesRef);
-      await Promise.allSettled(messagesSnap.docs.map(mDoc => deleteDoc(mDoc.ref)));
-
-      // 2. Delete all calls inside the subcollection
-      const callsRef = collection(db, 'hotel_chats', chatId, 'calls');
-      const callsSnap = await getDocs(callsRef);
-      await Promise.allSettled(callsSnap.docs.map(cDoc => deleteDoc(cDoc.ref)));
-
-      // 3. Reset or delete parent chat document
-      try {
-        await deleteDoc(doc(db, 'hotel_chats', chatId));
-      } catch {
-        await updateDoc(doc(db, 'hotel_chats', chatId), {
-          lastMessage: '',
-          lastSenderId: '',
-          lastSenderName: '',
-          updatedAt: Date.now()
-        }).catch(() => {});
-      }
-
+      // Optimistic UI state reset
       setMessages([]);
       setCalls([]);
       setShowDeleteConfirm(false);
+
+      await fastDeleteOrClearChat({
+        chatType: 'inquiry',
+        id: chatId,
+        userId: currentUser.uid,
+        mode: 'clear'
+      });
+
       toast.success('Chat history cleared successfully.');
       onClose();
     } catch (error) {
@@ -880,7 +876,7 @@ export default function PropertyChat({
       )}
 
       {/* Messages Scroll Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3.5 bg-stone-50/70">
+      <div data-lenis-prevent="true" className="flex-1 overflow-y-auto overscroll-contain p-4 space-y-3.5 bg-stone-50/70">
         {!currentUser ? (
           <div className="h-full flex flex-col items-center justify-center text-center p-6">
             <MessageSquare className="w-12 h-12 text-stone-300 mb-3" />

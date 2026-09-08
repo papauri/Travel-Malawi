@@ -134,6 +134,14 @@ export default function GlobalNotificationManager() {
     // ==========================================
     const handleChatDocChange = async (change: any, isInitial: boolean) => {
       const data = change.doc.data() as any;
+      // STRICT PRIVACY: Verify this chat is exclusively between this manager and guest
+      if (data.guestId !== user.uid && data.managerId !== user.uid) {
+        return;
+      }
+      // If deleted by this user, ignore
+      if (Array.isArray(data.deletedBy) && data.deletedBy.includes(user.uid)) {
+        return;
+      }
       const chatId = change.doc.id;
       const amIManager = data.managerId === user.uid;
 
@@ -369,6 +377,14 @@ export default function GlobalNotificationManager() {
     // ==========================================
     const handleBookingDocChange = async (change: any, isInitial: boolean) => {
       const booking = { id: change.doc.id, ...change.doc.data() } as Booking;
+      // STRICT PRIVACY: Verify booking is exclusively for this account
+      if (booking.guestId !== user.uid && booking.managerId !== user.uid) {
+        return;
+      }
+      // If chat deleted by this user, ignore
+      if (Array.isArray((booking as any).chatDeletedBy) && (booking as any).chatDeletedBy.includes(user.uid)) {
+        return;
+      }
       const currentStatus = booking.status;
       const previousStatus = knownBookingStatuses.current[booking.id!];
       const amIManager = booking.managerId === user.uid;

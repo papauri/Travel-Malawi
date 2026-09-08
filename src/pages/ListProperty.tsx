@@ -51,6 +51,7 @@ import { searchNominatim, searchMalawiPlaces, MalawiPlaceSuggestion } from '../l
 import { RoomInput } from '../lib/validateRoom';
 import { CURRENCIES, formatMoney } from '../lib/currency';
 import { CurrencyCode } from '../types';
+import { useWhatsAppSettings } from '../hooks/useWhatsAppSettings';
 
 const ESTIMATED_MWK_PER_USD = 1750;
 
@@ -173,6 +174,7 @@ const fieldClass =
 const labelClass = 'block text-xs font-bold uppercase tracking-[0.14em] text-stone-500 mb-2';
 
 export default function ListProperty() {
+  const { whatsappEnabled } = useWhatsAppSettings();
   const { user, loading: authLoading, becomeHost } = useAuth();
   const { openAuth } = useAuthDialog();
   const navigate = useNavigate();
@@ -2864,26 +2866,28 @@ export default function ListProperty() {
                   <FieldError message={visible.contactPhone} />
                 </div>
 
-                <div>
-                  <label className={labelClass} htmlFor="listing-whatsapp">
-                    WhatsApp Number <span className="font-medium normal-case tracking-normal text-stone-400">(optional)</span>
-                  </label>
-                  <div className="relative">
-                    <MessageCircle className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
-                    <input
-                      id="listing-whatsapp"
-                      type="tel"
-                      value={draft.contactWhatsapp}
-                      onChange={e => set('contactWhatsapp', e.target.value)}
-                      placeholder="Same as the phone number"
-                      className={`${fieldClass} pl-11`}
-                    />
+                {whatsappEnabled && (
+                  <div>
+                    <label className={labelClass} htmlFor="listing-whatsapp">
+                      WhatsApp Number <span className="font-medium normal-case tracking-normal text-stone-400">(optional)</span>
+                    </label>
+                    <div className="relative">
+                      <MessageCircle className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+                      <input
+                        id="listing-whatsapp"
+                        type="tel"
+                        value={draft.contactWhatsapp}
+                        onChange={e => set('contactWhatsapp', e.target.value)}
+                        placeholder="Same as the phone number"
+                        className={`${fieldClass} pl-11`}
+                      />
+                    </div>
+                    <p className="mt-1.5 text-xs text-stone-400">
+                      Leave blank if same as phone number — we will use the phone number above.
+                    </p>
+                    <FieldError message={visible.contactWhatsapp} />
                   </div>
-                  <p className="mt-1.5 text-xs text-stone-400">
-                    Leave blank if same as phone number — we will use the phone number above.
-                  </p>
-                  <FieldError message={visible.contactWhatsapp} />
-                </div>
+                )}
               </div>
 
               {/* Check-in & Check-out Times */}

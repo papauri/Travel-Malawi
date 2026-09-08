@@ -179,7 +179,26 @@ export interface Hotel {
   depositInfo?: DepositInfo;
   /** Absent, or `enabled: false`, means the property has no restaurant. */
   restaurant?: Restaurant;
+  /** Automated email and messaging configuration for guest reminders and sequences */
+  emailAutomationSettings?: HotelEmailAutomationSettings;
   createdAt: number;
+}
+
+export interface AutomationRuleConfig {
+  enabled: boolean;
+  channel?: 'email' | 'whatsapp' | 'both';
+  timingDays?: number;
+  timingHours?: number;
+  timeOfDay?: string;
+  subjectOverride?: string;
+  bodyOverride?: string;
+}
+
+export interface HotelEmailAutomationSettings {
+  autoRemindersEnabled: boolean;
+  rules?: Record<string, AutomationRuleConfig>;
+  customSignature?: string;
+  bccManager?: boolean;
 }
 
 export interface DepositInfo {
@@ -290,10 +309,18 @@ export interface HotelChat {
   guestId: string;
   guestName: string;
   managerId: string;
-  status?: 'active' | 'ended';
+  status?: 'active' | 'ended' | 'closed' | 'cleared' | 'deleted';
   endedAt?: number | null;
   endedBy?: 'guest' | 'manager' | null;
   endedByName?: string | null;
+  closedAt?: number | null;
+  closedBy?: string | null;
+  closedByName?: string | null;
+  clearedAt?: number | null;
+  clearedBy?: string | null;
+  deletedAt?: number | null;
+  deletedBy?: string[] | null;
+  isDeleted?: boolean;
   lastMessage?: string;
   lastSenderId?: string;
   lastSenderName?: string;
@@ -355,8 +382,16 @@ export interface Booking {
   arrivalPin?: string;
   lastMessageAt?: number;
   lastMessageText?: string;
+  lastMessage?: string;
   lastMessageSenderId?: string;
   lastMessageSenderName?: string;
+  chatStatus?: 'active' | 'ended' | 'closed' | 'cleared' | 'deleted';
+  chatClosedAt?: number;
+  chatClosedBy?: string;
+  chatClearedAt?: number;
+  chatClearedBy?: string;
+  chatDeletedAt?: number;
+  chatDeletedBy?: string[];
   managerLastSeenAt?: number;
   guestLastSeenAt?: number;
   

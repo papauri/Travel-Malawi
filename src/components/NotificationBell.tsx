@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bell, Volume2, VolumeX, MessageSquare, CheckCheck, Sparkles, ExternalLink, Calendar, X } from 'lucide-react';
+import { Bell, Volume2, VolumeX, MessageSquare, CheckCheck, Sparkles, ExternalLink, Calendar, X, XCircle } from 'lucide-react';
 import { useUnreadMessages, UnreadMessageItem } from '../hooks/useUnreadMessages';
 import { useUnreadBroadcasts } from '../hooks/useUnreadBroadcasts';
 import { useChatModal } from '../contexts/ChatModalContext';
@@ -10,6 +10,7 @@ import { isHotelManager } from '../lib/roles';
 import { motion, AnimatePresence } from 'motion/react';
 import toast from 'react-hot-toast';
 import WalkthroughTooltip from './WalkthroughTooltip';
+import { useModalScrollIsolation } from '../hooks/useModalScrollIsolation';
 
 function formatTimeAgo(timestamp: number): string {
   const diffSec = Math.max(0, Math.floor((Date.now() - timestamp) / 1000));
@@ -24,7 +25,15 @@ function formatTimeAgo(timestamp: number): string {
 
 export default function NotificationBell() {
   const { user } = useAuth();
-  const { unreadItems, unreadCount, activeChats, isVibrating, triggerDing, markAsRead } = useUnreadMessages();
+  const { 
+    unreadItems, 
+    unreadCount, 
+    activeChats, 
+    isVibrating, 
+    triggerDing, 
+    markAsRead, 
+    closeConversation 
+  } = useUnreadMessages();
   const unreadBroadcasts = useUnreadBroadcasts();
   const { openInquiryChat, openBookingChat, closeChat, isChatOpen, maximizeChat } = useChatModal();
   const navigate = useNavigate();
@@ -33,6 +42,7 @@ export default function NotificationBell() {
   const [viewTab, setViewTab] = useState<'unread' | 'active'>('unread');
   const [soundOn, setSoundOn] = useState(isSoundEnabled);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const scrollIsolationRef = useModalScrollIsolation<HTMLDivElement>(isOpen);
 
   const isManager = isHotelManager(user);
   const totalAlertsCount = unreadCount + unreadBroadcasts;
@@ -109,7 +119,24 @@ export default function NotificationBell() {
     }
   };
 
-  const handleToggleChat = async (e: React.MouseEvent, item: UnreadMessageItem) => {
+  const handleCloseConversation = async (e: React.MouseEvent, item: UnreadMessageItem) => {
+    e.stopPropagation();
+    try {
+      const isOpenNow = item.type === 'inquiry'
+        ? isChatOpen('inquiry', item.hotelId, item.guestId)
+        : isChatOpen('booking', item.booking?.id || item.id.replace('booking_', ''));
+
+      if (isOpenNow) {
+        closeChat();
+      }
+      await closeConversation(item);
+      toast.success('Conversation closed and removed from active chats.');
+    } catch (err) {
+      toast.error('Failed to close conversation.');
+    }
+  };
+
+  const handleToggleChat = (e: React.MouseEvent, item: UnreadMessageItem) => {
     e.stopPropagation();
     const isOpenNow = item.type === 'inquiry'
       ? isChatOpen('inquiry', item.hotelId, item.guestId)
@@ -118,7 +145,7 @@ export default function NotificationBell() {
     if (isOpenNow) {
       closeChat();
     } else {
-      await handleOpenItem(item);
+      handleOpenItem(item);
     }
   };
 
@@ -199,11 +226,13 @@ export default function NotificationBell() {
             />
 
             <motion.div
+              ref={scrollIsolationRef}
+              data-lenis-prevent="true"
               initial={{ opacity: 0, y: 8, scale: 0.96 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 6, scale: 0.96 }}
               transition={{ duration: 0.16, ease: 'easeOut' }}
-              className="fixed top-16 inset-x-3 sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2.5 sm:w-[410px] max-w-[calc(100vw-1.5rem)] bg-white/95 backdrop-blur-xl border border-stone-200/90 rounded-2xl shadow-2xl py-0 z-50 overflow-hidden max-h-[calc(100dvh-5rem)] flex flex-col"
+              className="fixed top-16 inset-x-3 sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2.5 sm:w-[410px] max-w-[calc(100vw-1.5rem)] bg-white/95 backdrop-blur-xl border border-stone-200/90 rounded-2xl shadow-2xl py-0 z-50 overflow-hidden max-h-[calc(100dvh-5rem)] flex flex-col overscroll-contain"
             >
               {/* Header */}
               <div className="px-4 py-3 bg-stone-900 text-white flex items-center justify-between shrink-0 border-b border-stone-800">
@@ -280,7 +309,7 @@ export default function NotificationBell() {
               </div>
 
               {/* Content List */}
-              <div className="flex-1 overflow-y-auto scrollbar-slim divide-y divide-stone-100 max-h-[min(420px,calc(100dvh-12rem))]">
+              <div data-lenis-prevent="true" className="flex-1 overflow-y-auto overscroll-contain scrollbar-slim divide-y divide-stone-100 max-h-[min(420px,calc(100dvh-12rem))]">
               {viewTab === 'unread' ? (
                 unreadItems.length > 0 ? (
                   <div className="p-2 space-y-1.5">
@@ -448,17 +477,24 @@ export default function NotificationBell() {
                                 </span>
                               )}
 
-                              <button
-                                type="button"
-                                onClick={(e) => handleToggleChat(e, item)}
-                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                                  isOpenNow
-                                    ? 'bg-stone-200 hover:bg-rose-100 text-stone-800 hover:text-rose-800 border border-stone-300'
-                                    : 'bg-stone-900 hover:bg-stone-800 text-white shadow-xs'
-                                }`}
-                              >
-                                {isOpenNow ? 'Close' : 'Open Chat'}
-                              </button>
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenItem(item)}
+                                  className="px-2.5 py-1 rounded-lg text-xs font-bold bg-stone-900 hover:bg-stone-800 text-white shadow-xs transition cursor-pointer"
+                                >
+                                  {isOpenNow ? 'Focus' : 'Chat'}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleCloseConversation(e, item)}
+                                  className="px-2 py-1 rounded-lg text-xs font-semibold bg-stone-100 hover:bg-stone-200 text-stone-700 hover:text-stone-950 border border-stone-300 transition flex items-center gap-1 cursor-pointer"
+                                  title="Close conversation and remove from active chats"
+                                >
+                                  <XCircle className="w-3.5 h-3.5 text-stone-500" />
+                                  <span>Close</span>
+                                </button>
+                              </div>
                             </div>
                           </div>
                         </div>

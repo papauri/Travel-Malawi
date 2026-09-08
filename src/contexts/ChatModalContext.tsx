@@ -9,6 +9,7 @@ import { useManagerPresence } from '../hooks/usePresence';
 import { MessageSquare, Minus, X, Maximize2 } from 'lucide-react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { useModalScrollIsolation } from '../hooks/useModalScrollIsolation';
 
 export interface InquiryChatPayload {
   type: 'inquiry';
@@ -46,6 +47,7 @@ export function ChatModalProvider({ children }: { children: React.ReactNode }) {
   const [activeChat, setActiveChat] = useState<ActiveChatState>(null);
   const [isMinimized, setIsMinimized] = useState<boolean>(false);
   const [liveHotelStatus, setLiveHotelStatus] = useState<{ isOnline?: boolean; name?: string }>({});
+  const chatScrollIsolationRef = useModalScrollIsolation<HTMLDivElement>(Boolean(activeChat && !isMinimized));
 
   // Reset active chat immediately whenever the logged-in user changes or logs out
   // Ensures one user's chat never leaks to another user, and cleans up when session ends
@@ -204,7 +206,9 @@ export function ChatModalProvider({ children }: { children: React.ReactNode }) {
             /* Expanded Floating Chat Card Docked at Bottom Right */
             <div 
               id="expanded-floating-chat-container"
-              className="fixed inset-x-0 bottom-0 top-10 sm:top-auto sm:inset-x-auto sm:bottom-6 sm:right-6 z-[200] sm:w-[440px] h-[calc(100dvh-2.5rem)] sm:h-[660px] sm:max-h-[calc(100dvh-5rem)] origin-bottom-right animate-fadeIn flex flex-col overflow-hidden rounded-t-3xl sm:rounded-2xl shadow-2xl"
+              ref={chatScrollIsolationRef}
+              data-lenis-prevent="true"
+              className="fixed inset-x-0 bottom-0 top-10 sm:top-auto sm:inset-x-auto sm:bottom-6 sm:right-6 z-[200] sm:w-[440px] h-[calc(100dvh-2.5rem)] sm:h-[660px] sm:max-h-[calc(100dvh-5rem)] origin-bottom-right animate-fadeIn flex flex-col overflow-hidden rounded-t-3xl sm:rounded-2xl shadow-2xl overscroll-contain"
             >
               {activeChat.type === 'inquiry' ? (
                 <PropertyChat
