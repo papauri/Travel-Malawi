@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -31,7 +31,9 @@ function formatTimeAgo(timestamp: number): string {
   return `${days}d ago`;
 }
 
-export default function ActiveChatsMenu() {
+export interface ActiveChatsMenuRef { openMenu: () => void; }
+
+const ActiveChatsMenu = forwardRef<ActiveChatsMenuRef, {}>((props, ref) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { 
@@ -207,6 +209,8 @@ export default function ActiveChatsMenu() {
     : null;
 
   const currentDisplayList = activeTab === 'active' ? activeChats : inactiveChats;
+
+  useImperativeHandle(ref, () => ({ openMenu: () => setIsOpen(true) }));
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -661,4 +665,6 @@ export default function ActiveChatsMenu() {
       </AnimatePresence>
     </div>
   );
-}
+});
+
+export default ActiveChatsMenu;

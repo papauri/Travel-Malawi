@@ -175,8 +175,16 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
       if (msgs.length > 0) {
         const lastMsg = msgs[msgs.length - 1];
         if (lastMsg.senderId !== currentUser.uid) {
+          const now = Date.now();
           updateDoc(presenceDocRef, {
-            [isManager ? 'managerLastSeenAt' : 'guestLastSeenAt']: Date.now()
+            [isManager ? 'managerLastSeenAt' : 'guestLastSeenAt']: now,
+            [isManager ? 'managerLastOpenedAt' : 'guestLastOpenedAt']: now
+          }).catch(() => {});
+          
+          // Also update the main booking document to immediately clear unread badge globally
+          updateDoc(doc(db, 'bookings', liveBooking.id), {
+            [isManager ? 'managerLastSeenAt' : 'guestLastSeenAt']: now,
+            [isManager ? 'managerLastOpenedAt' : 'guestLastOpenedAt']: now
           }).catch(() => {});
         }
       }

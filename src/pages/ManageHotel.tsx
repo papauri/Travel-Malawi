@@ -24,8 +24,7 @@ import { MessageSquare, Megaphone, Presentation, Bell, ChevronDown } from 'lucid
 import SmartImage from '../components/SmartImage';
 import ReminderTemplatesModal from '../components/ReminderTemplatesModal';
 import EditBookingModal from '../components/EditBookingModal';
-import ManagerEmailTemplatesHub from '../components/ManagerEmailTemplatesHub';
-import ManagerWhatsAppTemplatesHub from '../components/ManagerWhatsAppTemplatesHub';
+import ManagerMessageTemplatesHub from '../components/ManagerMessageTemplatesHub';
 import { useWhatsAppSettings } from '../hooks/useWhatsAppSettings';
 import { getHotelImages, getHotelImage, getRoomImage, localImagesForName } from '../lib/images';
 import { useBreadcrumbLabel } from '../components/Breadcrumbs';
@@ -2856,9 +2855,9 @@ export default function ManageHotel() {
               </p>
             </div>
           ) : (
-            <ul className="divide-y divide-stone-100">
+            <ul className="space-y-4">
               {visibleBookings.slice((currentBookingPage - 1) * bookingsPerPage, currentBookingPage * bookingsPerPage).map((booking, bIdx) => (
-                <li key={`mgmt-booking-${booking.id}`} className="p-6 md:p-8 hover:bg-stone-50 transition">
+                <li key={`mgmt-booking-${booking.id}`} className="p-6 md:p-8 bg-white border border-stone-200 rounded-2xl shadow-sm hover:shadow-md transition">
                   <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-4">
                     <div className="w-full">
                       <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-1 sm:flex-wrap w-full">
@@ -3346,21 +3345,13 @@ export default function ManageHotel() {
       {/* TAB CONTENT: EMAIL TEMPLATES & AUTOMATION */}
       {activeTab === 'templates' && (
         <>
-          <ManagerWhatsAppTemplatesHub
+          <ManagerMessageTemplatesHub
             hotel={hotel}
             onHotelUpdate={updated => {
               setHotel(updated);
               setEditHotelData(updated);
             }}
           />
-          <ManagerEmailTemplatesHub
-          hotel={hotel}
-          onHotelUpdate={updated => {
-            setHotel(updated);
-            setEditHotelData(updated);
-          }}
-          currentUserEmail={user?.email}
-        />
         </>
       )}
 
@@ -3426,7 +3417,23 @@ export default function ManageHotel() {
 
               <div className="bg-amber-50 text-amber-900 px-4 py-3.5 rounded-xl text-sm border border-amber-200">
                 <span className="font-semibold block mb-1">Before you approve</span>
-                Call the guest, or message them on WhatsApp, to agree an arrival time.
+                <p className="mb-3">Call the guest, or message them on WhatsApp, to agree an arrival time.</p>
+                <div className="flex flex-wrap gap-2">
+                  <a
+                    href={`https://wa.me/${(booking?.guestWhatsapp || booking?.guestPhone || '').replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Hello ${booking?.guestName}, we are processing your booking at ${hotel?.name} for ${booking ? formatDateStr(booking.checkIn) : ''}. Could we quickly confirm your estimated arrival time?`)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 bg-[#25D366] text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-[#20bd5a] transition shadow-sm"
+                  >
+                    <MessageSquare className="w-3.5 h-3.5" /> WhatsApp Guest
+                  </a>
+                  <a
+                    href={`mailto:${booking?.guestEmail || ''}?subject=${encodeURIComponent(`Your booking request at ${hotel?.name}`)}&body=${encodeURIComponent(`Hello ${booking?.guestName},\n\nWe are processing your booking request for ${room?.name} from ${booking ? formatDateStr(booking.checkIn) : ''} to ${booking ? formatDateStr(booking.checkOut) : ''}.\n\nCould we quickly confirm your estimated arrival time before we finalize the booking?\n\nBest regards,\n${hotel?.name}`)}`}
+                    className="inline-flex items-center gap-1.5 bg-stone-900 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-stone-800 transition shadow-sm"
+                  >
+                    <Mail className="w-3.5 h-3.5" /> Email Guest
+                  </a>
+                </div>
               </div>
               <div className="bg-stone-50 text-stone-600 px-4 py-3.5 rounded-xl text-sm border border-stone-200">
                 <span className="font-semibold block mb-1 text-stone-900">Payment</span>

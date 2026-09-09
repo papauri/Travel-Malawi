@@ -285,6 +285,84 @@ export default function AdminDashboard() {
       toast.error('Failed to update roles.');
     }
   };
+
+  const handleToggleUserSuspension = async (targetUser: User) => {
+    if (targetUser.uid === user?.uid) {
+      toast.error('Cannot suspend your own account.');
+      return;
+    }
+    const isSuspended = targetUser.status === 'suspended' || targetUser.accessRevoked;
+    const nextStatus = isSuspended ? 'active' : 'suspended';
+    
+    if (!window.confirm(`Are you sure you want to ${isSuspended ? 'restore' : 'suspend'} access for ${targetUser.email}?`)) return;
+    
+    try {
+      await updateDoc(doc(db, 'users', targetUser.uid), {
+        status: nextStatus,
+        accessRevoked: !isSuspended,
+        accessRevokedAt: !isSuspended ? Date.now() : null,
+        revokedBy: !isSuspended ? user?.uid : null
+      });
+      
+      setUsers(users.map(u => u.uid === targetUser.uid ? { 
+        ...u, 
+        status: nextStatus, 
+        accessRevoked: !isSuspended 
+      } : u));
+      
+      toast.success(`Account access ${isSuspended ? 'restored' : 'suspended'}.`);
+      
+      // Notify via server API
+      if (targetUser.email) {
+        fetch('/api/admin/notify-account-status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            email: targetUser.email, 
+            status: !isSuspended ? 'revoked' : 'active',
+            name: targetUser.displayName
+          })
+        }).catch(() => {});
+      }
+    } catch (error) {
+      console.error('Error suspending user:', error);
+      toast.error('Failed to update suspension status.');
+    }
+  };
+
+  const handleDeleteUser = async (targetUser: User) => {
+    if (targetUser.uid === user?.uid) {
+      toast.error('Cannot delete your own account.');
+      return;
+    }
+    
+    if (!window.confirm(`WARNING: This will delete the profile document for ${targetUser.email} from the database. They will lose all data associated with this profile. Are you absolutely sure?`)) {
+      return;
+    }
+    
+    try {
+      await deleteDoc(doc(db, 'users', targetUser.uid));
+      setUsers(users.filter(u => u.uid !== targetUser.uid));
+      toast.success(`User profile deleted successfully.`);
+      
+      // Notify via server API
+      if (targetUser.email) {
+        fetch('/api/admin/notify-account-status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            email: targetUser.email, 
+            status: 'revoked', // treat deletion as revocation for the email message
+            name: targetUser.displayName
+          })
+        }).catch(() => {});
+      }
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      toast.error('Failed to delete user profile.');
+    }
+  };
+
   const badPinCount = useMemo(() => hotels.filter(h => pinProblem(h.coordinates)).length, [hotels]);
 
   const visibleHotels = useMemo(() => {
@@ -1254,9 +1332,16 @@ export default function AdminDashboard() {
                     {visibleUsers.slice((currentUserPage - 1) * itemsPerPage, currentUserPage * itemsPerPage).map((u, index) => {
                       const rolesList = userRoles(u);
                       return (
-                        <tr key={`admin-user-${u.uid || index}-${index}`} className="hover:bg-stone-50 transition">
+                        <tr key={`admin-user-${u.uid || index}-${index}`} className={`hover:bg-stone-50 transition ${u.status === 'suspended' || u.accessRevoked ? 'opacity-50 grayscale' : ''}`}>
                           <td className="px-6 py-4">
-                            <p className="font-bold text-stone-900">{u.displayName || 'No Name'}</p>
+                            <p className="font-bold text-stone-900 flex items-center gap-2">
+                              {u.displayName || 'No Name'}
+                              {(u.status === 'suspended' || u.accessRevoked) && (
+                                <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest">
+                                  Suspended
+                                </span>
+                              )}
+                            </p>
                             <p className="text-sm text-stone-500">{u.email}</p>
                             <p className="text-xs text-stone-400 mt-1 font-mono">{u.uid}</p>
                           </td>
@@ -1293,7 +1378,24 @@ export default function AdminDashboard() {
                             </div>
                           </td>
                           <td className="px-6 py-4 text-right">
-                            <div className="flex items-center justify-end gap-2">
+                            <div className="flex items-center justify-end gap-2 flex-wrap">
+                              <button
+                                onClick={() => handleToggleUserSuspension(u)}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                                  (u.status === 'suspended' || u.accessRevoked) ? 'bg-red-100 text-red-700 hover:bg-red-200' : 'bg-stone-200 text-stone-700 hover:bg-red-100 hover:text-red-700'
+                                }`}
+                              >
+                                {(u.status === 'suspended' || u.accessRevoked) ? 'Restore Access' : 'Revoke Access'}
+                              </button>
+
+                              <button
+                                onClick={() => handleDeleteUser(u)}
+                                className="px-3 py-1.5 rounded-lg text-xs font-semibold transition bg-red-50 text-red-600 hover:bg-red-600 hover:text-white"
+                                title="Permanently delete user profile"
+                              >
+                                Delete
+                              </button>
+
                               <button
                                 onClick={() => handleToggleUserRole(u, 'hotel_manager')}
                                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${

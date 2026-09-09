@@ -427,11 +427,11 @@ export default function ListProperty() {
     toast.success(`Matched "${item.name}" from Google Maps (Malawi)!`);
   };
 
-  // Look up property on Google Maps & Super Agent AI Knowledge Base
+  // Look up property on Maps & Knowledge Base
   const handleLookupPropertyAI = async (overrideName?: string) => {
     const name = (overrideName || draft.name).trim();
     if (!name) {
-      toast.error('Please enter a property name to look up with Super Agent AI');
+      toast.error('Please enter a property name to look up with the Draft Assistant');
       return;
     }
 
@@ -554,7 +554,7 @@ export default function ListProperty() {
           contactWhatsapp: aiData.contactWhatsapp || aiData.contactPhone || '+265 991 234 567',
           suggestedImageUrl,
         });
-        toast.success(`Super Agent matched "${aiData.officialName || name}" & auto-categorized as "${verifiedCategory}"!`);
+        toast.success(`Draft Assistant matched "${aiData.officialName || name}" & auto-categorized as "${verifiedCategory}"!`);
       } else if (matchedCoords || name) {
         setAiPropertySuggestion({
           matched: true,
@@ -575,7 +575,7 @@ export default function ListProperty() {
           contactWhatsapp: '+265 991 234 567',
           suggestedImageUrl,
         });
-        toast.success(`Super Agent prepared details & auto-categorized as "${verifiedCategory}"!`);
+        toast.success(`Draft Assistant prepared details & auto-categorized as "${verifiedCategory}"!`);
       } else {
         toast('No verified listing found on Maps. You can enter details manually.', { icon: 'ℹ️' });
       }
@@ -658,7 +658,7 @@ export default function ListProperty() {
     });
 
     if (applyAllFields) {
-      toast.success(`Super Agent filled all listing fields! Auto-categorized as "${s.category}". Review any details across the steps.`);
+      toast.success(`Draft Assistant filled all listing fields! Auto-categorized as "${s.category}". Review any details across the steps.`);
     } else {
       toast.success(`Applied verified details for "${s.officialName}"!`);
     }

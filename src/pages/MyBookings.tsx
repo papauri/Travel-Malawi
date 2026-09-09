@@ -7,7 +7,7 @@ import {
 import { db } from '../lib/firebase';
 import { Booking, Hotel, RoomType, Broadcast } from '../types';
 import {
-  Calendar, MapPin, ExternalLink, Clock, CheckCircle2, XCircle, Ban, Star, Copy, ShieldCheck, Users, MessageCircle, Phone, Info, Map as MapIcon, MessageSquare, Megaphone, X, Check, Building2
+  Calendar, MapPin, ExternalLink, Clock, CheckCircle2, XCircle, Ban, Star, Copy, ShieldCheck, Users, MessageCircle, Phone, Info, Map as MapIcon, MessageSquare, Megaphone, X, Check, Building2, Mail, Edit2, Filter as FilterIcon
 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -33,10 +33,14 @@ export default function MyBookings() {
   const navigate = useNavigate();
   const [bookings, setBookings] = useState<EnrichedBooking[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingHost, setLoadingHost] = useState(true);
   const [filter, setFilter] = useState<Filter>('upcoming');
+  const [propertyFilter, setPropertyFilter] = useState<string>('all');
   const [cancelTarget, setCancelTarget] = useState<EnrichedBooking | null>(null);
+  const [editBookingTarget, setEditBookingTarget] = useState<EnrichedBooking | null>(null);
   const [reviewTarget, setReviewTarget] = useState<EnrichedBooking | null>(null);
   const [voucherTarget, setVoucherTarget] = useState<EnrichedBooking | null>(null);
+  const [confirmModalBooking, setConfirmModalBooking] = useState<EnrichedBooking | null>(null);
   const [reviewedBookingIds, setReviewedBookingIds] = useState<Set<string>>(new Set());
   const [busyId, setBusyId] = useState<string | null>(null);
   const { openBookingChat } = useChatModal();
@@ -132,6 +136,8 @@ export default function MyBookings() {
         }
       } catch (err) {
         console.error("Error fetching host data:", err);
+      } finally {
+        setLoadingHost(false);
       }
     }
 
@@ -333,7 +339,12 @@ export default function MyBookings() {
     return { upcoming, past, cancelled };
   }, [hostBookings]);
 
-  const hostVisible = hostGrouped[filter] || [];
+  const hostVisible = useMemo(() => {
+    const list = hostGrouped[filter] || [];
+    if (propertyFilter === 'all') return list;
+    return list.filter(b => b.hotelId === propertyFilter);
+  }, [hostGrouped, filter, propertyFilter]);
+
   const activeBookings = activeMainTab === 'host' ? hostVisible : visible;
   const tabs: { key: Filter; label: string; count: number }[] = [
     { key: 'upcoming', label: 'Upcoming', count: grouped.upcoming.length },
@@ -377,7 +388,7 @@ export default function MyBookings() {
     }
   };
 
-  if (authLoading || loading) return (
+  if (authLoading || loading || loadingHost) return (
     <div className="min-h-screen flex items-center justify-center bg-stone-50">
       <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-600 border-t-transparent"></div>
     </div>
@@ -490,25 +501,43 @@ export default function MyBookings() {
           </div>
         )}
 
-        <div className="flex gap-2 mb-8 sm:mb-10 border-b border-stone-200 overflow-x-auto scrollbar-hide snap-x touch-pan-x -mx-6 px-6 sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-          {activeTabs.map((tab, tIdx) => (
-            <button
-              key={`${tab.key}-${tIdx}`}
-              onClick={() => { setFilter(tab.key); setCurrentPage(1); }}
-              className={`px-4 sm:px-5 py-3 text-sm font-semibold border-b-2 whitespace-nowrap shrink-0 snap-start min-h-[44px] transition ${
-                filter === tab.key
-                  ? 'border-stone-900 text-stone-900'
-                  : 'border-transparent text-stone-500 hover:text-stone-700'
-              }`}
-            >
-              {tab.label}
-              <span className={`ml-2 text-xs px-2 py-0.5 rounded-full font-bold ${
-                filter === tab.key ? 'bg-stone-900 text-white' : 'bg-stone-100 text-stone-600'
-              }`}>
-                {tab.count}
-              </span>
-            </button>
-          ))}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 sm:mb-10">
+          <div className="flex gap-2 border-b border-stone-200 overflow-x-auto scrollbar-hide snap-x touch-pan-x -mx-6 px-6 sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+            {activeTabs.map((tab, tIdx) => (
+              <button
+                key={`${tab.key}-${tIdx}`}
+                onClick={() => { setFilter(tab.key); setCurrentPage(1); }}
+                className={`px-4 sm:px-5 py-3 text-sm font-semibold border-b-2 whitespace-nowrap shrink-0 snap-start min-h-[44px] transition ${
+                  filter === tab.key
+                    ? 'border-stone-900 text-stone-900'
+                    : 'border-transparent text-stone-500 hover:text-stone-700'
+                }`}
+              >
+                {tab.label}
+                <span className={`ml-2 text-xs px-2 py-0.5 rounded-full font-bold ${
+                  filter === tab.key ? 'bg-stone-900 text-white' : 'bg-stone-100 text-stone-600'
+                }`}>
+                  {tab.count}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {activeMainTab === 'host' && managerHotels.length > 1 && (
+            <div className="flex items-center gap-2">
+              <FilterIcon className="w-4 h-4 text-stone-400" />
+              <select
+                value={propertyFilter}
+                onChange={e => setPropertyFilter(e.target.value)}
+                className="bg-white border border-stone-200 text-stone-700 text-sm font-medium rounded-xl px-4 py-2 hover:border-stone-300 focus:outline-none focus:ring-2 focus:ring-stone-200 transition appearance-none cursor-pointer pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M7%2010L12%2015L17%2010%22%20stroke%3D%22%2378716C%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_8px_center] bg-[length:16px_16px]"
+              >
+                <option value="all">All properties</option>
+                {managerHotels.map(h => (
+                  <option key={h.id} value={h.id}>{h.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         {activeBookings.length === 0 ? (
@@ -538,6 +567,86 @@ export default function MyBookings() {
                 Open Host Dashboard
               </Link>
             )}
+          </div>
+        ) : activeMainTab === 'host' ? (
+          <div className="bg-white rounded-3xl border border-stone-200 shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm text-stone-600 min-w-[800px]">
+                <thead className="bg-stone-50 text-xs uppercase font-bold text-stone-400 border-b border-stone-200">
+                  <tr>
+                    <th className="px-6 py-4">Guest</th>
+                    <th className="px-6 py-4">Property</th>
+                    <th className="px-6 py-4">Dates</th>
+                    <th className="px-6 py-4">Total</th>
+                    <th className="px-6 py-4">Status</th>
+                    <th className="px-6 py-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-stone-100">
+                  {activeBookings.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((booking, bkIdx) => {
+                    const nights = nightsBetween(booking.checkIn, booking.checkOut);
+                    return (
+                      <tr key={`${booking.id || 'booking'}-${bkIdx}`} className="hover:bg-stone-50/50 transition">
+                        <td className="px-6 py-4">
+                          <div className="font-semibold text-stone-900">{booking.guestName || 'Guest'}</div>
+                          <div className="text-xs">{booking.guestPhone || booking.guestEmail}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <Link to={`/dashboard/hotel/${booking.hotelId}`} className="font-semibold text-stone-900 hover:text-emerald-700 transition truncate max-w-[150px] inline-block">{booking.hotel?.name || 'Property'}</Link>
+                          <div className="text-xs text-stone-500 truncate max-w-[150px]">{booking.room?.name || 'Room'}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="font-medium text-stone-900">{formatDateStr(booking.checkIn)}</div>
+                          <div className="text-xs text-stone-500">{nights} night{nights !== 1 ? 's' : ''}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="font-semibold text-stone-900"><PriceDisplay amount={booking.total ?? 0} currency={booking.currency} /></div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {getStatusBadge(booking.status)}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => setEditBookingTarget(booking)}
+                              className="p-2 text-stone-400 hover:text-stone-900 bg-white border border-stone-200 rounded-xl hover:bg-stone-50 transition"
+                              title="Quick Edit"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            {booking.status === 'pending' && (
+                              <button
+                                onClick={() => setConfirmModalBooking(booking)}
+                                className="p-2 text-emerald-600 hover:text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl hover:bg-emerald-100 transition shadow-sm"
+                                title="Approve Booking"
+                              >
+                                <Check className="w-4 h-4" />
+                              </button>
+                            )}
+                            {booking.status === 'pending' && (
+                              <button
+                                onClick={() => handleRejectHostBooking(booking)}
+                                className="p-2 text-red-600 hover:text-red-700 bg-red-50 border border-red-200 rounded-xl hover:bg-red-100 transition shadow-sm"
+                                title="Decline Booking"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            )}
+                            <button
+                              onClick={() => setVoucherTarget(booking)}
+                              className="p-2 text-stone-400 hover:text-stone-900 bg-white border border-stone-200 rounded-xl hover:bg-stone-50 transition"
+                              title="Guest Voucher"
+                            >
+                              <ShieldCheck className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         ) : (
           <div className="space-y-6">
@@ -588,49 +697,6 @@ export default function MyBookings() {
                       <MapPin className="h-4 w-4 shrink-0" /> <span className="truncate">{booking.hotel?.location || 'Location'}</span>
                     </div>
 
-                    {activeMainTab === 'host' && (
-                      <div className="bg-stone-50 border border-stone-200/80 rounded-2xl p-3.5 mb-5">
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-xs shrink-0">
-                              {(booking.guestName || 'G').charAt(0).toUpperCase()}
-                            </div>
-                            <div>
-                              <p className="text-sm font-bold text-stone-900 leading-tight">
-                                {booking.guestName || 'Guest'}
-                              </p>
-                              <p className="text-xs text-stone-500">{booking.guestEmail || 'No email provided'}</p>
-                            </div>
-                          </div>
-                          <div className="flex flex-wrap items-center gap-2">
-                            {(booking.guestWhatsapp || booking.guestPhone) && (
-                              <>
-                                <a
-                                  href={`https://wa.me/${(booking.guestWhatsapp || booking.guestPhone)?.replace(/[^0-9]/g, '')}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition"
-                                >
-                                  <MessageCircle className="w-3.5 h-3.5" /> WhatsApp Guest
-                                </a>
-                                <a
-                                  href={`tel:${booking.guestWhatsapp || booking.guestPhone}`}
-                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-200 transition"
-                                >
-                                  <Phone className="w-3.5 h-3.5 text-stone-500" /> Call
-                                </a>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                        {booking.specialRequests && (
-                          <div className="text-xs text-stone-600 bg-white p-2 rounded-xl border border-stone-200/60 mt-2.5">
-                            <span className="font-semibold text-stone-800">Special requests:</span> {booking.specialRequests}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
                     <div className="bg-stone-50 rounded-2xl p-3.5 sm:p-4 border border-stone-100 flex flex-col sm:flex-row gap-3 sm:gap-8 mb-6">
                       <div>
                         <p className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-1">Check-in</p>
@@ -652,61 +718,7 @@ export default function MyBookings() {
                     </div>
                   </div>
 
-                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mt-auto">
-                    {activeMainTab === 'host' ? (
-                      <div className="space-y-3">
-                        <div className="flex flex-wrap gap-2">
-                          {booking.status === 'pending' && (
-                            <>
-                              <button
-                                onClick={() => handleConfirmHostBooking(booking)}
-                                disabled={busyId === booking.id}
-                                className="text-xs font-semibold text-white bg-emerald-700 hover:bg-emerald-800 px-4 py-2 rounded-xl transition flex items-center gap-1.5 disabled:opacity-50"
-                              >
-                                <Check className="w-4 h-4" /> Confirm Reservation
-                              </button>
-                              <button
-                                onClick={() => handleRejectHostBooking(booking)}
-                                disabled={busyId === booking.id}
-                                className="text-xs font-semibold text-red-700 border border-red-200 bg-red-50 hover:bg-red-100 px-4 py-2 rounded-xl transition flex items-center gap-1.5 disabled:opacity-50"
-                              >
-                                <X className="w-4 h-4" /> Decline
-                              </button>
-                            </>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => setVoucherTarget(booking)}
-                            className="text-xs font-semibold text-stone-800 border border-stone-300 bg-white px-3.5 py-2 rounded-xl hover:bg-stone-50 transition flex items-center gap-1.5"
-                          >
-                            <ShieldCheck className="w-4 h-4 text-emerald-600" /> Guest Voucher
-                          </button>
-                          {booking.hotelId && (
-                            <Link
-                              to={`/dashboard/hotel/${booking.hotelId}`}
-                              className="text-xs font-semibold text-stone-700 border border-stone-200 bg-stone-50 px-3.5 py-2 rounded-xl hover:bg-stone-100 transition flex items-center gap-1.5"
-                            >
-                              <Building2 className="w-4 h-4 text-stone-500" /> Property Hub
-                            </Link>
-                          )}
-                        </div>
-                        {booking.status === 'pending' && (
-                          <p className="text-xs font-medium text-amber-700 bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-100">
-                            New guest booking awaiting your confirmation.
-                          </p>
-                        )}
-                        {booking.status === 'confirmed' && (
-                          <p className="text-xs font-medium text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100">
-                            Confirmed booking. Payment on arrival.
-                          </p>
-                        )}
-                        {booking.status === 'rejected' && (
-                          <p className="text-xs font-medium text-red-600 bg-red-50 px-3 py-1.5 rounded-lg border border-red-100">
-                            Declined reservation.
-                          </p>
-                        )}
-                      </div>
-                    ) : (
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mt-auto">
                       <div className="space-y-3">
                         <div className="flex flex-wrap gap-2">
                           {booking.status === 'confirmed' && daysUntil(booking.checkOut) >= 0 && (
@@ -768,7 +780,6 @@ export default function MyBookings() {
                           )}
                         </div>
                       </div>
-                    )}
                     <div className="text-left sm:text-right w-full sm:w-auto">
                       <p className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-1">Total Price</p>
                       <div className="text-xl sm:text-2xl font-serif font-bold text-stone-900">
@@ -837,6 +848,96 @@ export default function MyBookings() {
         )}
       </div>
 
+      {confirmModalBooking && (() => {
+        const booking = confirmModalBooking;
+        const hotel = booking.hotel;
+        const room = booking.room;
+        return (
+          <Modal
+            open
+            onClose={() => setConfirmModalBooking(null)}
+            size="md"
+            title="Confirm this booking"
+            description={
+              booking
+                ? `${booking.guestName} · ${room?.name ?? 'Room'} · ${formatDateStr(booking.checkIn)} – ${formatDateStr(booking.checkOut)}`
+                : undefined
+            }
+            footer={
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setConfirmModalBooking(null)}
+                  className="flex-1 bg-stone-100 text-stone-900 px-6 py-3 rounded-full font-semibold text-sm hover:bg-stone-200 transition"
+                >
+                  Not yet
+                </button>
+                <button
+                  onClick={() => {
+                    handleConfirmHostBooking(booking);
+                    setConfirmModalBooking(null);
+                  }}
+                  className="flex-1 bg-emerald-600 text-white px-6 py-3 rounded-full font-semibold text-sm hover:bg-emerald-700 transition"
+                >
+                  Approve booking
+                </button>
+              </div>
+            }
+          >
+            <div className="space-y-4">
+              {booking && (
+                <div className="rounded-2xl border border-stone-200 divide-y divide-stone-100 text-sm">
+                  <div className="flex justify-between px-4 py-3">
+                    <span className="text-stone-500">Guest</span>
+                    <span className="font-semibold text-stone-900">{booking.guestName}</span>
+                  </div>
+                  <div className="flex justify-between px-4 py-3">
+                    <span className="text-stone-500">Stay</span>
+                    <span className="font-semibold text-stone-900 tabular-nums">
+                      {nightsBetween(booking.checkIn, booking.checkOut)} night{nightsBetween(booking.checkIn, booking.checkOut) === 1 ? '' : 's'} · {booking.guests} guest{booking.guests === 1 ? '' : 's'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between px-4 py-3">
+                    <span className="text-stone-500">Total</span>
+                    <PriceDisplay className="text-stone-900" amount={booking.total ?? 0} currency={booking.currency} />
+                  </div>
+                  {booking.guestPhone && (
+                    <div className="flex justify-between px-4 py-3">
+                      <span className="text-stone-500">Phone</span>
+                      <a href={`tel:${booking.guestPhone}`} className="font-semibold text-stone-900 hover:text-emerald-700">{booking.guestPhone}</a>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="bg-amber-50 text-amber-900 px-4 py-3.5 rounded-xl text-sm border border-amber-200">
+                <span className="font-semibold block mb-1">Before you approve</span>
+                <p className="mb-3">Call the guest, or message them on WhatsApp, to agree an arrival time.</p>
+                <div className="flex flex-wrap gap-2">
+                  <a
+                    href={`https://wa.me/${(booking?.guestWhatsapp || booking?.guestPhone || '').replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Hello ${booking?.guestName}, we are processing your booking at ${hotel?.name} for ${booking ? formatDateStr(booking.checkIn) : ''}. Could we quickly confirm your estimated arrival time?`)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 bg-[#25D366] text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-[#20bd5a] transition shadow-sm"
+                  >
+                    <MessageSquare className="w-3.5 h-3.5" /> WhatsApp Guest
+                  </a>
+                  <a
+                    href={`mailto:${booking?.guestEmail || ''}?subject=${encodeURIComponent(`Your booking request at ${hotel?.name}`)}&body=${encodeURIComponent(`Hello ${booking?.guestName},\n\nWe are processing your booking request for ${room?.name} from ${booking ? formatDateStr(booking.checkIn) : ''} to ${booking ? formatDateStr(booking.checkOut) : ''}.\n\nCould we quickly confirm your estimated arrival time before we finalize the booking?\n\nBest regards,\n${hotel?.name}`)}`}
+                    className="inline-flex items-center gap-1.5 bg-stone-900 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-stone-800 transition shadow-sm"
+                  >
+                    <Mail className="w-3.5 h-3.5" /> Email Guest
+                  </a>
+                </div>
+              </div>
+              <div className="bg-stone-50 text-stone-600 px-4 py-3.5 rounded-xl text-sm border border-stone-200">
+                <span className="font-semibold block mb-1 text-stone-900">Payment</span>
+                Remind them that payment is settled directly at the property on arrival.
+              </div>
+            </div>
+          </Modal>
+        );
+      })()}
+
       <ConfirmDialog
         isOpen={!!cancelTarget}
         title="Cancel this booking?"
@@ -869,6 +970,18 @@ export default function MyBookings() {
           }}
         />
       )}
+      {editBookingTarget && (
+        <QuickEditBookingModal
+          booking={editBookingTarget}
+          onClose={() => setEditBookingTarget(null)}
+          onUpdated={() => {
+             // We can just rely on a page reload or state refresh. 
+             // Currently the data might need a refetch if we don't have listeners, but this is acceptable for a quick edit as the user can refresh, or we mutate state manually.
+             window.location.reload();
+          }}
+        />
+      )}
+
     </div>
   );
 }
@@ -1000,6 +1113,69 @@ function ReviewDialog({
           />
           <p className="text-xs text-stone-400 mt-1.5 text-right tabular-nums">{trimmed.length}/{REVIEW_MAX}</p>
           <FieldError message={showErrors ? problem : ''} />
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+function QuickEditBookingModal({ booking, onClose, onUpdated }: { booking: EnrichedBooking, onClose: () => void, onUpdated: () => void }) {
+  const [submitting, setSubmitting] = useState(false);
+  const [guestName, setGuestName] = useState(booking.guestName || '');
+  const [guestPhone, setGuestPhone] = useState(booking.guestPhone || booking.guestWhatsapp || '');
+  const [guestEmail, setGuestEmail] = useState(booking.guestEmail || '');
+  
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!booking.id) return;
+    setSubmitting(true);
+    try {
+      await updateDoc(doc(db, 'bookings', booking.id), {
+        guestName: guestName.trim(),
+        guestPhone: guestPhone.trim(),
+        guestWhatsapp: guestPhone.trim(),
+        guestEmail: guestEmail.trim(),
+        updatedAt: Date.now()
+      });
+      toast.success('Booking updated.');
+      onUpdated();
+      onClose();
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to update booking.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+  
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      size="sm"
+      title="Quick Edit Booking"
+      description={`Update contact details for ${booking.guestName}`}
+      footer={
+        <div className="flex justify-end gap-3 w-full">
+          <button type="button" onClick={onClose} className="px-5 py-2.5 text-sm font-semibold text-stone-600 hover:text-stone-900 transition">Cancel</button>
+          <button type="button" onClick={submit} disabled={submitting} className="px-6 py-2.5 text-sm font-semibold bg-stone-900 text-white rounded-xl hover:bg-stone-800 transition disabled:opacity-50">
+            {submitting ? 'Saving...' : 'Save Changes'}
+          </button>
+        </div>
+      }
+    >
+      <form onSubmit={submit} className="space-y-4">
+        <div>
+          <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Guest Name</label>
+          <input type="text" value={guestName} onChange={e => setGuestName(e.target.value)} className="w-full bg-stone-50 border border-stone-200 text-stone-900 text-sm font-medium rounded-xl px-4 py-3 focus:outline-none focus:border-stone-400 focus:bg-white transition" />
+        </div>
+        <div>
+          <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Phone / WhatsApp</label>
+          <input type="tel" value={guestPhone} onChange={e => setGuestPhone(e.target.value)} className="w-full bg-stone-50 border border-stone-200 text-stone-900 text-sm font-medium rounded-xl px-4 py-3 focus:outline-none focus:border-stone-400 focus:bg-white transition" />
+        </div>
+        <div>
+          <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Email Address</label>
+          <input type="email" value={guestEmail} onChange={e => setGuestEmail(e.target.value)} className="w-full bg-stone-50 border border-stone-200 text-stone-900 text-sm font-medium rounded-xl px-4 py-3 focus:outline-none focus:border-stone-400 focus:bg-white transition" />
         </div>
       </form>
     </Modal>

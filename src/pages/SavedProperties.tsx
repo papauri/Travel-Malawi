@@ -6,14 +6,16 @@ import { Hotel } from '../types';
 import HotelCard from '../components/HotelCard';
 import { useWishlist } from '../hooks/useWishlist';
 import { Link } from 'react-router-dom';
-import { Search, Heart } from 'lucide-react';
+import { Search, Heart, Map } from 'lucide-react';
 import { motion } from 'motion/react';
+import TripPlannerD3 from '../components/TripPlannerD3';
 
 export default function SavedProperties() {
   const { user, loading: authLoading } = useAuth();
   const { savedHotelIds, loading: wishlistLoading } = useWishlist();
   const [savedHotels, setSavedHotels] = useState<Hotel[]>([]);
   const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<'grid' | 'planner'>('grid');
 
   useEffect(() => {
     async function loadSaved() {
@@ -77,9 +79,27 @@ export default function SavedProperties() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 lg:px-8 py-10 mb-20 md:mb-0">
-      <div className="mb-10">
-        <h1 className="text-3xl md:text-4xl font-serif font-medium text-stone-900 tracking-tight">Saved Properties</h1>
-        <p className="text-stone-500 mt-2">Properties you have liked and saved for later.</p>
+      <div className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl md:text-4xl font-serif font-medium text-stone-900 tracking-tight">Saved Properties</h1>
+          <p className="text-stone-500 mt-2">Properties you have liked and saved for later.</p>
+        </div>
+        {savedHotels.length > 0 && (
+          <div className="flex bg-stone-100 p-1 rounded-xl w-fit">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`px-4 py-2 text-sm font-bold rounded-lg transition ${viewMode === 'grid' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-900'}`}
+            >
+              List View
+            </button>
+            <button
+              onClick={() => setViewMode('planner')}
+              className={`px-4 py-2 text-sm font-bold rounded-lg transition flex items-center gap-2 ${viewMode === 'planner' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-900'}`}
+            >
+              <Map className="w-4 h-4" /> Trip Planner
+            </button>
+          </div>
+        )}
       </div>
 
       {savedHotels.length === 0 ? (
@@ -98,13 +118,19 @@ export default function SavedProperties() {
           </Link>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {savedHotels.map((hotel, index) => (
-            <motion.div key={`${hotel.id || 'saved'}-${index}`} layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}>
-              <HotelCard hotel={hotel} index={index} searchParams={{}} />
-            </motion.div>
-          ))}
-        </div>
+        <>
+          {viewMode === 'planner' ? (
+            <TripPlannerD3 hotels={savedHotels} />
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {savedHotels.map((hotel, index) => (
+                <motion.div key={`${hotel.id || 'saved'}-${index}`} layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}>
+                  <HotelCard hotel={hotel} index={index} searchParams={{}} />
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   );

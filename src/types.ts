@@ -198,6 +198,7 @@ export interface Hotel {
   /** Automated email and messaging configuration for guest reminders and sequences */
   emailAutomationSettings?: HotelEmailAutomationSettings;
   whatsappTemplates?: WhatsAppTemplate[];
+  messageTemplates?: MessageTemplate[];
   createdAt: number;
 }
 
@@ -209,6 +210,17 @@ export interface AutomationRuleConfig {
   timeOfDay?: string;
   subjectOverride?: string;
   bodyOverride?: string;
+}
+
+export interface MessageTemplate {
+  id: string;
+  type: 'whatsapp' | 'email';
+  title: string;
+  subject?: string;
+  body: string;
+  enabled: boolean;
+  isCustom: boolean;
+  createdAt: number;
 }
 
 export interface WhatsAppTemplate {

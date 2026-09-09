@@ -301,8 +301,10 @@ export default function PropertyChat({
       if (msgs.length > 0) {
         const lastMsg = msgs[msgs.length - 1];
         if (lastMsg.senderId !== currentUser.uid) {
+          const now = Date.now();
           updateDoc(doc(db, 'hotel_chats', computedChatId), {
-            [isManager ? 'managerLastSeenAt' : 'guestLastSeenAt']: Date.now()
+            [isManager ? 'managerLastSeenAt' : 'guestLastSeenAt']: now,
+            [isManager ? 'managerLastOpenedAt' : 'guestLastOpenedAt']: now
           }).catch(() => {});
         }
       }

@@ -172,17 +172,27 @@ const createLodgePinIcon = (lodge: LodgeMarker, isSelected: boolean) => {
     ? `${lodge.priceCurrency === 'USD' ? '$' : 'MK '}${lodge.priceFrom.toLocaleString()}`
     : lodge.name;
 
-  const bgClasses = isSelected
-    ? 'bg-emerald-800 text-white ring-4 ring-emerald-400/70 scale-110 shadow-2xl z-30'
-    : 'bg-white text-stone-900 border border-stone-300 hover:border-emerald-600 hover:bg-stone-900 hover:text-white shadow-md';
+  if (isSelected) {
+    // Only return an invisible anchor for the popup when selected
+    // This removes the redundant price badge behind the popup card
+    return L.divIcon({
+      html: `<div class="opacity-0 w-8 h-8 pointer-events-none"></div>`,
+      className: 'custom-lodge-marker-hidden bg-transparent border-none',
+      iconSize: [32, 32],
+      iconAnchor: [16, 32],
+      popupAnchor: [0, -32],
+    });
+  }
+
+  const bgClasses = 'bg-white text-stone-900 border border-stone-300 hover:border-emerald-600 hover:bg-stone-900 hover:text-white shadow-md';
 
   const html = `
     <div class="relative flex flex-col items-center justify-center -translate-x-1/2 -translate-y-full cursor-pointer group">
       <div class="px-2.5 py-1 rounded-full font-bold text-xs transition-all duration-200 flex items-center gap-1.5 whitespace-nowrap ${bgClasses}">
-        <span class="w-2 h-2 rounded-full ${isSelected ? 'bg-emerald-300 animate-ping' : 'bg-emerald-500'}"></span>
+        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
         <span class="tracking-tight">${priceDisplay}</span>
       </div>
-      <div class="w-2 h-2 rotate-45 -mt-1 ${isSelected ? 'bg-emerald-800' : 'bg-white group-hover:bg-stone-900'} transition-colors"></div>
+      <div class="w-2 h-2 rotate-45 -mt-1 bg-white group-hover:bg-stone-900 transition-colors"></div>
     </div>
   `;
 
@@ -405,6 +415,10 @@ export default function InteractiveMap({
       doubleClickZoom: interactive,
     });
 
+    if (interactive) {
+      L.control.zoom({ position: 'bottomright' }).addTo(map);
+    }
+
     const streetLayer = createCachedStreetLayer();
     streetLayer.addTo(map);
     tileLayerRef.current = streetLayer;
@@ -557,7 +571,7 @@ export default function InteractiveMap({
     clusterGroupRef.current = targetLayerGroup;
 
     if (fitBoundsToLodges && validLodges.length > 0) {
-      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
+      map.fitBounds(bounds, { padding: [80, 80], maxZoom: 13 });
     }
   }, [mapReady, lodges, enableClustering, showLodgePopups, fitBoundsToLodges]);
 
@@ -573,23 +587,23 @@ export default function InteractiveMap({
           if (showLodgePopups) {
             marker.setPopupContent(createPopupHtml(lodge));
           }
+          const map = mapInstanceRef.current;
           if (clusterGroupRef.current && typeof clusterGroupRef.current.zoomToShowLayer === 'function') {
             clusterGroupRef.current.zoomToShowLayer(marker, () => {
-              marker.openPopup();
+              if (map) {
+                map.flyTo([lodge.coordinates.lat, lodge.coordinates.lng], 12, { animate: true, duration: 1 });
+              }
+              setTimeout(() => {
+                marker.openPopup();
+              }, 200);
             });
           } else {
-            const map = mapInstanceRef.current;
             if (map) {
-              // Offset the center so the popup fits (shift center down by 100 pixels)
-              const pt = map.project([lodge.coordinates.lat, lodge.coordinates.lng], map.getZoom());
-              pt.y -= 150;
-              const offsetLatLng = map.unproject(pt, map.getZoom());
-              map.panTo(offsetLatLng, { animate: true });
+              map.flyTo([lodge.coordinates.lat, lodge.coordinates.lng], 12, { animate: true, duration: 1 });
             }
-            // Add a small delay to allow pan to start before opening popup to prevent visual jitter
             setTimeout(() => {
               if (marker) marker.openPopup();
-            }, 100);
+            }, 500);
           }
         }
       }
@@ -723,7 +737,7 @@ export default function InteractiveMap({
 
         // Fit bounds to entire road route
         const bounds = L.latLngBounds(roadCoords);
-        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+        map.fitBounds(bounds, { padding: [120, 120], maxZoom: 13 });
       }
     } else {
       if (originMarkerRef.current) {
@@ -913,7 +927,7 @@ export default function InteractiveMap({
 
       // Smoothly frame entire road route on the map
       const bounds = L.latLngBounds(roadCoords);
-      map.fitBounds(bounds, { padding: [60, 60], maxZoom: 15 });
+      map.fitBounds(bounds, { paddingTopLeft: [120, 280], paddingBottomRight: [120, 120], maxZoom: 11 });
     } else {
       if (userRouteCasingRef.current) {
         map.removeLayer(userRouteCasingRef.current);
@@ -937,15 +951,15 @@ export default function InteractiveMap({
 
     if (isValidLatLng(markerPosition) && !isValidLatLng(origin)) {
       if (interactive && !!onMarkerChange) {
-        map.setView([markerPosition.lat, markerPosition.lng], zoom, { animate: true });
+        map.setView([markerPosition.lat, markerPosition.lng], map.getZoom(), { animate: true });
       } else {
         const pt = map.project([markerPosition.lat, markerPosition.lng], zoom || 13);
         pt.y -= 120;
         const offsetLatLng = map.unproject(pt, zoom || 13);
-        map.setView(offsetLatLng, zoom, { animate: true });
+        map.setView(offsetLatLng, zoom || 13, { animate: true });
       }
     } else if (isValidLatLng(center) && !isValidLatLng(markerPosition) && (!lodges || lodges.length === 0)) {
-      map.setView([center.lat, center.lng], zoom, { animate: true });
+      map.setView([center.lat, center.lng], map.getZoom(), { animate: true });
     }
   }, [center, markerPosition, zoom, lodges]);
 
@@ -988,7 +1002,7 @@ export default function InteractiveMap({
       [userLocation.lat, userLocation.lng],
       [selectedLodge.coordinates.lat, selectedLodge.coordinates.lng],
     ]);
-    map.fitBounds(bounds, { padding: [60, 60], maxZoom: 15 });
+    map.fitBounds(bounds, { paddingTopLeft: [120, 280], paddingBottomRight: [120, 120], maxZoom: 11 });
   };
 
   const handleCenterOnPin = () => {

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { 
   Building2, 
   CheckCircle2, 
@@ -29,12 +29,19 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
-import { isAdmin } from '../lib/roles';
+import { isAdmin, isMarketing } from '../lib/roles';
 
 export default function MarketingDeck() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
   const isGlobalAdmin = isAdmin(user);
   const [copiedScript, setCopiedScript] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!loading && (!user || (!isAdmin(user) && !isMarketing(user)))) {
+      navigate('/');
+    }
+  }, [user, loading, navigate]);
 
   const copyToClipboard = (text: string, id: string) => {
     navigator.clipboard.writeText(text);

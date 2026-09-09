@@ -4,25 +4,24 @@
  */
 
 import React, { useEffect, useState, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useAuthDialog } from '../contexts/AuthDialogContext';
 import { LogOut, Bell, Palmtree, ChevronDown, LayoutDashboard, Briefcase, ShieldCheck, Building2, Volume2, VolumeX, Heart, UserCircle, BookOpen, MessageSquare } from 'lucide-react';
 import { isSoundEnabled, onSoundPreferenceChange, setSoundEnabled } from '../lib/notificationSound';
-import { readStoredCurrency, storeCurrency, onCurrencyChange } from '../lib/currency';
-import { CurrencyCode } from '../types';
 import { requestBrowserNotifications } from './GlobalNotificationManager';
 import { describeRoles, isAdmin, isGlobalAdmin, isMarketing, isHotelManager, isTraveller } from '../lib/roles';
 import { useUnreadBroadcasts } from '../hooks/useUnreadBroadcasts';
 import { useUnreadMessages } from '../hooks/useUnreadMessages';
 import { usePresence, PresenceStatus } from '../hooks/usePresence';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, getDocs, limit } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import NotificationBell from './NotificationBell';
 import ActiveChatsMenu from './ActiveChatsMenu';
 
 export default function Navbar() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, logOut } = useAuth();
   const { openAuth } = useAuthDialog();
   const unreadBroadcasts = useUnreadBroadcasts();
@@ -31,13 +30,8 @@ export default function Navbar() {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const [soundOn, setSoundOn] = useState(isSoundEnabled);
-  const [currency, setCurrency] = useState<CurrencyCode>(readStoredCurrency);
   const menuRef = useRef<HTMLDivElement>(null);
-
-
-  useEffect(() => {
-    return onCurrencyChange(setCurrency);
-  }, []);
+  const activeChatsMenuRef = useRef<{ openMenu: () => void }>(null);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent | TouchEvent) {
@@ -79,7 +73,25 @@ export default function Navbar() {
     ? user.displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
     : user?.email?.[0]?.toUpperCase() ?? '?';
 
-  const hosting = isHotelManager(user);
+  const [hasProperties, setHasProperties] = useState(false);
+  useEffect(() => {
+    if (user && !isHotelManager(user)) {
+      const checkProperties = async () => {
+        try {
+          const q = query(collection(db, 'hotels'), where('managerId', '==', user.uid), limit(1));
+          const snapshot = await getDocs(q);
+          if (!snapshot.empty) {
+            setHasProperties(true);
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      };
+      checkProperties();
+    }
+  }, [user]);
+
+  const hosting = isHotelManager(user) || hasProperties;
 
   return (
     <nav className="sticky top-0 z-[100] w-full bg-white/95 backdrop-blur-md border-b border-stone-200/60 shadow-xs">
@@ -105,7 +117,7 @@ export default function Navbar() {
                   {hosting ? (
                     <Link
                       to="/dashboard"
-                      className="text-sm font-medium text-stone-600 hover:text-stone-900 transition flex items-center gap-1"
+                      className={`text-sm font-medium transition relative after:absolute after:-bottom-1 after:left-0 after:h-0.5 after:bg-stone-900 after:transition-all flex items-center gap-1 ${location.pathname.startsWith('/dashboard') ? 'text-stone-900 after:w-full' : 'text-stone-600 hover:text-stone-900 after:w-0 hover:after:w-full'}`}
                     >
                       Dashboard
                       {pendingCount > 0 && (
@@ -129,7 +141,7 @@ export default function Navbar() {
                   {(isAdmin(user) || isMarketing(user)) && (
                     <Link
                       to="/admin"
-                      className="text-sm font-medium text-stone-600 hover:text-stone-900 transition relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-stone-900 after:transition-all hover:after:w-full"
+                      className={`text-sm font-medium transition relative after:absolute after:-bottom-1 after:left-0 after:h-0.5 after:bg-stone-900 after:transition-all ${location.pathname.startsWith('/admin') ? 'text-stone-900 after:w-full' : 'text-stone-600 hover:text-stone-900 after:w-0 hover:after:w-full'}`}
                     >
                       Admin
                     </Link>
@@ -138,52 +150,24 @@ export default function Navbar() {
                     <>
                       <Link
                         to="/saved"
-                        className="text-sm font-medium text-stone-600 hover:text-stone-900 transition relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-stone-900 after:transition-all hover:after:w-full"
+                        className={`text-sm font-medium transition relative after:absolute after:-bottom-1 after:left-0 after:h-0.5 after:bg-stone-900 after:transition-all ${location.pathname === '/saved' ? 'text-stone-900 after:w-full' : 'text-stone-600 hover:text-stone-900 after:w-0 hover:after:w-full'}`}
                       >
                         Saved
                       </Link>
                       <Link
                         to="/my-bookings"
-                        className="text-sm font-medium text-stone-600 hover:text-stone-900 transition relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-stone-900 after:transition-all hover:after:w-full"
+                        className={`text-sm font-medium transition relative after:absolute after:-bottom-1 after:left-0 after:h-0.5 after:bg-stone-900 after:transition-all ${location.pathname.startsWith('/my-bookings') ? 'text-stone-900 after:w-full' : 'text-stone-600 hover:text-stone-900 after:w-0 hover:after:w-full'}`}
                       >
                         My Bookings
                       </Link>
                     </>
                   )}
-
-                  {/* Global Currency Switcher */}
-                  <div className="flex items-center bg-stone-100 p-0.5 rounded-full border border-stone-200/90 text-xs font-bold shadow-2xs">
-                    <button
-                      type="button"
-                      onClick={() => { setCurrency('MWK'); storeCurrency('MWK'); }}
-                      className={`px-2.5 py-1 rounded-full transition-all cursor-pointer ${
-                        currency === 'MWK'
-                          ? 'bg-white text-stone-900 shadow-xs'
-                          : 'text-stone-500 hover:text-stone-900'
-                      }`}
-                      title="Malawi Kwacha (Default)"
-                    >
-                      MWK
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setCurrency('USD'); storeCurrency('USD'); }}
-                      className={`px-2.5 py-1 rounded-full transition-all cursor-pointer ${
-                        currency === 'USD'
-                          ? 'bg-white text-stone-900 shadow-xs'
-                          : 'text-stone-500 hover:text-stone-900'
-                      }`}
-                      title="US Dollar"
-                    >
-                      USD
-                    </button>
-                  </div>
                 </div>
 
                 {/* Active Chats & Notification Bell */}
                 {user && (
                   <div className="flex items-center gap-1">
-                    <ActiveChatsMenu />
+                    <ActiveChatsMenu ref={activeChatsMenuRef} />
                     <NotificationBell />
                   </div>
                 )}
@@ -286,10 +270,8 @@ export default function Navbar() {
                           type="button"
                           onClick={() => {
                             setShowUserMenu(false);
-                            if (hosting) {
-                              navigate('/dashboard?tab=inquiries');
-                            } else {
-                              navigate('/my-bookings');
+                            if (activeChatsMenuRef.current) {
+                              activeChatsMenuRef.current.openMenu();
                             }
                           }}
                           className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-stone-600 hover:bg-stone-50 hover:text-stone-900 transition text-left cursor-pointer"
@@ -351,34 +333,6 @@ export default function Navbar() {
               <div className="flex items-center space-x-3 sm:space-x-4">
                 {/* Secondary navigation options for visitors */}
                 <div className="hidden sm:flex items-center space-x-3 sm:space-x-4">
-                  {/* Global Currency Switcher */}
-                  <div className="flex items-center bg-stone-100 p-0.5 rounded-full border border-stone-200/90 text-xs font-bold shadow-2xs">
-                    <button
-                      type="button"
-                      onClick={() => { setCurrency('MWK'); storeCurrency('MWK'); }}
-                      className={`px-2.5 py-1 rounded-full transition-all cursor-pointer ${
-                        currency === 'MWK'
-                          ? 'bg-white text-stone-900 shadow-xs'
-                          : 'text-stone-500 hover:text-stone-900'
-                      }`}
-                      title="Malawi Kwacha (Default)"
-                    >
-                      MWK
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setCurrency('USD'); storeCurrency('USD'); }}
-                      className={`px-2.5 py-1 rounded-full transition-all cursor-pointer ${
-                        currency === 'USD'
-                          ? 'bg-white text-stone-900 shadow-xs'
-                          : 'text-stone-500 hover:text-stone-900'
-                      }`}
-                      title="US Dollar"
-                    >
-                      USD
-                    </button>
-                  </div>
-
                   <Link
                     to="/list-your-property"
                     className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-stone-200 hover:border-stone-300 bg-stone-50 hover:bg-stone-100 text-stone-700 hover:text-stone-900 text-xs font-medium transition shadow-2xs"

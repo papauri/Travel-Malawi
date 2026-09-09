@@ -1,13 +1,14 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import Pagination from '../components/Pagination';
-import { Search, MapPin, Calendar, Users, Star, LocateFixed, Locate, ChevronDown, Plus, Minus, ShieldCheck, MessageCircle, Smartphone, X, Clock, LayoutGrid, Map as MapIcon, Compass, Navigation, SlidersHorizontal, RotateCcw, Filter, Check, Car, ExternalLink, Route, ArrowRight, Building2, CheckCircle2, BookOpen } from 'lucide-react';
+import { Search, MapPin, Calendar, Users, Star, LocateFixed, Locate, ChevronDown, Plus, Minus, ShieldCheck, MessageCircle, Smartphone, X, Clock, LayoutGrid, Map as MapIcon, Compass, Navigation, SlidersHorizontal, RotateCcw, Filter, Check, Car, ExternalLink, Route, ArrowRight, Building2, CheckCircle2, BookOpen, AlignJustify } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { collection, getDocs, getDoc, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Hotel, RoomType, Review, CurrencyCode } from '../types';
 import { Link, useSearchParams } from 'react-router-dom';
 import HotelCard from '../components/HotelCard';
+import CompactHotelCard from '../components/CompactHotelCard';
 import SmartImage from '../components/SmartImage';
 import InteractiveMap, { LodgeMarker } from '../components/InteractiveMap';
 import PriceRangeFilter from '../components/PriceRangeFilter';
@@ -78,12 +79,12 @@ const FALLBACK_DESTINATIONS = ['Lake Malawi', 'Likoma', 'Zomba', 'Liwonde', 'Lil
 export default function Home() {
   const today = todayStr();
 
-  const [hotels, setHotels] = useState<Hotel[]>(() => getCachedHotels());
-  const [rooms, setRooms] = useState<RoomType[]>(() => getCachedRooms());
+  const [hotels, setHotels] = useState<Hotel[]>([]);
+  const [rooms, setRooms] = useState<RoomType[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [bookings, setBookings] = useState<BookingLike[]>([]);
   const [bookingsLoaded, setBookingsLoaded] = useState(false);
-  const [loading, setLoading] = useState(() => getCachedHotels().length === 0);
+  const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
   const [activeCategory, setActiveCategory] = useState('All');
   const [activeAmenities, setActiveAmenities] = useState<string[]>([]);
@@ -92,7 +93,7 @@ export default function Home() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6;
   const [currency, setCurrency] = useState<CurrencyCode>(readStoredCurrency);
-  const [viewMode, setViewMode] = useState<'grid' | 'map'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'map' | 'compact'>('grid');
   const [selectedMapLodgeId, setSelectedMapLodgeId] = useState<string | null>(null);
   const { user } = useAuth();
   const { openAuth } = useAuthDialog();
@@ -381,9 +382,12 @@ export default function Home() {
         saveCachedRooms(roomsData);
       } catch (error) {
         console.error("Error fetching hotels:", error);
-        // If offline / network fails, fallback data from cache is already in state
-        if (getCachedHotels().length > 0) {
+        // If offline / network fails, fallback data from cache
+        const fallbackHotels = getCachedHotels();
+        if (fallbackHotels.length > 0) {
           toast('Using cached offline lodge data', { icon: '📡' });
+          setHotels(fallbackHotels);
+          setRooms(getCachedRooms());
         }
       } finally {
         setLoading(false);
@@ -669,7 +673,7 @@ export default function Home() {
   }, [searchLocation, hotels]);
 
   const hasSearch = !!(appliedSearch.location || appliedSearch.coords || appliedSearch.checkIn || appliedSearch.guests);
-  const shouldShowAcquisitionBanner = !hasSearch && (!user || !hasUserListed);
+  const shouldShowAcquisitionBanner = !hasSearch && (!user || (!hasUserListed && user.roles?.[0] !== 'admin'));
 
   /**
    * The one-tap destinations under the search bar. Taken from the listings
@@ -1434,11 +1438,7 @@ export default function Home() {
                         alt={entry.hotel.name}
                         className="absolute inset-0 w-full h-full object-cover transition duration-700 ease-out group-hover:scale-105"
                       />
-                      {entry.hotel.featured ? (
-                        <span className="absolute top-3.5 left-3.5 flex items-center gap-1.5 bg-stone-900/90 backdrop-blur-md text-white text-[0.65rem] font-bold px-3 py-1.5 rounded-full uppercase tracking-[0.12em] shadow-md">
-                          <Star className="h-3 w-3 fill-amber-400 text-amber-400" /> Featured
-                        </span>
-                      ) : index === 0 && !hasPromotedFeatures ? (
+                      {index === 0 && !hasPromotedFeatures ? (
                         <span className="absolute top-3.5 left-3.5 bg-white/95 backdrop-blur-md text-stone-900 text-[0.65rem] font-bold px-3 py-1.5 rounded-full uppercase tracking-[0.12em] shadow-md">
                           Best rated
                         </span>
@@ -1837,10 +1837,10 @@ export default function Home() {
         <div className="flex items-center justify-between border-b border-stone-200 pb-3 mb-6 gap-3">
           <div className="flex items-center gap-2 sm:gap-3">
             <span className="text-sm font-bold text-stone-900">
-              {viewMode === 'grid' ? `${filteredHotels.length} Stays Found` : `${lodgeMarkers.length} Stays on Map`}
+              {viewMode === 'grid' || viewMode === 'compact' ? `${filteredHotels.length} Stays Found` : `${lodgeMarkers.length} Stays on Map`}
             </span>
             <span className="text-xs text-stone-500 hidden sm:inline">
-              {viewMode === 'grid' 
+              {viewMode === 'grid' || viewMode === 'compact'
                 ? `· Page ${currentPage} of ${Math.max(1, Math.ceil(filteredHotels.length / itemsPerPage))}`
                 : `· Interactive clustered map`
               }
@@ -1862,10 +1862,28 @@ export default function Home() {
                   ? 'bg-white text-stone-900 shadow-xs font-bold'
                   : 'text-stone-500 hover:text-stone-900'
               }`}
-              aria-label="List view"
+              aria-label="Grid view"
             >
               <LayoutGrid className="w-3.5 h-3.5 text-stone-700" />
-              <span>List</span>
+              <span className="hidden sm:inline">Grid</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setViewMode('compact');
+                setTimeout(() => {
+                  document.getElementById('compact-canvas')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 50);
+              }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer select-none ${
+                viewMode === 'compact'
+                  ? 'bg-white text-stone-900 shadow-xs font-bold'
+                  : 'text-stone-500 hover:text-stone-900'
+              }`}
+              aria-label="Compact view"
+            >
+              <AlignJustify className="w-3.5 h-3.5 text-stone-700" />
+              <span className="hidden sm:inline">List</span>
             </button>
             <button
               type="button"
@@ -1883,7 +1901,7 @@ export default function Home() {
               aria-label="Map view"
             >
               <MapIcon className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Map</span>
+              <span className="hidden sm:inline">Map</span>
             </button>
           </div>
         </div>
@@ -1935,6 +1953,58 @@ export default function Home() {
                     />
                   )) : (
                     <div className="col-span-full py-16 flex flex-col items-center justify-center text-center">
+                      <div className="w-16 h-16 bg-stone-100 rounded-full flex items-center justify-center mb-4">
+                        <Search className="w-6 h-6 text-stone-400" />
+                      </div>
+                      <h3 className="text-xl font-serif font-bold text-stone-900 mb-2">Nothing free on those terms</h3>
+                      <p className="text-stone-500 text-sm max-w-md mb-6">
+                        Try a wider stretch of dates, a smaller party, or somewhere else along the lake —
+                        most properties have more room midweek.
+                      </p>
+                      <button
+                        onClick={clearFilters}
+                        className="bg-stone-900 text-white px-6 py-2.5 rounded-full text-sm font-semibold hover:bg-stone-800 transition shadow-sm"
+                      >
+                        Start the search over
+                      </button>
+                    </div>
+                  )}
+                </div>
+                
+                {filteredHotels.length > itemsPerPage && (
+                  <div className="mt-8">
+                    <Pagination
+                      currentPage={currentPage}
+                      totalPages={Math.ceil(filteredHotels.length / itemsPerPage)}
+                      onPageChange={setCurrentPage}
+                    />
+                  </div>
+                )}
+              </div>
+            ) : viewMode === 'compact' ? (
+              /* COMPACT LIST VIEW */
+              <div>
+                <div id="compact-canvas" className="scroll-mt-24 flex flex-col gap-3 md:gap-4">
+                  {filteredHotels.length > 0 ? filteredHotels.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((entry, index) => (
+                    <CompactHotelCard
+                      key={`hotel-card-compact-${entry.hotel.id || 'h'}-${index}`}
+                      hotel={entry.hotel}
+                      rating={entry.rating?.average}
+                      minPrice={entry.priceFrom}
+                      searchParams={{
+                        checkIn: appliedSearch.checkIn,
+                        checkOut: appliedSearch.checkOut,
+                        guests: appliedSearch.guests || undefined,
+                        currency
+                      }}
+                      isAvailable={
+                        (appliedSearch.checkIn && appliedSearch.checkOut)
+                          ? entry.matching.length > 0
+                          : undefined
+                      }
+                    />
+                  )) : (
+                    <div className="py-16 flex flex-col items-center justify-center text-center">
                       <div className="w-16 h-16 bg-stone-100 rounded-full flex items-center justify-center mb-4">
                         <Search className="w-6 h-6 text-stone-400" />
                       </div>

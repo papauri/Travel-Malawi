@@ -11,8 +11,8 @@ export interface AIStatus {
 }
 
 export interface AIGenerateOptions {
-  action: 'draft' | 'polish' | 'shorten' | 'highlights' | 'suggest_amenities' | 'suggest_rooms' | 'review_listing' | 'suggest_rate' | 'lookup_property';
-  entityType: 'property' | 'room' | 'conference' | 'dining';
+  action: 'draft' | 'polish' | 'shorten' | 'highlights' | 'suggest_amenities' | 'suggest_rooms' | 'review_listing' | 'suggest_rate' | 'lookup_property' | 'write_message_template';
+  entityType: 'property' | 'room' | 'conference' | 'dining' | 'hotel';
   currentText?: string;
   details?: {
     name?: string;
@@ -23,6 +23,10 @@ export interface AIGenerateOptions {
     capacity?: number;
     extraNotes?: string;
     roomsCount?: number;
+    prompt?: string;
+    property?: string;
+    type?: string;
+    instructions?: string;
   };
 }
 

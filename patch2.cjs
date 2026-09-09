@@ -1,11 +1,6 @@
 const fs = require('fs');
-let code = fs.readFileSync('src/pages/ManageHotel.tsx', 'utf8');
+let code = fs.readFileSync('src/components/Navbar.tsx', 'utf8');
 
-code = code.replace(
-  `{/* Manager WhatsApp controls (ONLY visible when WhatsApp is enabled in Admin Portal) */}
-                          {whatsappEnabled && (`,
-  `{/* Manager WhatsApp controls */}
-                          {`
-);
+code = code.replace(/after:bottom-0/g, "after:-bottom-1");
 
-fs.writeFileSync('src/pages/ManageHotel.tsx', code);
+fs.writeFileSync('src/components/Navbar.tsx', code);

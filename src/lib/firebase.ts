@@ -9,9 +9,7 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 
-// Initialize Firestore with offline persistence enabled across multiple tabs
-export const db = initializeFirestore(app, {
-  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
-}, firebaseConfig.firestoreDatabaseId);
+// Initialize Firestore
+export const db = initializeFirestore(app, {}, firebaseConfig.firestoreDatabaseId);
 
 export const storage = getStorage(app, firebaseConfig.storageBucket);

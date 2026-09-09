@@ -28,7 +28,7 @@ export default function CompareWidget() {
           >
             <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
               <Scale className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400 shrink-0" />
-              <span className="font-medium text-sm sm:text-base whitespace-nowrap hidden sm:inline">{selectedHotels.length} selected</span>
+              <span className="font-serif italic text-sm text-emerald-100 hidden sm:inline mr-1">Compare</span><span className="font-medium text-sm sm:text-base whitespace-nowrap hidden sm:inline text-stone-300">{selectedHotels.length} selected</span>
               
             </div>
             
