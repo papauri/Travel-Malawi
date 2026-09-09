@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
-import { createBrowserRouter, RouterProvider, Outlet, useLocation, Link } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider, Outlet, useLocation, Link, useRouteError, isRouteErrorResponse } from 'react-router-dom';
+import { AlertTriangle } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AuthDialogProvider } from './contexts/AuthDialogContext';
 import { ChatModalProvider } from './contexts/ChatModalContext';
@@ -42,6 +43,39 @@ function NotFound() {
       <Link to="/" className="bg-stone-900 text-white px-8 py-3 rounded-full font-medium hover:bg-stone-800 transition">
         Back to home
       </Link>
+    </div>
+  );
+}
+
+function RouteErrorBoundary() {
+  const error = useRouteError();
+  if (isRouteErrorResponse(error) && error.status === 404) {
+    return <NotFound />;
+  }
+  console.error("Route error:", error);
+  return (
+    <div className="min-h-[60vh] flex flex-col items-center justify-center text-center px-6 py-16">
+      <div className="w-14 h-14 bg-amber-100 text-amber-700 rounded-full flex items-center justify-center mb-4">
+        <AlertTriangle className="w-7 h-7" />
+      </div>
+      <h1 className="text-3xl font-serif text-stone-900 mb-3">Something went wrong</h1>
+      <p className="text-stone-500 text-base max-w-md mb-6">
+        An unexpected error occurred while loading this page.
+      </p>
+      <div className="flex gap-4">
+        <button
+          onClick={() => window.location.reload()}
+          className="bg-stone-900 text-white px-6 py-2.5 rounded-full font-medium hover:bg-stone-800 transition cursor-pointer"
+        >
+          Reload Page
+        </button>
+        <Link
+          to="/"
+          className="bg-stone-100 text-stone-700 px-6 py-2.5 rounded-full font-medium hover:bg-stone-200 transition"
+        >
+          Back to Home
+        </Link>
+      </div>
     </div>
   );
 }
@@ -117,7 +151,7 @@ const router = createBrowserRouter([
     element: <RootLayout />,
     errorElement: (
       <RootLayout>
-        <NotFound />
+        <RouteErrorBoundary />
       </RootLayout>
     ),
     children: [
@@ -127,6 +161,12 @@ const router = createBrowserRouter([
       { path: "dashboard", element: <ManagerDashboard /> },
       { path: "dashboard/hotel/:id", element: <ManageHotel /> },
       { path: "my-bookings", element: <MyBookings /> },
+      { path: "bookings", element: <MyBookings /> },
+      { path: "mybookings", element: <MyBookings /> },
+      { path: "my-booking", element: <MyBookings /> },
+      { path: "booking", element: <MyBookings /> },
+      { path: "trips", element: <MyBookings /> },
+      { path: "my-trips", element: <MyBookings /> },
       { path: "saved", element: <SavedProperties /> },
       { path: "profile", element: <Profile /> },
       { path: "admin", element: <AdminDashboard /> },

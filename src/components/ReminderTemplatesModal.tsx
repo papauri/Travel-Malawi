@@ -11,7 +11,7 @@ import {
 import { getHotelDepositInfo } from '../lib/depositInfo';
 import { 
   Mail, Send, Calendar, Clock, CheckCircle2, MessageSquare, 
-  Sparkles, AlertCircle, RefreshCw, Copy, Check, ExternalLink,
+  AlertCircle, RefreshCw, Copy, Check, ExternalLink,
   Smartphone, Save
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -276,7 +276,7 @@ export default function ReminderTemplatesModal({
       return;
     }
 
-    const channel = whatsappEnabled ? scheduleChannel : 'email';
+    const channel = scheduleChannel;
     if (channel === 'email' && !recipientEmail) {
       toast.error('Please enter a recipient email address for scheduling.');
       return;
@@ -461,7 +461,7 @@ export default function ReminderTemplatesModal({
               </div>
 
               {/* Guest recipient contacts */}
-              {whatsappEnabled ? (
+              {true ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-bold text-stone-700 mb-1">
@@ -585,7 +585,7 @@ export default function ReminderTemplatesModal({
                 </button>
 
                 {/* WhatsApp buttons (ONLY rendered if WhatsApp is enabled in Admin Portal) */}
-                {whatsappEnabled && (
+                {true && (
                   <>
                     <button
                       type="button"
@@ -617,7 +617,7 @@ export default function ReminderTemplatesModal({
 
               {/* Schedule option row */}
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-2 border-t border-stone-100">
-                {whatsappEnabled && (
+                {true && (
                   <div className="flex items-center gap-1 p-1 bg-stone-100 rounded-xl shrink-0">
                     <button
                       type="button"
@@ -654,7 +654,7 @@ export default function ReminderTemplatesModal({
                   className="px-4 py-2 bg-stone-800 hover:bg-stone-900 text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 disabled:opacity-40 shrink-0 cursor-pointer"
                 >
                   {scheduling ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Clock className="w-3.5 h-3.5" />}
-                  Schedule {whatsappEnabled && scheduleChannel === 'whatsapp' ? 'WhatsApp' : 'Email'}
+                  Schedule {scheduleChannel === 'whatsapp' ? 'WhatsApp' : 'Email'}
                 </button>
               </div>
             </div>

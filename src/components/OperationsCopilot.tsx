@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  X, Send, RotateCcw, Check, 
-  ChevronDown, Sparkles, ExternalLink, Calendar, Building, DollarSign, 
+  X, Send, RotateCcw, Check, Copy,
+  ChevronDown, Compass, ExternalLink, Calendar, Building, DollarSign, 
   TrendingUp, Clock, AlertCircle, Loader2, CheckCircle2, ShieldAlert,
   ArrowRight, Settings2, Sliders, Info, SlidersHorizontal, ConciergeBell,
   Utensils, Coffee, CheckCheck, Layers, ShieldCheck, Minus, Maximize2, Minimize2, Menu
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
@@ -97,8 +99,74 @@ export function ConciergeAvatar({
   );
 }
 
+/**
+ * Normalizes Markdown content to ensure tables and structured blocks render cleanly:
+ * 1. Repairs Markdown table rows glued on a single line with `| |` or `||`
+ * 2. Ensures blank lines before and after Markdown tables for proper block parsing
+ * 3. Cleans up stray double pipes
+ */
+export function formatMarkdownForDisplay(raw: string): string {
+  if (!raw) return '';
+  let text = raw;
+
+  // Fix table rows joined on a single line with `| |` or `||`
+  // e.g., "| Col A | Col B | | :--- | :--- | | Val 1 | Val 2 |" -> proper newlines
+  text = text.replace(/\|\s*\|\s*(?=[^:\s|])/g, '|\n| ');
+  text = text.replace(/\|\s*\|\s*(?=:\s*-)/g, '|\n| ');
+  text = text.replace(/\|\s*\|\s*(?=-\s*:)/g, '|\n| ');
+
+  // Ensure table header separator glued to row is separated
+  text = text.replace(/(\|[-:\s|]+\|)\s*\|(?=[^:\s|])/g, '$1\n|');
+
+  // Ensure markdown tables have blank lines before and after them
+  text = text.replace(/([^\n])\n(\|[^\n]+\|)\n(\|[-:\s|]+\|)/g, '$1\n\n$2\n$3');
+  text = text.replace(/(\|[^\n]+\|)\n([^|\s\n])/g, '$1\n\n$2');
+
+  return text;
+}
+
+/**
+ * Formats table cell content with clear status pill badges for operational states
+ */
+function FormattedTableCell({ children }: { children: React.ReactNode }) {
+  if (typeof children === 'string') {
+    const trimmed = children.trim();
+    // Affirmative / Approved / Active / Yes
+    if (/^(✅\s*)?(yes|true|active|approved|confirmed|live)$/i.test(trimmed)) {
+      const label = trimmed.replace(/^[✅\s]+/, '') || 'Yes';
+      return (
+        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+          <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600 shrink-0" />
+          <span className="capitalize">{label}</span>
+        </span>
+      );
+    }
+    // Negative / Rejected / Inactive / No
+    if (/^(❌\s*)?(no|false|rejected|cancelled|disabled|inactive)$/i.test(trimmed)) {
+      const label = trimmed.replace(/^[❌\s]+/, '') || 'No';
+      return (
+        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+          <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
+          <span className="capitalize">{label}</span>
+        </span>
+      );
+    }
+    // Pending / Review
+    if (/^(⏳\s*)?(pending|under review|in review)$/i.test(trimmed)) {
+      return (
+        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+          <Clock className="w-2.5 h-2.5 text-amber-600 shrink-0" />
+          <span>{trimmed}</span>
+        </span>
+      );
+    }
+  }
+  return <>{children}</>;
+}
+
 export default function OperationsCopilot() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { status: aiStatus, operationsChat, generating } = useAIAssistant();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -119,8 +187,23 @@ export default function OperationsCopilot() {
   const [dataLoading, setDataLoading] = useState(false);
   const [hasFetched, setHasFetched] = useState(false);
 
-  // Chat conversation
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  // Chat conversation with session persistence
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    if (typeof window !== 'undefined' && user?.uid) {
+      try {
+        const stored = sessionStorage.getItem(`operations_copilot_session_${user.uid}`);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return parsed;
+          }
+        }
+      } catch (err) {
+        console.warn('Could not restore session messages:', err);
+      }
+    }
+    return [];
+  });
   const [inputMessage, setInputMessage] = useState('');
   const [executingAction, setExecutingAction] = useState<string | null>(null);
   const [activeQueryIntent, setActiveQueryIntent] = useState<QueryIntent>('greeting_or_chat');
@@ -130,6 +213,16 @@ export default function OperationsCopilot() {
 
   // Tracks interactive hotel selection for each proposed action { [msgId]: hotelId[] }
   const [proposalHotelSelections, setProposalHotelSelections] = useState<Record<string, string[]>>({});
+  const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
+
+  const handleCopyMessage = useCallback((id: string, text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedMsgId(id);
+    toast.success('Copied content to clipboard', { duration: 2000 });
+    setTimeout(() => {
+      setCopiedMsgId(curr => (curr === id ? null : curr));
+    }, 2200);
+  }, []);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatScrollContainerRef = useRef<HTMLDivElement>(null);
@@ -326,7 +419,22 @@ export default function OperationsCopilot() {
     }
   }, [userDisplayName, userIsAdmin, properties]);
 
-  // Initial welcome message distinguishing Global Admin vs Manager
+  // Persist messages to sessionStorage across page navigations in current session
+  useEffect(() => {
+    if (typeof window !== 'undefined' && user?.uid) {
+      try {
+        if (messages.length > 0) {
+          sessionStorage.setItem(`operations_copilot_session_${user.uid}`, JSON.stringify(messages));
+        } else {
+          sessionStorage.removeItem(`operations_copilot_session_${user.uid}`);
+        }
+      } catch (err) {
+        console.warn('Could not save session messages:', err);
+      }
+    }
+  }, [messages, user?.uid]);
+
+  // Initial welcome message distinguishing Global Admin vs Manager (only if session has no prior history)
   useEffect(() => {
     if (!hasInitializedWelcomeRef.current && messages.length === 0 && isAuthorized && hasFetched) {
       hasInitializedWelcomeRef.current = true;
@@ -335,12 +443,20 @@ export default function OperationsCopilot() {
   }, [isAuthorized, messages.length, hasFetched, createWelcomeMessage]);
 
   const handleClearCopilotChat = useCallback(() => {
+    if (typeof window !== 'undefined' && user?.uid) {
+      try {
+        sessionStorage.removeItem(`operations_copilot_session_${user.uid}`);
+      } catch (err) {
+        console.warn('Could not clear session storage:', err);
+      }
+    }
     setMessages([createWelcomeMessage(true)]);
     setInputMessage('');
     setProposalHotelSelections({});
     setShowPromptsMenu(false);
-    toast.success('Conversation cleared.');
-  }, [createWelcomeMessage]);
+    setShowMobileMenu(false);
+    toast.success('Conversation reset for current session.');
+  }, [createWelcomeMessage, user?.uid]);
 
   // Scroll chat messages container smoothly to bottom on new messages without scrolling the background window
   useEffect(() => {
@@ -434,6 +550,22 @@ export default function OperationsCopilot() {
     const clean = (text || '').trim().toLowerCase();
     const stripped = clean.replace(/[!.,?]/g, '').trim();
 
+    // 0. Strict Domain Boundary Check (Coding, Car Buying, Crypto, Off-Topic)
+    const isCarBuying = 
+      /\b(buy|buying|purchase|purchasing|dealership|dealer|for\s+sale|sell|selling|import|importing|used\s+car)\b/i.test(clean) &&
+      /\b(car|cars|vehicle|vehicles|automobile|automobiles|truck|trucks|sedan|suv)\b/i.test(clean) &&
+      !/\b(shuttle|transfer|hire|rent|rental|safari|lodge|airport|pick\s*up|drop\s*off)\b/i.test(clean);
+
+    const isCodingOrTech = 
+      /\b(code\s+an\s+app|coding|write\s+(me\s+)?(some\s+)?code|program(ming)?\s+an\s+app|write\s+a\s+python|build\s+(me\s+)?an\s+app|develop\s+an\s+app|software\s+development|debug\s+(my\s+)?code|create\s+an\s+app|python\s+script|javascript\s+code)\b/i.test(clean);
+
+    const isGeneralOutOfScope = 
+      /\b(crypto|bitcoin|ethereum|forex|stock\s+market|stock\s+trading|medical\s+diagnosis|legal\s+counsel)\b/i.test(clean);
+
+    if (isCarBuying || isCodingOrTech || isGeneralOutOfScope) {
+      return 'out_of_scope_or_pivot';
+    }
+
     // 1. Action intents (modifications, updates, operations)
     const actionKeywords = [
       'update', 'change', 'set rate', 'set price', 'add room', 'add promo', 'add promotion',
@@ -522,6 +654,9 @@ export default function OperationsCopilot() {
   };
 
   const getGeneratingStatusText = (intent: QueryIntent, userText: string) => {
+    if (intent === 'out_of_scope_or_pivot') {
+      return 'Reviewing hospitality guidelines...';
+    }
     if (intent === 'greeting_or_chat') {
       return 'Concierge is replying...';
     }
@@ -1287,6 +1422,18 @@ export default function OperationsCopilot() {
 
                 {/* MOBILE UNBURDENED CONTROLS (sm:hidden) */}
                 <div className="flex items-center gap-1 text-stone-400 shrink-0 sm:hidden">
+                  {/* Quick Reset button */}
+                  <button
+                    type="button"
+                    id="btn-copilot-mobile-clear"
+                    onClick={handleClearCopilotChat}
+                    className="p-1.5 hover:bg-stone-800 text-stone-400 hover:text-stone-200 rounded-lg transition cursor-pointer"
+                    title="Reset conversation"
+                    aria-label="Reset conversation"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                  </button>
+
                   {/* Hamburger Menu Trigger */}
                   <div className="relative" ref={mobileMenuRef}>
                     <button
@@ -1400,14 +1547,16 @@ export default function OperationsCopilot() {
                     {isExpanded ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
                   </button>
 
-                  {/* Reset / End Chat */}
+                  {/* Reset / Clear Chat */}
                   <button
                     type="button"
+                    id="btn-copilot-clear-chat"
                     onClick={handleClearCopilotChat}
-                    className="p-1.5 hover:bg-stone-800 hover:text-stone-200 rounded-lg transition cursor-pointer"
-                    title="Clear conversation"
+                    className="inline-flex items-center gap-1 px-2 py-1 bg-stone-800/80 hover:bg-stone-800 text-stone-300 hover:text-white rounded-lg transition cursor-pointer border border-stone-700/60 text-xs font-medium"
+                    title="Reset & clear conversation"
                   >
-                    <RotateCcw className="w-3.5 h-3.5" />
+                    <RotateCcw className="w-3 h-3 text-stone-400" />
+                    <span>Reset</span>
                   </button>
 
                   {/* Minimize window */}
@@ -1473,7 +1622,7 @@ export default function OperationsCopilot() {
                         Learned Directives & Operational Rules
                       </h4>
                       <p className="text-[11px] text-stone-500">
-                        The AI remembers your rules, policies, and pricing preferences.
+                        Your assistant remembers your rules, policies, and pricing preferences.
                       </p>
                     </div>
                     <button
@@ -1545,59 +1694,180 @@ export default function OperationsCopilot() {
                       className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} max-w-full min-w-0`}
                     >
                       <div
-                        className={`max-w-[92%] sm:max-w-[88%] min-w-0 rounded-2xl p-3.5 sm:p-4 text-sm sm:text-[15px] leading-relaxed break-words [word-break:break-word] overflow-hidden ${
+                        className={`min-w-0 rounded-2xl break-words [word-break:break-word] overflow-hidden ${
                           msg.role === 'user'
-                            ? 'bg-stone-900 text-white rounded-br-xs'
-                            : 'bg-white text-stone-800 border border-stone-200 shadow-2xs rounded-bl-xs'
+                            ? 'max-w-[88%] p-3 sm:p-3.5 text-sm sm:text-[14.5px] leading-relaxed bg-stone-900 text-white rounded-br-xs shadow-xs'
+                            : 'w-full max-w-full p-3 sm:p-3.5 text-xs sm:text-[13.5px] leading-relaxed bg-white text-stone-800 border border-stone-200/90 shadow-2xs rounded-tl-xs'
                         }`}
                       >
                         {msg.role === 'assistant' ? (
-                          <div className="markdown-body space-y-2 text-stone-800 break-words [word-break:break-word] overflow-hidden max-w-full min-w-0 text-sm sm:text-[15px] leading-relaxed">
-                            <ReactMarkdown
-                              components={{
-                                p: ({ children }) => (
-                                  <p className="leading-relaxed break-words [word-break:break-word] text-sm sm:text-[15px]">{children}</p>
-                                ),
-                                a: ({ href, children }) => (
-                                  <a
-                                    href={href}
-                                    className="text-stone-900 underline font-semibold hover:text-amber-700 inline-flex items-center gap-0.5 break-all text-sm sm:text-[15px]"
-                                  >
-                                    {children}
-                                    <ExternalLink className="w-3 h-3 inline opacity-70 shrink-0" />
-                                  </a>
-                                ),
-                                pre: ({ children }) => (
-                                  <pre className="overflow-x-auto max-w-full p-2.5 bg-stone-900 text-stone-100 rounded-lg text-xs sm:text-[13px] my-1.5 scrollbar-thin">
-                                    {children}
-                                  </pre>
-                                ),
-                                code: ({ children }) => (
-                                  <code className="bg-stone-100 px-1.5 py-0.5 rounded text-xs sm:text-[13px] font-mono break-all">
-                                    {children}
-                                  </code>
-                                ),
-                                table: ({ children }) => (
-                                  <div className="overflow-x-auto max-w-full my-2 border border-stone-200 rounded-lg">
-                                    <table className="min-w-full text-xs sm:text-sm divide-y divide-stone-200">
+                          <div className="flex flex-col space-y-2 max-w-full">
+                            {/* Executive Assistant Header Bar */}
+                            <div className="flex items-center justify-between gap-2 pb-1.5 mb-0.5 border-b border-stone-100 text-xs select-none">
+                              <div className="flex items-center gap-2">
+                                <div className="w-5 h-5 rounded-md bg-stone-900 text-amber-400 flex items-center justify-center shrink-0 shadow-2xs">
+                                  <ConciergeBell className="w-3.5 h-3.5 text-amber-400" />
+                                </div>
+                                <span className="font-semibold text-stone-900 tracking-tight">StayOS Copilot</span>
+                                <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-stone-100 text-stone-500 font-medium">
+                                  Live Data
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleCopyMessage(msg.id, msg.content)}
+                                title="Copy content to clipboard"
+                                className="inline-flex items-center gap-1 text-[11px] font-medium text-stone-500 hover:text-stone-900 px-2 py-0.5 rounded-md hover:bg-stone-100 border border-transparent hover:border-stone-200 transition"
+                              >
+                                {copiedMsgId === msg.id ? (
+                                  <>
+                                    <Check className="w-3 h-3 text-emerald-600" />
+                                    <span className="text-emerald-700 font-semibold">Copied</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy className="w-3 h-3" />
+                                    <span>Copy</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
+
+                            {/* Arranged Markdown Body */}
+                            <div className="space-y-2 text-stone-800 break-words [word-break:break-word] overflow-hidden max-w-full min-w-0 text-xs sm:text-[13.5px] leading-relaxed">
+                              <ReactMarkdown
+                                remarkPlugins={[remarkGfm]}
+                                components={{
+                                  h1: ({ children }) => (
+                                    <h3 className="text-sm sm:text-base font-bold text-stone-900 mt-2.5 mb-1 pb-1 border-b border-stone-100 flex items-center gap-1.5">
                                       {children}
-                                    </table>
-                                  </div>
-                                ),
-                                ul: ({ children }) => (
-                                  <ul className="list-disc pl-5 space-y-1 my-1.5 break-words text-sm sm:text-[15px]">
-                                    {children}
-                                  </ul>
-                                ),
-                                ol: ({ children }) => (
-                                  <ol className="list-decimal pl-5 space-y-1 my-1.5 break-words text-sm sm:text-[15px]">
-                                    {children}
-                                  </ol>
-                                ),
-                              }}
-                            >
-                              {msg.content}
-                            </ReactMarkdown>
+                                    </h3>
+                                  ),
+                                  h2: ({ children }) => (
+                                    <h4 className="text-xs sm:text-sm font-bold text-stone-900 mt-2 mb-1 flex items-center gap-1.5">
+                                      {children}
+                                    </h4>
+                                  ),
+                                  h3: ({ children }) => (
+                                    <h5 className="text-[11px] sm:text-xs font-bold text-stone-800 mt-1.5 mb-0.5">
+                                      {children}
+                                    </h5>
+                                  ),
+                                  p: ({ children }) => (
+                                    <p className="leading-relaxed break-words [word-break:break-word] text-stone-800 my-1">
+                                      {children}
+                                    </p>
+                                  ),
+                                  a: ({ href, children }) => {
+                                    let targetHref = href || '';
+                                    const textContent = String(children || '').toLowerCase();
+                                    // Auto-heal links where StayOS was wrongly targeted for bookings or front desk arrivals
+                                    if (
+                                      targetHref.includes('tab=stayos') &&
+                                      (textContent.includes('front desk') || textContent.includes('booking') || textContent.includes('arrival') || textContent.includes('reservation'))
+                                    ) {
+                                      targetHref = targetHref.replace('tab=stayos', 'tab=bookings');
+                                    }
+
+                                    const isInternal = targetHref.startsWith('/') || targetHref.startsWith('#');
+
+                                    if (isInternal) {
+                                      return (
+                                        <a
+                                          href={targetHref}
+                                          onClick={(e) => {
+                                            e.preventDefault();
+                                            navigate(targetHref);
+                                          }}
+                                          className="text-amber-800 underline font-semibold hover:text-amber-900 inline-flex items-center gap-0.5 break-all cursor-pointer"
+                                        >
+                                          {children}
+                                        </a>
+                                      );
+                                    }
+
+                                    return (
+                                      <a
+                                        href={targetHref}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-amber-800 underline font-semibold hover:text-amber-900 inline-flex items-center gap-0.5 break-all"
+                                      >
+                                        {children}
+                                        <ExternalLink className="w-2.5 h-2.5 inline opacity-70 shrink-0" />
+                                      </a>
+                                    );
+                                  },
+                                  table: ({ children }) => (
+                                    <div className="my-2 overflow-hidden rounded-xl border border-stone-200 bg-white shadow-2xs w-full max-w-full">
+                                      <table className="w-full border-collapse text-left text-xs table-auto">
+                                        {children}
+                                      </table>
+                                    </div>
+                                  ),
+                                  thead: ({ children }) => (
+                                    <thead className="bg-stone-100/95 text-stone-700 border-b border-stone-200">
+                                      {children}
+                                    </thead>
+                                  ),
+                                  tbody: ({ children }) => (
+                                    <tbody className="divide-y divide-stone-100 bg-white">
+                                      {children}
+                                    </tbody>
+                                  ),
+                                  tr: ({ children }) => (
+                                    <tr className="hover:bg-stone-50/75 transition-colors">
+                                      {children}
+                                    </tr>
+                                  ),
+                                  th: ({ children }) => (
+                                    <th className="px-2.5 py-1.5 text-left text-[10.5px] font-bold text-stone-700 uppercase tracking-tight bg-stone-100/90 break-words leading-tight">
+                                      {children}
+                                    </th>
+                                  ),
+                                  td: ({ children }) => (
+                                    <td className="px-2.5 py-1.5 text-[11px] sm:text-xs text-stone-800 leading-snug align-top break-words">
+                                      <FormattedTableCell>{children}</FormattedTableCell>
+                                    </td>
+                                  ),
+                                  ul: ({ children }) => (
+                                    <ul className="list-disc pl-5 space-y-1.5 my-2 break-words text-stone-800">
+                                      {children}
+                                    </ul>
+                                  ),
+                                  ol: ({ children }) => (
+                                    <ol className="list-decimal pl-5 space-y-1.5 my-2 break-words text-stone-800">
+                                      {children}
+                                    </ol>
+                                  ),
+                                  li: ({ children }) => (
+                                    <li className="leading-relaxed">
+                                      {children}
+                                    </li>
+                                  ),
+                                  blockquote: ({ children }) => (
+                                    <blockquote className="border-l-3 border-amber-600 bg-amber-50/60 pl-3 py-1.5 my-2 rounded-r-lg text-xs sm:text-sm text-stone-700 italic">
+                                      {children}
+                                    </blockquote>
+                                  ),
+                                  code: ({ children }) => (
+                                    <code className="bg-stone-100 text-stone-800 px-1.5 py-0.5 rounded text-xs font-mono font-medium border border-stone-200/60 break-all">
+                                      {children}
+                                    </code>
+                                  ),
+                                  pre: ({ children }) => (
+                                    <pre className="overflow-x-auto max-w-full p-3 bg-stone-900 text-stone-100 rounded-xl text-xs font-mono my-2 scrollbar-thin border border-stone-800 shadow-2xs">
+                                      {children}
+                                    </pre>
+                                  ),
+                                  hr: () => (
+                                    <hr className="my-3 border-stone-200" />
+                                  ),
+                                }}
+                              >
+                                {formatMarkdownForDisplay(msg.content)}
+                              </ReactMarkdown>
+                            </div>
                           </div>
                         ) : (
                           <p className="whitespace-pre-wrap break-words [word-break:break-word] min-w-0 text-sm sm:text-[15px] leading-relaxed">{msg.content}</p>
@@ -1618,7 +1888,7 @@ export default function OperationsCopilot() {
                           Boolean(proposal.amenity);
 
                         return (
-                          <div className="w-full max-w-[95%] mt-2.5 p-3 bg-stone-50 border border-stone-300/80 rounded-2xl space-y-2.5 animate-in fade-in shadow-2xs">
+                          <div className="w-full max-w-full mt-2 p-3 bg-stone-50 border border-stone-300/80 rounded-2xl space-y-2.5 animate-in fade-in shadow-2xs">
                             <div className="flex items-center justify-between gap-2">
                               <div className="flex items-center gap-1.5 text-stone-900 font-bold text-xs uppercase tracking-wider">
                                 {isAmenityProposal ? (
@@ -1902,7 +2172,7 @@ export default function OperationsCopilot() {
                     title="Suggested prompt ideas"
                     aria-label="Suggested prompt ideas"
                   >
-                    <Sparkles className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                    <Compass className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                     <span className="hidden sm:inline">Ideas</span>
                     <ChevronDown className={`w-3 h-3 text-stone-400 transition-transform duration-200 ${showPromptsMenu ? 'rotate-180' : ''}`} />
                   </button>
@@ -1911,7 +2181,7 @@ export default function OperationsCopilot() {
                     <div className="absolute bottom-full left-0 mb-2 w-72 sm:w-80 bg-white border border-stone-200 rounded-2xl shadow-xl p-2 z-50 animate-in fade-in slide-in-from-bottom-2 duration-150">
                       <div className="px-2.5 py-1.5 border-b border-stone-100 flex items-center justify-between">
                         <span className="text-[11px] font-bold text-stone-500 uppercase tracking-wider flex items-center gap-1.5">
-                          <Sparkles className="w-3 h-3 text-amber-600" />
+                          <Compass className="w-3.5 h-3.5 text-amber-600" />
                           Suggested Prompts
                         </span>
                         <button

@@ -1,7 +1,10 @@
 import React, { useState, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Upload, FileText, Image, X, Check, Loader2, AlertCircle, ClipboardPaste, Building } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { ListingDraft } from '../lib/listing';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { useModalScrollIsolation } from '../hooks/useModalScrollIsolation';
 
 interface PropertyDocumentImporterProps {
   open: boolean;
@@ -29,6 +32,9 @@ export default function PropertyDocumentImporter({ open, onClose, onImport }: Pr
   const [extractedData, setExtractedData] = useState<Partial<ListingDraft> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropRef = useRef<HTMLDivElement>(null);
+
+  useBodyScrollLock(open);
+  const scrollIsolationRef = useModalScrollIsolation<HTMLDivElement>(open);
 
   const reset = () => {
     setFile(null);
@@ -151,25 +157,36 @@ export default function PropertyDocumentImporter({ open, onClose, onImport }: Pr
     }
   };
 
-  if (!open) return null;
+  if (!open || typeof document === 'undefined') return null;
 
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl w-full max-w-lg max-h-[85vh] overflow-hidden shadow-2xl flex flex-col">
+  return createPortal(
+    <div
+      id="property-document-importer-modal"
+      data-lenis-prevent="true"
+      className="fixed inset-0 z-[100] overflow-y-auto overscroll-contain bg-stone-950/60 backdrop-blur-xs flex min-h-full items-center justify-center p-3 sm:p-4 md:p-6 text-center"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) handleClose();
+      }}
+    >
+      <div
+        ref={scrollIsolationRef}
+        data-lenis-prevent="true"
+        className="bg-white rounded-2xl sm:rounded-3xl w-full max-w-lg max-h-[calc(100dvh-2.5rem)] sm:max-h-[88vh] overflow-hidden shadow-2xl flex flex-col border border-stone-200 text-left overscroll-contain my-auto relative"
+      >
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-stone-200">
+        <div className="flex items-center justify-between p-5 border-b border-stone-200 shrink-0">
           <div>
             <h3 className="text-lg font-semibold text-stone-900">Import Property Details</h3>
             <p className="text-xs text-stone-500 mt-0.5">Auto-fill rooms, prices, owners from a document or photo</p>
           </div>
-          <button onClick={handleClose} className="p-1.5 rounded-full hover:bg-stone-100 text-stone-400 hover:text-stone-600">
+          <button onClick={handleClose} className="p-1.5 rounded-full hover:bg-stone-100 text-stone-400 hover:text-stone-600 transition">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Tab Selector */}
         {!extractedData && (
-          <div className="flex border-b border-stone-200 bg-stone-50 p-1.5 gap-1.5">
+          <div className="flex border-b border-stone-200 bg-stone-50 p-1.5 gap-1.5 shrink-0">
             <button
               type="button"
               onClick={() => { setActiveTab('file'); setError(null); }}
@@ -198,7 +215,7 @@ export default function PropertyDocumentImporter({ open, onClose, onImport }: Pr
         )}
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+        <div data-lenis-prevent="true" className="flex-1 overflow-y-auto overscroll-contain p-5 space-y-4">
           {!extractedData ? (
             <>
               {activeTab === 'file' ? (
@@ -350,6 +367,7 @@ export default function PropertyDocumentImporter({ open, onClose, onImport }: Pr
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

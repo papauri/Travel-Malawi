@@ -23,9 +23,10 @@ import { useChatModal } from '../contexts/ChatModalContext';
 import { MessageSquare, Megaphone, Presentation, Bell, ChevronDown } from 'lucide-react';
 import SmartImage from '../components/SmartImage';
 import ReminderTemplatesModal from '../components/ReminderTemplatesModal';
+import EditBookingModal from '../components/EditBookingModal';
 import ManagerEmailTemplatesHub from '../components/ManagerEmailTemplatesHub';
+import ManagerWhatsAppTemplatesHub from '../components/ManagerWhatsAppTemplatesHub';
 import { useWhatsAppSettings } from '../hooks/useWhatsAppSettings';
-import { Sparkles } from 'lucide-react';
 import { getHotelImages, getHotelImage, getRoomImage, localImagesForName } from '../lib/images';
 import { useBreadcrumbLabel } from '../components/Breadcrumbs';
 import LocationPicker from '../components/LocationPicker';
@@ -42,7 +43,7 @@ import { formatMoney } from '../lib/booking';
 import { CURRENCIES, CURRENCY_CODES, currenciesForRooms, roomCurrencies, roomPrice } from '../lib/currency';
 import { defaultWeek } from '../lib/hours';
 import { SPAM_REASON_LABELS } from '../lib/spam';
-import { isHotelManager, isAdmin } from '../lib/roles';
+import { isHotelManager, isAdmin, isMarketing } from '../lib/roles';
 import { PROPERTY_CATEGORIES, COMMON_AMENITIES } from '../lib/listing';
 import { emailProblem, phoneProblem } from '../lib/contact';
 import { validateProperty } from '../lib/listing';
@@ -222,6 +223,7 @@ export default function ManageHotel() {
   const [saving, setSaving] = useState(false);
   const [amenityInput, setAmenityInput] = useState("");
   const [confirmModalBooking, setConfirmModalBooking] = useState<string | null>(null);
+  const [editModalBooking, setEditModalBooking] = useState<Booking | null>(null);
   const [bookingToDelete, setBookingToDelete] = useState<string | null>(null);
 
   // Reminder states
@@ -331,7 +333,7 @@ export default function ManageHotel() {
   useEffect(() => {
     if (authLoading) return;
 
-    if (!user || (!isHotelManager(user) && !isAdmin(user))) {
+    if (!user || (!isHotelManager(user) && !isAdmin(user) && !isMarketing(user))) {
       navigate('/');
       return;
     }
@@ -352,7 +354,7 @@ export default function ManageHotel() {
         );
         const userEmailLower = user?.email?.toLowerCase();
         const canManage = Boolean(
-          isAdmin(user) ||
+          isAdmin(user) || isMarketing(user) ||
           !hasAssignedManager || // Unassigned properties belong to the signed-in user!
           hRaw?.managerId === user?.uid ||
           (userEmailLower && (
@@ -497,7 +499,7 @@ export default function ManageHotel() {
   }, [bookings, bookingFilter]);
 
   const canSeeFinancials = Boolean(
-    isAdmin(user) ||
+    isAdmin(user) || isMarketing(user) ||
     !hotel?.managerId ||
     hotel?.managerId === 'unassigned' ||
     hotel?.managerId === 'none' ||
@@ -1069,6 +1071,18 @@ export default function ManageHotel() {
     }
   };
 
+  const updateBookingDetails = async (bookingId: string, patch: Partial<Booking>) => {
+    try {
+      await updateDoc(doc(db, 'bookings', bookingId), patch);
+      setBookings(bookings.map(b => b.id === bookingId ? { ...b, ...patch } as Booking : b));
+      setEditModalBooking(null);
+      toast.success('Booking updated.');
+    } catch (error) {
+      console.error("Error updating booking details:", error);
+      toast.error('Failed to update booking.');
+    }
+  };
+
   if (loading) return <div className="p-8 text-center text-stone-500">Loading...</div>;
   if (!hotel) return null;
 
@@ -1498,7 +1512,7 @@ export default function ManageHotel() {
                   <span>Designated Property Manager in Charge</span>
                 </div>
                 <p className="text-xs text-stone-500">
-                  The person responsible for daily operations, guest check-ins, and hospitality on-site. Known to guests and our AI Concierge.
+                  The person responsible for daily operations, guest check-ins, and hospitality on-site. Known to guests and our Concierge.
                 </p>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
@@ -2846,10 +2860,21 @@ export default function ManageHotel() {
               {visibleBookings.slice((currentBookingPage - 1) * bookingsPerPage, currentBookingPage * bookingsPerPage).map((booking, bIdx) => (
                 <li key={`mgmt-booking-${booking.id}`} className="p-6 md:p-8 hover:bg-stone-50 transition">
                   <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-4">
-                    <div>
-                      <div className="flex items-center gap-3 mb-1 flex-wrap">
+                    <div className="w-full">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-1 sm:flex-wrap w-full">
+                        <div className="flex items-center gap-3 flex-wrap">
 
-                          <span className="font-bold text-stone-900 text-lg">{booking.guestName}</span>
+                          <span className="font-bold text-stone-900 text-lg flex items-center gap-2">
+                            {booking.guestName}
+                            <button
+                              type="button"
+                              onClick={() => setEditModalBooking(booking)}
+                              className="text-stone-400 hover:text-stone-900 p-1 hover:bg-stone-200 rounded-full transition"
+                              title="Edit Booking"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                          </span>
                           <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider ${
                             booking.status === 'confirmed' ? 'bg-emerald-100 text-emerald-700' :
                             booking.status === 'rejected' ? 'bg-red-100 text-red-700' :
@@ -2865,16 +2890,17 @@ export default function ManageHotel() {
                             </span>
                           )}
                           
-                          {booking.status !== 'cancelled' && booking.status !== 'rejected' && (
-                            <div className="ml-auto flex items-center gap-2 flex-wrap">
+                        </div>
+                        {booking.status !== 'cancelled' && booking.status !== 'rejected' && (
+                            <div className="sm:ml-auto flex items-center gap-2 flex-wrap w-full sm:w-auto">
                               <button
                                 type="button"
                                 onClick={() => setReminderModalBooking(booking)}
                                 className="text-xs font-semibold text-emerald-800 border-2 border-emerald-300 bg-emerald-50 px-3 py-1 rounded-lg hover:bg-emerald-100 hover:border-emerald-600 transition inline-flex items-center gap-1.5 cursor-pointer shadow-2xs"
-                                title={whatsappEnabled ? "Open ready-to-go email & WhatsApp reminder templates (3-Day Arrival, 24h PIN, Deposit, Check-out)" : "Open ready-to-go email reminder templates"}
+                                title="Open ready-to-go email & WhatsApp reminder templates (3-Day Arrival, 24h PIN, Deposit, Check-out)"
                               >
                                 <Mail className="w-3.5 h-3.5 text-emerald-600" />
-                                {whatsappEnabled ? 'Reminders & Templates' : 'Email Templates'}
+                                Reminders & Templates
                               </button>
                               {hotel?.adminChatEnabled !== false && (
                                 <button
@@ -2903,13 +2929,13 @@ export default function ManageHotel() {
                           </span>
                         )}
                       </div>
-                      {(booking.guestEmail || booking.guestPhone || (whatsappEnabled && (booking.guestWhatsapp || true))) && (
+                      {(booking.guestEmail || booking.guestPhone || booking.guestWhatsapp || true) && (
                         <div className="text-sm text-stone-500 mb-2 flex gap-4 flex-wrap items-center">
                           {booking.guestEmail && <span>✉️ {booking.guestEmail}</span>}
                           {booking.guestPhone && <span>📞 {booking.guestPhone}</span>}
                           
-                          {/* Manager WhatsApp controls (ONLY visible when WhatsApp is enabled in Admin Portal) */}
-                          {whatsappEnabled && (
+                          {/* Manager WhatsApp controls */}
+                          {
                             editingWhatsappBookingId === booking.id ? (
                               <div className="inline-flex items-center gap-1.5 bg-emerald-50 p-1 rounded-lg border border-emerald-300">
                                 <MessageSquare className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
@@ -2979,7 +3005,7 @@ export default function ManageHotel() {
                                 )}
                               </div>
                             )
-                          )}
+                          }
                         </div>
                       )}
                       <p className="text-stone-500 font-medium mb-1">{rooms.find(r => r.id === booking.roomTypeId)?.name || 'Unknown Room'}</p>
@@ -3074,7 +3100,7 @@ export default function ManageHotel() {
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-emerald-50/80 border border-emerald-200 rounded-xl">
                           <div className="flex items-center gap-2.5">
                             <div className="p-2 bg-emerald-700 text-white rounded-lg shrink-0">
-                              <Sparkles className="w-4 h-4" />
+                              <MessageSquare className="w-4 h-4" />
                             </div>
                             <div>
                               <p className="text-xs font-bold text-emerald-950">Ready-To-Go Reminder Templates</p>
@@ -3319,7 +3345,15 @@ export default function ManageHotel() {
 
       {/* TAB CONTENT: EMAIL TEMPLATES & AUTOMATION */}
       {activeTab === 'templates' && (
-        <ManagerEmailTemplatesHub
+        <>
+          <ManagerWhatsAppTemplatesHub
+            hotel={hotel}
+            onHotelUpdate={updated => {
+              setHotel(updated);
+              setEditHotelData(updated);
+            }}
+          />
+          <ManagerEmailTemplatesHub
           hotel={hotel}
           onHotelUpdate={updated => {
             setHotel(updated);
@@ -3327,6 +3361,7 @@ export default function ManageHotel() {
           }}
           currentUserEmail={user?.email}
         />
+        </>
       )}
 
       {/* Confirm a pending request */}
@@ -3452,6 +3487,13 @@ export default function ManageHotel() {
           }}
         />
       )}
+      
+      <EditBookingModal
+        isOpen={!!editModalBooking}
+        booking={editModalBooking}
+        onClose={() => setEditModalBooking(null)}
+        onSave={updateBookingDetails}
+      />
     </div>
   );
 }

@@ -37,13 +37,17 @@ export function isValidDateStr(value: unknown): value is DateStr {
 }
 
 /** Milliseconds at UTC midnight of a calendar date. Comparison only. */
-export function parseDateUTC(dateStr: DateStr): number {
-  const [y, m, d] = dateStr.split('-').map(Number);
-  return Date.UTC(y, (m || 1) - 1, d || 1);
+export function parseDateUTC(dateStr: DateStr | undefined | null): number {
+  if (!dateStr || typeof dateStr !== 'string') return 0;
+  const parts = dateStr.split('-');
+  if (parts.length < 3) return 0;
+  const [y, m, d] = parts.map(Number);
+  return Date.UTC(y || 1970, (m || 1) - 1, d || 1);
 }
 
 /** Steps a calendar date by whole days, in UTC so DST never causes drift. */
 export function addDays(dateStr: DateStr, days: number): DateStr {
+  if (!dateStr) return todayStr();
   const stepped = new Date(parseDateUTC(dateStr) + days * 86400000);
   const month = String(stepped.getUTCMonth() + 1).padStart(2, '0');
   const day = String(stepped.getUTCDate()).padStart(2, '0');
@@ -98,6 +102,9 @@ export function formatDateStr(
 }
 
 /** Whole days from today until a calendar date. Negative once it has passed. */
-export function daysUntil(dateStr: DateStr): number {
-  return Math.round((parseDateUTC(dateStr) - parseDateUTC(todayStr())) / 86400000);
+export function daysUntil(dateStr: DateStr | undefined | null): number {
+  if (!dateStr || typeof dateStr !== 'string') return 0;
+  const target = parseDateUTC(dateStr);
+  if (!target) return 0;
+  return Math.round((target - parseDateUTC(todayStr())) / 86400000);
 }

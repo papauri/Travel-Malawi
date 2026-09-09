@@ -4,7 +4,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useAuthDialog } from '../contexts/AuthDialogContext';
 import { Search, LogIn, User as UserIcon, Briefcase, Building2, Heart, Menu, X, LogOut, Settings, ShieldCheck, BookOpen, Bell } from 'lucide-react';
-import { isHotelManager, isTraveller, describeRoles, isAdmin } from '../lib/roles';
+import { isHotelManager, isTraveller, describeRoles, isAdmin, isMarketing } from '../lib/roles';
 import { motion, AnimatePresence } from 'motion/react';
 import { openAccessPermissionsModal } from './AccessRequestModal';
 import { useUnreadBroadcasts } from '../hooks/useUnreadBroadcasts';
@@ -36,7 +36,7 @@ export default function MobileNav() {
   if (pathname.includes('/hotel/')) return null;
 
   // If user is a manager or admin, they have the Concierge Assistant on bottom-right and full nav in the top Navbar avatar
-  if (user && (isManager || isAdmin(user))) return null;
+  if (user && (isManager || isAdmin(user) || isMarketing(user))) return null;
 
   return (
     <>
@@ -148,7 +148,7 @@ export default function MobileNav() {
                     <span>Explore</span>
                   </Link>
 
-                  {user && isTraveller(user) && (
+                  {user && (
                     <>
                       <Link
                         to="/saved"

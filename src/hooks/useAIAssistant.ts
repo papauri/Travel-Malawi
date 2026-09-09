@@ -26,7 +26,7 @@ export interface AIGenerateOptions {
   };
 }
 
-export type QueryIntent = 'greeting_or_chat' | 'tourism_inquiry' | 'database_query' | 'database_action';
+export type QueryIntent = 'greeting_or_chat' | 'tourism_inquiry' | 'database_query' | 'database_action' | 'out_of_scope_or_pivot';
 
 export interface OperationsChatPayload {
   userRole: 'admin' | 'hotel_manager';

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { GripVertical, Plus, Trash2, ChevronUp, ChevronDown, Upload } from 'lucide-react';
+import { GripVertical, Plus, Trash2, ChevronUp, ChevronDown, Upload, Zap, FileText } from 'lucide-react';
 import { CurrencyCode, MenuItem, MenuSection, Restaurant } from '../types';
 import { CURRENCIES, CURRENCY_CODES } from '../lib/currency';
 import { MENU_TEMPLATES } from './MenuTemplates';
@@ -74,6 +74,45 @@ export default function MenuEditor({ value, onChange, currencies }: Props) {
 
   return (
     <div className="space-y-8">
+      {/* --- Top Spotlight: Import Existing Menu --- */}
+      <div className="bg-gradient-to-br from-stone-900 via-stone-900 to-stone-950 text-white rounded-3xl p-6 md:p-8 shadow-xl border border-stone-800 relative overflow-hidden">
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="space-y-2 max-w-xl">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs font-semibold">
+              <Zap className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Instant Menu Digitizer & Importer</span>
+            </div>
+            <h3 className="font-serif text-2xl md:text-3xl text-white">
+              Import Existing Restaurant Menu
+            </h3>
+            <p className="text-sm text-stone-300 leading-relaxed">
+              Have an existing food or drinks menu? Upload a photo, document, PDF, spreadsheet, or paste your price list. Our system automatically extracts sections, dual currency prices (MWK/USD), and dietary tags into your system.
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
+            <button
+              type="button"
+              id="top-import-menu-btn"
+              onClick={() => {
+                if (!value.enabled) patch({ enabled: true });
+                setShowImporter(true);
+              }}
+              className="flex items-center justify-center gap-2.5 px-6 py-3.5 bg-emerald-500 hover:bg-emerald-400 text-stone-950 font-bold text-sm rounded-full shadow-lg transition active:scale-98 cursor-pointer"
+            >
+              <Upload className="w-4 h-4" />
+              <span>Import Existing Menu</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <MenuImporter
+        open={showImporter}
+        onClose={() => setShowImporter(false)}
+        onImport={handleMenuImport}
+        currencies={currencies}
+      />
+
       {/* --- Whether the property has one at all --- */}
       <div className="bg-white rounded-3xl border border-stone-200 p-6 md:p-8">
         <label className="flex items-start gap-3 cursor-pointer">
@@ -216,13 +255,6 @@ export default function MenuEditor({ value, onChange, currencies }: Props) {
                 </button>
               </div>
             </div>
-
-            <MenuImporter
-              open={showImporter}
-              onClose={() => setShowImporter(false)}
-              onImport={handleMenuImport}
-              currencies={currencies}
-            />
 
             {value.sections.length === 0 && (
               <p className="text-sm text-stone-500 border border-dashed border-stone-300 rounded-2xl p-8 text-center">

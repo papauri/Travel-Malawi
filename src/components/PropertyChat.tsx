@@ -116,7 +116,7 @@ export default function PropertyChat({
   const adjustTextareaHeight = () => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
-      const newHeight = Math.min(Math.max(textareaRef.current.scrollHeight, 40), 140);
+      const newHeight = Math.min(Math.max(textareaRef.current.scrollHeight, 40), 320);
       textareaRef.current.style.height = `${newHeight}px`;
     }
   };
@@ -405,6 +405,9 @@ export default function PropertyChat({
       clearTimeout(typingTimeoutRef.current);
     }
     setTypingState(false);
+    if (textareaRef.current) {
+      textareaRef.current.style.height = '';
+    }
   };
 
   // Determine if the other participant is typing
@@ -581,6 +584,9 @@ export default function PropertyChat({
         }).catch(err => console.error('Failed to trigger offline notification', err));
       }
       setNewMessage('');
+      if (textareaRef.current) {
+        textareaRef.current.style.height = '';
+      }
     } catch (error: any) {
       console.error('Error sending message:', error);
       toast.error('Failed to send message.');
@@ -1162,12 +1168,13 @@ export default function PropertyChat({
                   onChange={handleInputChange}
                   onKeyDown={handleKeyDown}
                   onBlur={handleInputBlur}
+                  onFocus={adjustTextareaHeight}
                   placeholder={
                     hostIsOnline 
                       ? "Type your message... (Enter to send, Shift+Enter for newline)" 
                       : "Host is away. Leave a message..."
                   }
-                  className="flex-1 max-h-[140px] min-h-[42px] bg-stone-100 border border-transparent focus:border-stone-400 focus:bg-white focus:ring-0 rounded-xl px-4 py-2.5 text-sm transition outline-none resize-none leading-relaxed overflow-y-auto scrollbar-slim"
+                  className="flex-1 max-h-[320px] min-h-[54px] bg-stone-100 border border-transparent focus:border-stone-400 focus:bg-white focus:ring-0 rounded-xl px-4 pt-3 pb-4 text-sm transition outline-none resize-y leading-relaxed overflow-y-auto scrollbar-slim"
                   disabled={sending}
                 />
                 <button

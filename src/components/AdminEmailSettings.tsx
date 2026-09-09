@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Mail, Send, CheckCircle2, XCircle, RefreshCw, Server, Lock, 
-  ShieldCheck, AlertCircle, Eye, EyeOff, Sparkles, HelpCircle, Save 
+  ShieldCheck, AlertCircle, Eye, EyeOff, Zap, HelpCircle, Save 
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
@@ -238,7 +238,7 @@ export default function AdminEmailSettings() {
         <div className="mt-6 pt-6 border-t border-stone-100">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-bold text-stone-500 mr-2 flex items-center gap-1">
-              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+              <Zap className="w-3.5 h-3.5 text-amber-500" />
               Quick Provider Presets:
             </span>
             <button

@@ -1,7 +1,9 @@
 import React, { useEffect, useId, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { motion } from 'motion/react';
 import { X } from 'lucide-react';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { useModalScrollIsolation } from '../hooks/useModalScrollIsolation';
 
 type Size = 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl';
 
@@ -51,6 +53,7 @@ export default function Modal({
   const titleId = useId();
   useBodyScrollLock(open);
   const panelRef = useRef<HTMLDivElement>(null);
+  const scrollIsolationRef = useModalScrollIsolation<HTMLDivElement>(open);
 
   // Escape closes, and the page behind is frozen while the dialog is up.
   // Locking the root element also stops Lenis, which drives the page by
@@ -81,17 +84,12 @@ export default function Modal({
     focusable?.focus({ preventScroll: true });
   }, [open]);
 
-  if (!open) return null;
+  if (!open || typeof document === 'undefined') return null;
 
-  // z-[100] puts the dialog above the page's own fixed furniture — the floating
-  // chat button, the mobile nav, the booking status pill — all of which sit at
-  // z-50. Sharing that level meant the later element in the DOM won, which on a
-  // phone put the chat button squarely on top of this dialog's submit button:
-  // `items-end` pins the panel to the bottom of the screen, exactly where that
-  // button floats.
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-[150] flex items-center justify-center p-4 sm:p-4"
+      className="fixed inset-0 z-[150] overflow-y-auto overscroll-contain flex min-h-full items-center justify-center p-3 sm:p-4 text-center"
+      data-lenis-prevent="true"
       role="dialog"
       aria-modal="true"
       aria-labelledby={titleId}
@@ -100,18 +98,22 @@ export default function Modal({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.2 }}
-        className="absolute inset-0 bg-stone-950/50 backdrop-blur-sm"
+        className="fixed inset-0 bg-stone-950/50 backdrop-blur-sm"
         onClick={onClose}
       />
 
       <motion.div
-        ref={panelRef}
+        ref={(el) => {
+          (panelRef as any).current = el;
+          scrollIsolationRef(el);
+        }}
         initial={{ opacity: 0, y: 24, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ type: 'spring', stiffness: 420, damping: 34, mass: 0.9 }}
         className={`relative z-10 w-full ${SIZES[size]} bg-white shadow-2xl shadow-stone-950/25
           rounded-[1.75rem]
-          max-h-[92dvh] sm:max-h-[88dvh] flex flex-col overflow-hidden`}
+          max-h-[calc(100dvh-2rem)] sm:max-h-[88dvh] flex flex-col overflow-hidden my-auto text-left`}
+        data-lenis-prevent="true"
       >
 
         <div className="flex items-start gap-4 px-6 sm:px-8 pt-5 sm:pt-7 pb-5 border-b border-stone-100 shrink-0">
@@ -128,7 +130,7 @@ export default function Modal({
               type="button"
               onClick={onClose}
               aria-label="Close"
-              className="shrink-0 -mr-1 -mt-1 p-2 rounded-full text-stone-400 hover:text-stone-900 hover:bg-stone-100 transition"
+              className="shrink-0 -mr-1 -mt-1 p-2 rounded-full text-stone-400 hover:text-stone-900 hover:bg-stone-100 transition cursor-pointer"
             >
               <X className="h-5 w-5" />
             </button>
@@ -137,7 +139,7 @@ export default function Modal({
 
         {/* `data-lenis-prevent` hands the wheel back to this element, otherwise
             Lenis keeps the gesture for the page underneath. */}
-        <div data-lenis-prevent className="flex-1 overflow-y-auto overscroll-contain scrollbar-slim px-6 sm:px-8 py-6">
+        <div data-lenis-prevent="true" className="flex-1 overflow-y-auto overscroll-contain scrollbar-slim px-6 sm:px-8 py-6">
           {children}
         </div>
 
@@ -147,7 +149,8 @@ export default function Modal({
           </div>
         )}
       </motion.div>
-    </div>
+    </div>,
+    document.body
   );
 }
 

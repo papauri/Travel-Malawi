@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import QRCode from 'react-qr-code';
 import { motion, AnimatePresence } from 'motion/react';
 import { ShieldCheck, MapPin, X, Users, Phone, Zap, Droplets, Map, Wifi, Monitor, CheckCircle2, ClipboardList, UtensilsCrossed, Copy, Eye, QrCode, Lock, Unlock } from 'lucide-react';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { useModalScrollIsolation } from '../hooks/useModalScrollIsolation';
 import { Booking, Hotel, RoomType } from '../types';
 import { formatMoney } from '../lib/booking';
 import { formatDateStr } from '../lib/dates';
@@ -21,6 +23,7 @@ export default function StayVoucherModal({ booking, isOpen, onClose }: Props) {
   const [showWifi, setShowWifi] = useState(false);
   const [copied, setCopied] = useState(false);
   useBodyScrollLock(isOpen);
+  const scrollIsolationRef = useModalScrollIsolation<HTMLDivElement>(isOpen);
   
   // Arrival PIN Lock State
   const [isUnlocked, setIsUnlocked] = useState(false);
@@ -54,16 +57,21 @@ export default function StayVoucherModal({ booking, isOpen, onClose }: Props) {
   const isUnlockedEffective = isUnlocked || isArrivalDayOrLater;
   const isLocked = Boolean(booking?.arrivalPin && !isUnlockedEffective);
 
+  if (typeof document === 'undefined') return null;
 
-  return (
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-stone-900/60 backdrop-blur-sm">
+        <div
+          data-lenis-prevent="true"
+          className="fixed inset-0 z-[100] overflow-y-auto overscroll-contain flex min-h-full items-center justify-center p-3 sm:p-4 md:p-6 bg-stone-900/60 backdrop-blur-sm text-center"
+        >
           <motion.div
+            ref={scrollIsolationRef}
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[95dvh] sm:max-h-[95vh] relative overscroll-contain"
+            className="w-full max-w-2xl my-auto bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[calc(100dvh-2.5rem)] sm:max-h-[88dvh] relative overscroll-contain text-left"
             data-lenis-prevent="true"
           >
             {/* Header / Ticket Top */}
@@ -362,6 +370,7 @@ export default function StayVoucherModal({ booking, isOpen, onClose }: Props) {
           </motion.div>
         </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }

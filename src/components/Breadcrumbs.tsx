@@ -64,7 +64,17 @@ function trailFor(pathname: string, label: string): Crumb[] {
   }
   if (pathname === '/dashboard') return [home, { label: 'Dashboard' }];
   if (pathname.startsWith('/hotel/')) return [home, { label: label || 'Property' }];
-  if (pathname === '/my-bookings') return [home, { label: 'My bookings' }];
+  if (
+    pathname === '/my-bookings' ||
+    pathname === '/bookings' ||
+    pathname === '/mybookings' ||
+    pathname === '/my-booking' ||
+    pathname === '/booking' ||
+    pathname === '/trips' ||
+    pathname === '/my-trips'
+  ) {
+    return [home, { label: 'My bookings' }];
+  }
   if (pathname === '/profile') return [home, { label: 'Profile' }];
   if (pathname === '/saved') return [home, { label: 'Saved properties' }];
   if (pathname === '/admin') return [home, { label: 'Admin Dashboard' }];

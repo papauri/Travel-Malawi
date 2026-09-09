@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   MessageSquare, Send, CheckCircle2, XCircle, RefreshCw, Smartphone, Lock, 
-  ShieldCheck, AlertCircle, Eye, EyeOff, Sparkles, HelpCircle, Save, ExternalLink,
+  ShieldCheck, AlertCircle, Eye, EyeOff, BookOpen, HelpCircle, Save, ExternalLink,
   Phone, Globe, ToggleLeft, ToggleRight
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -598,7 +598,7 @@ export default function AdminWhatsAppSettings() {
           {/* Quick Guide Card */}
           <div className="bg-emerald-50/70 border border-emerald-200 rounded-2xl p-5 text-xs text-emerald-950 space-y-2.5">
             <div className="flex items-center gap-2 font-bold text-emerald-900">
-              <Sparkles className="w-4 h-4 text-emerald-700" />
+              <BookOpen className="w-4 h-4 text-emerald-700" />
               <span>How Managers Use This</span>
             </div>
             <ul className="space-y-1.5 text-[11px] text-emerald-850 list-disc list-inside">

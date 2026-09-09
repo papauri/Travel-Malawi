@@ -1,4 +1,5 @@
-import React, { useState, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Upload,
   FileText,
@@ -11,7 +12,7 @@ import {
   ChevronUp,
   ClipboardPaste,
   Zap,
-  Sparkles,
+  ScanText,
   Info,
   Trash2,
   Plus,
@@ -21,6 +22,9 @@ import {
 import toast from 'react-hot-toast';
 import { MenuSection, MenuItem, PriceMap } from '../types';
 import { parseMenuText } from '../lib/localMenuParser';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { useModalScrollIsolation } from '../hooks/useModalScrollIsolation';
+import { useAIAssistant } from '../hooks/useAIAssistant';
 
 interface MenuImporterProps {
   open: boolean;
@@ -42,6 +46,11 @@ const ACCEPTED_TYPES = {
 const MAX_SIZE_MB = 8;
 
 export default function MenuImporter({ open, onClose, onImport, currencies }: MenuImporterProps) {
+  useBodyScrollLock(open);
+  const scrollIsolationRef = useModalScrollIsolation<HTMLDivElement>(open);
+  const { status: aiStatus } = useAIAssistant();
+  const hasSmartScanner = Boolean(aiStatus.enabled && aiStatus.available);
+
   const [activeTab, setActiveTab] = useState<'text' | 'file'>('text');
   const [engine, setEngine] = useState<'local' | 'ai'>('local');
   const [file, setFile] = useState<File | null>(null);
@@ -54,6 +63,25 @@ export default function MenuImporter({ open, onClose, onImport, currencies }: Me
   const [expandedSections, setExpandedSections] = useState<Set<number>>(new Set());
   const inputRef = useRef<HTMLInputElement>(null);
   const dropRef = useRef<HTMLDivElement>(null);
+
+  // Synchronize engine if smart scanner is not available
+  useEffect(() => {
+    if (!hasSmartScanner && engine === 'ai') {
+      setEngine('local');
+    }
+  }, [hasSmartScanner, engine]);
+
+  // Keyboard escape listener to cleanly close modal
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        handleClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [open]);
 
   // Live real-time analysis using local parser
   const liveAnalysis = useMemo(() => {
@@ -152,7 +180,7 @@ export default function MenuImporter({ open, onClose, onImport, currencies }: Me
           textToParse = await file.text();
         } else {
           // File is an image/PDF but user selected local parser
-          throw new Error('Local tool can directly decipher text, CSV, and formatted lists. For images or scanned PDFs, switch to AI Deep Scan or paste the menu text.');
+          throw new Error('Local tool directly parses text, CSV, and formatted lists. For images or scanned PDFs, switch to Document & Vision Scan or paste the menu text.');
         }
 
         const localResult = parseMenuText(textToParse, currencies);
@@ -160,14 +188,14 @@ export default function MenuImporter({ open, onClose, onImport, currencies }: Me
           setExtractedSections(localResult.sections);
           setExpandedSections(new Set(localResult.sections.map((_, i) => i)));
           setDecipherEngineUsed('local');
-          toast.success(`⚡ Deciphered ${localResult.stats.itemsCount} items with Local Tool!`);
+          toast.success(`⚡ Extracted ${localResult.stats.itemsCount} items with Local Tool!`);
           return;
         } else {
           throw new Error('Could not identify distinct menu items. Try formatting lines with item name, dash, and price (e.g. "Chambo Cakes - MWK 14,000 / USD 8").');
         }
       }
 
-      // 2. AI ENGINE EXECUTION (Sends to backend with safe response handling & local fallback)
+      // 2. DOCUMENT SCANNER ENGINE EXECUTION (Sends to backend with safe response handling & local fallback)
       let res: Response;
       let rawTextForFallback = activeTab === 'text' ? pastedText.trim() : '';
 
@@ -203,7 +231,6 @@ export default function MenuImporter({ open, onClose, onImport, currencies }: Me
         data = await res.json();
       } else {
         const rawText = await res.text();
-        // Server returned an HTML error or non-JSON page
         console.warn('Non-JSON response from /api/ai/parse-menu:', rawText.slice(0, 150));
         
         // If we have raw text, immediately recover using the Local Tool!
@@ -213,22 +240,22 @@ export default function MenuImporter({ open, onClose, onImport, currencies }: Me
             setExtractedSections(localFallback.sections);
             setExpandedSections(new Set(localFallback.sections.map((_, i) => i)));
             setDecipherEngineUsed('fallback');
-            toast('AI provider was unreachable. Automatically deciphered using the Local Tool!', { icon: '⚡' });
+            toast('Scanner was unreachable. Automatically extracted using the Local Tool!', { icon: '⚡' });
             return;
           }
         }
-        throw new Error(`Server returned unexpected format (${res.status}). Use the Local Tool instead for instant offline deciphering.`);
+        throw new Error(`Server returned unexpected format (${res.status}). Use the Local Tool instead for instant extraction.`);
       }
 
       if (!res.ok) {
-        // If AI returned 503 or error, check if we can fall back to local parser
+        // If scanner returned 503 or error, check if we can fall back to local parser
         if (rawTextForFallback) {
           const localFallback = parseMenuText(rawTextForFallback, currencies);
           if (localFallback.sections.length > 0 && localFallback.sections.some(s => s.items.length > 0)) {
             setExtractedSections(localFallback.sections);
             setExpandedSections(new Set(localFallback.sections.map((_, i) => i)));
             setDecipherEngineUsed('fallback');
-            toast('Deciphered using Local Tool (AI not configured)', { icon: '⚡' });
+            toast('Extracted using Local Tool', { icon: '⚡' });
             return;
           }
         }
@@ -253,21 +280,21 @@ export default function MenuImporter({ open, onClose, onImport, currencies }: Me
         setDecipherEngineUsed(data.engine === 'local' ? 'local' : 'ai');
         toast.success(`Imported ${sections.length} section(s) with ${sections.reduce((sum, s) => sum + s.items.length, 0)} items!`);
       } else {
-        // If AI returned empty, try local parser
+        // If scanner returned empty, try local parser
         if (rawTextForFallback) {
           const localFallback = parseMenuText(rawTextForFallback, currencies);
           if (localFallback.sections.length > 0) {
             setExtractedSections(localFallback.sections);
             setExpandedSections(new Set(localFallback.sections.map((_, i) => i)));
             setDecipherEngineUsed('fallback');
-            toast.success('Deciphered using Local Tool!');
+            toast.success('Extracted using Local Tool!');
             return;
           }
         }
         throw new Error('Could not extract menu items from this content. Please check the text or try a clearer file.');
       }
     } catch (err: any) {
-      console.error('Decipher menu error:', err);
+      console.error('Menu extraction error:', err);
       // If we have text and haven't tried local yet, try it now
       if (activeTab === 'text' && pastedText.trim()) {
         try {
@@ -276,7 +303,7 @@ export default function MenuImporter({ open, onClose, onImport, currencies }: Me
             setExtractedSections(localFallback.sections);
             setExpandedSections(new Set(localFallback.sections.map((_, i) => i)));
             setDecipherEngineUsed('fallback');
-            toast('Deciphered with Local Tool (offline)', { icon: '⚡' });
+            toast('Extracted with Local Tool', { icon: '⚡' });
             return;
           }
         } catch {}
@@ -328,18 +355,29 @@ export default function MenuImporter({ open, onClose, onImport, currencies }: Me
     setExtractedSections(updated);
   };
 
-  if (!open) return null;
+  if (!open || typeof document === 'undefined') return null;
 
-  return (
-    <div id="menu-importer-modal" className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col border border-stone-200">
+  return createPortal(
+    <div
+      id="menu-importer-modal"
+      className="fixed inset-0 z-[100] overflow-y-auto overscroll-contain bg-stone-950/60 backdrop-blur-xs flex min-h-full items-center justify-center p-3 sm:p-4 md:p-6 text-center"
+      data-lenis-prevent="true"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) handleClose();
+      }}
+    >
+      <div
+        ref={scrollIsolationRef}
+        data-lenis-prevent="true"
+        className="bg-white rounded-2xl sm:rounded-3xl w-full max-w-2xl max-h-[calc(100dvh-2.5rem)] sm:max-h-[88vh] overflow-hidden shadow-2xl flex flex-col border border-stone-200 text-left overscroll-contain my-auto relative"
+      >
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-stone-200 bg-stone-50/50">
+        <div className="flex items-center justify-between p-5 border-b border-stone-200 bg-stone-50/50 shrink-0">
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="text-lg font-semibold text-stone-900">Decipher & Import Menu</h3>
+              <h3 className="text-lg font-semibold text-stone-900">Extract & Import Menu</h3>
               <span className="text-[10px] font-medium tracking-wide uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                Local + AI Tools
+                {hasSmartScanner ? 'Instant & Smart Scan' : 'Instant Local Tool'}
               </span>
             </div>
             <p className="text-xs text-stone-500 mt-0.5">
@@ -355,11 +393,11 @@ export default function MenuImporter({ open, onClose, onImport, currencies }: Me
           </button>
         </div>
 
-        {/* Engine Switcher Bar (when not reviewing) */}
-        {!extractedSections && (
-          <div className="px-5 pt-3 pb-2 bg-stone-50 border-b border-stone-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        {/* Engine Switcher Bar (only when smart scanner is available and not reviewing) */}
+        {!extractedSections && hasSmartScanner && (
+          <div className="px-5 pt-3 pb-2 bg-stone-50 border-b border-stone-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shrink-0">
             <div className="flex items-center gap-1.5 text-xs text-stone-600 font-medium">
-              <span>Deciphering Engine:</span>
+              <span>Extraction Mode:</span>
             </div>
             <div className="inline-flex p-1 rounded-xl bg-stone-200/70 text-xs font-semibold">
               <button
@@ -376,7 +414,7 @@ export default function MenuImporter({ open, onClose, onImport, currencies }: Me
                 }`}
               >
                 <Zap className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Local Tool (Fast & Offline)</span>
+                <span>Local Tool (Fast & Instant)</span>
               </button>
               <button
                 type="button"
@@ -391,8 +429,8 @@ export default function MenuImporter({ open, onClose, onImport, currencies }: Me
                     : 'text-stone-600 hover:text-stone-900'
                 }`}
               >
-                <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-                <span>AI Vision Scan</span>
+                <ScanText className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Document & Vision Scan</span>
               </button>
             </div>
           </div>
@@ -400,7 +438,7 @@ export default function MenuImporter({ open, onClose, onImport, currencies }: Me
 
         {/* Tab Selector (only when not viewing extracted results) */}
         {!extractedSections && (
-          <div className="flex border-b border-stone-200 bg-stone-50 px-5 pt-2 gap-2">
+          <div className="flex border-b border-stone-200 bg-stone-50 px-5 pt-2 gap-2 shrink-0">
             <button
               type="button"
               id="tab-paste-text"
@@ -437,7 +475,7 @@ export default function MenuImporter({ open, onClose, onImport, currencies }: Me
         )}
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+        <div className="flex-1 overflow-y-auto p-5 space-y-4 overscroll-contain" data-lenis-prevent="true">
           {!extractedSections ? (
             <>
               {activeTab === 'text' ? (
@@ -495,7 +533,7 @@ Fresh Malawi Mango Smoothie - MWK 4,500`}
                             {liveAnalysis.sections.length > 3 ? '...' : ''}), {liveAnalysis.stats.itemsCount} dishes
                           </p>
                           <p className="text-[11px] text-emerald-700">
-                            {liveAnalysis.stats.pricesFoundCount} prices detected with tags • Ready to decipher in 0ms without AI
+                            {liveAnalysis.stats.pricesFoundCount} prices detected with tags • Ready to extract in 0ms
                           </p>
                         </div>
                       </div>
@@ -505,7 +543,7 @@ Fresh Malawi Mango Smoothie - MWK 4,500`}
                         onClick={() => processMenu('local')}
                         className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold rounded-lg shadow-xs transition shrink-0"
                       >
-                        ⚡ Decipher Now
+                        ⚡ Extract Now
                       </button>
                     </div>
                   )}
@@ -581,11 +619,11 @@ Fresh Malawi Mango Smoothie - MWK 4,500`}
                     </div>
                     <div className="flex items-center gap-2 p-2.5 bg-stone-50 rounded-lg border border-stone-200">
                       <Image className="w-4 h-4 text-blue-500" />
-                      <span>Photo or scanned page (AI OCR)</span>
+                      <span>Photo or scanned page (Vision OCR)</span>
                     </div>
                     <div className="flex items-center gap-2 p-2.5 bg-stone-50 rounded-lg border border-stone-200">
                       <FileText className="w-4 h-4 text-red-500" />
-                      <span>PDF menu file (AI OCR)</span>
+                      <span>PDF menu document (Document OCR)</span>
                     </div>
                     <div className="flex items-center gap-2 p-2.5 bg-stone-50 rounded-lg border border-stone-200">
                       <FileText className="w-4 h-4 text-emerald-600" />
@@ -619,24 +657,24 @@ Fresh Malawi Mango Smoothie - MWK 4,500`}
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-emerald-950">
-                      Deciphered {extractedSections.length} section{extractedSections.length !== 1 ? 's' : ''} with{' '}
+                      Extracted {extractedSections.length} section{extractedSections.length !== 1 ? 's' : ''} with{' '}
                       {extractedSections.reduce((sum, s) => sum + s.items.length, 0)} dishes
                     </p>
                     <p className="text-xs text-emerald-700 flex items-center gap-1.5 mt-0.5">
                       {decipherEngineUsed === 'local' ? (
                         <>
                           <Zap className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>Deciphered via Local Parser Tool (zero network latency)</span>
+                          <span>Extracted via Local Parser Tool (instant & private)</span>
                         </>
                       ) : decipherEngineUsed === 'fallback' ? (
                         <>
                           <Zap className="w-3.5 h-3.5 text-amber-600" />
-                          <span>Deciphered via Local Tool Fallback (AI was offline)</span>
+                          <span>Extracted via Local Parser Tool</span>
                         </>
                       ) : (
                         <>
-                          <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-                          <span>Deciphered via AI Vision Engine</span>
+                          <ScanText className="w-3.5 h-3.5 text-indigo-600" />
+                          <span>Extracted via Document & Vision Scanner</span>
                         </>
                       )}
                     </p>
@@ -757,15 +795,15 @@ Fresh Malawi Mango Smoothie - MWK 4,500`}
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-stone-200 bg-stone-50/50 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="p-4 border-t border-stone-200 bg-stone-50/50 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
           {!extractedSections ? (
             <>
               <div className="text-xs text-stone-500 flex items-center gap-1.5">
                 <Info className="w-3.5 h-3.5 text-stone-400" />
                 <span>
                   {engine === 'local'
-                    ? 'Local Tool runs 100% in your browser. No AI or network required.'
-                    : 'AI Vision analyzes images and PDFs using machine learning models.'}
+                    ? 'Local Tool runs 100% in your browser. Fast, private, and instant.'
+                    : 'Document & Vision Scanner analyzes photos and PDF documents.'}
                 </span>
               </div>
               <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
@@ -791,12 +829,12 @@ Fresh Malawi Mango Smoothie - MWK 4,500`}
                   {processing ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Deciphering Menu...</span>
+                      <span>Extracting Menu Items...</span>
                     </>
                   ) : (
                     <>
-                      {engine === 'local' ? <Zap className="w-4 h-4 text-emerald-400" /> : <Sparkles className="w-4 h-4 text-indigo-300" />}
-                      <span>{engine === 'local' ? 'Decipher with Local Tool' : 'Decipher with AI'}</span>
+                      {engine === 'local' ? <Zap className="w-4 h-4 text-emerald-400" /> : <ScanText className="w-4 h-4 text-indigo-300" />}
+                      <span>{engine === 'local' ? 'Extract with Local Tool' : 'Extract Menu Items'}</span>
                     </>
                   )}
                 </button>
@@ -835,6 +873,7 @@ Fresh Malawi Mango Smoothie - MWK 4,500`}
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Sparkles } from 'lucide-react';
+import { X, ConciergeBell } from 'lucide-react';
 
 export const WALKTHROUGH_SESSION_KEY = 'tp_walkthrough_concierge_chat_seen';
 
@@ -48,7 +48,7 @@ export interface WalkthroughTooltipProps {
 
 export default function WalkthroughTooltip({
   id,
-  icon = <Sparkles className="w-3.5 h-3.5 text-amber-400" />,
+  icon = <ConciergeBell className="w-3.5 h-3.5 text-amber-400" />,
   title,
   description,
   arrowPosition = 'bottom-right',

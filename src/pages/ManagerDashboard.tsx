@@ -4,7 +4,7 @@ import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/fire
 import { Booking, RoomType } from '../types';
 import { db } from '../lib/firebase';
 import { Hotel } from '../types';
-import { Building2, Plus, ChevronRight, Clock, CheckCircle2, XCircle, BedDouble, CalendarCheck, Lock, Sparkles, UserCheck, ArrowRight, Check } from 'lucide-react';
+import { Building2, Plus, ChevronRight, Clock, CheckCircle2, XCircle, BedDouble, CalendarCheck, Lock, KeyRound, UserCheck, ArrowRight, Check } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuthDialog } from '../contexts/AuthDialogContext';
@@ -272,7 +272,7 @@ export default function ManagerDashboard() {
                 disabled={activating}
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-stone-900 hover:bg-stone-800 text-white font-semibold px-8 py-3.5 rounded-full text-sm transition shadow-sm cursor-pointer disabled:opacity-50"
               >
-                <Sparkles className="w-4 h-4 text-stone-300" />
+                <KeyRound className="w-4 h-4 text-stone-300" />
                 <span>{activating ? 'Activating Host Tools…' : 'Activate Property Owner Account (Free)'}</span>
               </button>
               <Link

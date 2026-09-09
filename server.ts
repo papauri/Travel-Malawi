@@ -18,7 +18,7 @@ import {
   getAllPendingReminders
 } from './server/reminders';
 import { getAdminDocsList, getAdminDocContent } from './server/docUtils';
-import { getAdminEmailConfig, saveEmailConfig, testSMTPConnection } from './server/emailConfig';
+import { getAdminEmailConfig, saveEmailConfig, testSMTPConnection, sendSystemEmail } from './server/emailConfig';
 import { 
   getAdminWhatsAppConfig, 
   getPublicWhatsAppStatus, 
@@ -511,6 +511,89 @@ async function startServer() {
       res.json(result);
     } catch (err: any) {
       res.status(400).json({ error: err?.message || 'SMTP connection test failed' });
+    }
+  });
+
+  // Password reset email notice via SMTP (aligned with auth flows)
+  app.post('/api/auth/notify-password-reset', async (req, res) => {
+    try {
+      const { email } = req.body;
+      if (!email) {
+        return res.status(400).json({ error: 'Email is required.' });
+      }
+
+      const cleanEmail = String(email).trim().toLowerCase();
+      const result = await sendSystemEmail({
+        to: cleanEmail,
+        subject: 'Security Alert: Password Reset Requested — Travel Malawi',
+        text: `Hello,\n\nA password reset request was initiated for your Travel Malawi account (${cleanEmail}).\n\nIf you requested this change, please check your inbox (including Spam/Junk folder) for the reset verification link.\n\nIf you did not make this request, your account remains secure and no action is required, or you can contact support at support@malawiscapes.com.`,
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 560px; margin: 0 auto; padding: 28px 24px; border: 1px solid #e7e5e4; border-radius: 16px; background: #ffffff; color: #1c1917;">
+            <div style="text-align: center; margin-bottom: 24px;">
+              <span style="display: inline-block; padding: 5px 12px; background: #fef3c7; color: #b45309; font-size: 11px; font-weight: 700; border-radius: 9999px; text-transform: uppercase; letter-spacing: 0.05em;">
+                Security Notice
+              </span>
+              <h2 style="margin: 12px 0 6px; font-size: 20px; font-weight: 800; color: #1c1917;">Password Reset Notification</h2>
+              <p style="margin: 0; font-size: 13px; color: #78716c;">Travel Malawi Account Security</p>
+            </div>
+            <div style="background: #fafaf9; border-radius: 12px; padding: 18px 20px; margin-bottom: 20px; border: 1px solid #f5f5f4;">
+              <p style="margin: 0 0 10px; font-size: 14px; line-height: 1.5; color: #44403c;">
+                A password reset request was initiated for <strong>${cleanEmail}</strong>.
+              </p>
+              <p style="margin: 0; font-size: 13px; color: #57534e; line-height: 1.6;">
+                Please verify your inbox for the official reset verification link. If you did not request this, you may safely ignore this message or report it to platform administrators.
+              </p>
+            </div>
+            <p style="font-size: 12px; color: #a8a29e; text-align: center; margin: 0;">
+              Travel Malawi · Account Security Operations
+            </p>
+          </div>
+        `,
+      });
+
+      res.json({ success: true, emailSent: result.success });
+    } catch (err: any) {
+      // Non-fatal fallback
+      res.json({ success: true, emailSent: false, note: err?.message });
+    }
+  });
+
+  // Account status notifications (revoked / restored)
+  app.post('/api/admin/notify-account-status', async (req, res) => {
+    try {
+      const { email, status, name } = req.body;
+      if (!email) return res.status(400).json({ error: 'Email is required' });
+
+      const isRevoked = status === 'revoked';
+      const result = await sendSystemEmail({
+        to: String(email).trim(),
+        subject: isRevoked 
+          ? 'Account Access Suspended — Travel Malawi'
+          : 'Account Access Restored — Travel Malawi',
+        text: isRevoked
+          ? `Hello ${name || 'User'},\n\nYour account access on Travel Malawi has been suspended by an administrator. Please reach out to support if you believe this was in error.`
+          : `Hello ${name || 'User'},\n\nYour account access on Travel Malawi has been restored. You may now sign in again.`,
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 560px; margin: 0 auto; padding: 28px 24px; border: 1px solid #e7e5e4; border-radius: 16px; background: #ffffff; color: #1c1917;">
+            <div style="text-align: center; margin-bottom: 24px;">
+              <span style="display: inline-block; padding: 5px 12px; background: ${isRevoked ? '#fee2e2' : '#ecfdf5'}; color: ${isRevoked ? '#b91c1c' : '#047857'}; font-size: 11px; font-weight: 700; border-radius: 9999px; text-transform: uppercase;">
+                ${isRevoked ? 'Access Suspended' : 'Access Restored'}
+              </span>
+              <h2 style="margin: 12px 0 6px; font-size: 20px; font-weight: 800; color: #1c1917;">Account Status Update</h2>
+            </div>
+            <p style="font-size: 14px; line-height: 1.6; color: #44403c;">
+              Hello ${name || 'User'},<br/><br/>
+              ${isRevoked 
+                ? 'Your account access to the Travel Malawi platform has been suspended or revoked by an administrator.' 
+                : 'Your account access to the Travel Malawi platform has been successfully restored.'}
+            </p>
+          </div>
+        `
+      });
+
+      res.json({ success: true, emailSent: result.success });
+    } catch (err: any) {
+      res.json({ success: true, emailSent: false, note: err?.message });
     }
   });
 

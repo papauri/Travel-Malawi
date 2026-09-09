@@ -16,7 +16,7 @@ import {
   ShieldCheck,
   Award,
   Lock,
-  Sparkles,
+  KeyRound,
   LayoutDashboard,
   UserCheck
 } from 'lucide-react';
@@ -244,7 +244,7 @@ export default function HostStarterPack() {
                 disabled={activating}
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-stone-900 hover:bg-stone-800 text-white font-semibold px-8 py-3.5 rounded-full text-sm transition shadow-sm cursor-pointer disabled:opacity-50"
               >
-                <Sparkles className="w-4 h-4 text-stone-300" />
+                <KeyRound className="w-4 h-4 text-stone-300" />
                 <span>{activating ? 'Activating Host Tools…' : 'Activate Property Owner Account (Free)'}</span>
               </button>
               <Link

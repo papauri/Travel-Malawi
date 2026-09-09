@@ -13,7 +13,6 @@ import {
   AlertCircle, 
   ChevronDown, 
   ChevronUp, 
-  Sparkles,
   Info,
   ShieldCheck,
   MessageSquare

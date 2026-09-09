@@ -255,7 +255,7 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
   const adjustTextareaHeight = () => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
-      const newHeight = Math.min(Math.max(textareaRef.current.scrollHeight, 40), 140);
+      const newHeight = Math.min(Math.max(textareaRef.current.scrollHeight, 40), 320);
       textareaRef.current.style.height = `${newHeight}px`;
     }
   };
@@ -292,6 +292,9 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
       clearTimeout(typingTimeoutRef.current);
     }
     setTypingState(false);
+    if (textareaRef.current) {
+      textareaRef.current.style.height = '';
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -502,7 +505,7 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
     const textToSend = newMessage.trim();
     setNewMessage('');
     if (textareaRef.current) {
-      textareaRef.current.style.height = '40px';
+      textareaRef.current.style.height = '';
     }
 
     try {
@@ -948,9 +951,9 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
                     <ChevronDown className={`w-3 h-3 text-stone-400 transition-transform duration-200 ${showDepositMenu ? 'rotate-180' : ''}`} />
                   </button>
 
-                  {/* Dropdown Menu - Left aligned on mobile, right aligned on desktop with max-width safeguard */}
+                  {/* Dropdown Menu - Left aligned to prevent clipping in narrow chat drawers */}
                   {showDepositMenu && (
-                    <div className="absolute left-0 sm:left-auto sm:right-0 top-full mt-1.5 w-72 max-w-[calc(100vw-2.5rem)] bg-white border border-stone-200 rounded-2xl shadow-xl p-2 z-50 animate-fadeIn space-y-1">
+                    <div className="absolute left-0 top-full mt-1.5 w-72 max-w-[calc(100vw-2.5rem)] bg-white border border-stone-200 rounded-2xl shadow-xl p-2 z-50 animate-fadeIn space-y-1">
                       <div className="px-2.5 py-1.5 border-b border-stone-100 flex items-center justify-between">
                         <span className="text-[10.5px] font-bold uppercase tracking-wider text-stone-400">
                           Deposit Instructions
@@ -1243,12 +1246,13 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
             onBlur={handleInputBlur}
+            onFocus={adjustTextareaHeight}
             placeholder={
               isManager 
                 ? "Reply to guest or send deposit details... (Enter to send, Shift+Enter for newline)" 
                 : "Ask about payment, transport, or arrival..."
             }
-            className="flex-1 max-h-[140px] min-h-[42px] bg-stone-100 border border-transparent focus:border-stone-400 focus:bg-white focus:ring-0 rounded-xl px-4 py-2.5 text-sm transition outline-none resize-none leading-relaxed overflow-y-auto scrollbar-slim"
+            className="flex-1 max-h-[320px] min-h-[54px] bg-stone-100 border border-transparent focus:border-stone-400 focus:bg-white focus:ring-0 rounded-xl px-4 pt-3 pb-4 text-sm transition outline-none resize-y leading-relaxed overflow-y-auto scrollbar-slim"
             disabled={sending}
           />
           <button

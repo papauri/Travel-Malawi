@@ -19,8 +19,16 @@ service cloud.firestore {
         (profile(uid).get('role', '') == role || role in profile(uid).get('roles', []));
     }
 
+    function isGlobalAdmin() {
+      return isAuthenticated() && (hasRole(request.auth.uid, 'global_admin') || request.auth.token.email == 'johnpaulchirwa@gmail.com');
+    }
+
     function isAdmin() {
-      return isAuthenticated() && (hasRole(request.auth.uid, 'admin') || request.auth.token.email == 'johnpaulchirwa@gmail.com');
+      return isAuthenticated() && (hasRole(request.auth.uid, 'admin') || isGlobalAdmin());
+    }
+
+    function isMarketing() {
+      return isAuthenticated() && hasRole(request.auth.uid, 'marketing');
     }
 
     function hotelData(hotelId) {
@@ -51,7 +59,7 @@ service cloud.firestore {
 
     match /system/{document=**} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if isGlobalAdmin();
     }
 
     match /presence/{userId} {
@@ -68,7 +76,7 @@ service cloud.firestore {
     match /users/{userId} {
       // Profiles carry email addresses, so they are no longer world-readable.
       // The admin dashboard lists managers, so admins keep collection access.
-      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin() || isMarketing());
       // A user must not be able to make themselves an admin, through either
       // the legacy `role` field or the `roles` list.
       allow create: if isAuthenticated() && request.auth.uid == userId
@@ -76,22 +84,25 @@ service cloud.firestore {
                     && (
                       (request.resource.data.role in ['traveller', 'hotel_manager']
                        && request.resource.data.get('roles', ['traveller']).hasOnly(['traveller', 'hotel_manager']))
-                      || request.auth.token.email == 'johnpaulchirwa@gmail.com'
+                      || isGlobalAdmin()
                     );
       // A user owns their own profile, including which of the two
       // self-assignable roles they hold: someone who joined to book a stay can
       // turn on hosting, and a host can edit their details. `admin` is the only
       // thing out of reach — exactly as in `create` above, so the two rules
       // read the same way.
-      allow update: if isAdmin() || (
+      allow update: if isGlobalAdmin()
+                    || (isAdmin() && !('global_admin' in request.resource.data.get('roles', [])))
+                    || (isMarketing() && request.resource.data.get('roles', ['traveller']).hasOnly(['traveller', 'hotel_manager']))
+                    || (
                       isAuthenticated() && request.auth.uid == userId
                       && (
                         (request.resource.data.role in ['traveller', 'hotel_manager']
                          && request.resource.data.get('roles', ['traveller']).hasOnly(['traveller', 'hotel_manager']))
-                        || request.auth.token.email == 'johnpaulchirwa@gmail.com'
+                        || isGlobalAdmin()
                       )
                     );
-      allow delete: if isAdmin();
+      allow delete: if isGlobalAdmin() || (isAuthenticated() && request.auth.uid == userId);
     }
 
     match /room_locks/{roomId} {
@@ -113,7 +124,7 @@ service cloud.firestore {
       // `get(field, default)` because listings imported before moderation
       // existed have no `status` field, and none has `featured` until an admin
       // sets one — reading a missing field would fail the rule outright.
-      allow update: if isAdmin() || (
+      allow update: if isAdmin() || isMarketing() || (
                       isManager(hotelId)
                       && (
                         request.resource.data.get('managerId', '') == resource.data.get('managerId', '')
@@ -135,19 +146,19 @@ service cloud.firestore {
       allow read: if true;
       allow create: if isAuthenticated()
                     && request.resource.data.hotelId is string
-                    && (isManager(request.resource.data.hotelId) || isAdmin());
+                    && (isManager(request.resource.data.hotelId) || isAdmin() || isMarketing());
       // A manager may edit their own room, but not reassign it onto a
       // property they don't manage — `resource.data.hotelId` alone only
       // proved the room currently belongs to them, not that it still would
       // after the write, which let a manager rewrite `hotelId` and vandalise
       // another property's room list.
-      allow update: if isAdmin() || (
+      allow update: if isAdmin() || isMarketing() || (
                       resource.data.hotelId is string
                       && isManager(resource.data.hotelId)
                       && request.resource.data.hotelId == resource.data.hotelId
                     );
       allow delete: if resource.data.hotelId is string
-                    && (isManager(resource.data.hotelId) || isAdmin());
+                    && (isManager(resource.data.hotelId) || isAdmin() || isMarketing());
     }
 
     match /bookings/{bookingId}/messages/{messageId} {
@@ -272,7 +283,7 @@ service cloud.firestore {
       // party may rewrite the dates, price or room after the fact.
       // Immutable fields are compared through `get` with a default so that a
       // record imported without one of them cannot be locked out of updates.
-      allow update: if isAdmin() || (
+      allow update: if isAdmin() || isMarketing() || (
                       isAuthenticated()
                       && request.resource.data.hotelId == resource.data.hotelId
                       && request.resource.data.roomTypeId == resource.data.roomTypeId

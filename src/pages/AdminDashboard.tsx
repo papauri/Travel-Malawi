@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { collection, getDocs, doc, updateDoc, deleteDoc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -22,7 +22,7 @@ import AdminDocsHub from '../components/AdminDocsHub';
 import AdminEmailSettings from '../components/AdminEmailSettings';
 import AdminWhatsAppSettings from '../components/AdminWhatsAppSettings';
 import { getHotelImage } from '../lib/images';
-import { isAdmin, isHotelManager, userRoles, toRoleFields } from '../lib/roles';
+import { isAdmin, isGlobalAdmin, isMarketing, isHotelManager, userRoles, toRoleFields } from '../lib/roles';
 import { formatMoney } from '../lib/booking';
 import { Navigation, TrendingUp, BookOpen, Mail, Settings } from 'lucide-react';
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
@@ -36,6 +36,19 @@ export default function AdminDashboard() {
   
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [settingsSubTab, setSettingsSubTab] = useState<'email' | 'whatsapp'>('whatsapp');
+  
+  const activeTabRef = useRef<HTMLButtonElement | null>(null);
+
+  // Smoothly scroll active tab into view on mobile/tablet navigation
+  useEffect(() => {
+    if (activeTabRef.current) {
+      activeTabRef.current.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+        inline: 'center'
+      });
+    }
+  }, [activeTab]);
   
   const [hotels, setHotels] = useState<Hotel[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -140,7 +153,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (!authLoading) {
-      if (!user || !isAdmin(user)) {
+      if (!user || (!isAdmin(user) && !isMarketing(user))) {
         navigate('/');
         return;
       }
@@ -436,162 +449,244 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-12 w-full flex flex-col md:flex-row gap-6 md:gap-8 min-h-screen">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 w-full flex flex-col lg:flex-row gap-6 lg:gap-8 min-h-screen">
       
       {/* Sidebar Navigation */}
-      <div className="w-full md:w-64 shrink-0 space-y-2">
-        <div className="mb-4 md:mb-8 px-1 md:px-4">
-          <div className="flex items-center gap-3 mb-1 sm:mb-2">
-            <Shield className="h-7 w-7 sm:h-8 sm:w-8 text-stone-900" />
-            <h1 className="text-xl sm:text-2xl font-serif font-bold text-stone-900">Admin</h1>
+      <div className="w-full lg:w-64 shrink-0 space-y-3 lg:space-y-4 lg:sticky lg:top-24 lg:self-start">
+        <div className="flex items-center justify-between px-1 lg:px-2">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-stone-900 text-white flex items-center justify-center shrink-0 shadow-xs">
+              <Shield className="h-5 w-5 sm:h-6 sm:w-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl sm:text-2xl font-serif font-bold text-stone-900 leading-tight">Admin</h1>
+                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                  isGlobalAdmin(user) 
+                    ? 'bg-amber-100 text-amber-900 border border-amber-200' 
+                    : isMarketing(user)
+                    ? 'bg-purple-100 text-purple-900 border border-purple-200'
+                    : 'bg-emerald-100 text-emerald-900 border border-emerald-200'
+                }`}>
+                  {isGlobalAdmin(user) ? 'Global Admin' : isMarketing(user) ? 'Marketing' : 'Admin'}
+                </span>
+              </div>
+              <p className="text-stone-500 text-xs sm:text-sm">Platform Management</p>
+            </div>
           </div>
-          <p className="text-stone-500 text-xs sm:text-sm">Platform Management</p>
         </div>
         
-        <nav className="flex md:flex-col gap-1.5 overflow-x-auto pb-2 md:pb-0 scrollbar-hide snap-x touch-pan-x -mx-4 px-4 sm:-mx-6 sm:px-6 md:mx-0 md:px-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-          <button 
-            onClick={() => setActiveTab('overview')}
-            className={`whitespace-nowrap shrink-0 snap-start md:w-full flex items-center gap-2.5 px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold min-h-[44px] transition ${
-              activeTab === 'overview' ? 'bg-stone-900 text-white shadow-xs' : 'text-stone-600 bg-stone-100/70 md:bg-transparent hover:bg-stone-100'
-            }`}
+        {/* Navigation Tabs Bar */}
+        <div className="relative">
+          <nav 
+            className="flex lg:flex-col gap-1.5 overflow-x-auto p-1.5 bg-stone-100/90 lg:bg-transparent rounded-2xl border border-stone-200/80 lg:border-none scrollbar-hide snap-x touch-pan-x -mx-4 px-4 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+            role="tablist"
+            aria-label="Admin Sections"
           >
-            <LayoutDashboard className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
-            Overview
-          </button>
-          <button 
-            onClick={() => setActiveTab('analytics')}
-            className={`whitespace-nowrap shrink-0 snap-start md:w-full flex items-center gap-2.5 px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold min-h-[44px] transition ${
-              activeTab === 'analytics' ? 'bg-stone-900 text-white shadow-xs' : 'text-stone-600 bg-stone-100/70 md:bg-transparent hover:bg-stone-100'
-            }`}
-          >
-            <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
-            Analytics
-          </button>
-          <button 
-            onClick={() => setActiveTab('properties')}
-            className={`whitespace-nowrap shrink-0 snap-start md:w-full flex items-center gap-2.5 px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold min-h-[44px] transition ${
-              activeTab === 'properties' ? 'bg-stone-900 text-white shadow-xs' : 'text-stone-600 bg-stone-100/70 md:bg-transparent hover:bg-stone-100'
-            }`}
-          >
-            <Building2 className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
-            Properties
-            {stats.pendingProperties > 0 && (
-              <span className="ml-1 sm:ml-auto bg-amber-500 text-white text-[10px] px-2 py-0.5 rounded-full shrink-0 font-bold">
-                {stats.pendingProperties}
-              </span>
-            )}
-          </button>
-          <button 
-            onClick={() => setActiveTab('users')}
-            className={`whitespace-nowrap shrink-0 snap-start md:w-full flex items-center gap-2.5 px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold min-h-[44px] transition ${
-              activeTab === 'users' ? 'bg-stone-900 text-white shadow-xs' : 'text-stone-600 bg-stone-100/70 md:bg-transparent hover:bg-stone-100'
-            }`}
-          >
-            <Users className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
-            Users
-          </button>
-          <button 
-            onClick={() => setActiveTab('bookings')}
-            className={`whitespace-nowrap shrink-0 snap-start md:w-full flex items-center gap-2.5 px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold min-h-[44px] transition ${
-              activeTab === 'bookings' ? 'bg-stone-900 text-white shadow-xs' : 'text-stone-600 bg-stone-100/70 md:bg-transparent hover:bg-stone-100'
-            }`}
-          >
-            <CalendarRange className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
-            All Bookings
-          </button>
-          <button 
-            onClick={() => setActiveTab('destinations')}
-            className={`whitespace-nowrap shrink-0 snap-start md:w-full flex items-center gap-2.5 px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold min-h-[44px] transition ${
-              activeTab === 'destinations' ? 'bg-stone-900 text-white shadow-xs' : 'text-stone-600 bg-stone-100/70 md:bg-transparent hover:bg-stone-100'
-            }`}
-          >
-            <Navigation className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
-            Destinations
-          </button>
-          <button 
-            onClick={() => setActiveTab('content')}
-            className={`whitespace-nowrap shrink-0 snap-start md:w-full flex items-center gap-2.5 px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold min-h-[44px] transition ${
-              activeTab === 'content' ? 'bg-stone-900 text-white shadow-xs' : 'text-stone-600 bg-stone-100/70 md:bg-transparent hover:bg-stone-100'
-            }`}
-          >
-            <FileText className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
-            Content & Legal
-          </button>
-          <button 
-            onClick={() => setActiveTab('ai')}
-            className={`whitespace-nowrap shrink-0 snap-start md:w-full flex items-center gap-2.5 px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold min-h-[44px] transition ${
-              activeTab === 'ai' ? 'bg-stone-900 text-white shadow-xs' : 'text-stone-600 bg-stone-100/70 md:bg-transparent hover:bg-stone-100'
-            }`}
-          >
-            <Cpu className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
-            AI Services &amp; Keys
-          </button>
-          <button 
-            onClick={() => setActiveTab('docs')}
-            className={`whitespace-nowrap shrink-0 snap-start md:w-full flex items-center gap-2.5 px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold min-h-[44px] transition ${
-              activeTab === 'docs' ? 'bg-stone-900 text-white shadow-xs' : 'text-stone-600 bg-stone-100/70 md:bg-transparent hover:bg-stone-100'
-            }`}
-          >
-            <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
-            Executive Docs (.txt)
-            <span className="ml-auto bg-emerald-500/20 text-emerald-800 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase hidden md:inline-block">
-              Admin
-            </span>
-          </button>
-          <button 
-            onClick={() => setActiveTab('settings')}
-            className={`whitespace-nowrap shrink-0 snap-start md:w-full flex items-center gap-2.5 px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold min-h-[44px] transition ${
-              activeTab === 'settings' ? 'bg-stone-900 text-white shadow-xs' : 'text-stone-600 bg-stone-100/70 md:bg-transparent hover:bg-stone-100'
-            }`}
-          >
-            <Settings className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
-            Channels &amp; Settings
-            <span className="ml-auto bg-stone-200 text-stone-700 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase hidden md:inline-block">
-              Super Admin
-            </span>
-          </button>
-
-          <div className="pt-4 border-t border-stone-200 mt-2 space-y-1">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 px-3 hidden md:block">Team Resources</span>
-            <Link
-              to="/marketing"
-              target="_blank"
-              className="whitespace-nowrap shrink-0 md:w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-stone-700 hover:bg-stone-100 transition"
+            <button 
+              ref={activeTab === 'overview' ? activeTabRef : undefined}
+              onClick={() => setActiveTab('overview')}
+              className={`whitespace-nowrap shrink-0 snap-start lg:w-full flex items-center gap-2.5 px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold min-h-[44px] transition ${
+                activeTab === 'overview' 
+                  ? 'bg-stone-900 text-white shadow-xs' 
+                  : 'text-stone-600 bg-white hover:bg-stone-50 border border-stone-200/60 lg:border-transparent lg:bg-transparent lg:hover:bg-stone-100'
+              }`}
             >
-              <div className="flex items-center gap-2">
-                <Target className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>Marketing Playbook</span>
-              </div>
-              <ExternalLink className="w-3 h-3 text-stone-400 hidden md:block" />
-            </Link>
-            <Link
-              to="/host-guide"
-              target="_blank"
-              className="whitespace-nowrap shrink-0 md:w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-stone-700 hover:bg-stone-100 transition"
-            >
-              <div className="flex items-center gap-2">
-                <Building2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>Host Starter Pack</span>
-              </div>
-              <ExternalLink className="w-3 h-3 text-stone-400 hidden md:block" />
-            </Link>
-            <button
-              onClick={() => setActiveTab('docs')}
-              className="whitespace-nowrap shrink-0 md:w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-stone-700 hover:bg-stone-100 transition cursor-pointer text-left"
-              title="Read or download executive docs in plain text or markdown"
-            >
-              <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4 text-purple-600 shrink-0" />
-                <span>Strategy Docs (.txt)</span>
-              </div>
-              <span className="text-[10px] bg-stone-200 text-stone-700 font-bold px-1.5 py-0.5 rounded">4 Docs</span>
+              <LayoutDashboard className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+              <span>Overview</span>
             </button>
-          </div>
-        </nav>
+            <button 
+              ref={activeTab === 'analytics' ? activeTabRef : undefined}
+              onClick={() => setActiveTab('analytics')}
+              className={`whitespace-nowrap shrink-0 snap-start lg:w-full flex items-center gap-2.5 px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold min-h-[44px] transition ${
+                activeTab === 'analytics' 
+                  ? 'bg-stone-900 text-white shadow-xs' 
+                  : 'text-stone-600 bg-white hover:bg-stone-50 border border-stone-200/60 lg:border-transparent lg:bg-transparent lg:hover:bg-stone-100'
+              }`}
+            >
+              <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+              <span>Analytics</span>
+            </button>
+            <button 
+              ref={activeTab === 'properties' ? activeTabRef : undefined}
+              onClick={() => setActiveTab('properties')}
+              className={`whitespace-nowrap shrink-0 snap-start lg:w-full flex items-center gap-2.5 px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold min-h-[44px] transition ${
+                activeTab === 'properties' 
+                  ? 'bg-stone-900 text-white shadow-xs' 
+                  : 'text-stone-600 bg-white hover:bg-stone-50 border border-stone-200/60 lg:border-transparent lg:bg-transparent lg:hover:bg-stone-100'
+              }`}
+            >
+              <Building2 className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+              <span>Properties</span>
+              {stats.pendingProperties > 0 && (
+                <span className="ml-1 sm:ml-auto bg-amber-500 text-white text-[10px] px-2 py-0.5 rounded-full shrink-0 font-bold">
+                  {stats.pendingProperties}
+                </span>
+              )}
+            </button>
+            {(isGlobalAdmin(user) || isMarketing(user)) && (
+              <button 
+                ref={activeTab === 'users' ? activeTabRef : undefined}
+                onClick={() => setActiveTab('users')}
+                className={`whitespace-nowrap shrink-0 snap-start lg:w-full flex items-center gap-2.5 px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold min-h-[44px] transition ${
+                  activeTab === 'users' 
+                    ? 'bg-stone-900 text-white shadow-xs' 
+                    : 'text-stone-600 bg-white hover:bg-stone-50 border border-stone-200/60 lg:border-transparent lg:bg-transparent lg:hover:bg-stone-100'
+                }`}
+              >
+                <Users className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+                <span>Users</span>
+              </button>
+            )}
+            <button 
+              ref={activeTab === 'bookings' ? activeTabRef : undefined}
+              onClick={() => setActiveTab('bookings')}
+              className={`whitespace-nowrap shrink-0 snap-start lg:w-full flex items-center gap-2.5 px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold min-h-[44px] transition ${
+                activeTab === 'bookings' 
+                  ? 'bg-stone-900 text-white shadow-xs' 
+                  : 'text-stone-600 bg-white hover:bg-stone-50 border border-stone-200/60 lg:border-transparent lg:bg-transparent lg:hover:bg-stone-100'
+              }`}
+            >
+              <CalendarRange className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+              <span>All Bookings</span>
+            </button>
+            <button 
+              ref={activeTab === 'destinations' ? activeTabRef : undefined}
+              onClick={() => setActiveTab('destinations')}
+              className={`whitespace-nowrap shrink-0 snap-start lg:w-full flex items-center gap-2.5 px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold min-h-[44px] transition ${
+                activeTab === 'destinations' 
+                  ? 'bg-stone-900 text-white shadow-xs' 
+                  : 'text-stone-600 bg-white hover:bg-stone-50 border border-stone-200/60 lg:border-transparent lg:bg-transparent lg:hover:bg-stone-100'
+              }`}
+            >
+              <Navigation className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+              <span>Destinations</span>
+            </button>
+            <button 
+              ref={activeTab === 'content' ? activeTabRef : undefined}
+              onClick={() => setActiveTab('content')}
+              className={`whitespace-nowrap shrink-0 snap-start lg:w-full flex items-center gap-2.5 px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold min-h-[44px] transition ${
+                activeTab === 'content' 
+                  ? 'bg-stone-900 text-white shadow-xs' 
+                  : 'text-stone-600 bg-white hover:bg-stone-50 border border-stone-200/60 lg:border-transparent lg:bg-transparent lg:hover:bg-stone-100'
+              }`}
+            >
+              <FileText className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+              <span>Content &amp; Legal</span>
+            </button>
+            {isGlobalAdmin(user) && (
+              <>
+                <button 
+                  ref={activeTab === 'ai' ? activeTabRef : undefined}
+                  onClick={() => setActiveTab('ai')}
+                  className={`whitespace-nowrap shrink-0 snap-start lg:w-full flex items-center gap-2.5 px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold min-h-[44px] transition ${
+                    activeTab === 'ai' 
+                      ? 'bg-stone-900 text-white shadow-xs' 
+                      : 'text-stone-600 bg-white hover:bg-stone-50 border border-stone-200/60 lg:border-transparent lg:bg-transparent lg:hover:bg-stone-100'
+                  }`}
+                >
+                  <Cpu className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+                  <span>AI Services &amp; Keys</span>
+                </button>
+                <button 
+                  ref={activeTab === 'settings' ? activeTabRef : undefined}
+                  onClick={() => setActiveTab('settings')}
+                  className={`whitespace-nowrap shrink-0 snap-start lg:w-full flex items-center gap-2.5 px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold min-h-[44px] transition ${
+                    activeTab === 'settings' 
+                      ? 'bg-stone-900 text-white shadow-xs' 
+                      : 'text-stone-600 bg-white hover:bg-stone-50 border border-stone-200/60 lg:border-transparent lg:bg-transparent lg:hover:bg-stone-100'
+                  }`}
+                >
+                  <Settings className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+                  <span>Channels &amp; Settings</span>
+                  <span className="ml-auto bg-stone-200 text-stone-700 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase hidden lg:inline-block">
+                    Super Admin
+                  </span>
+                </button>
+              </>
+            )}
+            <button 
+              ref={activeTab === 'docs' ? activeTabRef : undefined}
+              onClick={() => setActiveTab('docs')}
+              className={`whitespace-nowrap shrink-0 snap-start lg:w-full flex items-center gap-2.5 px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold min-h-[44px] transition ${
+                activeTab === 'docs' 
+                  ? 'bg-stone-900 text-white shadow-xs' 
+                  : 'text-stone-600 bg-white hover:bg-stone-50 border border-stone-200/60 lg:border-transparent lg:bg-transparent lg:hover:bg-stone-100'
+              }`}
+            >
+              <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+              <span>Executive Docs (.txt)</span>
+              <span className="ml-auto bg-emerald-500/20 text-emerald-800 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase hidden lg:inline-block">
+                Admin
+              </span>
+            </button>
+          </nav>
+        </div>
+
+        {/* Team Resources Quick Strip on Mobile/Tablet */}
+        <div className="lg:hidden flex items-center gap-2 overflow-x-auto py-1 scrollbar-hide text-xs">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 shrink-0">Team:</span>
+          <Link
+            to="/marketing"
+            target="_blank"
+            className="whitespace-nowrap shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 font-medium transition text-xs border border-stone-200/60"
+          >
+            <Target className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+            <span>Marketing Playbook</span>
+            <ExternalLink className="w-3 h-3 text-stone-400" />
+          </Link>
+          <Link
+            to="/host-guide"
+            target="_blank"
+            className="whitespace-nowrap shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 font-medium transition text-xs border border-stone-200/60"
+          >
+            <Building2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+            <span>Host Starter Pack</span>
+            <ExternalLink className="w-3 h-3 text-stone-400" />
+          </Link>
+        </div>
+
+        {/* Team Resources in Sidebar on Desktop */}
+        <div className="hidden lg:block pt-4 border-t border-stone-200/80 mt-2 space-y-1">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 px-3 block">Team Resources</span>
+          <Link
+            to="/marketing"
+            target="_blank"
+            className="whitespace-nowrap shrink-0 w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-stone-700 hover:bg-stone-100 transition"
+          >
+            <div className="flex items-center gap-2">
+              <Target className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>Marketing Playbook</span>
+            </div>
+            <ExternalLink className="w-3 h-3 text-stone-400" />
+          </Link>
+          <Link
+            to="/host-guide"
+            target="_blank"
+            className="whitespace-nowrap shrink-0 w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-stone-700 hover:bg-stone-100 transition"
+          >
+            <div className="flex items-center gap-2">
+              <Building2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>Host Starter Pack</span>
+            </div>
+            <ExternalLink className="w-3 h-3 text-stone-400" />
+          </Link>
+          <button
+            onClick={() => setActiveTab('docs')}
+            className="whitespace-nowrap shrink-0 w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-stone-700 hover:bg-stone-100 transition cursor-pointer text-left"
+            title="Read or download executive docs in plain text or markdown"
+          >
+            <div className="flex items-center gap-2">
+              <FileText className="w-4 h-4 text-purple-600 shrink-0" />
+              <span>Strategy Docs (.txt)</span>
+            </div>
+            <span className="text-[10px] bg-stone-200 text-stone-700 font-bold px-1.5 py-0.5 rounded">4 Docs</span>
+          </button>
+        </div>
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 w-full">
         
         {/* ===================== OVERVIEW TAB ===================== */}
         {activeTab === 'overview' && (
@@ -647,24 +742,26 @@ export default function AdminDashboard() {
               </button>
             </div>
             
-            <div className="mt-8">
-              <h3 className="text-xl font-serif font-bold text-stone-900 mb-4">Global Settings</h3>
-              <div className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm flex items-center justify-between">
-                <div>
-                  <h4 className="font-bold text-stone-900">Premium Listing Plans</h4>
-                  <p className="text-stone-500 text-sm mt-1">Enable or disable premium plan selection during onboarding.</p>
+            {isGlobalAdmin(user) && (
+              <div className="mt-8">
+                <h3 className="text-xl font-serif font-bold text-stone-900 mb-4">Global Settings</h3>
+                <div className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm flex items-center justify-between">
+                  <div>
+                    <h4 className="font-bold text-stone-900">Premium Listing Plans</h4>
+                    <p className="text-stone-500 text-sm mt-1">Enable or disable premium plan selection during onboarding.</p>
+                  </div>
+                  <button
+                    onClick={handleTogglePremium}
+                    disabled={togglingPremium}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${premiumEnabled ? 'bg-emerald-600' : 'bg-stone-300'}`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${premiumEnabled ? 'translate-x-6' : 'translate-x-1'}`}
+                    />
+                  </button>
                 </div>
-                <button
-                  onClick={handleTogglePremium}
-                  disabled={togglingPremium}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${premiumEnabled ? 'bg-emerald-600' : 'bg-stone-300'}`}
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${premiumEnabled ? 'translate-x-6' : 'translate-x-1'}`}
-                  />
-                </button>
               </div>
-            </div>
+            )}
           </div>
         )}
         
@@ -1056,35 +1153,37 @@ export default function AdminDashboard() {
                         <Edit3 className="h-4 w-4" /> Manage Listing
                       </Link>
                       
-                      {confirmDeleteId === hotel.id ? (
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-red-600">Sure?</span>
+                      {!isMarketing(user) && (
+                        confirmDeleteId === hotel.id ? (
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-red-600">Sure?</span>
+                            <button
+                              onClick={() => {
+                                handleDeleteHotel(hotel.id!);
+                                setConfirmDeleteId(null);
+                              }}
+                              className="bg-red-600 text-white p-2 rounded-xl hover:bg-red-700 transition"
+                              title="Confirm Delete"
+                            >
+                              <CheckCircle className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => setConfirmDeleteId(null)}
+                              className="bg-stone-200 text-stone-700 p-2 rounded-xl hover:bg-stone-300 transition"
+                              title="Cancel"
+                            >
+                              <XCircle className="h-4 w-4" />
+                            </button>
+                          </div>
+                        ) : (
                           <button
-                            onClick={() => {
-                              handleDeleteHotel(hotel.id!);
-                              setConfirmDeleteId(null);
-                            }}
-                            className="bg-red-600 text-white p-2 rounded-xl hover:bg-red-700 transition"
-                            title="Confirm Delete"
+                            onClick={() => setConfirmDeleteId(hotel.id!)}
+                            className="bg-red-100 text-red-700 p-2 rounded-xl hover:bg-red-200 transition"
+                            title="Delete Listing"
                           >
-                            <CheckCircle className="h-4 w-4" />
+                            <Trash2 className="h-4 w-4" />
                           </button>
-                          <button
-                            onClick={() => setConfirmDeleteId(null)}
-                            className="bg-stone-200 text-stone-700 p-2 rounded-xl hover:bg-stone-300 transition"
-                            title="Cancel"
-                          >
-                            <XCircle className="h-4 w-4" />
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => setConfirmDeleteId(hotel.id!)}
-                          className="bg-red-100 text-red-700 p-2 rounded-xl hover:bg-red-200 transition"
-                          title="Delete Listing"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                        )
                       )}
                     </div>
                   </div>
@@ -1127,20 +1226,22 @@ export default function AdminDashboard() {
                   />
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => setShowQuickResetModal(true)}
-                  className="flex items-center justify-center gap-2 px-3.5 py-2 bg-stone-900 text-white rounded-xl text-xs font-semibold hover:bg-stone-800 transition shrink-0 shadow-sm"
-                >
-                  <Key className="h-3.5 w-3.5" />
-                  <span>Reset Any Password</span>
-                </button>
+                {isGlobalAdmin(user) && (
+                  <button
+                    type="button"
+                    onClick={() => setShowQuickResetModal(true)}
+                    className="flex items-center justify-center gap-2 px-3.5 py-2 bg-stone-900 text-white rounded-xl text-xs font-semibold hover:bg-stone-800 transition shrink-0 shadow-sm"
+                  >
+                    <Key className="h-3.5 w-3.5" />
+                    <span>Reset Any Password</span>
+                  </button>
+                )}
               </div>
             </div>
 
             <div className="bg-white rounded-3xl border border-stone-200 shadow-sm overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
+                <table className="w-full text-left border-collapse min-w-[800px]">
                   <thead>
                     <tr className="bg-stone-50 border-b border-stone-200">
                       <th className="px-6 py-4 text-xs font-bold text-stone-500 uppercase tracking-wider">User</th>
@@ -1167,6 +1268,16 @@ export default function AdminDashboard() {
                               {rolesList.includes('admin') && (
                                 <span className="bg-purple-100 text-purple-700 px-2.5 py-1 rounded-md text-xs font-bold tracking-wide">
                                   ADMIN
+                                </span>
+                              )}
+                              {rolesList.includes('global_admin') && (
+                                <span className="bg-red-100 text-red-700 px-2.5 py-1 rounded-md text-xs font-bold tracking-wide">
+                                  GLOBAL ADMIN
+                                </span>
+                              )}
+                              {rolesList.includes('marketing') && (
+                                <span className="bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-md text-xs font-bold tracking-wide">
+                                  MARKETING
                                 </span>
                               )}
                               {rolesList.includes('hotel_manager') && (
@@ -1199,6 +1310,15 @@ export default function AdminDashboard() {
                                 }`}
                               >
                                 {rolesList.includes('admin') ? 'Revoke Admin' : 'Make Admin'}
+                              </button>
+
+                              <button
+                                onClick={() => handleToggleUserRole(u, 'marketing')}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                                  rolesList.includes('marketing') ? 'bg-stone-200 text-stone-700 hover:bg-stone-300' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
+                                }`}
+                              >
+                                {rolesList.includes('marketing') ? 'Revoke Marketing' : 'Make Marketing'}
                               </button>
 
                               {u.email && (
@@ -1340,7 +1460,7 @@ export default function AdminDashboard() {
 
             <div className="bg-white rounded-3xl border border-stone-200 shadow-sm overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
+                <table className="w-full text-left border-collapse min-w-[1000px]">
                   <thead>
                     <tr className="bg-stone-50 border-b border-stone-200">
                       <th className="px-6 py-4 text-xs font-bold text-stone-500 uppercase tracking-wider">Ref</th>
@@ -1367,8 +1487,8 @@ export default function AdminDashboard() {
                           <td className="px-6 py-4 text-sm text-stone-600 whitespace-nowrap">
                             {b.checkIn} <br/>to {b.checkOut}
                           </td>
-                          <td className="px-6 py-4 text-sm font-medium text-stone-900">
-                            <PriceDisplay amount={b.total || 0} currency={b.currency} />
+                          <td className="px-6 py-4 text-sm font-medium text-stone-400">
+                            ***
                           </td>
                           <td className="px-6 py-4">
                             <span className={`px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wider ${
@@ -1381,32 +1501,17 @@ export default function AdminDashboard() {
                             </span>
                           </td>
                           <td className="px-6 py-4 text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              {b.status === 'pending' && (
-                                <>
-                                  <button
-                                    onClick={() => handleUpdateBookingStatus(b.id!, 'confirmed')}
-                                    className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition"
-                                    title="Confirm Booking"
-                                  >
-                                    <CheckCircle2 className="w-4 h-4" />
-                                  </button>
-                                  <button
-                                    onClick={() => handleUpdateBookingStatus(b.id!, 'rejected')}
-                                    className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition"
-                                    title="Reject Booking"
-                                  >
-                                    <XCircle className="w-4 h-4" />
-                                  </button>
-                                </>
-                              )}
-                              <button
-                                onClick={() => handleDeleteBooking(b.id!)}
-                                className="p-1.5 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
-                                title="Delete Booking"
+                            <div className="flex items-center justify-end">
+                              <select
+                                value={b.status}
+                                onChange={(e) => handleUpdateBookingStatus(b.id!, e.target.value as any)}
+                                className="bg-stone-50 border border-stone-200 text-stone-600 text-xs rounded-lg focus:ring-stone-500 focus:border-stone-500 block w-full p-1.5 cursor-pointer"
                               >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+                                <option value="pending">Pending</option>
+                                <option value="confirmed">Confirmed</option>
+                                <option value="rejected">Rejected</option>
+                                <option value="cancelled">Cancelled</option>
+                              </select>
                             </div>
                           </td>
                         </tr>
@@ -1414,7 +1519,7 @@ export default function AdminDashboard() {
                     })}
                     {bookings.length === 0 && (
                       <tr>
-                        <td colSpan={6} className="px-6 py-12 text-center text-stone-500">
+                        <td colSpan={7} className="px-6 py-12 text-center text-stone-500">
                           No bookings recorded on the platform.
                         </td>
                       </tr>

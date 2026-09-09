@@ -1,4 +1,4 @@
-export type Role = 'traveller' | 'hotel_manager' | 'admin';
+export type Role = 'traveller' | 'hotel_manager' | 'admin' | 'marketing' | 'global_admin';
 
 /** Currencies the platform sells in. */
 export type CurrencyCode = 'USD' | 'MWK';
@@ -7,11 +7,22 @@ export type CurrencyCode = 'USD' | 'MWK';
 export type PriceMap = Partial<Record<CurrencyCode, number>>;
 
 
+export interface UserNotificationPreferences {
+  emailBookings?: boolean;
+  whatsappUpdates?: boolean;
+  marketingEmails?: boolean;
+}
+
 export interface User {
   uid: string;
   email: string | null;
   displayName: string | null;
   phone?: string;
+  whatsapp?: string;
+  bio?: string;
+  photoURL?: string | null;
+  city?: string;
+  country?: string;
   preferredCurrency?: CurrencyCode;
   /**
    * Primary role. Retained as the first entry of `roles` so documents written
@@ -26,6 +37,11 @@ export interface User {
    */
   roles?: Role[];
   createdAt: number;
+  status?: 'active' | 'suspended' | 'deactivated';
+  accessRevoked?: boolean;
+  accessRevokedAt?: number;
+  revokedBy?: string;
+  notificationPreferences?: UserNotificationPreferences;
 }
 
 /** One day's trading hours. Times are 'HH:MM' in the property's local time. */
@@ -181,6 +197,7 @@ export interface Hotel {
   restaurant?: Restaurant;
   /** Automated email and messaging configuration for guest reminders and sequences */
   emailAutomationSettings?: HotelEmailAutomationSettings;
+  whatsappTemplates?: WhatsAppTemplate[];
   createdAt: number;
 }
 
@@ -192,6 +209,13 @@ export interface AutomationRuleConfig {
   timeOfDay?: string;
   subjectOverride?: string;
   bodyOverride?: string;
+}
+
+export interface WhatsAppTemplate {
+  id: string;
+  title: string;
+  body: string;
+  createdAt: number;
 }
 
 export interface HotelEmailAutomationSettings {

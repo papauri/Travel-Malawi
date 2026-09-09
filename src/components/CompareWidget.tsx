@@ -1,5 +1,7 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { useModalScrollIsolation } from '../hooks/useModalScrollIsolation';
 import { motion, AnimatePresence } from 'motion/react';
 import { Scale, X, Check, Star, MapPin, Clock, Phone, Mail, Tag, ArrowRight } from 'lucide-react';
 import { useCompare } from '../contexts/CompareContext';
@@ -10,6 +12,7 @@ import PriceDisplay from './PriceDisplay';
 export default function CompareWidget() {
   const { selectedHotels, clearSelection, toggleHotel, isCompareModalOpen, setIsCompareModalOpen } = useCompare();
   useBodyScrollLock(isCompareModalOpen);
+  const scrollIsolationRef = useModalScrollIsolation<HTMLDivElement>(isCompareModalOpen);
 
   if (selectedHotels.length === 0) return null;
 
@@ -57,39 +60,45 @@ export default function CompareWidget() {
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
-        {isCompareModalOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 md:p-12">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsCompareModalOpen(false)}
-              className="absolute inset-0 bg-stone-900/60 backdrop-blur-sm"
-            />
-            
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              className="relative w-full max-w-6xl max-h-full bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden"
+      {typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {isCompareModalOpen && (
+            <div
+              data-lenis-prevent="true"
+              className="fixed inset-0 z-[100] overflow-y-auto overscroll-contain flex min-h-full items-center justify-center p-3 sm:p-6 md:p-10 text-center"
             >
-              <div className="flex items-center justify-between p-6 border-b border-stone-100 bg-stone-50/50">
-                <div className="flex items-center gap-3">
-                  <div className="bg-emerald-100 p-2 rounded-xl">
-                    <Scale className="w-5 h-5 text-emerald-700" />
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsCompareModalOpen(false)}
+                className="fixed inset-0 bg-stone-900/60 backdrop-blur-sm"
+              />
+              
+              <motion.div
+                ref={scrollIsolationRef}
+                data-lenis-prevent="true"
+                initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                className="relative w-full max-w-6xl max-h-[calc(100dvh-2rem)] sm:max-h-[88vh] bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden my-auto text-left overscroll-contain"
+              >
+                <div className="flex items-center justify-between p-5 sm:p-6 border-b border-stone-100 bg-stone-50/50 shrink-0">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-emerald-100 p-2 rounded-xl">
+                      <Scale className="w-5 h-5 text-emerald-700" />
+                    </div>
+                    <h2 className="text-xl sm:text-2xl font-serif font-bold text-stone-900">Compare Properties</h2>
                   </div>
-                  <h2 className="text-2xl font-serif font-bold text-stone-900">Compare Properties</h2>
+                  <button
+                    onClick={() => setIsCompareModalOpen(false)}
+                    className="p-2 hover:bg-stone-200 rounded-full transition bg-stone-100 cursor-pointer"
+                  >
+                    <X className="w-5 h-5 text-stone-600" />
+                  </button>
                 </div>
-                <button
-                  onClick={() => setIsCompareModalOpen(false)}
-                  className="p-2 hover:bg-stone-200 rounded-full transition bg-stone-100"
-                >
-                  <X className="w-6 h-6 text-stone-600" />
-                </button>
-              </div>
 
-              <div className="flex-1 overflow-auto p-3 sm:p-6 bg-stone-50">
+                <div data-lenis-prevent="true" className="flex-1 overflow-auto overscroll-contain p-3 sm:p-6 bg-stone-50">
                 <motion.div 
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -244,7 +253,9 @@ export default function CompareWidget() {
             </motion.div>
           </div>
         )}
-      </AnimatePresence>
-    </>
-  );
+      </AnimatePresence>,
+      document.body
+    )}
+  </>
+);
 }

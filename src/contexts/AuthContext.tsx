@@ -28,6 +28,7 @@ interface AuthContextType {
   resetPassword: (email: string) => Promise<void>;
   /** Adds the hotel_manager role to the signed-in account. */
   becomeHost: () => Promise<void>;
+  refreshUser: () => Promise<User | null>;
   logOut: () => Promise<void>;
 }
 
@@ -39,6 +40,7 @@ const AuthContext = createContext<AuthContextType>({
   signInWithGoogle: async () => {},
   resetPassword: async () => {},
   becomeHost: async () => {},
+  refreshUser: async () => null,
   logOut: async () => {},
 });
 
@@ -54,6 +56,10 @@ async function loadOrCreateUser(
   let userData: User;
   if (userDoc.exists()) {
     userData = { uid: firebaseUser.uid, ...userDoc.data() } as User;
+    if (userData.accessRevoked || userData.status === 'suspended') {
+      await signOut(auth);
+      throw new Error('Your account access has been suspended or revoked by an administrator.');
+    }
   } else {
     userData = {
       uid: firebaseUser.uid,
@@ -180,7 +186,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const resetPassword = async (email: string) => {
     const cleanEmail = email.trim();
+    if (!cleanEmail) throw new Error('Please provide an email address.');
     await sendPasswordResetEmail(auth, cleanEmail);
+    // Background notification via server SMTP if configured
+    fetch('/api/auth/notify-password-reset', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: cleanEmail }),
+    }).catch(() => {});
+  };
+
+  const refreshUser = async (): Promise<User | null> => {
+    if (auth.currentUser) {
+      try {
+        const appUser = await loadOrCreateUser(auth.currentUser);
+        setUser(appUser);
+        return appUser;
+      } catch (err) {
+        console.error('Failed to refresh user:', err);
+      }
+    }
+    return null;
   };
 
   /**
@@ -207,7 +233,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signUp, signInWithGoogle, resetPassword, becomeHost, logOut }}>
+    <AuthContext.Provider value={{ user, loading, signIn, signUp, signInWithGoogle, resetPassword, becomeHost, refreshUser, logOut }}>
       {children}
     </AuthContext.Provider>
   );

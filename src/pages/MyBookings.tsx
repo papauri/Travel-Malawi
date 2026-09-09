@@ -1,12 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useAuthDialog } from '../contexts/AuthDialogContext';
 import {
   collection, query, where, getDocs, getDoc, doc, updateDoc, addDoc, onSnapshot,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Booking, Hotel, RoomType, Broadcast } from '../types';
 import {
-  Calendar, MapPin, ExternalLink, Clock, CheckCircle2, XCircle, Ban, Star, Copy, ShieldCheck, Users, MessageCircle, Phone, Info, Map as MapIcon,
+  Calendar, MapPin, ExternalLink, Clock, CheckCircle2, XCircle, Ban, Star, Copy, ShieldCheck, Users, MessageCircle, Phone, Info, Map as MapIcon, MessageSquare, Megaphone, X, Check, Building2
 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -18,7 +19,6 @@ import FieldError from '../components/FieldError';
 import BookingChat from '../components/BookingChat';
 import { useChatModal } from '../contexts/ChatModalContext';
 import StayVoucherModal from '../components/StayVoucherModal';
-import { MessageSquare, Megaphone, X } from 'lucide-react';
 import { getHotelImage } from '../lib/images';
 import { formatDateStr, daysUntil, nightsBetween } from '../lib/dates';
 import { cancellationTerms, formatMoney, isStayComplete, FREE_CANCELLATION_DAYS } from '../lib/booking';
@@ -54,10 +54,15 @@ export default function MyBookings() {
     } catch { /* ignore */ }
   };
 
+  const { openAuth } = useAuthDialog();
+  const [activeMainTab, setActiveMainTab] = useState<'guest' | 'host'>('guest');
+  const [managerHotels, setManagerHotels] = useState<Hotel[]>([]);
+  const [hostBookings, setHostBookings] = useState<EnrichedBooking[]>([]);
+
   useEffect(() => {
     if (authLoading) return;
-    if (!user || !isTraveller(user)) {
-      navigate('/');
+    if (!user) {
+      setLoading(false);
       return;
     }
     const uid = user.uid;
@@ -72,14 +77,69 @@ export default function MyBookings() {
       console.warn('Failed to read bookings cache', e);
     }
 
+    async function fetchHostData() {
+      try {
+        const querySnapshot = await getDocs(collection(db, 'hotels'));
+        const allHotels = querySnapshot.docs.map(d => ({ id: d.id, ...d.data() } as Hotel));
+        const userEmailLower = user?.email?.toLowerCase();
+        const userIsAdmin = user ? (user.role === 'admin' || (user.roles && user.roles.includes('admin')) || userEmailLower === 'johnpaulchirwa@gmail.com') : false;
+
+        const hotels = allHotels.filter(h => {
+          if (userIsAdmin) return true;
+          const hasAssignedManager = Boolean(
+            h.managerId &&
+            h.managerId !== 'unassigned' &&
+            h.managerId !== 'none' &&
+            h.managerId.trim() !== ''
+          );
+          if (hasAssignedManager && h.managerId === uid) return true;
+          if (userEmailLower) {
+            if (h.managerEmail && h.managerEmail.toLowerCase() === userEmailLower) return true;
+            if (h.ownerEmail && h.ownerEmail.toLowerCase() === userEmailLower) return true;
+            if (h.contactEmail && h.contactEmail.toLowerCase() === userEmailLower) return true;
+          }
+          return false;
+        });
+
+        setManagerHotels(hotels);
+        if (hotels.length > 0) {
+          setActiveMainTab('host');
+          const hIds = hotels.map(h => h.id).filter(Boolean) as string[];
+          if (hIds.length > 0) {
+            const batches = [];
+            for (let i = 0; i < hIds.length; i += 10) {
+              batches.push(hIds.slice(i, i + 10));
+            }
+            let allHostBookings: Booking[] = [];
+            for (const batch of batches) {
+              const bDocs = await getDocs(query(collection(db, 'bookings'), where('hotelId', 'in', batch)));
+              const batchBookings = bDocs.docs.map(d => ({ id: d.id, ...d.data() } as Booking));
+              allHostBookings = [...allHostBookings, ...batchBookings];
+            }
+
+            const roomIds = [...new Set(allHostBookings.map(b => b.roomTypeId).filter(Boolean) as string[])];
+            const roomSnaps = await Promise.all(roomIds.map(rid => getDoc(doc(db, 'room_types', rid))));
+            const roomsById = new Map(roomSnaps.filter(s => s.exists()).map(s => [s.id, { id: s.id, ...s.data() } as RoomType]));
+
+            const enrichedHost: EnrichedBooking[] = allHostBookings.map(b => ({
+              ...b,
+              hotel: hotels.find(h => h.id === b.hotelId),
+              room: roomsById.get(b.roomTypeId),
+            }));
+            enrichedHost.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+            setHostBookings(enrichedHost);
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching host data:", err);
+      }
+    }
+
     async function fetchBookings() {
       try {
         const docs = await getDocs(query(collection(db, 'bookings'), where('guestId', '==', uid)));
         const bookingsData = docs.docs.map(d => ({ id: d.id, ...d.data() } as Booking));
 
-        // One read per referenced document, de-duplicated: several bookings
-        // commonly share a hotel, and the previous code issued a fresh
-        // collection query per booking.
         const hotelIds = [...new Set(bookingsData.map(b => b.hotelId).filter(Boolean))];
         const roomIds = [...new Set(bookingsData.map(b => b.roomTypeId).filter(Boolean))];
 
@@ -88,8 +148,6 @@ export default function MyBookings() {
           Promise.all(roomIds.map(rid => getDoc(doc(db, 'room_types', rid)))),
         ]);
 
-        // The id is merged in here. Without it every "view property" link
-        // pointed at /hotel/undefined.
         const hotelsById = new Map(
           hotelSnaps.filter(s => s.exists()).map(s => [s.id, { id: s.id, ...s.data() } as Hotel])
         );
@@ -117,14 +175,51 @@ export default function MyBookings() {
       }
     }
     fetchBookings();
+    fetchHostData();
 
-    // Which stays this guest has already reviewed, so the prompt is not offered
-    // twice. Kept out of the fetch above so that a failure here cannot report
-    // itself as "could not load your bookings".
     getDocs(query(collection(db, 'reviews'), where('guestId', '==', uid)))
       .then(snap => setReviewedBookingIds(new Set(snap.docs.map(d => d.data().bookingId as string))))
       .catch(error => console.warn('Could not load your reviews:', error?.message ?? error));
   }, [user, authLoading, navigate]);
+
+  const handleConfirmHostBooking = async (booking: EnrichedBooking) => {
+    if (!booking.id) return;
+    setBusyId(booking.id);
+    try {
+      await updateDoc(doc(db, 'bookings', booking.id), {
+        status: 'confirmed',
+        confirmedAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+      setHostBookings(prev => prev.map(b => (b.id === booking.id ? { ...b, status: 'confirmed' } : b)));
+      toast.success(`Booking ${booking.reference || ''} confirmed!`);
+    } catch (err) {
+      console.error('Error confirming booking:', err);
+      toast.error('Failed to confirm booking.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleRejectHostBooking = async (booking: EnrichedBooking) => {
+    if (!booking.id) return;
+    setBusyId(booking.id);
+    try {
+      await updateDoc(doc(db, 'bookings', booking.id), {
+        status: 'rejected',
+        rejectedAt: Date.now(),
+        cancelledBy: 'manager',
+        updatedAt: Date.now(),
+      });
+      setHostBookings(prev => prev.map(b => (b.id === booking.id ? { ...b, status: 'rejected' } : b)));
+      toast.success(`Booking ${booking.reference || ''} declined.`);
+    } catch (err) {
+      console.error('Error declining booking:', err);
+      toast.error('Failed to decline booking.');
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   const grouped = useMemo(() => {
     const upcoming: EnrichedBooking[] = [];
@@ -226,11 +321,30 @@ export default function MyBookings() {
     }
   };
 
-  if (authLoading || loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-stone-50">
-      <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-600 border-t-transparent"></div>
-    </div>
-  );
+  const hostGrouped = useMemo(() => {
+    const upcoming: EnrichedBooking[] = [];
+    const past: EnrichedBooking[] = [];
+    const cancelled: EnrichedBooking[] = [];
+    for (const booking of hostBookings) {
+      if (booking.status === 'cancelled' || booking.status === 'rejected') cancelled.push(booking);
+      else if (daysUntil(booking.checkOut) < 0) past.push(booking);
+      else upcoming.push(booking);
+    }
+    return { upcoming, past, cancelled };
+  }, [hostBookings]);
+
+  const hostVisible = hostGrouped[filter] || [];
+  const activeBookings = activeMainTab === 'host' ? hostVisible : visible;
+  const tabs: { key: Filter; label: string; count: number }[] = [
+    { key: 'upcoming', label: 'Upcoming', count: grouped.upcoming.length },
+    { key: 'past', label: 'Past stays', count: grouped.past.length },
+    { key: 'cancelled', label: 'Cancelled', count: grouped.cancelled.length },
+  ];
+  const activeTabs = activeMainTab === 'host' ? [
+    { key: 'upcoming' as Filter, label: 'Upcoming', count: hostGrouped.upcoming.length },
+    { key: 'past' as Filter, label: 'Past stays', count: hostGrouped.past.length },
+    { key: 'cancelled' as Filter, label: 'Cancelled', count: hostGrouped.cancelled.length },
+  ] : tabs;
 
   const getStatusBadge = (status: string) => {
     switch (status?.toLowerCase()) {
@@ -263,19 +377,74 @@ export default function MyBookings() {
     }
   };
 
-  const tabs: { key: Filter; label: string; count: number }[] = [
-    { key: 'upcoming', label: 'Upcoming', count: grouped.upcoming.length },
-    { key: 'past', label: 'Past stays', count: grouped.past.length },
-    { key: 'cancelled', label: 'Cancelled', count: grouped.cancelled.length },
-  ];
+  if (authLoading || loading) return (
+    <div className="min-h-screen flex items-center justify-center bg-stone-50">
+      <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-600 border-t-transparent"></div>
+    </div>
+  );
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-stone-50 pt-16 pb-24">
+        <div className="max-w-xl mx-auto px-6 text-center">
+          <div className="w-20 h-20 bg-emerald-50 text-emerald-700 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-sm border border-emerald-100">
+            <Calendar className="w-10 h-10" />
+          </div>
+          <h1 className="text-3xl font-serif font-bold text-stone-900 mb-3">Your Bookings</h1>
+          <p className="text-stone-600 mb-8 leading-relaxed">
+            Please sign in to view your upcoming property bookings, manage guest reservations, and access your digital vouchers.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <button
+              onClick={() => openAuth('signin')}
+              className="bg-stone-900 hover:bg-stone-800 text-white font-semibold px-6 py-3 rounded-full transition shadow-md"
+            >
+              Sign In
+            </button>
+            <Link
+              to="/"
+              className="bg-white hover:bg-stone-100 text-stone-700 font-semibold px-6 py-3 rounded-full border border-stone-200 transition"
+            >
+              Explore Properties
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
 
   return (
     <div className="min-h-screen bg-stone-50 pt-8 pb-24">
       <div className="max-w-4xl mx-auto px-6 lg:px-8">
-        <h1 className="text-4xl font-serif font-bold text-stone-900 mb-2">My Itinerary</h1>
-        <p className="text-stone-500 mb-8">Manage your upcoming stays and past bookings.</p>
+        <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-6">
+          <div>
+            <h1 className="text-4xl font-serif font-bold text-stone-900 mb-2">
+              {activeMainTab === 'host' ? 'Property Bookings' : 'My Trips'}
+            </h1>
+            <p className="text-stone-500">
+              {activeMainTab === 'host' ? 'Manage bookings across your properties.' : 'Manage your upcoming stays and past trips.'}
+            </p>
+          </div>
+          {managerHotels.length > 0 && (
+            <div className="flex bg-stone-100 p-1 rounded-xl">
+              <button
+                onClick={() => setActiveMainTab('host')}
+                className={`flex-1 px-4 py-2 text-sm font-bold rounded-lg transition-all ${activeMainTab === 'host' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-700'}`}
+              >
+                Property Bookings
+              </button>
+              <button
+                onClick={() => setActiveMainTab('guest')}
+                className={`flex-1 px-4 py-2 text-sm font-bold rounded-lg transition-all ${activeMainTab === 'guest' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-700'}`}
+              >
+                My Trips
+              </button>
+            </div>
+          )}
+        </div>
 
-        {broadcasts.filter(b => !hiddenBroadcastIds.includes(b.id!)).length > 0 && filter === 'upcoming' && (
+        {activeMainTab === 'guest' && broadcasts.filter(b => !hiddenBroadcastIds.includes(b.id!)).length > 0 && filter === 'upcoming' && (
           <div className="mb-10 space-y-4">
             <h2 className="text-xl font-serif font-bold text-stone-900 flex items-center gap-2">
               <Megaphone className="w-5 h-5" /> Live Updates
@@ -322,7 +491,7 @@ export default function MyBookings() {
         )}
 
         <div className="flex gap-2 mb-8 sm:mb-10 border-b border-stone-200 overflow-x-auto scrollbar-hide snap-x touch-pan-x -mx-6 px-6 sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-          {tabs.map((tab, tIdx) => (
+          {activeTabs.map((tab, tIdx) => (
             <button
               key={`${tab.key}-${tIdx}`}
               onClick={() => { setFilter(tab.key); setCurrentPage(1); }}
@@ -342,36 +511,43 @@ export default function MyBookings() {
           ))}
         </div>
 
-        {visible.length === 0 ? (
+        {activeBookings.length === 0 ? (
           <div className="text-center py-20 bg-white rounded-3xl border border-stone-200 shadow-sm mx-auto flex flex-col items-center">
             <div className="w-24 h-24 bg-stone-100 rounded-full flex items-center justify-center mb-6">
               <Calendar className="h-10 w-10 text-stone-400" />
             </div>
             <h2 className="text-2xl text-stone-900 font-serif font-bold mb-3">
-              {filter === 'upcoming' ? 'No trips booked... yet!' : filter === 'past' ? 'No past stays' : 'Nothing cancelled'}
+              {activeMainTab === 'host'
+                ? (filter === 'upcoming' ? 'No upcoming bookings yet' : filter === 'past' ? 'No past bookings' : 'No cancelled bookings')
+                : (filter === 'upcoming' ? 'No trips booked... yet!' : filter === 'past' ? 'No past stays' : 'Nothing cancelled')}
             </h2>
             <p className="text-stone-500 mb-8 max-w-md">
-              {filter === 'upcoming'
-                ? 'Time to dust off your bags and start planning your next adventure in Malawi.'
-                : 'Bookings will show up here once they move into this stage.'}
+              {activeMainTab === 'host'
+                ? 'Guest reservations for your properties will appear here along with their contact info and confirmation tools.'
+                : (filter === 'upcoming'
+                    ? 'Time to dust off your bags and start planning your next adventure in Malawi.'
+                    : 'Bookings will show up here once they move into this stage.')}
             </p>
-            {filter === 'upcoming' && (
+            {activeMainTab === 'guest' && filter === 'upcoming' && (
               <button onClick={() => navigate('/')} className="bg-stone-900 text-white px-8 py-3.5 rounded-full font-medium hover:bg-stone-800 transition shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
                 Start Exploring
               </button>
             )}
+            {activeMainTab === 'host' && managerHotels.length > 0 && (
+              <Link to={`/dashboard/hotel/${managerHotels[0]?.id}`} className="bg-stone-900 text-white px-8 py-3.5 rounded-full font-medium hover:bg-stone-800 transition shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                Open Host Dashboard
+              </Link>
+            )}
           </div>
         ) : (
           <div className="space-y-6">
-            {visible.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((booking, bkIdx) => {
+            {activeBookings.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((booking, bkIdx) => {
               const terms = cancellationTerms(booking);
               const nights = nightsBetween(booking.checkIn, booking.checkOut);
-              const canReview = isStayComplete(booking) && booking.id && !reviewedBookingIds.has(booking.id);
+              const canReview = activeMainTab === 'guest' && isStayComplete(booking) && booking.id && !reviewedBookingIds.has(booking.id);
               return (
               <div key={`${booking.id || 'booking'}-${bkIdx}`} className="group flex flex-col md:flex-row bg-white border border-stone-200 rounded-2xl sm:rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                 <div className="md:w-72 h-56 md:h-auto bg-stone-100 relative overflow-hidden shrink-0">
-                  {/* Resolved centrally, so a record with no stored imageUrl
-                      still gets bundled photography instead of "No Image". */}
                   <SmartImage
                     src={booking.hotel ? getHotelImage(booking.hotel) : undefined}
                     alt={booking.hotel?.name || 'Property'}
@@ -408,16 +584,56 @@ export default function MyBookings() {
                         </button>
                       )}
                     </div>
-                    <div className="flex items-center text-stone-500 gap-1.5 mb-6 text-sm font-medium truncate">
+                    <div className="flex items-center text-stone-500 gap-1.5 mb-4 text-sm font-medium truncate">
                       <MapPin className="h-4 w-4 shrink-0" /> <span className="truncate">{booking.hotel?.location || 'Location'}</span>
                     </div>
+
+                    {activeMainTab === 'host' && (
+                      <div className="bg-stone-50 border border-stone-200/80 rounded-2xl p-3.5 mb-5">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-xs shrink-0">
+                              {(booking.guestName || 'G').charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <p className="text-sm font-bold text-stone-900 leading-tight">
+                                {booking.guestName || 'Guest'}
+                              </p>
+                              <p className="text-xs text-stone-500">{booking.guestEmail || 'No email provided'}</p>
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            {(booking.guestWhatsapp || booking.guestPhone) && (
+                              <>
+                                <a
+                                  href={`https://wa.me/${(booking.guestWhatsapp || booking.guestPhone)?.replace(/[^0-9]/g, '')}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition"
+                                >
+                                  <MessageCircle className="w-3.5 h-3.5" /> WhatsApp Guest
+                                </a>
+                                <a
+                                  href={`tel:${booking.guestWhatsapp || booking.guestPhone}`}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-200 transition"
+                                >
+                                  <Phone className="w-3.5 h-3.5 text-stone-500" /> Call
+                                </a>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        {booking.specialRequests && (
+                          <div className="text-xs text-stone-600 bg-white p-2 rounded-xl border border-stone-200/60 mt-2.5">
+                            <span className="font-semibold text-stone-800">Special requests:</span> {booking.specialRequests}
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     <div className="bg-stone-50 rounded-2xl p-3.5 sm:p-4 border border-stone-100 flex flex-col sm:flex-row gap-3 sm:gap-8 mb-6">
                       <div>
                         <p className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-1">Check-in</p>
-                        {/* Formatted from local calendar parts: passing the raw
-                            string to new Date() renders the previous day for
-                            viewers west of Greenwich. */}
                         <p className="font-medium text-stone-900">{formatDateStr(booking.checkIn)}</p>
                       </div>
                       <div className="hidden sm:block w-px bg-stone-200"></div>
@@ -437,67 +653,122 @@ export default function MyBookings() {
                   </div>
 
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mt-auto">
-                    <div className="space-y-3">
-                      <div className="flex flex-wrap gap-2">
-                        {booking.status === 'confirmed' && daysUntil(booking.checkOut) >= 0 && (
+                    {activeMainTab === 'host' ? (
+                      <div className="space-y-3">
+                        <div className="flex flex-wrap gap-2">
+                          {booking.status === 'pending' && (
+                            <>
+                              <button
+                                onClick={() => handleConfirmHostBooking(booking)}
+                                disabled={busyId === booking.id}
+                                className="text-xs font-semibold text-white bg-emerald-700 hover:bg-emerald-800 px-4 py-2 rounded-xl transition flex items-center gap-1.5 disabled:opacity-50"
+                              >
+                                <Check className="w-4 h-4" /> Confirm Reservation
+                              </button>
+                              <button
+                                onClick={() => handleRejectHostBooking(booking)}
+                                disabled={busyId === booking.id}
+                                className="text-xs font-semibold text-red-700 border border-red-200 bg-red-50 hover:bg-red-100 px-4 py-2 rounded-xl transition flex items-center gap-1.5 disabled:opacity-50"
+                              >
+                                <X className="w-4 h-4" /> Decline
+                              </button>
+                            </>
+                          )}
                           <button
                             type="button"
                             onClick={() => setVoucherTarget(booking)}
-                            className="text-xs font-semibold text-emerald-900 border-2 border-emerald-900 bg-emerald-50 px-4 py-2 rounded-xl hover:bg-emerald-900 hover:text-white transition flex items-center gap-1.5"
+                            className="text-xs font-semibold text-stone-800 border border-stone-300 bg-white px-3.5 py-2 rounded-xl hover:bg-stone-50 transition flex items-center gap-1.5"
                           >
-                            <ShieldCheck className="w-4 h-4" /> View Digital Voucher
+                            <ShieldCheck className="w-4 h-4 text-emerald-600" /> Guest Voucher
                           </button>
-                        )}
-                        {(booking.status !== 'cancelled' && booking.status !== 'rejected') && (booking.hotel?.chatEnabled !== false && booking.hotel?.adminChatEnabled !== false) && (
-                          <button
-                            type="button"
-                            onClick={() => openBookingChat(booking as unknown as Booking)}
-                            className="text-xs font-semibold text-stone-900 border-2 border-stone-900 bg-white px-4 py-2 rounded-xl hover:bg-stone-900 hover:text-white transition flex items-center gap-1.5 cursor-pointer"
-                          >
-                            <MessageSquare className="w-4 h-4" /> Contact host
-                          </button>
-                        )}
-                      </div>
+                          {booking.hotelId && (
+                            <Link
+                              to={`/dashboard/hotel/${booking.hotelId}`}
+                              className="text-xs font-semibold text-stone-700 border border-stone-200 bg-stone-50 px-3.5 py-2 rounded-xl hover:bg-stone-100 transition flex items-center gap-1.5"
+                            >
+                              <Building2 className="w-4 h-4 text-stone-500" /> Property Hub
+                            </Link>
+                          )}
+                        </div>
                         {booking.status === 'pending' && (
-                        <p className="text-xs font-medium text-amber-600 bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-100">
-                          Waiting for property confirmation. Payment on arrival.
-                        </p>
-                      )}
-                      {booking.status === 'confirmed' && daysUntil(booking.checkOut) >= 0 && (
-                        <p className="text-xs font-medium text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100">
-                          Your stay is confirmed! Payment on arrival.
-                        </p>
-                      )}
-                      {booking.status === 'cancelled' && (
-                        <p className="text-xs font-medium text-stone-500 bg-stone-100 px-3 py-1.5 rounded-lg border border-stone-200">
-                          Cancelled{booking.cancelledBy === 'manager' ? ' by the property' : ''}
-                          {booking.cancelledAt ? ` on ${new Date(booking.cancelledAt).toLocaleDateString()}` : ''}.
-                        </p>
-                      )}
-
-                      <div className="flex flex-wrap gap-2">
-                        {terms.canCancel && (
-                          <button
-                            onClick={() => setCancelTarget(booking)}
-                            disabled={busyId === booking.id}
-                            className="text-xs font-semibold text-stone-600 border border-stone-300 px-3 py-1.5 rounded-lg hover:bg-stone-100 hover:text-red-600 hover:border-red-200 transition disabled:opacity-50"
-                          >
-                            {busyId === booking.id ? 'Cancelling…' : 'Cancel booking'}
-                          </button>
+                          <p className="text-xs font-medium text-amber-700 bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-100">
+                            New guest booking awaiting your confirmation.
+                          </p>
                         )}
-                        {canReview && (
-                          <button
-                            onClick={() => setReviewTarget(booking)}
-                            className="text-xs font-semibold text-emerald-700 border border-emerald-200 bg-emerald-50 px-3 py-1.5 rounded-lg hover:bg-emerald-100 transition flex items-center gap-1.5"
-                          >
-                            <Star className="w-3.5 h-3.5" /> Write a review
-                          </button>
+                        {booking.status === 'confirmed' && (
+                          <p className="text-xs font-medium text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100">
+                            Confirmed booking. Payment on arrival.
+                          </p>
                         )}
-                        {booking.id && reviewedBookingIds.has(booking.id) && (
-                          <span className="text-xs font-semibold text-stone-400 px-3 py-1.5">Reviewed — thank you</span>
+                        {booking.status === 'rejected' && (
+                          <p className="text-xs font-medium text-red-600 bg-red-50 px-3 py-1.5 rounded-lg border border-red-100">
+                            Declined reservation.
+                          </p>
                         )}
                       </div>
-                    </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <div className="flex flex-wrap gap-2">
+                          {booking.status === 'confirmed' && daysUntil(booking.checkOut) >= 0 && (
+                            <button
+                              type="button"
+                              onClick={() => setVoucherTarget(booking)}
+                              className="text-xs font-semibold text-emerald-900 border-2 border-emerald-900 bg-emerald-50 px-4 py-2 rounded-xl hover:bg-emerald-900 hover:text-white transition flex items-center gap-1.5"
+                            >
+                              <ShieldCheck className="w-4 h-4" /> View Digital Voucher
+                            </button>
+                          )}
+                          {(booking.status !== 'cancelled' && booking.status !== 'rejected') && (booking.hotel?.chatEnabled !== false && booking.hotel?.adminChatEnabled !== false) && (
+                            <button
+                              type="button"
+                              onClick={() => openBookingChat(booking as unknown as Booking)}
+                              className="text-xs font-semibold text-stone-900 border-2 border-stone-900 bg-white px-4 py-2 rounded-xl hover:bg-stone-900 hover:text-white transition flex items-center gap-1.5 cursor-pointer"
+                            >
+                              <MessageSquare className="w-4 h-4" /> Contact host
+                            </button>
+                          )}
+                        </div>
+                        {booking.status === 'pending' && (
+                          <p className="text-xs font-medium text-amber-600 bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-100">
+                            Waiting for property confirmation. Payment on arrival.
+                          </p>
+                        )}
+                        {booking.status === 'confirmed' && daysUntil(booking.checkOut) >= 0 && (
+                          <p className="text-xs font-medium text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100">
+                            Your stay is confirmed! Payment on arrival.
+                          </p>
+                        )}
+                        {booking.status === 'cancelled' && (
+                          <p className="text-xs font-medium text-stone-500 bg-stone-100 px-3 py-1.5 rounded-lg border border-stone-200">
+                            Cancelled{booking.cancelledBy === 'manager' ? ' by the property' : ''}
+                            {booking.cancelledAt ? ` on ${new Date(booking.cancelledAt).toLocaleDateString()}` : ''}.
+                          </p>
+                        )}
+
+                        <div className="flex flex-wrap gap-2">
+                          {terms.canCancel && (
+                            <button
+                              onClick={() => setCancelTarget(booking)}
+                              disabled={busyId === booking.id}
+                              className="text-xs font-semibold text-stone-600 border border-stone-300 px-3 py-1.5 rounded-lg hover:bg-stone-100 hover:text-red-600 hover:border-red-200 transition disabled:opacity-50"
+                            >
+                              {busyId === booking.id ? 'Cancelling…' : 'Cancel booking'}
+                            </button>
+                          )}
+                          {canReview && (
+                            <button
+                              onClick={() => setReviewTarget(booking)}
+                              className="text-xs font-semibold text-emerald-700 border border-emerald-200 bg-emerald-50 px-3 py-1.5 rounded-lg hover:bg-emerald-100 transition flex items-center gap-1.5"
+                            >
+                              <Star className="w-3.5 h-3.5" /> Write a review
+                            </button>
+                          )}
+                          {booking.id && reviewedBookingIds.has(booking.id) && (
+                            <span className="text-xs font-semibold text-stone-400 px-3 py-1.5">Reviewed — thank you</span>
+                          )}
+                        </div>
+                      </div>
+                    )}
                     <div className="text-left sm:text-right w-full sm:w-auto">
                       <p className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-1">Total Price</p>
                       <div className="text-xl sm:text-2xl font-serif font-bold text-stone-900">
@@ -557,10 +828,10 @@ export default function MyBookings() {
           </div>
         )}
         
-        {visible.length > itemsPerPage && (
+        {activeBookings.length > itemsPerPage && (
           <Pagination
             currentPage={currentPage}
-            totalPages={Math.ceil(visible.length / itemsPerPage)}
+            totalPages={Math.ceil(activeBookings.length / itemsPerPage)}
             onPageChange={setCurrentPage}
           />
         )}

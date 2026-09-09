@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useAIAssistant, AIGenerateOptions } from '../hooks/useAIAssistant';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { useModalScrollIsolation } from '../hooks/useModalScrollIsolation';
 import { PenLine, RefreshCw, Check, X, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -32,6 +34,7 @@ export default function AIAssistantButton({
   const { status, generate, generating } = useAIAssistant();
   const [isOpen, setIsOpen] = useState(false);
   useBodyScrollLock(isOpen);
+  const scrollIsolationRef = useModalScrollIsolation<HTMLDivElement>(isOpen);
   const [suggestion, setSuggestion] = useState<string>('');
   const [activeAction, setActiveAction] = useState<'draft' | 'polish' | 'shorten'>('draft');
   const [customNote, setCustomNote] = useState('');
@@ -94,9 +97,19 @@ export default function AIAssistantButton({
         <span>{hasExistingText ? 'Refine with Assistant' : 'Draft with Assistant'}</span>
       </button>
 
-      {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/40 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white border border-stone-200 rounded-2xl shadow-xl max-w-xl w-full p-4 sm:p-6 space-y-4 sm:space-y-5 text-left relative max-h-[90vh] overflow-y-auto">
+      {isOpen && typeof document !== 'undefined' && createPortal(
+        <div
+          data-lenis-prevent="true"
+          className="fixed inset-0 z-[160] overflow-y-auto overscroll-contain flex min-h-full items-center justify-center p-3 sm:p-4 text-center bg-stone-900/40 backdrop-blur-xs animate-in fade-in duration-150"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setIsOpen(false);
+          }}
+        >
+          <div
+            ref={scrollIsolationRef}
+            data-lenis-prevent="true"
+            className="bg-white border border-stone-200 rounded-2xl sm:rounded-3xl shadow-2xl max-w-xl w-full p-4 sm:p-6 space-y-4 sm:space-y-5 text-left relative max-h-[calc(100dvh-2.5rem)] sm:max-h-[88vh] overflow-y-auto overscroll-contain my-auto"
+          >
             {/* Header */}
             <div className="flex items-start justify-between border-b border-stone-100 pb-4">
               <div>
@@ -254,7 +267,8 @@ export default function AIAssistantButton({
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

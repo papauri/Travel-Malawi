@@ -23,7 +23,7 @@ import {
   Images, Loader2, LocateFixed, Mail, MapPin, MessageCircle, Phone, Plus, Send,
   Award, FileText, CheckCircle2, Wallet, X, DollarSign, Coins, Trash2, Sliders, ChevronDown, ChevronUp,
   RefreshCw, TrendingUp, HelpCircle, AlertTriangle, BookOpen,
-  User, UserCheck, Shield, Building, Sparkles, Wand2, BedDouble,
+  User, UserCheck, Shield, Building, ConciergeBell, Wand2, BedDouble,
 } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -554,7 +554,7 @@ export default function ListProperty() {
           contactWhatsapp: aiData.contactWhatsapp || aiData.contactPhone || '+265 991 234 567',
           suggestedImageUrl,
         });
-        toast.success(`✨ Super Agent AI matched "${aiData.officialName || name}" & auto-categorized as "${verifiedCategory}"!`);
+        toast.success(`Super Agent matched "${aiData.officialName || name}" & auto-categorized as "${verifiedCategory}"!`);
       } else if (matchedCoords || name) {
         setAiPropertySuggestion({
           matched: true,
@@ -575,7 +575,7 @@ export default function ListProperty() {
           contactWhatsapp: '+265 991 234 567',
           suggestedImageUrl,
         });
-        toast.success(`✨ Super Agent AI prepared details & auto-categorized as "${verifiedCategory}"!`);
+        toast.success(`Super Agent prepared details & auto-categorized as "${verifiedCategory}"!`);
       } else {
         toast('No verified listing found on Maps. You can enter details manually.', { icon: 'ℹ️' });
       }
@@ -658,7 +658,7 @@ export default function ListProperty() {
     });
 
     if (applyAllFields) {
-      toast.success(`✨ Super Agent AI filled all listing fields! Auto-categorized as "${s.category}". Review any details across the steps.`);
+      toast.success(`Super Agent filled all listing fields! Auto-categorized as "${s.category}". Review any details across the steps.`);
     } else {
       toast.success(`Applied verified details for "${s.officialName}"!`);
     }
@@ -1163,15 +1163,17 @@ export default function ListProperty() {
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setShowPropertyImporter(true)}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-700 bg-white border border-stone-200 hover:border-stone-300 transition px-3 py-1.5 rounded-full shadow-sm cursor-pointer"
-              title="Import property details from a document"
-            >
-              <FileText className="w-3.5 h-3.5" />
-              <span>Import Document</span>
-            </button>
+            {aiStatus.enabled && aiStatus.available && (
+              <button
+                type="button"
+                onClick={() => setShowPropertyImporter(true)}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-700 bg-white border border-stone-200 hover:border-stone-300 transition px-3 py-1.5 rounded-full shadow-sm cursor-pointer"
+                title="Import property details from a document"
+              >
+                <FileText className="w-3.5 h-3.5" />
+                <span>Import Document</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={handleDiscardDraft}
@@ -1236,20 +1238,22 @@ export default function ListProperty() {
                       <MapPin className="w-3.5 h-3.5 text-emerald-600" />
                       Google Maps verified
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => handleLookupPropertyAI()}
-                      disabled={aiLookupLoading || !draft.name.trim()}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-700 hover:bg-emerald-800 text-white shadow-sm transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                      title="Use Super Agent AI to look up property details and auto-fill all listing fields"
-                    >
-                      {aiLookupLoading ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                      )}
-                      <span>Super Agent AI Auto-Fill</span>
-                    </button>
+                    {aiStatus.enabled && aiStatus.available && (
+                      <button
+                        type="button"
+                        onClick={() => handleLookupPropertyAI()}
+                        disabled={aiLookupLoading || !draft.name.trim()}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-700 hover:bg-emerald-800 text-white shadow-sm transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                        title="Look up property details and auto-fill listing fields"
+                      >
+                        {aiLookupLoading ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <ConciergeBell className="w-3.5 h-3.5 text-amber-300" />
+                        )}
+                        <span>Hospitality Registry Auto-Fill</span>
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -1312,19 +1316,21 @@ export default function ListProperty() {
                                 </p>
                               </div>
                             </button>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleSelectMalawiPlace(item);
-                                handleLookupPropertyAI(item.name);
-                              }}
-                              className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 px-3 py-1.5 rounded-xl shrink-0 cursor-pointer transition active:scale-95"
-                              title="Auto-fill all fields with Super Agent AI"
-                            >
-                              <Sparkles className="w-3 h-3 text-emerald-700" />
-                              <span>Super Agent</span>
-                            </button>
+                            {aiStatus.enabled && aiStatus.available && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleSelectMalawiPlace(item);
+                                  handleLookupPropertyAI(item.name);
+                                }}
+                                className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 px-3 py-1.5 rounded-xl shrink-0 cursor-pointer transition active:scale-95"
+                                title="Auto-fill listing details"
+                              >
+                                <ConciergeBell className="w-3 h-3 text-emerald-700" />
+                                <span>Auto-Fill</span>
+                              </button>
+                            )}
                           </li>
                         ))}
                       </ul>
@@ -1348,13 +1354,13 @@ export default function ListProperty() {
                   </div>
                 )}
 
-                {/* Super Agent AI Discovered Property Card */}
+                {/* Discovered Property Card */}
                 {aiPropertySuggestion && (
                   <div className="mt-4 p-5 rounded-2xl bg-gradient-to-br from-emerald-50/95 via-stone-50 to-emerald-50/60 border-2 border-emerald-200/90 text-stone-800 shadow-md animate-in fade-in space-y-4">
                     <div className="flex items-center justify-between">
                       <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-600 text-white font-bold text-[11px] uppercase tracking-wider shadow-xs">
-                        <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                        <span>Super Agent AI • Hospitality Registry Discovery</span>
+                        <ConciergeBell className="w-3.5 h-3.5 text-amber-300" />
+                        <span>Hospitality Registry Discovery</span>
                       </div>
                       <button
                         type="button"
@@ -1373,7 +1379,7 @@ export default function ListProperty() {
                         </h4>
                         {aiPropertySuggestion.category && (
                           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-900 font-bold text-xs">
-                            <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                            <BadgeCheck className="w-3.5 h-3.5 text-emerald-600" />
                             Auto-Categorized: {aiPropertySuggestion.category}
                           </span>
                         )}
@@ -1455,7 +1461,7 @@ export default function ListProperty() {
                         onClick={() => handleApplyAISuggestion(true)}
                         className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-5 py-2.5 rounded-xl text-xs shadow-md transition active:scale-95 cursor-pointer"
                       >
-                        <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                        <ConciergeBell className="w-3.5 h-3.5 text-amber-300" />
                         <span>Auto-Fill All Listing Fields &amp; Categorize</span>
                       </button>
                       <button
@@ -1486,15 +1492,15 @@ export default function ListProperty() {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <span className={labelClass}>Which category fits best?</span>
-                  <span className="text-[11px] text-stone-500">Auto-filled by Super Agent AI or select manually</span>
+                  <span className="text-[11px] text-stone-500">Auto-filled from registry or select manually</span>
                 </div>
 
                 {aiCategorized && draft.category && (
                   <div className="mb-3.5 p-3 rounded-xl bg-emerald-50/90 border border-emerald-200 text-emerald-900 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 animate-in fade-in">
                     <div className="flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <BadgeCheck className="w-4 h-4 text-emerald-600 shrink-0" />
                       <span>
-                        <strong>Super Agent AI</strong> automatically categorized this stay as <span className="font-bold underline decoration-emerald-500 underline-offset-2">{draft.category}</span> based on verified hospitality registry data.
+                        Automatically categorized as <span className="font-bold underline decoration-emerald-500 underline-offset-2">{draft.category}</span> based on verified hospitality registry data.
                       </span>
                     </div>
                     <span className="text-[11px] font-medium text-emerald-700 bg-emerald-100/70 px-2.5 py-1 rounded-full shrink-0 self-start sm:self-auto">

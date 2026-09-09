@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bell, Volume2, VolumeX, MessageSquare, CheckCheck, Sparkles, ExternalLink, Calendar, X, XCircle } from 'lucide-react';
+import { Bell, Volume2, VolumeX, MessageSquare, CheckCheck, Radio, ExternalLink, Calendar, X, XCircle } from 'lucide-react';
 import { useUnreadMessages, UnreadMessageItem } from '../hooks/useUnreadMessages';
 import { useUnreadBroadcasts } from '../hooks/useUnreadBroadcasts';
 import { useChatModal } from '../contexts/ChatModalContext';
@@ -519,7 +519,7 @@ export default function NotificationBell() {
                 <div className="p-3 bg-stone-50 border-t border-stone-200">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-stone-700" />
+                      <Radio className="w-3.5 h-3.5 text-stone-700" />
                       Lodge Guest Announcements ({unreadBroadcasts})
                     </span>
                     <button

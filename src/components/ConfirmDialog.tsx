@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { AlertTriangle } from 'lucide-react';
@@ -48,24 +49,32 @@ export default function ConfirmDialog({
     };
   }, [isOpen, onCancel]);
 
-  return (
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+        <div
+          data-lenis-prevent="true"
+          className="fixed inset-0 z-[160] overflow-y-auto overscroll-contain flex min-h-full items-center justify-center p-4 text-center"
+          role="dialog"
+          aria-modal="true"
+        >
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="absolute inset-0 bg-stone-950/50 backdrop-blur-sm"
+            className="fixed inset-0 bg-stone-950/50 backdrop-blur-sm"
             onClick={onCancel}
           />
           <motion.div
+            data-lenis-prevent="true"
             initial={{ opacity: 0, scale: 0.97, y: 16 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.97, y: 8 }}
             transition={{ type: 'spring', stiffness: 420, damping: 34, mass: 0.9 }}
-            className="bg-white rounded-[1.75rem] w-full max-w-sm overflow-hidden shadow-2xl shadow-stone-950/25 p-7 relative z-10"
+            className="bg-white rounded-[1.75rem] w-full max-w-sm overflow-hidden shadow-2xl shadow-stone-950/25 p-7 relative z-10 my-auto text-left overscroll-contain"
           >
             <div className="flex flex-col items-center text-center">
               <div className={`h-14 w-14 grid place-items-center rounded-full mb-5 ${
@@ -78,7 +87,7 @@ export default function ConfirmDialog({
               <div className="flex gap-3 w-full">
                 <button
                   onClick={onCancel}
-                  className="flex-1 bg-stone-100 text-stone-700 px-4 py-3 rounded-full font-semibold text-sm hover:bg-stone-200 transition"
+                  className="flex-1 bg-stone-100 text-stone-700 px-4 py-3 rounded-full font-semibold text-sm hover:bg-stone-200 transition cursor-pointer"
                 >
                   {cancelText}
                 </button>
@@ -87,7 +96,7 @@ export default function ConfirmDialog({
                     onConfirm();
                     onCancel();
                   }}
-                  className={`flex-1 px-4 py-3 rounded-full font-semibold text-sm transition text-white ${
+                  className={`flex-1 px-4 py-3 rounded-full font-semibold text-sm transition text-white cursor-pointer ${
                     isDestructive ? 'bg-red-600 hover:bg-red-700' : 'bg-stone-900 hover:bg-stone-800'
                   }`}
                 >
@@ -98,6 +107,7 @@ export default function ConfirmDialog({
           </motion.div>
         </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }

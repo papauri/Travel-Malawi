@@ -12,7 +12,7 @@ import { isSoundEnabled, onSoundPreferenceChange, setSoundEnabled } from '../lib
 import { readStoredCurrency, storeCurrency, onCurrencyChange } from '../lib/currency';
 import { CurrencyCode } from '../types';
 import { requestBrowserNotifications } from './GlobalNotificationManager';
-import { describeRoles, isAdmin, isHotelManager, isTraveller } from '../lib/roles';
+import { describeRoles, isAdmin, isGlobalAdmin, isMarketing, isHotelManager, isTraveller } from '../lib/roles';
 import { useUnreadBroadcasts } from '../hooks/useUnreadBroadcasts';
 import { useUnreadMessages } from '../hooks/useUnreadMessages';
 import { usePresence, PresenceStatus } from '../hooks/usePresence';
@@ -126,7 +126,7 @@ export default function Navbar() {
                       <span>List Your Property</span>
                     </Link>
                   )}
-                  {isAdmin(user) && (
+                  {(isAdmin(user) || isMarketing(user)) && (
                     <Link
                       to="/admin"
                       className="text-sm font-medium text-stone-600 hover:text-stone-900 transition relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-stone-900 after:transition-all hover:after:w-full"
@@ -134,7 +134,7 @@ export default function Navbar() {
                       Admin
                     </Link>
                   )}
-                  {isTraveller(user) && (
+                  {user && (
                     <>
                       <Link
                         to="/saved"
@@ -216,7 +216,7 @@ export default function Navbar() {
 
                       {/* The links below are shown when on mobile */}
                       <div className="md:hidden py-1 border-b border-stone-100">
-                        {isTraveller(user) && (
+                        {user && (
                           <>
                             <Link
                               to="/saved"
@@ -263,7 +263,7 @@ export default function Navbar() {
                             <span>List your property</span>
                           </Link>
                         )}
-                        {isAdmin(user) && (
+                        {(isAdmin(user) || isMarketing(user)) && (
                           <Link
                             to="/admin"
                             onClick={() => setShowUserMenu(false)}
