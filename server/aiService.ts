@@ -2744,3 +2744,339 @@ Rules:
     throw new Error('All providers failed to extract property data.');
   }
 }
+
+export interface PlannerInsightsRequest {
+  hotels: Array<{
+    id: string;
+    name: string;
+    location?: string;
+    category?: string;
+    description?: string;
+    amenities?: string[];
+  }>;
+  tripStyle?: string;
+  pace?: 'relaxed' | 'moderate' | 'fast';
+  customQuestion?: string;
+}
+
+export interface PlannerInsightsResult {
+  summary: string;
+  recommendedDurationDays: number;
+  routePacing: {
+    recommendedOrderIds?: string[];
+    pacingAdvice: string;
+    backtrackingWarning?: string;
+  };
+  legs: Array<{
+    hotelId: string;
+    hotelName: string;
+    location: string;
+    recommendedNights: number;
+    bestTimeToTravel: string;
+    scenicStopsEnRoute: string[];
+    localCulinaryHighlights: string[];
+    mustDoActivities: string[];
+    practicalTip: string;
+  }>;
+  roadTripLogistics: {
+    vehicleRecommendation: string;
+    roadConditionsAdvice: string;
+    paymentAndCurrencyAdvice: string;
+    healthAndSafetyTips: string[];
+    packingChecklist: string[];
+  };
+  seasonalAdvice: {
+    bestSeason: string;
+    weatherNotes: string;
+    lakeConditions?: string;
+    wildlifeVisibility?: string;
+  };
+  estimatedBudgetGuidance: {
+    transitFuelEstimateUSD: string;
+    transitFuelEstimateMWK: string;
+    dailyFoodPerPersonUSD: string;
+    dailyFoodPerPersonMWK: string;
+    parkAndConservationFeesNotes: string;
+  };
+  provider?: string;
+  model?: string;
+}
+
+export async function generateJourneyInsights(
+  req: PlannerInsightsRequest
+): Promise<PlannerInsightsResult> {
+  const config = loadAIConfig();
+  if (!config.enabled) {
+    throw new Error('AI Trip Planner is currently disabled by platform administration.');
+  }
+
+  const providers = getAvailableProviders();
+  if (providers.length === 0) {
+    throw new Error('No AI providers configured with valid API keys. Please configure an API key in the Admin Dashboard.');
+  }
+
+  const hotelsList = req.hotels.map((h, i) => 
+    `Stop ${i + 1} [ID: ${h.id}]: "${h.name}" located in "${h.location || 'Malawi'}" (Category: ${h.category || 'Lodge/Stay'}${h.amenities?.length ? `, Amenities: ${h.amenities.slice(0, 6).join(', ')}` : ''})`
+  ).join('\n');
+
+  const systemPrompt = `You are the Master Itinerary & Road-Trip Architect for Travel Malawi (The Warm Heart of Africa).
+You specialize in designing unforgettable, realistic, and highly practical travel itineraries across Malawi.
+You know every highway (M1 spine, M5 lake road, M3 southern corridor, M10 lake turnoff), national park (Liwonde, Majete, Nyika, Kasungu, Lengwe), lake hub (Cape Maclear, Senga Bay, Nkhata Bay, Likoma Island, Chintheche, Mangochi), mountain retreats (Zomba Plateau, Mount Mulanje, Viphya), and roadside cultural landmarks (Dedza Pottery, Mua Mission, Chongoni Rock Art, local curio markets).
+
+Your goal is to provide authentic, deeply insightful, and comprehensive travel guidance for the traveler's chosen route.
+Always format pricing and financial estimates in dual-currency: USD ($) and Malawi Kwacha (MK / MWK, ~1 USD = 1,750 MWK).
+
+Strict Output Requirement: Return ONLY a valid JSON object matching the requested schema. No markdown backticks, no markdown codeblocks, no commentary.`;
+
+  const userPrompt = `Analyze the following road-trip itinerary through Malawi and generate comprehensive AI journey insights:
+
+=== ITINERARY STOPS ===
+${hotelsList}
+
+=== TRAVEL PREFERENCES ===
+- Preferred Trip Style: ${req.tripStyle || 'Balanced (Safari + Lake + Culture)'}
+- Pacing Preference: ${req.pace || 'Moderate (2-3 nights per stop)'}
+${req.customQuestion ? `- Specific Traveler Question: "${req.customQuestion}"` : ''}
+
+Generate an exhaustive, realistic travel guide in strictly valid JSON format with the following keys:
+{
+  "summary": "Evocative 2-3 sentence overview of this journey, highlighting the contrast of landscapes and cultural warmth.",
+  "recommendedDurationDays": <total recommended days as a number>,
+  "routePacing": {
+    "recommendedOrderIds": ["<id1>", "<id2>", ...], // array of hotel IDs in optimal geographical sequence to minimize driving backtrack
+    "pacingAdvice": "Clear guidance on how to pace the days and avoid travel fatigue.",
+    "backtrackingWarning": "Specific note if current order causes backtracking, or confirmation that the route flows smoothly."
+  },
+  "legs": [
+    {
+      "hotelId": "<hotelId matching one in list>",
+      "hotelName": "<name>",
+      "location": "<location>",
+      "recommendedNights": <number of nights, e.g. 2 or 3>,
+      "bestTimeToTravel": "e.g. Early morning (07:00-08:30) to beat midday heat and arrive for afternoon safari or lake cruise",
+      "scenicStopsEnRoute": ["Stop 1 (e.g. Dedza Pottery for cheesecake and ceramic curios)", "Stop 2 (e.g. roadside fresh mango or avocado stalls on M1)"],
+      "localCulinaryHighlights": ["Specialty 1 (e.g. Fresh Lake Malawi Chambo with nsima and relish)", "Specialty 2 (e.g. Satemwa Estate green tea or Thyolo macadamias)"],
+      "mustDoActivities": ["Activity 1 (e.g. Sunset catamaran boat cruise around Thumbi Island)", "Activity 2 (e.g. Guided snorkeling with colorful Cichlid fish)"],
+      "practicalTip": "Crucial insider tip for this specific stop (e.g. cash recommendation, lake footwear for rocky shores, insect repellent timing)"
+    }
+  ],
+  "roadTripLogistics": {
+    "vehicleRecommendation": "Specific vehicle type needed (e.g. 2WD sedan suitable for Lilongwe/Cape Maclear, but 4x4 required if entering Liwonde/Nyika)",
+    "roadConditionsAdvice": "Authentic description of the tarmac condition, speed bumps, police checkpoints etiquette, and daylight driving recommendation",
+    "paymentAndCurrencyAdvice": "Advice on Airtel Money / TNM Mpamba, VISA cards acceptance at lodges, and carrying MK Kwacha cash for rural fuel stations & markets",
+    "healthAndSafetyTips": ["Malarial prophylaxis & mosquito repellent advice", "Safe drinking water / bottled or filtered water practices", "Friendly local police checkpoints and speed limits (50 km/h in towns, 80 km/h open road)"],
+    "packingChecklist": ["Binoculars for wildlife & birding", "Snorkel mask & water shoes for Lake Malawi", "Light sweater/fleece for cool plateau evenings (Zomba/Nyika/Mulanje)", "Power bank and Type G UK adapter plug", "Cash in Kwacha for roadside crafts & local fruits"]
+  },
+  "seasonalAdvice": {
+    "bestSeason": "e.g. May to October (Dry Winter Season with clear skies, low humidity, and prime safari viewing)",
+    "weatherNotes": "Expect warm sunny lake days (26-30°C) and brisk, crisp mornings in highland areas (12-16°C).",
+    "lakeConditions": "Calm, crystal-clear water ideal for swimming, paddleboarding, and snorkeling during dry months.",
+    "wildlifeVisibility": "High wildlife concentration around permanent rivers and waterholes in parks."
+  },
+  "estimatedBudgetGuidance": {
+    "transitFuelEstimateUSD": "$60–$120 (approx)",
+    "transitFuelEstimateMWK": "MK 105,000–MK 210,000",
+    "dailyFoodPerPersonUSD": "$20–$45 per day",
+    "dailyFoodPerPersonMWK": "MK 35,000–MK 80,000 per day",
+    "parkAndConservationFeesNotes": "National Parks typically charge $20-$30 per international visitor per day ($10 for SADC / MK 5,000 for Malawian residents)."
+  }
+}`;
+
+  let lastError: Error | null = null;
+  for (const providerId of providers) {
+    try {
+      const apiKey = getEffectiveApiKey(providerId)!;
+      const model = config.providers[providerId]?.model || 'default';
+
+      const generatedText = await enqueueAIRequest(providerId, async () => {
+        if (providerId === 'gemini') {
+          return callGemini(
+            'gemini',
+            apiKey,
+            model || 'gemini-2.0-flash',
+            systemPrompt,
+            userPrompt,
+            0.6,
+            2500
+          );
+        } else if (providerId === 'anthropic') {
+          return callAnthropic(
+            'anthropic',
+            apiKey,
+            model || 'claude-3-5-haiku-20241022',
+            systemPrompt,
+            userPrompt,
+            0.6,
+            2500
+          );
+        } else {
+          const endpoints: Record<string, string> = {
+            mistral: 'https://api.mistral.ai/v1/chat/completions',
+            openai: 'https://api.openai.com/v1/chat/completions',
+            groq: 'https://api.groq.com/openai/v1/chat/completions',
+            deepseek: 'https://api.deepseek.com/chat/completions',
+          };
+          return callOpenAICompatible(
+            providerId,
+            endpoints[providerId] || endpoints.openai,
+            apiKey,
+            model,
+            systemPrompt,
+            userPrompt,
+            0.6,
+            2500
+          );
+        }
+      });
+
+      const cleaned = generatedText.replace(/```json/gi, '').replace(/```/g, '').trim();
+      let parsed: any = null;
+      try {
+        parsed = JSON.parse(cleaned);
+      } catch {
+        const match = generatedText.match(/\{[\s\S]*\}/);
+        if (match) {
+          parsed = JSON.parse(match[0]);
+        }
+      }
+
+      if (parsed && parsed.summary && parsed.legs) {
+        return {
+          ...parsed,
+          provider: providerId,
+          model: model,
+        };
+      }
+      throw new Error('AI returned incomplete journey insights format');
+    } catch (err: any) {
+      console.warn(`[Journey Insights] Provider ${providerId} error:`, err?.message);
+      lastError = err;
+      if (isAuthError(err.message)) {
+        markProviderValidity(providerId, false, err.message);
+      }
+      continue;
+    }
+  }
+
+  throw lastError || new Error('Failed to generate journey insights across all active AI providers.');
+}
+
+export interface PlannerChatRequest {
+  question: string;
+  hotels: Array<{
+    id: string;
+    name: string;
+    location?: string;
+    category?: string;
+  }>;
+  history?: Array<{ role: 'user' | 'assistant'; content: string }>;
+}
+
+export async function executePlannerChat(
+  req: PlannerChatRequest
+): Promise<{ answer: string; suggestedQuestions?: string[]; provider: string; model: string }> {
+  const config = loadAIConfig();
+  if (!config.enabled) {
+    throw new Error('AI Concierge is currently disabled by platform administration.');
+  }
+
+  const providers = getAvailableProviders();
+  if (providers.length === 0) {
+    throw new Error('No AI providers configured. Please configure an API key in the Admin Dashboard.');
+  }
+
+  const hotelsList = req.hotels.map((h, i) => `${i + 1}. ${h.name} (${h.location || 'Malawi'}) - ${h.category || 'Stay'}`).join('\n');
+
+  const systemPrompt = `You are the personal Travel Concierge & Journey Assistant for travelers exploring Malawi on Travel Malawi.
+The traveler has selected an itinerary with the following stays:
+${hotelsList}
+
+Rules:
+1. Provide warm, concise, highly accurate, and practical travel advice tailored specifically to their itinerary.
+2. Include authentic Malawian insights (distances, road safety, 4x4 needs, fresh Lake Chambo dining, boat transfers, best sunrise/sunset viewpoints, ATM/mobile money tips, packing essentials).
+3. If they ask about prices, provide dual-currency estimates in USD ($) and Malawi Kwacha (MWK, ~1 USD = 1,750 MWK).
+4. Keep the response friendly, crisp, and direct (1 to 3 paragraphs).
+5. At the end, propose 2-3 short relevant follow-up questions in a clean format: "Follow-ups: [question 1 | question 2 | question 3]".`;
+
+  const userPrompt = req.question;
+
+  let lastError: Error | null = null;
+  for (const providerId of providers) {
+    try {
+      const apiKey = getEffectiveApiKey(providerId)!;
+      const model = config.providers[providerId]?.model || 'default';
+
+      const reply = await enqueueAIRequest(providerId, async () => {
+        if (providerId === 'gemini') {
+          return callGemini(
+            'gemini',
+            apiKey,
+            model || 'gemini-2.0-flash',
+            systemPrompt,
+            userPrompt,
+            0.7,
+            1200
+          );
+        } else if (providerId === 'anthropic') {
+          return callAnthropic(
+            'anthropic',
+            apiKey,
+            model || 'claude-3-5-haiku-20241022',
+            systemPrompt,
+            userPrompt,
+            0.7,
+            1200
+          );
+        } else {
+          const endpoints: Record<string, string> = {
+            mistral: 'https://api.mistral.ai/v1/chat/completions',
+            openai: 'https://api.openai.com/v1/chat/completions',
+            groq: 'https://api.groq.com/openai/v1/chat/completions',
+            deepseek: 'https://api.deepseek.com/chat/completions',
+          };
+          return callOpenAICompatible(
+            providerId,
+            endpoints[providerId] || endpoints.openai,
+            apiKey,
+            model,
+            systemPrompt,
+            userPrompt,
+            0.7,
+            1200
+          );
+        }
+      });
+
+      // Extract follow-ups if present
+      let cleanAnswer = reply;
+      const followUps: string[] = [];
+      const followUpMatch = reply.match(/Follow-ups:\s*\[(.*?)\]/i) || reply.match(/Follow-ups:\s*(.*)$/im);
+      if (followUpMatch) {
+        cleanAnswer = reply.replace(followUpMatch[0], '').trim();
+        const rawFollowUps = followUpMatch[1].split(/[\|\n•]/).map(s => s.trim().replace(/^[-*0-9.]\s*/, '')).filter(s => s.length > 5);
+        followUps.push(...rawFollowUps.slice(0, 3));
+      }
+
+      return {
+        answer: cleanAnswer,
+        suggestedQuestions: followUps.length ? followUps : [
+          'What vehicle is recommended for these roads?',
+          'Where are the best scenic roadside stops?',
+          'What are the essential packing items for this route?'
+        ],
+        provider: providerId,
+        model: model,
+      };
+    } catch (err: any) {
+      console.warn(`[Planner Chat] Provider ${providerId} error:`, err?.message);
+      lastError = err;
+      if (isAuthError(err.message)) {
+        markProviderValidity(providerId, false, err.message);
+      }
+      continue;
+    }
+  }
+
+  throw lastError || new Error('Failed to process journey question.');
+}
+

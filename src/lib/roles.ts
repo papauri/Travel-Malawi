@@ -43,7 +43,9 @@ export function hasRole(user: Pick<User, 'role' | 'roles'> | null | undefined, r
 
 export const isTraveller = (user: Pick<User, 'role' | 'roles'> | null | undefined) => hasRole(user, 'traveller');
 export const isHotelManager = (user: Pick<User, 'role' | 'roles'> | null | undefined) => hasRole(user, 'hotel_manager');
-export const isGlobalAdmin = (user: Pick<User, 'role' | 'roles' | 'email'> | null | undefined) => hasRole(user, 'global_admin') || (user && 'email' in user && user.email === 'johnpaulchirwa@gmail.com');
+export const isGlobalAdmin = (user: Pick<User, 'role' | 'roles' | 'email'> | null | undefined) => 
+  hasRole(user, 'global_admin') || 
+  Boolean(user && 'email' in user && (user.email === 'johnpaulchirwa@gmail.com' || user.email === 'johnpaulchirwa@promanaged-it.com'));
 // A global admin is also an admin. 
 export const isAdmin = (user: Pick<User, 'role' | 'roles' | 'email'> | null | undefined) => hasRole(user, 'admin') || isGlobalAdmin(user);
 export const isMarketing = (user: Pick<User, 'role' | 'roles'> | null | undefined) => hasRole(user, 'marketing');

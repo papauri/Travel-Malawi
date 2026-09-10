@@ -88,6 +88,9 @@ function trailFor(pathname: string, label: string): Crumb[] {
   if (pathname === '/marketing' || pathname === '/marketing-deck' || pathname === '/operations-guide') {
     return [home, { label: 'Marketing & Operations Deck' }];
   }
+  if (pathname === '/uat' || pathname === '/uat-guide' || pathname === '/platform-guide' || pathname === '/uat-manual') {
+    return [home, { label: 'Platform Guide & UAT Manual' }];
+  }
 
   return [home, { label: 'Not found' }];
 }

@@ -23,6 +23,8 @@ import Privacy from './pages/Privacy';
 import Refunds from './pages/Refunds';
 import HostStarterPack from './pages/HostStarterPack';
 import MarketingDeck from './pages/MarketingDeck';
+import PlatformGuideUat from './pages/PlatformGuideUat';
+import TripPlannerPage from './pages/TripPlannerPage';
 import GlobalNotificationManager from './components/GlobalNotificationManager';
 import PageLoader from './components/PageLoader';
 import CompareWidget from './components/CompareWidget';
@@ -168,6 +170,10 @@ const router = createBrowserRouter([
       { path: "trips", element: <MyBookings /> },
       { path: "my-trips", element: <MyBookings /> },
       { path: "saved", element: <SavedProperties /> },
+      { path: "planner", element: <TripPlannerPage /> },
+      { path: "trip-planner", element: <TripPlannerPage /> },
+      { path: "itinerary", element: <TripPlannerPage /> },
+      { path: "route-planner", element: <TripPlannerPage /> },
       { path: "profile", element: <Profile /> },
       { path: "admin", element: <AdminDashboard /> },
       { path: "terms", element: <Terms /> },
@@ -179,6 +185,10 @@ const router = createBrowserRouter([
       { path: "marketing", element: <MarketingDeck /> },
       { path: "marketing-deck", element: <MarketingDeck /> },
       { path: "operations-guide", element: <MarketingDeck /> },
+      { path: "uat", element: <PlatformGuideUat /> },
+      { path: "uat-guide", element: <PlatformGuideUat /> },
+      { path: "platform-guide", element: <PlatformGuideUat /> },
+      { path: "uat-manual", element: <PlatformGuideUat /> },
       { path: "admin/hotel/:id", element: <ManageHotel /> },
       { path: "*", element: <NotFound /> }
     ]

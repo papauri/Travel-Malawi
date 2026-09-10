@@ -81,22 +81,24 @@ export default function SavedProperties() {
     <div className="mx-auto max-w-7xl px-4 lg:px-8 py-10 mb-20 md:mb-0">
       <div className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl md:text-4xl font-serif font-medium text-stone-900 tracking-tight">Saved Properties</h1>
-          <p className="text-stone-500 mt-2">Properties you have liked and saved for later.</p>
+          <h1 className="text-3xl md:text-4xl font-serif font-bold text-stone-900 tracking-tight">Saved Properties</h1>
+          <p className="text-stone-500 mt-2">Your bookmarked lodges, cottages, and safari stays across Malawi.</p>
         </div>
         {savedHotels.length > 0 && (
-          <div className="flex bg-stone-100 p-1 rounded-xl w-fit">
+          <div className="flex items-center gap-1 bg-stone-100 p-1 rounded-2xl w-fit border border-stone-200">
             <button
               onClick={() => setViewMode('grid')}
-              className={`px-4 py-2 text-sm font-bold rounded-lg transition ${viewMode === 'grid' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-900'}`}
+              className={`px-4 py-2 text-xs sm:text-sm font-bold rounded-xl transition ${viewMode === 'grid' ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-600 hover:text-stone-900'}`}
             >
-              List View
+              Saved Grid ({savedHotels.length})
             </button>
             <button
               onClick={() => setViewMode('planner')}
-              className={`px-4 py-2 text-sm font-bold rounded-lg transition flex items-center gap-2 ${viewMode === 'planner' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-900'}`}
+              className={`px-4 py-2 text-xs sm:text-sm font-bold rounded-xl transition flex items-center gap-2 ${viewMode === 'planner' ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-600 hover:text-stone-900'}`}
             >
-              <Map className="w-4 h-4" /> Trip Planner
+              <Map className="w-4 h-4 text-emerald-600" />
+              <span>Trip Planner</span>
+              <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-1.5 py-0.5 rounded-full">Route</span>
             </button>
           </div>
         )}

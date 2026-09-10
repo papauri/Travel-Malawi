@@ -74,8 +74,11 @@ export default function MarketingDeck() {
                 <span>Admin Strategy Hub (.txt)</span>
               </Link>
             )}
+            <Link to="/uat" className="text-emerald-400 hover:text-emerald-300 transition text-xs font-semibold flex items-center gap-1">
+              <span>UAT Manual &amp; QA</span>
+            </Link>
             <Link to="/host-guide" className="text-stone-400 hover:text-emerald-300 transition text-xs">
-              View Host Starter Pack &rarr;
+              Host Starter Pack &rarr;
             </Link>
             <button 
               onClick={handlePrint}

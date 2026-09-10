@@ -37,6 +37,12 @@ export default function Footer() {
         <div>
           <h4 className="text-white font-serif font-semibold text-lg mb-6">Explore</h4>
           <ul className="space-y-4 text-sm">
+            <li>
+              <Link to="/planner" className="hover:text-white transition flex items-center gap-1.5 text-emerald-400">
+                <span>Trip Planner</span>
+                <span className="bg-emerald-950 text-emerald-400 border border-emerald-800 text-[9px] font-bold px-1.5 py-0.2 rounded-full">AI</span>
+              </Link>
+            </li>
             <li><Link to="/?category=Lakefront" className="hover:text-white transition">Lake Malawi</Link></li>
             <li><Link to="/?category=Safari Lodge" className="hover:text-white transition">Safari &amp; Wildlife</Link></li>
             <li><Link to="/?category=Boutique Hotel" className="hover:text-white transition">Romantic Escapes</Link></li>
@@ -58,7 +64,15 @@ export default function Footer() {
             <li><Link to="/list-your-property" className="hover:text-white transition">List Your Property</Link></li>
             <li><Link to="/dashboard" className="hover:text-white transition">Host Dashboard</Link></li>
             {showMarketingPlaybook && (
-              <li><Link to="/marketing" className="text-stone-400 hover:text-white transition text-xs">Marketing Playbook</Link></li>
+              <>
+                <li><Link to="/marketing" className="text-stone-400 hover:text-white transition text-xs">Marketing Playbook</Link></li>
+                <li>
+                  <Link to="/uat" className="text-emerald-400 hover:text-emerald-300 transition text-xs flex items-center gap-1.5">
+                    <span>UAT &amp; Platform Guide</span>
+                    <span className="bg-emerald-950 text-emerald-400 border border-emerald-800 text-[9px] font-bold px-1.5 py-0.2 rounded-full">QA</span>
+                  </Link>
+                </li>
+              </>
             )}
           </ul>
         </div>
