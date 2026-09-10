@@ -7,7 +7,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useAuthDialog } from '../contexts/AuthDialogContext';
-import { LogOut, Bell, Palmtree, ChevronDown, LayoutDashboard, Briefcase, ShieldCheck, Building2, Volume2, VolumeX, Heart, UserCircle, BookOpen, MessageSquare, Sparkles, Compass } from 'lucide-react';
+import { LogOut, Bell, Palmtree, ChevronDown, LayoutDashboard, Briefcase, ShieldCheck, Building2, Volume2, VolumeX, Heart, UserCircle, BookOpen, MessageSquare } from 'lucide-react';
 import { isSoundEnabled, onSoundPreferenceChange, setSoundEnabled } from '../lib/notificationSound';
 import { requestBrowserNotifications } from './GlobalNotificationManager';
 import { describeRoles, isAdmin, isGlobalAdmin, isMarketing, isHotelManager, isTraveller } from '../lib/roles';
@@ -138,16 +138,6 @@ export default function Navbar() {
                       <span>List Your Property</span>
                     </Link>
                   )}
-                  <Link
-                    to="/planner"
-                    className={`text-sm font-medium transition relative flex items-center gap-1.5 after:absolute after:-bottom-1 after:left-0 after:h-0.5 after:bg-stone-900 after:transition-all ${location.pathname.startsWith('/planner') ? 'text-stone-900 after:w-full' : 'text-stone-600 hover:text-stone-900 after:w-0 hover:after:w-full'}`}
-                  >
-                    <span>Trip Planner</span>
-                    <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-1.5 py-0.2 rounded-full flex items-center gap-0.5">
-                      <Sparkles className="w-2.5 h-2.5" />
-                      <span>AI</span>
-                    </span>
-                  </Link>
                   {(isAdmin(user) || isMarketing(user)) && (
                     <Link
                       to="/admin"
@@ -343,13 +333,6 @@ export default function Navbar() {
               <div className="flex items-center space-x-3 sm:space-x-4">
                 {/* Secondary navigation options for visitors */}
                 <div className="hidden sm:flex items-center space-x-3 sm:space-x-4">
-                  <Link
-                    to="/planner"
-                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-stone-200 hover:border-stone-300 bg-stone-50 hover:bg-stone-100 text-stone-700 hover:text-stone-900 text-xs font-medium transition shadow-2xs"
-                  >
-                    <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Trip Planner</span>
-                  </Link>
                   <Link
                     to="/list-your-property"
                     className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-stone-200 hover:border-stone-300 bg-stone-50 hover:bg-stone-100 text-stone-700 hover:text-stone-900 text-xs font-medium transition shadow-2xs"

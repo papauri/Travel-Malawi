@@ -4,7 +4,7 @@ import multer from 'multer';
 import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
 import { getPublicAIStatus, getAdminAIConfig, loadAIConfig, saveAIConfig, AIProviderId, getEffectiveApiKey } from './server/aiConfig';
-import { executeAIGeneration, executeOperationsAssistantChat, testProviderConnection, generateJourneyInsights, executePlannerChat } from './server/aiService';
+import { executeAIGeneration, executeOperationsAssistantChat, testProviderConnection } from './server/aiService';
 import { sendOfflineNotification } from './server/notifications';
 import { 
   generateAutoReminders, 
@@ -164,63 +164,6 @@ async function startServer() {
     } catch (err: any) {
       console.error('AI Operations Chat Error:', err);
       res.status(500).json({ error: err?.message || 'Failed to process operations assistant query' });
-    }
-  });
-
-  // Dedicated AI Trip Planner & Journey Insights endpoint for Travelers
-  app.post('/api/ai/planner-insights', async (req, res) => {
-    try {
-      const status = getPublicAIStatus();
-      if (!status.enabled) {
-        return res.status(403).json({ error: 'AI Trip Planner is currently disabled by platform administration.' });
-      }
-      if (!status.available) {
-        return res.status(503).json({ error: 'AI Trip Planner is not yet configured with an active provider key.' });
-      }
-
-      const { hotels, tripStyle, pace, customQuestion } = req.body;
-      if (!hotels || !Array.isArray(hotels) || hotels.length === 0) {
-        return res.status(400).json({ error: 'Please select at least one property or stop for your journey planner.' });
-      }
-
-      const insights = await generateJourneyInsights({
-        hotels,
-        tripStyle,
-        pace,
-        customQuestion
-      });
-      res.json(insights);
-    } catch (err: any) {
-      console.error('AI Journey Insights Error:', err);
-      res.status(500).json({ error: err?.message || 'Failed to generate journey insights' });
-    }
-  });
-
-  // Dedicated AI Journey Concierge Chat for Travelers
-  app.post('/api/ai/planner-chat', async (req, res) => {
-    try {
-      const status = getPublicAIStatus();
-      if (!status.enabled) {
-        return res.status(403).json({ error: 'AI Concierge is currently disabled by platform administration.' });
-      }
-      if (!status.available) {
-        return res.status(503).json({ error: 'AI Concierge is not yet configured with an active provider key.' });
-      }
-
-      const { question, hotels, history } = req.body;
-      if (!question || !question.trim()) {
-        return res.status(400).json({ error: 'Question is required' });
-      }
-
-      const result = await executePlannerChat({
-        question: question.trim(),
-        hotels: Array.isArray(hotels) ? hotels : [],
-        history: Array.isArray(history) ? history : []
-      });
-      res.json(result);
-    } catch (err: any) {
-      console.error('AI Planner Chat Error:', err);
-      res.status(500).json({ error: err?.message || 'Failed to process journey question' });
     }
   });
 

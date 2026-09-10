@@ -37,12 +37,6 @@ export default function Footer() {
         <div>
           <h4 className="text-white font-serif font-semibold text-lg mb-6">Explore</h4>
           <ul className="space-y-4 text-sm">
-            <li>
-              <Link to="/planner" className="hover:text-white transition flex items-center gap-1.5 text-emerald-400">
-                <span>Trip Planner</span>
-                <span className="bg-emerald-950 text-emerald-400 border border-emerald-800 text-[9px] font-bold px-1.5 py-0.2 rounded-full">AI</span>
-              </Link>
-            </li>
             <li><Link to="/?category=Lakefront" className="hover:text-white transition">Lake Malawi</Link></li>
             <li><Link to="/?category=Safari Lodge" className="hover:text-white transition">Safari &amp; Wildlife</Link></li>
             <li><Link to="/?category=Boutique Hotel" className="hover:text-white transition">Romantic Escapes</Link></li>

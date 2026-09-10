@@ -3,7 +3,7 @@ import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useAuthDialog } from '../contexts/AuthDialogContext';
-import { Search, LogIn, User as UserIcon, Briefcase, Building2, Heart, Menu, X, LogOut, Settings, ShieldCheck, BookOpen, Bell, Sparkles } from 'lucide-react';
+import { Search, LogIn, User as UserIcon, Briefcase, Building2, Heart, Menu, X, LogOut, Settings, ShieldCheck, BookOpen, Bell } from 'lucide-react';
 import { isHotelManager, isTraveller, describeRoles, isAdmin, isMarketing } from '../lib/roles';
 import { motion, AnimatePresence } from 'motion/react';
 import { openAccessPermissionsModal } from './AccessRequestModal';
@@ -146,19 +146,6 @@ export default function MobileNav() {
                   >
                     <Search className="w-5 h-5" />
                     <span>Explore</span>
-                  </Link>
-
-                  <Link
-                    to="/planner"
-                    className={`flex items-center justify-between px-4 py-3.5 rounded-2xl transition ${pathname.startsWith('/planner') ? 'bg-stone-100 text-stone-900 font-bold' : 'text-stone-600 hover:bg-stone-50 hover:text-stone-900'}`}
-                  >
-                    <div className="flex items-center gap-4">
-                      <Sparkles className="w-5 h-5 text-emerald-600" />
-                      <span>Trip Planner</span>
-                    </div>
-                    <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
-                      AI Powered
-                    </span>
                   </Link>
 
                   {user && (
