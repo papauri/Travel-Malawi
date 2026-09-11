@@ -320,7 +320,7 @@ export function useAIAssistant() {
 
   const generate = useCallback(async (options: AIGenerateOptions): Promise<string | null> => {
     if (generating) {
-      toast('An AI request is already processing. Please wait a moment...', { icon: '⏳' });
+      toast('A request is already processing. Please wait a moment...', { icon: '⏳' });
       return null;
     }
     setGenerating(true);
@@ -338,7 +338,7 @@ export function useAIAssistant() {
           fetchStatus();
         }
         if (res.status === 429 || errMsg.toLowerCase().includes('rate limit')) {
-          errMsg = 'AI Rate Limit: The free provider allows 1 request per second. Please wait a few seconds and try again.';
+          errMsg = 'Rate Limit: Provider allows 1 request per second. Please wait a few seconds and try again.';
         }
         toast.error(errMsg);
         return null;
@@ -347,8 +347,8 @@ export function useAIAssistant() {
       const data = await res.json();
       return data.text || null;
     } catch (err: any) {
-      console.error('AI generation error:', err);
-      toast.error(err?.message || 'Failed to connect to AI assistant');
+      console.error('Generation error:', err);
+      toast.error(err?.message || 'Failed to connect to writing assistant');
       return null;
     } finally {
       setGenerating(false);
@@ -357,7 +357,7 @@ export function useAIAssistant() {
 
   const generateDetailed = useCallback(async <T = any>(options: AIGenerateOptions): Promise<{ text: string; data?: T } | null> => {
     if (generating) {
-      toast('An AI request is already processing. Please wait a moment...', { icon: '⏳' });
+      toast('A request is already processing. Please wait a moment...', { icon: '⏳' });
       return null;
     }
     setGenerating(true);
@@ -375,7 +375,7 @@ export function useAIAssistant() {
           fetchStatus();
         }
         if (res.status === 429 || errMsg.toLowerCase().includes('rate limit')) {
-          errMsg = 'AI Rate Limit: The free provider allows 1 request per second. Please wait a few seconds and try again.';
+          errMsg = 'Rate Limit: Provider allows 1 request per second. Please wait a few seconds and try again.';
         }
         toast.error(errMsg);
         return null;
@@ -384,8 +384,8 @@ export function useAIAssistant() {
       const data = await res.json();
       return { text: data.text || '', data: data.data };
     } catch (err: any) {
-      console.error('AI generation error:', err);
-      toast.error(err?.message || 'Failed to connect to AI assistant');
+      console.error('Generation error:', err);
+      toast.error(err?.message || 'Failed to connect to writing assistant');
       return null;
     } finally {
       setGenerating(false);

@@ -136,14 +136,62 @@ export default function ConferenceManager({ hotelId }: Props) {
             <div className="md:col-span-2 border-t border-stone-100 pt-6 mt-2">
               <label className="block">
                 <span className="text-sm font-semibold text-stone-900 mb-1.5 block">Amenities (Comma separated)</span>
-                <input type="text" value={(editingRoom.amenities || []).join(', ')} onChange={e => setEditingRoom({ ...editingRoom, amenities: e.target.value.split(',').map(a => a.trim()).filter(Boolean) })} className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all" placeholder="Projector, Whiteboard, AC..." />
+                <input type="text" value={(editingRoom.amenities || []).join(', ')} onChange={e => setEditingRoom({ ...editingRoom, amenities: e.target.value.split(',').map(a => a.trim()).filter(Boolean) })} className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all" placeholder="Projector, Whiteboard, AC, High-speed Wi-Fi, Microphones..." />
               </label>
             </div>
             
+            <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4 bg-stone-50 border border-stone-200 rounded-xl p-4">
+              <div>
+                <label className="block">
+                  <span className="text-xs font-bold text-stone-600 uppercase tracking-wider mb-1 block">Base Rate Amount</span>
+                  <input 
+                    type="number" 
+                    min="0"
+                    step="1000"
+                    value={editingRoom.price ?? ''} 
+                    onChange={e => setEditingRoom({ ...editingRoom, price: e.target.value ? parseFloat(e.target.value) : undefined })} 
+                    className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-stone-500" 
+                    placeholder="e.g. 250000" 
+                  />
+                </label>
+                <span className="text-[11px] text-stone-400 mt-1 block">Enables automatic slashed FROM &gt; TO pricing</span>
+              </div>
+
+              <div>
+                <label className="block">
+                  <span className="text-xs font-bold text-stone-600 uppercase tracking-wider mb-1 block">Rate Currency</span>
+                  <select
+                    value={editingRoom.priceCurrency || 'MWK'}
+                    onChange={e => setEditingRoom({ ...editingRoom, priceCurrency: e.target.value as any })}
+                    className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-stone-500"
+                  >
+                    <option value="MWK">MWK (Malawian Kwacha)</option>
+                    <option value="USD">USD (US Dollars)</option>
+                  </select>
+                </label>
+              </div>
+
+              <div>
+                <label className="block">
+                  <span className="text-xs font-bold text-stone-600 uppercase tracking-wider mb-1 block">Rate Type</span>
+                  <select
+                    value={editingRoom.rateType || 'per_day'}
+                    onChange={e => setEditingRoom({ ...editingRoom, rateType: e.target.value as any })}
+                    className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-stone-500"
+                  >
+                    <option value="per_day">Per Day</option>
+                    <option value="per_half_day">Per Half Day</option>
+                    <option value="per_hour">Per Hour</option>
+                    <option value="per_delegate">Per Delegate / Person</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+
             <div className="md:col-span-2">
                <label className="block">
-                <span className="text-sm font-semibold text-stone-900 mb-1.5 block">Pricing & Packages Summary</span>
-                <input type="text" value={editingRoom.pricing || ''} onChange={e => setEditingRoom({ ...editingRoom, pricing: e.target.value })} className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all" placeholder="e.g. From $500 to $1,200 per day" />
+                <span className="text-sm font-semibold text-stone-900 mb-1.5 block">Pricing & Packages Summary Note</span>
+                <input type="text" value={editingRoom.pricing || ''} onChange={e => setEditingRoom({ ...editingRoom, pricing: e.target.value })} className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all" placeholder="e.g. MWK 250,000 per day including full AV setup and water" />
               </label>
             </div>
             

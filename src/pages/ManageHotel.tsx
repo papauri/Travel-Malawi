@@ -20,11 +20,12 @@ import Pagination from '../components/Pagination';
 import BookingChat from '../components/BookingChat';
 import PropertyChat from '../components/PropertyChat';
 import { useChatModal } from '../contexts/ChatModalContext';
-import { MessageSquare, Megaphone, Presentation, Bell, ChevronDown } from 'lucide-react';
+import { MessageSquare, Megaphone, Presentation, Bell, ChevronDown, SlidersHorizontal } from 'lucide-react';
 import SmartImage from '../components/SmartImage';
 import ReminderTemplatesModal from '../components/ReminderTemplatesModal';
 import EditBookingModal from '../components/EditBookingModal';
 import ManagerMessageTemplatesHub from '../components/ManagerMessageTemplatesHub';
+import BulkRoomEditor from '../components/BulkRoomEditor';
 import { useWhatsAppSettings } from '../hooks/useWhatsAppSettings';
 import { getHotelImages, getHotelImage, getRoomImage, localImagesForName } from '../lib/images';
 import { useBreadcrumbLabel } from '../components/Breadcrumbs';
@@ -218,8 +219,12 @@ export default function ManageHotel() {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab: Tab = isTab(searchParams.get('tab')) ? (searchParams.get('tab') as Tab) : 'details';
   const [pendingTab, setPendingTab] = useState<Tab | null>(null);
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showPerformanceStats, setShowPerformanceStats] = useState(true);
+  const [depositViewTab, setDepositViewTab] = useState<'all' | 'mobile_money' | 'bank_transfer'>('all');
+  const [amenitiesExpanded, setAmenitiesExpanded] = useState(false);
   const [amenityInput, setAmenityInput] = useState("");
   const [confirmModalBooking, setConfirmModalBooking] = useState<string | null>(null);
   const [editModalBooking, setEditModalBooking] = useState<Booking | null>(null);
@@ -266,6 +271,7 @@ export default function ManageHotel() {
   // Edit states
   const [editHotelData, setEditHotelData] = useState<Partial<Hotel>>({});
   const [showAddRoom, setShowAddRoom] = useState(false);
+  const [showBulkEditor, setShowBulkEditor] = useState(false);
   const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
   const [editRoomData, setEditRoomData] = useState<Partial<RoomType>>({});
   const [managingBlockDate, setManagingBlockDate] = useState<string | null>(null);
@@ -1086,162 +1092,281 @@ export default function ManageHotel() {
   if (!hotel) return null;
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 md:py-12">
-      <div className="mb-8 flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+    <div className="max-w-6xl mx-auto px-3 sm:px-5 lg:px-8 py-4 sm:py-6 md:py-10">
+      <div className="mb-5 sm:mb-7 flex flex-col md:flex-row md:items-start md:justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-4xl font-serif font-bold text-stone-900">{hotel.name}</h1>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-2">
-            <p className="text-stone-500 text-lg">{hotel.location}</p>
+          <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-serif font-bold text-stone-900">{hotel.name}</h1>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 sm:mt-1.5">
+            <p className="text-stone-500 text-xs sm:text-sm md:text-base">{hotel.location}</p>
+            <span className="text-stone-300 hidden sm:inline">·</span>
             <a
               href={`/hotel/${hotel.id}`}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1.5 text-sm font-semibold text-stone-600 hover:text-emerald-700 transition"
+              className="inline-flex items-center gap-1 text-xs sm:text-sm font-semibold text-stone-600 hover:text-emerald-700 transition"
             >
-              View live listing <ExternalLink className="h-3.5 w-3.5" />
+              View live listing <ExternalLink className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
             </a>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-3 shrink-0">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 shrink-0">
           {/* 1-Click Live Status Switch */}
           <button
             type="button"
             onClick={handleToggleOnlineStatus}
             disabled={togglingStatus}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider border transition shadow-sm ${
+            className={`inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-1 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-bold uppercase tracking-wider border transition shadow-2xs ${
               hotel.isOnline !== false
                 ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
                 : 'bg-stone-100 text-stone-700 border-stone-300 hover:bg-stone-200'
             }`}
             title="Toggle whether guests see you as Online or Away"
           >
-            <span className={`h-2.5 w-2.5 rounded-full ${hotel.isOnline !== false ? 'bg-emerald-500 animate-pulse' : 'bg-stone-400'}`} />
-            <span>{hotel.isOnline !== false ? 'Host Online' : 'Host Offline (Away)'}</span>
-            <span className="text-[10px] font-semibold text-stone-500 bg-white/80 px-1.5 py-0.5 rounded-full ml-1">Toggle</span>
+            <span className={`h-2 w-2 rounded-full ${hotel.isOnline !== false ? 'bg-emerald-500 animate-pulse' : 'bg-stone-400'}`} />
+            <span>{hotel.isOnline !== false ? 'Online' : 'Offline (Away)'}</span>
+            <span className="text-[9px] font-semibold text-stone-500 bg-white/80 px-1 py-0.2 rounded-full ml-0.5">Toggle</span>
           </button>
 
           {hotel.status === 'pending' ? (
-            <span className="inline-flex items-center gap-1.5 bg-amber-100 text-amber-800 px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider">
-              <Clock className="h-3.5 w-3.5" /> Awaiting approval
+            <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-800 px-3 py-1 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-bold uppercase tracking-wider">
+              <Clock className="h-3 w-3" /> Awaiting approval
             </span>
           ) : hotel.status === 'rejected' ? (
-            <span className="inline-flex items-center gap-1.5 bg-red-100 text-red-700 px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider">
-              <XCircle className="h-3.5 w-3.5" /> Not published
+            <span className="inline-flex items-center gap-1 bg-red-100 text-red-700 px-3 py-1 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-bold uppercase tracking-wider">
+              <XCircle className="h-3 w-3" /> Not published
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-700 px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider">
-              <CheckCircle2 className="h-3.5 w-3.5" /> Live on Travel-Malawi
+            <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 px-3 py-1 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-bold uppercase tracking-wider">
+              <CheckCircle2 className="h-3 w-3" /> Live
             </span>
           )}
         </div>
       </div>
 
       {hotel.status && hotel.status !== 'approved' && (
-        <div className="mb-8 bg-amber-50 border border-amber-200 text-amber-900 rounded-2xl px-6 py-4 text-sm">
+        <div className="mb-5 sm:mb-6 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl sm:rounded-2xl px-4 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm">
           {hotel.status === 'pending'
             ? 'This listing is not yet visible to travellers. Our team reviews new properties before they go live — adding rooms and photos now means it can start taking bookings the moment it is approved.'
             : 'This listing is not currently published. Contact the Travel-Malawi team if you believe this is a mistake.'}
         </div>
       )}
 
-      {/* Performance snapshot */}
+      {/* Performance snapshot with mobile dropdown / toggle */}
       {canSeeFinancials && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-8 sm:mb-10">
-          <div className="bg-white border border-stone-200 rounded-2xl p-4 sm:p-5 shadow-sm">
-            <div className="flex items-center gap-2 text-stone-400 mb-2">
-              <Percent className="h-4 w-4" />
-              <span className="text-xs font-bold uppercase tracking-wider">Occupancy · 30d</span>
-            </div>
-            <p className="text-2xl font-bold tracking-tight text-stone-900">{stats.occupancy.toFixed(0)}%</p>
-            <p className="text-xs text-stone-400 mt-1">{stats.occupiedNights} of {stats.availableNights} room-nights</p>
+        <div className="mb-5 sm:mb-7">
+          <div className="flex items-center justify-between mb-2">
+            <button
+              type="button"
+              onClick={() => setShowPerformanceStats(!showPerformanceStats)}
+              className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-stone-500 hover:text-stone-800 transition cursor-pointer"
+            >
+              <span>Performance Snapshot</span>
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${showPerformanceStats ? 'rotate-180' : ''}`} />
+            </button>
+            <span className="text-[11px] text-stone-400 hidden sm:inline">Last 30 days & financial overview</span>
           </div>
-          {canSeeFinancials && (
-            <>
-              <div className="bg-white border border-stone-200 rounded-2xl p-4 sm:p-5 shadow-sm">
-                <div className="flex items-center gap-2 text-stone-400 mb-2">
-                  <Wallet className="h-4 w-4" />
-                  <span className="text-xs font-bold uppercase tracking-wider">Upcoming revenue</span>
+
+          {showPerformanceStats && (
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3.5">
+              <div className="bg-white border border-stone-200 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-2xs">
+                <div className="flex items-center gap-1.5 text-stone-400 mb-1">
+                  <Percent className="h-3.5 w-3.5" />
+                  <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider">Occupancy · 30d</span>
                 </div>
-                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                <p className="text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-stone-900">{stats.occupancy.toFixed(0)}%</p>
+                <p className="text-[10px] sm:text-xs text-stone-400 mt-0.5">{stats.occupiedNights} of {stats.availableNights} nights</p>
+              </div>
+              <div className="bg-white border border-stone-200 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-2xs">
+                <div className="flex items-center gap-1.5 text-stone-400 mb-1">
+                  <Wallet className="h-3.5 w-3.5" />
+                  <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider">Upcoming rev</span>
+                </div>
+                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
                   {stats.upcomingRevenue.length === 0
-                    ? <p className="text-2xl font-bold tracking-tight text-stone-900">&mdash;</p>
+                    ? <p className="text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-stone-900">&mdash;</p>
                     : stats.upcomingRevenue.map(([code, total], idx) => (
-                        <p key={`up-rev-${code}-${idx}`} className="text-2xl text-stone-900"><PriceDisplay amount={total} currency={code} /></p>
+                        <p key={`up-rev-${code}-${idx}`} className="text-lg sm:text-xl md:text-2xl font-bold text-stone-900"><PriceDisplay amount={total} currency={code} /></p>
                       ))}
                 </div>
-                <p className="text-xs text-stone-400 mt-1">Confirmed stays not yet completed</p>
+                <p className="text-[10px] sm:text-xs text-stone-400 mt-0.5">Confirmed stays ahead</p>
               </div>
-              <div className="bg-white border border-stone-200 rounded-2xl p-4 sm:p-5 shadow-sm">
-                <div className="flex items-center gap-2 text-stone-400 mb-2">
-                  <TrendingUp className="h-4 w-4" />
-                  <span className="text-xs font-bold uppercase tracking-wider">All-time revenue</span>
+              <div className="bg-white border border-stone-200 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-2xs">
+                <div className="flex items-center gap-1.5 text-stone-400 mb-1">
+                  <TrendingUp className="h-3.5 w-3.5" />
+                  <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider">All-time rev</span>
                 </div>
-                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
                   {stats.allTimeRevenue.length === 0
-                    ? <p className="text-2xl font-bold tracking-tight text-stone-900">&mdash;</p>
+                    ? <p className="text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-stone-900">&mdash;</p>
                     : stats.allTimeRevenue.map(([code, total], idx) => (
-                        <p key={`all-rev-${code}-${idx}`} className="text-2xl text-stone-900"><PriceDisplay amount={total} currency={code} /></p>
+                        <p key={`all-rev-${code}-${idx}`} className="text-lg sm:text-xl md:text-2xl font-bold text-stone-900"><PriceDisplay amount={total} currency={code} /></p>
                       ))}
                 </div>
-                <p className="text-xs text-stone-400 mt-1">{stats.confirmedCount} confirmed booking{stats.confirmedCount === 1 ? '' : 's'}</p>
+                <p className="text-[10px] sm:text-xs text-stone-400 mt-0.5">{stats.confirmedCount} booking{stats.confirmedCount === 1 ? '' : 's'}</p>
               </div>
-            </>
-          )}
-          <div className="bg-white border border-stone-200 rounded-2xl p-4 sm:p-5 shadow-sm">
-            <div className="flex items-center gap-2 text-stone-400 mb-2">
-              <Clock className="h-4 w-4" />
-              <span className="text-xs font-bold uppercase tracking-wider">Awaiting reply</span>
+              <div className="bg-white border border-stone-200 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-2xs">
+                <div className="flex items-center gap-1.5 text-stone-400 mb-1">
+                  <Clock className="h-3.5 w-3.5" />
+                  <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider">Awaiting reply</span>
+                </div>
+                <p className="text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-stone-900">{stats.pending}</p>
+                <p className="text-[10px] sm:text-xs text-stone-400 mt-0.5">Avg stay {stats.averageStay.toFixed(1)} nights</p>
+              </div>
             </div>
-            <p className="text-2xl font-bold tracking-tight text-stone-900">{stats.pending}</p>
-            <p className="text-xs text-stone-400 mt-1">Avg stay {stats.averageStay.toFixed(1)} nights</p>
-          </div>
+          )}
         </div>
       )}
       {/* Dashboard Section Navigation */}
-      <div className="sticky top-[121px] z-40 bg-stone-50/95 backdrop-blur-md py-2.5 mb-8 border-b border-stone-200/80">
-        {/* Mobile quick jump dropdown (< md) */}
-        <div className="md:hidden mb-2.5">
-          <label htmlFor="dashboard-tab-select" className="sr-only">Select dashboard section</label>
-          <div className="relative">
-            <select
-              id="dashboard-tab-select"
-              value={activeTab}
-              onChange={(e) => requestTab(e.target.value as Tab)}
-              className="w-full bg-white border border-stone-300 text-stone-900 font-bold text-sm rounded-xl px-3.5 py-2.5 shadow-xs focus:ring-2 focus:ring-stone-900 focus:outline-none appearance-none pr-9 cursor-pointer"
-            >
-              {([
-                { id: 'details' as Tab, label: 'Property details' },
-                { id: 'media' as Tab, label: 'Media' },
-                { id: 'promotions' as Tab, label: 'Promotions' },
-                { id: 'stayos' as Tab, label: 'Stay OS' },
-                { id: 'broadcasts' as Tab, label: 'Broadcasts' },
-                { id: 'rooms' as Tab, label: 'Rooms & pricing' },
-                { id: 'conferences' as Tab, label: 'Conferences' },
-                { id: 'restaurant' as Tab, label: 'Restaurant' },
-                { id: 'bookings' as Tab, label: 'Bookings' },
-                { id: 'inquiries' as Tab, label: 'Inquiries' },
-                { id: 'templates' as Tab, label: 'Email templates & automation' },
-              ]).map(tab => {
-                const pendingCount = tab.id === 'bookings' ? bookings.filter(b => b.status === 'pending').length : 0;
-                const unreadInquiryCount = tab.id === 'inquiries' ? inquiries.filter(i => 
-                  i.lastSenderId !== user?.uid && 
-                  i.updatedAt && 
-                  (!i.managerLastOpenedAt || i.updatedAt > i.managerLastOpenedAt)
-                ).length : 0;
-                const extra = pendingCount > 0 ? ` (${pendingCount} pending)` : unreadInquiryCount > 0 ? ` (${unreadInquiryCount} new)` : '';
-                return (
-                  <option key={tab.id} value={tab.id}>
-                    {tab.label}{extra}
-                  </option>
-                );
-              })}
-            </select>
-            <ChevronDown className="w-4 h-4 text-stone-500 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-          </div>
+      <div className="sticky top-[88px] sm:top-[100px] md:top-[100px] lg:top-[108px] z-30 bg-stone-50/95 backdrop-blur-md py-2 sm:py-2.5 mb-5 sm:mb-7 border-b border-stone-200/80">
+        {/* Mobile / Tablet Collapsible Section Drawer (< lg) */}
+        <div className="lg:hidden space-y-2">
+          {(() => {
+            const tabsList = [
+              { id: 'details' as Tab, label: 'Property details', icon: Building },
+              { id: 'media' as Tab, label: 'Media', icon: Eye },
+              { id: 'promotions' as Tab, label: 'Promotions', icon: Percent },
+              { id: 'stayos' as Tab, label: 'Stay OS', icon: ShieldCheck },
+              { id: 'broadcasts' as Tab, label: 'Broadcasts', icon: Megaphone },
+              { id: 'rooms' as Tab, label: 'Rooms & pricing', icon: BedDouble },
+              { id: 'conferences' as Tab, label: 'Conferences', icon: Presentation },
+              { id: 'restaurant' as Tab, label: 'Restaurant', icon: UtensilsCrossed },
+              { id: 'bookings' as Tab, label: 'Bookings', icon: Calendar },
+              { id: 'inquiries' as Tab, label: 'Inquiries', icon: MessageSquare },
+              { id: 'templates' as Tab, label: 'Email templates & automation', icon: Mail },
+            ];
+            const currentTabObj = tabsList.find(t => t.id === activeTab) || tabsList[0];
+            const CurrentIcon = currentTabObj.icon;
+            const currentPendingCount = activeTab === 'bookings' ? bookings.filter(b => b.status === 'pending').length : 0;
+            const currentUnreadCount = activeTab === 'inquiries' ? inquiries.filter(i => 
+              i.lastSenderId !== user?.uid && 
+              i.updatedAt && 
+              (!i.managerLastOpenedAt || i.updatedAt > i.managerLastOpenedAt)
+            ).length : 0;
+
+            return (
+              <>
+                {/* Compact Single-Row Mobile & Tablet Section Bar */}
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1 min-w-0">
+                    <div className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-stone-500">
+                      <CurrentIcon className="w-4 h-4" />
+                    </div>
+                    <select
+                      id="hotel-dashboard-section-dropdown"
+                      value={activeTab}
+                      onChange={(e) => {
+                        requestTab(e.target.value as Tab);
+                        setIsMobileNavOpen(false);
+                      }}
+                      className="w-full bg-white border border-stone-200 rounded-xl pl-8.5 pr-8 py-2 text-xs sm:text-sm font-semibold text-stone-900 appearance-none shadow-2xs focus:ring-2 focus:ring-stone-900 focus:outline-none cursor-pointer"
+                    >
+                      {tabsList.map((tab) => {
+                        const pendingCount = tab.id === 'bookings' ? bookings.filter(b => b.status === 'pending').length : 0;
+                        const unreadInquiryCount = tab.id === 'inquiries' ? inquiries.filter(i => 
+                          i.lastSenderId !== user?.uid && 
+                          i.updatedAt && 
+                          (!i.managerLastOpenedAt || i.updatedAt > i.managerLastOpenedAt)
+                        ).length : 0;
+                        let badge = '';
+                        if (pendingCount > 0) badge += ` · (${pendingCount} pending)`;
+                        if (unreadInquiryCount > 0) badge += ` · (${unreadInquiryCount} new)`;
+                        if (dirtyOn(tab.id)) badge += ' · (unsaved)';
+                        return (
+                          <option key={`nav-opt-sel-${tab.id}`} value={tab.id}>
+                            {tab.label}{badge}
+                          </option>
+                        );
+                      })}
+                    </select>
+                    <ChevronDown className="w-4 h-4 text-stone-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
+
+                  {(currentPendingCount > 0 || currentUnreadCount > 0 || dirtyOn(activeTab)) && (
+                    <div className="flex items-center gap-1 shrink-0">
+                      {dirtyOn(activeTab) && (
+                        <span title="Unsaved changes" className="h-2 w-2 rounded-full bg-amber-500 shrink-0" />
+                      )}
+                      {currentPendingCount > 0 && (
+                        <span className="bg-emerald-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+                          {currentPendingCount}
+                        </span>
+                      )}
+                      {currentUnreadCount > 0 && (
+                        <span className="bg-rose-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+                          {currentUnreadCount}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => setIsMobileNavOpen(!isMobileNavOpen)}
+                    className="shrink-0 px-2.5 sm:px-3 py-2 bg-white border border-stone-200 rounded-xl text-xs font-semibold text-stone-700 hover:bg-stone-50 shadow-2xs flex items-center gap-1 transition cursor-pointer"
+                    title="Browse all sections as grid"
+                  >
+                    <span>{isMobileNavOpen ? 'Close' : 'Grid'}</span>
+                    <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isMobileNavOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                </div>
+
+                {isMobileNavOpen && (
+                  <div className="mt-2 p-2 bg-white rounded-xl sm:rounded-2xl border border-stone-200 shadow-md grid grid-cols-1 sm:grid-cols-2 gap-1.5 animate-in fade-in slide-in-from-top-2 duration-150">
+                    {tabsList.map(tab => {
+                      const Icon = tab.icon;
+                      const pendingCount = tab.id === 'bookings' ? bookings.filter(b => b.status === 'pending').length : 0;
+                      const unreadInquiryCount = tab.id === 'inquiries' ? inquiries.filter(i => 
+                        i.lastSenderId !== user?.uid && 
+                        i.updatedAt && 
+                        (!i.managerLastOpenedAt || i.updatedAt > i.managerLastOpenedAt)
+                      ).length : 0;
+                      const isActive = activeTab === tab.id;
+
+                      return (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          onClick={() => {
+                            requestTab(tab.id);
+                            setIsMobileNavOpen(false);
+                          }}
+                          className={`flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition cursor-pointer text-left ${
+                            isActive
+                              ? 'bg-stone-900 text-white'
+                              : 'bg-stone-50 hover:bg-stone-100 text-stone-700'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-stone-500'}`} />
+                            <span className="truncate">{tab.label}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {dirtyOn(tab.id) && (
+                              <span title="Unsaved changes" className="h-2 w-2 rounded-full bg-amber-500" />
+                            )}
+                            {pendingCount > 0 && (
+                              <span className="bg-emerald-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+                                {pendingCount}
+                              </span>
+                            )}
+                            {unreadInquiryCount > 0 && (
+                              <span className="bg-rose-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+                                {unreadInquiryCount}
+                              </span>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
+            );
+          })()}
         </div>
 
-        {/* Wrapped Segmented Pills Navigation Bar (all tabs visible on all viewports without scrolling) */}
-        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 p-1.5 sm:p-2 bg-stone-100/90 rounded-2xl border border-stone-200 shadow-2xs">
+        {/* Desktop Segmented Pills Navigation Bar (>= lg) */}
+        <div className="hidden lg:flex flex-wrap items-center gap-1.5 sm:gap-2 p-1.5 sm:p-2 bg-stone-100/90 rounded-2xl border border-stone-200 shadow-2xs">
           {([
             { id: 'details' as Tab, label: 'Property details', icon: Building },
             { id: 'media' as Tab, label: 'Media', icon: Eye },
@@ -1309,17 +1434,17 @@ export default function ManageHotel() {
         <div className="space-y-6">
           
 
-          <form onSubmit={handleSaveHotel} className="space-y-6">
-  <SectionCard title="Basic Information" description="The core details about your property shown to guests.">
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <form onSubmit={handleSaveHotel} className="space-y-4 sm:space-y-6">
+  <SectionCard title="Basic Information" description="The core details about your property shown to guests." collapsible>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4 md:gap-6">
               <div className="md:col-span-2">
-                <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Property Name</label>
-                <input type="text" required value={editHotelData.name || ''} readOnly disabled className="w-full bg-stone-200 border border-stone-300 p-3 rounded-xl outline-none text-stone-500 cursor-not-allowed" />
-                <p className="text-xs text-stone-400 mt-1">Property name cannot be changed after registration. Contact admin for assistance.</p>
+                <label className="block text-[11px] sm:text-xs font-bold text-stone-500 uppercase tracking-wider mb-1 sm:mb-1.5">Property Name</label>
+                <input type="text" required value={editHotelData.name || ''} readOnly disabled className="w-full bg-stone-200 border border-stone-300 px-3 py-2 text-xs sm:text-sm rounded-lg sm:rounded-xl outline-none text-stone-500 cursor-not-allowed" />
+                <p className="text-[11px] sm:text-xs text-stone-400 mt-1">Property name cannot be changed after registration. Contact admin for assistance.</p>
               </div>
               <div className="md:col-span-2">
-                <div className="flex items-center justify-between mb-2">
-                  <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider">Description</label>
+                <div className="flex items-center justify-between mb-1 sm:mb-1.5">
+                  <label className="block text-[11px] sm:text-xs font-bold text-stone-500 uppercase tracking-wider">Description</label>
                   <AIAssistantButton
                     value={editHotelData.description || ''}
                     onChange={text => setEditHotelData({ ...editHotelData, description: text })}
@@ -1332,18 +1457,18 @@ export default function ManageHotel() {
                     fieldLabel="property description"
                   />
                 </div>
-                <textarea required rows={4} value={editHotelData.description || ''} onChange={e => setEditHotelData({...editHotelData, description: e.target.value})} className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition" />
+                <textarea required rows={4} value={editHotelData.description || ''} onChange={e => setEditHotelData({...editHotelData, description: e.target.value})} className="w-full bg-stone-50 border border-stone-200 px-3 py-2 text-xs sm:text-sm rounded-lg sm:rounded-xl outline-none focus:border-stone-900 transition" />
                 <FieldError message={detailProblems.description} />
               </div>
     </div>
   </SectionCard>
 
-  <SectionCard title="Location & Maps" description="Where you are located and how guests can find you.">
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+  <SectionCard title="Location & Maps" description="Where you are located and how guests can find you." collapsible>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4 md:gap-6">
               <div>
-                <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Location</label>
+                <label className="block text-[11px] sm:text-xs font-bold text-stone-500 uppercase tracking-wider mb-1 sm:mb-1.5">Location</label>
                 <div className="flex gap-2">
-                  <input type="text" required value={editHotelData.location || ''} onChange={e => setEditHotelData({...editHotelData, location: e.target.value})} className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition" placeholder="e.g. Area 43, Lilongwe" />
+                  <input type="text" required value={editHotelData.location || ''} onChange={e => setEditHotelData({...editHotelData, location: e.target.value})} className="w-full bg-stone-50 border border-stone-200 px-3 py-2 text-xs sm:text-sm rounded-lg sm:rounded-xl outline-none focus:border-stone-900 transition" placeholder="e.g. Area 43, Lilongwe" />
                   <FieldError message={detailProblems.location} />
                 </div>
               </div>
@@ -1366,182 +1491,217 @@ export default function ManageHotel() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Location Notes / Directions</label>
-                <textarea rows={2} value={editHotelData.locationNotes || ''} onChange={e => setEditHotelData({...editHotelData, locationNotes: e.target.value})} className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition" placeholder="Any extra directions or notes to help guests find the property (optional)." />
+                <label className="block text-[11px] sm:text-xs font-bold text-stone-500 uppercase tracking-wider mb-1 sm:mb-1.5">Location Notes / Directions</label>
+                <textarea rows={2} value={editHotelData.locationNotes || ''} onChange={e => setEditHotelData({...editHotelData, locationNotes: e.target.value})} className="w-full bg-stone-50 border border-stone-200 px-3 py-2 text-xs sm:text-sm rounded-lg sm:rounded-xl outline-none focus:border-stone-900 transition" placeholder="Any extra directions or notes to help guests find the property (optional)." />
               </div>
     </div>
   </SectionCard>
 
   <SectionCard title="Property Category" description="Choose a category for your property.">
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="md:col-span-2">
-                <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Category</label>
-                <div className="flex flex-wrap gap-2">
-                  {PROPERTY_CATEGORIES.map((category, catIdx) => {
-                    const selected = (editHotelData.categories ?? []).includes(category);
-                    return (
-                      <button
-                        key={`mgmt-cat-${category}-${catIdx}`}
-                        type="button"
-                        aria-pressed={selected}
-                        onClick={() => setEditHotelData({
-                          ...editHotelData,
-                          categories: selected
-                            ? (editHotelData.categories ?? []).filter(c => c !== category)
-                            : [...(editHotelData.categories ?? []), category],
-                        })}
-                        className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
-                          selected
-                            ? 'border-stone-900 bg-stone-900 text-white'
-                            : 'border-stone-200 bg-white text-stone-600 hover:border-stone-400'
-                        }`}
-                      >
-                        {category}
-                      </button>
-                    );
-                  })}
-                </div>
-                <p className="text-xs text-stone-400 mt-2">Guests filter by this. Pick every one that genuinely fits.</p>
-                <FieldError message={detailProblems.category} />
-              </div>
+    <div className="space-y-3">
+      {/* Mobile Quick Dropdown */}
+      <div className="sm:hidden">
+        <label htmlFor="mobile-property-category-select" className="block text-[11px] font-bold text-stone-500 uppercase tracking-wider mb-1">Quick Select Category</label>
+        <div className="relative">
+          <select
+            id="mobile-property-category-select"
+            value={(editHotelData.categories ?? [])[0] || ''}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (!val) return;
+              const current = editHotelData.categories ?? [];
+              if (!current.includes(val)) {
+                setEditHotelData({ ...editHotelData, categories: [...current, val] });
+              }
+            }}
+            className="w-full bg-stone-50 border border-stone-200 rounded-xl pl-3 pr-8 py-2 text-xs font-semibold text-stone-800 appearance-none outline-none focus:border-stone-900"
+          >
+            <option value="">+ Add category from list...</option>
+            {PROPERTY_CATEGORIES.map((cat, idx) => (
+              <option key={`cat-opt-${cat}-${idx}`} value={cat} disabled={(editHotelData.categories ?? []).includes(cat)}>
+                {cat} {(editHotelData.categories ?? []).includes(cat) ? '✓ (Selected)' : ''}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="w-4 h-4 text-stone-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Category Tags</label>
+        <div className="flex flex-wrap gap-1.5 sm:gap-2">
+          {PROPERTY_CATEGORIES.map((category, catIdx) => {
+            const selected = (editHotelData.categories ?? []).includes(category);
+            return (
+              <button
+                key={`mgmt-cat-${category}-${catIdx}`}
+                type="button"
+                aria-pressed={selected}
+                onClick={() => setEditHotelData({
+                  ...editHotelData,
+                  categories: selected
+                    ? (editHotelData.categories ?? []).filter(c => c !== category)
+                    : [...(editHotelData.categories ?? []), category],
+                })}
+                className={`rounded-full border px-2.5 sm:px-4 py-1 sm:py-1.5 text-xs sm:text-sm font-medium transition cursor-pointer ${
+                  selected
+                    ? 'border-stone-900 bg-stone-900 text-white shadow-2xs'
+                    : 'border-stone-200 bg-stone-50/50 text-stone-600 hover:border-stone-400'
+                }`}
+              >
+                {category}
+              </button>
+            );
+          })}
+        </div>
+        <p className="text-[11px] sm:text-xs text-stone-400 mt-1.5">Guests filter by this. Pick every one that genuinely fits.</p>
+        <FieldError message={detailProblems.category} />
+      </div>
     </div>
   </SectionCard>
 
-  <SectionCard title="Amenities" description="Features available to all guests at the property.">
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="md:col-span-2">
-                <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Amenities</label>
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {COMMON_AMENITIES.map((amenity, amIdx) => {
-                    const current = Array.isArray(editHotelData.amenities) ? editHotelData.amenities : (editHotelData.amenities || []);
-                    const selected = current.includes(amenity);
-                    return (
-                      <button
-                        key={`mgmt-amenity-${amenity}-${amIdx}`}
-                        type="button"
-                        onClick={() => {
-                          if (current.includes(amenity)) {
-                            setEditHotelData({...editHotelData, amenities: current.filter(a => a !== amenity) as any});
-                          } else {
-                            setEditHotelData({...editHotelData, amenities: [...current, amenity] as any});
-                          }
-                        }}
-                        className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${
-                          selected
-                            ? 'border-stone-900 bg-stone-900 text-white'
-                            : 'border-stone-200 bg-stone-50 text-stone-600 hover:border-stone-400'
-                        }`}
-                      >
-                        {amenity}
-                      </button>
-                    );
-                  })}
-                </div>
-                
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {(() => {
-                     const current = Array.isArray(editHotelData.amenities) ? editHotelData.amenities : (editHotelData.amenities || []);
-                     const custom = current.filter(a => !COMMON_AMENITIES.includes(a));
-                     if (custom.length === 0) return null;
-                     return custom.map((amenity, aIdx) => (
-                        <span key={`${amenity}-${aIdx}`} className="inline-flex items-center gap-1.5 rounded-full bg-stone-100 border border-stone-200 px-3 py-1.5 text-xs font-medium text-stone-700">
-                          {amenity}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setEditHotelData({...editHotelData, amenities: current.filter(a => a !== amenity) as any});
-                            }}
-                            className="text-stone-400 hover:text-stone-700 transition"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </span>
-                     ));
-                  })()}
-                </div>
-                
-                <div className="flex gap-2 max-w-sm">
-                  <input 
-                    type="text" 
-                    value={amenityInput} 
-                    onChange={e => setAmenityInput(e.target.value)} 
-                    onKeyDown={e => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        if (!amenityInput.trim()) return;
-                        let current = Array.isArray(editHotelData.amenities) ? editHotelData.amenities : (editHotelData.amenities || []);
-                        if (!current.includes(amenityInput.trim())) {
-                          setEditHotelData({...editHotelData, amenities: [...current, amenityInput.trim()] as any});
-                        }
-                        setAmenityInput('');
-                      }
-                    }}
-                    className="flex-1 bg-stone-50 border border-stone-200 p-2.5 text-sm rounded-xl outline-none focus:border-stone-900 transition" 
-                    placeholder="Add custom amenity..." 
-                  />
+  <SectionCard title="Amenities" description="Features available to all guests at the property." collapsible>
+    <div className="space-y-3">
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider">Common Amenities</label>
+          <button
+            type="button"
+            onClick={() => setAmenitiesExpanded(!amenitiesExpanded)}
+            className="text-xs font-semibold text-stone-600 hover:text-stone-900 inline-flex items-center gap-1"
+          >
+            <span>{amenitiesExpanded ? 'Show fewer' : `Show all (${COMMON_AMENITIES.length})`}</span>
+            <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-150 ${amenitiesExpanded ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
+        
+        <div className="flex flex-wrap gap-1.5 sm:gap-2 mb-3">
+          {(amenitiesExpanded ? COMMON_AMENITIES : COMMON_AMENITIES.slice(0, 10)).map((amenity, amIdx) => {
+            const current = Array.isArray(editHotelData.amenities) ? editHotelData.amenities : (editHotelData.amenities || []);
+            const selected = current.includes(amenity);
+            return (
+              <button
+                key={`mgmt-amenity-${amenity}-${amIdx}`}
+                type="button"
+                onClick={() => {
+                  if (current.includes(amenity)) {
+                    setEditHotelData({...editHotelData, amenities: current.filter(a => a !== amenity) as any});
+                  } else {
+                    setEditHotelData({...editHotelData, amenities: [...current, amenity] as any});
+                  }
+                }}
+                className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full text-xs font-medium border transition cursor-pointer ${
+                  selected
+                    ? 'border-stone-900 bg-stone-900 text-white shadow-2xs'
+                    : 'border-stone-200 bg-stone-50 text-stone-600 hover:border-stone-400'
+                }`}
+              >
+                {amenity}
+              </button>
+            );
+          })}
+        </div>
+        
+        <div className="flex flex-wrap gap-1.5 sm:gap-2 mb-3">
+          {(() => {
+             const current = Array.isArray(editHotelData.amenities) ? editHotelData.amenities : (editHotelData.amenities || []);
+             const custom = current.filter(a => !COMMON_AMENITIES.includes(a));
+             if (custom.length === 0) return null;
+             return custom.map((amenity, aIdx) => (
+                <span key={`${amenity}-${aIdx}`} className="inline-flex items-center gap-1.5 rounded-full bg-stone-100 border border-stone-200 px-2.5 py-1 text-xs font-medium text-stone-700">
+                  {amenity}
                   <button
                     type="button"
                     onClick={() => {
-                      if (!amenityInput.trim()) return;
-                      let current = Array.isArray(editHotelData.amenities) ? editHotelData.amenities : (editHotelData.amenities || []);
-                      if (!current.includes(amenityInput.trim())) {
-                        setEditHotelData({...editHotelData, amenities: [...current, amenityInput.trim()] as any});
-                      }
-                      setAmenityInput('');
+                      setEditHotelData({...editHotelData, amenities: current.filter(a => a !== amenity) as any});
                     }}
-                    className="inline-flex shrink-0 items-center justify-center rounded-xl bg-stone-900 px-4 text-xs font-semibold text-white transition hover:bg-stone-800"
+                    className="text-stone-400 hover:text-stone-700 transition"
                   >
-                    <Plus className="h-4 w-4" /> Add
+                    <X className="h-3 w-3" />
                   </button>
-                </div>
-              </div>
-
-              {/* A listing held no way of reaching the property at all, so the
-                  page promised a host who confirms "by phone or WhatsApp"
-                  without carrying either. */}
+                </span>
+             ));
+          })()}
+        </div>
+        
+        <div className="flex gap-2 max-w-sm">
+          <input 
+            type="text" 
+            value={amenityInput} 
+            onChange={e => setAmenityInput(e.target.value)} 
+            onKeyDown={e => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                if (!amenityInput.trim()) return;
+                let current = Array.isArray(editHotelData.amenities) ? editHotelData.amenities : (editHotelData.amenities || []);
+                if (!current.includes(amenityInput.trim())) {
+                  setEditHotelData({...editHotelData, amenities: [...current, amenityInput.trim()] as any});
+                }
+                setAmenityInput('');
+              }
+            }}
+            className="flex-1 bg-stone-50 border border-stone-200 px-3 py-2 text-xs sm:text-sm rounded-xl outline-none focus:border-stone-900 transition" 
+            placeholder="Add custom amenity..." 
+          />
+          <button
+            type="button"
+            onClick={() => {
+              if (!amenityInput.trim()) return;
+              let current = Array.isArray(editHotelData.amenities) ? editHotelData.amenities : (editHotelData.amenities || []);
+              if (!current.includes(amenityInput.trim())) {
+                setEditHotelData({...editHotelData, amenities: [...current, amenityInput.trim()] as any});
+              }
+              setAmenityInput('');
+            }}
+            className="inline-flex shrink-0 items-center justify-center rounded-xl bg-stone-900 px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-stone-800"
+          >
+            <Plus className="h-3.5 w-3.5 mr-1" /> Add
+          </button>
+        </div>
+      </div>
     </div>
   </SectionCard>
 
-  <SectionCard title="Operations & Contact" description="Designate the on-site manager, ownership entity, and guest contact numbers.">
-    <div className="space-y-6">
+  <SectionCard title="Operations & Contact" description="Designate the on-site manager, ownership entity, and guest contact numbers." collapsible>
+    <div className="space-y-4 sm:space-y-6">
               {/* Designated Property Manager */}
-              <div className="rounded-xl border border-stone-200 bg-stone-50/70 p-4 sm:p-5 space-y-4">
-                <div className="flex items-center gap-2.5 text-stone-900 font-semibold">
-                  <UserCheck className="w-5 h-5 text-stone-700" />
+              <div className="rounded-xl border border-stone-200 bg-stone-50/70 p-3.5 sm:p-4 md:p-5 space-y-3 sm:space-y-4">
+                <div className="flex items-center gap-2 sm:gap-2.5 text-stone-900 text-sm sm:text-base font-semibold">
+                  <UserCheck className="w-4 h-4 sm:w-5 sm:h-5 text-stone-700 shrink-0" />
                   <span>Designated Property Manager in Charge</span>
                 </div>
-                <p className="text-xs text-stone-500">
+                <p className="text-[11px] sm:text-xs text-stone-500 leading-relaxed">
                   The person responsible for daily operations, guest check-ins, and hospitality on-site. Known to guests and our Concierge.
                 </p>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 pt-1 sm:pt-2">
                   <div>
-                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Manager Name</label>
+                    <label className="block text-[11px] sm:text-xs font-bold text-stone-500 uppercase tracking-wider mb-1 sm:mb-1.5">Manager Name</label>
                     <input
                       type="text"
                       value={editHotelData.managerName ?? ''}
                       onChange={e => setEditHotelData({ ...editHotelData, managerName: e.target.value })}
-                      className="w-full bg-white border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition"
+                      className="w-full bg-white border border-stone-200 px-3 py-2 text-xs sm:text-sm rounded-lg sm:rounded-xl outline-none focus:border-stone-900 transition"
                       placeholder="e.g. Kondwani Banda"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Manager Direct Email</label>
+                    <label className="block text-[11px] sm:text-xs font-bold text-stone-500 uppercase tracking-wider mb-1 sm:mb-1.5">Manager Direct Email</label>
                     <input
                       type="email"
                       value={editHotelData.managerEmail ?? ''}
                       onChange={e => setEditHotelData({ ...editHotelData, managerEmail: e.target.value })}
-                      className="w-full bg-white border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition"
+                      className="w-full bg-white border border-stone-200 px-3 py-2 text-xs sm:text-sm rounded-lg sm:rounded-xl outline-none focus:border-stone-900 transition"
                       placeholder="manager@lodge.mw"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Manager Direct Phone</label>
+                    <label className="block text-[11px] sm:text-xs font-bold text-stone-500 uppercase tracking-wider mb-1 sm:mb-1.5">Manager Direct Phone</label>
                     <input
                       type="tel"
                       value={editHotelData.managerPhone ?? ''}
                       onChange={e => setEditHotelData({ ...editHotelData, managerPhone: e.target.value })}
-                      className="w-full bg-white border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition"
+                      className="w-full bg-white border border-stone-200 px-3 py-2 text-xs sm:text-sm rounded-lg sm:rounded-xl outline-none focus:border-stone-900 transition"
                       placeholder="+265 991 234 567"
                     />
                   </div>
@@ -1549,43 +1709,43 @@ export default function ManageHotel() {
               </div>
 
               {/* Property Owner / Holding Entity */}
-              <div className="rounded-xl border border-stone-200 bg-white p-4 sm:p-5 space-y-4">
-                <div className="flex items-center gap-2.5 text-stone-900 font-semibold">
-                  <Building className="w-5 h-5 text-stone-600" />
-                  <span>Property Owner / Legal Entity <span className="text-xs text-stone-400 font-normal">(Optional)</span></span>
+              <div className="rounded-xl border border-stone-200 bg-white p-3.5 sm:p-4 md:p-5 space-y-3 sm:space-y-4">
+                <div className="flex items-center gap-2 sm:gap-2.5 text-stone-900 text-sm sm:text-base font-semibold">
+                  <Building className="w-4 h-4 sm:w-5 sm:h-5 text-stone-600 shrink-0" />
+                  <span>Property Owner / Legal Entity <span className="text-[11px] sm:text-xs text-stone-400 font-normal">(Optional)</span></span>
                 </div>
-                <p className="text-xs text-stone-500">
+                <p className="text-[11px] sm:text-xs text-stone-500 leading-relaxed">
                   Entity, holding company, or individual holding title/operating lease separate from the local manager.
                 </p>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 pt-1 sm:pt-2">
                   <div>
-                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Owner / Entity Name</label>
+                    <label className="block text-[11px] sm:text-xs font-bold text-stone-500 uppercase tracking-wider mb-1 sm:mb-1.5">Owner / Entity Name</label>
                     <input
                       type="text"
                       value={editHotelData.ownerName ?? ''}
                       onChange={e => setEditHotelData({ ...editHotelData, ownerName: e.target.value })}
-                      className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition"
+                      className="w-full bg-stone-50 border border-stone-200 px-3 py-2 text-xs sm:text-sm rounded-lg sm:rounded-xl outline-none focus:border-stone-900 transition"
                       placeholder="e.g. Nyika Safaris Group"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Owner Email</label>
+                    <label className="block text-[11px] sm:text-xs font-bold text-stone-500 uppercase tracking-wider mb-1 sm:mb-1.5">Owner Email</label>
                     <input
                       type="email"
                       value={editHotelData.ownerEmail ?? ''}
                       onChange={e => setEditHotelData({ ...editHotelData, ownerEmail: e.target.value })}
-                      className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition"
+                      className="w-full bg-stone-50 border border-stone-200 px-3 py-2 text-xs sm:text-sm rounded-lg sm:rounded-xl outline-none focus:border-stone-900 transition"
                       placeholder="owner@company.mw"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Owner Phone</label>
+                    <label className="block text-[11px] sm:text-xs font-bold text-stone-500 uppercase tracking-wider mb-1 sm:mb-1.5">Owner Phone</label>
                     <input
                       type="tel"
                       value={editHotelData.ownerPhone ?? ''}
                       onChange={e => setEditHotelData({ ...editHotelData, ownerPhone: e.target.value })}
-                      className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition"
+                      className="w-full bg-stone-50 border border-stone-200 px-3 py-2 text-xs sm:text-sm rounded-lg sm:rounded-xl outline-none focus:border-stone-900 transition"
                       placeholder="+265 888 123 456"
                     />
                   </div>
@@ -1593,37 +1753,37 @@ export default function ManageHotel() {
               </div>
 
               {/* Guest Booking Contact */}
-              <div className={`grid grid-cols-1 ${whatsappEnabled ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-6 pt-2`}>
+              <div className={`grid grid-cols-1 ${whatsappEnabled ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-3.5 sm:gap-4 md:gap-6 pt-1 sm:pt-2`}>
                   <div>
-                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Public Booking Email</label>
+                    <label className="block text-[11px] sm:text-xs font-bold text-stone-500 uppercase tracking-wider mb-1 sm:mb-1.5">Public Booking Email</label>
                     <input
                       type="email"
                       value={editHotelData.contactEmail ?? ''}
                       onChange={e => setEditHotelData({ ...editHotelData, contactEmail: e.target.value })}
-                      className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition"
+                      className="w-full bg-stone-50 border border-stone-200 px-3 py-2 text-xs sm:text-sm rounded-lg sm:rounded-xl outline-none focus:border-stone-900 transition"
                       placeholder="reservations@yourlodge.mw"
                     />
                     <FieldError message={contactProblems.contactEmail} />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Public Phone</label>
+                    <label className="block text-[11px] sm:text-xs font-bold text-stone-500 uppercase tracking-wider mb-1 sm:mb-1.5">Public Phone</label>
                     <input
                       type="tel"
                       value={editHotelData.contactPhone ?? ''}
                       onChange={e => setEditHotelData({ ...editHotelData, contactPhone: e.target.value })}
-                      className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition"
+                      className="w-full bg-stone-50 border border-stone-200 px-3 py-2 text-xs sm:text-sm rounded-lg sm:rounded-xl outline-none focus:border-stone-900 transition"
                       placeholder="+265 991 234 567"
                     />
                     <FieldError message={contactProblems.contactPhone} />
                   </div>
                   {whatsappEnabled && (
                     <div>
-                      <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">WhatsApp</label>
+                      <label className="block text-[11px] sm:text-xs font-bold text-stone-500 uppercase tracking-wider mb-1 sm:mb-1.5">WhatsApp</label>
                       <input
                         type="tel"
                         value={editHotelData.contactWhatsapp ?? ''}
                         onChange={e => setEditHotelData({ ...editHotelData, contactWhatsapp: e.target.value })}
-                        className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition"
+                        className="w-full bg-stone-50 border border-stone-200 px-3 py-2 text-xs sm:text-sm rounded-lg sm:rounded-xl outline-none focus:border-stone-900 transition"
                         placeholder="Same as phone"
                       />
                       <FieldError message={contactProblems.contactWhatsapp} />
@@ -1633,82 +1793,82 @@ export default function ManageHotel() {
 
               {/* These were hard-coded as "From 14:00" and "Until 11:00" on
                   every listing, whatever the property actually did. */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4 md:gap-6 pt-2">
               <div>
-                <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Check-in from</label>
+                <label className="block text-[11px] sm:text-xs font-bold text-stone-500 uppercase tracking-wider mb-1 sm:mb-1.5">Check-in from</label>
                 <input
                   type="time"
                   value={editHotelData.checkInTime ?? '14:00'}
                   onChange={e => setEditHotelData({ ...editHotelData, checkInTime: e.target.value })}
-                  className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition"
+                  className="w-full bg-stone-50 border border-stone-200 px-3 py-2 text-xs sm:text-sm rounded-lg sm:rounded-xl outline-none focus:border-stone-900 transition"
                 />
                 <FieldError message={detailProblems.checkInTime} />
               </div>
               <div>
-                <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Check-out until</label>
+                <label className="block text-[11px] sm:text-xs font-bold text-stone-500 uppercase tracking-wider mb-1 sm:mb-1.5">Check-out until</label>
                 <input
                   type="time"
                   value={editHotelData.checkOutTime ?? '11:00'}
                   onChange={e => setEditHotelData({ ...editHotelData, checkOutTime: e.target.value })}
-                  className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition"
+                  className="w-full bg-stone-50 border border-stone-200 px-3 py-2 text-xs sm:text-sm rounded-lg sm:rounded-xl outline-none focus:border-stone-900 transition"
                 />
                 <FieldError message={detailProblems.checkOutTime} />
               </div>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6 pt-6 border-t border-stone-100">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4 md:gap-6 mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-stone-100">
               <div>
-                <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Stay Cancellation Policy</label>
+                <label className="block text-[11px] sm:text-xs font-bold text-stone-500 uppercase tracking-wider mb-1 sm:mb-1.5">Stay Cancellation Policy</label>
                 <input
                   type="text"
                   value={editHotelData.cancellationPolicy ?? 'Free 7d prior'}
                   onChange={e => setEditHotelData({ ...editHotelData, cancellationPolicy: e.target.value })}
-                  className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition"
+                  className="w-full bg-stone-50 border border-stone-200 px-3 py-2 text-xs sm:text-sm rounded-lg sm:rounded-xl outline-none focus:border-stone-900 transition"
                   placeholder="e.g. Free 7d prior"
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Stay Payment Policy</label>
+                <label className="block text-[11px] sm:text-xs font-bold text-stone-500 uppercase tracking-wider mb-1 sm:mb-1.5">Stay Payment Policy</label>
                 <input
                   type="text"
                   value={editHotelData.paymentPolicy ?? 'Pay at property'}
                   onChange={e => setEditHotelData({ ...editHotelData, paymentPolicy: e.target.value })}
-                  className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition"
+                  className="w-full bg-stone-50 border border-stone-200 px-3 py-2 text-xs sm:text-sm rounded-lg sm:rounded-xl outline-none focus:border-stone-900 transition"
                   placeholder="e.g. Pay at property"
                 />
               </div>
               </div>
 
-              <div className="mt-8 pt-8 border-t border-stone-200">
-                <h3 className="text-lg font-serif font-bold text-stone-900 mb-6">Conference & Events Policies</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="mt-5 sm:mt-7 pt-5 sm:pt-7 border-t border-stone-200">
+                <h3 className="text-base sm:text-lg font-serif font-bold text-stone-900 mb-3 sm:mb-5">Conference & Events Policies</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4 md:gap-6">
                   <div>
-                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Conference Cancellation</label>
+                    <label className="block text-[11px] sm:text-xs font-bold text-stone-500 uppercase tracking-wider mb-1 sm:mb-1.5">Conference Cancellation</label>
                     <input
                       type="text"
                       value={editHotelData.conferenceCancellationPolicy ?? ''}
                       onChange={e => setEditHotelData({ ...editHotelData, conferenceCancellationPolicy: e.target.value })}
-                      className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition"
+                      className="w-full bg-stone-50 border border-stone-200 px-3 py-2 text-xs sm:text-sm rounded-lg sm:rounded-xl outline-none focus:border-stone-900 transition"
                       placeholder="e.g. Non-refundable 30d prior"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Conference Payment</label>
+                    <label className="block text-[11px] sm:text-xs font-bold text-stone-500 uppercase tracking-wider mb-1 sm:mb-1.5">Conference Payment</label>
                     <input
                       type="text"
                       value={editHotelData.conferencePaymentPolicy ?? ''}
                       onChange={e => setEditHotelData({ ...editHotelData, conferencePaymentPolicy: e.target.value })}
-                      className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition"
+                      className="w-full bg-stone-50 border border-stone-200 px-3 py-2 text-xs sm:text-sm rounded-lg sm:rounded-xl outline-none focus:border-stone-900 transition"
                       placeholder="e.g. 50% deposit required"
                     />
                   </div>
                   <div className="md:col-span-2">
-                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Conference Guidelines</label>
+                    <label className="block text-[11px] sm:text-xs font-bold text-stone-500 uppercase tracking-wider mb-1 sm:mb-1.5">Conference Guidelines</label>
                     <input
                       type="text"
                       value={editHotelData.conferenceGuidelines ?? ''}
                       onChange={e => setEditHotelData({ ...editHotelData, conferenceGuidelines: e.target.value })}
-                      className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition"
+                      className="w-full bg-stone-50 border border-stone-200 px-3 py-2 text-xs sm:text-sm rounded-lg sm:rounded-xl outline-none focus:border-stone-900 transition"
                       placeholder="e.g. Outside catering allowed, 1hr setup time"
                     />
                   </div>
@@ -1718,93 +1878,93 @@ export default function ManageHotel() {
     </div>
   </SectionCard>
 
-  <SectionCard title="Guest Messaging" description="Manage how guests can chat or call you directly through the app.">
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+  <SectionCard title="Guest Messaging" description="Manage how guests can chat or call you directly through the app." collapsible>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4 md:gap-6">
                   <div>
                     {hotel?.adminChatEnabled === false && !isAdmin(user) && (
-                      <div className="mb-4 bg-amber-50 border border-amber-200 text-amber-800 p-3 rounded-lg text-sm">
+                      <div className="mb-3 bg-amber-50 border border-amber-200 text-amber-800 p-2.5 sm:p-3 rounded-lg text-xs sm:text-sm">
                         <strong>Premium Feature:</strong> Chat capabilities have been disabled for this listing by an administrator. Please contact support to upgrade or re-enable.
                       </div>
                     )}
-                                {isAdmin(user) && (
+                    {isAdmin(user) && (
                       <>
-                        <label className="flex items-center gap-3 cursor-pointer mb-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                        <label className="flex items-center gap-2.5 cursor-pointer mb-2 p-2.5 bg-red-50 border border-red-200 rounded-lg text-xs sm:text-sm">
                           <input 
                             type="checkbox" 
                             checked={editHotelData.adminChatEnabled !== false} 
                             onChange={(e) => setEditHotelData({...editHotelData, adminChatEnabled: e.target.checked})}
-                            className="w-5 h-5 text-red-600 border-red-300 rounded focus:ring-red-600"
+                            className="w-4 h-4 text-red-600 border-red-300 rounded focus:ring-red-600"
                           />
                           <span className="font-bold text-red-900">Admin: Enable Chat Service Globally</span>
                         </label>
-                        <label className="flex items-center gap-3 cursor-pointer mb-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                        <label className="flex items-center gap-2.5 cursor-pointer mb-2 p-2.5 bg-red-50 border border-red-200 rounded-lg text-xs sm:text-sm">
                           <input 
                             type="checkbox" 
                             checked={editHotelData.adminCallsEnabled !== false} 
                             onChange={(e) => setEditHotelData({...editHotelData, adminCallsEnabled: e.target.checked})}
-                            className="w-5 h-5 text-red-600 border-red-300 rounded focus:ring-red-600"
+                            className="w-4 h-4 text-red-600 border-red-300 rounded focus:ring-red-600"
                           />
                           <span className="font-bold text-red-900">Admin: Enable Audio &amp; Video Calling Globally</span>
                         </label>
-                        <label className="flex items-center gap-3 cursor-pointer mb-6 p-3 bg-red-50 border border-red-200 rounded-lg">
+                        <label className="flex items-center gap-2.5 cursor-pointer mb-4 p-2.5 bg-red-50 border border-red-200 rounded-lg text-xs sm:text-sm">
                           <input 
                             type="checkbox" 
                             checked={editHotelData.adminWifiVoucherEnabled !== false} 
                             onChange={(e) => setEditHotelData({...editHotelData, adminWifiVoucherEnabled: e.target.checked})}
-                            className="w-5 h-5 text-red-600 border-red-300 rounded focus:ring-red-600"
+                            className="w-4 h-4 text-red-600 border-red-300 rounded focus:ring-red-600"
                           />
                           <span className="font-bold text-red-900">Admin: Enable WiFi Voucher Feature Globally</span>
                         </label>
                       </>
                     )}
-                    <label className="flex items-center gap-3 cursor-pointer mb-4">
+                    <label className="flex items-center gap-2.5 cursor-pointer mb-3 text-xs sm:text-sm">
                       <input 
                         type="checkbox" 
                         checked={editHotelData.chatEnabled !== false} 
                         onChange={(e) => setEditHotelData({...editHotelData, chatEnabled: e.target.checked})}
-                        className="w-5 h-5 text-stone-900 border-stone-300 rounded focus:ring-stone-900 disabled:opacity-50"
+                        className="w-4 h-4 text-stone-900 border-stone-300 rounded focus:ring-stone-900 disabled:opacity-50"
                         disabled={editHotelData.adminChatEnabled === false}
                       />
                       <span className={`font-medium ${editHotelData.adminChatEnabled === false ? 'text-stone-400' : 'text-stone-700'}`}>Enable Pre-booking Chat</span>
                     </label>
                     
                     {/* Manager Audio & Video Calling Toggle */}
-                    <label className="flex items-center gap-3 cursor-pointer mb-4">
+                    <label className="flex items-start sm:items-center gap-2.5 cursor-pointer mb-3 text-xs sm:text-sm">
                       <input 
                         type="checkbox" 
                         checked={editHotelData.callsEnabled !== false} 
                         onChange={(e) => setEditHotelData({...editHotelData, callsEnabled: e.target.checked})}
-                        className="w-5 h-5 text-stone-900 border-stone-300 rounded focus:ring-stone-900 disabled:opacity-50"
+                        className="w-4 h-4 mt-0.5 sm:mt-0 text-stone-900 border-stone-300 rounded focus:ring-stone-900 disabled:opacity-50"
                         disabled={editHotelData.adminCallsEnabled === false || editHotelData.chatEnabled === false}
                       />
                       <div>
                         <span className={`font-medium ${editHotelData.adminCallsEnabled === false || editHotelData.chatEnabled === false ? 'text-stone-400' : 'text-stone-700'}`}>
                           Enable Audio &amp; Video Calls with Guests
                         </span>
-                        <p className="text-xs text-stone-400">Allows guest to host voice and video calls through WebRTC.</p>
+                        <p className="text-[11px] sm:text-xs text-stone-400">Allows guest to host voice and video calls through WebRTC.</p>
                       </div>
                     </label>
 
-                    <label className="flex items-center gap-3 cursor-pointer mb-2">
+                    <label className="flex items-center gap-2.5 cursor-pointer mb-1 text-xs sm:text-sm">
                       <input 
                         type="checkbox" 
                         checked={editHotelData.isOnline ?? true} 
                         onChange={(e) => setEditHotelData({...editHotelData, isOnline: e.target.checked})}
-                        className="w-5 h-5 text-emerald-600 border-stone-300 rounded focus:ring-emerald-600 disabled:opacity-50"
+                        className="w-4 h-4 text-emerald-600 border-stone-300 rounded focus:ring-emerald-600 disabled:opacity-50"
                         disabled={editHotelData.chatEnabled === false || editHotelData.adminChatEnabled === false}
                       />
                       <span className={`font-medium ${editHotelData.chatEnabled === false || editHotelData.adminChatEnabled === false ? 'text-stone-400' : 'text-stone-700'}`}>Show as "Online"</span>
                     </label>
-                    <p className="text-xs text-stone-500 mb-4 ml-8">When offline, your out-of-office message is shown.</p>
+                    <p className="text-[11px] sm:text-xs text-stone-500 mb-3 ml-6 sm:ml-7">When offline, your out-of-office message is shown.</p>
                   </div>
                   
                   <div>
-                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Out of office message</label>
+                    <label className="block text-[11px] sm:text-xs font-bold text-stone-500 uppercase tracking-wider mb-1 sm:mb-1.5">Out of office message</label>
                     <textarea 
                       value={editHotelData.outOfOfficeMessage || ''} 
                       onChange={e => setEditHotelData({...editHotelData, outOfOfficeMessage: e.target.value})}
                       disabled={editHotelData.chatEnabled === false || editHotelData.adminChatEnabled === false || editHotelData.isOnline === true}
-                      className="w-full bg-stone-50 border border-stone-200 p-3 rounded-xl outline-none focus:border-stone-900 transition h-24 resize-none disabled:opacity-50"
+                      className="w-full bg-stone-50 border border-stone-200 px-3 py-2 text-xs sm:text-sm rounded-lg sm:rounded-xl outline-none focus:border-stone-900 transition h-20 sm:h-24 resize-none disabled:opacity-50"
                       placeholder="We're currently away. Leave a message and we'll reply soon!" 
                     />
                   </div>
@@ -1812,160 +1972,196 @@ export default function ManageHotel() {
   </SectionCard>
 
   {/* Deposit & Payment Instructions */}
-  <SectionCard title="Deposit & Payment Instructions" description="Configure Mobile Money and Bank Wire details so deposit request templates in chat automatically populate with your accounts.">
-    <div className="space-y-6">
-      {/* Mobile Money Accounts */}
-      <div>
-        <h4 className="text-xs font-bold uppercase tracking-wider text-stone-700 mb-3 flex items-center gap-1.5">
-          <span>📱 Mobile Money Accounts (Airtel Money &amp; TNM Mpamba)</span>
-        </h4>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-semibold text-stone-600 mb-1">Airtel Money Number</label>
-            <input
-              type="text"
-              value={editHotelData.depositInfo?.airtelMoneyNumber || ''}
-              onChange={(e) => setEditHotelData({
-                ...editHotelData,
-                depositInfo: { ...editHotelData.depositInfo, airtelMoneyNumber: e.target.value }
-              })}
-              placeholder="+265 999 000 000"
-              className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2 text-sm focus:bg-white focus:border-stone-900 transition outline-none"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-stone-600 mb-1">Airtel Money Registered Name</label>
-            <input
-              type="text"
-              value={editHotelData.depositInfo?.airtelMoneyName || ''}
-              onChange={(e) => setEditHotelData({
-                ...editHotelData,
-                depositInfo: { ...editHotelData.depositInfo, airtelMoneyName: e.target.value }
-              })}
-              placeholder="e.g. Blue Zebra Island Lodge Ltd"
-              className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2 text-sm focus:bg-white focus:border-stone-900 transition outline-none"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-stone-600 mb-1">TNM Mpamba Number</label>
-            <input
-              type="text"
-              value={editHotelData.depositInfo?.mpambaNumber || ''}
-              onChange={(e) => setEditHotelData({
-                ...editHotelData,
-                depositInfo: { ...editHotelData.depositInfo, mpambaNumber: e.target.value }
-              })}
-              placeholder="+265 888 000 000"
-              className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2 text-sm focus:bg-white focus:border-stone-900 transition outline-none"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-stone-600 mb-1">TNM Mpamba Registered Name</label>
-            <input
-              type="text"
-              value={editHotelData.depositInfo?.mpambaName || ''}
-              onChange={(e) => setEditHotelData({
-                ...editHotelData,
-                depositInfo: { ...editHotelData.depositInfo, mpambaName: e.target.value }
-              })}
-              placeholder="e.g. Blue Zebra Island Lodge"
-              className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2 text-sm focus:bg-white focus:border-stone-900 transition outline-none"
-            />
-          </div>
+  <SectionCard
+    title="Deposit & Payment Instructions"
+    description="Configure Mobile Money and Bank Wire details for deposit request templates."
+    collapsible
+  >
+    <div className="space-y-4 sm:space-y-5">
+      {/* Mobile/Tablet method filter tabs */}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-100 pb-2.5 sm:pb-3">
+        <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-stone-500">Deposit Accounts</span>
+        <div className="flex items-center gap-1 bg-stone-100 p-1 rounded-xl text-xs font-semibold">
+          <button
+            type="button"
+            onClick={() => setDepositViewTab('all')}
+            className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${depositViewTab === 'all' ? 'bg-white text-stone-900 shadow-2xs' : 'text-stone-600 hover:text-stone-900'}`}
+          >
+            All
+          </button>
+          <button
+            type="button"
+            onClick={() => setDepositViewTab('mobile_money')}
+            className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${depositViewTab === 'mobile_money' ? 'bg-white text-stone-900 shadow-2xs' : 'text-stone-600 hover:text-stone-900'}`}
+          >
+            📱 Mobile Money
+          </button>
+          <button
+            type="button"
+            onClick={() => setDepositViewTab('bank_transfer')}
+            className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${depositViewTab === 'bank_transfer' ? 'bg-white text-stone-900 shadow-2xs' : 'text-stone-600 hover:text-stone-900'}`}
+          >
+            🏦 Bank Wire
+          </button>
         </div>
       </div>
+
+      {/* Mobile Money Accounts */}
+      {(depositViewTab === 'all' || depositViewTab === 'mobile_money') && (
+        <div className="animate-in fade-in duration-150">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-stone-700 mb-2.5 flex items-center gap-1.5">
+            <span>📱 Airtel Money &amp; TNM Mpamba</span>
+          </h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-stone-600 mb-1">Airtel Money Number</label>
+              <input
+                type="text"
+                value={editHotelData.depositInfo?.airtelMoneyNumber || ''}
+                onChange={(e) => setEditHotelData({
+                  ...editHotelData,
+                  depositInfo: { ...editHotelData.depositInfo, airtelMoneyNumber: e.target.value }
+                })}
+                placeholder="+265 999 000 000"
+                className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-xs sm:text-sm focus:bg-white focus:border-stone-900 transition outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-stone-600 mb-1">Airtel Money Registered Name</label>
+              <input
+                type="text"
+                value={editHotelData.depositInfo?.airtelMoneyName || ''}
+                onChange={(e) => setEditHotelData({
+                  ...editHotelData,
+                  depositInfo: { ...editHotelData.depositInfo, airtelMoneyName: e.target.value }
+                })}
+                placeholder="e.g. Blue Zebra Island Lodge Ltd"
+                className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-xs sm:text-sm focus:bg-white focus:border-stone-900 transition outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-stone-600 mb-1">TNM Mpamba Number</label>
+              <input
+                type="text"
+                value={editHotelData.depositInfo?.mpambaNumber || ''}
+                onChange={(e) => setEditHotelData({
+                  ...editHotelData,
+                  depositInfo: { ...editHotelData.depositInfo, mpambaNumber: e.target.value }
+                })}
+                placeholder="+265 888 000 000"
+                className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-xs sm:text-sm focus:bg-white focus:border-stone-900 transition outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-stone-600 mb-1">TNM Mpamba Registered Name</label>
+              <input
+                type="text"
+                value={editHotelData.depositInfo?.mpambaName || ''}
+                onChange={(e) => setEditHotelData({
+                  ...editHotelData,
+                  depositInfo: { ...editHotelData.depositInfo, mpambaName: e.target.value }
+                })}
+                placeholder="e.g. Blue Zebra Island Lodge"
+                className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-xs sm:text-sm focus:bg-white focus:border-stone-900 transition outline-none"
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Direct Bank Wire Transfer */}
-      <div className="pt-4 border-t border-stone-100">
-        <h4 className="text-xs font-bold uppercase tracking-wider text-stone-700 mb-3 flex items-center gap-1.5">
-          <span>🏦 Direct Bank Wire Transfer</span>
-        </h4>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-xs font-semibold text-stone-600 mb-1">Bank Name</label>
-            <input
-              type="text"
-              value={editHotelData.depositInfo?.bankName || ''}
-              onChange={(e) => setEditHotelData({
-                ...editHotelData,
-                depositInfo: { ...editHotelData.depositInfo, bankName: e.target.value }
-              })}
-              placeholder="e.g. National Bank of Malawi (NBM)"
-              className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2 text-sm focus:bg-white focus:border-stone-900 transition outline-none"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-stone-600 mb-1">Account Name</label>
-            <input
-              type="text"
-              value={editHotelData.depositInfo?.bankAccountName || ''}
-              onChange={(e) => setEditHotelData({
-                ...editHotelData,
-                depositInfo: { ...editHotelData.depositInfo, bankAccountName: e.target.value }
-              })}
-              placeholder="Account Name"
-              className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2 text-sm focus:bg-white focus:border-stone-900 transition outline-none"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-stone-600 mb-1">Account Number</label>
-            <input
-              type="text"
-              value={editHotelData.depositInfo?.bankAccountNumber || ''}
-              onChange={(e) => setEditHotelData({
-                ...editHotelData,
-                depositInfo: { ...editHotelData.depositInfo, bankAccountNumber: e.target.value }
-              })}
-              placeholder="Account Number"
-              className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2 text-sm focus:bg-white focus:border-stone-900 transition outline-none"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-stone-600 mb-1">Branch</label>
-            <input
-              type="text"
-              value={editHotelData.depositInfo?.bankBranch || ''}
-              onChange={(e) => setEditHotelData({
-                ...editHotelData,
-                depositInfo: { ...editHotelData.depositInfo, bankBranch: e.target.value }
-              })}
-              placeholder="Branch (e.g. Capital City Branch)"
-              className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2 text-sm focus:bg-white focus:border-stone-900 transition outline-none"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-stone-600 mb-1">SWIFT / Sort Code (Optional)</label>
-            <input
-              type="text"
-              value={editHotelData.depositInfo?.bankSwiftCode || ''}
-              onChange={(e) => setEditHotelData({
-                ...editHotelData,
-                depositInfo: { ...editHotelData.depositInfo, bankSwiftCode: e.target.value }
-              })}
-              placeholder="SWIFT (e.g. NBMAMWMW)"
-              className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2 text-sm focus:bg-white focus:border-stone-900 transition outline-none"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-stone-600 mb-1">Required Deposit (%)</label>
-            <input
-              type="number"
-              min="10"
-              max="100"
-              value={editHotelData.depositInfo?.depositPercentage ?? 50}
-              onChange={(e) => setEditHotelData({
-                ...editHotelData,
-                depositInfo: { ...editHotelData.depositInfo, depositPercentage: Number(e.target.value) }
-              })}
-              placeholder="50"
-              className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2 text-sm focus:bg-white focus:border-stone-900 transition outline-none"
-            />
+      {(depositViewTab === 'all' || depositViewTab === 'bank_transfer') && (
+        <div className={`pt-3 ${depositViewTab === 'all' ? 'border-t border-stone-100' : ''} animate-in fade-in duration-150`}>
+          <h4 className="text-xs font-bold uppercase tracking-wider text-stone-700 mb-2.5 flex items-center gap-1.5">
+            <span>🏦 Direct Bank Wire Transfer</span>
+          </h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-stone-600 mb-1">Bank Name</label>
+              <input
+                type="text"
+                value={editHotelData.depositInfo?.bankName || ''}
+                onChange={(e) => setEditHotelData({
+                  ...editHotelData,
+                  depositInfo: { ...editHotelData.depositInfo, bankName: e.target.value }
+                })}
+                placeholder="e.g. National Bank of Malawi (NBM)"
+                className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-xs sm:text-sm focus:bg-white focus:border-stone-900 transition outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-stone-600 mb-1">Account Name</label>
+              <input
+                type="text"
+                value={editHotelData.depositInfo?.bankAccountName || ''}
+                onChange={(e) => setEditHotelData({
+                  ...editHotelData,
+                  depositInfo: { ...editHotelData.depositInfo, bankAccountName: e.target.value }
+                })}
+                placeholder="Account Name"
+                className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-xs sm:text-sm focus:bg-white focus:border-stone-900 transition outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-stone-600 mb-1">Account Number</label>
+              <input
+                type="text"
+                value={editHotelData.depositInfo?.bankAccountNumber || ''}
+                onChange={(e) => setEditHotelData({
+                  ...editHotelData,
+                  depositInfo: { ...editHotelData.depositInfo, bankAccountNumber: e.target.value }
+                })}
+                placeholder="Account Number"
+                className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-xs sm:text-sm focus:bg-white focus:border-stone-900 transition outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-stone-600 mb-1">Branch</label>
+              <input
+                type="text"
+                value={editHotelData.depositInfo?.bankBranch || ''}
+                onChange={(e) => setEditHotelData({
+                  ...editHotelData,
+                  depositInfo: { ...editHotelData.depositInfo, bankBranch: e.target.value }
+                })}
+                placeholder="Branch (e.g. Capital City Branch)"
+                className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-xs sm:text-sm focus:bg-white focus:border-stone-900 transition outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-stone-600 mb-1">SWIFT / Sort Code (Optional)</label>
+              <input
+                type="text"
+                value={editHotelData.depositInfo?.bankSwiftCode || ''}
+                onChange={(e) => setEditHotelData({
+                  ...editHotelData,
+                  depositInfo: { ...editHotelData.depositInfo, bankSwiftCode: e.target.value }
+                })}
+                placeholder="SWIFT (e.g. NBMAMWMW)"
+                className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-xs sm:text-sm focus:bg-white focus:border-stone-900 transition outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-stone-600 mb-1">Required Deposit (%)</label>
+              <input
+                type="number"
+                min="10"
+                max="100"
+                value={editHotelData.depositInfo?.depositPercentage ?? 50}
+                onChange={(e) => setEditHotelData({
+                  ...editHotelData,
+                  depositInfo: { ...editHotelData.depositInfo, depositPercentage: Number(e.target.value) }
+                })}
+                placeholder="50"
+                className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-xs sm:text-sm focus:bg-white focus:border-stone-900 transition outline-none"
+              />
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Special Instructions */}
-      <div className="pt-4 border-t border-stone-100">
+      <div className="pt-3 border-t border-stone-100">
         <label className="block text-xs font-semibold text-stone-600 mb-1">Additional Deposit Notes or Instructions for Guests</label>
         <textarea
           rows={2}
@@ -1975,13 +2171,13 @@ export default function ManageHotel() {
             depositInfo: { ...editHotelData.depositInfo, instructions: e.target.value }
           })}
           placeholder="e.g. Boat transfer included upon deposit confirmation, balance payable upon arrival."
-          className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2 text-sm focus:bg-white focus:border-stone-900 transition outline-none"
+          className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-xs sm:text-sm focus:bg-white focus:border-stone-900 transition outline-none"
         />
       </div>
     </div>
   </SectionCard>
 
-  <SectionCard title="Opening Hours" description="When guests can arrive and receive service.">
+  <SectionCard title="Opening Hours" description="When guests can arrive and receive service." collapsible>
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="md:col-span-2">
                 <OpeningHoursEditor
@@ -1995,16 +2191,23 @@ export default function ManageHotel() {
   </SectionCard>
             {/* Pinned: this form is long enough that the save button used to
                 sit well below the fold with no sign it was there. */}
-            <div className="sticky bottom-0 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-white/95 backdrop-blur-md border-t border-stone-200 flex items-center justify-between gap-4 rounded-b-2xl mt-4 z-20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-              <p className="text-sm text-stone-500">
-                {hotelDirty ? <span className="text-amber-600 flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" /> Unsaved changes</span> : 'Everything is saved'}
+            <div className="sticky bottom-0 p-2.5 sm:p-3.5 md:p-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-white/95 backdrop-blur-md border-t border-stone-200 flex items-center justify-between gap-2 sm:gap-4 rounded-b-xl sm:rounded-b-2xl mt-3 sm:mt-4 z-20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+              <p className="text-xs sm:text-sm text-stone-500 min-w-0 truncate">
+                {hotelDirty ? (
+                  <span className="text-amber-600 flex items-center gap-1.5 font-medium">
+                    <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0" />
+                    <span className="truncate">Unsaved changes</span>
+                  </span>
+                ) : (
+                  <span className="truncate">Everything is saved</span>
+                )}
               </p>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                 {hotelDirty && (
                   <button
                     type="button"
                     onClick={() => setEditHotelData(hotel)}
-                    className="px-5 py-3 rounded-xl font-medium text-stone-600 hover:bg-stone-100 transition"
+                    className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold text-stone-600 hover:bg-stone-100 transition cursor-pointer"
                   >
                     Discard
                   </button>
@@ -2012,10 +2215,10 @@ export default function ManageHotel() {
                 <button
                   type="submit"
                   disabled={saving || !hotelDirty}
-                  className="flex items-center gap-2 bg-stone-900 text-white px-8 py-3 rounded-xl font-medium hover:bg-stone-800 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="flex items-center gap-1.5 bg-stone-900 text-white px-3.5 sm:px-6 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold hover:bg-stone-800 transition disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs cursor-pointer"
                 >
-                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                  {saving ? 'Saving…' : 'Save details'}
+                  {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                  <span>{saving ? 'Saving…' : 'Save details'}</span>
                 </button>
               </div>
             </div>
@@ -2169,29 +2372,102 @@ export default function ManageHotel() {
 
       {activeTab === 'promotions' && (
         <div className="space-y-6">
+          {rooms.length > 0 && (
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowBulkEditor(prev => !prev)}
+                className="inline-flex items-center gap-1.5 bg-amber-400 hover:bg-amber-300 text-stone-950 font-bold px-4 py-2 rounded-xl text-xs transition cursor-pointer shadow-2xs"
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5" />
+                <span>{showBulkEditor ? 'Close Bulk Room Editor' : '⚡ Bulk Room Rates & Promos Editor'}</span>
+              </button>
+            </div>
+          )}
+
+          {showBulkEditor && hotel && (
+            <div className="mb-6">
+              <BulkRoomEditor
+                hotels={[hotel]}
+                rooms={rooms}
+                initialHotelId={hotel.id}
+                isEmbedded={true}
+                onClose={() => setShowBulkEditor(false)}
+                onRoomsUpdated={(updated) => {
+                  const map = new Map(updated.map(r => [r.id!, r]));
+                  setRooms(prev => prev.map(r => (r.id && map.has(r.id) ? map.get(r.id)! : r)));
+                }}
+                onHotelsUpdated={(updatedHotels) => {
+                  if (updatedHotels[0]) {
+                    setHotel(updatedHotels[0]);
+                  }
+                }}
+              />
+            </div>
+          )}
+
           <PromotionsManager 
             hotel={hotel} 
+            rooms={rooms}
             onUpdate={(promotions) => setHotel({ ...hotel, promotions })} 
           />
         </div>
       )}
 
       {activeTab === 'rooms' && (
-        <div className="space-y-6">
-          <div className="flex justify-between items-center mb-2">
-            <p className="text-stone-500">Manage your room inventory, pricing, and availability.</p>
+        <div className="space-y-4 sm:space-y-6">
+          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2.5 mb-2">
+            <p className="text-xs sm:text-sm text-stone-500">Manage your room inventory, pricing, and availability.</p>
             {!editingRoomId && (
-              <button onClick={startNewRoom} className="flex items-center gap-2 bg-stone-900 text-white px-5 py-2.5 rounded-full text-sm font-medium hover:bg-stone-800 transition">
-                <Plus className="h-4 w-4" /> Add Room
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                {rooms.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowBulkEditor(prev => !prev)}
+                    className={`flex items-center justify-center gap-1.5 px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-full text-xs sm:text-sm font-semibold transition shadow-2xs cursor-pointer ${
+                      showBulkEditor
+                        ? 'bg-amber-400 text-stone-950 hover:bg-amber-300 ring-2 ring-amber-500/50'
+                        : 'bg-white hover:bg-stone-100 text-stone-800 border border-stone-200'
+                    }`}
+                  >
+                    <SlidersHorizontal className="h-4 w-4 text-amber-600" />
+                    <span>{showBulkEditor ? 'Close Bulk Editor' : 'Bulk Edit Rates & Promos'}</span>
+                  </button>
+                )}
+                <button onClick={startNewRoom} className="flex items-center justify-center gap-2 bg-stone-900 text-white px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl sm:rounded-full text-xs sm:text-sm font-medium hover:bg-stone-800 transition shadow-2xs cursor-pointer">
+                  <Plus className="h-4 w-4" /> Add Room
+                </button>
+              </div>
             )}
           </div>
 
+          {/* Bulk Editor View */}
+          {showBulkEditor && !editingRoomId && hotel && (
+            <div className="mb-6">
+              <BulkRoomEditor
+                hotels={[hotel]}
+                rooms={rooms}
+                initialHotelId={hotel.id}
+                isEmbedded={true}
+                onClose={() => setShowBulkEditor(false)}
+                onRoomsUpdated={(updated) => {
+                  const map = new Map(updated.map(r => [r.id!, r]));
+                  setRooms(prev => prev.map(r => (r.id && map.has(r.id) ? map.get(r.id)! : r)));
+                }}
+                onHotelsUpdated={(updatedHotels) => {
+                  if (updatedHotels[0]) {
+                    setHotel(updatedHotels[0]);
+                  }
+                }}
+              />
+            </div>
+          )}
+
           {editingRoomId && (
             <div className="mb-6">
-              <div className="flex justify-between items-center mb-6 bg-white p-6 rounded-2xl border border-stone-200 shadow-sm">
-                <h3 className="font-serif text-xl text-stone-900">{editingRoomId === 'new' ? 'New Room Type' : 'Edit Room'}</h3>
-                <button onClick={cancelEditRoom} className="p-2 text-stone-400 hover:bg-stone-100 rounded-full transition"><X className="h-5 w-5" /></button>
+              <div className="flex justify-between items-center mb-4 sm:mb-6 bg-white p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-stone-200 shadow-2xs">
+                <h3 className="font-serif text-lg sm:text-xl font-bold text-stone-900">{editingRoomId === 'new' ? 'New Room Type' : 'Edit Room'}</h3>
+                <button onClick={cancelEditRoom} className="p-2 text-stone-400 hover:bg-stone-100 rounded-full transition cursor-pointer"><X className="h-5 w-5" /></button>
               </div>
               
               <form onSubmit={handleSaveRoom} className="space-y-6">
@@ -2679,45 +2955,45 @@ export default function ManageHotel() {
           )}
 
           {!editingRoomId && rooms.map((room, rIdx) => (
-            <div key={`mgmt-room-card-${room.id || 'room'}-${rIdx}`} onClick={() => startEditRoom(room)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') startEditRoom(room); }} className={`group cursor-pointer bg-white border p-4 sm:p-6 rounded-2xl flex flex-col md:flex-row gap-4 sm:gap-6 items-stretch md:items-center shadow-sm hover:border-stone-400 hover:shadow-md transition ${room.quantity === 0 ? 'border-red-200 bg-red-50/30' : 'border-stone-200'}`}>
-              <div className="w-full md:w-48 h-48 sm:h-40 md:h-36 bg-stone-100 rounded-2xl overflow-hidden shrink-0">
+            <div key={`mgmt-room-card-${room.id || 'room'}-${rIdx}`} onClick={() => startEditRoom(room)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') startEditRoom(room); }} className={`group cursor-pointer bg-white border p-3 sm:p-4 md:p-5 rounded-xl sm:rounded-2xl flex flex-col sm:flex-row gap-3 sm:gap-4 md:gap-5 items-stretch sm:items-center shadow-2xs hover:border-stone-400 hover:shadow-sm transition ${room.quantity === 0 ? 'border-red-200 bg-red-50/30' : 'border-stone-200'}`}>
+              <div className="w-full sm:w-36 md:w-44 h-28 sm:h-32 md:h-36 bg-stone-100 rounded-lg sm:rounded-xl overflow-hidden shrink-0">
                 <SmartImage src={getRoomImage(room, null)} alt={room.name} className="w-full h-full object-cover" />
               </div>
               <div className="flex-1 min-w-0 w-full flex flex-col justify-center">
-                <div className="flex flex-col sm:flex-row justify-between sm:items-start gap-2 mb-2">
-                  <h4 className="text-xl font-serif font-bold text-stone-900 line-clamp-2 sm:line-clamp-1 pr-0 sm:pr-4">{room.name}</h4>
-                  <div className="flex sm:flex-col gap-3 sm:gap-0 text-left sm:text-right items-baseline sm:items-end">
+                <div className="flex flex-col sm:flex-row justify-between sm:items-start gap-1 sm:gap-2 mb-1.5">
+                  <h4 className="text-base sm:text-lg font-serif font-bold text-stone-900 line-clamp-1 pr-0 sm:pr-2">{room.name}</h4>
+                  <div className="flex sm:flex-col gap-2 sm:gap-0 text-left sm:text-right items-baseline sm:items-end">
                     {roomCurrencies(room).map((code, i) => (
                       <div
                         key={`room-curr-disp-${code}-${i}`}
                         className={i === 0
-                          ? 'text-xl font-serif font-bold text-stone-900 whitespace-nowrap'
-                          : 'text-sm text-stone-500 font-medium whitespace-nowrap'}
+                          ? 'text-base sm:text-lg font-serif font-bold text-stone-900 whitespace-nowrap'
+                          : 'text-xs text-stone-500 font-medium whitespace-nowrap'}
                       >
                         <PriceDisplay amount={roomPrice(room, code) ?? 0} currency={code} />
                       </div>
                     ))}
                   </div>
                 </div>
-                <p className="text-stone-500 text-sm mb-4 line-clamp-2">{room.description}</p>
-                <div className="flex flex-wrap items-center gap-4 text-sm font-medium">
-                  <span className="flex items-center gap-1.5 text-stone-600"><Users className="h-4 w-4" /> {room.maxGuests} Guests</span>
-                  <span className={`px-2.5 py-1 rounded-full text-xs uppercase tracking-wider ${room.quantity > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                <p className="text-stone-500 text-xs sm:text-sm mb-2.5 line-clamp-2">{room.description}</p>
+                <div className="flex flex-wrap items-center gap-2 text-xs font-medium">
+                  <span className="flex items-center gap-1 text-stone-600"><Users className="h-3.5 w-3.5" /> {room.maxGuests} Guests</span>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] sm:text-xs uppercase tracking-wider font-semibold ${room.quantity > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
                     {room.quantity > 0 ? `${room.quantity} Available` : 'Blocked'}
                   </span>
                 
                   {room.packages && room.packages.length > 0 && room.packages.map((pkg, pIdx) => (
-                    <span key={`room-view-pkg-${pkg.id || 'pkg'}-${pIdx}`} className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full text-xs">{pkg.name}</span>
+                    <span key={`room-view-pkg-${pkg.id || 'pkg'}-${pIdx}`} className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full text-[10px] sm:text-xs">{pkg.name}</span>
                   ))}
                 </div>
               </div>
-              <div className="flex md:flex-col w-full md:w-32 lg:w-40 gap-2 border-t md:border-t-0 md:border-l border-stone-100 pt-4 md:pt-0 md:pl-6 shrink-0 mt-2 md:mt-0 justify-center">
+              <div className="flex sm:flex-col w-full sm:w-28 md:w-36 gap-1.5 border-t sm:border-t-0 sm:border-l border-stone-100 pt-2.5 sm:pt-0 sm:pl-3 md:pl-4 shrink-0 mt-1 sm:mt-0 justify-center">
                 <button 
                   type="button"
                   tabIndex={-1}
-                  className="flex-1 md:w-full flex items-center justify-center gap-2 px-4 py-3 md:py-2.5 bg-stone-100 group-hover:bg-stone-200 text-stone-700 rounded-xl transition text-sm font-semibold"
+                  className="flex-1 sm:w-full flex items-center justify-center gap-1.5 px-3 py-1.5 sm:py-2 bg-stone-100 group-hover:bg-stone-200 text-stone-700 rounded-lg transition text-xs font-semibold cursor-pointer"
                 >
-                  <Edit2 className="h-4 w-4" /> Edit
+                  <Edit2 className="h-3.5 w-3.5" /> Edit
                 </button>
                 <button 
                   onClick={(e) => {
@@ -2728,9 +3004,9 @@ export default function ManageHotel() {
                       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     }, 100);
                   }}
-                  className="flex-1 md:w-full flex items-center justify-center px-4 py-3 md:py-2.5 rounded-xl text-sm font-bold uppercase tracking-wider transition bg-stone-50 text-stone-700 hover:bg-stone-200"
+                  className="flex-1 sm:w-full flex items-center justify-center px-3 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold uppercase tracking-wider transition bg-stone-50 text-stone-700 hover:bg-stone-200 cursor-pointer"
                 >
-                  Manage Blocks
+                  Blocks
                 </button>
               </div>
             </div>
@@ -2809,9 +3085,9 @@ export default function ManageHotel() {
 
       {/* TAB CONTENT: BOOKINGS */}
       {activeTab === 'bookings' && (
-        <div className="bg-white rounded-2xl border border-stone-200 overflow-hidden shadow-sm">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-6 md:px-8 py-5 border-b border-stone-100">
-            <div className="flex flex-wrap gap-2">
+        <div className="bg-white rounded-xl sm:rounded-2xl border border-stone-200 overflow-hidden shadow-2xs">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-4 sm:px-6 md:px-8 py-3.5 sm:py-4 border-b border-stone-100">
+            <div className="flex flex-wrap gap-1.5 sm:gap-2">
               {([
                 { key: 'all', label: 'All' },
                 { key: 'pending', label: 'Pending' },
@@ -2824,7 +3100,7 @@ export default function ManageHotel() {
                   setBookingFilter(tab.key);
                   setCurrentBookingPage(1);
                 }}
-                  className={`px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition ${
+                  className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-[11px] sm:text-xs font-bold uppercase tracking-wider transition cursor-pointer ${
                     bookingFilter === tab.key
                       ? 'bg-stone-900 text-white'
                       : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
@@ -2836,45 +3112,45 @@ export default function ManageHotel() {
             </div>
             <button
               onClick={exportBookingsCsv}
-              className="flex items-center gap-2 text-sm font-semibold text-stone-600 border border-stone-200 px-4 py-2 rounded-xl hover:bg-stone-50 hover:border-stone-400 transition shrink-0"
+              className="flex items-center justify-center gap-1.5 text-xs sm:text-sm font-semibold text-stone-600 border border-stone-200 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl hover:bg-stone-50 hover:border-stone-400 transition shrink-0 cursor-pointer"
             >
-              <Download className="h-4 w-4" /> Export CSV
+              <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> Export CSV
             </button>
           </div>
 
           {visibleBookings.length === 0 ? (
-            <div className="p-16 text-center text-stone-400">
-              <Calendar className="h-10 w-10 mx-auto mb-4 opacity-50 text-stone-300" />
-              <p className="font-medium text-stone-500 text-lg">
+            <div className="p-10 sm:p-16 text-center text-stone-400">
+              <Calendar className="h-8 w-8 sm:h-10 sm:w-10 mx-auto mb-3 opacity-50 text-stone-300" />
+              <p className="font-medium text-stone-500 text-base sm:text-lg">
                 {bookings.length === 0 ? 'No bookings yet.' : 'Nothing in this view.'}
               </p>
-              <p className="text-sm mt-1">
+              <p className="text-xs sm:text-sm mt-1">
                 {bookings.length === 0
                   ? 'When guests book your rooms, they will appear here.'
                   : 'Try a different filter above.'}
               </p>
             </div>
           ) : (
-            <ul className="space-y-4">
+            <ul className="space-y-3 sm:space-y-4 p-3 sm:p-4 md:p-6">
               {visibleBookings.slice((currentBookingPage - 1) * bookingsPerPage, currentBookingPage * bookingsPerPage).map((booking, bIdx) => (
-                <li key={`mgmt-booking-${booking.id}`} className="p-6 md:p-8 bg-white border border-stone-200 rounded-2xl shadow-sm hover:shadow-md transition">
-                  <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-4">
+                <li key={`mgmt-booking-${booking.id}`} className="p-3.5 sm:p-5 md:p-6 bg-white border border-stone-200 rounded-xl sm:rounded-2xl shadow-2xs hover:shadow-xs transition">
+                  <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-3 sm:gap-4 mb-3">
                     <div className="w-full">
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-1 sm:flex-wrap w-full">
-                        <div className="flex items-center gap-3 flex-wrap">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-1 sm:flex-wrap w-full">
+                        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
 
-                          <span className="font-bold text-stone-900 text-lg flex items-center gap-2">
+                          <span className="font-bold text-stone-900 text-base sm:text-lg flex items-center gap-1.5">
                             {booking.guestName}
                             <button
                               type="button"
                               onClick={() => setEditModalBooking(booking)}
-                              className="text-stone-400 hover:text-stone-900 p-1 hover:bg-stone-200 rounded-full transition"
+                              className="text-stone-400 hover:text-stone-900 p-1 hover:bg-stone-100 rounded-full transition cursor-pointer"
                               title="Edit Booking"
                             >
-                              <Edit2 className="w-4 h-4" />
+                              <Edit2 className="w-3.5 h-3.5" />
                             </button>
                           </span>
-                          <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider ${
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-wider ${
                             booking.status === 'confirmed' ? 'bg-emerald-100 text-emerald-700' :
                             booking.status === 'rejected' ? 'bg-red-100 text-red-700' :
                             booking.status === 'cancelled' ? 'bg-stone-200 text-stone-600' :
@@ -2884,28 +3160,28 @@ export default function ManageHotel() {
                           </span>
                           
                           {booking.status === 'confirmed' && booking.arrivalPin && (
-                            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold tracking-wider bg-indigo-100 text-indigo-700 border border-indigo-200 flex items-center gap-1">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-bold tracking-wider bg-indigo-100 text-indigo-700 border border-indigo-200 flex items-center gap-1">
                               PIN: {booking.arrivalPin}
                             </span>
                           )}
                           
                         </div>
                         {booking.status !== 'cancelled' && booking.status !== 'rejected' && (
-                            <div className="sm:ml-auto flex items-center gap-2 flex-wrap w-full sm:w-auto">
+                            <div className="sm:ml-auto flex items-center gap-1.5 sm:gap-2 flex-wrap w-full sm:w-auto mt-1 sm:mt-0">
                               <button
                                 type="button"
                                 onClick={() => setReminderModalBooking(booking)}
-                                className="text-xs font-semibold text-emerald-800 border-2 border-emerald-300 bg-emerald-50 px-3 py-1 rounded-lg hover:bg-emerald-100 hover:border-emerald-600 transition inline-flex items-center gap-1.5 cursor-pointer shadow-2xs"
-                                title="Open ready-to-go email & WhatsApp reminder templates (3-Day Arrival, 24h PIN, Deposit, Check-out)"
+                                className="text-xs font-semibold text-emerald-800 border-2 border-emerald-300 bg-emerald-50 px-2.5 sm:px-3 py-1 rounded-lg hover:bg-emerald-100 hover:border-emerald-600 transition inline-flex items-center gap-1 cursor-pointer shadow-2xs"
+                                title="Open ready-to-go email & WhatsApp reminder templates"
                               >
                                 <Mail className="w-3.5 h-3.5 text-emerald-600" />
-                                Reminders & Templates
+                                Reminders
                               </button>
                               {hotel?.adminChatEnabled !== false && (
                                 <button
                                   type="button"
                                   onClick={() => openBookingChat(booking)}
-                                  className="text-xs font-semibold text-stone-900 border-2 border-stone-200 bg-white px-3 py-1 rounded-lg hover:border-stone-900 transition inline-flex items-center gap-1 cursor-pointer"
+                                  className="text-xs font-semibold text-stone-900 border border-stone-200 bg-white px-2.5 sm:px-3 py-1 rounded-lg hover:border-stone-900 transition inline-flex items-center gap-1 cursor-pointer"
                                 >
                                   <MessageSquare className="w-3.5 h-3.5" /> Message Guest
                                 </button>
@@ -3191,17 +3467,17 @@ export default function ManageHotel() {
 
       {/* TAB CONTENT: INQUIRIES */}
       {activeTab === 'inquiries' && (
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {/* Host Status & Overview Card */}
-          <div className="bg-white rounded-2xl border border-stone-200 p-6 md:p-8 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="bg-white rounded-xl sm:rounded-2xl border border-stone-200 p-4 sm:p-6 md:p-8 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
             <div>
-              <div className="flex items-center gap-3">
-                <span className={`h-3 w-3 rounded-full ${hotel.isOnline !== false ? 'bg-emerald-500 animate-pulse' : 'bg-stone-400'}`} />
-                <h3 className="text-xl font-serif font-bold text-stone-900">
+              <div className="flex items-center gap-2.5">
+                <span className={`h-2.5 w-2.5 rounded-full ${hotel.isOnline !== false ? 'bg-emerald-500 animate-pulse' : 'bg-stone-400'}`} />
+                <h3 className="text-base sm:text-lg md:text-xl font-serif font-bold text-stone-900">
                   {hotel.isOnline !== false ? 'You are Online' : 'You are Offline (Away)'}
                 </h3>
               </div>
-              <p className="text-sm text-stone-500 mt-1">
+              <p className="text-xs sm:text-sm text-stone-500 mt-1">
                 {hotel.isOnline !== false
                   ? 'Guests can see you are ready for instant inquiries.'
                   : `Out-of-office message active: "${hotel.outOfOfficeMessage || "We're currently away. Leave a message and we'll reply soon!"}"`}
@@ -3210,32 +3486,32 @@ export default function ManageHotel() {
             <button
               onClick={handleToggleOnlineStatus}
               disabled={togglingStatus}
-              className={`px-5 py-2.5 rounded-xl font-semibold text-xs uppercase tracking-wider transition ${
+              className={`px-4 py-2 sm:px-5 sm:py-2.5 rounded-lg sm:rounded-xl font-semibold text-xs uppercase tracking-wider transition cursor-pointer shrink-0 ${
                 hotel.isOnline !== false
                   ? 'bg-stone-100 hover:bg-stone-200 text-stone-800 border border-stone-300'
-                  : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm'
+                  : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs'
               }`}
             >
               {hotel.isOnline !== false ? 'Go Offline / Set Away' : 'Turn Online Now'}
             </button>
           </div>
 
-          <div className="bg-white rounded-2xl border border-stone-200 overflow-hidden shadow-sm p-6 md:p-8">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-serif font-bold text-stone-900">Guest Messages & Inquiries</h3>
-              <span className="text-xs font-semibold text-stone-500 bg-stone-100 px-3 py-1 rounded-full">
+          <div className="bg-white rounded-xl sm:rounded-2xl border border-stone-200 overflow-hidden shadow-2xs p-4 sm:p-6 md:p-8">
+            <div className="flex items-center justify-between mb-4 sm:mb-6">
+              <h3 className="text-base sm:text-lg md:text-xl font-serif font-bold text-stone-900">Guest Messages &amp; Inquiries</h3>
+              <span className="text-[11px] sm:text-xs font-semibold text-stone-500 bg-stone-100 px-2.5 py-0.5 rounded-full">
                 {inquiries.length} conversation{inquiries.length === 1 ? '' : 's'}
               </span>
             </div>
             
             {inquiries.length === 0 ? (
-              <div className="text-center py-16 text-stone-500">
-                <div className="w-14 h-14 bg-stone-100 rounded-2xl flex items-center justify-center mx-auto mb-4 text-stone-400">
-                  <MessageSquare className="w-7 h-7" />
+              <div className="text-center py-10 sm:py-16 text-stone-500">
+                <div className="w-10 h-10 sm:w-14 sm:h-14 bg-stone-100 rounded-xl sm:rounded-2xl flex items-center justify-center mx-auto mb-3 text-stone-400">
+                  <MessageSquare className="w-5 h-5 sm:w-7 sm:h-7" />
                 </div>
-                <h4 className="font-serif font-bold text-stone-800 text-lg">No inquiries yet</h4>
-                <p className="text-sm text-stone-500 max-w-sm mx-auto mt-1">
-                  When potential guests send a message from your property page, their inquiries will appear here with real-time updates and notification chimes.
+                <h4 className="font-serif font-bold text-stone-800 text-base sm:text-lg">No inquiries yet</h4>
+                <p className="text-xs sm:text-sm text-stone-500 max-w-sm mx-auto mt-1">
+                  When potential guests send a message from your property page, their inquiries will appear here with real-time updates.
                 </p>
               </div>
             ) : (
@@ -3251,10 +3527,10 @@ export default function ManageHotel() {
                                    (!inquiry.managerLastOpenedAt || inquiry.updatedAt > inquiry.managerLastOpenedAt);
 
                   return (
-                    <div key={`inquiry-row-${inquiry.id || 'inq'}-${inqIdx}`} className="py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 group hover:bg-stone-50/60 -mx-6 px-6 transition rounded-2xl">
-                      <div className="flex items-start gap-4">
+                    <div key={`inquiry-row-${inquiry.id || 'inq'}-${inqIdx}`} className="py-3 sm:py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 group hover:bg-stone-50/60 -mx-3 sm:-mx-4 px-3 sm:px-4 transition rounded-xl sm:rounded-2xl">
+                      <div className="flex items-start gap-3">
                         <div className="relative">
-                          <div className="w-11 h-11 rounded-2xl bg-stone-900 text-white font-bold text-base flex items-center justify-center shrink-0 shadow-sm">
+                          <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-stone-900 text-white font-bold text-sm sm:text-base flex items-center justify-center shrink-0 shadow-2xs">
                             {guestInitial}
                           </div>
                           {/* Live Presence indicator dot on guest avatar */}

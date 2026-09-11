@@ -124,13 +124,37 @@ export interface DailyBoard {
   updatedAt?: number;
 }
 
+export type SaleType = 
+  | 'flash_sale'
+  | 'early_bird'
+  | 'weekend_special'
+  | 'last_minute'
+  | 'seasonal'
+  | 'conference_special'
+  | 'holiday_special'
+  | 'custom';
+
+export type PromotionTarget = 'all' | 'rooms_only' | 'conferences_only' | 'specific_rooms';
+
+export type DiscountType = 'percentage' | 'fixed_slash';
+
 export interface Promotion {
   id: string;
   name: string;
+  saleType?: SaleType;
+  saleTypeCustomLabel?: string;
+  appliesTo?: PromotionTarget;
+  targetRoomIds?: string[];
+  discountType?: DiscountType;
   discountPercentage: number;
+  fixedSlashAmount?: Partial<Record<CurrencyCode, number>>;
+  badgeText?: string;
+  highlight?: string;
+  minNights?: number;
   startDate?: string;
   endDate?: string;
   isActive: boolean;
+  createdAt?: number;
 }
 export interface Hotel {
   id?: string;
@@ -139,6 +163,7 @@ export interface Hotel {
   infrastructure?: InfrastructureDetails;
   crew?: StayCrewMember[];
   promotions?: Promotion[];
+  rooms?: RoomType[];
   dailyBoard?: DailyBoard;
   managerId: string;
   managerName?: string;
@@ -487,6 +512,10 @@ export interface ConferenceRoom {
   galleryUrls?: string[];
   policies?: string[];
   pricing?: string;
+  price?: number;
+  priceCurrency?: CurrencyCode;
+  prices?: PriceMap;
+  rateType?: 'per_day' | 'per_half_day' | 'per_hour' | 'per_delegate';
 }
 
 export type ReminderType = 'check_in_3d' | 'check_in_24h' | 'check_out' | 'custom';

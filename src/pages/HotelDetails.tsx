@@ -1,4 +1,5 @@
-import { getActivePromotion } from '../lib/promotions';
+import { getActivePromotion, calculateSlashedPrice, getSaleTypeLabel, getSaleTypeBadge, getAllActivePromotions } from '../lib/promotions';
+import PromotionIcon from '../components/PromotionIcon';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { doc, getDoc, collection, query, where, getDocs, addDoc, onSnapshot } from 'firebase/firestore';
@@ -11,7 +12,7 @@ import { useChatModal } from '../contexts/ChatModalContext';
 import { useManagerPresence } from '../hooks/usePresence';
 import PhoneInput from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
-import { MapPin, Megaphone, Calendar, Users, Star, CheckCircle2, ChevronRight, Info, Plus, Minus, ShieldCheck, AlertTriangle, UtensilsCrossed, Clock, BedDouble, MessageSquare, MessageCircle, Images, Mail, PhoneCall, Phone, Navigation, CreditCard, LogIn, LogOut, Share2, Zap, Droplets, Map, Wifi, Monitor } from 'lucide-react';
+import { MapPin, Megaphone, Calendar, Users, Star, CheckCircle2, ChevronRight, ChevronDown, Compass, Info, Plus, Minus, ShieldCheck, AlertTriangle, UtensilsCrossed, Clock, BedDouble, MessageSquare, MessageCircle, Images, Mail, PhoneCall, Phone, Navigation, CreditCard, LogIn, LogOut, Share, Zap, Droplets, Map, Wifi, Monitor, Tag } from 'lucide-react';
 import toast from 'react-hot-toast';
 import AvailabilityCalendar from '../components/AvailabilityCalendar';
 import { motion } from 'motion/react';
@@ -112,8 +113,18 @@ export default function HotelDetails() {
       // Show when scrolled past roughly the hero image
       setIsScrolledPastHero(window.scrollY > 400);
     };
+    const handleOutsideClick = (e: MouseEvent) => {
+      const details = document.getElementById('sticky-quick-nav-details') as HTMLDetailsElement | null;
+      if (details && details.open && !details.contains(e.target as Node)) {
+        details.removeAttribute('open');
+      }
+    };
     window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
+    document.addEventListener('click', handleOutsideClick);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      document.removeEventListener('click', handleOutsideClick);
+    };
   }, []);
 
   // When the booking form was opened, for the "filled impossibly fast" check.
@@ -577,61 +588,140 @@ export default function HotelDetails() {
       </Helmet>
       {/* Sticky Header when scrolled past hero */}
       <div
-        className={`fixed top-20 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-b border-stone-200/60 shadow-xs transition-transform duration-300 ease-in-out flex flex-col ${
+        id="sticky-property-bar"
+        className={`fixed top-14 sm:top-16 md:top-16 lg:top-18 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-b border-stone-200/70 shadow-xs transition-transform duration-300 ease-in-out ${
           isScrolledPastHero ? 'translate-y-0' : '-translate-y-full opacity-0 pointer-events-none'
         }`}
       >
-        <div className="mx-auto max-w-7xl px-4 lg:px-8 h-16 flex items-center justify-between">
-          <h2 className="font-serif text-lg md:text-xl font-bold text-stone-900 tracking-tight truncate pr-4">
+        <div className="mx-auto max-w-7xl px-3 sm:px-4 md:px-6 lg:px-8 h-12 sm:h-14 flex items-center justify-between gap-2 sm:gap-4 w-full">
+          <h2 className="font-serif text-xs min-[400px]:text-sm sm:text-base md:text-lg font-bold text-stone-900 tracking-tight truncate min-w-0 flex-1">
             <MaskedPlaceName name={hotel.name} fallback="[Your Lodge Name]" />
           </h2>
-          <div className="flex items-center gap-2 sm:gap-3">
+
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            {/* Desktop Navigation Links */}
+            <nav className="hidden xl:flex items-center gap-1 text-xs font-semibold text-stone-600 mr-1">
+              <a 
+                href="#rooms-section" 
+                onClick={(e) => {
+                  e.preventDefault();
+                  document.getElementById('rooms-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }}
+                className="px-2.5 py-1.5 rounded-lg hover:bg-stone-100 hover:text-stone-900 transition flex items-center gap-1.5"
+              >
+                <BedDouble className="w-3.5 h-3.5 text-stone-400" /> Accommodations
+              </a>
+              {hotel.restaurant && hotel.restaurant.enabled !== false && (
+                <a 
+                  href="#restaurant-menu" 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    document.getElementById('restaurant-menu')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }}
+                  className="px-2.5 py-1.5 rounded-lg hover:bg-stone-100 hover:text-stone-900 transition flex items-center gap-1.5"
+                >
+                  <UtensilsCrossed className="w-3.5 h-3.5 text-stone-400" /> Dining
+                </a>
+              )}
+              <a 
+                href="#reviews" 
+                onClick={(e) => {
+                  e.preventDefault();
+                  document.getElementById('reviews')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }}
+                className="px-2.5 py-1.5 rounded-lg hover:bg-stone-100 hover:text-stone-900 transition flex items-center gap-1.5"
+              >
+                <Star className="w-3.5 h-3.5 text-stone-400" /> Reviews
+              </a>
+              <a 
+                href="#directions" 
+                onClick={(e) => {
+                  e.preventDefault();
+                  document.getElementById('directions')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }}
+                className="px-2.5 py-1.5 rounded-lg hover:bg-stone-100 hover:text-stone-900 transition flex items-center gap-1.5"
+              >
+                <MapPin className="w-3.5 h-3.5 text-stone-400" /> Location
+              </a>
+            </nav>
+
+            {/* Mobile & Tablet Jump to Dropdown */}
+            <details id="sticky-quick-nav-details" className="relative group xl:hidden">
+              <summary className="list-none flex items-center gap-1 bg-stone-100 hover:bg-stone-200 text-stone-700 h-8 sm:h-9 px-2 sm:px-2.5 md:px-3 rounded-full text-[11px] sm:text-xs font-semibold transition cursor-pointer select-none [&::-webkit-details-marker]:hidden shadow-2xs">
+                <Compass className="w-3.5 h-3.5 text-stone-500" />
+                <span className="hidden min-[380px]:inline">Jump to</span>
+                <ChevronDown className="w-3 h-3 text-stone-400 group-open:rotate-180 transition-transform" />
+              </summary>
+              <div className="absolute right-0 mt-2 w-48 bg-white border border-stone-200/90 rounded-2xl shadow-xl z-50 p-1.5 flex flex-col gap-0.5">
+                <a
+                  href="#rooms-section"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    (e.currentTarget.closest('details') as HTMLDetailsElement | null)?.removeAttribute('open');
+                    document.getElementById('rooms-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }}
+                  className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-stone-700 hover:bg-stone-100 hover:text-stone-900 rounded-xl transition"
+                >
+                  <BedDouble className="w-3.5 h-3.5 text-stone-500" /> Accommodations
+                </a>
+                {hotel.restaurant && hotel.restaurant.enabled !== false && (
+                  <a
+                    href="#restaurant-menu"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      (e.currentTarget.closest('details') as HTMLDetailsElement | null)?.removeAttribute('open');
+                      document.getElementById('restaurant-menu')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }}
+                    className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-stone-700 hover:bg-stone-100 hover:text-stone-900 rounded-xl transition"
+                  >
+                    <UtensilsCrossed className="w-3.5 h-3.5 text-stone-500" /> Dining
+                  </a>
+                )}
+                <a
+                  href="#reviews"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    (e.currentTarget.closest('details') as HTMLDetailsElement | null)?.removeAttribute('open');
+                    document.getElementById('reviews')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }}
+                  className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-stone-700 hover:bg-stone-100 hover:text-stone-900 rounded-xl transition"
+                >
+                  <Star className="w-3.5 h-3.5 text-stone-500" /> Reviews
+                </a>
+                <a
+                  href="#directions"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    (e.currentTarget.closest('details') as HTMLDetailsElement | null)?.removeAttribute('open');
+                    document.getElementById('directions')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }}
+                  className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-stone-700 hover:bg-stone-100 hover:text-stone-900 rounded-xl transition"
+                >
+                  <MapPin className="w-3.5 h-3.5 text-stone-500" /> Location
+                </a>
+              </div>
+            </details>
+
+            {/* Share button */}
             <button
               onClick={handleShare}
-              className="flex items-center gap-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 px-3 sm:px-4 py-2 sm:py-2.5 rounded-full text-xs font-bold transition-all shadow-sm shrink-0"
+              className="flex items-center justify-center gap-1 bg-stone-100 hover:bg-stone-200 text-stone-700 h-8 sm:h-9 w-8 sm:w-9 min-[480px]:w-auto min-[480px]:px-3 rounded-full text-xs font-semibold transition-all shadow-2xs shrink-0 cursor-pointer"
               title="Share this property"
             >
-              <Share2 className="h-4 w-4" /> <span className="hidden sm:inline">Share</span>
+              <Share className="h-3.5 w-3.5 text-stone-600" />
+              <span className="hidden min-[480px]:inline">Share</span>
             </button>
+
+            {/* Book Now CTA */}
             <button
               onClick={() => {
                 document.getElementById('rooms-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
               }}
-              className="bg-stone-900 text-white px-4 sm:px-5 py-2 sm:py-2.5 rounded-full text-xs font-bold uppercase tracking-widest shrink-0 hover:bg-emerald-700 active:scale-95 transition-all shadow-sm"
+              className="bg-stone-900 text-white h-8 sm:h-9 px-3 sm:px-4 md:px-5 rounded-full text-[11px] sm:text-xs font-bold uppercase tracking-wider shrink-0 hover:bg-emerald-700 active:scale-95 transition-all shadow-2xs cursor-pointer flex items-center justify-center whitespace-nowrap"
             >
               Book Now
             </button>
           </div>
-        </div>
-
-        {/* Mobile Quick Navigation */}
-        <div className="lg:hidden flex items-center gap-2 overflow-x-auto px-4 pb-3 scrollbar-hide snap-x touch-pan-x [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-          <a 
-            href="#rooms-section" 
-            className="whitespace-nowrap shrink-0 snap-start px-3.5 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold rounded-full border border-stone-200/60 flex items-center gap-1.5 transition-colors min-h-[38px]"
-          >
-            <BedDouble className="w-3.5 h-3.5 text-stone-400" /> Accommodations
-          </a>
-          {hotel.restaurant && hotel.restaurant.enabled !== false && (
-            <a 
-              href="#restaurant-menu" 
-              className="whitespace-nowrap shrink-0 snap-start px-3.5 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold rounded-full border border-stone-200/60 flex items-center gap-1.5 transition-colors min-h-[38px]"
-            >
-              <UtensilsCrossed className="w-3.5 h-3.5 text-stone-400" /> Dining
-            </a>
-          )}
-          <a 
-            href="#reviews" 
-            className="whitespace-nowrap shrink-0 snap-start px-3.5 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold rounded-full border border-stone-200/60 flex items-center gap-1.5 transition-colors min-h-[38px]"
-          >
-            <Star className="w-3.5 h-3.5 text-stone-400" /> Reviews
-          </a>
-          <a 
-            href="#directions" 
-            className="whitespace-nowrap shrink-0 snap-start px-3.5 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold rounded-full border border-stone-200/60 flex items-center gap-1.5 transition-colors min-h-[38px]"
-          >
-            <MapPin className="w-3.5 h-3.5 text-stone-400" /> Location
-          </a>
         </div>
       </div>
 
@@ -672,7 +762,7 @@ export default function HotelDetails() {
                   onClick={handleShare}
                   className="bg-white/20 hover:bg-white/30 backdrop-blur text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg flex items-center gap-2 transition-all"
                 >
-                  <Share2 className="h-4 w-4" />
+                  <Share className="h-4 w-4" />
                   Share
                 </button>
                 <button 
@@ -689,7 +779,7 @@ export default function HotelDetails() {
                 onClick={handleShare}
                 className="bg-white/20 hover:bg-white/30 backdrop-blur text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg flex items-center gap-2 transition-all"
               >
-                <Share2 className="h-4 w-4" />
+                <Share className="h-4 w-4" />
               </button>
               <button 
                 className="bg-white/20 hover:bg-white/30 backdrop-blur text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg flex items-center gap-2 transition-all"
@@ -803,62 +893,123 @@ export default function HotelDetails() {
 
             <a
               href="#directions"
-              className="lg:hidden flex items-center gap-2 bg-stone-100 hover:bg-stone-200 text-stone-800 px-4 py-2 rounded-full text-sm font-semibold transition"
+              className="lg:hidden flex items-center gap-1.5 bg-stone-100 hover:bg-stone-200 text-stone-800 px-3.5 py-1.5 rounded-full text-xs font-semibold transition"
             >
-              <Navigation className="h-4 w-4 text-emerald-600" />
-              <span>Get Directions Right Away</span>
+              <Navigation className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+              <span>Directions</span>
             </a>
             <a
               href="#reviews"
-              className="lg:hidden flex items-center gap-2 bg-stone-100 hover:bg-stone-200 text-stone-800 px-4 py-2 rounded-full text-sm font-semibold transition"
+              className="lg:hidden flex items-center gap-1.5 bg-stone-100 hover:bg-stone-200 text-stone-800 px-3.5 py-1.5 rounded-full text-xs font-semibold transition"
             >
-              <Star className="h-4 w-4 text-emerald-600" />
-              <span>Skip to Reviews</span>
+              <Star className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+              <span>Reviews</span>
             </a>
           </div>
         </div>
       </div>
 
-      <div className="max-w-[90rem] mx-auto px-4 lg:px-12 py-12 lg:py-24 grid grid-cols-1 lg:grid-cols-3 gap-12 lg:gap-24">
+      <div className="max-w-[90rem] mx-auto px-3.5 sm:px-6 lg:px-12 py-5 sm:py-8 lg:py-16 grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8 lg:gap-14 xl:gap-20">
         <div className="lg:col-span-2">
 
-          <h2 className="text-4xl md:text-5xl font-serif text-stone-900 mb-6 tracking-tight">About this property</h2>
-          <p className="text-stone-600 text-lg leading-relaxed mb-12">{hotel.description}</p>
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-serif text-stone-900 mb-2.5 sm:mb-4 tracking-tight">About this property</h2>
+          <p className="text-stone-600 text-sm sm:text-base md:text-base lg:text-lg leading-relaxed mb-6 sm:mb-8 lg:mb-12">{hotel.description}</p>
 
           {/* Spaces Section */}
-          <div className="mb-16">
-            <div id="rooms-section" className="scroll-mt-36 lg:scroll-mt-28 mb-10">
+          <div className="mb-8 sm:mb-10 lg:mb-14">
+            <div id="rooms-section" className="scroll-mt-28 sm:scroll-mt-32 lg:scroll-mt-28 mb-4 sm:mb-6 lg:mb-8">
               {conferenceRooms.length > 0 ? (
-                <div className="flex items-center gap-4 sm:gap-6 border-b border-stone-200 overflow-x-auto scrollbar-hide snap-x touch-pan-x -mx-4 px-4 sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                  <button 
-                    onClick={() => setActiveSpaceTab('rooms')}
-                    className={`pb-3 sm:pb-4 text-lg sm:text-xl md:text-2xl font-serif tracking-tight whitespace-nowrap shrink-0 snap-start min-h-[44px] transition-colors border-b-2 ${activeSpaceTab === 'rooms' ? 'border-stone-900 text-stone-900' : 'border-transparent text-stone-400 hover:text-stone-600'}`}
-                  >
-                    Accommodations
-                  </button>
-                  <button 
-                    onClick={() => setActiveSpaceTab('conferences')}
-                    className={`pb-3 sm:pb-4 text-lg sm:text-xl md:text-2xl font-serif tracking-tight whitespace-nowrap shrink-0 snap-start min-h-[44px] transition-colors border-b-2 ${activeSpaceTab === 'conferences' ? 'border-stone-900 text-stone-900' : 'border-transparent text-stone-400 hover:text-stone-600'}`}
-                  >
-                    Conference Spaces
-                  </button>
-                </div>
+                <>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                    {/* Mobile/Tablet Dropdown */}
+                    <div className="sm:hidden relative w-full mb-2">
+                      <select
+                        value={activeSpaceTab}
+                        onChange={(e) => setActiveSpaceTab(e.target.value as 'rooms' | 'conferences')}
+                        className="w-full bg-white border border-stone-200 rounded-xl pl-4 pr-10 py-3 text-sm font-bold text-stone-900 appearance-none outline-none focus:border-stone-900 focus:ring-1 focus:ring-stone-900 shadow-sm"
+                      >
+                        <option value="rooms">Accommodations</option>
+                        <option value="conferences">Conference Spaces</option>
+                      </select>
+                      <ChevronDown className="w-5 h-5 text-stone-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    </div>
+
+                    {/* Desktop Tabs */}
+                    <div className="hidden sm:flex items-center gap-6 border-b border-stone-200">
+                      <button 
+                        onClick={() => setActiveSpaceTab('rooms')}
+                        className={`pb-3.5 text-base sm:text-lg md:text-xl font-serif tracking-tight whitespace-nowrap shrink-0 transition-colors border-b-2 ${activeSpaceTab === 'rooms' ? 'border-stone-900 text-stone-900 font-bold' : 'border-transparent text-stone-400 hover:text-stone-600'}`}
+                      >
+                        Accommodations
+                      </button>
+                      <button 
+                        onClick={() => setActiveSpaceTab('conferences')}
+                        className={`pb-3.5 text-base sm:text-lg md:text-xl font-serif tracking-tight whitespace-nowrap shrink-0 transition-colors border-b-2 ${activeSpaceTab === 'conferences' ? 'border-stone-900 text-stone-900 font-bold' : 'border-transparent text-stone-400 hover:text-stone-600'}`}
+                      >
+                        Conference Spaces
+                      </button>
+                    </div>
+                  </div>
+                </>
               ) : (
-                <h2 className="text-4xl md:text-5xl font-serif text-stone-900 tracking-tight">Available Rooms</h2>
+                <h2 className="text-2xl sm:text-3xl lg:text-4xl font-serif text-stone-900 tracking-tight">Available Rooms</h2>
               )}
             </div>
             
             {activeSpaceTab === 'rooms' ? (
               <>
+            {(() => {
+              const activePromos = hotel ? getAllActivePromotions(hotel, checkIn || todayStr()) : [];
+              if (activePromos.length === 0) return null;
+              const leadPromo = activePromos[0];
+              const saleLabel = getSaleTypeLabel(leadPromo.saleType, leadPromo.saleTypeCustomLabel);
+
+              return (
+                <div className="mb-6 bg-stone-900 text-white rounded-2xl p-4 sm:p-5 shadow-xs flex items-start sm:items-center justify-between gap-4 flex-wrap border border-stone-800">
+                  <div className="flex items-start gap-3 min-w-0">
+                    <div className="p-2.5 bg-stone-800 rounded-xl shrink-0 border border-stone-700">
+                      <PromotionIcon saleType={leadPromo.saleType} className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        <span className="bg-white text-stone-900 text-[10px] sm:text-xs font-bold uppercase px-2.5 py-0.5 rounded-full tracking-wider shadow-2xs">
+                          {saleLabel}
+                        </span>
+                        <span className="text-xs sm:text-sm font-semibold text-stone-200">
+                          Up to {leadPromo.discountPercentage}% Price Slash Active
+                        </span>
+                      </div>
+                      <p className="text-xs sm:text-sm text-stone-300">
+                        {leadPromo.appliesTo === 'conferences_only'
+                          ? 'Discounted rates are active on meeting halls and conference facilities. Rates slashed automatically.'
+                          : leadPromo.appliesTo === 'rooms_only'
+                          ? 'Slashed prices active on accommodations. Compare original rates and slashed FROM > TO prices below.'
+                          : 'Slashed prices active on both accommodations and conference spaces. Compare original rates and slashed FROM > TO prices below.'}
+                      </p>
+                    </div>
+                  </div>
+                  {leadPromo.endDate && (
+                    <div className="text-right shrink-0 text-xs text-stone-400 font-medium">
+                      Valid until {leadPromo.endDate}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
             {rooms.length === 0 ? (
-              <p className="text-stone-500 italic">No rooms available at the moment.</p>
+              <p className="text-stone-500 italic text-sm sm:text-base">No rooms available at the moment.</p>
             ) : (
-              <div className="flex overflow-x-auto md:flex-col gap-4 md:gap-6 mb-12 pb-6 -mx-4 px-4 md:mx-0 md:px-0 snap-x snap-mandatory scrollbar-none">
+              <div className="flex flex-col gap-4 sm:gap-5 md:gap-6 mb-8 sm:mb-10 pb-2">
                 {rooms.map((room, index) => {
                   const status = room.id ? roomAvailability[room.id] : undefined;
                   const roomDisplayCurrency = resolveCurrency(room, currency);
                   const isSoldOut = status ? !status.available : (room.quantity ?? 0) <= 0;
                   const hasDates = !!checkIn && !!checkOut && checkIn < checkOut;
+                  const roomPromo = hotel ? getActivePromotion(hotel, checkIn || todayStr(), 'room', room.id) : null;
+                  const baseRoomPrice = roomPrice(room, roomDisplayCurrency) ?? 0;
+                  const roomSlashed = calculateSlashedPrice(baseRoomPrice, roomPromo, roomDisplayCurrency);
+
                   return (
                   <motion.div
                     key={room.id || `room-${index}`}
@@ -866,42 +1017,48 @@ export default function HotelDetails() {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true, margin: "-50px" }}
                     transition={{ duration: 0.5, ease: "easeOut" }}
-                    className="w-[85vw] sm:w-[400px] md:w-full shrink-0 snap-center grid grid-cols-1 md:grid-cols-[2fr_3fr] gap-6 p-5 md:p-6 lg:p-7 bg-white border border-stone-200 rounded-[24px] shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden"
+                    className="w-full flex flex-col sm:flex-row bg-white border border-stone-200/90 rounded-2xl sm:rounded-3xl shadow-xs hover:shadow-md transition-shadow duration-300 overflow-hidden p-3 sm:p-4 md:p-5 gap-4 sm:gap-5 md:gap-6"
                   >
-                    <div className="w-full aspect-[4/3] overflow-hidden rounded-[16px] relative group">
+                    <div className="w-full sm:w-[240px] md:w-[280px] lg:w-[320px] aspect-video overflow-hidden rounded-xl sm:rounded-2xl relative group shrink-0">
                       <RoomGallery 
                         images={Array.from(new Set([getRoomImage(room, hotel), ...(room.galleryUrls || [])]))}
                         altPrefix={room.name}
                       />
                     </div>
                     
-                    <div className="w-full flex flex-col justify-between py-1 min-w-0">
-                      <div>
-                        <div className="flex flex-wrap items-start justify-between gap-4 mb-3">
-                          <h3 className="text-2xl md:text-3xl font-serif text-stone-900 tracking-tight leading-none">{room.name}</h3>
-                          <div className="flex items-center gap-2 text-stone-700 bg-stone-50 px-3 py-1.5 rounded-full text-xs font-semibold border border-stone-200 shadow-xs">
-                            <Users className="h-3.5 w-3.5 text-emerald-600 shrink-0" /> 
+                    <div className="w-full flex flex-col flex-1 sm:py-2 min-w-0">
+                      <div className="flex-1">
+                        {roomSlashed.hasDiscount && (
+                          <div className="inline-flex items-center gap-1.5 bg-stone-900 text-white px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider shadow-2xs mb-2">
+                            <PromotionIcon saleType={roomSlashed.saleType} className="w-3 h-3 text-white" />
+                            <span>{roomSlashed.saleTypeLabel} · {roomSlashed.discountPercentage}% OFF</span>
+                          </div>
+                        )}
+                        <div className="flex flex-wrap items-start justify-between gap-2.5 mb-2 sm:mb-2.5">
+                          <h3 className="text-lg sm:text-xl md:text-2xl font-serif font-bold text-stone-900 tracking-tight leading-snug flex-1 min-w-0">{room.name}</h3>
+                          <div className="flex items-center gap-1.5 text-stone-700 bg-stone-50 px-2.5 py-1 rounded-full text-[11px] sm:text-xs font-semibold border border-stone-200 shadow-2xs shrink-0">
+                            <Users className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-emerald-600 shrink-0" /> 
                             <span>Max {room.maxGuests}</span>
                           </div>
                         </div>
                         
-                        <p className="text-stone-500 text-sm leading-relaxed mb-5 font-light line-clamp-3 md:line-clamp-4">{room.description}</p>
+                        <p className="text-stone-500 text-xs sm:text-sm leading-relaxed mb-3 sm:mb-4 font-light line-clamp-2 sm:line-clamp-3">{room.description}</p>
                         
-                        <div className="flex flex-wrap items-center gap-2 mb-4">
+                        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-3 sm:mb-4">
                           {isSoldOut ? (
-                            <div className="flex items-center gap-1.5 bg-red-50 text-red-700 px-3 py-1.5 rounded-full text-xs font-bold border border-red-100">
-                              <Info className="h-3.5 w-3.5" />
-                              <span>{hasDates ? 'Sold out for these dates' : 'Not available'}</span>
+                            <div className="flex items-center gap-1.5 bg-red-50 text-red-700 px-2.5 py-1 rounded-full text-[11px] sm:text-xs font-bold border border-red-100">
+                              <Info className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                              <span>{hasDates ? 'Sold out for dates' : 'Not available'}</span>
                             </div>
                           ) : (
-                            <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-800 px-3 py-1.5 rounded-full text-xs font-bold border border-emerald-100">
-                              <CheckCircle2 className="h-3.5 w-3.5" />
+                            <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-800 px-2.5 py-1 rounded-full text-[11px] sm:text-xs font-bold border border-emerald-100">
+                              <CheckCircle2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                               <span>{status?.remaining != null ? status.remaining : room.quantity} Available</span>
                             </div>
                           )}
                           {room.packages && room.packages.length > 0 && room.packages.map((pkg, pIdx) => (
-                            <span key={`${pkg.id || 'pkg'}-${pIdx}`} className="px-3 py-1.5 bg-stone-100 text-stone-700 rounded-full text-[11px] font-semibold tracking-wide border border-stone-200 flex items-center gap-1">
-                              <Plus className="w-3 h-3 text-stone-400" />
+                            <span key={`${pkg.id || 'pkg'}-${pIdx}`} className="px-2.5 py-1 bg-stone-100 text-stone-700 rounded-full text-[10px] sm:text-[11px] font-semibold tracking-wide border border-stone-200 flex items-center gap-1">
+                              <Plus className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-stone-400" />
                               {pkg.name}
                               {(() => {
                                 const amount = packagePrice(pkg, roomDisplayCurrency, roomPrimaryCurrency(room));
@@ -912,26 +1069,54 @@ export default function HotelDetails() {
                         </div>
                       </div>
                       
-                      <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-4 mt-4 pt-4 border-t border-stone-100 flex-wrap">
+                      <div className="flex items-center justify-between gap-3 mt-3 pt-3 border-t border-stone-100 flex-wrap">
                         <div>
-                          
-                          <div className="flex items-baseline gap-1.5">
-                            <span className="text-sm text-stone-500 font-medium mr-1.5">From</span>
-                              <span className="text-3xl text-stone-900">
-                                <PriceDisplay amount={roomPrice(room, roomDisplayCurrency) ?? 0} currency={roomDisplayCurrency} />
-                            </span>
-                            <span className="text-stone-500 uppercase text-[10px] font-bold">/ night</span>
-                          </div>
-                          {roomCurrencies(room).filter(c => c !== roomDisplayCurrency).map((code, cIdx) => (
-                            <div key={`${code}-${cIdx}`} className="text-xs text-stone-400 mt-1 font-medium">
-                              or <PriceDisplay amount={roomPrice(room, code) ?? 0} currency={code} /> / night
+                          {roomSlashed.hasDiscount ? (
+                            <div className="flex flex-col gap-0.5">
+                              <div className="text-[11px] font-semibold text-stone-700">
+                                Slashed by <PriceDisplay amount={roomSlashed.slashedAmount} currency={roomDisplayCurrency} /> ({roomSlashed.discountPercentage}% OFF)
+                              </div>
+                              <div className="flex items-baseline gap-1.5 flex-wrap">
+                                <span className="text-[11px] font-bold uppercase tracking-wider text-stone-400">FROM</span>
+                                <PriceDisplay amount={baseRoomPrice} currency={roomDisplayCurrency} className="text-stone-400 font-medium line-through decoration-stone-300 text-sm sm:text-base" />
+                                <span className="text-stone-400 font-bold text-xs">&gt;</span>
+                                <span className="text-[11px] font-bold uppercase tracking-wider text-stone-900">TO</span>
+                                <span className="text-xl sm:text-2xl font-serif font-bold text-stone-900 tracking-tight">
+                                  <PriceDisplay amount={roomSlashed.slashedPrice} currency={roomDisplayCurrency} />
+                                </span>
+                                <span className="text-stone-500 uppercase text-[9px] sm:text-[10px] font-bold">/ night</span>
+                              </div>
+                              {roomCurrencies(room).filter(c => c !== roomDisplayCurrency).map((code, cIdx) => {
+                                const origOther = roomPrice(room, code) ?? 0;
+                                const slashedOther = calculateSlashedPrice(origOther, roomPromo, code);
+                                return (
+                                  <div key={`${code}-${cIdx}`} className="text-[11px] sm:text-xs text-stone-400 mt-0.5 font-medium">
+                                    or FROM <PriceDisplay amount={origOther} currency={code} className="line-through decoration-stone-300" /> &gt; TO <PriceDisplay amount={slashedOther.slashedPrice} currency={code} className="font-semibold text-stone-700" /> / night
+                                  </div>
+                                );
+                              })}
                             </div>
-                          ))}
+                          ) : (
+                            <div>
+                              <div className="flex items-baseline gap-1">
+                                <span className="text-[11px] sm:text-xs text-stone-500 font-medium mr-0.5">From</span>
+                                <span className="text-xl sm:text-2xl font-serif font-bold text-stone-900 tracking-tight">
+                                  <PriceDisplay amount={baseRoomPrice} currency={roomDisplayCurrency} />
+                                </span>
+                                <span className="text-stone-500 uppercase text-[9px] sm:text-[10px] font-bold">/ night</span>
+                              </div>
+                              {roomCurrencies(room).filter(c => c !== roomDisplayCurrency).map((code, cIdx) => (
+                                <div key={`${code}-${cIdx}`} className="text-[11px] sm:text-xs text-stone-400 mt-0.5 font-medium">
+                                  or <PriceDisplay amount={roomPrice(room, code) ?? 0} currency={code} /> / night
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                         <button
                           onClick={() => initiateBooking(room)}
                           disabled={isSoldOut || !isBookable}
-                          className="bg-stone-900 text-white px-8 py-3 rounded-full font-bold uppercase tracking-widest text-xs hover:bg-emerald-700 active:scale-95 transition-all duration-300 disabled:bg-stone-300 disabled:hover:bg-stone-300 disabled:active:scale-100 disabled:cursor-not-allowed whitespace-nowrap shadow-sm"
+                          className="bg-stone-900 text-white px-5 sm:px-6 py-2 sm:py-2.5 rounded-full font-bold uppercase tracking-wider text-[11px] sm:text-xs hover:bg-emerald-700 active:scale-95 transition-all duration-300 disabled:bg-stone-300 disabled:hover:bg-stone-300 disabled:active:scale-100 disabled:cursor-not-allowed whitespace-nowrap shadow-2xs cursor-pointer"
                         >
                           {isSoldOut ? 'Unavailable' : 'Reserve'}
                         </button>
@@ -960,79 +1145,131 @@ export default function HotelDetails() {
             />
             </>
             ) : (
-              <div className="space-y-6">
-                <div className="bg-stone-50 border border-stone-200 rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="space-y-4 sm:space-y-6">
+                <div className="bg-stone-50 border border-stone-200 rounded-xl sm:rounded-2xl p-4 sm:p-5 md:p-6 flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
                   <div>
-                    <h3 className="text-lg font-serif font-bold text-stone-900 mb-1">Book a Conference Space</h3>
-                    <p className="text-sm text-stone-600">Contact the property directly to reserve a conference room or inquire about event packages.</p>
+                    <h3 className="text-base sm:text-lg font-serif font-bold text-stone-900 mb-0.5 sm:mb-1">Book a Conference Space</h3>
+                    <p className="text-xs sm:text-sm text-stone-600">Contact the property directly to reserve a conference room or inquire about event packages.</p>
                   </div>
-                  <div className="flex flex-col gap-2 shrink-0">
+                  <div className="flex flex-wrap sm:flex-col gap-2 shrink-0">
                     {hotel.contactPhone && (
-                      <a href={`tel:${hotel.contactPhone}`} className="bg-stone-900 text-white px-5 py-2.5 rounded-full text-sm font-bold text-center hover:bg-stone-800 transition">
+                      <a href={`tel:${hotel.contactPhone}`} className="bg-stone-900 text-white px-4 sm:px-5 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-bold text-center hover:bg-stone-800 transition">
                         Call {hotel.contactPhone}
                       </a>
                     )}
                     {hotel.contactEmail && (
-                      <a href={`mailto:${hotel.contactEmail}`} className="bg-white border border-stone-200 text-stone-900 px-5 py-2.5 rounded-full text-sm font-bold text-center hover:bg-stone-50 transition">
+                      <a href={`mailto:${hotel.contactEmail}`} className="bg-white border border-stone-200 text-stone-900 px-4 sm:px-5 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-bold text-center hover:bg-stone-50 transition">
                         Email Property
                       </a>
                     )}
                   </div>
                 </div>
 
-                {conferenceRooms.map((room, cIdx) => (
+                <div className="flex flex-col gap-4 sm:gap-5 md:gap-6 pb-2">
+                {conferenceRooms.map((room, cIdx) => {
+                  const confPromo = hotel ? getActivePromotion(hotel, checkIn || todayStr(), 'conference') : null;
+                  const confDisplayCurrency = room.priceCurrency || 'MWK';
+                  const confBasePrice = room.price ?? null;
+                  const confSlashed = confBasePrice != null && confPromo ? calculateSlashedPrice(confBasePrice, confPromo, confDisplayCurrency) : null;
+                  const rateTypeStr = room.rateType === 'per_half_day' ? 'half day' : room.rateType === 'per_hour' ? 'hour' : room.rateType === 'per_delegate' ? 'delegate' : 'day';
+
+                  return (
                   <motion.div
                     key={room.id || `conf-room-${cIdx}`}
                     initial={{ opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true, margin: "-50px" }}
                     transition={{ duration: 0.5, ease: "easeOut" }}
-                    className="w-full grid grid-cols-1 md:grid-cols-[2fr_3fr] gap-6 p-5 md:p-6 lg:p-7 bg-white border border-stone-200 rounded-[24px] shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden"
+                    className="w-full flex flex-col sm:flex-row bg-white border border-stone-200/90 rounded-2xl sm:rounded-3xl shadow-xs hover:shadow-md transition-shadow duration-300 overflow-hidden p-3 sm:p-4 md:p-5 gap-4 sm:gap-5 md:gap-6"
                   >
-                    <div className="w-full aspect-[4/3] overflow-hidden rounded-[16px] relative group">
+                    <div className="w-full sm:w-[240px] md:w-[280px] lg:w-[320px] aspect-video overflow-hidden rounded-xl sm:rounded-2xl relative group shrink-0">
                       <RoomGallery 
                         images={Array.from(new Set([room.imageUrl, ...(room.galleryUrls || [])]))}
                         altPrefix={room.name}
                       />
                     </div>
                     
-                    <div className="w-full flex flex-col justify-between py-1 min-w-0">
-                      <div>
-                        <div className="flex flex-wrap items-start justify-between gap-4 mb-3">
-                          <h3 className="text-2xl md:text-3xl font-serif text-stone-900 tracking-tight leading-none">{room.name}</h3>
-                          <div className="flex items-center gap-2 text-stone-700 bg-stone-50 px-3 py-1.5 rounded-full text-xs font-semibold border border-stone-200 shadow-xs">
-                            <Users className="h-3.5 w-3.5 text-emerald-600 shrink-0" /> 
+                    <div className="w-full flex flex-col flex-1 sm:py-2 min-w-0">
+                      <div className="flex-1">
+                        {confPromo && (
+                          <div className="inline-flex items-center gap-1.5 bg-stone-900 text-white px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider shadow-2xs mb-2">
+                            <PromotionIcon saleType={confPromo.saleType} className="w-3 h-3 text-white" />
+                            <span>{getSaleTypeLabel(confPromo.saleType, confPromo.saleTypeCustomLabel)} · {confPromo.discountPercentage}% OFF</span>
+                          </div>
+                        )}
+                        <div className="flex flex-wrap items-start justify-between gap-2.5 mb-2 sm:mb-2.5">
+                          <h3 className="text-lg sm:text-xl md:text-2xl font-serif font-bold text-stone-900 tracking-tight leading-snug">{room.name}</h3>
+                          <div className="flex items-center gap-1.5 text-stone-700 bg-stone-50 px-2.5 py-1 rounded-full text-[11px] sm:text-xs font-semibold border border-stone-200 shadow-2xs">
+                            <Users className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-emerald-600 shrink-0" /> 
                             <span>Capacity: {room.capacity}</span>
                           </div>
                         </div>
                         
-                        <p className="text-stone-500 text-sm leading-relaxed mb-5 font-light">{room.description}</p>
+                        <p className="text-stone-500 text-xs sm:text-sm leading-relaxed mb-3 sm:mb-4 font-light">{room.description}</p>
                         
                         {room.amenities && room.amenities.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5 mb-4">
+                          <div className="flex flex-wrap gap-1 sm:gap-1.5 mb-3 sm:mb-4">
                             {room.amenities.map((a, aIdx) => (
-                              <span key={`${a}-${aIdx}`} className="bg-stone-100 text-stone-600 px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider">{a}</span>
+                              <span key={`${a}-${aIdx}`} className="bg-stone-100 text-stone-600 px-2 py-0.5 rounded text-[9px] sm:text-[10px] uppercase font-bold tracking-wider">{a}</span>
                             ))}
                           </div>
                         )}
                       </div>
                       
                       {/* Conference Pricing & Policies Card */}
-                      {(room.pricing || (room.policies && room.policies.length > 0)) && (
-                        <div className="mt-4 bg-stone-50 border border-stone-100 rounded-xl p-4 sm:p-5">
+                      {(room.pricing || confBasePrice != null || (room.policies && room.policies.length > 0)) && (
+                        <div className="mt-3 sm:mt-4 bg-stone-50 border border-stone-100 rounded-xl p-3.5 sm:p-4">
+                          {/* Slashed Structured Rate */}
+                          {confBasePrice != null && confSlashed ? (
+                            <div className="mb-3">
+                              <div className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-stone-400 mb-1">
+                                Event Space Rate
+                              </div>
+                              <div className="text-[11px] font-semibold text-stone-700 mb-0.5">
+                                Slashed by <PriceDisplay amount={confSlashed.slashedAmount} currency={confDisplayCurrency} /> ({confSlashed.discountPercentage}% OFF)
+                              </div>
+                              <div className="flex items-baseline gap-2 flex-wrap">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400">FROM</span>
+                                <PriceDisplay amount={confBasePrice} currency={confDisplayCurrency} className="text-stone-400 font-medium line-through decoration-stone-300 text-xs sm:text-sm" />
+                                <span className="text-stone-400 font-bold text-xs">&gt;</span>
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-stone-900">TO</span>
+                                <span className="text-lg sm:text-xl font-serif font-bold text-stone-900 tracking-tight">
+                                  <PriceDisplay amount={confSlashed.slashedPrice} currency={confDisplayCurrency} />
+                                </span>
+                                <span className="text-stone-500 uppercase text-[9px] sm:text-[10px] font-bold">/ {rateTypeStr}</span>
+                              </div>
+                            </div>
+                          ) : confBasePrice != null ? (
+                            <div className="mb-3">
+                              <div className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-stone-400 mb-0.5">Event Space Rate</div>
+                              <div className="flex items-baseline gap-1">
+                                <span className="text-base sm:text-lg font-serif font-bold text-stone-900 tracking-tight">
+                                  <PriceDisplay amount={confBasePrice} currency={confDisplayCurrency} />
+                                </span>
+                                <span className="text-stone-500 uppercase text-[9px] sm:text-[10px] font-bold">/ {rateTypeStr}</span>
+                              </div>
+                            </div>
+                          ) : null}
+
                           {room.pricing && (
-                            <div className="mb-4">
-                              <h4 className="text-[10px] font-bold uppercase tracking-wider text-stone-400 mb-1">Pricing & Packages</h4>
-                              <p className="text-sm font-semibold text-stone-800">{room.pricing}</p>
+                            <div className="mb-3">
+                              <h4 className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-stone-400 mb-0.5">Pricing & Packages</h4>
+                              <p className="text-xs sm:text-sm font-semibold text-stone-800">{room.pricing}</p>
+                              {confPromo && confBasePrice == null && (
+                                <p className="text-[11px] text-stone-700 font-medium mt-1 flex items-center gap-1.5">
+                                  <PromotionIcon saleType={confPromo.saleType} className="w-3 h-3 text-stone-700" />
+                                  <span>{confPromo.discountPercentage}% discount applies to this space under {getSaleTypeLabel(confPromo.saleType, confPromo.saleTypeCustomLabel)}.</span>
+                                </p>
+                              )}
                             </div>
                           )}
                           
                           {room.policies && room.policies.length > 0 && (
                             <div>
-                              <h4 className="text-[10px] font-bold uppercase tracking-wider text-stone-400 mb-2">Guidelines & Offers</h4>
-                              <ul className="space-y-1.5">
+                              <h4 className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-stone-400 mb-1.5">Guidelines & Offers</h4>
+                              <ul className="space-y-1">
                                 {room.policies.map((policy, idx) => (
-                                  <li key={idx} className="text-xs sm:text-sm text-stone-600 flex items-start gap-2">
+                                  <li key={idx} className="text-xs sm:text-sm text-stone-600 flex items-start gap-1.5">
                                     <span className="text-emerald-500 mt-0.5">•</span>
                                     <span className="leading-tight">{policy}</span>
                                   </li>
@@ -1044,21 +1281,23 @@ export default function HotelDetails() {
                       )}
                     </div>
                   </motion.div>
-                ))}
+                  );
+                })}
+                </div>
               </div>
             )}
           </div>
 
           {/* Property Policies Card (Directly Below Rooms) */}
           {(activeSpaceTab === 'rooms' ? rooms.length > 0 : conferenceRooms.length > 0) && (
-          <div className="mb-12 bg-white rounded-2xl p-5 sm:p-7 border border-stone-200 shadow-xs flex flex-col justify-between overflow-hidden">
-            <div className="space-y-4">
+          <div className="mb-8 sm:mb-10 lg:mb-12 bg-white rounded-2xl p-4 sm:p-5 md:p-6 border border-stone-200/90 shadow-xs flex flex-col justify-between overflow-hidden">
+            <div className="space-y-3.5 sm:space-y-4">
               <div>
                 <div className="flex items-center justify-between gap-2 mb-1">
-                  <h3 className="text-xl font-serif font-bold text-stone-900 flex items-center gap-2">
-                    <ShieldCheck className="h-5 w-5 text-stone-700 shrink-0" /> {activeSpaceTab === 'rooms' ? 'Property Policies' : 'Conference Policies'}
+                  <h3 className="text-lg sm:text-xl font-serif font-bold text-stone-900 flex items-center gap-2">
+                    <ShieldCheck className="h-4 w-4 sm:h-5 sm:w-5 text-stone-700 shrink-0" /> {activeSpaceTab === 'rooms' ? 'Property Policies' : 'Conference Policies'}
                   </h3>
-                  <span className="text-[10px] font-bold text-stone-700 bg-stone-100 px-2.5 py-0.5 rounded-md border border-stone-200/80 uppercase tracking-wide shrink-0">
+                  <span className="text-[9px] sm:text-[10px] font-bold text-stone-700 bg-stone-100 px-2 sm:px-2.5 py-0.5 rounded-md border border-stone-200/80 uppercase tracking-wide shrink-0">
                     Verified Rules
                   </span>
                 </div>
@@ -1066,29 +1305,29 @@ export default function HotelDetails() {
               </div>
 
               {/* Dynamic Single-Row Adaptive Grid */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-2.5">
                 {activeSpaceTab === 'rooms' && (<>
                   {/* Check-in */}
-                <div className="bg-stone-50/90 border border-stone-200/70 rounded-xl p-2.5 sm:p-3 xl:p-3.5 flex items-center gap-2.5 sm:gap-3 min-w-0">
-                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-stone-200/70 text-stone-800 flex items-center justify-center shrink-0">
-                    <LogIn className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                <div className="bg-stone-50/90 border border-stone-200/70 rounded-xl p-2 sm:p-2.5 xl:p-3 flex items-center gap-2 sm:gap-2.5 min-w-0">
+                  <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-stone-200/70 text-stone-800 flex items-center justify-center shrink-0">
+                    <LogIn className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-stone-400 truncate">Check-in</div>
-                    <div className="text-[11px] sm:text-xs xl:text-sm font-semibold text-stone-900 leading-tight whitespace-nowrap truncate" title={`From ${formatTime(hotel.checkInTime ?? '14:00')}`}>
+                    <div className="text-[11px] sm:text-xs font-semibold text-stone-900 leading-tight whitespace-nowrap truncate" title={`From ${formatTime(hotel.checkInTime ?? '14:00')}`}>
                       From {formatTime(hotel.checkInTime ?? '14:00')}
                     </div>
                   </div>
                 </div>
 
                 {/* Check-out */}
-                <div className="bg-stone-50/90 border border-stone-200/70 rounded-xl p-2.5 sm:p-3 xl:p-3.5 flex items-center gap-2.5 sm:gap-3 min-w-0">
-                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-stone-200/70 text-stone-800 flex items-center justify-center shrink-0">
-                    <LogOut className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                <div className="bg-stone-50/90 border border-stone-200/70 rounded-xl p-2 sm:p-2.5 xl:p-3 flex items-center gap-2 sm:gap-2.5 min-w-0">
+                  <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-stone-200/70 text-stone-800 flex items-center justify-center shrink-0">
+                    <LogOut className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-stone-400 truncate">Check-out</div>
-                    <div className="text-[11px] sm:text-xs xl:text-sm font-semibold text-stone-900 leading-tight whitespace-nowrap truncate" title={`Until ${formatTime(hotel.checkOutTime ?? '11:00')}`}>
+                    <div className="text-[11px] sm:text-xs font-semibold text-stone-900 leading-tight whitespace-nowrap truncate" title={`Until ${formatTime(hotel.checkOutTime ?? '11:00')}`}>
                       Until {formatTime(hotel.checkOutTime ?? '11:00')}
                     </div>
                   </div>
@@ -1097,26 +1336,26 @@ export default function HotelDetails() {
                   </>)}
 
                 {/* Cancellation */}
-                <div className="bg-stone-50/90 border border-stone-200/70 rounded-xl p-2.5 sm:p-3 xl:p-3.5 flex items-center gap-2.5 sm:gap-3 min-w-0">
-                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-stone-200/70 text-stone-800 flex items-center justify-center shrink-0">
-                    <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                <div className="bg-stone-50/90 border border-stone-200/70 rounded-xl p-2 sm:p-2.5 xl:p-3 flex items-center gap-2 sm:gap-2.5 min-w-0">
+                  <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-stone-200/70 text-stone-800 flex items-center justify-center shrink-0">
+                    <CheckCircle2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-stone-400 truncate">Cancellation</div>
-                    <div className="text-[11px] sm:text-xs xl:text-sm font-semibold text-stone-900 leading-tight whitespace-nowrap truncate" title={activeSpaceTab === 'rooms' ? (hotel.cancellationPolicy || "Free 7d prior") : (hotel.conferenceCancellationPolicy || "Non-refundable")}>
+                    <div className="text-[11px] sm:text-xs font-semibold text-stone-900 leading-tight whitespace-nowrap truncate" title={activeSpaceTab === 'rooms' ? (hotel.cancellationPolicy || "Free 7d prior") : (hotel.conferenceCancellationPolicy || "Non-refundable")}>
                       {activeSpaceTab === 'rooms' ? (hotel.cancellationPolicy || "Free 7d prior") : (hotel.conferenceCancellationPolicy || "Non-refundable")}
                     </div>
                   </div>
                 </div>
 
                 {/* Payment */}
-                <div className="bg-stone-50/90 border border-stone-200/70 rounded-xl p-2.5 sm:p-3 xl:p-3.5 flex items-center gap-2.5 sm:gap-3 min-w-0">
-                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-stone-200/70 text-stone-800 flex items-center justify-center shrink-0">
-                    <CreditCard className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                <div className="bg-stone-50/90 border border-stone-200/70 rounded-xl p-2 sm:p-2.5 xl:p-3 flex items-center gap-2 sm:gap-2.5 min-w-0">
+                  <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-stone-200/70 text-stone-800 flex items-center justify-center shrink-0">
+                    <CreditCard className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-stone-400 truncate">Payment</div>
-                    <div className="text-[11px] sm:text-xs xl:text-sm font-semibold text-stone-900 leading-tight whitespace-nowrap truncate" title={activeSpaceTab === 'rooms' ? (hotel.paymentPolicy || "Pay at property") : (hotel.conferencePaymentPolicy || "Deposit required")}>
+                    <div className="text-[11px] sm:text-xs font-semibold text-stone-900 leading-tight whitespace-nowrap truncate" title={activeSpaceTab === 'rooms' ? (hotel.paymentPolicy || "Pay at property") : (hotel.conferencePaymentPolicy || "Deposit required")}>
                       {activeSpaceTab === 'rooms' ? (hotel.paymentPolicy || "Pay at property") : (hotel.conferencePaymentPolicy || "Deposit required")}
                     </div>
                   </div>
@@ -1124,13 +1363,13 @@ export default function HotelDetails() {
 
                 {/* Conference Guidelines */}
                 {activeSpaceTab === 'conferences' && hotel.conferenceGuidelines && (
-                  <div className="bg-stone-50/90 border border-stone-200/70 rounded-xl p-2.5 sm:p-3 xl:p-3.5 flex items-center gap-2.5 sm:gap-3 min-w-0">
-                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-stone-200/70 text-stone-800 flex items-center justify-center shrink-0">
-                      <Info className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                  <div className="bg-stone-50/90 border border-stone-200/70 rounded-xl p-2 sm:p-2.5 xl:p-3 flex items-center gap-2 sm:gap-2.5 min-w-0">
+                    <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-stone-200/70 text-stone-800 flex items-center justify-center shrink-0">
+                      <Info className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-stone-400 truncate">Guidelines</div>
-                      <div className="text-[11px] sm:text-xs xl:text-sm font-semibold text-stone-900 leading-tight whitespace-nowrap truncate" title={hotel.conferenceGuidelines}>
+                      <div className="text-[11px] sm:text-xs font-semibold text-stone-900 leading-tight whitespace-nowrap truncate" title={hotel.conferenceGuidelines}>
                         {hotel.conferenceGuidelines}
                       </div>
                     </div>
@@ -1140,10 +1379,10 @@ export default function HotelDetails() {
 
               {/* Reception Hours */}
               {hasPublishedHours(hotel.hours) && (
-                <div className="bg-stone-50/90 border border-stone-200/80 rounded-xl p-3.5 sm:p-4 min-w-0">
-                  <div className="flex items-center justify-between gap-2 mb-2.5">
+                <div className="bg-stone-50/90 border border-stone-200/80 rounded-xl p-3 sm:p-3.5 min-w-0">
+                  <div className="flex items-center justify-between gap-2 mb-2">
                     <div className="flex items-center gap-1.5 text-xs font-bold text-stone-800">
-                      <Clock className="h-4 w-4 text-stone-600 shrink-0" />
+                      <Clock className="h-3.5 w-3.5 text-stone-600 shrink-0" />
                       <span>Reception Hours</span>
                     </div>
                     {isOpenAt(hotel.hours) === true ? (
@@ -1156,9 +1395,9 @@ export default function HotelDetails() {
                       </span>
                     ) : null}
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-1.5 sm:gap-2 text-[11px] sm:text-xs">
                     {summariseHours(hotel.hours!).map((row, rIdx) => (
-                      <div key={`${row.label}-${rIdx}`} className="flex justify-between items-center text-stone-600 py-1 gap-2 min-w-0 bg-white/80 px-2.5 rounded-lg border border-stone-200/60 text-[11px] sm:text-xs">
+                      <div key={`${row.label}-${rIdx}`} className="flex justify-between items-center text-stone-600 py-0.5 sm:py-1 gap-2 min-w-0 bg-white/80 px-2 sm:px-2.5 rounded-lg border border-stone-200/60 text-[11px] sm:text-xs">
                         <span className="font-medium text-stone-500 shrink-0 whitespace-nowrap">{row.label}</span>
                         <span className="font-semibold text-stone-900 text-right whitespace-nowrap">{row.hours}</span>
                       </div>
@@ -1168,7 +1407,7 @@ export default function HotelDetails() {
               )}
             </div>
 
-            <div className="pt-3.5 mt-3.5 border-t border-stone-100 text-xs text-stone-500 flex items-start sm:items-center gap-2">
+            <div className="pt-3 mt-3 border-t border-stone-100 text-[11px] sm:text-xs text-stone-500 flex items-start sm:items-center gap-2">
               <Info className="w-3.5 h-3.5 text-stone-400 shrink-0 mt-0.5 sm:mt-0" />
               <span className="leading-normal">Special requests &amp; custom arrival times can be arranged directly with the host</span>
             </div>
@@ -1176,18 +1415,18 @@ export default function HotelDetails() {
           )}
 
           {/* Location & Setting Card */}
-          <div className="mb-12 bg-white rounded-2xl p-6 sm:p-7 border border-stone-200 shadow-xs flex flex-col justify-between overflow-hidden">
-            <div className="space-y-4">
+          <div className="mb-8 sm:mb-10 lg:mb-12 bg-white rounded-2xl p-4 sm:p-5 md:p-6 border border-stone-200/90 shadow-xs flex flex-col justify-between overflow-hidden">
+            <div className="space-y-3.5 sm:space-y-4">
               <div>
-                <div className="flex items-center justify-between gap-2 mb-1.5">
-                  <h3 className="text-xl font-serif font-bold text-stone-900 flex items-center gap-2">
-                    <MapPin className="h-5 w-5 text-emerald-700 shrink-0" /> Location &amp; Setting
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <h3 className="text-lg sm:text-xl font-serif font-bold text-stone-900 flex items-center gap-2">
+                    <MapPin className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-700 shrink-0" /> Location &amp; Setting
                   </h3>
-                  <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-100 px-2.5 py-0.5 rounded-md">
+                  <span className="text-[10px] sm:text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 sm:px-2.5 py-0.5 rounded-md">
                     Malawi
                   </span>
                 </div>
-                <p className="text-stone-600 text-sm leading-relaxed">{hotel.location}</p>
+                <p className="text-stone-600 text-xs sm:text-sm leading-relaxed">{hotel.location}</p>
               </div>
 
               {/* Embedded Interactive Map for Location & Setting */}
@@ -1198,7 +1437,7 @@ export default function HotelDetails() {
                   markerImage={getHotelImage(hotel)}
                   popupText={hotel.name}
                   zoom={13}
-                  heightClass="h-[45vh] min-h-[320px] sm:h-[400px]"
+                  heightClass="h-[220px] sm:h-[280px] md:h-[340px] lg:h-[380px]"
                   interactive={true}
                   showSatelliteToggle={true}
                   showDistanceOverlay={false}
@@ -1206,17 +1445,17 @@ export default function HotelDetails() {
               </div>
 
               {hotel.locationNotes && (
-                <div className="p-3.5 bg-amber-50/80 border border-amber-200/70 rounded-xl">
-                  <h4 className="text-[10px] font-bold text-amber-900 uppercase tracking-wider mb-0.5">Host Notes</h4>
-                  <p className="text-amber-800 text-xs leading-relaxed">{hotel.locationNotes}</p>
+                <div className="p-3 bg-amber-50/80 border border-amber-200/70 rounded-xl">
+                  <h4 className="text-[9px] sm:text-[10px] font-bold text-amber-900 uppercase tracking-wider mb-0.5">Host Notes</h4>
+                  <p className="text-amber-800 text-[11px] sm:text-xs leading-relaxed">{hotel.locationNotes}</p>
                 </div>
               )}
             </div>
 
-            <div className="pt-4 mt-4 border-t border-stone-100 flex items-center justify-between gap-3">
+            <div className="pt-3 mt-3 border-t border-stone-100 flex items-center justify-between gap-3">
               <a
                 href="#directions"
-                className="inline-flex items-center gap-1.5 text-xs font-bold text-stone-900 bg-stone-50 border border-stone-200 px-4 py-2.5 rounded-xl hover:bg-stone-100 hover:border-stone-300 transition shadow-2xs"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-stone-900 bg-stone-50 border border-stone-200 px-3.5 py-2 rounded-xl hover:bg-stone-100 hover:border-stone-300 transition shadow-2xs"
               >
                 <Navigation className="h-3.5 w-3.5 text-emerald-600" />
                 Full Driving Directions
@@ -1235,36 +1474,37 @@ export default function HotelDetails() {
 
           {/* Reaching the property */}
           {hasAnyContact(hotel) && (
-            <div className="mb-12 rounded-2xl border border-stone-200 bg-white p-6 shadow-xs">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="mb-8 sm:mb-10 lg:mb-12 rounded-2xl border border-stone-200/90 bg-white p-4 sm:p-5 md:p-6 shadow-xs">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3.5 sm:gap-4">
                 <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="text-lg font-serif font-bold text-stone-900 flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-1">
+                    <h3 className="text-base sm:text-lg font-serif font-bold text-stone-900 flex items-center gap-2">
                       <PhoneCall className="h-4 w-4 text-emerald-700" /> Reach the property directly
                     </h3>
-                    <span 
-                      className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full flex items-center gap-1.5 border ${
-                        hotel.isOnline !== false 
-                          ? 'bg-emerald-50 text-emerald-800 border-emerald-200' 
-                          : 'bg-stone-100 text-stone-600 border-stone-200'
-                      }`}
-                    >
-                      <span className={`w-1.5 h-1.5 rounded-full ${managerPresence?.status === 'online' ? 'bg-emerald-500 animate-pulse' : managerPresence?.status === 'away' ? 'bg-amber-400' : 'bg-stone-400'}`} />
-                      {managerPresence?.status === 'online' ? 'Host Online' : managerPresence?.status === 'away' ? 'Host Away' : 'Host Offline'}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="relative flex h-2.5 w-2.5">
+                        {managerPresence?.status === 'online' && (
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        )}
+                        <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${managerPresence?.status === 'online' ? 'bg-emerald-500' : managerPresence?.status === 'away' ? 'bg-amber-400' : 'bg-stone-300'}`}></span>
+                      </span>
+                      <span className="text-xs font-medium text-stone-500">
+                        {managerPresence?.status === 'online' ? 'Online' : managerPresence?.status === 'away' ? 'Away' : 'Offline'}
+                      </span>
+                    </div>
                   </div>
                   <p className="text-stone-500 text-xs">
                     Contact {hotel.name} hosts directly for special inquiries, activities, or arrival updates.
                   </p>
                 </div>
-                <div className="flex flex-wrap gap-2.5">
+                <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-2.5 w-full md:w-auto mt-3 md:mt-0">
                   {(hotel.chatEnabled !== false && hotel.adminChatEnabled !== false && user?.uid !== hotel.managerId) && (
-                    <div className="relative inline-block">
+                    <div className="relative inline-block w-full sm:w-auto">
                       <button
                         type="button"
                         id="btn-hotel-host-chat"
                         onClick={handleOpenChat}
-                        className="inline-flex items-center gap-2 rounded-xl bg-stone-900 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-stone-800 shadow-2xs cursor-pointer"
+                        className="inline-flex items-center justify-center gap-1.5 sm:gap-2 rounded-xl bg-stone-900 px-3.5 py-2 text-xs font-bold text-white transition hover:bg-stone-800 shadow-2xs cursor-pointer w-full sm:w-auto"
                       >
                         <MessageSquare className="h-3.5 w-3.5 text-emerald-400" />
                         <span>{managerPresence?.status === 'online' ? 'Live Host Chat' : 'Leave a Message'}</span>
@@ -1279,10 +1519,10 @@ export default function HotelDetails() {
                       />
                     </div>
                   )}
-                  {telLink(hotel.contactPhone) && managerPresence?.status === "online" && (
+                  {telLink(hotel.contactPhone) && (
                     <a
                       href={telLink(hotel.contactPhone)!}
-                      className="inline-flex items-center gap-2 rounded-xl bg-stone-100 px-4 py-2.5 text-xs font-bold text-stone-800 border border-stone-200 transition hover:bg-stone-200 shadow-2xs"
+                      className="inline-flex items-center justify-center gap-1.5 sm:gap-2 rounded-xl bg-stone-100 px-3.5 py-2 text-xs font-bold text-stone-800 border border-stone-200 transition hover:bg-stone-200 shadow-2xs w-full sm:w-auto"
                     >
                       <PhoneCall className="h-3.5 w-3.5" /> {hotel.contactPhone}
                     </a>
@@ -1292,7 +1532,7 @@ export default function HotelDetails() {
                       href={whatsappLink(hotel.contactWhatsapp || hotel.contactPhone, `Hello ${hotel.name}, I have a question about staying with you.`)!}
                       target="_blank"
                       rel="noreferrer noopener"
-                      className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-emerald-700 shadow-2xs"
+                      className="inline-flex items-center justify-center gap-1.5 sm:gap-2 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white transition hover:bg-emerald-700 shadow-2xs w-full sm:w-auto"
                     >
                       <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
                     </a>
@@ -1300,7 +1540,7 @@ export default function HotelDetails() {
                   {mailtoLink(hotel.contactEmail, `Enquiry about ${hotel.name}`) && (
                     <a
                       href={mailtoLink(hotel.contactEmail, `Enquiry about ${hotel.name}`)!}
-                      className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs font-bold text-stone-700 ring-1 ring-stone-200 transition hover:ring-stone-400 shadow-2xs"
+                      className="inline-flex items-center justify-center gap-1.5 sm:gap-2 rounded-xl bg-white px-3.5 py-2 text-xs font-bold text-stone-700 ring-1 ring-stone-200 transition hover:ring-stone-400 shadow-2xs w-full sm:w-auto"
                     >
                       <Mail className="h-3.5 w-3.5" /> {hotel.contactEmail}
                     </a>
@@ -1313,31 +1553,31 @@ export default function HotelDetails() {
 
                     {/* Restaurant Menu */}
           {restaurant && (
-            <div id="restaurant-menu" className="scroll-mt-36 mb-24 pt-8 border-t border-stone-200">
-              <div className="mb-6 sm:mb-8">
-                <span className="text-[0.68rem] font-bold text-emerald-700 tracking-[0.16em] uppercase">Dining &amp; Culinary</span>
-                <h2 className="text-3xl sm:text-4xl md:text-5xl font-serif text-stone-900 mt-1 tracking-tight">Restaurant &amp; Menu</h2>
+            <div id="restaurant-menu" className="scroll-mt-28 sm:scroll-mt-36 mb-12 sm:mb-16 lg:mb-20 pt-6 sm:pt-8 border-t border-stone-200">
+              <div className="mb-4 sm:mb-6 lg:mb-8">
+                <span className="text-[0.65rem] sm:text-[0.68rem] font-bold text-emerald-700 tracking-[0.16em] uppercase">Dining &amp; Culinary</span>
+                <h2 className="text-2xl sm:text-3xl md:text-4xl font-serif text-stone-900 mt-0.5 sm:mt-1 tracking-tight">Restaurant &amp; Menu</h2>
               </div>
               {hasPublishedHours(restaurant.hours) && (
-                <div className="bg-stone-50/90 border border-stone-200/80 rounded-2xl p-4 sm:p-5 mb-8 flex flex-wrap items-center justify-between gap-4 shadow-2xs">
-                  <div className="flex flex-wrap items-center gap-x-4 sm:gap-x-6 gap-y-2 text-xs sm:text-sm">
+                <div className="bg-stone-50/90 border border-stone-200/80 rounded-xl sm:rounded-2xl p-3.5 sm:p-4 md:p-5 mb-6 sm:mb-8 flex flex-wrap items-center justify-between gap-3 sm:gap-4 shadow-2xs">
+                  <div className="flex flex-wrap items-center gap-x-4 sm:gap-x-6 gap-y-1.5 text-xs sm:text-sm">
                     <span className="flex items-center gap-2 font-semibold text-stone-900">
-                      <Clock className="h-4 w-4 text-emerald-700" />
+                      <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-emerald-700" />
                       <span>Kitchen Hours</span>
                     </span>
                     {summariseHours(restaurant.hours!).map((row, rIdx) => (
-                      <span key={`${row.label}-${rIdx}`} className="text-stone-600 font-medium">
+                      <span key={`${row.label}-${rIdx}`} className="text-stone-600 font-medium text-xs sm:text-sm">
                         <span className="text-stone-400 font-normal">{row.label}:</span> {row.hours}
                       </span>
                     ))}
                   </div>
                   {isOpenAt(restaurant.hours) === true ? (
-                    <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-emerald-800 bg-emerald-100/90 border border-emerald-300 px-3 py-1 rounded-full shadow-2xs">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="inline-flex items-center gap-1.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-emerald-800 bg-emerald-100/90 border border-emerald-300 px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full shadow-2xs">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                       Serving now
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-stone-500 bg-stone-200/80 px-2.5 py-0.5 rounded-full">
+                    <span className="inline-flex items-center gap-1.5 text-[10px] sm:text-[11px] font-semibold text-stone-500 bg-stone-200/80 px-2 sm:px-2.5 py-0.5 rounded-full">
                       Kitchen closed
                     </span>
                   )}
@@ -1351,57 +1591,57 @@ export default function HotelDetails() {
           )}
 
           {activeSpaceTab === 'rooms' && (
-            <div id="reviews" className="scroll-mt-36 lg:scroll-mt-28 mb-24 mt-8 border-t border-stone-200 pt-12 relative z-10 bg-white">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-10">
-              <div className="flex flex-wrap items-baseline gap-4">
-                <h2 className="text-4xl md:text-5xl font-serif text-stone-900 tracking-tight">Guest Reviews</h2>
+            <div id="reviews" className="scroll-mt-28 sm:scroll-mt-36 lg:scroll-mt-28 mb-12 sm:mb-16 lg:mb-20 mt-6 sm:mt-8 border-t border-stone-200 pt-6 sm:pt-8 md:pt-10 relative z-10 bg-white">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-6 sm:mb-8">
+              <div className="flex flex-wrap items-baseline gap-2 sm:gap-3">
+                <h2 className="text-2xl sm:text-3xl md:text-4xl font-serif text-stone-900 tracking-tight">Guest Reviews</h2>
                 {ratingSummary && (
-                  <span className="text-stone-500 text-lg">
+                  <span className="text-stone-500 text-xs sm:text-sm md:text-base">
                     {ratingSummary.average.toFixed(1)} average from {ratingSummary.count} review{ratingSummary.count === 1 ? '' : 's'}
                   </span>
                 )}
               </div>
               <button
                 onClick={() => setIsReviewModalOpen(true)}
-                className="inline-flex items-center gap-2 bg-stone-900 hover:bg-stone-800 text-white px-5 py-2.5 rounded-full text-sm font-bold transition shadow-sm self-start sm:self-auto"
+                className="inline-flex items-center gap-1.5 sm:gap-2 bg-stone-900 hover:bg-stone-800 text-white px-4 sm:px-5 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-bold transition shadow-2xs self-start sm:self-auto"
               >
-                <Star className="h-4 w-4" />
+                <Star className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 Write a Review
               </button>
             </div>
             
             {allReviews.length === 0 ? (
-              <p className="text-stone-500 italic">No reviews yet. Be the first to review this property!</p>
+              <p className="text-stone-500 text-xs sm:text-sm italic">No reviews yet. Be the first to review this property!</p>
             ) : (
               <>
-                <div className="grid grid-cols-1 gap-6">
+                <div className="grid grid-cols-1 gap-4 sm:gap-5 md:gap-6">
                   {allReviews.slice((currentReviewPage - 1) * reviewsPerPage, currentReviewPage * reviewsPerPage).map((review, rIdx) => (
-                    <div key={`${review.key}-${rIdx}`} className="bg-white p-8 rounded-3xl border border-stone-200 shadow-sm">
-                      <div className="flex justify-between items-start mb-4">
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 bg-stone-100 rounded-full flex items-center justify-center text-stone-600 font-serif font-bold text-lg">
+                    <div key={`${review.key}-${rIdx}`} className="bg-white p-4 sm:p-5 md:p-6 rounded-2xl sm:rounded-3xl border border-stone-200 shadow-2xs">
+                      <div className="flex justify-between items-start mb-3 sm:mb-4">
+                        <div className="flex items-center gap-2.5 sm:gap-3.5">
+                          <div className="w-9 h-9 sm:w-10 sm:h-10 bg-stone-100 rounded-full flex items-center justify-center text-stone-600 font-serif font-bold text-sm sm:text-base">
                             {review.author.charAt(0)}
                           </div>
                           <div>
-                            <p className="font-semibold text-stone-900">{review.author}</p>
-                            <p className="text-sm text-stone-500">{review.date}</p>
+                            <p className="font-semibold text-stone-900 text-xs sm:text-sm">{review.author}</p>
+                            <p className="text-[11px] sm:text-xs text-stone-500">{review.date}</p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-1 bg-stone-50 px-3 py-1.5 rounded-full">
-                          <Star className="h-4 w-4 fill-current text-stone-900" />
-                          <span className="font-semibold text-stone-900">{review.rating.toFixed(1)}</span>
+                        <div className="flex items-center gap-1 bg-stone-50 px-2 sm:px-2.5 py-1 rounded-full border border-stone-100">
+                          <Star className="h-3 w-3 sm:h-3.5 sm:w-3.5 fill-current text-stone-900" />
+                          <span className="font-semibold text-stone-900 text-xs sm:text-sm">{review.rating.toFixed(1)}</span>
                         </div>
                       </div>
-                      <p className="text-stone-700 leading-relaxed italic">"{review.text}"</p>
+                      <p className="text-stone-700 leading-relaxed italic text-xs sm:text-sm md:text-base">"{review.text}"</p>
                       {/* Only a review written from a completed booking on this
                           platform can claim a verified stay; imported ones say
                           where they came from instead. */}
                       {review.verified ? (
-                        <p className="text-xs text-emerald-700 mt-4 uppercase tracking-wider font-semibold flex items-center gap-1.5">
-                          <ShieldCheck className="h-4 w-4" /> Verified stay
+                        <p className="text-[10px] sm:text-xs text-emerald-700 mt-3 sm:mt-4 uppercase tracking-wider font-semibold flex items-center gap-1.5">
+                          <ShieldCheck className="h-3.5 w-3.5" /> Verified stay
                         </p>
                       ) : (
-                        <p className="text-xs text-stone-400 mt-4 uppercase tracking-wider font-semibold">
+                        <p className="text-[10px] sm:text-xs text-stone-400 mt-3 sm:mt-4 uppercase tracking-wider font-semibold">
                           Imported from {review.source}
                         </p>
                       )}
@@ -1422,13 +1662,13 @@ export default function HotelDetails() {
         </div>
         
         {/* Sticky Sidebar / Highlights */}
-        <div className="sticky top-32 lg:top-36 flex flex-col gap-6 max-h-[calc(100vh-9rem)] overflow-y-auto pb-8 pr-2 pt-2">
+        <div className="lg:sticky lg:top-36 flex flex-col gap-4 sm:gap-5 lg:gap-6 lg:max-h-[calc(100vh-9rem)] lg:overflow-y-auto pb-4 sm:pb-6 lg:pb-8 pr-0 lg:pr-2 pt-0 lg:pt-2">
           {/* Quick Navigation Card */}
-          <div className="hidden lg:block bg-stone-900 text-white border border-stone-800 rounded-2xl p-5 shadow-lg">
-            <h3 className="text-sm font-serif font-bold mb-3 flex items-center gap-2">
+          <div className="hidden lg:block bg-stone-900 text-white border border-stone-800 rounded-2xl p-4 sm:p-5 shadow-lg">
+            <h3 className="text-sm font-serif font-bold mb-2.5 flex items-center gap-2">
               <Navigation className="h-4 w-4 text-emerald-400" /> Quick Navigation
             </h3>
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-1.5">
               <a href="#rooms-section" className="text-xs text-stone-300 hover:text-white hover:bg-stone-800 px-3 py-2 rounded-lg transition-colors flex items-center gap-2">
                 <BedDouble className="w-3.5 h-3.5" /> Accommodations & Spaces
               </a>
@@ -1448,100 +1688,69 @@ export default function HotelDetails() {
             </div>
           </div>
 
-          {/* Contact Card */}
-          <div className="bg-white border border-stone-200 rounded-2xl p-6 shadow-xs space-y-4">
-             <div className="border-b border-stone-100 pb-3">
-               <h3 className="text-lg font-serif font-bold text-stone-900 flex items-center gap-2">
-                 <PhoneCall className="h-4 w-4 text-emerald-600" /> Contact Property
-               </h3>
-               <p className="text-stone-500 text-xs mt-0.5">Reach out directly to the host</p>
-             </div>
-             <div className="space-y-3">
-                 {hotel.contactPhone && (
-                   <a href={`tel:${hotel.contactPhone}`} className="flex items-center gap-3 text-stone-600 hover:text-stone-900 transition">
-                     <div className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center shrink-0"><Phone className="w-4 h-4" /></div>
-                     <span className="text-sm font-medium">{hotel.contactPhone}</span>
-                   </a>
-                 )}
-                 {hotel.contactEmail && (
-                   <a href={`mailto:${hotel.contactEmail}`} className="flex items-center gap-3 text-stone-600 hover:text-stone-900 transition overflow-hidden">
-                     <div className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center shrink-0"><Mail className="w-4 h-4" /></div>
-                     <span className="text-sm font-medium truncate">{hotel.contactEmail}</span>
-                   </a>
-                 )}
-                 {hotel.contactWhatsapp && (
-                   <a href={`https://wa.me/${hotel.contactWhatsapp.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 text-stone-600 hover:text-stone-900 transition">
-                     <div className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center shrink-0"><MessageCircle className="w-4 h-4 text-green-600" /></div>
-                     <span className="text-sm font-medium">WhatsApp</span>
-                   </a>
-                 )}
-                 {!hotel.contactPhone && !hotel.contactEmail && !hotel.contactWhatsapp && (
-                    <p className="text-xs text-stone-500 italic">Contact details not provided.</p>
-                 )}
-             </div>
-          </div>
+
 
           {hotel.infrastructure && (
-            <div className="bg-white border border-stone-200 rounded-2xl p-6 shadow-xs space-y-4">
-              <div className="border-b border-stone-100 pb-3">
-                <h3 className="text-lg font-serif font-bold text-stone-900 flex items-center gap-2">
+            <div className="bg-white border border-stone-200/90 rounded-2xl p-4 sm:p-5 lg:p-6 shadow-xs space-y-3 sm:space-y-4">
+              <div className="border-b border-stone-100 pb-2.5 sm:pb-3">
+                <h3 className="text-base sm:text-lg font-serif font-bold text-stone-900 flex items-center gap-2">
                   <ShieldCheck className="h-4 w-4 text-emerald-600" /> Stay OS Verified
                 </h3>
                 <p className="text-stone-500 text-xs mt-0.5">Host-verified infrastructure & setup</p>
               </div>
-              <ul className="space-y-4">
+              <ul className="space-y-3 sm:space-y-4">
                 {hotel.infrastructure.powerSource && hotel.infrastructure.powerSource !== 'None' && (
-                  <li className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
-                      <Zap className="w-4 h-4 text-amber-500" />
+                  <li className="flex items-start gap-2.5 sm:gap-3">
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
+                      <Zap className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500" />
                     </div>
                     <div>
-                      <p className="text-xs font-bold uppercase tracking-wider text-stone-500">Power</p>
-                      <p className="text-sm font-medium text-stone-900">{hotel.infrastructure.powerSource}</p>
+                      <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-stone-500">Power</p>
+                      <p className="text-xs sm:text-sm font-medium text-stone-900">{hotel.infrastructure.powerSource}</p>
                     </div>
                   </li>
                 )}
                 {hotel.infrastructure.waterSource && (
-                  <li className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
-                      <Droplets className="w-4 h-4 text-blue-500" />
+                  <li className="flex items-start gap-2.5 sm:gap-3">
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
+                      <Droplets className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-500" />
                     </div>
                     <div>
-                      <p className="text-xs font-bold uppercase tracking-wider text-stone-500">Water Supply</p>
-                      <p className="text-sm font-medium text-stone-900">{hotel.infrastructure.waterSource}</p>
+                      <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-stone-500">Water Supply</p>
+                      <p className="text-xs sm:text-sm font-medium text-stone-900">{hotel.infrastructure.waterSource}</p>
                     </div>
                   </li>
                 )}
                 {hotel.infrastructure.internetSource && hotel.infrastructure.internetSource !== 'None' && (
-                  <li className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-full bg-sky-50 flex items-center justify-center shrink-0">
-                      <Wifi className="w-4 h-4 text-sky-500" />
+                  <li className="flex items-start gap-2.5 sm:gap-3">
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-sky-50 flex items-center justify-center shrink-0">
+                      <Wifi className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-sky-500" />
                     </div>
                     <div>
-                      <p className="text-xs font-bold uppercase tracking-wider text-stone-500">Internet</p>
-                      <p className="text-sm font-medium text-stone-900">{hotel.infrastructure.internetSource}</p>
+                      <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-stone-500">Internet</p>
+                      <p className="text-xs sm:text-sm font-medium text-stone-900">{hotel.infrastructure.internetSource}</p>
                     </div>
                   </li>
                 )}
                 {hotel.infrastructure.workspaceSetup && hotel.infrastructure.workspaceSetup !== 'None' && (
-                  <li className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center shrink-0">
-                      <Monitor className="w-4 h-4 text-indigo-500" />
+                  <li className="flex items-start gap-2.5 sm:gap-3">
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-indigo-50 flex items-center justify-center shrink-0">
+                      <Monitor className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-500" />
                     </div>
                     <div>
-                      <p className="text-xs font-bold uppercase tracking-wider text-stone-500">Work From Home</p>
-                      <p className="text-sm font-medium text-stone-900">{hotel.infrastructure.workspaceSetup}</p>
+                      <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-stone-500">Work From Home</p>
+                      <p className="text-xs sm:text-sm font-medium text-stone-900">{hotel.infrastructure.workspaceSetup}</p>
                     </div>
                   </li>
                 )}
                 {hotel.infrastructure.roadAccess && (
-                  <li className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center shrink-0">
-                      <Map className="w-4 h-4 text-stone-600" />
+                  <li className="flex items-start gap-2.5 sm:gap-3">
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-stone-100 flex items-center justify-center shrink-0">
+                      <Map className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-stone-600" />
                     </div>
                     <div>
-                      <p className="text-xs font-bold uppercase tracking-wider text-stone-500">Road Access</p>
-                      <p className="text-sm font-medium text-stone-900">{hotel.infrastructure.roadAccess}</p>
+                      <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-stone-500">Road Access</p>
+                      <p className="text-xs sm:text-sm font-medium text-stone-900">{hotel.infrastructure.roadAccess}</p>
                     </div>
                   </li>
                 )}
@@ -1549,17 +1758,17 @@ export default function HotelDetails() {
             </div>
           )}
           
-          <div className="bg-white border border-stone-200 rounded-2xl p-6 shadow-xs space-y-5">
-            <div className="border-b border-stone-100 pb-3">
-              <h3 className="text-lg font-serif font-bold text-stone-900 flex items-center gap-2">
+          <div className="bg-white border border-stone-200/90 rounded-2xl p-4 sm:p-5 lg:p-6 shadow-xs space-y-3 sm:space-y-4">
+            <div className="border-b border-stone-100 pb-2.5 sm:pb-3">
+              <h3 className="text-base sm:text-lg font-serif font-bold text-stone-900 flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-emerald-700" /> Property Highlights
               </h3>
               <p className="text-stone-500 text-xs mt-0.5">Key amenities & features offered</p>
             </div>
-            <ul className="space-y-3">
+            <ul className="space-y-2.5 sm:space-y-3">
               {hotel.amenities && hotel.amenities.length > 0 ? (
                 hotel.amenities.map((amenity, i) => (
-                  <li key={i} className="flex items-start gap-2.5 text-xs text-stone-700 font-medium">
+                  <li key={i} className="flex items-start gap-2 text-xs text-stone-700 font-medium">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 shrink-0 mt-1.5" />
                     <span className="leading-snug">{amenity}</span>
                   </li>
@@ -1571,11 +1780,11 @@ export default function HotelDetails() {
           </div>
         </div>
           {/* Full Directions & Navigation Panel for Guests */}
-          <div id="directions" className="scroll-mt-36 lg:scroll-mt-28 lg:col-span-3 mb-0 pt-8 border-t border-stone-200 relative z-10 bg-white">
-            <div className="mb-8">
-              <span className="text-[0.68rem] font-bold text-emerald-700 tracking-[0.16em] uppercase">Find Your Way</span>
-              <h2 className="text-3xl md:text-4xl font-serif text-stone-900 mt-1 tracking-tight">Location &amp; Driving Directions</h2>
-              <p className="text-stone-500 text-base mt-2">
+          <div id="directions" className="scroll-mt-28 sm:scroll-mt-36 lg:scroll-mt-28 lg:col-span-3 mb-0 pt-6 sm:pt-8 border-t border-stone-200 relative z-10 bg-white">
+            <div className="mb-5 sm:mb-8">
+              <span className="text-[0.65rem] sm:text-[0.68rem] font-bold text-emerald-700 tracking-[0.16em] uppercase">Find Your Way</span>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-serif text-stone-900 mt-0.5 sm:mt-1 tracking-tight">Location &amp; Driving Directions</h2>
+              <p className="text-stone-500 text-xs sm:text-sm md:text-base mt-1.5">
                 Turn-by-turn navigation launchers, travel distance estimator, and interactive map for {hotel.name}.
               </p>
             </div>
@@ -1894,9 +2103,12 @@ export default function HotelDetails() {
                     )}
                     
                     {discountAmount > 0 && (
-                      <div className="flex justify-between text-red-600">
-                        <span>Promotion ({discountPercentage}% Off)</span>
-                        <span className="flex items-center"><span className="opacity-60">-</span><PriceDisplay amount={discountAmount} currency={bookingCurrency} /></span>
+                      <div className="flex justify-between text-stone-900 font-medium">
+                        <span className="flex items-center gap-1.5">
+                          {activePromo && <PromotionIcon saleType={activePromo.saleType} className="w-3.5 h-3.5 text-stone-600" />}
+                          <span>Promotion ({discountPercentage}% Off)</span>
+                        </span>
+                        <span className="flex items-center text-stone-900 font-semibold"><span className="opacity-60">-</span><PriceDisplay amount={discountAmount} currency={bookingCurrency} /></span>
                       </div>
                     )}
 

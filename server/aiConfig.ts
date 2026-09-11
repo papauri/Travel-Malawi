@@ -64,27 +64,27 @@ export const DEFAULT_PROVIDERS: Record<AIProviderId, ProviderConfig> = {
   },
   gemini: {
     enabled: true,
-    model: 'gemini-2.0-flash',
-    defaultModel: 'gemini-2.0-flash',
+    model: 'gemini-3.8-flash',
+    defaultModel: 'gemini-3.8-flash',
     name: 'Google Gemini',
     website: 'https://aistudio.google.com',
     rateLimitNotice: 'Generous free tier with ultra-fast sub-second latency and high throughput.',
     recommendedModels: [
       {
-        id: 'gemini-2.0-flash',
-        name: 'Gemini 2.0 Flash',
+        id: 'gemini-3.8-flash',
+        name: 'Gemini 3.8 Flash',
         description: '⚡ Sweet Spot: Best balance of speed, multimodal vision, high reasoning intelligence, and low cost',
         isSweetSpot: true,
       },
       {
-        id: 'gemini-2.0-flash-lite',
-        name: 'Gemini 2.0 Flash Lite',
+        id: 'gemini-3.1-flash-lite',
+        name: 'Gemini 3.1 Flash Lite',
         description: '💰 Ultra-budget & Fastest: Lowest latency and highest cost-efficiency for instant queries',
         isSweetSpot: true,
       },
       {
-        id: 'gemini-2.5-pro',
-        name: 'Gemini 2.5 Pro',
+        id: 'gemini-3.1-pro-preview',
+        name: 'Gemini 3.1 Pro',
         description: '🧠 Deep reasoning, complex hospitality analysis and long context planning',
       },
     ],
@@ -263,15 +263,16 @@ export function loadAIConfig(): AISystemConfig {
         };
       });
 
-      // Auto-migrate legacy/invalid checkpoints to production gemini-2.0-flash
+      // Auto-migrate legacy/invalid checkpoints to production gemini-3.8-flash
       const currentGeminiModel = inMemoryConfig!.providers.gemini?.model;
       if (
         currentGeminiModel === 'gemini-3.6-flash' ||
-        currentGeminiModel === 'gemini-3.8-flash' ||
+        currentGeminiModel === 'gemini-2.0-flash' ||
         currentGeminiModel === 'gemini-2.5-flash' ||
-        currentGeminiModel === 'gemini-flash-latest'
+        currentGeminiModel === 'gemini-flash-latest' ||
+        currentGeminiModel === 'gemini-1.5-flash'
       ) {
-        inMemoryConfig!.providers.gemini.model = 'gemini-2.0-flash';
+        inMemoryConfig!.providers.gemini.model = 'gemini-3.8-flash';
         saveAIConfig(inMemoryConfig!);
       }
 

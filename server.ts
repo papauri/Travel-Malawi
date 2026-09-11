@@ -4,7 +4,13 @@ import multer from 'multer';
 import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
 import { getPublicAIStatus, getAdminAIConfig, loadAIConfig, saveAIConfig, AIProviderId, getEffectiveApiKey } from './server/aiConfig';
-import { executeAIGeneration, executeOperationsAssistantChat, testProviderConnection } from './server/aiService';
+import { 
+  executeAIGeneration, 
+  executeOperationsAssistantChat, 
+  testProviderConnection, 
+  generateTripInsights, 
+  executeTripConciergeChat 
+} from './server/aiService';
 import { sendOfflineNotification } from './server/notifications';
 import { 
   generateAutoReminders, 
@@ -164,6 +170,50 @@ async function startServer() {
     } catch (err: any) {
       console.error('AI Operations Chat Error:', err);
       res.status(500).json({ error: err?.message || 'Failed to process operations assistant query' });
+    }
+  });
+
+  // AI Trip Planner Insights endpoint for travellers
+  app.post('/api/ai/trip-insights', async (req, res) => {
+    try {
+      const { stops, travelStyle, durationDays, customPreferences } = req.body;
+      if (!Array.isArray(stops) || stops.length === 0) {
+        return res.status(400).json({ error: 'At least one itinerary stop is required.' });
+      }
+
+      const insights = await generateTripInsights({
+        stops,
+        travelStyle,
+        durationDays,
+        customPreferences,
+      });
+      res.json(insights);
+    } catch (err: any) {
+      console.error('AI Trip Insights Error:', err);
+      res.status(500).json({ error: err?.message || 'Failed to generate journey insights' });
+    }
+  });
+
+  // AI Trip Planner Concierge Chat endpoint for travellers asking questions about their route
+  app.post('/api/ai/trip-chat', async (req, res) => {
+    try {
+      const { stops, message, history } = req.body;
+      if (!message || typeof message !== 'string') {
+        return res.status(400).json({ error: 'Message is required.' });
+      }
+      if (!Array.isArray(stops) || stops.length === 0) {
+        return res.status(400).json({ error: 'At least one itinerary stop is required.' });
+      }
+
+      const response = await executeTripConciergeChat({
+        stops,
+        message,
+        history,
+      });
+      res.json(response);
+    } catch (err: any) {
+      console.error('AI Trip Chat Error:', err);
+      res.status(500).json({ error: err?.message || 'Failed to process trip question' });
     }
   });
 

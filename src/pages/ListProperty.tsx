@@ -893,7 +893,7 @@ export default function ListProperty() {
       });
       if (polished) {
         updateSuggestedRoom(index, { description: polished });
-        toast.success('Description polished with AI');
+        toast.success('Description enhanced');
       }
     } catch {
       toast.error('Could not polish description');
@@ -1008,7 +1008,7 @@ export default function ListProperty() {
         });
       }
     } catch {
-      toast.error('Could not fetch AI rate recommendation');
+      toast.error('Could not fetch rate recommendation');
     } finally {
       setAiRateLoading(false);
     }
@@ -1143,12 +1143,12 @@ export default function ListProperty() {
   // ---- The wizard ----
   return (
     <div className="bg-stone-50">
-      <div className="mx-auto w-full max-w-5xl px-6 lg:px-8 py-14">
-        <div className="mb-8 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
+      <div className="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 py-6 sm:py-10 md:py-12">
+        <div className="mb-6 sm:mb-8 flex flex-wrap items-center justify-between gap-3 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-3">
             <button
               onClick={() => navigate('/dashboard')}
-              className="inline-flex items-center gap-2 text-sm font-semibold text-stone-500 transition hover:text-stone-900 cursor-pointer"
+              className="inline-flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-semibold text-stone-500 transition hover:text-stone-900 cursor-pointer"
             >
               <ArrowLeft className="h-4 w-4" /> Back to your dashboard
             </button>
@@ -1167,7 +1167,7 @@ export default function ListProperty() {
               <button
                 type="button"
                 onClick={() => setShowPropertyImporter(true)}
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-700 bg-white border border-stone-200 hover:border-stone-300 transition px-3 py-1.5 rounded-full shadow-sm cursor-pointer"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-700 bg-white border border-stone-200 hover:border-stone-300 transition px-2.5 sm:px-3 py-1.5 rounded-full shadow-xs cursor-pointer"
                 title="Import property details from a document"
               >
                 <FileText className="w-3.5 h-3.5" />
@@ -1177,7 +1177,7 @@ export default function ListProperty() {
             <button
               type="button"
               onClick={handleDiscardDraft}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-400 hover:text-red-600 transition px-3 py-1.5 rounded-full hover:bg-red-50 border border-transparent hover:border-red-200 cursor-pointer"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-400 hover:text-red-600 transition px-2.5 sm:px-3 py-1.5 rounded-full hover:bg-red-50 border border-transparent hover:border-red-200 cursor-pointer"
               title="Clear all fields and start a fresh draft"
             >
               <Trash2 className="w-3.5 h-3.5" />
@@ -1186,17 +1186,45 @@ export default function ListProperty() {
           </div>
         </div>
 
-        <header className="mb-10">
-          <p className="mb-3 text-[0.7rem] font-bold uppercase tracking-[0.22em] text-emerald-700">
+        <header className="mb-5 sm:mb-7 md:mb-8">
+          <p className="mb-1.5 sm:mb-2 text-[0.65rem] sm:text-[0.7rem] font-bold uppercase tracking-[0.2em] text-emerald-700">
             Step {step + 1} of {STEPS.length}
           </p>
-          <h1 className="font-serif text-4xl tracking-tight text-stone-900 md:text-5xl">{STEPS[step].title}</h1>
-          <p className="mt-3 text-lg text-stone-500">{STEPS[step].blurb}</p>
+          <h1 className="font-serif text-xl sm:text-2xl md:text-3xl lg:text-4xl tracking-tight text-stone-900">{STEPS[step].title}</h1>
+          <p className="mt-1 sm:mt-1.5 text-xs sm:text-sm md:text-base text-stone-500">{STEPS[step].blurb}</p>
         </header>
+
+        {/* Mobile & Tablet Step Dropdown */}
+        <div className="md:hidden relative mb-3.5">
+          <label htmlFor="list-property-step-select" className="sr-only">Go to step</label>
+          <div className="relative">
+            <select
+              id="list-property-step-select"
+              value={step}
+              onChange={(e) => {
+                const nextStep = Number(e.target.value);
+                setShowErrors(false);
+                setStep(nextStep);
+              }}
+              className="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 text-xs font-semibold text-stone-800 appearance-none pr-8 shadow-2xs focus:ring-2 focus:ring-stone-900 focus:outline-none"
+            >
+              {STEPS.map((s, index) => {
+                const done = index < step && isStepComplete(draft, index);
+                const reachable = index <= step || FIELD_STEPS.slice(0, index).every(i => isStepComplete(draft, i));
+                return (
+                  <option key={`step-opt-${index}`} value={index} disabled={!reachable}>
+                    Step {index + 1}: {s.title} {done ? '✓' : ''}
+                  </option>
+                );
+              })}
+            </select>
+            <ChevronDown className="w-3.5 h-3.5 text-stone-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
+        </div>
 
         {/* Progress. Each completed step stays clickable so a host can go back
             and correct something without losing the rest. */}
-        <ol className="mb-10 grid grid-cols-7 gap-2">
+        <ol className="mb-5 sm:mb-7 md:mb-8 grid grid-cols-7 gap-1.5 sm:gap-2">
           {STEPS.map((s, index) => {
             const done = index < step && isStepComplete(draft, index);
             const active = index === step;
@@ -1215,7 +1243,7 @@ export default function ListProperty() {
                     }`}
                   />
                   <span
-                    className={`mt-2 hidden text-xs font-semibold sm:block ${
+                    className={`mt-1.5 sm:mt-2 hidden text-[11px] sm:text-xs font-semibold md:block truncate ${
                       active ? 'text-stone-900' : done ? 'text-emerald-700' : 'text-stone-400'
                     }`}
                   >
@@ -1227,7 +1255,7 @@ export default function ListProperty() {
           })}
         </ol>
 
-        <div className="rounded-3xl border border-stone-200 bg-white p-5 sm:p-7 md:p-10 shadow-sm">
+        <div className="rounded-2xl sm:rounded-3xl border border-stone-200 bg-white p-4 sm:p-6 md:p-8 lg:p-10 shadow-xs">
           {step === 0 && (
             <div className="space-y-8">
               <div>
@@ -1529,12 +1557,7 @@ export default function ListProperty() {
                       >
                         <div className="flex items-center justify-between">
                           <span className="block text-sm font-bold">{category}</span>
-                          {selected && aiCategorized && (
-                            <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-emerald-500 text-white">
-                              AI
-                            </span>
-                          )}
-                          {selected && !aiCategorized && (
+                          {selected && (
                             <Check className="h-4 w-4 text-white" />
                           )}
                         </div>
@@ -3294,26 +3317,26 @@ function HostIntro({
         </div>
         <div className="absolute inset-0 bg-gradient-to-r from-stone-950 via-stone-950/85 to-stone-950/45" />
 
-        <div className="relative mx-auto w-full max-w-6xl px-6 py-24 lg:px-8 lg:py-32">
-          <p className="mb-6 text-[0.7rem] font-bold uppercase tracking-[0.26em] text-emerald-200/70">
+        <div className="relative mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8 py-10 sm:py-16 md:py-20 lg:py-28">
+          <p className="mb-3 sm:mb-4 md:mb-6 text-[0.65rem] sm:text-[0.7rem] font-bold uppercase tracking-[0.24em] text-emerald-200/70">
             For Malawian hosts
           </p>
-          <h1 className="max-w-3xl font-serif text-[clamp(2.5rem,6vw,4.5rem)] leading-[1.05] tracking-[-0.03em]">
+          <h1 className="max-w-3xl font-serif text-3xl sm:text-4xl md:text-5xl lg:text-6xl leading-[1.1] sm:leading-[1.05] tracking-tight">
             Your property. Your rates.
             <br />
             Your guests.
           </h1>
-          <p className="mt-6 max-w-xl text-lg leading-relaxed text-white/70">
+          <p className="mt-3 sm:mt-5 md:mt-6 max-w-xl text-sm sm:text-base md:text-lg leading-relaxed text-white/75">
             Put your property in front of travellers looking for the real Malawi — and let them book it
             without an agency taking a cut.
           </p>
 
-          <div className="mt-10 flex flex-col gap-4 sm:flex-row sm:items-center">
+          <div className="mt-6 sm:mt-8 md:mt-10 flex flex-col gap-3 sm:gap-4 sm:flex-row sm:items-center">
             {user ? (
               <button
                 onClick={onEnable}
                 disabled={enabling}
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-8 py-4 text-base font-bold text-stone-900 transition hover:bg-stone-100 disabled:opacity-60"
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-5 sm:px-7 md:px-8 py-3 sm:py-3.5 md:py-4 text-xs sm:text-sm md:text-base font-bold text-stone-900 transition hover:bg-stone-100 disabled:opacity-60 cursor-pointer"
               >
                 {enabling ? <Loader2 className="h-4 w-4 animate-spin" /> : <Building2 className="h-4 w-4" />}
                 {enabling ? 'Setting you up…' : 'Start hosting on this account'}
@@ -3321,22 +3344,22 @@ function HostIntro({
             ) : (
               <button
                 onClick={onSignUp}
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-8 py-4 text-base font-bold text-stone-900 transition hover:bg-stone-100"
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-5 sm:px-7 md:px-8 py-3 sm:py-3.5 md:py-4 text-xs sm:text-sm md:text-base font-bold text-stone-900 transition hover:bg-stone-100 cursor-pointer"
               >
                 <ArrowRight className="h-4 w-4" /> Create your host account
               </button>
             )}
-            <p className="text-sm text-white/50">
+            <p className="text-xs sm:text-sm text-white/60">
               {user
                 ? 'Keeps everything you have already booked — same login, one extra hat.'
                 : 'Free to list. Nothing to pay, ever.'}
             </p>
           </div>
 
-          <div className="mt-6">
+          <div className="mt-5 sm:mt-6">
             <Link
               to="/host-guide"
-              className="inline-flex items-center gap-2 text-sm text-emerald-300 hover:text-emerald-200 transition underline underline-offset-4"
+              className="inline-flex items-center gap-2 text-xs sm:text-sm text-emerald-300 hover:text-emerald-200 transition underline underline-offset-4"
             >
               <BookOpen className="w-4 h-4" /> Read our Host Onboarding Starter Pack &amp; Guide
             </Link>
@@ -3344,37 +3367,37 @@ function HostIntro({
         </div>
       </section>
 
-      <section className="mx-auto w-full max-w-6xl px-6 py-20 lg:px-8">
-        <div className="grid gap-10 md:grid-cols-3">
+      <section className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8 py-8 sm:py-12 md:py-16">
+        <div className="grid gap-5 sm:gap-6 md:gap-8 md:grid-cols-3">
           {SELLING_POINTS.map((point, pIdx) => (
-            <div key={`selling-point-${point.title}-${pIdx}`}>
-              <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700">
+            <div key={`selling-point-${point.title}-${pIdx}`} className="p-3 sm:p-0">
+              <div className="mb-3 sm:mb-4 md:mb-5 flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl bg-emerald-50 text-emerald-700">
                 <point.icon className="h-5 w-5" />
               </div>
-              <h2 className="mb-2 font-serif text-2xl text-stone-900">{point.title}</h2>
-              <p className="leading-relaxed text-stone-500">{point.body}</p>
+              <h2 className="mb-1.5 sm:mb-2 font-serif text-lg sm:text-xl md:text-2xl text-stone-900">{point.title}</h2>
+              <p className="leading-relaxed text-stone-500 text-xs sm:text-sm md:text-base">{point.body}</p>
             </div>
           ))}
         </div>
       </section>
 
       <section className="border-t border-stone-200 bg-stone-50">
-        <div className="mx-auto w-full max-w-6xl px-6 py-20 lg:px-8">
-          <h2 className="mb-12 font-serif text-4xl tracking-tight text-stone-900">Four steps, one sitting</h2>
-          <ol className="grid gap-8 md:grid-cols-4">
+        <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8 py-8 sm:py-12 md:py-16">
+          <h2 className="mb-6 sm:mb-8 md:mb-10 font-serif text-2xl sm:text-3xl md:text-4xl tracking-tight text-stone-900">Four steps, one sitting</h2>
+          <ol className="grid gap-3 sm:gap-4 md:gap-6 sm:grid-cols-2 md:grid-cols-4">
             {[
               { icon: Building2, title: 'The basics', body: 'Name, category and where in Malawi to find you.' },
               { icon: MessageCircle, title: 'The place', body: 'What the stay is actually like, and what is included.' },
               { icon: Images, title: 'Photographs', body: 'One main shot, then as many more as you have.' },
               { icon: ChevronRight, title: 'Rooms and rates', body: 'Add a room type, set the price, open for bookings.' },
             ].map((item, index) => (
-              <li key={`step-card-${item.title}-${index}`} className="rounded-3xl border border-stone-200 bg-white p-7">
-                <span className="mb-4 block text-xs font-bold uppercase tracking-[0.2em] text-stone-400">
+              <li key={`step-card-${item.title}-${index}`} className="rounded-xl sm:rounded-2xl md:rounded-3xl border border-stone-200 bg-white p-4 sm:p-5 md:p-6">
+                <span className="mb-3 sm:mb-4 block text-xs font-bold uppercase tracking-[0.2em] text-stone-400">
                   0{index + 1}
                 </span>
-                <item.icon className="mb-4 h-5 w-5 text-emerald-700" />
-                <h3 className="mb-2 font-serif text-xl text-stone-900">{item.title}</h3>
-                <p className="text-sm leading-relaxed text-stone-500">{item.body}</p>
+                <item.icon className="mb-3 sm:mb-4 h-5 w-5 text-emerald-700" />
+                <h3 className="mb-1.5 sm:mb-2 font-serif text-lg sm:text-xl text-stone-900">{item.title}</h3>
+                <p className="text-xs sm:text-sm leading-relaxed text-stone-500">{item.body}</p>
               </li>
             ))}
           </ol>
@@ -3383,6 +3406,3 @@ function HostIntro({
     </div>
   );
 }
-
-
-

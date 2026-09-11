@@ -8,7 +8,7 @@ import {
   Shield, Building2, CheckCircle, CheckCircle2, XCircle, Clock, MapPin, 
   MapPinOff, Users, Edit2, Edit3, Key, Trash2, Star, ExternalLink, 
   MessageSquare, MessageSquareOff, LayoutDashboard, CalendarRange, FileText, 
-  Search, Activity, Cpu, Target, Download
+  Search, Activity, Cpu, Target, Download, ChevronDown
 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import Pagination from '../components/Pagination';
@@ -36,6 +36,7 @@ export default function AdminDashboard() {
   
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [settingsSubTab, setSettingsSubTab] = useState<'email' | 'whatsapp'>('whatsapp');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   const activeTabRef = useRef<HTMLButtonElement | null>(null);
 
@@ -518,6 +519,26 @@ export default function AdminDashboard() {
     };
   }, [hotels, users, bookings]);
 
+  const adminTabs = useMemo(() => {
+    return [
+      { id: 'overview' as Tab, label: 'Overview', icon: LayoutDashboard },
+      { id: 'analytics' as Tab, label: 'Analytics', icon: TrendingUp },
+      { id: 'properties' as Tab, label: 'Properties', icon: Building2, badge: stats.pendingProperties > 0 ? stats.pendingProperties : null },
+      { id: 'users' as Tab, label: 'Users', icon: Users, visible: isGlobalAdmin(user) || isMarketing(user) },
+      { id: 'bookings' as Tab, label: 'All Bookings', icon: CalendarRange },
+      { id: 'destinations' as Tab, label: 'Destinations', icon: Navigation },
+      { id: 'content' as Tab, label: 'Content & Legal', icon: FileText },
+      { id: 'ai' as Tab, label: 'Assistant & Provider Keys', icon: Cpu, visible: isGlobalAdmin(user) },
+      { id: 'settings' as Tab, label: 'Channels & Settings', icon: Settings, visible: isGlobalAdmin(user), badge: 'Super Admin' },
+      { id: 'docs' as Tab, label: 'Executive Docs (.txt)', icon: BookOpen, badge: 'Admin' },
+    ].filter(t => t.visible !== false);
+  }, [stats.pendingProperties, user]);
+
+  const currentTabItem = useMemo(() => {
+    return adminTabs.find(t => t.id === activeTab) || adminTabs[0];
+  }, [adminTabs, activeTab]);
+  const CurrentTabIcon = currentTabItem.icon;
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -557,171 +578,169 @@ export default function AdminDashboard() {
         {/* Navigation Tabs Bar */}
         <div className="relative">
           <nav 
-            className="flex lg:flex-col gap-1.5 overflow-x-auto p-1.5 bg-stone-100/90 lg:bg-transparent rounded-2xl border border-stone-200/80 lg:border-none scrollbar-hide snap-x touch-pan-x -mx-4 px-4 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+            className="flex flex-col gap-2"
             role="tablist"
             aria-label="Admin Sections"
           >
-            <button 
-              ref={activeTab === 'overview' ? activeTabRef : undefined}
-              onClick={() => setActiveTab('overview')}
-              className={`whitespace-nowrap shrink-0 snap-start lg:w-full flex items-center gap-2.5 px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold min-h-[44px] transition ${
-                activeTab === 'overview' 
-                  ? 'bg-stone-900 text-white shadow-xs' 
-                  : 'text-stone-600 bg-white hover:bg-stone-50 border border-stone-200/60 lg:border-transparent lg:bg-transparent lg:hover:bg-stone-100'
-              }`}
-            >
-              <LayoutDashboard className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
-              <span>Overview</span>
-            </button>
-            <button 
-              ref={activeTab === 'analytics' ? activeTabRef : undefined}
-              onClick={() => setActiveTab('analytics')}
-              className={`whitespace-nowrap shrink-0 snap-start lg:w-full flex items-center gap-2.5 px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold min-h-[44px] transition ${
-                activeTab === 'analytics' 
-                  ? 'bg-stone-900 text-white shadow-xs' 
-                  : 'text-stone-600 bg-white hover:bg-stone-50 border border-stone-200/60 lg:border-transparent lg:bg-transparent lg:hover:bg-stone-100'
-              }`}
-            >
-              <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
-              <span>Analytics</span>
-            </button>
-            <button 
-              ref={activeTab === 'properties' ? activeTabRef : undefined}
-              onClick={() => setActiveTab('properties')}
-              className={`whitespace-nowrap shrink-0 snap-start lg:w-full flex items-center gap-2.5 px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold min-h-[44px] transition ${
-                activeTab === 'properties' 
-                  ? 'bg-stone-900 text-white shadow-xs' 
-                  : 'text-stone-600 bg-white hover:bg-stone-50 border border-stone-200/60 lg:border-transparent lg:bg-transparent lg:hover:bg-stone-100'
-              }`}
-            >
-              <Building2 className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
-              <span>Properties</span>
-              {stats.pendingProperties > 0 && (
-                <span className="ml-1 sm:ml-auto bg-amber-500 text-white text-[10px] px-2 py-0.5 rounded-full shrink-0 font-bold">
-                  {stats.pendingProperties}
-                </span>
-              )}
-            </button>
-            {(isGlobalAdmin(user) || isMarketing(user)) && (
-              <button 
-                ref={activeTab === 'users' ? activeTabRef : undefined}
-                onClick={() => setActiveTab('users')}
-                className={`whitespace-nowrap shrink-0 snap-start lg:w-full flex items-center gap-2.5 px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold min-h-[44px] transition ${
-                  activeTab === 'users' 
-                    ? 'bg-stone-900 text-white shadow-xs' 
-                    : 'text-stone-600 bg-white hover:bg-stone-50 border border-stone-200/60 lg:border-transparent lg:bg-transparent lg:hover:bg-stone-100'
-                }`}
-              >
-                <Users className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
-                <span>Users</span>
-              </button>
-            )}
-            <button 
-              ref={activeTab === 'bookings' ? activeTabRef : undefined}
-              onClick={() => setActiveTab('bookings')}
-              className={`whitespace-nowrap shrink-0 snap-start lg:w-full flex items-center gap-2.5 px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold min-h-[44px] transition ${
-                activeTab === 'bookings' 
-                  ? 'bg-stone-900 text-white shadow-xs' 
-                  : 'text-stone-600 bg-white hover:bg-stone-50 border border-stone-200/60 lg:border-transparent lg:bg-transparent lg:hover:bg-stone-100'
-              }`}
-            >
-              <CalendarRange className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
-              <span>All Bookings</span>
-            </button>
-            <button 
-              ref={activeTab === 'destinations' ? activeTabRef : undefined}
-              onClick={() => setActiveTab('destinations')}
-              className={`whitespace-nowrap shrink-0 snap-start lg:w-full flex items-center gap-2.5 px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold min-h-[44px] transition ${
-                activeTab === 'destinations' 
-                  ? 'bg-stone-900 text-white shadow-xs' 
-                  : 'text-stone-600 bg-white hover:bg-stone-50 border border-stone-200/60 lg:border-transparent lg:bg-transparent lg:hover:bg-stone-100'
-              }`}
-            >
-              <Navigation className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
-              <span>Destinations</span>
-            </button>
-            <button 
-              ref={activeTab === 'content' ? activeTabRef : undefined}
-              onClick={() => setActiveTab('content')}
-              className={`whitespace-nowrap shrink-0 snap-start lg:w-full flex items-center gap-2.5 px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold min-h-[44px] transition ${
-                activeTab === 'content' 
-                  ? 'bg-stone-900 text-white shadow-xs' 
-                  : 'text-stone-600 bg-white hover:bg-stone-50 border border-stone-200/60 lg:border-transparent lg:bg-transparent lg:hover:bg-stone-100'
-              }`}
-            >
-              <FileText className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
-              <span>Content &amp; Legal</span>
-            </button>
-            {isGlobalAdmin(user) && (
-              <>
-                <button 
-                  ref={activeTab === 'ai' ? activeTabRef : undefined}
-                  onClick={() => setActiveTab('ai')}
-                  className={`whitespace-nowrap shrink-0 snap-start lg:w-full flex items-center gap-2.5 px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold min-h-[44px] transition ${
-                    activeTab === 'ai' 
-                      ? 'bg-stone-900 text-white shadow-xs' 
-                      : 'text-stone-600 bg-white hover:bg-stone-50 border border-stone-200/60 lg:border-transparent lg:bg-transparent lg:hover:bg-stone-100'
-                  }`}
-                >
-                  <Cpu className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
-                  <span>AI Services &amp; Keys</span>
-                </button>
-                <button 
-                  ref={activeTab === 'settings' ? activeTabRef : undefined}
-                  onClick={() => setActiveTab('settings')}
-                  className={`whitespace-nowrap shrink-0 snap-start lg:w-full flex items-center gap-2.5 px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold min-h-[44px] transition ${
-                    activeTab === 'settings' 
-                      ? 'bg-stone-900 text-white shadow-xs' 
-                      : 'text-stone-600 bg-white hover:bg-stone-50 border border-stone-200/60 lg:border-transparent lg:bg-transparent lg:hover:bg-stone-100'
-                  }`}
-                >
-                  <Settings className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
-                  <span>Channels &amp; Settings</span>
-                  <span className="ml-auto bg-stone-200 text-stone-700 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase hidden lg:inline-block">
-                    Super Admin
-                  </span>
-                </button>
-              </>
-            )}
-            <button 
-              ref={activeTab === 'docs' ? activeTabRef : undefined}
-              onClick={() => setActiveTab('docs')}
-              className={`whitespace-nowrap shrink-0 snap-start lg:w-full flex items-center gap-2.5 px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold min-h-[44px] transition ${
-                activeTab === 'docs' 
-                  ? 'bg-stone-900 text-white shadow-xs' 
-                  : 'text-stone-600 bg-white hover:bg-stone-50 border border-stone-200/60 lg:border-transparent lg:bg-transparent lg:hover:bg-stone-100'
-              }`}
-            >
-              <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
-              <span>Executive Docs (.txt)</span>
-              <span className="ml-auto bg-emerald-500/20 text-emerald-800 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase hidden lg:inline-block">
-                Admin
-              </span>
-            </button>
-          </nav>
-        </div>
+            {/* Mobile & Tablet Collapsible Menu Trigger */}
+            <div className="lg:hidden space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1 min-w-0">
+                  <div className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-stone-500">
+                    <CurrentTabIcon className="w-4 h-4" />
+                  </div>
+                  <select
+                    id="admin-dashboard-section-dropdown"
+                    value={activeTab}
+                    onChange={(e) => {
+                      setActiveTab(e.target.value as Tab);
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className="w-full bg-white border border-stone-200 rounded-xl pl-8.5 pr-8 py-2 text-xs sm:text-sm font-semibold text-stone-900 appearance-none shadow-2xs focus:ring-2 focus:ring-stone-900 focus:outline-none cursor-pointer"
+                  >
+                    {adminTabs.map((tab) => {
+                      let badge = '';
+                      if (tab.badge) badge = ` · (${tab.badge})`;
+                      return (
+                        <option key={`admin-opt-${tab.id}`} value={tab.id}>
+                          {tab.label}{badge}
+                        </option>
+                      );
+                    })}
+                  </select>
+                  <ChevronDown className="w-4 h-4 text-stone-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
 
-        {/* Team Resources Quick Strip on Mobile/Tablet */}
-        <div className="lg:hidden flex items-center gap-2 overflow-x-auto py-1 scrollbar-hide text-xs">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 shrink-0">Team:</span>
-          <Link
-            to="/marketing"
-            target="_blank"
-            className="whitespace-nowrap shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 font-medium transition text-xs border border-stone-200/60"
-          >
-            <Target className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-            <span>Marketing Playbook</span>
-            <ExternalLink className="w-3 h-3 text-stone-400" />
-          </Link>
-          <Link
-            to="/host-guide"
-            target="_blank"
-            className="whitespace-nowrap shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 font-medium transition text-xs border border-stone-200/60"
-          >
-            <Building2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-            <span>Host Starter Pack</span>
-            <ExternalLink className="w-3 h-3 text-stone-400" />
-          </Link>
+                {currentTabItem.badge && (
+                  <span className={`text-[10px] px-2 py-1 rounded-lg font-bold shrink-0 ${typeof currentTabItem.badge === 'number' ? 'bg-amber-500 text-white' : 'bg-stone-100 text-stone-700'}`}>
+                    {currentTabItem.badge}
+                  </span>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setIsMobileMenuOpen(prev => !prev)}
+                  className="shrink-0 px-2.5 sm:px-3 py-2 bg-white border border-stone-200 rounded-xl text-xs font-semibold text-stone-700 hover:bg-stone-50 shadow-2xs flex items-center gap-1 transition cursor-pointer"
+                  title="Browse all admin sections"
+                >
+                  <span>{isMobileMenuOpen ? 'Close' : 'Grid'}</span>
+                  <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isMobileMenuOpen ? 'rotate-180' : ''}`} />
+                </button>
+              </div>
+
+              {/* Collapsible Drawer on Mobile & Tablet */}
+              {isMobileMenuOpen && (
+                <div 
+                  id="mobile-admin-drawer"
+                  className="mt-2 p-2.5 bg-white rounded-2xl border border-stone-200 shadow-xl space-y-2 animate-in fade-in slide-in-from-top-2 duration-200"
+                >
+                  <div className="flex items-center justify-between px-2 pt-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Select Section</span>
+                    <span className="text-[11px] text-stone-400 font-medium">{adminTabs.length} sections</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 max-h-[55vh] overflow-y-auto pr-1">
+                    {adminTabs.map(tab => {
+                      const TabIcon = tab.icon;
+                      const isSelected = activeTab === tab.id;
+                      return (
+                        <button
+                          key={`mob-tab-${tab.id}`}
+                          onClick={() => {
+                            setActiveTab(tab.id);
+                            setIsMobileMenuOpen(false);
+                          }}
+                          className={`flex items-center justify-between gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold transition text-left min-h-[44px] ${
+                            isSelected
+                              ? 'bg-stone-900 text-white shadow-2xs'
+                              : 'text-stone-700 hover:bg-stone-100'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5 truncate">
+                            <TabIcon className={`w-4 h-4 shrink-0 ${isSelected ? 'text-white' : 'text-stone-500'}`} />
+                            <span className="truncate">{tab.label}</span>
+                          </div>
+                          {tab.badge && (
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase shrink-0 ${
+                              isSelected 
+                                ? 'bg-white/20 text-white' 
+                                : typeof tab.badge === 'number' 
+                                  ? 'bg-amber-500 text-white' 
+                                  : 'bg-stone-100 text-stone-600'
+                            }`}>
+                              {tab.badge}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Team Resources inside mobile drawer */}
+                  <div className="pt-2 border-t border-stone-100 space-y-1.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 px-2 block">Team Resources</span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                      <Link
+                        to="/marketing"
+                        target="_blank"
+                        className="inline-flex items-center justify-between gap-1.5 px-3 py-2 rounded-xl bg-stone-50 hover:bg-stone-100 text-stone-700 text-xs font-medium border border-stone-200/60"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Target className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                          <span>Marketing Playbook</span>
+                        </div>
+                        <ExternalLink className="w-3 h-3 text-stone-400" />
+                      </Link>
+                      <Link
+                        to="/host-guide"
+                        target="_blank"
+                        className="inline-flex items-center justify-between gap-1.5 px-3 py-2 rounded-xl bg-stone-50 hover:bg-stone-100 text-stone-700 text-xs font-medium border border-stone-200/60"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Building2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                          <span>Host Starter Pack</span>
+                        </div>
+                        <ExternalLink className="w-3 h-3 text-stone-400" />
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Desktop Vertical Navigation */}
+            <div className="hidden lg:flex lg:flex-col gap-1.5">
+              {adminTabs.map(tab => {
+                const TabIcon = tab.icon;
+                const isSelected = activeTab === tab.id;
+                return (
+                  <button
+                    key={`desk-tab-${tab.id}`}
+                    ref={isSelected ? activeTabRef : undefined}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`whitespace-nowrap shrink-0 w-full flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold min-h-[44px] transition ${
+                      isSelected
+                        ? 'bg-stone-900 text-white shadow-xs'
+                        : 'text-stone-600 hover:bg-stone-100'
+                    }`}
+                  >
+                    <TabIcon className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+                    <span>{tab.label}</span>
+                    {tab.badge && (
+                      <span className={`ml-auto text-[10px] px-1.5 py-0.5 rounded font-bold uppercase shrink-0 ${
+                        isSelected
+                          ? 'bg-white/20 text-white'
+                          : typeof tab.badge === 'number'
+                            ? 'bg-amber-500 text-white'
+                            : 'bg-stone-200 text-stone-700'
+                      }`}>
+                        {tab.badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </nav>
         </div>
 
         {/* Team Resources in Sidebar on Desktop */}
@@ -771,52 +790,52 @@ export default function AdminDashboard() {
           <div className="space-y-8 animate-in fade-in duration-300">
             <h2 className="text-3xl font-serif font-bold text-stone-900">Platform Overview</h2>
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5 lg:gap-4">
               <button
                 onClick={() => setActiveTab('properties')}
-                className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm text-left hover:border-stone-300 hover:shadow-md transition focus:outline-none focus:ring-2 focus:ring-stone-900"
+                className="bg-white p-3.5 sm:p-4 lg:p-6 rounded-2xl lg:rounded-3xl border border-stone-200 shadow-2xs text-left hover:border-stone-300 hover:shadow-sm transition focus:outline-none focus:ring-2 focus:ring-stone-900"
               >
-                <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-4">
-                  <Building2 className="w-6 h-6" />
+                <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 bg-blue-50 text-blue-600 rounded-xl lg:rounded-2xl flex items-center justify-center mb-2.5 sm:mb-3 lg:mb-4">
+                  <Building2 className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6" />
                 </div>
-                <p className="text-stone-500 text-sm font-medium mb-1">Total Properties</p>
-                <p className="text-3xl font-bold text-stone-900">{stats.totalProperties}</p>
+                <p className="text-stone-500 text-xs sm:text-sm font-medium mb-0.5 sm:mb-1 truncate">Total Properties</p>
+                <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-stone-900">{stats.totalProperties}</p>
               </button>
               
               <button
                 onClick={() => setActiveTab('users')}
-                className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm text-left hover:border-stone-300 hover:shadow-md transition focus:outline-none focus:ring-2 focus:ring-stone-900"
+                className="bg-white p-3.5 sm:p-4 lg:p-6 rounded-2xl lg:rounded-3xl border border-stone-200 shadow-2xs text-left hover:border-stone-300 hover:shadow-sm transition focus:outline-none focus:ring-2 focus:ring-stone-900"
               >
-                <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mb-4">
-                  <Users className="w-6 h-6" />
+                <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 bg-emerald-50 text-emerald-600 rounded-xl lg:rounded-2xl flex items-center justify-center mb-2.5 sm:mb-3 lg:mb-4">
+                  <Users className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6" />
                 </div>
-                <p className="text-stone-500 text-sm font-medium mb-1">Total Users</p>
-                <div className="flex items-baseline gap-2">
-                  <p className="text-3xl font-bold text-stone-900">{stats.totalUsers}</p>
-                  <span className="text-xs text-stone-400 font-medium">{stats.managersCount} managers</span>
+                <p className="text-stone-500 text-xs sm:text-sm font-medium mb-0.5 sm:mb-1 truncate">Total Users</p>
+                <div className="flex flex-wrap items-baseline gap-1 sm:gap-2">
+                  <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-stone-900">{stats.totalUsers}</p>
+                  <span className="text-[10px] sm:text-xs text-stone-400 font-medium">{stats.managersCount} mgrs</span>
                 </div>
               </button>
               
               <button
                 onClick={() => setActiveTab('bookings')}
-                className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm text-left hover:border-stone-300 hover:shadow-md transition focus:outline-none focus:ring-2 focus:ring-stone-900"
+                className="bg-white p-3.5 sm:p-4 lg:p-6 rounded-2xl lg:rounded-3xl border border-stone-200 shadow-2xs text-left hover:border-stone-300 hover:shadow-sm transition focus:outline-none focus:ring-2 focus:ring-stone-900"
               >
-                <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center mb-4">
-                  <CalendarRange className="w-6 h-6" />
+                <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 bg-purple-50 text-purple-600 rounded-xl lg:rounded-2xl flex items-center justify-center mb-2.5 sm:mb-3 lg:mb-4">
+                  <CalendarRange className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6" />
                 </div>
-                <p className="text-stone-500 text-sm font-medium mb-1">Total Bookings</p>
-                <p className="text-3xl font-bold text-stone-900">{stats.totalBookings}</p>
+                <p className="text-stone-500 text-xs sm:text-sm font-medium mb-0.5 sm:mb-1 truncate">Total Bookings</p>
+                <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-stone-900">{stats.totalBookings}</p>
               </button>
               
               <button
                 onClick={() => setActiveTab('properties')}
-                className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm text-left hover:border-stone-300 hover:shadow-md transition focus:outline-none focus:ring-2 focus:ring-stone-900"
+                className="bg-white p-3.5 sm:p-4 lg:p-6 rounded-2xl lg:rounded-3xl border border-stone-200 shadow-2xs text-left hover:border-stone-300 hover:shadow-sm transition focus:outline-none focus:ring-2 focus:ring-stone-900"
               >
-                <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center mb-4">
-                  <Activity className="w-6 h-6" />
+                <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 bg-amber-50 text-amber-600 rounded-xl lg:rounded-2xl flex items-center justify-center mb-2.5 sm:mb-3 lg:mb-4">
+                  <Activity className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6" />
                 </div>
-                <p className="text-stone-500 text-sm font-medium mb-1">Pending Approvals</p>
-                <p className="text-3xl font-bold text-stone-900">{stats.pendingProperties}</p>
+                <p className="text-stone-500 text-xs sm:text-sm font-medium mb-0.5 sm:mb-1 truncate">Pending Approvals</p>
+                <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-stone-900">{stats.pendingProperties}</p>
               </button>
             </div>
             
@@ -1069,74 +1088,74 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            <div className="space-y-6">
+            <div className="space-y-3 sm:space-y-4">
               {visibleHotels.slice((currentHotelPage - 1) * itemsPerPage, currentHotelPage * itemsPerPage).map((hotel, index) => (
-                <div key={`admin-hotel-${hotel.id || index}-${index}`} className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-sm border border-stone-200 flex flex-col md:flex-row gap-4 sm:gap-6 hover:border-stone-300 transition">
-                  <div className="h-44 sm:h-48 w-full md:w-64 bg-stone-100 rounded-xl sm:rounded-2xl overflow-hidden shrink-0">
+                <div key={`admin-hotel-${hotel.id || index}-${index}`} className="bg-white rounded-xl sm:rounded-2xl md:rounded-3xl p-3 sm:p-4 md:p-5 shadow-2xs border border-stone-200 flex flex-col sm:flex-row gap-3 sm:gap-4 md:gap-5 hover:border-stone-300 transition">
+                  <div className="w-full aspect-[16/10] sm:aspect-auto sm:h-32 md:h-38 sm:w-36 md:w-48 lg:w-56 bg-stone-100 rounded-lg sm:rounded-xl overflow-hidden shrink-0">
                     <SmartImage src={getHotelImage(hotel)} alt={hotel.name} className="w-full h-full object-cover" />
                   </div>
                   
                   <div className="flex-1 min-w-0 flex flex-col justify-between">
                     <div>
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2 gap-2 sm:gap-3">
-                        <h3 className="text-lg sm:text-xl font-bold text-stone-900 truncate">{hotel.name}</h3>
-                        <div className="flex flex-wrap items-center gap-2 shrink-0">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-1 gap-1 sm:gap-2">
+                        <h3 className="text-sm sm:text-base md:text-lg font-bold text-stone-900 truncate">{hotel.name}</h3>
+                        <div className="flex flex-wrap items-center gap-1 sm:gap-1.5 shrink-0">
                         {hotel.featured && (
-                          <span className="inline-flex items-center gap-1 bg-amber-400/20 text-amber-800 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
-                            <Star className="h-3 w-3 fill-amber-500 text-amber-500" /> Featured
+                          <span className="inline-flex items-center gap-1 bg-amber-400/20 text-amber-800 px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold uppercase tracking-wider">
+                            <Star className="h-2.5 w-2.5 fill-amber-500 text-amber-500" /> Featured
                           </span>
                         )}
                         
                         {(!hotel.status || hotel.status === 'approved') && (
-                          <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
-                            <CheckCircle className="h-3 w-3" /> Approved
+                          <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold uppercase tracking-wider">
+                            <CheckCircle className="h-2.5 w-2.5" /> Approved
                           </span>
                         )}
                         {hotel.status === 'pending' && (
-                          <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
-                            <Clock className="h-3 w-3" /> Pending
+                          <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold uppercase tracking-wider">
+                            <Clock className="h-2.5 w-2.5" /> Pending
                           </span>
                         )}
                         {hotel.status === 'rejected' && (
-                          <span className="inline-flex items-center gap-1 bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
-                            <XCircle className="h-3 w-3" /> Rejected
+                          <span className="inline-flex items-center gap-1 bg-red-100 text-red-700 px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold uppercase tracking-wider">
+                            <XCircle className="h-2.5 w-2.5" /> Rejected
                           </span>
                         )}
                         </div>
                       </div>
                       
-                      <div className="space-y-1 mb-4">
-                        <p className="text-stone-500 text-sm flex items-center gap-2">
-                          <MapPin className="h-4 w-4" /> {hotel.location}
+                      <div className="space-y-0.5 mb-2.5 text-xs">
+                        <p className="text-stone-500 flex items-center gap-1.5">
+                          <MapPin className="h-3.5 w-3.5 text-stone-400 shrink-0" /> <span className="truncate">{hotel.location}</span>
                         </p>
                         {(() => {
                           const problem = pinProblem(hotel.coordinates);
                           return problem ? (
-                            <p className="text-amber-700 text-sm flex items-center gap-2 font-medium">
-                              <MapPinOff className="h-4 w-4" /> {PIN_PROBLEM_LABELS[problem]}
+                            <p className="text-amber-700 flex items-center gap-1.5 font-medium">
+                              <MapPinOff className="h-3.5 w-3.5 shrink-0" /> {PIN_PROBLEM_LABELS[problem]}
                             </p>
                           ) : (
                             <a
                               href={mapLinkUrl(hotel)}
                               target="_blank"
                               rel="noreferrer noopener"
-                              className="text-stone-500 text-sm flex items-center gap-2 hover:text-stone-900 transition w-fit"
+                              className="text-stone-500 flex items-center gap-1.5 hover:text-stone-900 transition w-fit"
                             >
-                              <MapPin className="h-4 w-4 text-emerald-600" />
-                              {hotel.coordinates!.lat.toFixed(4)}, {hotel.coordinates!.lng.toFixed(4)}
-                              <ExternalLink className="h-3 w-3" />
+                              <MapPin className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                              <span>{hotel.coordinates!.lat.toFixed(4)}, {hotel.coordinates!.lng.toFixed(4)}</span>
+                              <ExternalLink className="h-2.5 w-2.5" />
                             </a>
                           );
                         })()}
-                        <div className="text-stone-500 text-sm space-y-1">
-                          <p className="flex items-center gap-2">
-                            <Users className="h-4 w-4 text-stone-400" />
-                            <span>
-                              <strong className="text-stone-700 font-medium">Manager:</strong>{' '}
+                        <div className="text-stone-500 space-y-0.5">
+                          <p className="flex items-center gap-1.5 truncate">
+                            <Users className="h-3.5 w-3.5 text-stone-400 shrink-0" />
+                            <span className="truncate">
+                              <strong className="text-stone-700 font-medium">Mgr:</strong>{' '}
                               {hotel.managerName ? (
                                 <>
                                   <span className="text-stone-900 font-semibold">{hotel.managerName}</span>
-                                  <span className="text-xs text-stone-500 ml-1.5">
+                                  <span className="text-stone-500 ml-1">
                                     ({hotel.managerEmail || (hotel.managerId ? users.find(u => u.uid === hotel.managerId)?.email || hotel.managerId : 'Platform Direct')})
                                   </span>
                                 </>
@@ -1144,31 +1163,31 @@ export default function AdminDashboard() {
                                 (hotel.managerId && users.find(u => u.uid === hotel.managerId)?.email) ||
                                 hotel.managerEmail ||
                                 hotel.managerId ||
-                                <span className="text-stone-400 italic">Self-managed / Open manager</span>
+                                <span className="text-stone-400 italic">Self-managed</span>
                               )}
                             </span>
                           </p>
                           {hotel.ownerName && (
-                            <p className="flex items-center gap-2 pl-6 text-xs text-stone-500">
-                              <span><strong>Owner/Entity:</strong> {hotel.ownerName} {hotel.ownerEmail ? `(${hotel.ownerEmail})` : ''}</span>
+                            <p className="flex items-center gap-1.5 pl-5 text-[11px] text-stone-500 truncate">
+                              <span><strong>Entity:</strong> {hotel.ownerName} {hotel.ownerEmail ? `(${hotel.ownerEmail})` : ''}</span>
                             </p>
                           )}
                         </div>
                       </div>
                     </div>
                     
-                    <div className="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-stone-100">
+                    <div className="flex flex-wrap items-center gap-1.5 mt-2 pt-2 border-t border-stone-100">
                       {hotel.status === 'pending' && (
                         <>
                           <button 
                             onClick={() => handleUpdateStatus(hotel.id!, 'approved')}
-                            className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-emerald-700 transition min-h-[40px] flex items-center justify-center"
+                            className="bg-emerald-600 text-white px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs font-semibold hover:bg-emerald-700 transition flex items-center justify-center cursor-pointer"
                           >
                             Approve
                           </button>
                           <button 
                             onClick={() => handleUpdateStatus(hotel.id!, 'rejected')}
-                            className="bg-stone-200 text-stone-700 px-4 py-2 rounded-xl text-sm font-medium hover:bg-stone-300 transition min-h-[40px] flex items-center justify-center"
+                            className="bg-stone-200 text-stone-700 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs font-semibold hover:bg-stone-300 transition flex items-center justify-center cursor-pointer"
                           >
                             Reject
                           </button>
@@ -1178,7 +1197,7 @@ export default function AdminDashboard() {
                       {(!hotel.status || hotel.status === 'approved') && (
                         <button 
                           onClick={() => handleUpdateStatus(hotel.id!, 'pending')}
-                          className="bg-amber-100 text-amber-700 px-4 py-2 rounded-xl text-sm font-medium hover:bg-amber-200 transition min-h-[40px] flex items-center justify-center"
+                          className="bg-amber-100 text-amber-800 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs font-semibold hover:bg-amber-200 transition flex items-center justify-center cursor-pointer"
                         >
                           Suspend
                         </button>
@@ -1187,7 +1206,7 @@ export default function AdminDashboard() {
                       {hotel.status === 'rejected' && (
                         <button 
                           onClick={() => handleUpdateStatus(hotel.id!, 'approved')}
-                          className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-emerald-700 transition min-h-[40px] flex items-center justify-center"
+                          className="bg-emerald-600 text-white px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs font-semibold hover:bg-emerald-700 transition flex items-center justify-center cursor-pointer"
                         >
                           Approve
                         </button>
@@ -1195,11 +1214,11 @@ export default function AdminDashboard() {
 
                       <button
                         onClick={() => handleToggleFeatured(hotel)}
-                        className={`px-4 py-2 rounded-xl text-sm font-medium transition min-h-[40px] flex items-center justify-center gap-2 ${
+                        className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1 cursor-pointer ${
                           hotel.featured ? 'bg-amber-500 text-white hover:bg-amber-600' : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
                         }`}
                       >
-                        <Star className={`h-4 w-4 ${hotel.featured ? 'fill-white' : ''}`} />
+                        <Star className={`h-3 w-3 ${hotel.featured ? 'fill-white' : ''}`} />
                         {hotel.featured ? 'Featured' : 'Feature'}
                       </button>
 
@@ -1215,20 +1234,20 @@ export default function AdminDashboard() {
                             toast.error('Failed to update chat status');
                           }
                         }}
-                        className={`px-4 py-2 rounded-xl text-sm font-medium transition min-h-[40px] flex items-center justify-center gap-2 ${
+                        className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1 cursor-pointer ${
                           hotel.adminChatEnabled === false ? 'bg-red-100 text-red-700 hover:bg-red-200' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
                         }`}
                         title={hotel.adminChatEnabled === false ? "Enable Chat for this property" : "Disable Chat for this property"}
                       >
-                        {hotel.adminChatEnabled === false ? <MessageSquareOff className="h-4 w-4" /> : <MessageSquare className="h-4 w-4" />}
+                        {hotel.adminChatEnabled === false ? <MessageSquareOff className="h-3 w-3" /> : <MessageSquare className="h-3 w-3" />}
                         {hotel.adminChatEnabled === false ? 'Chat Off' : 'Chat On'}
                       </button>
 
                       <Link 
                         to={`/admin/hotel/${hotel.id}`}
-                        className="bg-stone-900 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-stone-800 transition min-h-[40px] flex items-center justify-center gap-2 w-full sm:w-auto sm:ml-auto"
+                        className="bg-stone-900 text-white px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs font-semibold hover:bg-stone-800 transition flex items-center justify-center gap-1 sm:ml-auto"
                       >
-                        <Edit3 className="h-4 w-4" /> Manage Listing
+                        <Edit3 className="h-3 w-3" /> Manage Listing
                       </Link>
                       
                       {!isMarketing(user) && (
@@ -1779,6 +1798,23 @@ export default function AdminDashboard() {
             <h2 className="text-3xl font-serif font-bold text-stone-900">Content & Legal</h2>
             
             <div className="bg-white rounded-3xl border border-stone-200 shadow-sm p-6 md:p-8 space-y-8">
+              <div>
+                <h3 className="text-lg font-bold text-stone-900 mb-4 border-b border-stone-100 pb-2">Global Domain Settings</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Platform Domain</label>
+                    <input
+                      type="url"
+                      value={contentSettings.platformDomain || ''}
+                      onChange={e => setContentSettings({...contentSettings, platformDomain: e.target.value})}
+                      placeholder="https://travel-malawi-10840607522.us-west1.run.app"
+                      className="w-full bg-stone-50 border border-stone-200 px-4 py-3 rounded-xl focus:outline-none focus:border-stone-900"
+                    />
+                    <p className="text-xs text-stone-400 mt-1">This domain updates dynamically across all system documents, emails, and scripts.</p>
+                  </div>
+                </div>
+              </div>
+
               <div>
                 <h3 className="text-lg font-bold text-stone-900 mb-4 border-b border-stone-100 pb-2">Global Signature (Website Footer)</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

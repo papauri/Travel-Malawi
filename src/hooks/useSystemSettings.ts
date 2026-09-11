@@ -11,6 +11,7 @@ export interface SystemSettings {
   socialFacebook?: string;
   socialInstagram?: string;
   socialTwitter?: string;
+  platformDomain?: string;
 }
 
 export function useSystemSettings() {

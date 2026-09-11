@@ -24,6 +24,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 import { useAuthDialog } from '../contexts/AuthDialogContext';
 import { isHotelManager } from '../lib/roles';
+import EditableSection from '../components/EditableSection';
 
 export default function HostStarterPack() {
   const { user, becomeHost, loading: authLoading } = useAuth();
@@ -73,7 +74,7 @@ export default function HostStarterPack() {
           <div className="max-w-4xl mx-auto flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="inline-block w-2 h-2 rounded-full bg-stone-400" />
-              <span className="text-stone-300 font-medium">Host Onboarding Resource for Lodges, B&amp;Bs &amp; Stays</span>
+              <span className="text-stone-300 font-medium">Host Onboarding Resource for Hotels, Resorts, Lodges, B&amp;Bs &amp; Stays</span>
             </div>
             <span className="text-stone-400 text-xs">Property Owner Access Only</span>
           </div>
@@ -113,7 +114,7 @@ export default function HostStarterPack() {
             </div>
 
             <p className="text-sm text-stone-600 leading-relaxed">
-              Travel Malawi distinguishes between Guest accounts (for travelers looking to explore, save, and book stays) and Property Owner accounts (for hosts of lodges, B&amp;Bs, cottages, guest houses, and safari camps).
+              Travel Malawi distinguishes between Guest accounts (for travelers looking to explore, save, and book stays) and Property Owner accounts (for hosts of hotels, resorts, lodges, B&amp;Bs, cottages, guest houses, and safari camps).
             </p>
 
             <div className="mt-6 grid sm:grid-cols-2 gap-4">
@@ -303,7 +304,12 @@ export default function HostStarterPack() {
           </h1>
           
           <p className="mt-6 text-stone-300 text-base sm:text-xl max-w-2xl mx-auto leading-relaxed font-light">
-            A practical guide for Malawian lodge, B&amp;B, cottage, guest house, and safari camp hosts. Learn why an online presence transforms your bookings, and how to launch in under 8 minutes.
+            <EditableSection
+              docId="docs_host"
+              fieldId="hero_subtitle"
+              defaultText="A practical guide for Malawian lodge, B&B, cottage, guest house, and safari camp hosts. Learn why an online presence transforms your bookings, and how to launch in under 8 minutes."
+              multiline
+            />
           </p>
 
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -704,7 +710,7 @@ Let us know if you need airport transfer or early breakfast. Safe travels!`}
               Ready to Welcome More Guests to Your Property?
             </h2>
             <p className="text-stone-300 text-sm sm:text-base mt-3 leading-relaxed">
-              Grab 5 photos from your phone and join Malawi&apos;s premier hospitality network for lodges, B&amp;Bs, cottages, and camps today.
+              Grab 5 photos from your phone and join Malawi&apos;s premier hospitality network for hotels, resorts, lodges, B&amp;Bs, cottages, and camps today.
             </p>
 
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">

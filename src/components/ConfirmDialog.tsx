@@ -74,20 +74,20 @@ export default function ConfirmDialog({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.97, y: 8 }}
             transition={{ type: 'spring', stiffness: 420, damping: 34, mass: 0.9 }}
-            className="bg-white rounded-[1.75rem] w-full max-w-sm overflow-hidden shadow-2xl shadow-stone-950/25 p-7 relative z-10 my-auto text-left overscroll-contain"
+            className="bg-white rounded-2xl sm:rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl shadow-stone-950/25 p-5 sm:p-7 relative z-10 my-auto text-left overscroll-contain border border-stone-100"
           >
             <div className="flex flex-col items-center text-center">
-              <div className={`h-14 w-14 grid place-items-center rounded-full mb-5 ${
+              <div className={`h-11 w-11 sm:h-14 sm:w-14 grid place-items-center rounded-full mb-3.5 sm:mb-5 ${
                 isDestructive ? 'bg-red-50 text-red-600' : 'bg-stone-100 text-stone-900'
               }`}>
-                <AlertTriangle className="w-6 h-6" />
+                <AlertTriangle className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
-              <h3 className="text-xl font-serif font-semibold text-stone-900 mb-2 tracking-tight">{title}</h3>
-              <p className="text-stone-500 text-sm leading-relaxed mb-7">{message}</p>
-              <div className="flex gap-3 w-full">
+              <h3 className="text-lg sm:text-xl font-serif font-bold text-stone-900 mb-1.5 sm:mb-2 tracking-tight leading-snug">{title}</h3>
+              <p className="text-stone-500 text-xs sm:text-sm leading-relaxed mb-5 sm:mb-6">{message}</p>
+              <div className="flex gap-2.5 sm:gap-3 w-full">
                 <button
                   onClick={onCancel}
-                  className="flex-1 bg-stone-100 text-stone-700 px-4 py-3 rounded-full font-semibold text-sm hover:bg-stone-200 transition cursor-pointer"
+                  className="flex-1 bg-stone-100 text-stone-700 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl sm:rounded-full font-semibold text-xs sm:text-sm hover:bg-stone-200 transition cursor-pointer"
                 >
                   {cancelText}
                 </button>
@@ -96,7 +96,7 @@ export default function ConfirmDialog({
                     onConfirm();
                     onCancel();
                   }}
-                  className={`flex-1 px-4 py-3 rounded-full font-semibold text-sm transition text-white cursor-pointer ${
+                  className={`flex-1 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl sm:rounded-full font-semibold text-xs sm:text-sm transition text-white cursor-pointer ${
                     isDestructive ? 'bg-red-600 hover:bg-red-700' : 'bg-stone-900 hover:bg-stone-800'
                   }`}
                 >

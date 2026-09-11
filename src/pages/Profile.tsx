@@ -80,117 +80,117 @@ export default function Profile() {
   };
 
   return (
-    <div className="mx-auto max-w-4xl px-4 lg:px-8 py-10 mb-20 md:mb-0">
-      <div className="mb-10 border-b border-stone-200 pb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
+    <div className="mx-auto max-w-4xl px-3.5 sm:px-6 lg:px-8 py-5 sm:py-8 md:py-10 mb-20 md:mb-0">
+      <div className="mb-5 sm:mb-7 border-b border-stone-200 pb-3.5 sm:pb-5 flex flex-col sm:flex-row sm:items-end justify-between gap-3">
         <div>
-          <h1 className="text-3xl md:text-4xl font-serif font-medium text-stone-900 tracking-tight">Profile Settings</h1>
-          <p className="text-stone-500 mt-2">Manage your personal information and preferences.</p>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-serif font-bold text-stone-900 tracking-tight">Profile Settings</h1>
+          <p className="text-stone-500 mt-0.5 sm:mt-1 text-xs sm:text-sm">Manage your personal information and preferences.</p>
         </div>
         <button
           onClick={handlePasswordReset}
           disabled={isResetting}
-          className="flex items-center justify-center gap-2 rounded-full border border-stone-300 bg-white px-5 py-2.5 text-sm font-semibold text-stone-700 hover:bg-stone-50 transition disabled:opacity-50"
+          className="flex items-center justify-center gap-1.5 rounded-xl sm:rounded-full border border-stone-300 bg-white px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-stone-700 hover:bg-stone-50 transition disabled:opacity-50 cursor-pointer w-full sm:w-auto shadow-2xs"
         >
-          {isResetting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Key className="w-4 h-4" />}
+          {isResetting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Key className="w-3.5 h-3.5" />}
           Send Password Reset
         </button>
       </div>
 
-      <form onSubmit={handleSave} className="space-y-8 bg-white p-6 md:p-8 rounded-3xl border border-stone-200 shadow-sm">
-        <div className="space-y-6">
-          <h2 className="text-xl font-bold text-stone-900">Personal Information</h2>
+      <form onSubmit={handleSave} className="space-y-5 sm:space-y-7 bg-white p-3.5 sm:p-6 md:p-8 rounded-2xl sm:rounded-3xl border border-stone-200 shadow-2xs">
+        <div className="space-y-4 sm:space-y-5">
+          <h2 className="text-base sm:text-lg font-bold text-stone-900">Personal Information</h2>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-5">
             <div>
-              <label className="block text-sm font-semibold text-stone-900 mb-2">Display Name</label>
+              <label className="block text-xs sm:text-sm font-semibold text-stone-900 mb-1.5">Display Name</label>
               <input
                 type="text"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
-                className="w-full rounded-xl border border-stone-200 bg-stone-50 px-4 py-2.5 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition"
+                className="w-full rounded-xl border border-stone-200 bg-stone-50 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm focus:border-stone-900 focus:ring-1 focus:ring-stone-900 transition"
                 placeholder="How we should call you"
               />
             </div>
             
             <div>
-              <label className="block text-sm font-semibold text-stone-900 mb-2">Email Address</label>
+              <label className="block text-xs sm:text-sm font-semibold text-stone-900 mb-1.5">Email Address</label>
               <input
                 type="email"
                 value={user.email || ''}
                 disabled
-                className="w-full rounded-xl border border-stone-200 bg-stone-100 px-4 py-2.5 text-sm text-stone-500 cursor-not-allowed"
+                className="w-full rounded-xl border border-stone-200 bg-stone-100 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm text-stone-500 cursor-not-allowed"
               />
-              <p className="text-xs text-stone-400 mt-1.5">Email address cannot be changed</p>
+              <p className="text-[11px] text-stone-400 mt-1">Email address cannot be changed</p>
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-stone-900 mb-2">Phone Number</label>
+              <label className="block text-xs sm:text-sm font-semibold text-stone-900 mb-1.5">Phone Number</label>
               <input
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="w-full rounded-xl border border-stone-200 bg-stone-50 px-4 py-2.5 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition"
+                className="w-full rounded-xl border border-stone-200 bg-stone-50 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm focus:border-stone-900 focus:ring-1 focus:ring-stone-900 transition"
                 placeholder="+265 ... (Used for bookings)"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-stone-900 mb-2">WhatsApp Number</label>
+              <label className="block text-xs sm:text-sm font-semibold text-stone-900 mb-1.5">WhatsApp Number</label>
               <input
                 type="tel"
                 value={whatsapp}
                 onChange={(e) => setWhatsapp(e.target.value)}
-                className="w-full rounded-xl border border-stone-200 bg-stone-50 px-4 py-2.5 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition"
+                className="w-full rounded-xl border border-stone-200 bg-stone-50 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm focus:border-stone-900 focus:ring-1 focus:ring-stone-900 transition"
                 placeholder="+265 ..."
               />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-stone-900 mb-2">City / Location</label>
+              <label className="block text-xs sm:text-sm font-semibold text-stone-900 mb-1.5">City / Location</label>
               <input
                 type="text"
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
-                className="w-full rounded-xl border border-stone-200 bg-stone-50 px-4 py-2.5 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition"
+                className="w-full rounded-xl border border-stone-200 bg-stone-50 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm focus:border-stone-900 focus:ring-1 focus:ring-stone-900 transition"
                 placeholder="e.g. Lilongwe"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-stone-900 mb-2">Country</label>
+              <label className="block text-xs sm:text-sm font-semibold text-stone-900 mb-1.5">Country</label>
               <input
                 type="text"
                 value={country}
                 onChange={(e) => setCountry(e.target.value)}
-                className="w-full rounded-xl border border-stone-200 bg-stone-50 px-4 py-2.5 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition"
+                className="w-full rounded-xl border border-stone-200 bg-stone-50 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm focus:border-stone-900 focus:ring-1 focus:ring-stone-900 transition"
                 placeholder="e.g. Malawi"
               />
             </div>
 
-            <div className="md:col-span-2">
-              <label className="block text-sm font-semibold text-stone-900 mb-2">Bio / About</label>
+            <div className="sm:col-span-2">
+              <label className="block text-xs sm:text-sm font-semibold text-stone-900 mb-1.5">Bio / About</label>
               <textarea
                 value={bio}
                 onChange={(e) => setBio(e.target.value)}
                 rows={3}
-                className="w-full rounded-xl border border-stone-200 bg-stone-50 px-4 py-2.5 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition"
+                className="w-full rounded-xl border border-stone-200 bg-stone-50 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm focus:border-stone-900 focus:ring-1 focus:ring-stone-900 transition"
                 placeholder="A little bit about yourself..."
               />
             </div>
           </div>
         </div>
 
-        <div className="pt-6 border-t border-stone-100 space-y-6">
-          <h2 className="text-xl font-bold text-stone-900">Preferences</h2>
+        <div className="pt-5 border-t border-stone-100 space-y-4 sm:space-y-5">
+          <h2 className="text-base sm:text-lg font-bold text-stone-900">Preferences</h2>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6">
+            <div className="space-y-4">
               <div>
-                <label className="block text-sm font-semibold text-stone-900 mb-2">Preferred Currency</label>
+                <label className="block text-xs sm:text-sm font-semibold text-stone-900 mb-1.5">Preferred Currency</label>
                 <select
                   value={preferredCurrency}
                   onChange={(e) => setPreferredCurrency(e.target.value as CurrencyCode)}
-                  className="w-full rounded-xl border border-stone-200 bg-stone-50 px-4 py-2.5 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition"
+                  className="w-full rounded-xl border border-stone-200 bg-stone-50 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm focus:border-stone-900 focus:ring-1 focus:ring-stone-900 transition"
                 >
                   {Object.entries(CURRENCIES).map(([code, config]) => (
                     <option key={code} value={code}>
@@ -198,51 +198,51 @@ export default function Profile() {
                     </option>
                   ))}
                 </select>
-                <p className="text-xs text-stone-500 mt-1.5">
+                <p className="text-[11px] text-stone-500 mt-1">
                   Prices will be converted to this currency where possible.
                 </p>
               </div>
             </div>
 
             <div>
-              <h3 className="text-sm font-semibold text-stone-900 mb-4 flex items-center gap-2">
-                <Bell className="w-4 h-4 text-stone-500" /> Notifications
+              <h3 className="text-xs sm:text-sm font-semibold text-stone-900 mb-3 flex items-center gap-2">
+                <Bell className="w-3.5 h-3.5 text-stone-500" /> Notifications
               </h3>
-              <div className="space-y-4">
-                <label className="flex items-start gap-3">
+              <div className="space-y-3 text-xs sm:text-sm">
+                <label className="flex items-start gap-2.5 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={notifications.emailBookings}
                     onChange={(e) => setNotifications(prev => ({ ...prev, emailBookings: e.target.checked }))}
-                    className="mt-1 rounded border-stone-300 text-emerald-600 focus:ring-emerald-500"
+                    className="mt-0.5 rounded border-stone-300 text-stone-900 focus:ring-stone-900"
                   />
                   <div>
-                    <span className="block text-sm font-medium text-stone-900">Booking Updates via Email</span>
-                    <span className="block text-xs text-stone-500">Receive confirmations and host messages</span>
+                    <span className="block font-medium text-stone-900 text-xs sm:text-sm">Booking Updates via Email</span>
+                    <span className="block text-[11px] text-stone-500">Receive confirmations and host messages</span>
                   </div>
                 </label>
-                <label className="flex items-start gap-3">
+                <label className="flex items-start gap-2.5 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={notifications.whatsappUpdates}
                     onChange={(e) => setNotifications(prev => ({ ...prev, whatsappUpdates: e.target.checked }))}
-                    className="mt-1 rounded border-stone-300 text-emerald-600 focus:ring-emerald-500"
+                    className="mt-0.5 rounded border-stone-300 text-stone-900 focus:ring-stone-900"
                   />
                   <div>
-                    <span className="block text-sm font-medium text-stone-900">WhatsApp Notifications</span>
-                    <span className="block text-xs text-stone-500">Get urgent alerts and quick replies</span>
+                    <span className="block font-medium text-stone-900 text-xs sm:text-sm">WhatsApp Notifications</span>
+                    <span className="block text-[11px] text-stone-500">Get urgent alerts and quick replies</span>
                   </div>
                 </label>
-                <label className="flex items-start gap-3">
+                <label className="flex items-start gap-2.5 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={notifications.marketingEmails}
                     onChange={(e) => setNotifications(prev => ({ ...prev, marketingEmails: e.target.checked }))}
-                    className="mt-1 rounded border-stone-300 text-emerald-600 focus:ring-emerald-500"
+                    className="mt-0.5 rounded border-stone-300 text-stone-900 focus:ring-stone-900"
                   />
                   <div>
-                    <span className="block text-sm font-medium text-stone-900">Marketing & Promotions</span>
-                    <span className="block text-xs text-stone-500">Special offers, new listings, and travel tips</span>
+                    <span className="block font-medium text-stone-900 text-xs sm:text-sm">Marketing &amp; Promotions</span>
+                    <span className="block text-[11px] text-stone-500">Special offers, new listings, and travel tips</span>
                   </div>
                 </label>
               </div>
@@ -250,13 +250,13 @@ export default function Profile() {
           </div>
         </div>
 
-        <div className="pt-6 border-t border-stone-100 flex justify-end">
+        <div className="pt-4 border-t border-stone-100 flex justify-end">
           <button
             type="submit"
             disabled={isSaving}
-            className="flex items-center gap-2 rounded-full bg-stone-900 px-6 py-2.5 text-sm font-bold text-white transition hover:bg-stone-800 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl sm:rounded-full bg-stone-900 px-5 sm:px-6 py-2.5 text-xs sm:text-sm font-bold text-white transition hover:bg-stone-800 disabled:opacity-50 disabled:cursor-not-allowed shadow-2xs cursor-pointer"
           >
-            {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
             Save Changes
           </button>
         </div>

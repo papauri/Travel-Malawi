@@ -2744,3 +2744,337 @@ Rules:
     throw new Error('All providers failed to extract property data.');
   }
 }
+
+// ---------------------------------------------------------------------------
+// AI-POWERED TRIP PLANNER & JOURNEY INSIGHTS ENGINE
+// ---------------------------------------------------------------------------
+
+export interface TripStopInput {
+  name: string;
+  location?: string;
+  category?: string;
+  description?: string;
+}
+
+export interface TripInsightsParams {
+  stops: TripStopInput[];
+  travelStyle?: string; // 'balanced' | 'scenic' | 'safari' | 'romantic' | 'adventure'
+  durationDays?: number;
+  customPreferences?: string;
+}
+
+export interface TripInsightsData {
+  title: string;
+  summary: string;
+  tripVibe: string;
+  pacingScore: string;
+  estimatedTotalDistance: string;
+  recommendedTotalDays: number;
+  dayByDay: Array<{
+    dayNumber: string;
+    stopName: string;
+    location: string;
+    activityHighlight: string;
+    scenicTransitNote: string;
+    diningOrLocalPerk: string;
+  }>;
+  insiderSecrets: string[];
+  logisticsAdvice: {
+    roadAndVehicle: string;
+    bestTimeToDrive: string;
+    currencyAndCash: string;
+    simAndConnectivity: string;
+  };
+  packingHighlights: string[];
+  provider?: string;
+  model?: string;
+}
+
+/**
+ * Generates an authentic Malawian local expert fallback when no AI key is configured
+ * or when offline / rate limited, guaranteeing zero disruption to travellers.
+ */
+function buildAuthenticMalawiFallbackInsights(params: TripInsightsParams): TripInsightsData {
+  const { stops, travelStyle = 'balanced' } = params;
+  const count = stops.length;
+  const estDays = Math.max(count * 2, 4);
+
+  const stopNames = stops.map(s => s.name);
+  const locations = stops.map(s => s.location || '').join(' ').toLowerCase();
+
+  const hasLake = locations.includes('cape maclear') || locations.includes('lake') || locations.includes('mangochi') || locations.includes('senga bay') || locations.includes('nkhata') || locations.includes('likoma');
+  const hasSafari = locations.includes('liwonde') || locations.includes('majete') || locations.includes('safari') || locations.includes('game') || locations.includes('nyika');
+  const hasHighlands = locations.includes('zomba') || locations.includes('mulanje') || locations.includes('plateau') || locations.includes('tea');
+
+  let title = 'The Scenic Warm Heart Explorer';
+  let tripVibe = 'Authentic Malawian Discovery';
+
+  if (hasLake && hasSafari) {
+    title = 'The Classic Bush & Beach Expedition';
+    tripVibe = 'Big 5 Safari & Crystal Lake Waters';
+  } else if (hasLake) {
+    title = 'The Great Lake Malawi Shoreline Odyssey';
+    tripVibe = 'Sun, Golden Sand & Freshwater Snorkeling';
+  } else if (hasSafari) {
+    title = 'Malawi Wilderness & Conservation Safari';
+    tripVibe = 'Pristine Game Reserves & River Wildlife';
+  } else if (hasHighlands) {
+    title = 'Highland Escapade & Tea Estate Trail';
+    tripVibe = 'Cool Mountain Air, Waterfalls & Heritage';
+  }
+
+  const dayByDay = stops.map((stop, idx) => {
+    const loc = (stop.location || '').toLowerCase();
+    const dayStart = idx * 2 + 1;
+    const dayEnd = dayStart + 1;
+    const dayRange = `Day ${dayStart}–${dayEnd}`;
+
+    let activity = 'Relax into the lodge atmosphere, enjoy scenic veranda views, and explore the nearby community.';
+    let transit = 'Paved national highway transfer. Aim to arrive before 4:00 PM for the best golden-hour lighting.';
+    let dining = 'Sample fresh local dishes, including freshly brewed Malawian coffee and tropical seasonal fruits.';
+
+    if (loc.includes('cape maclear') || loc.includes('chembe') || loc.includes('monkey bay')) {
+      activity = 'Catamaran sunset cruise to Thumbi West Island, feeding the African Fish Eagles, and snorkeling with colorful cichlid fish.';
+      transit = 'Drive the scenic M10 route turning at Monkey Bay. Watch for roadside fruit stands selling sweet pawpaws and mangoes.';
+      dining = 'Freshly grilled Lake Malawi Chambo fish served with nsima and savoury tomato-onion gravy.';
+    } else if (loc.includes('liwonde') || loc.includes('shire')) {
+      activity = 'Afternoon boat safari drifting along the Shire River beside pods of hippos, bathing elephants, and vibrant birdlife.';
+      transit = 'Paved M3 from Zomba or Mangochi. High-clearance vehicle or lodge transfer recommended from the park entrance gate.';
+      dining = 'Sundowner drinks overlooking the river followed by fireside bush dinners under the African night sky.';
+    } else if (loc.includes('majete')) {
+      activity = 'Early morning Big Five game drive through the riverine thickets tracking rhinos, lions, and buffaloes.';
+      transit = 'South through Chikwawa along the Lower Shire Valley. Road is scenic with dramatic baobab tree clusters.';
+      dining = 'Traditional braai barbecue at the lodge boma with cold local beverages.';
+    } else if (loc.includes('zomba') || loc.includes('plateau')) {
+      activity = 'Hike to Emperor\'s View and Queen\'s View overlooking the Southern plains, followed by a walk to Sunbird Ku Chawe gardens.';
+      transit = 'Wind up the historic mountain pass road. Keep headlights on during misty mornings.';
+      dining = 'Afternoon tea with homemade scones and mountain blackberry preserves.';
+    } else if (loc.includes('mulanje') || loc.includes('thyolo')) {
+      activity = 'Guided walk through 100-year-old rolling green tea estates, visiting artisan tea factories and cascading natural mountain pools.';
+      transit = 'Scenic M2 highway through Thyolo’s manicured tea fields with Mount Mulanje looming majestically on the horizon.';
+      dining = 'Artisan tea tasting session paired with woodfired pizza at local estate verandas.';
+    } else if (loc.includes('lilongwe')) {
+      activity = 'Visit the Lilongwe Wildlife Centre sanctuary, browse the vibrant Old Town craft market, and stroll Area 10.';
+      transit = 'Easy city driving on modern dual carriageways. Fuel up at gateway stations before setting off down the M1.';
+      dining = 'Lively dining at local garden bistros featuring contemporary African fusion cuisine.';
+    }
+
+    return {
+      dayNumber: dayRange,
+      stopName: stop.name,
+      location: stop.location || 'Malawi',
+      activityHighlight: activity,
+      scenicTransitNote: transit,
+      diningOrLocalPerk: dining,
+    };
+  });
+
+  return {
+    title,
+    summary: `An exceptionally balanced ${estDays}-day road trip connecting ${count} premier Malawian stays. Designed to minimize exhausting back-and-forth driving while giving you ample 2-night immersion at each lodge for authentic wildlife encounters, lake adventures, and warm local hospitality.`,
+    tripVibe,
+    pacingScore: count <= 3 ? 'Relaxed & Immersive (Ideal)' : 'Moderate Exploration (Well Balanced)',
+    estimatedTotalDistance: `~${count * 130} km along primary highways`,
+    recommendedTotalDays: estDays,
+    dayByDay,
+    insiderSecrets: [
+      'Stop at Dedza Pottery along the M1 for world-renowned handmade ceramics, freshly baked scones, and artisan filter coffee.',
+      'Always drive between 8:00 AM and 3:30 PM: daytime road trips let you fully appreciate the stunning Rift Valley viewpoints and roadside village markets.',
+      'Take a local wooden boat trip to feed African Fish Eagles in Cape Maclear or Lake Malawi National Park — an unforgettable photo opportunity.',
+      'Pick up local roasted macadamia nuts and fresh pineapples at roadside market stalls along the southern corridor.',
+    ],
+    logisticsAdvice: {
+      roadAndVehicle: hasSafari ? 'A high-clearance SUV or 4x4 is recommended for park gates, while all inter-city highways are smooth tarmac.' : 'Standard 2WD vehicles can easily navigate the entire route on paved highways (M1, M5, M3).',
+      bestTimeToDrive: 'Depart your lodge around 9:00 AM after breakfast to arrive at your next destination in time for lunch and afternoon relaxation.',
+      currencyAndCash: 'Credit cards are accepted at all lodges on this route. Keep MK 50,000–100,000 cash for toll gates, fuel, and community artisan crafts.',
+      simAndConnectivity: 'Pick up an Airtel or TNM SIM at Lilongwe or Blantyre airport; 4G coverage is excellent along the lakeshore and main corridors.',
+    },
+    packingHighlights: [
+      'Reef-safe sunscreen & wide-brim sunhat for sunny lakeshore days',
+      'Binoculars and telephoto lens for Shire River and national park game viewing',
+      'Light fleece or windbreaker for cool plateau evenings in Zomba or Mulanje',
+      'Comfortable walking shoes or trail runners for estate and reserve walks',
+    ],
+    provider: 'heuristic',
+    model: 'Malawi Travel Engine v2.5',
+  };
+}
+
+/**
+ * Generates rich, AI-powered journey insights for travellers sequencing their saved stops.
+ */
+export async function generateTripInsights(params: TripInsightsParams): Promise<TripInsightsData> {
+  const { stops, travelStyle = 'balanced', durationDays, customPreferences } = params;
+
+  if (!stops || stops.length === 0) {
+    throw new Error('At least one itinerary stop is required to generate trip insights.');
+  }
+
+  const config = loadAIConfig();
+  if (!config.enabled) {
+    return buildAuthenticMalawiFallbackInsights(params);
+  }
+
+  const providers = getAvailableProviders();
+  if (providers.length === 0) {
+    return buildAuthenticMalawiFallbackInsights(params);
+  }
+
+  const systemPrompt = `You are the chief travel designer and safari curator for Travel Malawi (https://travel-malawi.ai.studio).
+You have encyclopedic knowledge of Malawi's geography, highways (M1, M3, M5, M10), game reserves (Liwonde, Majete, Nyika), Lake Malawi shoreline (Cape Maclear, Senga Bay, Nkhata Bay, Likoma), tea estates (Thyolo, Mulanje), and highland plateaus (Zomba).
+Your goal is to craft an inspiring, deeply practical, and authentic road-trip itinerary analysis for travellers.
+Return ONLY valid JSON matching the requested schema. No markdown backticks, no markdown code blocks, no conversational preamble.`;
+
+  const stopsText = stops.map((s, i) => `${i + 1}. "${s.name}" located in ${s.location || 'Malawi'} (${s.category || 'Lodge/Stay'})`).join('\n');
+
+  const userPrompt = `Here is the traveller's road-trip itinerary through Malawi:
+Stops:
+${stopsText}
+
+Travel Style: ${travelStyle}
+${durationDays ? `Preferred Total Duration: ${durationDays} days` : ''}
+${customPreferences ? `Traveller Notes: "${customPreferences}"` : ''}
+
+Generate a comprehensive journey analysis. Return strictly a JSON object with:
+{
+  "title": string (catchy, evocative title for this exact itinerary, e.g. "The Great Lakeshore & Big Five Circuit"),
+  "summary": string (2-3 sentences of inspiring yet realistic journey overview),
+  "tripVibe": string (e.g. "Bush, Beach & Mountain Retreat"),
+  "pacingScore": string (e.g. "Optimal Pacing (Relaxed)" or "Action-Packed Scenic Tour"),
+  "estimatedTotalDistance": string (e.g. "~420 km via M1 and M5"),
+  "recommendedTotalDays": number (recommended total days to comfortably enjoy this route, usually 2 nights per distinct lodge),
+  "dayByDay": [
+    {
+      "dayNumber": string (e.g. "Day 1–2" or "Day 3–4"),
+      "stopName": string (matching property name),
+      "location": string,
+      "activityHighlight": string (1-2 sentences of vivid, authentic activities at this stop like boat safaris, cichlid fish snorkeling, or tea tastings),
+      "scenicTransitNote": string (practical Malawian driving route, road advice, or scenic stops along the way),
+      "diningOrLocalPerk": string (local culinary tip, e.g. fresh grilled Chambo, Shire River sundowners, or Dedza Pottery scones)
+    }
+  ],
+  "insiderSecrets": string[] (3 to 4 hyper-authentic, local Malawian tips or secret detours along this route),
+  "logisticsAdvice": {
+    "roadAndVehicle": string (clarity on 2WD vs 4x4 needed for these specific stops and road conditions),
+    "bestTimeToDrive": string (daylight driving advice, morning departure times),
+    "currencyAndCash": string (advice on MWK cash for toll gates, village markets, and card usage),
+    "simAndConnectivity": string (local Airtel/TNM SIM cards and data coverage)
+  },
+  "packingHighlights": string[] (4 essential packing items tailored to these stops)
+}`;
+
+  for (const providerId of providers) {
+    try {
+      const apiKey = getEffectiveApiKey(providerId)!;
+      const model = config.providers[providerId]?.model || 'default';
+
+      let rawResponse: string;
+      if (providerId === 'gemini') {
+        rawResponse = await callGemini(providerId, apiKey, model || 'gemini-2.0-flash', systemPrompt, userPrompt, 0.7, 1800);
+      } else if (providerId === 'anthropic') {
+        rawResponse = await callAnthropic(providerId, apiKey, model || 'claude-3-5-haiku-20241022', systemPrompt, userPrompt, 0.7, 1800);
+      } else {
+        const endpoints: Record<string, string> = {
+          mistral: 'https://api.mistral.ai/v1/chat/completions',
+          openai: 'https://api.openai.com/v1/chat/completions',
+          groq: 'https://api.groq.com/openai/v1/chat/completions',
+          deepseek: 'https://api.deepseek.com/chat/completions',
+        };
+        rawResponse = await callOpenAICompatible(providerId, endpoints[providerId] || endpoints.openai, apiKey, model, systemPrompt, userPrompt, 0.7, 1800);
+      }
+
+      const cleaned = rawResponse.replace(/```json/gi, '').replace(/```/g, '').trim();
+      let parsed: any = null;
+      try {
+        parsed = JSON.parse(cleaned);
+      } catch {
+        const match = rawResponse.match(/\{[\s\S]*\}/);
+        if (match) {
+          parsed = JSON.parse(match[0]);
+        }
+      }
+
+      if (parsed && parsed.title && parsed.dayByDay) {
+        return {
+          ...parsed,
+          provider: providerId,
+          model: model,
+        };
+      }
+    } catch (err: any) {
+      console.warn(`[Trip Insights] ${providerId} generation failed: ${err.message}. Trying next provider...`);
+      continue;
+    }
+  }
+
+  // Fallback to our authentic Malawian travel designer
+  return buildAuthenticMalawiFallbackInsights(params);
+}
+
+/**
+ * Interactive Route Concierge chat for answering traveller questions about their specific itinerary.
+ */
+export async function executeTripConciergeChat(params: {
+  stops: TripStopInput[];
+  message: string;
+  history?: Array<{ role: 'user' | 'assistant'; text: string }>;
+}): Promise<{ answer: string; provider: string; model: string }> {
+  const { stops, message, history = [] } = params;
+  const config = loadAIConfig();
+  const providers = getAvailableProviders();
+
+  const stopsList = stops.map((s, i) => `${i + 1}. ${s.name} (${s.location || 'Malawi'})`).join(', ');
+
+  const systemPrompt = `You are the friendly, expert Travel Malawi Route Concierge.
+You are helping a traveller who has planned a trip with these stops in Malawi:
+${stopsList}
+
+Tone: Warm, knowledgeable, practical, and welcoming (Warm Heart of Africa).
+Scope: Malawi roads, travel times, vehicle recommendations, park rules, lake safety, packing, local food (Chambo, nsima, Dedza pottery), and currency.
+Keep answers concise, direct, helpful, and formatted with clean paragraphs or brief bullet points.`;
+
+  const conversation = history.slice(-4).map(h => `${h.role === 'user' ? 'Traveller' : 'Concierge'}: ${h.text}`).join('\n');
+  const userPrompt = `${conversation ? conversation + '\n' : ''}Traveller's Question: "${message}"\n\nPlease provide a clear, practical, and helpful answer for this traveller's Malawi journey:`;
+
+  if (config.enabled && providers.length > 0) {
+    for (const providerId of providers) {
+      try {
+        const apiKey = getEffectiveApiKey(providerId)!;
+        const model = config.providers[providerId]?.model || 'default';
+
+        let answer: string;
+        if (providerId === 'gemini') {
+          answer = await callGemini(providerId, apiKey, model || 'gemini-2.0-flash', systemPrompt, userPrompt, 0.7, 800);
+        } else if (providerId === 'anthropic') {
+          answer = await callAnthropic(providerId, apiKey, model || 'claude-3-5-haiku-20241022', systemPrompt, userPrompt, 0.7, 800);
+        } else {
+          const endpoints: Record<string, string> = {
+            mistral: 'https://api.mistral.ai/v1/chat/completions',
+            openai: 'https://api.openai.com/v1/chat/completions',
+            groq: 'https://api.groq.com/openai/v1/chat/completions',
+            deepseek: 'https://api.deepseek.com/chat/completions',
+          };
+          answer = await callOpenAICompatible(providerId, endpoints[providerId] || endpoints.openai, apiKey, model, systemPrompt, userPrompt, 0.7, 800);
+        }
+
+        if (answer && answer.trim()) {
+          return {
+            answer: answer.trim(),
+            provider: providerId,
+            model,
+          };
+        }
+      } catch (err: any) {
+        console.warn(`[Trip Chat] ${providerId} failed: ${err.message}`);
+        continue;
+      }
+    }
+  }
+
+  // Graceful authentic response
+  return {
+    answer: `Regarding your route through ${stopsList}: In Malawi, the main highways (M1, M3, M5) are paved and scenic. Daytime driving between 8:00 AM and 4:00 PM is highly recommended so you can enjoy the beautiful Rift Valley views and arrive well before sunset. Keep around MK 50,000 cash for toll gates and roadside fruit stalls, and make sure to stop for fresh Lake Malawi Chambo fish along your journey!`,
+    provider: 'local',
+    model: 'Malawi Concierge Assistant',
+  };
+}

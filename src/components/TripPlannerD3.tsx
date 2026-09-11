@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { getHotelImages } from '../lib/images';
+import TripAIInsights from './TripAIInsights';
 
 interface Props {
   hotels: Hotel[];
@@ -122,7 +123,7 @@ export default function TripPlannerD3({ hotels }: Props) {
 
   const [orderedHotels, setOrderedHotels] = useState<Hotel[]>(hotels);
   const [selectedLodgeId, setSelectedLodgeId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'visualizer' | 'itinerary'>('visualizer');
+  const [activeTab, setActiveTab] = useState<'visualizer' | 'itinerary' | 'ai-insights'>('visualizer');
   const [copiedShare, setCopiedShare] = useState(false);
 
   // Sync if prop changes
@@ -495,38 +496,50 @@ Plan and book direct at: https://travel-malawi.ai.studio/`;
         </div>
 
         {/* View Switcher & Action Bar */}
-        <div className="mt-6 pt-5 border-t border-stone-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-2 bg-stone-100 p-1 rounded-xl w-fit">
+        <div className="mt-6 pt-5 border-t border-stone-100 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-1.5 bg-stone-100 p-1 rounded-2xl w-fit">
             <button
               type="button"
               onClick={() => setActiveTab('visualizer')}
-              className={`px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2 ${
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
                 activeTab === 'visualizer'
                   ? 'bg-white text-stone-900 shadow-xs'
-                  : 'text-stone-500 hover:text-stone-900'
+                  : 'text-stone-600 hover:text-stone-900'
               }`}
             >
               <Layers className="w-3.5 h-3.5" />
-              <span>Interactive Route Graph</span>
+              <span>Route Graph</span>
             </button>
             <button
               type="button"
               onClick={() => setActiveTab('itinerary')}
-              className={`px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2 ${
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
                 activeTab === 'itinerary'
                   ? 'bg-white text-stone-900 shadow-xs'
-                  : 'text-stone-500 hover:text-stone-900'
+                  : 'text-stone-600 hover:text-stone-900'
               }`}
             >
               <ListOrdered className="w-3.5 h-3.5" />
-              <span>Step-by-Step Itinerary</span>
+              <span>Step-by-Step</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('ai-insights')}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+                activeTab === 'ai-insights'
+                  ? 'bg-stone-900 text-white shadow-xs'
+                  : 'text-stone-600 hover:text-stone-900'
+              }`}
+            >
+              <Compass className={`w-3.5 h-3.5 ${activeTab === 'ai-insights' ? 'text-white' : 'text-stone-700'}`} />
+              <span>Trip Insights</span>
             </button>
           </div>
 
           <button
             type="button"
             onClick={copyItinerarySummary}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-stone-900 text-white text-xs font-bold hover:bg-stone-800 transition shadow-xs"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-stone-900 text-white text-xs font-bold hover:bg-stone-800 transition shadow-xs cursor-pointer w-fit"
           >
             {copiedShare ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Share2 className="w-3.5 h-3.5" />}
             <span>{copiedShare ? 'Copied Itinerary!' : 'Share Trip Plan'}</span>
@@ -534,8 +547,37 @@ Plan and book direct at: https://travel-malawi.ai.studio/`;
         </div>
       </div>
 
-      {/* 2. Main Content View: Visualizer vs Step-by-Step Itinerary */}
-      {activeTab === 'visualizer' ? (
+      {/* Quick Intelligence Callout Banner (when on Visualizer or Itinerary tab) */}
+      {activeTab !== 'ai-insights' && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 sm:p-5 rounded-3xl bg-stone-50 border border-stone-200 shadow-2xs">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-2xl bg-stone-900 text-white flex items-center justify-center shrink-0 shadow-2xs">
+              <Compass className="w-4 h-4 text-stone-200" />
+            </div>
+            <div>
+              <span className="text-xs sm:text-sm font-bold text-stone-900 block">
+                Journey Feasibility &amp; Malawi Route Concierge
+              </span>
+              <span className="text-[11px] sm:text-xs text-stone-600">
+                Unlock day-by-day pacing, authentic roadside culinary detours, and live route guidance for your stays.
+              </span>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setActiveTab('ai-insights')}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold transition shadow-xs shrink-0 cursor-pointer w-fit"
+          >
+            <span>Explore Insights</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
+      {/* 2. Main Content View: AI Insights vs Visualizer vs Step-by-Step */}
+      {activeTab === 'ai-insights' ? (
+        <TripAIInsights hotels={orderedHotels} onOpenListing={(id) => navigate(`/hotel/${id}`)} />
+      ) : activeTab === 'visualizer' ? (
         <div className="space-y-4">
           {/* D3 Route Map Canvas Card */}
           <div 

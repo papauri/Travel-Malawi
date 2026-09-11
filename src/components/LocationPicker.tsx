@@ -469,25 +469,53 @@ export default function LocationPicker({
           )}
         </div>
 
-        {/* Quick Region Presets Chips */}
-        <div className="mb-3 flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-hide text-xs">
-          <span className="text-stone-400 font-semibold uppercase text-[10px] shrink-0 mr-1 flex items-center gap-1">
+        {/* Quick Region Presets */}
+        <div className="mb-3 flex flex-col sm:flex-row sm:items-center gap-2 text-xs">
+          <span className="text-stone-400 font-semibold uppercase text-[10px] shrink-0 flex items-center gap-1">
             <Compass className="h-3 w-3 text-stone-500" /> Jump to:
           </span>
-          {POPULAR_REGIONS.map((reg, regIdx) => (
-            <button
-              key={`${reg.label}-${regIdx}`}
-              type="button"
-              onClick={() => {
-                onChange(reg.coords);
-                setSelectedPlaceName(reg.label);
-                toast.success(`Jumped map to ${reg.label}`);
+          
+          {/* Mobile Dropdown */}
+          <div className="sm:hidden relative">
+            <select
+              value=""
+              onChange={(e) => {
+                const reg = POPULAR_REGIONS.find(r => r.label === e.target.value);
+                if (reg) {
+                  onChange(reg.coords);
+                  setSelectedPlaceName(reg.label);
+                  toast.success(`Jumped map to ${reg.label}`);
+                }
               }}
-              className="shrink-0 px-2.5 py-1 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-full font-medium transition"
+              className="w-full bg-stone-100 border border-stone-200 rounded-xl pl-3 pr-8 py-2 text-xs font-semibold text-stone-700 appearance-none outline-none focus:border-stone-900 focus:bg-white transition cursor-pointer"
             >
-              {reg.label}
-            </button>
-          ))}
+              <option value="" disabled>Select a region...</option>
+              {POPULAR_REGIONS.map((reg, regIdx) => (
+                <option key={`reg-mob-${regIdx}`} value={reg.label}>
+                  {reg.label}
+                </option>
+              ))}
+            </select>
+            <ChevronRight className="w-3.5 h-3.5 text-stone-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none rotate-90" />
+          </div>
+
+          {/* Desktop/Tablet Chips */}
+          <div className="hidden sm:flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-hide text-xs">
+            {POPULAR_REGIONS.map((reg, regIdx) => (
+              <button
+                key={`${reg.label}-${regIdx}`}
+                type="button"
+                onClick={() => {
+                  onChange(reg.coords);
+                  setSelectedPlaceName(reg.label);
+                  toast.success(`Jumped map to ${reg.label}`);
+                }}
+                className="shrink-0 px-2.5 py-1 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-full font-medium transition"
+              >
+                {reg.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Interactive Map Component */}

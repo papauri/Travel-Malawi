@@ -85,8 +85,14 @@ function trailFor(pathname: string, label: string): Crumb[] {
   if (pathname === '/host-guide' || pathname === '/starter-pack' || pathname === '/host-starter-pack') {
     return [home, { label: 'Host Starter Pack & Guide' }];
   }
-  if (pathname === '/marketing' || pathname === '/marketing-deck' || pathname === '/operations-guide') {
-    return [home, { label: 'Marketing & Operations Deck' }];
+  if (pathname === '/marketing' || pathname === '/marketing-deck') {
+    return [home, { label: 'Marketing Deck' }];
+  }
+  if (pathname === '/operations-guide') {
+    return [home, { label: 'Operations Starter Pack' }];
+  }
+  if (pathname === '/listing-guide') {
+    return [home, { label: 'How to List Guide' }];
   }
   if (pathname === '/uat' || pathname === '/uat-guide' || pathname === '/platform-guide' || pathname === '/uat-manual') {
     return [home, { label: 'Platform Guide & UAT Manual' }];
@@ -105,29 +111,29 @@ export default function Breadcrumbs() {
   return (
     <nav
       aria-label="Breadcrumb"
-      className="sticky top-20 z-40 w-full border-b border-stone-200/70 bg-white/90 backdrop-blur-md"
+      className="sticky top-14 sm:top-16 md:top-16 lg:top-[72px] z-40 w-full border-b border-stone-200/70 bg-white/95 backdrop-blur-md transition-all"
     >
       {/* Scrolls sideways rather than wrapping: a long property name on a
           narrow screen must not push the page into two rows or clip the
           links above it. */}
-      <ol className="mx-auto flex max-w-7xl items-center gap-1 overflow-x-auto whitespace-nowrap px-6 py-2.5 text-sm scrollbar-hide lg:px-8">
+      <ol className="mx-auto flex flex-nowrap items-center w-full max-w-7xl gap-1 sm:gap-1.5 overflow-x-auto whitespace-nowrap px-3 sm:px-4 md:px-6 lg:px-8 py-1.5 sm:py-2 text-[11px] sm:text-xs md:text-sm scrollbar-hide [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {crumbs.map((crumb, index) => {
           const last = index === crumbs.length - 1;
           return (
-            <li key={`${crumb.label}-${index}`} className="flex shrink-0 items-center gap-1">
-              {index > 0 && <ChevronRight className="h-3.5 w-3.5 shrink-0 text-stone-300" />}
+            <li key={`${crumb.label}-${index}`} className="flex shrink-0 items-center gap-1 whitespace-nowrap">
+              {index > 0 && <ChevronRight className="h-3 w-3 sm:h-3.5 sm:w-3.5 shrink-0 text-stone-300" />}
               {crumb.to && !last ? (
                 <Link
                   to={crumb.to}
-                  className="flex items-center gap-1.5 rounded-lg px-1.5 py-1 font-medium text-stone-500 transition hover:text-stone-900"
+                  className="flex shrink-0 items-center gap-1 sm:gap-1.5 rounded-md px-1 sm:px-1.5 py-0.5 sm:py-1 font-medium text-stone-500 transition hover:text-stone-900 hover:bg-stone-100/80 text-[11px] sm:text-xs md:text-sm whitespace-nowrap"
                 >
-                  {index === 0 && <Home className="h-3.5 w-3.5" />}
-                  {crumb.label}
+                  {index === 0 && <Home className="h-3 w-3 sm:h-3.5 sm:w-3.5 shrink-0" />}
+                  <span className="truncate max-w-[110px] sm:max-w-none whitespace-nowrap">{crumb.label}</span>
                 </Link>
               ) : (
                 <span
                   aria-current={last ? 'page' : undefined}
-                  className="max-w-[16rem] truncate px-1.5 py-1 font-semibold text-stone-900"
+                  className="max-w-[130px] min-[380px]:max-w-[180px] sm:max-w-xs md:max-w-md truncate px-1 sm:px-1.5 py-0.5 sm:py-1 font-semibold text-stone-900 text-[11px] sm:text-xs md:text-sm shrink-0 whitespace-nowrap inline-block"
                 >
                   {last && (pathname.startsWith('/hotel/') || pathname.includes('/hotel/')) ? (
                     <MaskedPlaceName name={crumb.label} fallback="[Your Lodge Name]" />

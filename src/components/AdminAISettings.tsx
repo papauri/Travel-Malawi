@@ -687,7 +687,7 @@ export default function AdminAISettings() {
       <div className="bg-stone-50 border border-stone-200 rounded-2xl p-6 text-xs text-stone-600 space-y-2">
         <h4 className="font-semibold text-stone-900 text-sm">Design & Cost Optimization Architecture</h4>
         <p className="leading-relaxed">
-          • <strong>Standard Cost-Effective Models:</strong> By default, this system connects to lightweight models (DeepSeek-V3, GPT-4o-mini, Mistral Small, Gemini 1.5 Flash). These models cost fractions of a cent per generation, avoiding wasteful token expenses while delivering vivid, authentic hospitality copy.
+          • <strong>Standard Cost-Effective Models:</strong> By default, this system connects to lightweight models (DeepSeek-V3, GPT-4o-mini, Mistral Small, Gemini 3.8 Flash). These models cost fractions of a cent per generation, avoiding wasteful token expenses while delivering vivid, authentic hospitality copy.
         </p>
         <p className="leading-relaxed">
           • <strong>Zero Browser Key Exposure:</strong> All keys are stored server-side in persistent system configuration and handled through Node proxy endpoints. No API secret is ever bundled or transmitted to guest or manager browsers.

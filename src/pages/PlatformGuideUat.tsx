@@ -37,6 +37,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 import { useAuthDialog } from '../contexts/AuthDialogContext';
 import { isAdmin, isMarketing } from '../lib/roles';
+import EditableSection from '../components/EditableSection';
 
 // Official administrative email constant (configured internally, not displayed in public UI)
 export const OFFICIAL_ADMIN_EMAIL = 'johnpaulchirwa@promanaged-it.com';
@@ -152,7 +153,7 @@ const UAT_TEST_SUITES: TestCase[] = [
   {
     id: 'C2',
     suite: 'Host Tools & Stay OS',
-    title: 'AI Rate Card & Document Importer',
+    title: 'Automated Rate Card & Document Importer',
     steps: [
       'In property management (/dashboard/hotel/:id), navigate to Rate Cards',
       'Upload a sample PDF brochure or rate menu image'
@@ -397,9 +398,19 @@ Submit verified test logs and defect reports through the authorized Internal Adm
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
           <div className="flex items-center gap-2">
             <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-white font-medium">Travel Malawi — Marketing &amp; UAT Quality Assurance Suite</span>
-            <span className="bg-stone-800 text-stone-300 text-[10px] font-semibold px-2 py-0.5 rounded-full border border-stone-700">
-              v2.4.0 Live
+            <span className="text-white font-medium">
+              <EditableSection
+                docId="docs_uat"
+                fieldId="top_bar_title"
+                defaultText="Travel Malawi — Marketing & UAT Quality Assurance Suite"
+              />
+            </span>
+            <span className="bg-stone-800 text-stone-300 text-[10px] font-semibold px-2 py-0.5 rounded-full border border-stone-700 hover:text-stone-100 transition-colors">
+              <EditableSection
+                docId="docs_uat"
+                fieldId="top_bar_version"
+                defaultText="v2.4.0 Live"
+              />
             </span>
           </div>
           <div className="flex items-center gap-4">
@@ -434,10 +445,19 @@ Submit verified test logs and defect reports through the authorized Internal Adm
                 <span>Production Launch &amp; QA Documentation</span>
               </div>
               <h1 className="font-serif text-3xl sm:text-4xl text-stone-900 tracking-tight font-bold">
-                Platform Guide &amp; UAT Manual
+                <EditableSection
+                  docId="docs_uat"
+                  fieldId="hero_title"
+                  defaultText="Platform Guide & UAT Manual"
+                />
               </h1>
               <p className="text-stone-600 text-sm sm:text-base mt-2 max-w-2xl leading-relaxed">
-                Complete functional specification, user journeys, live gateways, and step-by-step User Acceptance Testing (UAT) manual for the Marketing team.
+                <EditableSection
+                  docId="docs_uat"
+                  fieldId="hero_subtitle"
+                  defaultText="Complete functional specification, user journeys, live gateways, and step-by-step User Acceptance Testing (UAT) manual for the Marketing team."
+                  multiline
+                />
               </p>
             </div>
 
@@ -630,10 +650,19 @@ Submit verified test logs and defect reports through the authorized Internal Adm
 
               <div>
                 <h1 className="font-serif text-2xl sm:text-3xl font-bold text-stone-900">
-                  Comprehensive Platform Guide &amp; UAT Manual
+                  <EditableSection
+                    docId="docs_uat"
+                    fieldId="print_title"
+                    defaultText="Comprehensive Platform Guide & UAT Manual"
+                  />
                 </h1>
                 <p className="text-stone-500 text-xs sm:text-sm mt-1">
-                  Official Technical &amp; Operational Blueprint for Marketing Launch, Host Onboarding, and QA Verification.
+                  <EditableSection
+                    docId="docs_uat"
+                    fieldId="print_subtitle"
+                    defaultText="Official Technical & Operational Blueprint for Marketing Launch, Host Onboarding, and QA Verification."
+                    multiline
+                  />
                 </p>
               </div>
 
@@ -664,11 +693,20 @@ Submit verified test logs and defect reports through the authorized Internal Adm
               <div className="flex items-center gap-2">
                 <span className="flex items-center justify-center w-6 h-6 rounded-full bg-stone-900 text-white text-xs font-bold font-mono">1</span>
                 <h2 className="text-lg sm:text-xl font-serif font-bold text-stone-900">
-                  Executive Overview &amp; Market Position
+                  <EditableSection
+                    docId="docs_uat"
+                    fieldId="sec1_title"
+                    defaultText="Executive Overview & Market Position"
+                  />
                 </h2>
               </div>
               <p className="text-sm text-stone-700 leading-relaxed">
-                <strong>Travel Malawi</strong> is a specialized, direct-booking marketplace built specifically for Malawi’s unique hospitality ecosystem. Traditional Online Travel Agencies (OTAs) like Booking.com and Airbnb levy 15%–25% commission fees and force rigid foreign currency settlement onto local owners. Travel Malawi eliminates intermediary friction by empowering lodge, B&amp;B, cottage, and safari camp hosts to connect directly with guests at <strong>0% commission</strong>.
+                <EditableSection
+                  docId="docs_uat"
+                  fieldId="sec1_content"
+                  defaultText="Travel Malawi is a specialized, direct-booking marketplace built specifically for Malawi’s unique hospitality ecosystem. Traditional Online Travel Agencies (OTAs) like Booking.com and Airbnb levy 15%–25% commission fees and force rigid foreign currency settlement onto local owners. Travel Malawi eliminates intermediary friction by empowering lodge, B&B, cottage, and safari camp hosts to connect directly with guests at 0% commission."
+                  multiline
+                />
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
@@ -719,11 +757,20 @@ Submit verified test logs and defect reports through the authorized Internal Adm
               <div className="flex items-center gap-2">
                 <span className="flex items-center justify-center w-6 h-6 rounded-full bg-stone-900 text-white text-xs font-bold font-mono">2</span>
                 <h2 className="text-lg sm:text-xl font-serif font-bold text-stone-900">
-                  Live Gateways &amp; Role-Based Access Matrix
+                  <EditableSection
+                    docId="docs_uat"
+                    fieldId="sec2_title"
+                    defaultText="Live Gateways & Role-Based Access Matrix"
+                  />
                 </h2>
               </div>
               <p className="text-sm text-stone-700 leading-relaxed">
-                The platform is architected with strict role-based access control (RBAC) ensuring appropriate separation of duties across guests, lodge owners, marketing, and global admins:
+                <EditableSection
+                  docId="docs_uat"
+                  fieldId="sec2_content"
+                  defaultText="The platform is architected with strict role-based access control (RBAC) ensuring appropriate separation of duties across guests, lodge owners, marketing, and global admins:"
+                  multiline
+                />
               </p>
 
               <div className="overflow-x-auto">
@@ -766,7 +813,11 @@ Submit verified test logs and defect reports through the authorized Internal Adm
               <div className="flex items-center gap-2">
                 <span className="flex items-center justify-center w-6 h-6 rounded-full bg-stone-900 text-white text-xs font-bold font-mono">3</span>
                 <h2 className="text-lg sm:text-xl font-serif font-bold text-stone-900">
-                  Feature-by-Feature Deep Dive
+                  <EditableSection
+                    docId="docs_uat"
+                    fieldId="sec3_title"
+                    defaultText="Feature-by-Feature Deep Dive"
+                  />
                 </h2>
               </div>
 
@@ -798,10 +849,10 @@ Submit verified test logs and defect reports through the authorized Internal Adm
                 {/* 3.3 Stay OS Host Suite */}
                 <div className="space-y-2">
                   <h3 className="font-semibold text-stone-900 text-base">
-                    3.3 Stay OS Host Management &amp; AI Tools
+                    3.3 Stay OS Host Management &amp; Rate Tools
                   </h3>
                   <ul className="list-disc list-inside space-y-1.5 text-stone-600 pl-1">
-                    <li><strong>AI Document &amp; Rate Card Importer</strong>: Automatically extracts room names, capacities, and rates from uploaded PDF brochures or photos.</li>
+                    <li><strong>Document &amp; Rate Card Importer</strong>: Automatically extracts room names, capacities, and rates from uploaded PDF brochures or photos.</li>
                     <li><strong>Restaurant &amp; Bar Menu Engine</strong>: Create digital menus with dietary tags and drink listings.</li>
                     <li><strong>Digital Stay Vouchers</strong>: Generates verifiable check-in vouchers complete with QR codes and 6-digit offline arrival PINs.</li>
                   </ul>
@@ -814,11 +865,20 @@ Submit verified test logs and defect reports through the authorized Internal Adm
               <div className="flex items-center gap-2">
                 <span className="flex items-center justify-center w-6 h-6 rounded-full bg-stone-900 text-white text-xs font-bold font-mono">4</span>
                 <h2 className="text-lg sm:text-xl font-serif font-bold text-stone-900">
-                  User Acceptance Testing (UAT) Manual
+                  <EditableSection
+                    docId="docs_uat"
+                    fieldId="sec4_title"
+                    defaultText="User Acceptance Testing (UAT) Manual"
+                  />
                 </h2>
               </div>
               <p className="text-xs sm:text-sm text-stone-700 leading-relaxed">
-                The following test suites must be verified by the marketing team before broad public launch:
+                <EditableSection
+                  docId="docs_uat"
+                  fieldId="sec4_content"
+                  defaultText="The following test suites must be verified by the marketing team before broad public launch:"
+                  multiline
+                />
               </p>
 
               <div className="space-y-4 text-xs">

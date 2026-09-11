@@ -300,8 +300,8 @@ export default function AvailabilityCalendar({
   return (
     <div className="bg-white rounded-3xl border border-stone-200 shadow-sm overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-8 py-6 border-b border-stone-100">
-        <div>
+      <div className="flex flex-col md:flex-row md:items-center justify-between px-4 sm:px-6 md:px-8 py-4 sm:py-6 border-b border-stone-100 gap-4">
+        <div className="flex-1">
           <h3 className="text-xl font-serif text-stone-900">Availability</h3>
           <div className="text-sm text-stone-500 mt-0.5 flex flex-col gap-1.5">
             <p>{isManagerMode ? 'Click a date to block or unblock it' : 'Select your travel dates'}</p>
@@ -333,7 +333,7 @@ export default function AvailabilityCalendar({
             )}
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between md:justify-end gap-3 w-full md:w-auto mt-2 md:mt-0">
           <button
             type="button"
             onClick={prevMonth}
@@ -367,7 +367,7 @@ export default function AvailabilityCalendar({
           <p className="text-sm text-stone-400 mt-1">Contact them directly to check dates.</p>
         </div>
       ) : (
-        <div className="px-6 py-6">
+        <div className="px-4 sm:px-6 md:px-8 py-6">
           {/* Day name headers */}
           <div className="grid grid-cols-7 mb-2">
             {DAY_NAMES.map((d, dIdx) => (

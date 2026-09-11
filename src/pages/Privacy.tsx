@@ -8,18 +8,18 @@ export default function Privacy() {
   const { settings } = useSystemSettings();
   
   return (
-    <div className="min-h-screen bg-stone-50 py-20 px-6">
+    <div className="min-h-screen bg-stone-50 py-10 sm:py-16 md:py-20 px-4 sm:px-6">
       <Helmet>
         <title>Privacy Policy - Travel Malawi</title>
         <meta name="description" content="How we handle and protect your personal information." />
       </Helmet>
       
-      <div className="max-w-3xl mx-auto bg-white rounded-3xl shadow-sm border border-stone-200 p-8 md:p-12">
-        <div className="flex items-center gap-4 mb-8">
-          <div className="bg-stone-100 p-3 rounded-2xl text-stone-900">
-            <Lock className="w-8 h-8" />
+      <div className="max-w-3xl mx-auto bg-white rounded-2xl sm:rounded-3xl shadow-sm border border-stone-200 p-5 sm:p-8 md:p-12">
+        <div className="flex items-center gap-3 sm:gap-4 mb-6 sm:mb-8">
+          <div className="bg-stone-100 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl text-stone-900">
+            <Lock className="w-6 h-6 sm:w-8 sm:h-8" />
           </div>
-          <h1 className="text-3xl font-serif font-bold text-stone-900">Privacy Policy</h1>
+          <h1 className="text-2xl sm:text-3xl font-serif font-bold text-stone-900">Privacy Policy</h1>
         </div>
         
         <div className="space-y-6 text-stone-600 leading-relaxed">

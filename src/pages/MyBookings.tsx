@@ -501,21 +501,21 @@ export default function MyBookings() {
           </div>
         )}
 
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 sm:mb-10">
-          <div className="flex gap-2 border-b border-stone-200 overflow-x-auto scrollbar-hide snap-x touch-pan-x -mx-6 px-6 sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-6 sm:mb-8">
+          <div className="grid grid-cols-3 sm:flex gap-1.5 sm:gap-2 p-1 bg-stone-100/90 rounded-2xl border border-stone-200 w-full sm:w-auto">
             {activeTabs.map((tab, tIdx) => (
               <button
                 key={`${tab.key}-${tIdx}`}
                 onClick={() => { setFilter(tab.key); setCurrentPage(1); }}
-                className={`px-4 sm:px-5 py-3 text-sm font-semibold border-b-2 whitespace-nowrap shrink-0 snap-start min-h-[44px] transition ${
+                className={`px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold rounded-xl whitespace-nowrap transition flex items-center justify-center gap-1.5 cursor-pointer ${
                   filter === tab.key
-                    ? 'border-stone-900 text-stone-900'
-                    : 'border-transparent text-stone-500 hover:text-stone-700'
+                    ? 'bg-stone-900 text-white shadow-xs'
+                    : 'text-stone-600 hover:text-stone-950 hover:bg-stone-200/60'
                 }`}
               >
-                {tab.label}
-                <span className={`ml-2 text-xs px-2 py-0.5 rounded-full font-bold ${
-                  filter === tab.key ? 'bg-stone-900 text-white' : 'bg-stone-100 text-stone-600'
+                <span>{tab.label}</span>
+                <span className={`text-[10px] sm:text-xs px-1.5 py-0.2 rounded-full font-bold ${
+                  filter === tab.key ? 'bg-white/20 text-white' : 'bg-stone-200/80 text-stone-700'
                 }`}>
                   {tab.count}
                 </span>
@@ -655,30 +655,30 @@ export default function MyBookings() {
               const nights = nightsBetween(booking.checkIn, booking.checkOut);
               const canReview = activeMainTab === 'guest' && isStayComplete(booking) && booking.id && !reviewedBookingIds.has(booking.id);
               return (
-              <div key={`${booking.id || 'booking'}-${bkIdx}`} className="group flex flex-col md:flex-row bg-white border border-stone-200 rounded-2xl sm:rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                <div className="md:w-72 h-56 md:h-auto bg-stone-100 relative overflow-hidden shrink-0">
+              <div key={`${booking.id || 'booking'}-${bkIdx}`} className="group flex flex-col md:flex-row bg-white border border-stone-200 rounded-2xl md:rounded-3xl overflow-hidden shadow-2xs hover:shadow-sm transition-shadow">
+                <div className="md:w-64 lg:w-72 h-36 sm:h-44 md:h-auto bg-stone-100 relative overflow-hidden shrink-0">
                   <SmartImage
                     src={booking.hotel ? getHotelImage(booking.hotel) : undefined}
                     alt={booking.hotel?.name || 'Property'}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                   />
-                  <div className="absolute top-4 left-4">
+                  <div className="absolute top-3 left-3">
                     {getStatusBadge(booking.status)}
                   </div>
                 </div>
 
-                <div className="p-5 sm:p-6 md:p-8 flex-1 min-w-0 flex flex-col justify-between">
+                <div className="p-4 sm:p-5 md:p-6 lg:p-7 flex-1 min-w-0 flex flex-col justify-between">
                   <div>
-                    <div className="flex justify-between items-start mb-2 gap-3 min-w-0">
+                    <div className="flex justify-between items-start mb-1.5 sm:mb-2 gap-2 sm:gap-3 min-w-0">
                       {booking.hotel?.id ? (
                         <Link to={`/hotel/${booking.hotel.id}`} className="hover:text-emerald-600 transition min-w-0 flex-1">
-                          <h3 className="text-xl sm:text-2xl font-serif font-bold text-stone-900 flex items-center gap-2 truncate">
-                            <span className="truncate">{booking.hotel.name}</span>
-                            <ExternalLink className="w-4 h-4 shrink-0 text-stone-400 opacity-0 group-hover:opacity-100 transition" />
+                          <h3 className="text-base sm:text-lg md:text-xl font-serif font-bold text-stone-900 flex items-center gap-2 line-clamp-2 leading-snug">
+                            <span className="line-clamp-2">{booking.hotel.name}</span>
+                            <ExternalLink className="w-3.5 h-3.5 shrink-0 text-stone-400 opacity-0 group-hover:opacity-100 transition" />
                           </h3>
                         </Link>
                       ) : (
-                        <h3 className="text-xl sm:text-2xl font-serif font-bold text-stone-900 truncate flex-1 min-w-0">
+                        <h3 className="text-base sm:text-lg md:text-xl font-serif font-bold text-stone-900 line-clamp-2 leading-snug flex-1 min-w-0">
                           {booking.hotel?.name || 'Property no longer listed'}
                         </h3>
                       )}
@@ -686,31 +686,31 @@ export default function MyBookings() {
                         <button
                           onClick={() => copyReference(booking.reference!)}
                           title="Copy booking reference"
-                          className="shrink-0 flex items-center gap-1.5 text-xs font-mono font-semibold text-stone-500 bg-stone-100 hover:bg-stone-200 px-2.5 py-1.5 rounded-lg transition"
+                          className="shrink-0 flex items-center gap-1 text-[11px] sm:text-xs font-mono font-semibold text-stone-500 bg-stone-100 hover:bg-stone-200 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg transition"
                         >
                           {booking.reference}
                           <Copy className="w-3 h-3" />
                         </button>
                       )}
                     </div>
-                    <div className="flex items-center text-stone-500 gap-1.5 mb-4 text-sm font-medium truncate">
-                      <MapPin className="h-4 w-4 shrink-0" /> <span className="truncate">{booking.hotel?.location || 'Location'}</span>
+                    <div className="flex items-center text-stone-500 gap-1.5 mb-3 text-xs sm:text-sm font-medium truncate">
+                      <MapPin className="h-3.5 w-3.5 shrink-0" /> <span className="truncate">{booking.hotel?.location || 'Location'}</span>
                     </div>
 
-                    <div className="bg-stone-50 rounded-2xl p-3.5 sm:p-4 border border-stone-100 flex flex-col sm:flex-row gap-3 sm:gap-8 mb-6">
+                    <div className="bg-stone-50 rounded-xl sm:rounded-2xl p-3 sm:p-3.5 border border-stone-100 flex flex-col sm:flex-row gap-2.5 sm:gap-6 mb-4 sm:mb-5">
                       <div>
-                        <p className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-1">Check-in</p>
-                        <p className="font-medium text-stone-900">{formatDateStr(booking.checkIn)}</p>
+                        <p className="text-[10px] sm:text-xs font-bold text-stone-400 uppercase tracking-wider mb-0.5 sm:mb-1">Check-in</p>
+                        <p className="text-xs sm:text-sm font-medium text-stone-900">{formatDateStr(booking.checkIn)}</p>
                       </div>
                       <div className="hidden sm:block w-px bg-stone-200"></div>
                       <div>
-                        <p className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-1">Check-out</p>
-                        <p className="font-medium text-stone-900">{formatDateStr(booking.checkOut)}</p>
+                        <p className="text-[10px] sm:text-xs font-bold text-stone-400 uppercase tracking-wider mb-0.5 sm:mb-1">Check-out</p>
+                        <p className="text-xs sm:text-sm font-medium text-stone-900">{formatDateStr(booking.checkOut)}</p>
                       </div>
                       <div className="hidden sm:block w-px bg-stone-200"></div>
                       <div>
-                        <p className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-1">Room</p>
-                        <p className="font-medium text-stone-900 truncate max-w-[160px]" title={booking.room?.name || 'Room'}>
+                        <p className="text-[10px] sm:text-xs font-bold text-stone-400 uppercase tracking-wider mb-0.5 sm:mb-1">Room</p>
+                        <p className="text-xs sm:text-sm font-medium text-stone-900 truncate max-w-[160px]" title={booking.room?.name || 'Room'}>
                           {booking.room?.name || 'Room'}
                           <span className="text-stone-400 font-normal"> · {nights}n · {booking.guests}g</span>
                         </p>
@@ -782,7 +782,7 @@ export default function MyBookings() {
                       </div>
                     <div className="text-left sm:text-right w-full sm:w-auto">
                       <p className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-1">Total Price</p>
-                      <div className="text-xl sm:text-2xl font-serif font-bold text-stone-900">
+                      <div className="text-lg sm:text-xl md:text-2xl font-serif font-bold text-stone-900 tracking-tight">
                         <PriceDisplay amount={booking.total ?? ((booking.room?.price ?? 0) * nights)} currency={booking.currency} />
                       </div>
                     </div>

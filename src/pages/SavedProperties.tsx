@@ -78,42 +78,43 @@ export default function SavedProperties() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 lg:px-8 py-10 mb-20 md:mb-0">
-      <div className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="mx-auto max-w-7xl px-3.5 sm:px-6 lg:px-8 py-5 sm:py-8 md:py-10 mb-20 md:mb-0">
+      <div className="mb-5 sm:mb-7 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl md:text-4xl font-serif font-bold text-stone-900 tracking-tight">Saved Properties</h1>
-          <p className="text-stone-500 mt-2">Your bookmarked lodges, cottages, and safari stays across Malawi.</p>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-serif font-bold text-stone-900 tracking-tight">Saved Properties</h1>
+          <p className="text-stone-500 mt-0.5 sm:mt-1 text-xs sm:text-sm">Your bookmarked lodges, cottages, and safari stays across Malawi.</p>
         </div>
         {savedHotels.length > 0 && (
-          <div className="flex items-center gap-1 bg-stone-100 p-1 rounded-2xl w-fit border border-stone-200">
+          <div className="grid grid-cols-2 sm:flex items-center gap-1 bg-stone-100 p-1 rounded-2xl w-full sm:w-fit border border-stone-200">
             <button
               onClick={() => setViewMode('grid')}
-              className={`px-4 py-2 text-xs sm:text-sm font-bold rounded-xl transition ${viewMode === 'grid' ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-600 hover:text-stone-900'}`}
+              className={`px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-bold rounded-xl transition flex items-center justify-center gap-1 cursor-pointer ${viewMode === 'grid' ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-600 hover:text-stone-900'}`}
             >
-              Saved Grid ({savedHotels.length})
+              <span>Saved Grid</span>
+              <span className="text-[10px] bg-stone-200 text-stone-700 px-1.5 py-0.2 rounded-full font-bold">({savedHotels.length})</span>
             </button>
             <button
               onClick={() => setViewMode('planner')}
-              className={`px-4 py-2 text-xs sm:text-sm font-bold rounded-xl transition flex items-center gap-2 ${viewMode === 'planner' ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-600 hover:text-stone-900'}`}
+              className={`px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-bold rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer ${viewMode === 'planner' ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-600 hover:text-stone-900'}`}
             >
-              <Map className="w-4 h-4 text-emerald-600" />
+              <Map className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
               <span>Trip Planner</span>
-              <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-1.5 py-0.5 rounded-full">Route</span>
+              <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-1.5 py-0.2 rounded-full">Route</span>
             </button>
           </div>
         )}
       </div>
 
       {savedHotels.length === 0 ? (
-        <div className="py-20 text-center border border-dashed border-stone-200 rounded-3xl bg-stone-50/50">
-          <Heart className="w-12 h-12 text-stone-300 mx-auto mb-4" />
-          <h2 className="text-lg font-bold text-stone-900 mb-2">No saved properties yet</h2>
-          <p className="text-stone-500 mb-8 max-w-sm mx-auto">
+        <div className="py-12 sm:py-16 text-center border border-dashed border-stone-200 rounded-2xl sm:rounded-3xl bg-stone-50/50 px-4">
+          <Heart className="w-10 h-10 text-stone-300 mx-auto mb-3" />
+          <h2 className="text-base sm:text-lg font-bold text-stone-900 mb-1">No saved properties yet</h2>
+          <p className="text-stone-500 text-xs sm:text-sm mb-6 max-w-sm mx-auto">
             When you see a property you like, tap the heart icon to save it here.
           </p>
           <Link
             to="/"
-            className="inline-flex items-center justify-center gap-2 rounded-full bg-stone-900 px-6 py-3 text-sm font-bold text-white transition hover:bg-stone-800"
+            className="inline-flex items-center justify-center gap-2 rounded-xl sm:rounded-full bg-stone-900 px-5 sm:px-6 py-2.5 text-xs sm:text-sm font-bold text-white transition hover:bg-stone-800 shadow-2xs"
           >
             <Search className="w-4 h-4" />
             Explore properties
@@ -124,7 +125,7 @@ export default function SavedProperties() {
           {viewMode === 'planner' ? (
             <TripPlannerD3 hotels={savedHotels} />
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-4 md:gap-5 lg:gap-6">
               {savedHotels.map((hotel, index) => (
                 <motion.div key={`${hotel.id || 'saved'}-${index}`} layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}>
                   <HotelCard hotel={hotel} index={index} searchParams={{}} />

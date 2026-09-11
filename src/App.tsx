@@ -23,6 +23,8 @@ import Privacy from './pages/Privacy';
 import Refunds from './pages/Refunds';
 import HostStarterPack from './pages/HostStarterPack';
 import MarketingDeck from './pages/MarketingDeck';
+import OperationsStarterPack from './pages/OperationsStarterPack';
+import PropertyListingGuide from './pages/PropertyListingGuide';
 import PlatformGuideUat from './pages/PlatformGuideUat';
 import GlobalNotificationManager from './components/GlobalNotificationManager';
 import PageLoader from './components/PageLoader';
@@ -179,7 +181,8 @@ const router = createBrowserRouter([
       { path: "host-starter-pack", element: <HostStarterPack /> },
       { path: "marketing", element: <MarketingDeck /> },
       { path: "marketing-deck", element: <MarketingDeck /> },
-      { path: "operations-guide", element: <MarketingDeck /> },
+      { path: "operations-guide", element: <OperationsStarterPack /> },
+      { path: "listing-guide", element: <PropertyListingGuide /> },
       { path: "uat", element: <PlatformGuideUat /> },
       { path: "uat-guide", element: <PlatformGuideUat /> },
       { path: "platform-guide", element: <PlatformGuideUat /> },

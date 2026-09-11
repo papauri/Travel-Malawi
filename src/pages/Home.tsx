@@ -25,6 +25,7 @@ import { openAccessPermissionsModal, MANUAL_LOCATION_STORAGE_KEY, UserLocationEv
 import { useAuth } from '../contexts/AuthContext';
 import { useAuthDialog } from '../contexts/AuthDialogContext';
 import { isHotelManager } from '../lib/roles';
+import { getActivePromotion, calculateSlashedPrice, getSaleTypeBadge } from '../lib/promotions';
 
 type SortKey = 'recommended' | 'distance_asc' | 'price_asc' | 'price_desc' | 'rating' | 'name_asc';
 
@@ -673,7 +674,6 @@ export default function Home() {
   }, [searchLocation, hotels]);
 
   const hasSearch = !!(appliedSearch.location || appliedSearch.coords || appliedSearch.checkIn || appliedSearch.guests);
-  const shouldShowAcquisitionBanner = !hasSearch && (!user || (!hasUserListed && user.roles?.[0] !== 'admin'));
 
   /**
    * The one-tap destinations under the search bar. Taken from the listings
@@ -1008,7 +1008,7 @@ export default function Home() {
               Find your <span className="italic font-light text-amber-100/90">quiet escape.</span>
             </h1>
             <p className="mt-3 text-xs sm:text-sm md:text-base text-stone-300/85 font-light max-w-lg leading-relaxed mx-auto text-balance">
-              Handpicked boutique lodges, B&amp;Bs, cottages, guest houses, and safari camps across the Warm Heart of Africa.
+              Handpicked hotels, resorts, boutique lodges, B&amp;Bs, cottages, guest houses, and safari camps across the Warm Heart of Africa.
             </p>
           </motion.div>
         </div>
@@ -1368,13 +1368,13 @@ export default function Home() {
 
       {/* Popular Destinations */}
       {popularDestinations.length > 0 && (
-        <section className="bg-white py-6 md:py-8 border-b border-stone-200">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex flex-col md:flex-row md:items-center gap-4">
-              <span className="text-xs font-bold uppercase tracking-[0.16em] text-stone-400">
+        <section className="bg-white py-2 sm:py-2.5 md:py-3 border-b border-stone-200/80">
+          <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
+            <div className="flex items-center gap-2 sm:gap-3 md:gap-3.5 overflow-hidden w-full">
+              <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.14em] sm:tracking-[0.18em] text-stone-400 shrink-0 select-none whitespace-nowrap">
                 Popular right now
               </span>
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex-1 min-w-0 flex items-center gap-1.5 sm:gap-2 overflow-x-auto scrollbar-hide py-0.5 sm:py-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 {popularDestinations.map((destination, dIdx) => (
                   <button
                     key={`pop-${destination}-${dIdx}`}
@@ -1397,7 +1397,7 @@ export default function Home() {
                         proximity: searchProximity,
                       });
                     }}
-                    className="rounded-full border border-stone-200 bg-white px-4 py-2 text-sm font-medium text-stone-700 shadow-sm transition hover:border-emerald-600 hover:bg-emerald-50 hover:text-emerald-800"
+                    className="rounded-full border border-stone-200/90 bg-white px-2.5 sm:px-3 md:px-3.5 py-1 sm:py-1.2 md:py-1.5 text-[11px] sm:text-xs font-medium text-stone-700 shadow-2xs transition hover:border-emerald-600 hover:bg-emerald-50 hover:text-emerald-800 active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
                   >
                     {destination}
                   </button>
@@ -1449,23 +1449,48 @@ export default function Home() {
                       <p className="text-[0.65rem] font-bold tracking-[0.2em] text-stone-500 uppercase">
                         {entry.hotel.location}
                       </p>
-                      <h3 className="font-serif text-xl font-bold text-stone-900 truncate group-hover:text-emerald-700 transition-colors">
+                      <h3 className="font-serif text-base sm:text-lg md:text-xl font-bold text-stone-900 leading-snug line-clamp-2 min-h-[2.5rem] sm:min-h-[3rem] group-hover:text-emerald-700 transition-colors">
                         <MaskedPlaceName name={entry.hotel.name} fallback="[Featured Stay]" />
                       </h3>
-                      <div className="flex items-center justify-between mt-0.5">
-                        {entry.priceFrom ? (
-                          <div className="flex items-baseline flex-wrap gap-x-1.5">
-                            <p className="text-sm text-stone-600">
-                              <span className="text-stone-500 text-xs mr-1 font-medium">From</span><PriceDisplay className="text-stone-900" amount={entry.priceFrom} currency={currency} />
-                              <span className="text-stone-400 text-xs"> / night</span>
-                            </p>
-                            {entry.secondaryPriceFrom ? (
-                              <span className="text-xs text-stone-400 font-medium">
-                                ({formatMoney(entry.secondaryPriceFrom, entry.secondaryCurrency)})
-                              </span>
-                            ) : null}
-                          </div>
-                        ) : (
+                      <div className="flex items-start justify-between mt-0.5 gap-2">
+                        {entry.priceFrom ? (() => {
+                          const promo = getActivePromotion(entry.hotel, appliedSearch.checkIn, 'all');
+                          const slashed = calculateSlashedPrice(entry.priceFrom, promo, currency);
+
+                          return slashed.hasDiscount ? (
+                            <div className="flex flex-col gap-0.5">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="bg-red-600 text-white px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider">
+                                  {slashed.saleTypeLabel}
+                                </span>
+                                <span className="text-emerald-700 text-[10px] font-bold">
+                                  Save {slashed.discountPercentage}%
+                                </span>
+                              </div>
+                              <div className="flex items-baseline gap-1 flex-wrap">
+                                <span className="text-[10px] uppercase font-bold text-stone-400">FROM</span>
+                                <PriceDisplay className="text-stone-400 font-medium line-through decoration-stone-300 text-xs" amount={entry.priceFrom} currency={currency} />
+                                <span className="text-stone-400 font-bold text-xs">&gt;</span>
+                                <span className="text-[10px] uppercase font-bold text-red-600">TO</span>
+                                <PriceDisplay className="text-red-600 font-bold text-sm sm:text-base tracking-tight" amount={slashed.slashedPrice} currency={currency} />
+                                <span className="text-stone-400 text-[11px] sm:text-xs"> / night</span>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-baseline flex-wrap gap-x-1.5">
+                              <p className="text-xs sm:text-sm text-stone-600">
+                                <span className="text-stone-500 text-[11px] sm:text-xs mr-1 font-medium">From</span>
+                                <PriceDisplay className="text-stone-900 font-bold text-sm sm:text-base tracking-tight" amount={entry.priceFrom} currency={currency} />
+                                <span className="text-stone-400 text-[11px] sm:text-xs"> / night</span>
+                              </p>
+                              {entry.secondaryPriceFrom ? (
+                                <span className="text-xs text-stone-400 font-medium">
+                                  ({formatMoney(entry.secondaryPriceFrom, entry.secondaryCurrency)})
+                                </span>
+                              ) : null}
+                            </div>
+                          );
+                        })() : (
                           <span className="text-xs text-stone-400">Ask the host for rates</span>
                         )}
                         {entry.rating && (
@@ -1483,109 +1508,6 @@ export default function Home() {
           </section>
         )}
 
-      {/* Lodge Acquisition CTA Banner */}
-      {shouldShowAcquisitionBanner && (
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-2 w-full">
-          <div className="relative overflow-hidden rounded-3xl bg-stone-900 text-white p-6 sm:p-8 md:p-10 shadow-xl border border-stone-800">
-            <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6 md:gap-8">
-              <div className="max-w-2xl">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-stone-800/90 text-stone-300 border border-stone-700 text-xs font-semibold uppercase tracking-wider mb-3">
-                  <Building2 className="w-3.5 h-3.5 text-stone-400" />
-                  <span>For Lodge, B&amp;B, Cottage &amp; Stay Owners</span>
-                </div>
-                <h3 className="font-serif text-2xl sm:text-3xl md:text-4xl text-white tracking-tight leading-snug">
-                  Get direct bookings with 0% commission.
-                </h3>
-                <p className="text-stone-300 text-sm sm:text-base mt-2.5 leading-relaxed">
-                  Join Malawi&apos;s dedicated direct-booking hospitality network for lodges, B&amp;Bs, holiday cottages, and safari camps. Set simultaneous rates in MWK &amp; USD, receive instant inquiries directly on WhatsApp, and keep 100% of your earnings.
-                </p>
-
-                {/* Value chips */}
-                <div className="flex flex-wrap gap-2 sm:gap-3 mt-4 text-xs font-medium text-stone-300">
-                  <span className="inline-flex items-center gap-1.5 bg-stone-800/60 px-3 py-1 rounded-full border border-stone-700/80">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-stone-400 shrink-0" /> Zero listing or commission fees
-                  </span>
-                  <span className="inline-flex items-center gap-1.5 bg-stone-800/60 px-3 py-1 rounded-full border border-stone-700/80">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-stone-400 shrink-0" /> Direct WhatsApp alerts
-                  </span>
-                  <span className="inline-flex items-center gap-1.5 bg-stone-800/60 px-3 py-1 rounded-full border border-stone-700/80">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-stone-400 shrink-0" /> Dual-currency pricing (MWK &amp; USD)
-                  </span>
-                </div>
-              </div>
-
-              {/* Conditional Options: Host Starter Pack and Dashboard are only accessible once signed up as a property owner */}
-              {!user ? (
-                <div className="flex flex-col sm:flex-row lg:flex-col gap-2.5 shrink-0 lg:min-w-[230px]">
-                  <button
-                    type="button"
-                    onClick={() => openAuth('host')}
-                    className="inline-flex items-center justify-center gap-2 bg-white hover:bg-stone-100 text-stone-900 font-semibold px-6 py-3.5 rounded-full text-sm transition-all shadow-sm active:scale-95 text-center cursor-pointer"
-                  >
-                    <span>Sign Up as Property Owner</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                  <Link
-                    to="/list-your-property"
-                    className="inline-flex items-center justify-center gap-1.5 bg-stone-800 hover:bg-stone-750 text-stone-300 hover:text-white font-medium px-4 py-2.5 rounded-full text-xs transition border border-stone-700 text-center"
-                  >
-                    <span>Learn About Listing</span>
-                  </Link>
-                  <span className="text-[11px] text-stone-400 text-center lg:text-left">
-                    Sign up as host to unlock dashboard &amp; starter pack
-                  </span>
-                </div>
-              ) : !isHost ? (
-                <div className="flex flex-col sm:flex-row lg:flex-col gap-2.5 shrink-0 lg:min-w-[230px]">
-                  <button
-                    type="button"
-                    onClick={() => openAuth('host')}
-                    className="inline-flex items-center justify-center gap-2 bg-white hover:bg-stone-100 text-stone-900 font-semibold px-6 py-3.5 rounded-full text-sm transition-all shadow-sm active:scale-95 text-center cursor-pointer"
-                  >
-                    <span>Enable Property Owner Account</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                  <Link
-                    to="/list-your-property"
-                    className="inline-flex items-center justify-center gap-1.5 bg-stone-800 hover:bg-stone-750 text-stone-300 hover:text-white font-medium px-4 py-2.5 rounded-full text-xs transition border border-stone-700 text-center"
-                  >
-                    <span>List Your Property Free</span>
-                  </Link>
-                  <span className="text-[11px] text-stone-400 text-center lg:text-left">
-                    Signed in as Guest · Switch to host for dashboard tools
-                  </span>
-                </div>
-              ) : (
-                <div className="flex flex-col sm:flex-row lg:flex-col gap-3 shrink-0 lg:min-w-[230px]">
-                  <Link
-                    to="/dashboard"
-                    className="inline-flex items-center justify-center gap-2 bg-white hover:bg-stone-100 text-stone-900 font-semibold px-6 py-3.5 rounded-full text-sm transition-all shadow-sm active:scale-95 text-center"
-                  >
-                    <span>Go to Host Dashboard</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </Link>
-                  <div className="flex items-center justify-between sm:justify-center gap-2">
-                    <Link
-                      to="/host-guide"
-                      className="inline-flex items-center justify-center gap-1.5 bg-stone-800 hover:bg-stone-750 text-stone-300 hover:text-white font-medium px-4 py-2.5 rounded-full text-xs transition border border-stone-700 text-center flex-1 sm:flex-initial"
-                    >
-                      <BookOpen className="w-3.5 h-3.5 text-stone-400" />
-                      <span>Host Starter Pack</span>
-                    </Link>
-                    <Link
-                      to="/list-your-property"
-                      className="inline-flex items-center justify-center gap-1.5 bg-stone-800 hover:bg-stone-750 text-stone-300 hover:text-white font-medium px-4 py-2.5 rounded-full text-xs transition border border-stone-700 text-center flex-1 sm:flex-initial"
-                    >
-                      <span>List Stay</span>
-                    </Link>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </section>
-      )}
-
       {/* Main Property Listings & Map Section */}
       <section id="search-results" className="scroll-mt-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12 w-full flex-1">
         {/* Results Header Title */}
@@ -1596,44 +1518,44 @@ export default function Home() {
             <p className="text-stone-500 text-sm">
               {hasSearch
                 ? `${filteredHotels.length} propert${filteredHotels.length === 1 ? 'y' : 'ies'} can take you.`
-                : 'Independent lodges, B&Bs, cottages and guesthouses — every one booked direct with its host.'}
+                : 'Independent hotels, resorts, lodges, B&Bs, cottages and guesthouses — every one booked direct with its host.'}
             </p>
           </div>
 
           {/* Filter Toolbar */}
-          <div className="mb-6 flex flex-col lg:flex-row lg:items-center justify-between gap-4 lg:bg-stone-50 lg:border lg:border-stone-200 lg:p-2.5 lg:rounded-2xl">
-            <div className="flex-1 min-w-0">
-              {hasSearch || isPriceFiltered ? (
-              <div className="flex flex-wrap items-center gap-2">
+          <div className="mb-4 sm:mb-6 flex flex-col gap-2 sm:gap-2.5 bg-stone-50/90 sm:bg-stone-50 border border-stone-200/90 p-2 sm:p-2.5 md:p-3 rounded-2xl">
+            {/* Active search filter tags - single line horizontal scroll */}
+            {(hasSearch || isPriceFiltered) && (
+              <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide py-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden w-full">
                 {appliedSearch.coords && (
-                  <span className="text-xs font-semibold bg-stone-100 text-stone-700 px-3 py-1 rounded-full">
+                  <span className="text-[11px] font-semibold bg-white border border-stone-200/90 text-stone-700 px-2.5 py-1 rounded-full shrink-0 shadow-2xs">
                     Within {appliedSearch.proximity} km
                   </span>
                 )}
                 {!appliedSearch.coords && appliedSearch.location && (
-                  <span className="text-xs font-semibold bg-stone-100 text-stone-700 px-3 py-1 rounded-full">
+                  <span className="text-[11px] font-semibold bg-white border border-stone-200/90 text-stone-700 px-2.5 py-1 rounded-full shrink-0 shadow-2xs">
                     {appliedSearch.location}
                   </span>
                 )}
                 {appliedSearch.checkIn && appliedSearch.checkOut && (
-                  <span className="text-xs font-semibold bg-stone-100 text-stone-700 px-3 py-1 rounded-full">
+                  <span className="text-[11px] font-semibold bg-white border border-stone-200/90 text-stone-700 px-2.5 py-1 rounded-full shrink-0 shadow-2xs">
                     {appliedSearch.checkIn} &rarr; {appliedSearch.checkOut}
                   </span>
                 )}
                 {!!appliedSearch.guests && (
-                  <span className="text-xs font-semibold bg-stone-100 text-stone-700 px-3 py-1 rounded-full">
+                  <span className="text-[11px] font-semibold bg-white border border-stone-200/90 text-stone-700 px-2.5 py-1 rounded-full shrink-0 shadow-2xs">
                     {appliedSearch.guests} guest{appliedSearch.guests === 1 ? '' : 's'}
                   </span>
                 )}
                 {isPriceFiltered && (
-                  <span className="text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-1 rounded-full flex items-center gap-1.5 shadow-2xs">
+                  <span className="text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 px-2.5 py-1 rounded-full flex items-center gap-1.5 shrink-0 shadow-2xs">
                     <span>
-                      {formatMoney(priceRange[0], currency)} – {priceRange[1] >= priceLimitMax ? `${formatMoney(priceLimitMax, currency)}+` : formatMoney(priceRange[1], currency)} / night
+                      {formatMoney(priceRange[0], currency)} – {priceRange[1] >= priceLimitMax ? `${formatMoney(priceLimitMax, currency)}+` : formatMoney(priceRange[1], currency)}
                     </span>
                     <button 
                       type="button"
                       onClick={() => setPriceRange([priceLimitMin, priceLimitMax])}
-                      className="hover:text-emerald-950 p-0.5 rounded-full hover:bg-emerald-100/80 transition"
+                      className="hover:text-emerald-950 p-0.5 rounded-full hover:bg-emerald-100 transition"
                       title="Clear price filter"
                     >
                       <X className="w-3 h-3" />
@@ -1641,195 +1563,198 @@ export default function Home() {
                   </span>
                 )}
                 <button
+                  type="button"
                   onClick={clearFilters}
-                  className="text-xs font-semibold text-stone-500 hover:text-stone-900 px-2.5 py-1 rounded-full border border-stone-200 hover:border-stone-400 transition flex items-center gap-1"
+                  className="text-[11px] font-semibold text-stone-500 hover:text-stone-900 px-2.5 py-1 rounded-full border border-stone-200 bg-white hover:border-stone-400 transition flex items-center gap-1 shrink-0 shadow-2xs cursor-pointer"
                 >
                   <X className="w-3 h-3" /> Clear all
                 </button>
               </div>
-            ) : <span className="hidden lg:inline-block text-xs font-semibold text-stone-400 uppercase tracking-wider px-2">Filter results</span>}
-            </div>
-
-            <div className="flex items-center gap-2 shrink-0 flex-wrap justify-start lg:justify-end">
-            {/* Category Dropdown */}
-            <label className="flex items-center gap-2 shrink-0">
-              <select
-                value={activeCategory}
-                onChange={e => setActiveCategory(e.target.value)}
-                className="bg-white border border-stone-200 rounded-full px-3.5 py-1.5 text-xs font-semibold text-stone-700 outline-none focus:border-stone-900 transition shadow-2xs"
-              >
-                {(['All', ...PROPERTY_CATEGORIES] as string[]).map((category, cIdx) => (
-                  <option key={`cat-${category}-${cIdx}`} value={category}>{category === 'All' ? 'All Types' : category}</option>
-                ))}
-              </select>
-            </label>
-
-            {/* Amenities Dropdown */}
-            <details className="relative group">
-              <summary className="list-none flex items-center gap-1.5 bg-white border border-stone-200 rounded-full px-3.5 py-1.5 text-xs font-semibold text-stone-700 outline-none focus:border-stone-900 transition shadow-2xs cursor-pointer select-none [&::-webkit-details-marker]:hidden">
-                Amenities
-                {activeAmenities.length > 0 && (
-                  <span className="bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full text-[10px] leading-none flex items-center justify-center">
-                    {activeAmenities.length}
-                  </span>
-                )}
-                <ChevronDown className="w-3 h-3 text-stone-400 group-open:rotate-180 transition-transform" />
-              </summary>
-              <div className="absolute right-0 mt-2 w-56 bg-white border border-stone-200 rounded-2xl shadow-xl z-50 p-2 flex flex-col gap-1">
-                {COMMON_AMENITIES.map((amenity, aIdx) => {
-                  const isActive = activeAmenities.includes(amenity);
-                  return (
-                    <label key={`amenity-${amenity}-${aIdx}`} className="flex items-center gap-3 px-3 py-2 hover:bg-stone-50 rounded-xl cursor-pointer text-sm transition">
-                      <input 
-                        type="checkbox" 
-                        checked={isActive}
-                        onChange={() => {
-                          setActiveAmenities(prev => 
-                            prev.includes(amenity) 
-                              ? prev.filter(a => a !== amenity)
-                              : [...prev, amenity]
-                          );
-                          setCurrentPage(1);
-                        }}
-                        className="rounded border-stone-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
-                      />
-                      <span className="text-stone-700 font-medium">{amenity}</span>
-                    </label>
-                  );
-                })}
-                {activeAmenities.length > 0 && (
-                  <button 
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setActiveAmenities([]);
-                      setCurrentPage(1);
-                    }}
-                    className="mt-2 text-xs font-semibold text-stone-500 hover:text-stone-900 text-center py-2 border-t border-stone-100"
-                  >
-                    Clear all
-                  </button>
-                )}
-              </div>
-            </details>
-
-            {/* Price Filter Dropdown */}
-            <details className="relative group">
-              <summary className={`list-none flex items-center gap-1.5 border rounded-full px-3.5 py-1.5 text-xs font-semibold outline-none transition shadow-2xs cursor-pointer select-none [&::-webkit-details-marker]:hidden ${
-                isPriceFiltered
-                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
-                  : 'bg-white border-stone-200 text-stone-700 focus:border-stone-900 hover:bg-stone-50'
-              }`}>
-                <SlidersHorizontal className="w-3.5 h-3.5" />
-                <span>
-                  {isPriceFiltered 
-                    ? `${formatMoney(priceRange[0], currency)} - ${priceRange[1] >= priceLimitMax ? `${formatMoney(priceLimitMax, currency)}+` : formatMoney(priceRange[1], currency)}`
-                    : 'Budget'}
-                </span>
-                <ChevronDown className="w-3 h-3 text-stone-400 group-open:rotate-180 transition-transform ml-0.5" />
-              </summary>
-              <div className="absolute right-0 mt-2 w-[calc(100vw-2.5rem)] max-w-sm sm:w-96 bg-white border border-stone-200 rounded-3xl shadow-2xl z-50 overflow-hidden">
-                <PriceRangeFilter
-                  currency={currency}
-                  minPrice={priceRange[0]}
-                  maxPrice={priceRange[1]}
-                  priceLimitMin={priceLimitMin}
-                  priceLimitMax={priceLimitMax}
-                  step={priceStep}
-                  onPriceChange={(min, max) => {
-                    setPriceRange([min, max]);
-                    setCurrentPage(1);
-                  }}
-                  onReset={() => {
-                    setPriceRange([priceLimitMin, priceLimitMax]);
-                    setCurrentPage(1);
-                  }}
-                  availablePrices={allAvailablePrices}
-                  isExpanded={true}
-                  includeUnpriced={includeUnpricedRooms}
-                  onToggleIncludeUnpriced={(include) => setIncludeUnpricedRooms(include)}
-                />
-              </div>
-            </details>
-
-            {/* Currency selector */}
-            {offeredCurrencies.length > 1 && (
-              <div className="flex items-center gap-1.5 bg-stone-50 p-1 rounded-full border border-stone-200">
-                {offeredCurrencies.map((code, cIdx) => (
-                  <button
-                    key={`curr-${code}-${cIdx}`}
-                    type="button"
-                    onClick={() => chooseCurrency(code)}
-                    aria-pressed={currency === code}
-                    title={CURRENCIES[code].label}
-                    className={`px-3 py-1 rounded-full text-xs font-bold transition ${
-                      currency === code
-                        ? 'bg-stone-900 text-white shadow-xs'
-                        : 'text-stone-600 hover:text-stone-900'
-                    }`}
-                  >
-                    {code}
-                  </button>
-                ))}
-              </div>
             )}
 
-            
-              {/* Geolocation & Hub Controls */}
-              <div className="flex items-center gap-1.5 shrink-0">
+            {/* Filter Controls Responsive Grid */}
+            <div className="grid grid-cols-2 min-[440px]:grid-cols-3 md:grid-cols-6 lg:flex lg:flex-wrap lg:items-center lg:justify-end gap-1.5 sm:gap-2 w-full">
+              {/* Category Dropdown */}
+              <div className="relative w-full lg:w-auto">
+                <select
+                  value={activeCategory}
+                  onChange={e => setActiveCategory(e.target.value)}
+                  className="w-full lg:w-auto h-8 sm:h-8.5 bg-white border border-stone-200 rounded-full px-2.5 sm:px-3 text-[11px] sm:text-xs font-semibold text-stone-700 outline-none focus:border-stone-900 transition shadow-2xs truncate cursor-pointer text-center"
+                >
+                  {(['All', ...PROPERTY_CATEGORIES] as string[]).map((category, cIdx) => (
+                    <option key={`cat-${category}-${cIdx}`} value={category}>{category === 'All' ? 'All Types' : category}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Price Filter Dropdown */}
+              <details className="relative group w-full lg:w-auto">
+                <summary className={`list-none flex items-center justify-center gap-1.5 w-full lg:w-auto h-8 sm:h-8.5 border rounded-full px-2.5 sm:px-3 text-[11px] sm:text-xs font-semibold outline-none transition shadow-2xs cursor-pointer select-none [&::-webkit-details-marker]:hidden ${
+                  isPriceFiltered
+                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+                    : 'bg-white border-stone-200 text-stone-700 focus:border-stone-900 hover:bg-stone-50'
+                }`}>
+                  <div className="flex items-center gap-1 min-w-0 truncate">
+                    <SlidersHorizontal className="w-3 h-3 shrink-0" />
+                    <span className="truncate">
+                      {isPriceFiltered 
+                        ? `${formatMoney(priceRange[0], currency)} - ${priceRange[1] >= priceLimitMax ? `${formatMoney(priceLimitMax, currency)}+` : formatMoney(priceRange[1], currency)}`
+                        : 'Budget'}
+                    </span>
+                  </div>
+                  <ChevronDown className="w-3 h-3 text-stone-400 group-open:rotate-180 transition-transform shrink-0" />
+                </summary>
+                <div className="absolute left-0 sm:left-auto sm:right-0 mt-2 w-[calc(100vw-2rem)] max-w-sm sm:w-96 bg-white border border-stone-200 rounded-3xl shadow-2xl z-50 overflow-hidden">
+                  <PriceRangeFilter
+                    currency={currency}
+                    minPrice={priceRange[0]}
+                    maxPrice={priceRange[1]}
+                    priceLimitMin={priceLimitMin}
+                    priceLimitMax={priceLimitMax}
+                    step={priceStep}
+                    onPriceChange={(min, max) => {
+                      setPriceRange([min, max]);
+                      setCurrentPage(1);
+                    }}
+                    onReset={() => {
+                      setPriceRange([priceLimitMin, priceLimitMax]);
+                      setCurrentPage(1);
+                    }}
+                    availablePrices={allAvailablePrices}
+                    isExpanded={true}
+                    includeUnpriced={includeUnpricedRooms}
+                    onToggleIncludeUnpriced={(include) => setIncludeUnpricedRooms(include)}
+                  />
+                </div>
+              </details>
+
+              {/* Amenities Dropdown */}
+              <details className="relative group w-full lg:w-auto">
+                <summary className="list-none flex items-center justify-center gap-1.5 w-full lg:w-auto h-8 sm:h-8.5 bg-white border border-stone-200 rounded-full px-2.5 sm:px-3 text-[11px] sm:text-xs font-semibold text-stone-700 outline-none focus:border-stone-900 transition shadow-2xs cursor-pointer select-none [&::-webkit-details-marker]:hidden">
+                  <div className="flex items-center gap-1 truncate">
+                    <span>Amenities</span>
+                    {activeAmenities.length > 0 && (
+                      <span className="bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full text-[9px] font-bold leading-none">
+                        {activeAmenities.length}
+                      </span>
+                    )}
+                  </div>
+                  <ChevronDown className="w-3 h-3 text-stone-400 group-open:rotate-180 transition-transform shrink-0" />
+                </summary>
+                <div className="absolute left-0 sm:left-auto sm:right-0 mt-2 w-56 bg-white border border-stone-200 rounded-2xl shadow-xl z-50 p-2 flex flex-col gap-1">
+                  {COMMON_AMENITIES.map((amenity, aIdx) => {
+                    const isActive = activeAmenities.includes(amenity);
+                    return (
+                      <label key={`amenity-${amenity}-${aIdx}`} className="flex items-center gap-3 px-3 py-2 hover:bg-stone-50 rounded-xl cursor-pointer text-sm transition">
+                        <input 
+                          type="checkbox" 
+                          checked={isActive}
+                          onChange={() => {
+                            setActiveAmenities(prev => 
+                              prev.includes(amenity) 
+                                ? prev.filter(a => a !== amenity)
+                                : [...prev, amenity]
+                            );
+                            setCurrentPage(1);
+                          }}
+                          className="rounded border-stone-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
+                        />
+                        <span className="text-stone-700 font-medium text-xs">{amenity}</span>
+                      </label>
+                    );
+                  })}
+                  {activeAmenities.length > 0 && (
+                    <button 
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setActiveAmenities([]);
+                        setCurrentPage(1);
+                      }}
+                      className="mt-2 text-xs font-semibold text-stone-500 hover:text-stone-900 text-center py-2 border-t border-stone-100"
+                    >
+                      Clear all
+                    </button>
+                  )}
+                </div>
+              </details>
+
+              {/* Geolocation & Hub Controls Group */}
+              <div className="flex items-center w-full lg:w-auto h-8 sm:h-8.5 rounded-full border border-stone-200 bg-white p-0.5 shadow-2xs divide-x divide-stone-100">
                 <button
                   type="button"
                   onClick={handleToggleUserLocation}
                   disabled={isLocatingUser}
-                  className={`flex items-center gap-1.5 border rounded-full px-3.5 py-1.5 text-xs font-semibold outline-none transition shadow-2xs ${
+                  className={`flex-1 lg:flex-initial h-full flex items-center justify-center gap-1 rounded-l-full px-2 lg:px-2.5 text-[10px] sm:text-[11px] font-semibold outline-none transition cursor-pointer ${
                     showUserLocation && userLocationLabel === 'Live GPS'
-                      ? 'bg-blue-50 text-blue-800 border-blue-200 hover:bg-blue-100'
-                      : 'bg-white border-stone-200 text-stone-700 hover:bg-stone-50'
+                      ? 'bg-blue-50 text-blue-800'
+                      : 'text-stone-700 hover:bg-stone-50'
                   }`}
                   title="Toggle device GPS location"
                 >
                   {isLocatingUser ? (
-                    <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
                   ) : (
-                    <div className="relative flex items-center justify-center">
-                      <Locate className="w-3.5 h-3.5" />
+                    <div className="relative flex items-center justify-center shrink-0">
+                      <Locate className="w-3 h-3" />
                       {showUserLocation && userLocationLabel === 'Live GPS' && (
                         <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-blue-500 rounded-full animate-ping" />
                       )}
                     </div>
                   )}
-                  <span className="hidden sm:inline">{showUserLocation && userLocationLabel === 'Live GPS' ? 'GPS: ON' : 'Use GPS'}</span>
+                  <span className="truncate">{showUserLocation && userLocationLabel === 'Live GPS' ? 'GPS ON' : 'GPS'}</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => openAccessPermissionsModal('location')}
-                  className={`flex items-center gap-1.5 border rounded-full px-3.5 py-1.5 text-xs font-semibold outline-none transition shadow-2xs ${
+                  className={`flex-1 lg:flex-initial h-full flex items-center justify-center gap-1 rounded-r-full px-2 lg:px-2.5 text-[10px] sm:text-[11px] font-semibold outline-none transition cursor-pointer ${
                     showUserLocation && userLocationLabel && userLocationLabel !== 'Live GPS'
-                      ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
-                      : 'bg-white border-stone-200 text-stone-700 hover:bg-stone-50'
+                      ? 'bg-emerald-50 text-emerald-800'
+                      : 'text-stone-700 hover:bg-stone-50'
                   }`}
                   title="Choose a Malawian travel hub or city for distance calculations"
                 >
-                  <MapPin className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>{userLocationLabel && userLocationLabel !== 'Live GPS' ? userLocationLabel : 'Pick City'}</span>
+                  <MapPin className="w-3 h-3 text-emerald-600 shrink-0" />
+                  <span className="truncate">{userLocationLabel && userLocationLabel !== 'Live GPS' ? userLocationLabel : 'City'}</span>
                 </button>
               </div>
 
               {/* Sort Dropdown */}
-            <label className="flex items-center gap-2 shrink-0">
-              <span className="text-xs font-bold text-stone-400 uppercase tracking-wider hidden sm:inline">Sort</span>
-              <select
-                value={sortKey}
-                onChange={e => setSortKey(e.target.value as SortKey)}
-                className="bg-white border border-stone-200 rounded-full px-3.5 py-1.5 text-xs font-semibold text-stone-700 outline-none focus:border-stone-900 transition shadow-2xs"
-              >
-                {(Object.keys(SORT_LABELS) as SortKey[]).map(key => (
-                  <option key={key} value={key}>{SORT_LABELS[key]}</option>
-                ))}
-              </select>
-            </label>
+              <div className="relative w-full lg:w-auto">
+                <select
+                  value={sortKey}
+                  onChange={e => setSortKey(e.target.value as SortKey)}
+                  className="w-full lg:w-auto h-8 sm:h-8.5 bg-white border border-stone-200 rounded-full px-2.5 sm:px-3 text-[11px] sm:text-xs font-semibold text-stone-700 outline-none focus:border-stone-900 transition shadow-2xs truncate cursor-pointer text-center"
+                >
+                  {(Object.keys(SORT_LABELS) as SortKey[]).map(key => (
+                    <option key={key} value={key}>{SORT_LABELS[key]}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Currency Selector */}
+              {offeredCurrencies.length > 1 && (
+                <div className="flex items-center justify-center w-full lg:w-auto h-8 sm:h-8.5 bg-white p-0.5 rounded-full border border-stone-200 shadow-2xs">
+                  {offeredCurrencies.map((code, cIdx) => (
+                    <button
+                      key={`curr-${code}-${cIdx}`}
+                      type="button"
+                      onClick={() => chooseCurrency(code)}
+                      aria-pressed={currency === code}
+                      title={CURRENCIES[code].label}
+                      className={`flex-1 lg:flex-initial h-full px-2.5 flex items-center justify-center rounded-full text-[10px] sm:text-[11px] font-bold transition cursor-pointer ${
+                        currency === code
+                          ? 'bg-stone-900 text-white shadow-2xs'
+                          : 'text-stone-600 hover:text-stone-900'
+                      }`}
+                    >
+                      {code}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
 
 
 
@@ -1991,6 +1916,8 @@ export default function Home() {
                       hotel={entry.hotel}
                       rating={entry.rating?.average}
                       minPrice={entry.priceFrom}
+                      secondaryPriceFrom={entry.secondaryPriceFrom}
+                      secondaryCurrency={entry.secondaryCurrency}
                       searchParams={{
                         checkIn: appliedSearch.checkIn,
                         checkOut: appliedSearch.checkOut,
@@ -2313,68 +2240,114 @@ export default function Home() {
       </section>
 
       {/* Host Call to Action */}
-      <section className="relative overflow-hidden bg-stone-900 py-16 md:py-20 text-white">
-        <div className="absolute inset-0 opacity-[0.12]">
-          <SmartImage src={DECORATIVE_IMAGE} alt="" aria-hidden="true" className="h-full w-full object-cover" />
-        </div>
-        <div className="absolute inset-0 bg-gradient-to-br from-stone-900 via-stone-900/90 to-emerald-950/60" />
-
+      <section className="relative overflow-hidden bg-[#F9F7F2] border-t border-stone-200 py-10 sm:py-14 md:py-20 text-stone-900">
         <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-[1.1fr_0.9fr]">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[1.1fr_0.9fr] items-center gap-6 sm:gap-8 md:gap-8 lg:gap-12">
             <div>
-              <p className="mb-4 text-[0.7rem] font-bold uppercase tracking-[0.26em] text-emerald-400">
-                Run a place of your own?
-              </p>
-              <h2 className="mb-5 font-serif text-3xl md:text-5xl leading-[1.1] tracking-tight">
+              <div className="inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200/80 text-[10px] sm:text-xs font-semibold uppercase tracking-wider mb-2.5 sm:mb-3">
+                <Building2 className="w-3.5 h-3.5 text-emerald-700" />
+                <span>For Resorts, Hotels, Lodges &amp; Stays</span>
+              </div>
+              <h2 className="mb-3 sm:mb-4 font-serif text-2xl sm:text-3xl md:text-4xl lg:text-5xl leading-[1.15] sm:leading-[1.1] tracking-tight text-stone-900">
                 Your property. Your rates.
                 <br />
                 Your guests.
               </h2>
-              <p className="mb-6 max-w-lg text-sm md:text-base leading-relaxed text-white/70">
-                Travellers find you, message you, and book with you — no agency in the middle and
-                nothing taken off your rate. Listing takes one sitting.
+              <p className="mb-4 sm:mb-6 max-w-lg text-xs sm:text-sm md:text-base leading-relaxed text-stone-600">
+                Whether you operate a lakeside resort, city business hotel, safari camp, or holiday cottage — travellers find you, message you, and book direct with 0% commission. No agency in the middle and nothing taken off your rate.
               </p>
 
-              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                <Link
-                  to="/list-your-property"
-                  className="rounded-full bg-white px-7 py-3 text-center text-sm font-bold text-stone-900 shadow-lg transition hover:bg-stone-100"
-                >
-                  List your property
-                </Link>
-                <span className="text-xs text-white/50">Free to list · Reviewed within a day</span>
-              </div>
+              {!user ? (
+                <div className="flex flex-col gap-2 sm:gap-2.5">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3">
+                    <button
+                      type="button"
+                      onClick={() => openAuth('host')}
+                      className="inline-flex items-center justify-center gap-2 bg-stone-900 hover:bg-stone-800 text-white font-semibold px-5 sm:px-6 py-2.5 sm:py-3 rounded-full text-xs sm:text-sm transition-all shadow-sm active:scale-95 text-center cursor-pointer"
+                    >
+                      <span>Sign Up as Property Owner</span>
+                      <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    </button>
+                    <Link
+                      to="/list-your-property"
+                      className="inline-flex items-center justify-center gap-1.5 bg-white hover:bg-stone-50 text-stone-800 hover:text-stone-950 font-medium px-4 sm:px-5 py-2.5 sm:py-3 rounded-full text-xs sm:text-sm transition border border-stone-300 shadow-2xs text-center"
+                    >
+                      <span>Learn About Listing</span>
+                    </Link>
+                  </div>
+                  <p className="text-[11px] sm:text-xs text-stone-500">
+                    Free to list · Resorts, hotels, lodges &amp; stays approved within 24 hours
+                  </p>
+                </div>
+              ) : !isHost ? (
+                <div className="flex flex-col gap-2 sm:gap-2.5">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3">
+                    <button
+                      type="button"
+                      onClick={() => openAuth('host')}
+                      className="inline-flex items-center justify-center gap-2 bg-stone-900 hover:bg-stone-800 text-white font-semibold px-5 sm:px-6 py-2.5 sm:py-3 rounded-full text-xs sm:text-sm transition-all shadow-sm active:scale-95 text-center cursor-pointer"
+                    >
+                      <span>Enable Property Owner Account</span>
+                      <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    </button>
+                    <Link
+                      to="/list-your-property"
+                      className="inline-flex items-center justify-center gap-1.5 bg-white hover:bg-stone-50 text-stone-800 hover:text-stone-950 font-medium px-4 sm:px-5 py-2.5 sm:py-3 rounded-full text-xs sm:text-sm transition border border-stone-300 shadow-2xs text-center"
+                    >
+                      <span>List Your Property Free</span>
+                    </Link>
+                  </div>
+                  <p className="text-[11px] sm:text-xs text-stone-500">
+                    Signed in as Guest · Switch to host account to access management tools &amp; starter pack
+                  </p>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2 sm:gap-2.5">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3">
+                    <Link
+                      to="/dashboard"
+                      className="inline-flex items-center justify-center gap-2 bg-stone-900 hover:bg-stone-800 text-white font-semibold px-5 sm:px-6 py-2.5 sm:py-3 rounded-full text-xs sm:text-sm transition-all shadow-sm active:scale-95 text-center"
+                    >
+                      <span>Go to Host Dashboard</span>
+                      <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    </Link>
+                    <Link
+                      to="/host-guide"
+                      className="inline-flex items-center justify-center gap-1.5 bg-white hover:bg-stone-50 text-stone-800 hover:text-stone-950 font-medium px-4 sm:px-5 py-2.5 sm:py-3 rounded-full text-xs sm:text-sm transition border border-stone-300 shadow-2xs text-center"
+                    >
+                      <BookOpen className="w-3.5 h-3.5 text-stone-500" />
+                      <span>Host Starter Pack</span>
+                    </Link>
+                    <Link
+                      to="/list-your-property"
+                      className="inline-flex items-center justify-center gap-1.5 bg-white hover:bg-stone-50 text-stone-800 hover:text-stone-950 font-medium px-4 sm:px-5 py-2.5 sm:py-3 rounded-full text-xs sm:text-sm transition border border-stone-300 shadow-2xs text-center"
+                    >
+                      <span>List Another Stay</span>
+                    </Link>
+                  </div>
+                  <p className="text-[11px] sm:text-xs text-stone-500">
+                    Manage your rooms, rates, blocked dates &amp; WhatsApp inquiries
+                  </p>
+                </div>
+              )}
             </div>
 
-            <dl className="grid gap-3 sm:grid-cols-2">
+            <dl className="grid gap-2 sm:gap-2.5 md:gap-3 grid-cols-2">
               {[
-                { term: 'No commission', detail: 'You keep the full nightly rate you set.' },
-                { term: 'Paid on arrival', detail: 'Guests settle with you, in kwacha or dollars.' },
-                { term: 'One dashboard', detail: 'Rooms, rates, blocked dates and every request.' },
-                { term: 'WhatsApp built in', detail: 'Confirmations reach guests where they read.' },
+                { term: 'Hotels & Resorts Welcome', detail: 'Premier lakeside resorts, safari camps, city hotels & cottages.' },
+                { term: '0% Commission Ever', detail: 'You keep 100% of the nightly rate you set. Zero listing fees.' },
+                { term: 'Dual Currency Pricing', detail: 'Set simultaneous rates in MWK and USD. Guests pay you direct.' },
+                { term: 'Direct WhatsApp Alerts', detail: 'Instant inquiries and reservation confirmations reach you directly.' },
               ].map((item, tIdx) => (
-                <div key={`feat-term-${item.term}-${tIdx}`} className="rounded-xl border border-white/15 bg-white/[0.07] p-4 backdrop-blur-sm">
-                  <dt className="mb-1 text-sm font-bold text-white">{item.term}</dt>
-                  <dd className="text-xs leading-relaxed text-white/65">{item.detail}</dd>
+                <div key={`feat-term-${item.term}-${tIdx}`} className="rounded-xl border border-stone-200/90 bg-white p-2.5 sm:p-3.5 md:p-4 shadow-2xs">
+                  <dt className="mb-0.5 sm:mb-1 text-[11px] sm:text-xs md:text-sm font-bold text-stone-900">{item.term}</dt>
+                  <dd className="text-[10px] sm:text-[11px] md:text-xs leading-relaxed text-stone-500">{item.detail}</dd>
                 </div>
               ))}
             </dl>
           </div>
         </div>
       </section>
-
-
     </div>
   );
 }
-
-
-
-
-
-
-
-
-
-
-

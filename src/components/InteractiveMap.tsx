@@ -656,13 +656,15 @@ export default function InteractiveMap({
       if (!isValidLatLng(origin)) {
         if (interactive && !!onMarkerChange) {
           // Normal center without auto-popup for draggable location pickers
-          map.setView([markerPosition.lat, markerPosition.lng], zoom || 13, { animate: false });
+          // Keep current zoom level instead of resetting to initial zoom
+          map.setView([markerPosition.lat, markerPosition.lng], map.getZoom(), { animate: false });
         } else {
           // Offset down so rich popup is fully visible for display maps
-          const pt = map.project([markerPosition.lat, markerPosition.lng], zoom || 13);
+          const currentZoom = map.getZoom();
+          const pt = map.project([markerPosition.lat, markerPosition.lng], currentZoom);
           pt.y -= 120;
-          const offsetLatLng = map.unproject(pt, zoom || 13);
-          map.setView(offsetLatLng, zoom || 13, { animate: false });
+          const offsetLatLng = map.unproject(pt, currentZoom);
+          map.setView(offsetLatLng, currentZoom, { animate: false });
           
           // Automatically open the popup
           if (popupText) {
@@ -950,18 +952,23 @@ export default function InteractiveMap({
     if (!map) return;
 
     if (isValidLatLng(markerPosition) && !isValidLatLng(origin)) {
+      // Don't auto-recenter when dragging the marker in interactive mode to avoid jerky movement and zoom loss.
+      // If we *must* recenter (e.g., initial load or external coordinates change), do it gracefully.
+      // To prevent constant recentering while dragging, we will ONLY flyTo if the marker is very far offscreen,
+      // but otherwise let the user pan themselves.
       if (interactive && !!onMarkerChange) {
-        map.setView([markerPosition.lat, markerPosition.lng], map.getZoom(), { animate: true });
+         // Do nothing automatically here to preserve user pan/zoom while dropping pins
       } else {
-        const pt = map.project([markerPosition.lat, markerPosition.lng], zoom || 13);
+        const currentZoom = map.getZoom();
+        const pt = map.project([markerPosition.lat, markerPosition.lng], currentZoom);
         pt.y -= 120;
-        const offsetLatLng = map.unproject(pt, zoom || 13);
-        map.setView(offsetLatLng, zoom || 13, { animate: true });
+        const offsetLatLng = map.unproject(pt, currentZoom);
+        map.setView(offsetLatLng, currentZoom, { animate: true });
       }
     } else if (isValidLatLng(center) && !isValidLatLng(markerPosition) && (!lodges || lodges.length === 0)) {
       map.setView([center.lat, center.lng], map.getZoom(), { animate: true });
     }
-  }, [center, markerPosition, zoom, lodges]);
+  }, [center, markerPosition, zoom, lodges, interactive, onMarkerChange, origin]);
 
   // Update mobile dragging dynamically based on fullscreen
   useEffect(() => {

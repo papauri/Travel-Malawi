@@ -30,11 +30,15 @@ import {
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 import { isAdmin, isMarketing } from '../lib/roles';
+import { useSystemSettings } from '../hooks/useSystemSettings';
+import EditableSection from '../components/EditableSection';
 
 export default function MarketingDeck() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const isGlobalAdmin = isAdmin(user);
+  const { settings } = useSystemSettings();
+  const domainHost = settings.platformDomain ? new URL(settings.platformDomain).hostname : 'travel-malawi.com';
   const [copiedScript, setCopiedScript] = useState<string | null>(null);
 
   useEffect(() => {
@@ -101,11 +105,21 @@ export default function MarketingDeck() {
           </div>
 
           <h1 className="font-serif text-3xl sm:text-5xl md:text-6xl text-white tracking-tight leading-tight max-w-4xl">
-            The Big Picture: Leading Marketing &amp; Operations for Travel Malawi
+            <EditableSection
+              docId="docs_marketing"
+              fieldId="hero_title"
+              defaultText="The Big Picture: Leading Marketing & Operations for Travel Malawi"
+              multiline
+            />
           </h1>
 
           <p className="mt-6 text-stone-300 text-base sm:text-xl max-w-3xl leading-relaxed font-light">
-            You were brought on to lead everything outside of coding—host and property acquisition, brand growth, guest concierge, and community partnerships. This playbook gives you the complete picture of our product, value proposition, and operational roadmap.
+            <EditableSection
+              docId="docs_marketing"
+              fieldId="hero_subtitle"
+              defaultText="You were brought on to lead everything outside of coding—host and property acquisition, brand growth, guest concierge, and community partnerships. This playbook gives you the complete picture of our product, value proposition, and operational roadmap."
+              multiline
+            />
           </p>
 
           <div className="mt-8 flex flex-wrap items-center gap-3 text-xs text-stone-400">
@@ -150,7 +164,7 @@ export default function MarketingDeck() {
                   Audience A: International Tourists &amp; Expats (85%+ Advance Bookings)
                 </h3>
                 <p className="text-stone-600 text-sm mt-2 leading-relaxed">
-                  Travelers from the UK, US, South Africa, and Europe plan trips 2 to 6 months in advance. If a Malawian lodge is not online with high-res photos and transparent rates, <strong>it simply does not exist to them</strong>. They end up booking big international hotel chains instead of authentic local lodges.
+                  Travelers from the UK, US, South Africa, and Europe plan trips 2 to 6 months in advance. If a Malawian hotel or lodge is not online with high-res photos and transparent rates, <strong>it simply does not exist to them</strong>. They end up booking big international hotel chains instead of authentic local lodges and resorts.
                 </p>
               </div>
               <div className="mt-4 pt-3 border-t border-stone-200 text-xs font-semibold text-emerald-800">
@@ -225,7 +239,7 @@ export default function MarketingDeck() {
               Showcasing the Actual Platform
             </h2>
             <p className="text-stone-600 mt-3 text-base leading-relaxed">
-              When pitching to lodge managers or marketing to travelers, you can show real, verified screens of our live application. All test property names are masked to protect unverified lodges:
+              When pitching to hotel managers or marketing to travelers, you can show real, verified screens of our live application. All test property names are masked to protect unverified properties:
             </p>
           </div>
 
@@ -241,7 +255,7 @@ export default function MarketingDeck() {
               </div>
               <h4 className="font-serif font-bold text-stone-900 text-base">A. Guest Discovery &amp; Rate Parity</h4>
               <p className="text-stone-600 text-xs leading-relaxed">
-                Featured lodge cards display real-time dual pricing (e.g. <strong>MK 220,000 / night ($250)</strong>), guest compare badges, and filtered categories (Lake &amp; Beach, Safari &amp; Wildlife, Mountain).
+                Featured property cards display real-time dual pricing (e.g. <strong>MK 220,000 / night ($250)</strong>), guest compare badges, and filtered categories (Lake &amp; Beach, Safari &amp; Wildlife, Mountain).
               </p>
             </div>
 
@@ -256,7 +270,7 @@ export default function MarketingDeck() {
               </div>
               <h4 className="font-serif font-bold text-stone-900 text-base">B. The 0% Commission Host Guarantee</h4>
               <p className="text-stone-600 text-xs leading-relaxed">
-                Our acquisition banner greets visiting lodge owners with our 0% fee guarantee, instant WhatsApp alerts, and a 1-click link to the Host Starter Pack.
+                Our acquisition banner greets visiting property owners with our 0% fee guarantee, instant WhatsApp alerts, and a 1-click link to the Host Starter Pack.
               </p>
             </div>
 
@@ -271,7 +285,7 @@ export default function MarketingDeck() {
               </div>
               <h4 className="font-serif font-bold text-stone-900 text-base">C. Live Google Maps Malawi Autocomplete</h4>
               <p className="text-stone-600 text-xs leading-relaxed">
-                As lodge owners type their name, our system connects directly to Google Maps across Malawi to auto-populate town, district, and exact GPS coordinates in under 2 seconds.
+                As property owners type their name, our system connects directly to Google Maps across Malawi to auto-populate town, district, and exact GPS coordinates in under 2 seconds.
               </p>
             </div>
 
@@ -379,7 +393,7 @@ export default function MarketingDeck() {
               Host &amp; Property Acquisition Pitch Scripts
             </h2>
             <p className="text-stone-600 mt-3 text-base leading-relaxed">
-              When contacting lodge, B&amp;B, cottage, or guest house owners or general managers, use these battle-tested scripts. Click to copy directly to your clipboard:
+              When contacting hotel, resort, lodge, B&amp;B, cottage, or guest house owners or general managers, use these battle-tested scripts. Click to copy directly to your clipboard:
             </p>
           </div>
 
@@ -390,7 +404,7 @@ export default function MarketingDeck() {
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">Script 1: WhatsApp</span>
                   <button
-                    onClick={() => copyToClipboard(`Hello [Manager Name]! My name is [Your Name], Head of Operations at Travel Malawi (travelmalawi.com). We've launched Malawi's dedicated direct-booking platform connecting domestic and international travelers directly to premier accommodations. Unlike international booking sites that charge 15-20% commission, Travel Malawi is 100% 0% commission. Guests pay you directly via your own Airtel Money, Mpamba, or bank transfer, and inquiries go straight to your WhatsApp. We would love to feature [Lodge Name] at no cost. Would you like me to send the 5-minute listing link, or can I set up your profile for you if you share your rates and photos?`, 'scriptWA')}
+                    onClick={() => copyToClipboard(`Hello [Manager Name]! My name is [Your Name], Head of Operations at Travel Malawi (${domainHost}). We've launched Malawi's dedicated direct-booking platform connecting domestic and international travelers directly to premier accommodations. Unlike international booking sites that charge 15-20% commission, Travel Malawi is 100% 0% commission. Guests pay you directly via your own Airtel Money, Mpamba, or bank transfer, and inquiries go straight to your WhatsApp. We would love to feature [Hotel/Resort/Lodge Name] at no cost. Would you like me to send the 5-minute listing link, or can I set up your profile for you if you share your rates and photos?`, 'scriptWA')}
                     className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-700 hover:text-emerald-700 bg-white border border-stone-200 px-3 py-1.5 rounded-full transition cursor-pointer"
                   >
                     {copiedScript === 'scriptWA' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
@@ -399,7 +413,7 @@ export default function MarketingDeck() {
                 </div>
                 <h4 className="font-serif font-bold text-stone-900 text-base mb-2">WhatsApp to Property Host / Reservations</h4>
                 <p className="text-stone-600 text-xs sm:text-sm italic leading-relaxed bg-white p-4 rounded-xl border border-stone-200/60 font-mono">
-                  &ldquo;Hello [Manager Name]! My name is [Your Name], Head of Operations at Travel Malawi (travelmalawi.com). We&apos;ve launched Malawi&apos;s dedicated direct-booking platform connecting domestic and international travelers directly to premier accommodations. Unlike international booking sites that charge 15-20% commission, Travel Malawi is 100% 0% commission. Guests pay you directly via your own Airtel Money, Mpamba, or bank transfer, and inquiries go straight to your WhatsApp. We would love to feature [Lodge Name] at no cost. Would you like me to send the 5-minute listing link, or can I set up your profile for you if you share your rates and photos?&rdquo;
+                  &ldquo;Hello [Manager Name]! My name is [Your Name], Head of Operations at Travel Malawi ({domainHost}). We&apos;ve launched Malawi&apos;s dedicated direct-booking platform connecting domestic and international travelers directly to premier accommodations. Unlike international booking sites that charge 15-20% commission, Travel Malawi is 100% 0% commission. Guests pay you directly via your own Airtel Money, Mpamba, or bank transfer, and inquiries go straight to your WhatsApp. We would love to feature [Hotel/Resort/Lodge Name] at no cost. Would you like me to send the 5-minute listing link, or can I set up your profile for you if you share your rates and photos?&rdquo;
                 </p>
               </div>
             </div>
@@ -410,7 +424,7 @@ export default function MarketingDeck() {
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">Script 2: Phone Call</span>
                   <button
-                    onClick={() => copyToClipboard(`"Good morning! May I speak with the lodge manager or reservations team regarding new guest bookings? ... Hi [Name], my name is [Your Name] with Travel Malawi. We are building the central online home for hospitality in Malawi, helping travelers from Lilongwe, Blantyre, and overseas book stays. We charge 0% commission—you keep 100% of your nightly rates, guests pay you directly into your local mobile money or bank, and guest messages come straight to your reservations WhatsApp. Can I send a quick overview and onboarding link to your WhatsApp number?"`, 'scriptPhone')}
+                    onClick={() => copyToClipboard(`"Good morning! May I speak with the hotel/lodge manager or reservations team regarding new guest bookings? ... Hi [Name], my name is [Your Name] with Travel Malawi. We are building the central online home for hospitality in Malawi, helping travelers from Lilongwe, Blantyre, and overseas book stays. We charge 0% commission—you keep 100% of your nightly rates, guests pay you directly into your local mobile money or bank, and guest messages come straight to your reservations WhatsApp. Can I send a quick overview and onboarding link to your WhatsApp number?"`, 'scriptPhone')}
                     className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-700 hover:text-emerald-700 bg-white border border-stone-200 px-3 py-1.5 rounded-full transition cursor-pointer"
                   >
                     {copiedScript === 'scriptPhone' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
@@ -419,7 +433,7 @@ export default function MarketingDeck() {
                 </div>
                 <h4 className="font-serif font-bold text-stone-900 text-base mb-2">3-Minute Phone Call Pitch</h4>
                 <p className="text-stone-600 text-xs sm:text-sm italic leading-relaxed bg-white p-4 rounded-xl border border-stone-200/60 font-mono">
-                  &ldquo;Good morning! May I speak with the lodge manager or reservations team regarding new guest bookings? ... Hi [Name], my name is [Your Name] with Travel Malawi. We are building the central online home for hospitality in Malawi, helping travelers from Lilongwe, Blantyre, and overseas book stays. We charge 0% commission—you keep 100% of your nightly rates, guests pay you directly into your local mobile money or bank, and guest messages come straight to your reservations WhatsApp. Can I send a quick overview and onboarding link to your WhatsApp number?&rdquo;
+                  &ldquo;Good morning! May I speak with the hotel/lodge manager or reservations team regarding new guest bookings? ... Hi [Name], my name is [Your Name] with Travel Malawi. We are building the central online home for hospitality in Malawi, helping travelers from Lilongwe, Blantyre, and overseas book stays. We charge 0% commission—you keep 100% of your nightly rates, guests pay you directly into your local mobile money or bank, and guest messages come straight to your reservations WhatsApp. Can I send a quick overview and onboarding link to your WhatsApp number?&rdquo;
                 </p>
               </div>
             </div>
@@ -440,9 +454,9 @@ export default function MarketingDeck() {
               <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">Days 1 – 30</span>
               <h4 className="font-serif font-bold text-stone-900 text-lg mt-1">Anchor Acquisition</h4>
               <ul className="mt-3 space-y-2 text-xs text-stone-600 leading-relaxed">
-                <li>&bull; Onboard 25 anchor lodges across Cape Maclear, Mangochi, and Lilongwe.</li>
+                <li>&bull; Onboard 25 anchor hotels and lodges across Cape Maclear, Mangochi, and Lilongwe.</li>
                 <li>&bull; Audit photography and verify Google Maps pins for each stay.</li>
-                <li>&bull; Launch official Instagram and Facebook channels with high-res lodge photography.</li>
+                <li>&bull; Launch official Instagram and Facebook channels with high-res property photography.</li>
               </ul>
             </div>
 
@@ -480,7 +494,7 @@ export default function MarketingDeck() {
                 Executive Strategy &amp; Operations Documentation
               </h3>
               <p className="text-xs sm:text-sm text-stone-500 mt-1">
-                Internal strategic documents available in clean readable text format (.txt) or markdown, protected from public exposure.
+                Internal strategic documents available as interactive digital pages, protected from public exposure.
               </p>
             </div>
 
@@ -504,27 +518,19 @@ export default function MarketingDeck() {
                     <FileText className="w-5 h-5" />
                   </div>
                   <h4 className="font-serif font-bold text-stone-900 text-lg">Marketing Strategy Deck</h4>
-                  <p className="text-xs font-mono text-emerald-700 mt-0.5">marketing_presentation.txt</p>
+                  <p className="text-xs font-mono text-emerald-700 mt-0.5">/marketing</p>
                   <p className="text-xs text-stone-600 mt-3 leading-relaxed">
-                    Executive market sizing, audience personas, competitive benchmarks, and the 30-60-90 day growth engine formatted for instant reading.
+                    Executive market sizing, audience personas, competitive benchmarks, and the 30-60-90 day growth engine.
                   </p>
                 </div>
                 <div className="mt-6 pt-4 border-t border-stone-200 flex items-center gap-2">
-                  <a
-                    href="/api/admin/docs/marketing-presentation?format=text&download=1"
-                    className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 px-3 bg-emerald-700 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition shadow-xs"
-                    title="Download clean plain text (.txt)"
+                  <Link
+                    to="/marketing"
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 px-3 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-bold transition shadow-xs"
                   >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>Download .TXT</span>
-                  </a>
-                  <a
-                    href="/api/admin/docs/marketing-presentation?format=md&download=1"
-                    className="py-2 px-3 bg-white hover:bg-stone-100 border border-stone-300 text-stone-700 rounded-xl text-xs font-semibold transition"
-                    title="Download raw markdown (.md)"
-                  >
-                    .MD
-                  </a>
+                    <span>View Page</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
                 </div>
               </div>
 
@@ -535,27 +541,19 @@ export default function MarketingDeck() {
                     <FileText className="w-5 h-5" />
                   </div>
                   <h4 className="font-serif font-bold text-stone-900 text-lg">Operations Starter Pack</h4>
-                  <p className="text-xs font-mono text-blue-700 mt-0.5">operations_starter_pack.txt</p>
+                  <p className="text-xs font-mono text-blue-700 mt-0.5">/operations-guide</p>
                   <p className="text-xs text-stone-600 mt-3 leading-relaxed">
-                    Complete operational playbook for onboarding lodges, field acquisition protocols, pricing rules, and WhatsApp templates.
+                    Complete operational playbook for onboarding hotels and lodges, field acquisition protocols, pricing rules, and WhatsApp templates.
                   </p>
                 </div>
                 <div className="mt-6 pt-4 border-t border-stone-200 flex items-center gap-2">
-                  <a
-                    href="/api/admin/docs/operations-starter-pack?format=text&download=1"
-                    className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 px-3 bg-emerald-700 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition shadow-xs"
-                    title="Download clean plain text (.txt)"
+                  <Link
+                    to="/operations-guide"
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 px-3 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-bold transition shadow-xs"
                   >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>Download .TXT</span>
-                  </a>
-                  <a
-                    href="/api/admin/docs/operations-starter-pack?format=md&download=1"
-                    className="py-2 px-3 bg-white hover:bg-stone-100 border border-stone-300 text-stone-700 rounded-xl text-xs font-semibold transition"
-                    title="Download raw markdown (.md)"
-                  >
-                    .MD
-                  </a>
+                    <span>View Page</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
                 </div>
               </div>
 
@@ -566,27 +564,19 @@ export default function MarketingDeck() {
                     <FileText className="w-5 h-5" />
                   </div>
                   <h4 className="font-serif font-bold text-stone-900 text-lg">Host Onboarding Starter Pack</h4>
-                  <p className="text-xs font-mono text-amber-700 mt-0.5">host_onboarding_starter_pack.txt</p>
+                  <p className="text-xs font-mono text-amber-700 mt-0.5">/host-guide</p>
                   <p className="text-xs text-stone-600 mt-3 leading-relaxed">
                     Host guide explaining online presence benefits, 8-minute listing walkthroughs, smartphone photography tips, and FAQs.
                   </p>
                 </div>
                 <div className="mt-6 pt-4 border-t border-stone-200 flex items-center gap-2">
-                  <a
-                    href="/api/admin/docs/host-onboarding-pack?format=text&download=1"
-                    className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 px-3 bg-emerald-700 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition shadow-xs"
-                    title="Download clean plain text (.txt)"
+                  <Link
+                    to="/host-guide"
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 px-3 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-bold transition shadow-xs"
                   >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>Download .TXT</span>
-                  </a>
-                  <a
-                    href="/api/admin/docs/host-onboarding-pack?format=md&download=1"
-                    className="py-2 px-3 bg-white hover:bg-stone-100 border border-stone-300 text-stone-700 rounded-xl text-xs font-semibold transition"
-                    title="Download raw markdown (.md)"
-                  >
-                    .MD
-                  </a>
+                    <span>View Page</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
                 </div>
               </div>
             </div>
