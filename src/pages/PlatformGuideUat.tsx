@@ -100,6 +100,20 @@ const UAT_TEST_SUITES: TestCase[] = [
     expected: 'Saved stays display correctly, and the D3 force-directed visualizer maps out regional distribution of chosen stays across Malawi.',
     criticality: 'Medium'
   },
+  {
+    id: 'A5',
+    suite: 'Guest Discovery & Search',
+    title: 'Offline Map & Remote Area GPS Navigation',
+    steps: [
+      'Open any property details page (e.g. /hotel/:id)',
+      'Scroll to "Location & Setting" or open "Driving Directions"',
+      'Tap "Download Offline Map" and observe multi-level tile caching (highways, district roads, bush tracks, lodge grounds)',
+      'Tap "Offline Guide & GPS" to launch the offline navigation modal',
+      'Test "Track My GPS Position" for live satellite distance, compass bearing, DMS coordinates, and "geo:" offline navigation launcher'
+    ],
+    expected: 'Map tiles and property arrival data are cached into browser CacheStorage and PWA cache, remaining completely pannable, zoomable, and readable with zero cellular connectivity.',
+    criticality: 'High'
+  },
 
   // Suite B: Booking & Direct Inquiries
   {
@@ -286,6 +300,11 @@ Core Value Pillars:
    - Direct WhatsApp integration with pre-filled reference codes.
    - Local payment instructions: Airtel Money, TNM Mpamba, and Bank transfer.
    - Digital Stay Vouchers with offline QR codes and check-in PINs.
+3. Offline Maps & Remote Area GPS Navigation:
+   - Multi-tier zoom tile caching (zooms 9 to 16 + satellite) stored in browser CacheStorage & PWA cache.
+   - Real-time device GNSS positioning (distance, compass bearing, driving estimates) with zero cellular signal.
+   - 1-click Decimal and DMS coordinate export for in-car 4x4 or handheld Garmin GPS.
+   - Native geo: scheme link to trigger offline navigation apps (OsmAnd, Organic Maps, Maps.me).
 
 ---
 
@@ -749,6 +768,16 @@ Submit verified test logs and defect reports through the authorized Internal Adm
                     Deposit collection via Airtel Money and TNM Mpamba, coupled with digital check-in vouchers featuring offline verification PINs.
                   </p>
                 </div>
+
+                <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200/80 sm:col-span-2">
+                  <h3 className="font-semibold text-stone-900 text-sm flex items-center gap-2 mb-1.5">
+                    <Compass className="w-4 h-4 text-emerald-600" />
+                    <span>Download Offline Maps &amp; Satellite GPS Navigation</span>
+                  </h3>
+                  <p className="text-xs text-stone-600 leading-relaxed">
+                    PWA-backed offline map tile caching (zooms 9–16 + satellite terrain) and device GNSS positioning. Travelers navigate remote bush tracks, lakeshore roads, and national park corridors with live distance, compass bearing, and DMS coordinates with zero mobile reception.
+                  </p>
+                </div>
               </div>
             </section>
 
@@ -855,6 +884,19 @@ Submit verified test logs and defect reports through the authorized Internal Adm
                     <li><strong>Document &amp; Rate Card Importer</strong>: Automatically extracts room names, capacities, and rates from uploaded PDF brochures or photos.</li>
                     <li><strong>Restaurant &amp; Bar Menu Engine</strong>: Create digital menus with dietary tags and drink listings.</li>
                     <li><strong>Digital Stay Vouchers</strong>: Generates verifiable check-in vouchers complete with QR codes and 6-digit offline arrival PINs.</li>
+                  </ul>
+                </div>
+
+                {/* 3.4 Offline Maps & Remote Area Navigation */}
+                <div className="space-y-2">
+                  <h3 className="font-semibold text-stone-900 text-base">
+                    3.4 Offline Maps &amp; Remote Area Navigation Engine
+                  </h3>
+                  <ul className="list-disc list-inside space-y-1.5 text-stone-600 pl-1">
+                    <li><strong>Multi-Tier Offline Tile Caching</strong>: PWA-backed caching storing regional highways, district roads, turnoffs, unpaved bush tracks, and lodge perimeters across zooms 9 to 16 in browser CacheStorage.</li>
+                    <li><strong>Live Device GNSS Satellite Tracking</strong>: Reads device GPS location with zero cellular network or data to calculate live distance to the stay, compass bearing, and driving time.</li>
+                    <li><strong>Navigation Coordinates (Decimal &amp; DMS)</strong>: 1-click copying of coordinates for in-car 4x4 or handheld Garmin GPS units, plus native <code className="text-xs bg-stone-100 px-1 py-0.5 rounded font-mono">geo:</code> scheme intent to open offline maps (OsmAnd, Organic Maps, Maps.me).</li>
+                    <li><strong>Host Road Advisories &amp; Emergency Contacts</strong>: Displays host notes on unpaved dirt road conditions, 4WD recommendations, seasonal river crossings, and emergency phone lines.</li>
                   </ul>
                 </div>
               </div>

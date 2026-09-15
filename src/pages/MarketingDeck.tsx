@@ -303,6 +303,22 @@ export default function MarketingDeck() {
                 Room cards include a full monthly availability calendar with 1-click date blocking, verified water/power badges, and transparent cancellation terms.
               </p>
             </div>
+
+            {/* Screen 5: Offline Map & GPS */}
+            <div className="space-y-3 md:col-span-2 bg-stone-50 p-6 rounded-2xl border border-stone-200">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-stone-200 text-stone-800 flex items-center justify-center">
+                  <Compass className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="font-serif font-bold text-stone-900 text-base">E. Download Offline Maps &amp; Remote GPS Navigation</h4>
+                  <p className="text-stone-500 text-xs">PWA CacheStorage + Satellite GNSS Tracking</p>
+                </div>
+              </div>
+              <p className="text-stone-600 text-xs leading-relaxed max-w-3xl">
+                Travelers in Malawi often drive through national parks, dirt tracks, and remote lake coves with zero mobile signal. Guests can 1-click download full offline map packages (regional highways, unpaved bush tracks, and lodge grounds) directly to their device. The built-in satellite GPS engine calculates live distance to the lodge, compass bearing, driving estimates, and exports coordinates to Garmin 4x4 units or offline apps (OsmAnd, Organic Maps) without requiring cellular data.
+              </p>
+            </div>
           </div>
         </section>
 

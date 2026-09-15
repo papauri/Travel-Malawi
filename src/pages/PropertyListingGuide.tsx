@@ -106,9 +106,10 @@ export default function PropertyListingGuide() {
           </div>
           <p className="text-stone-600 text-sm mb-4">Help guests figure out exactly where you are located and what you have to offer.</p>
           <ul className="space-y-3 text-stone-600 text-sm leading-relaxed">
-            <li className="flex gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" /> <span><strong>Town or Area:</strong> Select your primary location (e.g., Cape Maclear, Lilongwe, Nkhata Bay).</span></li>
-            <li className="flex gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" /> <span><strong>Directions (Optional):</strong> Provide any specific directions or landmarks to help guests find you, especially if you are off the beaten path.</span></li>
-            <li className="flex gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" /> <span><strong>Amenities:</strong> Click to toggle common amenities like WiFi, Pool, Restaurant, or Air Conditioning. You can also type in custom amenities like "Kayaks", "Curio Shop", or "Guided Tours" and hit Add.</span></li>
+            <li className="flex gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" /> <span><strong>Town or Area:</strong> Select your primary location (e.g., Cape Maclear, Lilongwe, Nkhata Bay, Liwonde).</span></li>
+            <li className="flex gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" /> <span><strong>Exact GPS Pin &amp; Offline Maps:</strong> Pin your exact entrance gate. Guests can download an <em>Offline Map</em> of your property before traveling, allowing them to navigate remote dirt roads and national park tracks with device satellite GPS even when cellular network is unavailable.</span></li>
+            <li className="flex gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" /> <span><strong>Directions &amp; 4WD Advice:</strong> Detail distance from the nearest tarmac road and state whether a 4WD high-clearance vehicle is recommended during rainy months.</span></li>
+            <li className="flex gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" /> <span><strong>Amenities:</strong> Click to toggle common amenities like WiFi, Pool, Restaurant, or Solar Power. You can also type in custom amenities like "Lake Kayaks", "Curio Shop", or "Game Drives" and hit Add.</span></li>
           </ul>
         </section>
 

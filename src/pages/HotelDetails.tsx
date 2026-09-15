@@ -20,6 +20,7 @@ import Pagination from '../components/Pagination';
 import PropertyChat from '../components/PropertyChat';
 import SmartImage from '../components/SmartImage';
 import DirectionsPanel from '../components/DirectionsPanel';
+import OfflineMapManager from '../components/OfflineMapManager';
 import { ReviewModal } from '../components/ReviewModal';
 import InteractiveMap from '../components/InteractiveMap';
 import { useBreadcrumbLabel } from '../components/Breadcrumbs';
@@ -923,17 +924,49 @@ export default function HotelDetails() {
                   <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                     {/* Mobile/Tablet Dropdown */}
                     <div className="sm:hidden relative w-full mb-2">
-                      <select
-                        value={activeSpaceTab}
-                        onChange={(e) => setActiveSpaceTab(e.target.value as 'rooms' | 'conferences')}
-                        className="w-full bg-white border border-stone-200 rounded-xl pl-4 pr-10 py-3 text-sm font-bold text-stone-900 appearance-none outline-none focus:border-stone-900 focus:ring-1 focus:ring-stone-900 shadow-sm"
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const el = document.getElementById('space-tab-dropdown');
+                          if (el) el.classList.toggle('hidden');
+                        }}
+                        onBlur={(e) => {
+                          setTimeout(() => {
+                            const el = document.getElementById('space-tab-dropdown');
+                            if (el) el.classList.add('hidden');
+                          }, 150);
+                        }}
+                        className="w-full flex items-center justify-between bg-white border border-stone-200 rounded-xl px-4 py-3 text-sm font-bold text-stone-900 shadow-sm outline-none focus:border-stone-900 focus:ring-1 focus:ring-stone-900"
                       >
-                        <option value="rooms">Accommodations</option>
-                        <option value="conferences">Conference Spaces</option>
-                      </select>
-                      <ChevronDown className="w-5 h-5 text-stone-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        <span>{activeSpaceTab === 'rooms' ? 'Accommodations' : 'Conference Spaces'}</span>
+                        <ChevronDown className="w-5 h-5 text-stone-400 shrink-0" />
+                      </button>
+                      
+                      <div 
+                        id="space-tab-dropdown"
+                        className="hidden absolute top-full left-0 right-0 mt-1.5 p-1.5 bg-white border border-stone-200 rounded-xl shadow-lg z-20 flex flex-col gap-0.5 animate-in fade-in slide-in-from-top-2 duration-150"
+                      >
+                        {[
+                          { value: 'rooms', label: 'Accommodations' },
+                          { value: 'conferences', label: 'Conference Spaces' }
+                        ].map(opt => (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => {
+                              setActiveSpaceTab(opt.value as 'rooms' | 'conferences');
+                              const el = document.getElementById('space-tab-dropdown');
+                              if (el) el.classList.add('hidden');
+                            }}
+                            className={`w-full text-left px-3 py-2.5 text-sm font-bold rounded-lg transition ${
+                              activeSpaceTab === opt.value ? 'bg-stone-100 text-stone-900' : 'text-stone-600 hover:bg-stone-50'
+                            }`}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
-
                     {/* Desktop Tabs */}
                     <div className="hidden sm:flex items-center gap-6 border-b border-stone-200">
                       <button 
@@ -1152,6 +1185,15 @@ export default function HotelDetails() {
                     <p className="text-xs sm:text-sm text-stone-600">Contact the property directly to reserve a conference room or inquire about event packages.</p>
                   </div>
                   <div className="flex flex-wrap sm:flex-col gap-2 shrink-0">
+                    {hotel.isOnline && user?.uid !== hotel.managerId && (
+                      <button 
+                        onClick={handleOpenChat}
+                        className="bg-emerald-600 text-white px-4 sm:px-5 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-bold text-center hover:bg-emerald-700 transition shadow-sm flex items-center justify-center gap-2"
+                      >
+                        <MessageSquare className="w-4 h-4" />
+                        Live Chat
+                      </button>
+                    )}
                     {hotel.contactPhone && (
                       <a href={`tel:${hotel.contactPhone}`} className="bg-stone-900 text-white px-4 sm:px-5 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-bold text-center hover:bg-stone-800 transition">
                         Call {hotel.contactPhone}
@@ -1452,14 +1494,29 @@ export default function HotelDetails() {
               )}
             </div>
 
-            <div className="pt-3 mt-3 border-t border-stone-100 flex items-center justify-between gap-3">
-              <a
-                href="#directions"
-                className="inline-flex items-center gap-1.5 text-xs font-bold text-stone-900 bg-stone-50 border border-stone-200 px-3.5 py-2 rounded-xl hover:bg-stone-100 hover:border-stone-300 transition shadow-2xs"
-              >
-                <Navigation className="h-3.5 w-3.5 text-emerald-600" />
-                Full Driving Directions
-              </a>
+            <div className="pt-3.5 mt-3 border-t border-stone-100 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <a
+                  href="#directions"
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-stone-900 bg-stone-50 border border-stone-200 px-3.5 py-2 rounded-xl hover:bg-stone-100 hover:border-stone-300 transition shadow-2xs"
+                >
+                  <Navigation className="h-3.5 w-3.5 text-emerald-600" />
+                  Full Driving Directions
+                </a>
+                <OfflineMapManager
+                  property={{
+                    id: hotel.id,
+                    name: hotel.name,
+                    location: hotel.location,
+                    coordinates: resolveHotelCoordinates(hotel),
+                    locationNotes: hotel.locationNotes,
+                    contactPhone: hotel.contactPhone,
+                    contactEmail: hotel.contactEmail,
+                    image: getHotelImage(hotel),
+                  }}
+                  variant="inline"
+                />
+              </div>
               <a
                 href={mapLinkUrl(hotel)}
                 target="_blank"
@@ -1794,6 +1851,7 @@ export default function HotelDetails() {
               coordinates={resolveHotelCoordinates(hotel)}
               locationNotes={hotel.locationNotes}
               hotelImage={getHotelImage(hotel)}
+              hotelId={hotel.id}
             />
           </div>
 

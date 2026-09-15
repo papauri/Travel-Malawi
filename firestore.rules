@@ -443,6 +443,12 @@ service cloud.firestore {
       allow delete: if isAuthenticated() && (isManager(resource.data.hotelId) || isAdmin());
     }
 
+    match /system_logs/{logId} {
+      allow read: if isAdmin();
+      allow create: if true;
+      allow delete: if isAdmin();
+    }
+
     match /reviews/{reviewId} {
       allow read: if true;
 

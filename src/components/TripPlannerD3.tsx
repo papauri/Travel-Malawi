@@ -294,7 +294,7 @@ export default function TripPlannerD3({ hotels }: Props) {
         setSelectedLodgeId(d.id);
         
         // Highlight circle
-        d3.select(event.currentTarget).select('.main-circle')
+        d3.select(event.currentTarget as any).select('.main-circle')
           .transition().duration(150)
           .attr('transform', 'scale(1.1)')
           .attr('stroke-width', 3.5);
@@ -332,7 +332,7 @@ export default function TripPlannerD3({ hotels }: Props) {
       })
       .on('mouseleave', (event) => {
         setSelectedLodgeId(null);
-        d3.select(event.currentTarget).select('.main-circle')
+        d3.select(event.currentTarget as any).select('.main-circle')
           .transition().duration(150)
           .attr('transform', 'scale(1.0)')
           .attr('stroke-width', 2);

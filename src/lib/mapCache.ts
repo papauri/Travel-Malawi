@@ -32,7 +32,14 @@ export class CachedTileLayer extends L.TileLayer {
         .open(TILE_CACHE_NAME)
         .then(async (cache) => {
           try {
-            const cachedResponse = await cache.match(url);
+            let cachedResponse = await cache.match(url);
+            // Fallback match for OpenStreetMap subdomain variance (a, b, c)
+            if (!cachedResponse && url.includes('.tile.openstreetmap.org')) {
+              const normalized = url.replace(/https:\/\/[abc]\.tile\.openstreetmap\.org/, 'https://a.tile.openstreetmap.org');
+              if (normalized !== url) {
+                cachedResponse = await cache.match(normalized);
+              }
+            }
             if (cachedResponse) {
               const blob = await cachedResponse.blob();
               const objectUrl = URL.createObjectURL(blob);
@@ -391,3 +398,262 @@ export async function prefetchMalawiMapTiles(onProgress?: (loaded: number, total
     return 0;
   }
 }
+
+export interface PropertyOfflinePackage {
+  propertyId: string;
+  propertyName: string;
+  location: string;
+  coordinates: LatLng;
+  locationNotes?: string;
+  contactPhone?: string;
+  contactEmail?: string;
+  image?: string;
+  tileCount: number;
+  sizeBytes: number;
+  downloadedAt: number;
+  zoomLevels: number[];
+}
+
+export interface OfflineProgressUpdate {
+  loaded: number;
+  total: number;
+  percent: number;
+  stage: string;
+}
+
+export const PROPERTY_OFFLINE_PREFIX = 'malawi_offline_prop_';
+export const PROPERTY_OFFLINE_CATALOG_KEY = 'malawi_offline_properties_catalog';
+
+/**
+ * Checks whether an offline map package has been downloaded for a property
+ */
+export function isPropertyOfflineDownloaded(propertyId: string): boolean {
+  if (!propertyId) return false;
+  try {
+    return Boolean(localStorage.getItem(PROPERTY_OFFLINE_PREFIX + propertyId));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Retrieves the offline map package metadata for a property
+ */
+export function getPropertyOfflinePackage(propertyId: string): PropertyOfflinePackage | null {
+  if (!propertyId) return null;
+  try {
+    const raw = localStorage.getItem(PROPERTY_OFFLINE_PREFIX + propertyId);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Retrieves all currently downloaded offline properties
+ */
+export function getAllOfflineProperties(): PropertyOfflinePackage[] {
+  try {
+    const raw = localStorage.getItem(PROPERTY_OFFLINE_CATALOG_KEY);
+    const ids: string[] = raw ? JSON.parse(raw) : [];
+    return ids
+      .map(id => getPropertyOfflinePackage(id))
+      .filter((pkg): pkg is PropertyOfflinePackage => pkg !== null);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Deletes the offline package and unregisters from the offline properties catalog
+ */
+export async function deletePropertyOfflineMap(propertyId: string): Promise<boolean> {
+  if (!propertyId) return false;
+  try {
+    localStorage.removeItem(PROPERTY_OFFLINE_PREFIX + propertyId);
+    const raw = localStorage.getItem(PROPERTY_OFFLINE_CATALOG_KEY);
+    if (raw) {
+      const ids: string[] = JSON.parse(raw);
+      const updated = ids.filter(id => id !== propertyId);
+      localStorage.setItem(PROPERTY_OFFLINE_CATALOG_KEY, JSON.stringify(updated));
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Helper to convert latitude/longitude and zoom to tile coordinate (x, y)
+ */
+function latLngToTileCoordinates(lat: number, lng: number, zoom: number): { x: number; y: number } {
+  const n = Math.pow(2, zoom);
+  const x = Math.floor(((lng + 180) / 360) * n);
+  const latRad = (lat * Math.PI) / 180;
+  const y = Math.floor(
+    ((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * n
+  );
+  return {
+    x: Math.max(0, Math.min(n - 1, x)),
+    y: Math.max(0, Math.min(n - 1, y)),
+  };
+}
+
+/**
+ * Downloads a comprehensive offline map tile package for a specific property location in Malawi.
+ * Caches multi-level street tiles (regional corridor, district, local access, and lodge perimeter)
+ * into browser CacheStorage and PWA cache for complete offline exploration and navigation.
+ */
+export async function downloadPropertyOfflineMap(
+  property: {
+    id: string;
+    name: string;
+    location: string;
+    coordinates: LatLng;
+    locationNotes?: string;
+    contactPhone?: string;
+    contactEmail?: string;
+    image?: string;
+  },
+  onProgress?: (update: OfflineProgressUpdate) => void
+): Promise<{ tilesDownloaded: number; sizeBytes: number }> {
+  if (!('caches' in window)) {
+    throw new Error('Offline CacheStorage is not supported by this browser');
+  }
+
+  const { coordinates } = property;
+  if (!coordinates || typeof coordinates.lat !== 'number' || typeof coordinates.lng !== 'number') {
+    throw new Error('Valid GPS coordinates are required to cache this property offline');
+  }
+
+  const cache = await window.caches.open(TILE_CACHE_NAME);
+
+  // Zoom configurations tailored for remote navigation in Malawi:
+  // - Zoom 9: Regional corridor (covers highway connections from Lilongwe/Blantyre/Mzuzu)
+  // - Zoom 11: District level (main tarred roads and reserve gates)
+  // - Zoom 12: Approach corridors (turns off main roads)
+  // - Zoom 13: Local feeder roads, bridges, and junctions
+  // - Zoom 14: Unpaved tracks, villages, and terrain features
+  // - Zoom 15: Lodge access roads & turnoffs
+  // - Zoom 16: Immediate property perimeter & beach/park boundary
+  const zoomConfigs = [
+    { zoom: 9, radius: 1, stage: 'Caching regional highway corridor...' },
+    { zoom: 11, radius: 1, stage: 'Caching district road network...' },
+    { zoom: 12, radius: 1, stage: 'Caching approach routes...' },
+    { zoom: 13, radius: 2, stage: 'Caching local junctions & turnoffs...' },
+    { zoom: 14, radius: 2, stage: 'Caching local terrain & access tracks...' },
+    { zoom: 15, radius: 2, stage: 'Caching neighborhood & entrance roads...' },
+    { zoom: 16, radius: 1, stage: 'Caching property grounds & lake/park frontage...' },
+  ];
+
+  const tileQueue: { url: string; stage: string }[] = [];
+
+  for (const config of zoomConfigs) {
+    const centerTile = latLngToTileCoordinates(coordinates.lat, coordinates.lng, config.zoom);
+    for (let dx = -config.radius; dx <= config.radius; dx++) {
+      for (let dy = -config.radius; dy <= config.radius; dy++) {
+        const curX = centerTile.x + dx;
+        const curY = centerTile.y + dy;
+        const n = Math.pow(2, config.zoom);
+        if (curX >= 0 && curX < n && curY >= 0 && curY < n) {
+          const url = `https://a.tile.openstreetmap.org/${config.zoom}/${curX}/${curY}.png`;
+          if (!tileQueue.some(t => t.url === url)) {
+            tileQueue.push({ url, stage: config.stage });
+          }
+        }
+      }
+    }
+  }
+
+  // Also pre-cache satellite imagery at zoom 13 for terrain orientation
+  const satCenter = latLngToTileCoordinates(coordinates.lat, coordinates.lng, 13);
+  for (let dx = -1; dx <= 1; dx++) {
+    for (let dy = -1; dy <= 1; dy++) {
+      const curX = satCenter.x + dx;
+      const curY = satCenter.y + dy;
+      const url = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/13/${curY}/${curX}`;
+      if (!tileQueue.some(t => t.url === url)) {
+        tileQueue.push({ url, stage: 'Caching satellite terrain views...' });
+      }
+    }
+  }
+
+  // Also pre-cache thumbnail image if present
+  if (property.image && property.image.startsWith('http')) {
+    tileQueue.push({ url: property.image, stage: 'Saving property preview photo...' });
+  }
+
+  const total = tileQueue.length;
+  let loaded = 0;
+  let totalBytes = 0;
+  const concurrency = 5;
+
+  for (let i = 0; i < total; i += concurrency) {
+    const batch = tileQueue.slice(i, i + concurrency);
+    await Promise.allSettled(
+      batch.map(async item => {
+        try {
+          const existing = await cache.match(item.url);
+          if (existing) {
+            try {
+              const b = await existing.blob();
+              totalBytes += b.size;
+            } catch {
+              totalBytes += 15000;
+            }
+          } else {
+            const res = await fetch(item.url, { mode: 'cors' });
+            if (res.ok) {
+              await cache.put(item.url, res.clone());
+              const b = await res.blob();
+              totalBytes += b.size;
+            }
+          }
+        } catch {
+          // Continue if individual tile times out
+        } finally {
+          loaded++;
+          const percent = Math.min(100, Math.round((loaded / total) * 100));
+          onProgress?.({
+            loaded,
+            total,
+            percent,
+            stage: item.stage,
+          });
+        }
+      })
+    );
+  }
+
+  // Persist offline package metadata
+  const pkg: PropertyOfflinePackage = {
+    propertyId: property.id,
+    propertyName: property.name,
+    location: property.location,
+    coordinates: property.coordinates,
+    locationNotes: property.locationNotes,
+    contactPhone: property.contactPhone,
+    contactEmail: property.contactEmail,
+    image: property.image,
+    tileCount: loaded,
+    sizeBytes: totalBytes,
+    downloadedAt: Date.now(),
+    zoomLevels: [9, 11, 12, 13, 14, 15, 16],
+  };
+
+  try {
+    localStorage.setItem(PROPERTY_OFFLINE_PREFIX + property.id, JSON.stringify(pkg));
+    const rawCatalog = localStorage.getItem(PROPERTY_OFFLINE_CATALOG_KEY);
+    const catalog: string[] = rawCatalog ? JSON.parse(rawCatalog) : [];
+    if (!catalog.includes(property.id)) {
+      catalog.push(property.id);
+      localStorage.setItem(PROPERTY_OFFLINE_CATALOG_KEY, JSON.stringify(catalog));
+    }
+  } catch (err) {
+    console.warn('Failed to save offline package metadata:', err);
+  }
+
+  return { tilesDownloaded: loaded, sizeBytes: totalBytes };
+}
+

@@ -11,7 +11,8 @@ import {
   Target,
   Users,
   MessageSquare,
-  DollarSign
+  DollarSign,
+  Compass
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSystemSettings } from '../hooks/useSystemSettings';
@@ -83,10 +84,10 @@ export default function OperationsStarterPack() {
             <div className="p-6 bg-stone-50 rounded-2xl border border-stone-200">
               <div className="flex items-center gap-3 mb-3">
                 <ShieldCheck className="w-5 h-5 text-stone-700" />
-                <h3 className="font-bold text-stone-900">2. Quality Control</h3>
+                <h3 className="font-bold text-stone-900">2. Quality Control &amp; GPS</h3>
               </div>
               <p className="text-xs text-stone-600 leading-relaxed">
-                Ensure properties have beautiful, high-res photos, exact Google Maps pins, and competitive rates in both USD and MWK. No blurry photos.
+                Ensure properties have beautiful photos, exact entrance GPS coordinates (essential for traveler offline map downloads), and competitive rates in both USD and MWK.
               </p>
             </div>
             <div className="p-6 bg-stone-50 rounded-2xl border border-stone-200">
@@ -145,6 +146,15 @@ export default function OperationsStarterPack() {
               <div>
                 <h4 className="font-bold text-stone-900 text-sm">Dual-Currency Support (MWK & USD)</h4>
                 <p className="text-xs text-stone-600 mt-1">Protect against kwacha fluctuations. Publish local rates in MWK and international rates in USD simultaneously.</p>
+              </div>
+            </div>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4 p-5 rounded-2xl border border-stone-200 bg-stone-100">
+              <div className="w-10 h-10 rounded-full bg-stone-200 flex items-center justify-center shrink-0">
+                <Compass className="w-5 h-5 text-stone-800" />
+              </div>
+              <div>
+                <h4 className="font-bold text-stone-900 text-sm">Download Offline Maps &amp; Satellite GPS</h4>
+                <p className="text-xs text-stone-600 mt-1">Solves the rural connectivity barrier. Guests can pre-download property map tiles to navigate remote bush tracks and lakeshore roads with device satellite GPS even when cellular data is completely lost.</p>
               </div>
             </div>
           </div>

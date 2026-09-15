@@ -61,6 +61,20 @@ export function formatCoordinates(point: LatLng, decimals = 5): string {
   return `${point.lat.toFixed(decimals)}, ${point.lng.toFixed(decimals)}`;
 }
 
+/** Degrees, Minutes, Seconds for GPS / Garmin / in-car 4x4 navigation */
+export function formatCoordinatesDMS(point: LatLng): string {
+  const toDMS = (deg: number, isLat: boolean) => {
+    const absolute = Math.abs(deg);
+    const d = Math.floor(absolute);
+    const minFloat = (absolute - d) * 60;
+    const m = Math.floor(minFloat);
+    const s = ((minFloat - m) * 60).toFixed(1);
+    const dir = isLat ? (deg >= 0 ? 'N' : 'S') : (deg >= 0 ? 'E' : 'W');
+    return `${d}°${m}'${s}"${dir}`;
+  };
+  return `${toDMS(point.lat, true)} ${toDMS(point.lng, false)}`;
+}
+
 const DECIMAL_PAIR = /(-?\d{1,3}(?:\.\d+)?)\s*[,\s]\s*(-?\d{1,3}(?:\.\d+)?)/;
 
 /**

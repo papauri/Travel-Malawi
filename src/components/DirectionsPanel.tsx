@@ -33,6 +33,7 @@ import {
   MALAWI_KNOWN_PLACES,
 } from '../lib/geo';
 import InteractiveMap from './InteractiveMap';
+import OfflineMapManager from './OfflineMapManager';
 
 interface Props {
   hotelName: string;
@@ -40,6 +41,7 @@ interface Props {
   coordinates?: LatLng | null;
   locationNotes?: string;
   hotelImage?: string;
+  hotelId?: string;
   className?: string;
 }
 
@@ -82,6 +84,7 @@ export default function DirectionsPanel({
   coordinates,
   locationNotes,
   hotelImage,
+  hotelId,
   className = '',
 }: Props) {
   const [guestLocation, setGuestLocation] = useState<LatLng | null>(null);
@@ -207,7 +210,20 @@ export default function DirectionsPanel({
         </div>
 
         {/* Quick Action Buttons */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {destCoords && (
+            <OfflineMapManager
+              property={{
+                id: hotelId || hotelName.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+                name: hotelName,
+                location,
+                coordinates: destCoords,
+                locationNotes,
+                image: hotelImage,
+              }}
+              variant="inline"
+            />
+          )}
           {destCoords && (
             <button
               type="button"

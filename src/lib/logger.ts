@@ -1,4 +1,4 @@
-import { collection, addDoc, getDocs, query, orderBy, limit } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, orderBy, limit, onSnapshot, doc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { db } from './firebase';
 
 export interface SystemLog {
@@ -41,5 +41,43 @@ export async function getSystemLogs(limitCount = 100): Promise<SystemLog[]> {
   } catch (err) {
     console.error('Failed to get system logs:', err);
     return [];
+  }
+}
+
+export function subscribeToSystemLogs(callback: (logs: SystemLog[]) => void, limitCount = 100) {
+  const q = query(collection(db, 'system_logs'), orderBy('timestamp', 'desc'), limit(limitCount));
+  return onSnapshot(q, (snap) => {
+    const logs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }) as SystemLog);
+    callback(logs);
+  }, (err) => {
+    console.error('Failed to subscribe to system logs:', err);
+  });
+}
+
+export async function deleteSystemLog(logId: string) {
+  try {
+    await deleteDoc(doc(db, 'system_logs', logId));
+  } catch (err) {
+    console.error('Failed to delete system log:', err);
+    throw err;
+  }
+}
+
+export async function clearAllSystemLogs() {
+  try {
+    const q = query(collection(db, 'system_logs'), limit(500));
+    const snap = await getDocs(q);
+    
+    if (snap.empty) return;
+    
+    const batch = writeBatch(db);
+    snap.docs.forEach(doc => {
+      batch.delete(doc.ref);
+    });
+    
+    await batch.commit();
+  } catch (err) {
+    console.error('Failed to clear system logs:', err);
+    throw err;
   }
 }

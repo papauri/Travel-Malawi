@@ -419,14 +419,14 @@ export default function HostStarterPack() {
                   <ShieldCheck className="w-5 h-5" />
                 </div>
                 <h3 className="font-serif text-lg font-bold text-stone-900">
-                  4. Instant Guest Trust with Verified Details
+                  4. Instant Guest Trust &amp; Offline Maps
                 </h3>
                 <p className="text-stone-600 text-sm mt-2 leading-relaxed">
-                  Travelers hesitate when accommodation details are unclear. With your dedicated page showing exact Google Maps GPS pins, room photos, amenities (solar power, Wi-Fi, backup water), guests book with confidence.
+                  Travelers hesitate when accommodation details are unclear. With your dedicated page showing exact Google Maps GPS pins, downloadable offline maps (allowing guests to navigate remote unpaved bush roads with satellite GPS even when cellular network drops out), room photos, and amenities, guests book with confidence.
                 </p>
               </div>
               <div className="mt-4 pt-4 border-t border-stone-200 text-xs text-stone-700 font-semibold flex items-center gap-1.5">
-                <Check className="w-4 h-4 text-stone-600" /> Builds immediate traveler trust and credibility.
+                <Check className="w-4 h-4 text-stone-600" /> Builds immediate traveler trust &amp; ensures guests reach your gate.
               </div>
             </div>
           </div>
@@ -468,12 +468,12 @@ export default function HostStarterPack() {
                 Property Basics &amp; Location
               </h3>
               <p className="text-stone-600 text-sm mt-2 leading-relaxed">
-                Enter your property name, choose its category (B&amp;B, Lake Resort, Safari Camp, Cottage, Guest House), and pick your district. Add your contact phone and WhatsApp number.
+                Enter your property name, choose its category (B&amp;B, Lake Resort, Safari Camp, Cottage, Guest House), and pick your district. Pin your exact entrance gate so guests can download your property's <strong>Offline Map</strong> to navigate without cell service. Add your contact phone and WhatsApp number.
               </p>
               <div className="mt-4 pt-4 border-t border-stone-100 text-xs text-stone-500 space-y-1">
                 <div className="flex items-center gap-1.5">
                   <MapPin className="w-4 h-4 text-stone-500" />
-                  <span>District &amp; Nearest Town</span>
+                  <span>District &amp; Offline GPS Coordinates</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Building2 className="w-4 h-4 text-stone-500" />

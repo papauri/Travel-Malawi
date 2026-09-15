@@ -252,6 +252,12 @@ export interface ActionProposal {
   featured?: boolean;
   reason?: string;
 
+  // Promotions & Discounts
+  discountPercentage?: number;
+  startDate?: string;
+  endDate?: string;
+  promotionName?: string;
+
   // Nested actions
   actions?: ActionProposal[];
 }
