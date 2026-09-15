@@ -375,18 +375,18 @@ export default function ManagerDashboard() {
               : 'Overview of your properties, rooms, and booking requests.'}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
+        <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3 w-full sm:w-auto">
           {rooms.length > 0 && (
             <button
               type="button"
               onClick={() => handleOpenBulkEditor()}
               className={`inline-flex items-center justify-center gap-1.5 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl sm:rounded-full text-xs sm:text-sm font-semibold transition cursor-pointer shadow-2xs ${
                 showBulkEditor
-                  ? 'bg-amber-400 text-stone-950 hover:bg-amber-300 ring-2 ring-amber-500/50'
+                  ? 'bg-stone-900 text-white hover:bg-stone-800 ring-2 ring-stone-900/50'
                   : 'bg-white hover:bg-stone-100 text-stone-800 border border-stone-200'
               }`}
             >
-              <SlidersHorizontal className="h-4 w-4 text-amber-600" />
+              <SlidersHorizontal className="h-4 w-4" />
               <span>{showBulkEditor ? 'Close Bulk Editor' : 'Bulk Room & Rates Editor'}</span>
             </button>
           )}
@@ -414,7 +414,7 @@ export default function ManagerDashboard() {
           }`}
         >
           <div className={`w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 rounded-lg flex items-center justify-center mb-1.5 ${
-            statusFilter === 'all' ? 'bg-white/10 text-white' : 'bg-blue-50 text-blue-600'
+            statusFilter === 'all' ? 'bg-white/20 text-white' : 'bg-stone-100 text-stone-600'
           }`}>
             <Building2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </div>
@@ -436,7 +436,7 @@ export default function ManagerDashboard() {
           }`}
         >
           <div className={`w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 rounded-lg flex items-center justify-center mb-1.5 ${
-            statusFilter === 'live' ? 'bg-white/10 text-white' : 'bg-emerald-50 text-emerald-600'
+            statusFilter === 'live' ? 'bg-white/20 text-white' : 'bg-stone-100 text-stone-600'
           }`}>
             <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </div>
@@ -458,7 +458,7 @@ export default function ManagerDashboard() {
           }`}
         >
           <div className={`w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 rounded-lg flex items-center justify-center mb-1.5 ${
-            statusFilter === 'needs_attention' ? 'bg-white/10 text-white' : 'bg-amber-50 text-amber-600'
+            statusFilter === 'needs_attention' ? 'bg-white/20 text-white' : 'bg-stone-100 text-stone-600'
           }`}>
             <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </div>
@@ -469,7 +469,7 @@ export default function ManagerDashboard() {
             <p className="text-sm sm:text-lg lg:text-xl font-bold">{needsAttentionCount}</p>
             {totalPending > 0 && (
               <span className={`text-[9px] sm:text-[10px] font-bold px-1.5 py-0.2 rounded-full ${
-                statusFilter === 'needs_attention' ? 'bg-amber-400 text-stone-950' : 'bg-amber-100 text-amber-800'
+                statusFilter === 'needs_attention' ? 'bg-stone-700 text-stone-100' : 'bg-stone-100 text-stone-700'
               }`}>
                 {totalPending} req
               </span>
@@ -480,16 +480,13 @@ export default function ManagerDashboard() {
         <button
           type="button"
           onClick={() => handleOpenBulkEditor()}
-          className="p-2.5 sm:p-3.5 lg:p-4 rounded-xl sm:rounded-2xl border border-stone-200 shadow-2xs bg-white text-stone-900 hover:border-amber-400 hover:shadow-xs transition text-left cursor-pointer group"
+          className="p-2.5 sm:p-3.5 lg:p-4 rounded-xl sm:rounded-2xl border border-stone-200 shadow-2xs bg-white text-stone-900 hover:border-stone-400 hover:shadow-xs transition text-left cursor-pointer group"
           title="Click to open Bulk Room & Rates Editor"
         >
           <div className="flex items-center justify-between mb-1.5">
-            <div className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
+            <div className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 rounded-lg bg-stone-100 text-stone-600 flex items-center justify-center">
               <BedDouble className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
-            <span className="text-[10px] font-bold text-amber-800 bg-amber-100 group-hover:bg-amber-200 px-1.5 py-0.5 rounded-full transition">
-              Bulk Rates ⚡
-            </span>
           </div>
           <p className="text-stone-500 text-[10px] sm:text-xs font-medium mb-0.5 truncate">Total Rooms</p>
           <p className="text-sm sm:text-lg lg:text-xl font-bold">{rooms.length}</p>
@@ -511,107 +508,60 @@ export default function ManagerDashboard() {
         </div>
       )}
 
-      {/* Quick Bulk Tool Invitation Banner */}
-      {!showBulkEditor && rooms.length > 0 && (
-        <div className="mb-6 bg-stone-900 text-white rounded-2xl sm:rounded-3xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3.5 border border-stone-800 shadow-xs">
-          <div className="flex items-start sm:items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-400/20 text-amber-300 flex items-center justify-center shrink-0">
-              <Percent className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-serif font-bold text-sm sm:text-base text-white">Bulk Room &amp; Rates Editor</h3>
-                <span className="text-[10px] font-bold bg-amber-400 text-stone-950 px-2 py-0.2 rounded-full uppercase tracking-wider">
-                  Optional Tool
-                </span>
-              </div>
-              <p className="text-xs text-stone-300 mt-0.5">
-                Apply percentage discounts, price drops, or promotional campaigns across multiple rooms simultaneously with custom percentages or amounts.
-              </p>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => handleOpenBulkEditor()}
-            className="inline-flex items-center gap-1.5 bg-amber-400 hover:bg-amber-300 text-stone-950 font-bold px-4 py-2 rounded-xl text-xs transition cursor-pointer shrink-0 shadow-2xs"
-          >
-            <SlidersHorizontal className="w-3.5 h-3.5" />
-            <span>Open Bulk Editor</span>
-          </button>
-        </div>
-      )}
-
-      {/* Filter & Sort Dropdown Bar */}
+      {/* Sort Dropdown */}
       {hotels.length > 0 && (
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 mb-5">
-          {/* Mobile dropdown (< md) */}
-          <div className="md:hidden relative flex-1">
-            <label htmlFor="host-status-filter" className="sr-only">Filter properties by status</label>
-            <select
-              id="host-status-filter"
-              value={statusFilter}
-              onChange={(e) => {
-                setStatusFilter(e.target.value as StatusFilter);
-                setCurrentPage(1);
-              }}
-              className="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 text-xs font-semibold text-stone-800 appearance-none pr-8 shadow-2xs focus:ring-2 focus:ring-stone-900 focus:outline-none cursor-pointer"
-            >
-              <option value="all">All Properties ({hotels.length})</option>
-              <option value="live">Live &amp; Online ({liveCount})</option>
-              <option value="needs_attention">Needs Attention ({needsAttentionCount})</option>
-              <option value="pending">Awaiting Approval ({pendingApprovalCount})</option>
-              <option value="offline">Offline ({offlineCount})</option>
-            </select>
-            <ChevronDown className="w-3.5 h-3.5 text-stone-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-          </div>
-
-          {/* Desktop segmented buttons (>= md) */}
-          <div className="hidden md:flex items-center gap-1.5 p-1 bg-stone-100/90 rounded-2xl border border-stone-200">
-            {([
-              { id: 'all' as StatusFilter, label: 'All', count: hotels.length },
-              { id: 'live' as StatusFilter, label: 'Live', count: liveCount },
-              { id: 'needs_attention' as StatusFilter, label: 'Needs Attention', count: needsAttentionCount },
-              { id: 'pending' as StatusFilter, label: 'Pending Approval', count: pendingApprovalCount },
-              { id: 'offline' as StatusFilter, label: 'Offline', count: offlineCount },
-            ]).map(item => (
-              <button
-                key={item.id}
-                onClick={() => {
-                  setStatusFilter(item.id);
-                  setCurrentPage(1);
-                }}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
-                  statusFilter === item.id
-                    ? 'bg-stone-900 text-white shadow-xs'
-                    : 'text-stone-600 hover:text-stone-950 hover:bg-stone-200/60'
-                }`}
-              >
-                <span>{item.label}</span>
-                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                  statusFilter === item.id ? 'bg-white/20 text-white' : 'bg-stone-200 text-stone-700'
-                }`}>
-                  {item.count}
-                </span>
-              </button>
-            ))}
-          </div>
-
-          {/* Sort Dropdown */}
-          <div className="relative shrink-0 sm:w-44">
+        <div className="flex justify-end mb-5">
+          <div className="relative shrink-0 w-full sm:w-48">
             <label htmlFor="host-sort-filter" className="sr-only">Sort properties</label>
-            <select
-              id="host-sort-filter"
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as SortOption)}
-              className="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 text-xs font-medium text-stone-700 appearance-none pr-8 shadow-2xs focus:ring-2 focus:ring-stone-900 focus:outline-none cursor-pointer"
+            <button
+              type="button"
+              onClick={() => {
+                const el = document.getElementById('sort-dropdown-menu');
+                if (el) el.classList.toggle('hidden');
+              }}
+              onBlur={(e) => {
+                // Delay hiding slightly to allow click to register
+                setTimeout(() => {
+                  const el = document.getElementById('sort-dropdown-menu');
+                  if (el) el.classList.add('hidden');
+                }, 150);
+              }}
+              className="w-full flex items-center justify-between bg-white border border-stone-200 rounded-xl px-3 py-2 text-xs font-semibold text-stone-700 shadow-2xs hover:bg-stone-50 transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-stone-900"
             >
-              <option value="default">Sort: Default</option>
-              <option value="pending">Sort: Most Pending</option>
-              <option value="rooms">Sort: Most Rooms</option>
-              <option value="name">Sort: Name (A-Z)</option>
-            </select>
-            <ChevronDown className="w-3.5 h-3.5 text-stone-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <span>
+                {sortBy === 'default' && 'Sort: Default'}
+                {sortBy === 'pending' && 'Sort: Most Pending'}
+                {sortBy === 'rooms' && 'Sort: Most Rooms'}
+                {sortBy === 'name' && 'Sort: Name (A-Z)'}
+              </span>
+              <ChevronDown className="w-3.5 h-3.5 text-stone-400" />
+            </button>
+            <div 
+              id="sort-dropdown-menu"
+              className="hidden absolute top-full left-0 right-0 mt-1.5 p-1.5 bg-white border border-stone-200 rounded-xl shadow-lg z-20 flex flex-col gap-0.5 animate-in fade-in slide-in-from-top-2 duration-150"
+            >
+              {[
+                { value: 'default', label: 'Default' },
+                { value: 'pending', label: 'Most Pending' },
+                { value: 'rooms', label: 'Most Rooms' },
+                { value: 'name', label: 'Name (A-Z)' },
+              ].map(opt => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => {
+                    setSortBy(opt.value as SortOption);
+                    const el = document.getElementById('sort-dropdown-menu');
+                    if (el) el.classList.add('hidden');
+                  }}
+                  className={`w-full text-left px-2.5 py-2 text-xs font-semibold rounded-lg transition ${
+                    sortBy === opt.value ? 'bg-stone-100 text-stone-900' : 'text-stone-600 hover:bg-stone-50'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}

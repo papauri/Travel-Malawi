@@ -1,6 +1,6 @@
-import { Hotel, Promotion, SaleType, PromotionTarget, CurrencyCode } from '../types';
+import { Hotel, RoomType, Promotion, SaleType, PromotionTarget, CurrencyCode } from '../types';
 import { DateStr } from './dates';
-import { formatMoney } from './currency';
+import { formatMoney, roomPrice } from './currency';
 
 export interface SlashedPriceResult {
   originalPrice: number;
@@ -162,15 +162,118 @@ export function getActivePromotion(
     }
 
     // target === 'all'
-    return true;
+    // Default stay overview: do not match conference-only promos if evaluating general hotel stay
+    return !p.appliesTo || p.appliesTo === 'all' || p.appliesTo === 'rooms_only';
   });
 
   if (active.length === 0) return null;
 
   // Return the one with the highest discount
-  return active.reduce((prev, current) =>
-    (prev.discountPercentage > current.discountPercentage) ? prev : current
-  );
+  return active.reduce((prev, current) => {
+    const prevVal = prev.discountPercentage || 0;
+    const currVal = current.discountPercentage || 0;
+    return currVal > prevVal ? current : prev;
+  });
+}
+
+export type PromotionStatus = 'active' | 'scheduled' | 'expired' | 'paused';
+
+export function getPromotionStatus(promo: Promotion, compareDate?: DateStr): PromotionStatus {
+  if (!promo.isActive) return 'paused';
+  const today = compareDate || new Date().toISOString().split('T')[0];
+  if (promo.startDate && promo.startDate > today) return 'scheduled';
+  if (promo.endDate && promo.endDate < today) return 'expired';
+  return 'active';
+}
+
+/**
+ * Uniform Hotel Pricing Summary
+ * Calculates the exact lowest base price, lowest effective slashed price,
+ * and associated promotion across all rooms of a hotel.
+ */
+export interface HotelPricingSummary {
+  originalPrice: number | null;
+  slashedPrice: number | null;
+  hasDiscount: boolean;
+  slashedAmount: number;
+  discountPercentage: number;
+  saleType?: SaleType;
+  saleTypeLabel: string;
+  badgeText: string;
+  promo: Promotion | null;
+  cheapestRoomId?: string;
+}
+
+export function getHotelPricingSummary(
+  hotel: Hotel,
+  rooms: RoomType[],
+  currency: CurrencyCode = 'MWK',
+  checkInDate?: DateStr
+): HotelPricingSummary {
+  const hotelRooms = rooms.filter(r => r.hotelId === hotel.id);
+  if (hotelRooms.length === 0) {
+    return {
+      originalPrice: null,
+      slashedPrice: null,
+      hasDiscount: false,
+      slashedAmount: 0,
+      discountPercentage: 0,
+      saleTypeLabel: '',
+      badgeText: '',
+      promo: null,
+    };
+  }
+
+  let lowestEffective: number | null = null;
+  let bestOriginal: number | null = null;
+  let bestSlashedResult: SlashedPriceResult | null = null;
+  let bestPromo: Promotion | null = null;
+  let bestRoomId: string | undefined = undefined;
+
+  for (const room of hotelRooms) {
+    const base = roomPrice(room, currency);
+    if (base === null || base <= 0) continue;
+
+    const promo = getActivePromotion(hotel, checkInDate, 'room', room.id);
+    const slashed = calculateSlashedPrice(base, promo, currency);
+    const effective = slashed.hasDiscount ? slashed.slashedPrice : base;
+
+    if (lowestEffective === null || effective < lowestEffective) {
+      lowestEffective = effective;
+      bestOriginal = base;
+      bestSlashedResult = slashed;
+      bestPromo = promo;
+      bestRoomId = room.id;
+    }
+  }
+
+  if (lowestEffective === null || bestOriginal === null) {
+    return {
+      originalPrice: null,
+      slashedPrice: null,
+      hasDiscount: false,
+      slashedAmount: 0,
+      discountPercentage: 0,
+      saleTypeLabel: '',
+      badgeText: '',
+      promo: null,
+    };
+  }
+
+  const hasDiscount = !!(bestSlashedResult?.hasDiscount && bestSlashedResult.slashedAmount > 0);
+
+  return {
+    originalPrice: bestOriginal,
+    slashedPrice: hasDiscount ? lowestEffective : bestOriginal,
+    hasDiscount,
+    slashedAmount: hasDiscount ? (bestSlashedResult?.slashedAmount ?? 0) : 0,
+    discountPercentage: hasDiscount ? (bestSlashedResult?.discountPercentage ?? 0) : 0,
+    saleType: bestPromo?.saleType,
+    saleTypeLabel: bestSlashedResult?.saleTypeLabel || '',
+    badgeText: bestSlashedResult?.badgeText || '',
+    promo: bestPromo,
+    cheapestRoomId: bestRoomId,
+  };
 }
 
 /**

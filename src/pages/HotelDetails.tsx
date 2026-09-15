@@ -457,9 +457,9 @@ export default function HotelDetails() {
 
       // Same helper that renders the on-screen breakdown, so the stored total
       // can never disagree with the price the guest was shown.
-      const activePromo = getActivePromotion(hotel, checkIn);
+      const activePromo = hotel && selectedRoom ? getActivePromotion(hotel, checkIn, 'room', selectedRoom.id) : null;
       const pricing = computeBookingPricing(
-        selectedRoom, checkIn, checkOut, guestsCount, 1, selectedPackages, currency, activePromo?.discountPercentage || 0
+        selectedRoom, checkIn, checkOut, guestsCount, 1, selectedPackages, currency, activePromo
       );
       const reference = makeBookingReference();
 
@@ -1801,9 +1801,9 @@ export default function HotelDetails() {
       
       {/* Booking request */}
       {selectedRoom && (() => {
-        const activePromo = getActivePromotion(hotel, checkIn);
+        const activePromo = hotel ? getActivePromotion(hotel, checkIn, 'room', selectedRoom.id) : null;
         const pricing = computeBookingPricing(
-          selectedRoom, checkIn, checkOut, guestsCount, 1, selectedPackages, currency, activePromo?.discountPercentage || 0
+          selectedRoom, checkIn, checkOut, guestsCount, 1, selectedPackages, currency, activePromo
         );
         const {
           nights, basePrice, extraGuestFee, extraGuestsCount, packagesTotal,

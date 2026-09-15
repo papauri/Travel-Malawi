@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import Pagination from '../components/Pagination';
 import { Search, MapPin, Calendar, Users, Star, LocateFixed, Locate, ChevronDown, Plus, Minus, ShieldCheck, MessageCircle, Smartphone, X, Clock, LayoutGrid, Map as MapIcon, Compass, Navigation, SlidersHorizontal, RotateCcw, Filter, Check, Car, ExternalLink, Route, ArrowRight, Building2, CheckCircle2, BookOpen, AlignJustify } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { collection, getDocs, getDoc, doc } from 'firebase/firestore';
+import { collection, getDocs, getDoc, doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Hotel, RoomType, Review, CurrencyCode } from '../types';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -396,12 +396,56 @@ export default function Home() {
     }
     fetchListings();
 
+    // Real-time synchronization: Any bulk price updates or promotion launches
+    // in the Admin or Manager Dashboard immediately update the live home page
+    const unsubHotels = onSnapshot(collection(db, 'hotels'), (snap) => {
+      const hotelsData = snap.docs.map(d => ({ id: d.id, ...d.data() })) as Hotel[];
+      const approvedHotels = hotelsData.filter(h => h.status === 'approved' || !h.status);
+      setHotels(approvedHotels);
+      saveCachedHotels(approvedHotels);
+    }, (err) => console.warn('Realtime hotels listener warning:', err?.message));
+
+    const unsubRooms = onSnapshot(collection(db, 'room_types'), (snap) => {
+      const roomsData = snap.docs.map(d => ({ id: d.id, ...d.data() })) as RoomType[];
+      setRooms(roomsData);
+      saveCachedRooms(roomsData);
+    }, (err) => console.warn('Realtime rooms listener warning:', err?.message));
+
+    // Also listen to immediate in-tab or cross-component window events
+    const onRoomsUpdated = (e: Event) => {
+      const customEvent = e as CustomEvent<{ rooms: RoomType[] }>;
+      if (customEvent.detail?.rooms) {
+        setRooms(prev => {
+          const map = new Map(customEvent.detail.rooms.map(r => [r.id, r]));
+          return prev.map(r => (r.id && map.has(r.id) ? { ...r, ...map.get(r.id) } : r));
+        });
+      }
+    };
+    const onHotelsUpdated = (e: Event) => {
+      const customEvent = e as CustomEvent<{ hotels: Hotel[] }>;
+      if (customEvent.detail?.hotels) {
+        setHotels(prev => {
+          const map = new Map(customEvent.detail.hotels.map(h => [h.id, h]));
+          return prev.map(h => (h.id && map.has(h.id) ? { ...h, ...map.get(h.id) } : h));
+        });
+      }
+    };
+    window.addEventListener('travel_malawi_rooms_updated', onRoomsUpdated);
+    window.addEventListener('travel_malawi_hotels_updated', onHotelsUpdated);
+
     // Ratings are a garnish on the listing grid, so this read is kept out of
     // the critical path: until the `reviews` rules are deployed it is denied,
     // and bundling it with the listings would have taken the whole page down.
     getDocs(collection(db, 'reviews'))
       .then(snap => setReviews(snap.docs.map(d => ({ id: d.id, ...d.data() })) as Review[]))
       .catch(error => console.warn('Reviews unavailable:', error?.message ?? error));
+
+    return () => {
+      unsubHotels();
+      unsubRooms();
+      window.removeEventListener('travel_malawi_rooms_updated', onRoomsUpdated);
+      window.removeEventListener('travel_malawi_hotels_updated', onHotelsUpdated);
+    };
   }, []);
 
   // Close dropdowns when clicking outside

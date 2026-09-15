@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
+import { logSystemEvent } from '../lib/logger';
 
 export interface AIStatus {
   enabled: boolean;
@@ -407,6 +408,7 @@ export function useAIAssistant() {
         if (res.status === 401 || res.status === 403 || errMsg.toLowerCase().includes('auth') || errMsg.toLowerCase().includes('invalid api key')) {
           fetchStatus();
         }
+        logSystemEvent('error', `Operations Chat API Error: ${errMsg}`, { status: res.status, errData, payload });
         toast.error(errMsg);
         return null;
       }
@@ -415,7 +417,8 @@ export function useAIAssistant() {
       return data;
     } catch (err: any) {
       console.error('Operations chat error:', err);
-      toast.error(err?.message || 'Failed to connect to Operations Copilot');
+      logSystemEvent('error', `Operations Chat Exception: ${err?.message || 'Unknown Error'}`, { error: String(err), payload });
+      toast.error(err?.message || 'Failed to connect to Ulendo Concierge');
       return null;
     } finally {
       setGenerating(false);

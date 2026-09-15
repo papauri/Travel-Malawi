@@ -4,15 +4,16 @@ import { db } from '../lib/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import toast from 'react-hot-toast';
 import { roomPrice, roomCurrencies, formatMoney } from '../lib/currency';
-import { SALE_TYPE_OPTIONS, getSaleTypeBadge, getSaleTypeLabel, calculateSlashedPrice } from '../lib/promotions';
+import { SALE_TYPE_OPTIONS, getSaleTypeBadge, getSaleTypeLabel, calculateSlashedPrice, getPromotionStatus } from '../lib/promotions';
+import { saveUpdatedRooms, saveSingleCachedHotel } from '../lib/mapCache';
 import {
   SlidersHorizontal, Percent, DollarSign, Tag, Sparkles, Check,
   RotateCcw, TrendingDown, TrendingUp, Calendar, Zap, AlertCircle,
   ArrowRight, ChevronDown, Building2, BedDouble, Search, X, Info,
-  Save, Loader2, CheckCircle2, Sliders, Layers
+  Save, Loader2, CheckCircle2, Sliders, Layers, Play, Pause, Trash2, Clock
 } from 'lucide-react';
 
-export type BulkEditorMode = 'rates' | 'promotions';
+export type BulkEditorMode = 'rates' | 'promotions' | 'active_promotions';
 export type RateAdjustmentType = 'percentage_discount' | 'percentage_increase' | 'amount_drop' | 'amount_increase' | 'fixed_price';
 export type PromoDiscountMode = 'percentage' | 'fixed_slash';
 
@@ -108,6 +109,18 @@ export default function BulkRoomEditor({
     return rooms.filter(r => r.id && set.has(r.id));
   }, [rooms, selectedRoomIds]);
 
+  // All promotions across properties for active campaigns monitoring
+  const allPromotions = useMemo(() => {
+    const list: Array<{ hotel: Hotel; promo: Promotion }> = [];
+    for (const hotel of hotels) {
+      if (selectedHotelFilter !== 'all' && hotel.id !== selectedHotelFilter) continue;
+      for (const p of hotel.promotions || []) {
+        list.push({ hotel, promo: p });
+      }
+    }
+    return list;
+  }, [hotels, selectedHotelFilter]);
+
   // Handle Select All / Deselect All
   const handleSelectAll = () => {
     const allIds = filteredRooms.map(r => r.id).filter(Boolean) as string[];
@@ -139,8 +152,15 @@ export default function BulkRoomEditor({
   // Calculate new rates for a given room
   const calculateNewRatesForRoom = (room: RoomType) => {
     const currencies = roomCurrencies(room);
-    const originalMWK = roomPrice(room, 'MWK');
-    const originalUSD = roomPrice(room, 'USD');
+    let originalMWK = roomPrice(room, 'MWK');
+    let originalUSD = roomPrice(room, 'USD');
+
+    // Dual-currency fallback: if one is missing, establish it cleanly via standard rate
+    if (originalMWK === null && originalUSD !== null) {
+      originalMWK = roundPrice(originalUSD * 1750, 'MWK');
+    } else if (originalUSD === null && originalMWK !== null) {
+      originalUSD = roundPrice(originalMWK / 1750, 'USD');
+    }
 
     let newMWK = originalMWK;
     let newUSD = originalUSD;
@@ -166,14 +186,12 @@ export default function BulkRoomEditor({
     } else if (rateAdjustmentType === 'amount_drop') {
       if (rateAmountCurrency === 'MWK' && originalMWK !== null) {
         newMWK = Math.max(0, originalMWK - rateAmount);
-        // Also adjust USD proportionately if room has USD
         if (originalUSD !== null && originalMWK > 0) {
           const ratio = newMWK / originalMWK;
           newUSD = roundPrice(originalUSD * ratio, 'USD');
         }
       } else if (rateAmountCurrency === 'USD' && originalUSD !== null) {
         newUSD = Math.max(0, originalUSD - rateAmount);
-        // Adjust MWK proportionately
         if (originalMWK !== null && originalUSD > 0) {
           const ratio = newUSD / originalUSD;
           newMWK = roundPrice(originalMWK * ratio, 'MWK');
@@ -197,8 +215,10 @@ export default function BulkRoomEditor({
       const fixed = parseFloat(fixedTargetPrice) || 0;
       if (rateAmountCurrency === 'MWK') {
         newMWK = fixed;
+        newUSD = roundPrice(fixed / 1750, 'USD');
       } else {
         newUSD = fixed;
+        newMWK = roundPrice(fixed * 1750, 'MWK');
       }
     }
 
@@ -278,15 +298,28 @@ export default function BulkRoomEditor({
         if (newMWK !== null && newMWK !== undefined) updatedPrices.MWK = newMWK;
         if (newUSD !== null && newUSD !== undefined) updatedPrices.USD = newUSD;
 
-        const updatePayload: Partial<RoomType> = {
+        const updatePayloadRaw: Partial<RoomType> = {
+          hotelId: room.hotelId, // CRITICAL: preserve hotelId invariant
           prices: updatedPrices,
           price: primary === 'USD' ? (newUSD ?? room.price) : (newMWK ?? room.price),
           priceMWK: newMWK !== null ? newMWK : room.priceMWK,
+          currency: primary,
         };
+
+        // Strip out undefined values
+        const updatePayload = Object.fromEntries(
+          Object.entries(updatePayloadRaw).filter(([_, v]) => v !== undefined)
+        );
 
         await updateDoc(doc(db, 'room_types', room.id), updatePayload);
         updatedRoomsList.push({ ...room, ...updatePayload });
       }
+
+      // 1. Immediately update offline / fast storage cache
+      saveUpdatedRooms(updatedRoomsList);
+
+      // 2. Dispatch cross-component and real-time events
+      window.dispatchEvent(new CustomEvent('travel_malawi_rooms_updated', { detail: { rooms: updatedRoomsList } }));
 
       toast.success(`Successfully updated rates for ${updatedRoomsList.length} room${updatedRoomsList.length === 1 ? '' : 's'}!`);
       if (onRoomsUpdated) {
@@ -330,7 +363,7 @@ export default function BulkRoomEditor({
         const discountPct = promoDiscountMode === 'percentage' ? promoPercentage : 0;
         const badge = promoBadgeText.trim() || getSaleTypeBadge(promoSaleType, promoTitle, discountPct);
 
-        const newPromo: Promotion = {
+        const newPromoRaw: Promotion = {
           id: crypto.randomUUID(),
           name: promoTitle,
           saleType: promoSaleType,
@@ -349,6 +382,11 @@ export default function BulkRoomEditor({
           createdAt: Date.now(),
         };
 
+        // Strip out undefined values to satisfy Firestore's updateDoc constraints
+        const newPromo = Object.fromEntries(
+          Object.entries(newPromoRaw).filter(([_, v]) => v !== undefined)
+        ) as Promotion;
+
         const existingPromos = hotel.promotions || [];
         const updatedPromos = [...existingPromos, newPromo];
 
@@ -356,11 +394,16 @@ export default function BulkRoomEditor({
           promotions: updatedPromos,
         });
 
-        updatedHotelsList.push({
+        const updatedHotel: Hotel = {
           ...hotel,
           promotions: updatedPromos,
-        });
+        };
+        updatedHotelsList.push(updatedHotel);
+        saveSingleCachedHotel(updatedHotel);
       }
+
+      // Dispatch cross-component event
+      window.dispatchEvent(new CustomEvent('travel_malawi_hotels_updated', { detail: { hotels: updatedHotelsList } }));
 
       toast.success(
         `Successfully launched "${promoCustomTitle || getSaleTypeLabel(promoSaleType)}" on ${selectedRooms.length} room${selectedRooms.length === 1 ? '' : 's'} across ${roomsByHotel.size} propert${roomsByHotel.size === 1 ? 'y' : 'ies'}!`
@@ -374,6 +417,67 @@ export default function BulkRoomEditor({
       toast.error(err?.message || 'Failed to create bulk promotion.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Active Promotions management helpers
+  const handleTogglePromotionActive = async (hotelId: string, promoId: string) => {
+    const hotel = hotelsMap.get(hotelId);
+    if (!hotel) return;
+    const updatedPromos = (hotel.promotions || []).map(p =>
+      p.id === promoId ? { ...p, isActive: !p.isActive } : p
+    );
+    try {
+      await updateDoc(doc(db, 'hotels', hotelId), { promotions: updatedPromos });
+      const updatedHotel: Hotel = { ...hotel, promotions: updatedPromos };
+      saveSingleCachedHotel(updatedHotel);
+      window.dispatchEvent(new CustomEvent('travel_malawi_hotels_updated', { detail: { hotels: [updatedHotel] } }));
+      if (onHotelsUpdated) onHotelsUpdated([updatedHotel]);
+      toast.success('Promotion status updated');
+    } catch (err: any) {
+      toast.error('Failed to update promotion status');
+    }
+  };
+
+  const handleExtendPromotion = async (hotelId: string, promoId: string, daysToAdd: number | null) => {
+    const hotel = hotelsMap.get(hotelId);
+    if (!hotel) return;
+    const today = new Date().toISOString().split('T')[0];
+    const updatedPromos = (hotel.promotions || []).map(p => {
+      if (p.id !== promoId) return p;
+      if (daysToAdd === null) {
+        const { endDate, ...rest } = p;
+        return { ...rest, isActive: true };
+      }
+      const base = p.endDate && p.endDate > today ? new Date(p.endDate) : new Date();
+      base.setDate(base.getDate() + daysToAdd);
+      return { ...p, endDate: base.toISOString().split('T')[0], isActive: true };
+    });
+    try {
+      await updateDoc(doc(db, 'hotels', hotelId), { promotions: updatedPromos });
+      const updatedHotel: Hotel = { ...hotel, promotions: updatedPromos };
+      saveSingleCachedHotel(updatedHotel);
+      window.dispatchEvent(new CustomEvent('travel_malawi_hotels_updated', { detail: { hotels: [updatedHotel] } }));
+      if (onHotelsUpdated) onHotelsUpdated([updatedHotel]);
+      toast.success(daysToAdd === null ? 'Promotion made ongoing' : `Extended by ${daysToAdd} days`);
+    } catch (err: any) {
+      toast.error('Failed to extend promotion');
+    }
+  };
+
+  const handleDeletePromotion = async (hotelId: string, promoId: string) => {
+    const hotel = hotelsMap.get(hotelId);
+    if (!hotel) return;
+    const updatedPromos = (hotel.promotions || []).filter(p => p.id !== promoId);
+    try {
+      await updateDoc(doc(db, 'hotels', hotelId), { promotions: updatedPromos });
+      const updatedHotel: Hotel = { ...hotel, promotions: updatedPromos };
+      saveSingleCachedHotel(updatedHotel);
+      window.dispatchEvent(new CustomEvent('travel_malawi_hotels_updated', { detail: { hotels: [updatedHotel] } }));
+      if (onHotelsUpdated) onHotelsUpdated([updatedHotel]);
+      toast.success('Promotion deleted');
+    } catch (err: any) {
+      toast.error('Failed to delete promotion');
     }
   };
 
@@ -412,28 +516,39 @@ export default function BulkRoomEditor({
       {/* Target Mode Segmented Navigation */}
       <div className="p-4 sm:p-6 border-b border-stone-200 bg-stone-50/80">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2 p-1 bg-stone-200/70 rounded-2xl max-w-md w-full sm:w-auto">
+          <div className="flex flex-wrap items-center gap-1 p-1 bg-stone-100 rounded-lg w-full sm:w-auto border border-stone-200">
             <button
               onClick={() => setActiveTab('rates')}
-              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition cursor-pointer ${
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-1.5 rounded-md text-xs sm:text-sm font-medium transition cursor-pointer ${
                 activeTab === 'rates'
                   ? 'bg-white text-stone-900 shadow-xs'
-                  : 'text-stone-600 hover:text-stone-900'
+                  : 'text-stone-500 hover:text-stone-900'
               }`}
             >
-              <DollarSign className="w-4 h-4 text-emerald-600" />
-              <span>1. Base Room Rates (Permanent)</span>
+              <DollarSign className="w-4 h-4" />
+              <span>Base Rates</span>
             </button>
             <button
               onClick={() => setActiveTab('promotions')}
-              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition cursor-pointer ${
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-1.5 rounded-md text-xs sm:text-sm font-medium transition cursor-pointer ${
                 activeTab === 'promotions'
                   ? 'bg-white text-stone-900 shadow-xs'
-                  : 'text-stone-600 hover:text-stone-900'
+                  : 'text-stone-500 hover:text-stone-900'
               }`}
             >
-              <Percent className="w-4 h-4 text-amber-600" />
-              <span>2. Promotional Slash (Campaign)</span>
+              <Percent className="w-4 h-4" />
+              <span>New Campaign</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('active_promotions')}
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-1.5 rounded-md text-xs sm:text-sm font-medium transition cursor-pointer ${
+                activeTab === 'active_promotions'
+                  ? 'bg-white text-stone-900 shadow-xs'
+                  : 'text-stone-500 hover:text-stone-900'
+              }`}
+            >
+              <Tag className="w-4 h-4" />
+              <span>Active Campaigns ({allPromotions.length})</span>
             </button>
           </div>
 
@@ -442,14 +557,198 @@ export default function BulkRoomEditor({
             <span>
               {activeTab === 'rates'
                 ? 'Updates the standard published nightly rate in your inventory.'
-                : 'Creates a promotional discount with original strikethrough price and sale badge.'}
+                : activeTab === 'promotions'
+                ? 'Creates a promotional discount with original strikethrough price and sale badge.'
+                : 'Monitor, pause, extend, or remove running promotional campaigns across your lodges.'}
             </span>
           </div>
         </div>
       </div>
 
-      {/* Controls Grid */}
-      <div className="p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+      {/* Active Campaigns Management View */}
+      {activeTab === 'active_promotions' ? (
+        <div className="p-4 sm:p-6 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-stone-50 p-4 rounded-xl border border-stone-200">
+            <div>
+              <h3 className="font-semibold text-stone-900 text-sm">Active &amp; Scheduled Promotional Campaigns</h3>
+              <p className="text-xs text-stone-500 mt-0.5">
+                Manage live discounts, pause or extend durations, and track running sales across properties.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {hotels.length > 1 && (
+                <select
+                  value={selectedHotelFilter}
+                  onChange={e => setSelectedHotelFilter(e.target.value)}
+                  aria-label="Filter campaigns by property"
+                  className="bg-white border border-stone-200 text-xs font-medium rounded-lg px-2.5 py-1.5 text-stone-800 focus:outline-hidden"
+                >
+                  <option value="all">All Properties ({hotels.length})</option>
+                  {hotels.map(h => (
+                    <option key={h.id} value={h.id}>{h.name}</option>
+                  ))}
+                </select>
+              )}
+              <button
+                type="button"
+                onClick={() => setActiveTab('promotions')}
+                className="inline-flex items-center gap-1.5 bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition cursor-pointer"
+              >
+                <Zap className="w-3.5 h-3.5" />
+                <span>New Campaign</span>
+              </button>
+            </div>
+          </div>
+
+          {allPromotions.length === 0 ? (
+            <div className="bg-stone-50 rounded-2xl border border-dashed border-stone-300 p-12 text-center">
+              <div className="w-12 h-12 rounded-full bg-stone-100 flex items-center justify-center mx-auto mb-3">
+                <Tag className="w-6 h-6 text-stone-500" />
+              </div>
+              <h4 className="font-bold text-stone-900 text-base mb-1">No Running Campaigns</h4>
+              <p className="text-xs text-stone-500 max-w-md mx-auto mb-4">
+                You haven't launched any promotional discounts yet. Create a flash sale, weekend special, or early bird promo to drive bookings.
+              </p>
+              <button
+                type="button"
+                onClick={() => setActiveTab('promotions')}
+                className="inline-flex items-center gap-2 bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold px-4 py-2 rounded-xl transition cursor-pointer shadow-xs"
+              >
+                <Zap className="w-4 h-4" />
+                <span>Create a Promotional Campaign</span>
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {allPromotions.map(({ hotel, promo }) => {
+                const today = new Date().toISOString().split('T')[0];
+                const isExpired = promo.endDate && promo.endDate < today;
+                const isScheduled = promo.startDate && promo.startDate > today;
+                const isLive = promo.isActive && !isExpired && !isScheduled;
+
+                let statusBadge = {
+                  text: 'Active',
+                  className: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                };
+                if (!promo.isActive) {
+                  statusBadge = { text: 'Paused', className: 'bg-stone-100 text-stone-600 border-stone-200' };
+                } else if (isExpired) {
+                  statusBadge = { text: 'Expired', className: 'bg-rose-50 text-rose-700 border-rose-200' };
+                } else if (isScheduled) {
+                  statusBadge = { text: `Scheduled (${promo.startDate})`, className: 'bg-amber-50 text-amber-700 border-amber-200' };
+                }
+
+                const targetCount = promo.targetRoomIds ? promo.targetRoomIds.length : (hotel.rooms?.length || 'All');
+
+                return (
+                  <div
+                    key={`${hotel.id}-${promo.id}`}
+                    className="bg-white rounded-xl border border-stone-200 p-4 shadow-xs flex flex-col justify-between gap-3 hover:border-stone-300 transition"
+                  >
+                    <div>
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div>
+                          <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider block">
+                            {hotel.name}
+                          </span>
+                          <h4 className="font-bold text-stone-900 text-sm flex items-center gap-1.5 mt-0.5">
+                            <Tag className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                            <span>{promo.name}</span>
+                          </h4>
+                        </div>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${statusBadge.className}`}>
+                          {statusBadge.text}
+                        </span>
+                      </div>
+
+                      <div className="space-y-1 text-xs text-stone-600">
+                        <div className="flex items-center justify-between py-0.5 border-b border-stone-100">
+                          <span className="text-stone-400">Discount:</span>
+                          <span className="font-semibold text-stone-900">
+                            {promo.discountType === 'percentage'
+                              ? `${promo.discountPercentage}% OFF`
+                              : promo.fixedSlashAmount
+                              ? `Slash ${formatMoney(Object.values(promo.fixedSlashAmount)[0] || 0, Object.keys(promo.fixedSlashAmount)[0] as CurrencyCode)}`
+                              : 'Discount'}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between py-0.5 border-b border-stone-100">
+                          <span className="text-stone-400">Target Inventory:</span>
+                          <span className="font-medium text-stone-800">
+                            {typeof targetCount === 'number' ? `${targetCount} room${targetCount === 1 ? '' : 's'}` : 'All rooms in property'}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between py-0.5">
+                          <span className="text-stone-400">Duration:</span>
+                          <span className="font-medium text-stone-800">
+                            {promo.endDate ? `${promo.startDate || 'Now'} to ${promo.endDate}` : 'Ongoing (No expiration)'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Quick Campaign Actions */}
+                    <div className="pt-2 border-t border-stone-100 flex items-center justify-between gap-2 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => hotel.id && handleTogglePromotionActive(hotel.id, promo.id)}
+                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer border ${
+                          promo.isActive
+                            ? 'bg-stone-50 border-stone-200 text-stone-700 hover:bg-stone-100'
+                            : 'bg-stone-900 border-stone-900 text-white hover:bg-stone-800'
+                        }`}
+                      >
+                        {promo.isActive ? (
+                          <>
+                            <Pause className="w-3 h-3 text-stone-500" />
+                            <span>Pause</span>
+                          </>
+                        ) : (
+                          <>
+                            <Play className="w-3 h-3 text-stone-300" />
+                            <span>Activate</span>
+                          </>
+                        )}
+                      </button>
+
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => hotel.id && handleExtendPromotion(hotel.id, promo.id, 7)}
+                          className="px-2 py-1 text-[11px] font-medium text-stone-600 bg-stone-100 hover:bg-stone-200 rounded-md transition cursor-pointer"
+                          title="Extend campaign by 7 days"
+                        >
+                          +7 Days
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => hotel.id && handleExtendPromotion(hotel.id, promo.id, 30)}
+                          className="px-2 py-1 text-[11px] font-medium text-stone-600 bg-stone-100 hover:bg-stone-200 rounded-md transition cursor-pointer"
+                          title="Extend campaign by 30 days"
+                        >
+                          +30 Days
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => hotel.id && handleDeletePromotion(hotel.id, promo.id)}
+                          className="p-1 text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition cursor-pointer"
+                          title="Delete promotion"
+                          aria-label="Delete promotion"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      ) : (
+        /* Controls Grid */
+        <div className="p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Column: Room Selection & Filter (5 cols) */}
         <div className="lg:col-span-5 flex flex-col space-y-4 border-b lg:border-b-0 lg:border-r border-stone-200 pb-6 lg:pb-0 lg:pr-6">
           <div className="flex items-center justify-between">
@@ -512,7 +811,7 @@ export default function BulkRoomEditor({
             <button
               type="button"
               onClick={handleSelectAll}
-              className="font-semibold text-emerald-700 hover:text-emerald-800 cursor-pointer"
+              className="font-semibold text-stone-700 hover:text-stone-900 cursor-pointer"
             >
               Select All ({filteredRooms.length})
             </button>
@@ -587,7 +886,7 @@ export default function BulkRoomEditor({
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h4 className="font-serif font-bold text-stone-900 text-sm sm:text-base flex items-center gap-2">
-                  <TrendingDown className="w-4 h-4 text-emerald-600" />
+                  <TrendingDown className="w-4 h-4 text-stone-500" />
                   <span>Configure Base Rate Adjustment</span>
                 </h4>
                 <div className="flex items-center gap-2 text-xs">
@@ -623,7 +922,7 @@ export default function BulkRoomEditor({
                           : 'bg-white text-stone-700 border-stone-200 hover:border-stone-300'
                       }`}
                     >
-                      <Icon className={`w-3.5 h-3.5 mb-1 ${rateAdjustmentType === item.id ? 'text-amber-400' : 'text-stone-500'}`} />
+                      <Icon className={`w-3.5 h-3.5 mb-1 ${rateAdjustmentType === item.id ? 'text-stone-400' : 'text-stone-500'}`} />
                       <span className="font-semibold leading-tight">{item.label}</span>
                     </button>
                   );
@@ -846,7 +1145,7 @@ export default function BulkRoomEditor({
                     </>
                   ) : (
                     <>
-                      <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                      <CheckCircle2 className="w-4 h-4" />
                       <span>Apply Rates to {selectedRooms.length} Room{selectedRooms.length === 1 ? '' : 's'}</span>
                     </>
                   )}
@@ -860,7 +1159,7 @@ export default function BulkRoomEditor({
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h4 className="font-serif font-bold text-stone-900 text-sm sm:text-base flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-amber-500" />
+                  <Sparkles className="w-4 h-4 text-stone-500" />
                   <span>Configure Promotional Slash Campaign</span>
                 </h4>
                 <span className="text-xs text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full font-semibold">
@@ -1141,7 +1440,7 @@ export default function BulkRoomEditor({
                     </>
                   ) : (
                     <>
-                      <Zap className="w-4 h-4 text-amber-400" />
+                      <Zap className="w-4 h-4" />
                       <span>Launch Promotion on {selectedRooms.length} Room{selectedRooms.length === 1 ? '' : 's'}</span>
                     </>
                   )}
@@ -1151,6 +1450,7 @@ export default function BulkRoomEditor({
           )}
         </div>
       </div>
+      )}
     </div>
   );
 }

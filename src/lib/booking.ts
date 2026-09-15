@@ -6,7 +6,7 @@
  * cannot drift apart.
  */
 
-import { Booking, CurrencyCode, RoomType } from '../types';
+import { Booking, CurrencyCode, RoomType, Promotion } from '../types';
 import { DateStr, daysUntil, nightsBetween } from './dates';
 import { packagePrice, roomExtraGuestFee, roomPrice, roomPrimaryCurrency, resolveCurrency } from './currency';
 
@@ -40,7 +40,7 @@ export function computeBookingPricing(
   quantity: number,
   packageIds: string[],
   requestedCurrency?: CurrencyCode,
-  discountPercentage: number = 0
+  discountPercentageOrPromo: number | Promotion | null = 0
 ): BookingPricing {
   const currency = resolveCurrency(room, requestedCurrency);
   const primary = roomPrimaryCurrency(room);
@@ -67,7 +67,29 @@ export function computeBookingPricing(
     else if (pkg.type === 'per_room') packagesTotal += price * nights * quantity;
     else packagesTotal += price;
   }
-  const discountAmount = discountPercentage > 0 ? (accommodationTotal * discountPercentage) / 100 : 0;
+
+  let discountPercentage = 0;
+  let discountAmount = 0;
+
+  if (typeof discountPercentageOrPromo === 'number') {
+    discountPercentage = Math.max(0, Math.min(100, discountPercentageOrPromo));
+    discountAmount = discountPercentage > 0 ? (accommodationTotal * discountPercentage) / 100 : 0;
+  } else if (discountPercentageOrPromo) {
+    const promo = discountPercentageOrPromo;
+    if (promo.discountType === 'fixed_slash' && promo.fixedSlashAmount) {
+      const fixedSlash = promo.fixedSlashAmount[currency] ?? (
+        currency === 'USD'
+          ? Math.round((promo.fixedSlashAmount['MWK'] || 0) / 1750)
+          : (promo.fixedSlashAmount['USD'] || 0) * 1750
+      );
+      const totalFixedSlash = Math.max(0, fixedSlash) * nights * quantity;
+      discountAmount = Math.min(accommodationTotal, totalFixedSlash);
+      discountPercentage = accommodationTotal > 0 ? Math.round((discountAmount / accommodationTotal) * 100) : 0;
+    } else {
+      discountPercentage = Math.max(0, Math.min(100, promo.discountPercentage || 0));
+      discountAmount = discountPercentage > 0 ? (accommodationTotal * discountPercentage) / 100 : 0;
+    }
+  }
 
   return {
     currency,
@@ -81,7 +103,7 @@ export function computeBookingPricing(
     packagesTotal,
     discountPercentage,
     discountAmount,
-    total: accommodationTotal - discountAmount + packagesTotal,
+    total: Math.max(0, accommodationTotal - discountAmount + packagesTotal),
     unavailablePackageIds,
   };
 }

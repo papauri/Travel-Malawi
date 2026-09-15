@@ -21,6 +21,7 @@ import AdminAISettings from '../components/AdminAISettings';
 import AdminDocsHub from '../components/AdminDocsHub';
 import AdminEmailSettings from '../components/AdminEmailSettings';
 import AdminWhatsAppSettings from '../components/AdminWhatsAppSettings';
+import AdminLogs from '../components/AdminLogs';
 import { getHotelImage } from '../lib/images';
 import { isAdmin, isGlobalAdmin, isMarketing, isHotelManager, userRoles, toRoleFields } from '../lib/roles';
 import { formatMoney } from '../lib/booking';
@@ -28,7 +29,7 @@ import { Navigation, TrendingUp, BookOpen, Mail, Settings } from 'lucide-react';
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import PriceDisplay from '../components/PriceDisplay';
 
-type Tab = 'overview' | 'analytics' | 'properties' | 'users' | 'bookings' | 'destinations' | 'content' | 'ai' | 'docs' | 'settings';
+type Tab = 'overview' | 'analytics' | 'properties' | 'users' | 'bookings' | 'destinations' | 'content' | 'ai' | 'logs' | 'docs' | 'settings';
 
 export default function AdminDashboard() {
   const { user, loading: authLoading, resetPassword } = useAuth();
@@ -528,6 +529,7 @@ export default function AdminDashboard() {
       { id: 'bookings' as Tab, label: 'All Bookings', icon: CalendarRange },
       { id: 'destinations' as Tab, label: 'Destinations', icon: Navigation },
       { id: 'content' as Tab, label: 'Content & Legal', icon: FileText },
+      { id: 'logs' as Tab, label: 'System Logs', icon: Activity, visible: isGlobalAdmin(user) },
       { id: 'ai' as Tab, label: 'Assistant & Provider Keys', icon: Cpu, visible: isGlobalAdmin(user) },
       { id: 'settings' as Tab, label: 'Channels & Settings', icon: Settings, visible: isGlobalAdmin(user), badge: 'Super Admin' },
       { id: 'docs' as Tab, label: 'Executive Docs (.txt)', icon: BookOpen, badge: 'Admin' },
@@ -584,49 +586,22 @@ export default function AdminDashboard() {
           >
             {/* Mobile & Tablet Collapsible Menu Trigger */}
             <div className="lg:hidden space-y-2">
-              <div className="flex items-center gap-2">
-                <div className="relative flex-1 min-w-0">
-                  <div className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-stone-500">
-                    <CurrentTabIcon className="w-4 h-4" />
-                  </div>
-                  <select
-                    id="admin-dashboard-section-dropdown"
-                    value={activeTab}
-                    onChange={(e) => {
-                      setActiveTab(e.target.value as Tab);
-                      setIsMobileMenuOpen(false);
-                    }}
-                    className="w-full bg-white border border-stone-200 rounded-xl pl-8.5 pr-8 py-2 text-xs sm:text-sm font-semibold text-stone-900 appearance-none shadow-2xs focus:ring-2 focus:ring-stone-900 focus:outline-none cursor-pointer"
-                  >
-                    {adminTabs.map((tab) => {
-                      let badge = '';
-                      if (tab.badge) badge = ` · (${tab.badge})`;
-                      return (
-                        <option key={`admin-opt-${tab.id}`} value={tab.id}>
-                          {tab.label}{badge}
-                        </option>
-                      );
-                    })}
-                  </select>
-                  <ChevronDown className="w-4 h-4 text-stone-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <button
+                type="button"
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="w-full flex items-center justify-between bg-white border border-stone-200 rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-stone-900 shadow-2xs hover:bg-stone-50 transition cursor-pointer"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <CurrentTabIcon className="w-4 h-4 text-stone-500 shrink-0" />
+                  <span className="truncate">{currentTabItem.label}</span>
+                  {currentTabItem.badge && (
+                    <span className={`text-[10px] px-2 py-0.5 rounded-lg font-bold shrink-0 ml-1 ${typeof currentTabItem.badge === 'number' ? 'bg-amber-500 text-white' : 'bg-stone-100 text-stone-700'}`}>
+                      {currentTabItem.badge}
+                    </span>
+                  )}
                 </div>
-
-                {currentTabItem.badge && (
-                  <span className={`text-[10px] px-2 py-1 rounded-lg font-bold shrink-0 ${typeof currentTabItem.badge === 'number' ? 'bg-amber-500 text-white' : 'bg-stone-100 text-stone-700'}`}>
-                    {currentTabItem.badge}
-                  </span>
-                )}
-
-                <button
-                  type="button"
-                  onClick={() => setIsMobileMenuOpen(prev => !prev)}
-                  className="shrink-0 px-2.5 sm:px-3 py-2 bg-white border border-stone-200 rounded-xl text-xs font-semibold text-stone-700 hover:bg-stone-50 shadow-2xs flex items-center gap-1 transition cursor-pointer"
-                  title="Browse all admin sections"
-                >
-                  <span>{isMobileMenuOpen ? 'Close' : 'Grid'}</span>
-                  <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isMobileMenuOpen ? 'rotate-180' : ''}`} />
-                </button>
-              </div>
+                <ChevronDown className={`w-4 h-4 text-stone-400 shrink-0 transition-transform duration-200 ${isMobileMenuOpen ? 'rotate-180' : ''}`} />
+              </button>
 
               {/* Collapsible Drawer on Mobile & Tablet */}
               {isMobileMenuOpen && (
@@ -1932,6 +1907,11 @@ export default function AdminDashboard() {
         {/* ===================== AI CONFIGURATION TAB ===================== */}
         {activeTab === 'ai' && (
           <AdminAISettings />
+        )}
+
+        {/* ===================== SYSTEM LOGS TAB ===================== */}
+        {activeTab === 'logs' && (
+          <AdminLogs />
         )}
 
         {/* ===================== EXECUTIVE DOCS TAB ===================== */}

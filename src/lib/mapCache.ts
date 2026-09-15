@@ -175,6 +175,43 @@ export function saveCachedRooms(rooms: RoomType[]): void {
 }
 
 /**
+ * Updates a batch of rooms in the local cache or adds them if missing
+ */
+export function saveUpdatedRooms(updatedRooms: RoomType[]): void {
+  try {
+    if (!updatedRooms || updatedRooms.length === 0) return;
+    const existing = getCachedRooms();
+    const map = new Map(updatedRooms.map(r => [r.id, r]));
+    const merged = existing.length > 0
+      ? existing.map(r => (r.id && map.has(r.id) ? { ...r, ...map.get(r.id) } : r))
+      : updatedRooms;
+
+    const existingIds = new Set(existing.map(r => r.id));
+    for (const r of updatedRooms) {
+      if (r.id && !existingIds.has(r.id)) {
+        merged.push(r);
+      }
+    }
+    localStorage.setItem(ROOMS_CACHE_KEY, JSON.stringify(merged));
+    updateMetadata({ roomCount: merged.length });
+  } catch (err) {
+    console.warn('Failed to update cached rooms:', err);
+  }
+}
+
+/**
+ * Explicitly clears or invalidates the cached rooms and hotels
+ */
+export function invalidateListingCache(): void {
+  try {
+    localStorage.removeItem(ROOMS_CACHE_KEY);
+    localStorage.removeItem(HOTELS_CACHE_KEY);
+  } catch (err) {
+    console.warn('Failed to invalidate listing cache:', err);
+  }
+}
+
+/**
  * Retrieves cached rooms from local storage
  */
 export function getCachedRooms(): RoomType[] {

@@ -26,6 +26,7 @@ import {
   removeLearnedDirective, 
   LearnedDirective 
 } from '../lib/assistantMemory';
+import { logSystemEvent } from '../lib/logger';
 import WalkthroughTooltip from './WalkthroughTooltip';
 
 interface ChatMessage {
@@ -580,8 +581,8 @@ export default function OperationsCopilot() {
     const standardGreetings = [
       'hi', 'hello', 'hey', 'good morning', 'good afternoon', 'good evening',
       'hi there', 'hello there', 'muli bwanji', 'moni', 'bo', 'sup', 'yo',
-      'howdy', 'greetings', 'morning', 'afternoon', 'evening', 'hi copilot',
-      'hello copilot', 'hey copilot'
+      'howdy', 'greetings', 'morning', 'afternoon', 'evening', 'hi ulendo',
+      'hello ulendo', 'hey ulendo', 'ulendo', 'hi copilot', 'hello copilot', 'hey copilot'
     ];
     const conversationalPhrases = [
       'how are you', 'how r u', 'who are you', 'what are you', 'what can you do',
@@ -658,10 +659,10 @@ export default function OperationsCopilot() {
       return 'Reviewing hospitality guidelines...';
     }
     if (intent === 'greeting_or_chat') {
-      return 'Concierge is replying...';
+      return 'Ulendo is replying...';
     }
     if (intent === 'tourism_inquiry') {
-      return 'Concierge is preparing travel insights...';
+      return 'Ulendo is preparing travel insights...';
     }
     if (intent === 'database_action') {
       return 'Preparing operational proposal...';
@@ -1245,7 +1246,66 @@ export default function OperationsCopilot() {
         actionSummaryText = `${featured ? '🌟 Featured' : 'Removed from featured'} ${targetIds.length} properties on the homepage.`;
         toast.success(`Homepage featured status updated!`);
 
-      // 9. INTELLIGENT UNIVERSAL FALLBACK (Prevents any proposal from failing silently)
+      // 9. PROMOTIONS / DISCOUNTS
+      } else if (action.type === 'apply_promotion') {
+        if (!action.discountPercentage) {
+          toast.error('Discount percentage missing.');
+          return;
+        }
+
+        const promoId = crypto.randomUUID();
+        const discountPct = Number(action.discountPercentage);
+        const start = action.startDate || new Date().toISOString().split('T')[0];
+        
+        let end = action.endDate;
+        if (!end) {
+          const eDate = new Date();
+          eDate.setMonth(eDate.getMonth() + 1);
+          end = eDate.toISOString().split('T')[0];
+        }
+
+        const promoName = action.promotionName || `${discountPct}% Flash Sale`;
+
+        for (const hid of targetIds) {
+          const hotel = properties.find(p => p.id === hid);
+          const currentPromos = hotel?.promotions || [];
+          // Target all active rooms
+          const activeRoomIds = rooms.filter(r => r.hotelId === hid).map(r => r.id);
+
+          const newPromo = {
+            id: promoId,
+            name: promoName,
+            discountPercentage: discountPct,
+            startDate: start,
+            endDate: end,
+            isActive: true,
+            applicableRoomIds: activeRoomIds
+          };
+
+          const updatedPromos = [...currentPromos, newPromo];
+          await updateDoc(doc(db, 'hotels', hid), { promotions: updatedPromos });
+        }
+
+        setProperties(prev => prev.map(p => {
+          if (!targetIds.includes(p.id!)) return p;
+          const currentPromos = p.promotions || [];
+          const activeRoomIds = rooms.filter(r => r.hotelId === p.id).map(r => r.id);
+          const newPromo = {
+            id: promoId,
+            name: promoName,
+            discountPercentage: discountPct,
+            startDate: start,
+            endDate: end,
+            isActive: true,
+            applicableRoomIds: activeRoomIds
+          };
+          return { ...p, promotions: [...currentPromos, newPromo] };
+        }));
+
+        actionSummaryText = `Applied **${discountPct}% discount** ("${promoName}") across ${targetIds.length} properties, targeting all active rooms.`;
+        toast.success(`Promotion applied successfully!`, { icon: '🏷️' });
+
+      // 10. INTELLIGENT UNIVERSAL FALLBACK (Prevents any proposal from failing silently)
       } else {
         // If there's an amenity field
         if (action.amenity) {
@@ -1261,6 +1321,18 @@ export default function OperationsCopilot() {
           actionSummaryText = `Executed operational update across ${targetIds.length} properties.`;
         }
         toast.success('Operational update applied successfully!');
+      }
+      
+      if (user) {
+        await logSystemEvent('action', actionSummaryText, {
+          action,
+          targetIds,
+          targetNames,
+        }, {
+          id: user.uid,
+          name: user.displayName || 'Unknown',
+          email: user.email || 'Unknown'
+        });
       }
 
       // Mark action applied on this message
@@ -1296,7 +1368,7 @@ export default function OperationsCopilot() {
     addLearnedDirective(user.uid, newDirectiveInput.trim(), userIsAdmin ? 'admin' : 'hotel_manager');
     setLearnedRules(getLearnedDirectives(user.uid));
     setNewDirectiveInput('');
-    toast.success('Added new directive to Copilot memory!');
+    toast.success('Added new directive to Ulendo memory!');
   };
 
   const handleDeleteDirective = (id: string) => {
@@ -1324,7 +1396,7 @@ export default function OperationsCopilot() {
           <WalkthroughTooltip
             id="walkthrough-concierge-trigger"
             icon="🛎️"
-            title="Concierge Assistant"
+            title="Ulendo Concierge"
             description="Tap anytime for live room audits, revenue metrics & instant operations help."
             arrowPosition="bottom-right"
             className="absolute bottom-full right-0 mb-3 w-64 sm:w-72 max-w-[calc(100vw-2.5rem)] pointer-events-auto"
@@ -1351,8 +1423,8 @@ export default function OperationsCopilot() {
           }`}
           whileHover={{ scale: 1.08 }}
           whileTap={{ scale: 0.94 }}
-          title={isOpen && !isMinimized ? 'Minimize Concierge' : isOpen && isMinimized ? 'Expand Concierge Assistant (Active)' : 'Concierge Assistant'}
-          aria-label="Concierge Assistant"
+          title={isOpen && !isMinimized ? 'Minimize Ulendo' : isOpen && isMinimized ? 'Expand Ulendo Concierge (Active)' : 'Ulendo Concierge'}
+          aria-label="Ulendo Concierge"
         >
           {/* Little Concierge Avatar Fella */}
           <ConciergeAvatar size="md" isOnline={true} />
@@ -1403,7 +1475,7 @@ export default function OperationsCopilot() {
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5 sm:gap-2">
                       <h3 className="text-xs font-bold text-stone-100 tracking-wide flex items-center gap-1 sm:gap-1.5 truncate">
-                        {userIsAdmin ? 'Platform Concierge' : 'Lodge Concierge'}
+                        {userIsAdmin ? 'Ulendo • Platform Concierge' : 'Ulendo • Lodge Concierge'}
                         <ConciergeBell className="w-3 h-3 text-amber-400 shrink-0" />
                       </h3>
                       <span className="text-[9px] font-semibold bg-stone-800 text-stone-300 border border-stone-700 px-1.5 py-0.2 rounded-full uppercase tracking-wider shrink-0">
@@ -1656,7 +1728,7 @@ export default function OperationsCopilot() {
                   <div className="space-y-2">
                     {learnedRules.length === 0 ? (
                       <div className="p-4 bg-white rounded-2xl border border-stone-200 text-center text-xs text-stone-500">
-                        No custom directives saved yet. Directives you teach the copilot will show up here.
+                        No custom directives saved yet. Directives you teach Ulendo will show up here.
                       </div>
                     ) : (
                       learnedRules.map((rule, rIdx) => (
@@ -1708,7 +1780,7 @@ export default function OperationsCopilot() {
                                 <div className="w-5 h-5 rounded-md bg-stone-900 text-amber-400 flex items-center justify-center shrink-0 shadow-2xs">
                                   <ConciergeBell className="w-3.5 h-3.5 text-amber-400" />
                                 </div>
-                                <span className="font-semibold text-stone-900 tracking-tight">StayOS Copilot</span>
+                                <span className="font-semibold text-stone-900 tracking-tight">Ulendo Concierge</span>
                                 <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-stone-100 text-stone-500 font-medium">
                                   Live Data
                                 </span>

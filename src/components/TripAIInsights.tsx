@@ -599,7 +599,7 @@ Plan and book direct with 0% fees on Travel Malawi: https://travel-malawi.ai.stu
             <div className="flex items-center gap-2">
               <MessageCircle className="w-5 h-5 text-emerald-700" />
               <h4 className="font-serif text-xl font-bold text-stone-900">
-                Ask the Malawi Route Concierge
+                Ask Ulendo — Malawi Route Concierge
               </h4>
             </div>
             <p className="text-xs text-stone-500">
@@ -651,7 +651,7 @@ Plan and book direct with 0% fees on Travel Malawi: https://travel-malawi.ai.stu
             {chatLoading && (
               <div className="flex items-center gap-2 p-3 bg-white rounded-2xl border border-stone-200 text-stone-500 w-fit">
                 <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-600" />
-                <span>Concierge is consulting Malawi road &amp; lodge records...</span>
+                <span>Ulendo is consulting Malawi road &amp; lodge records...</span>
               </div>
             )}
             <div ref={chatEndRef} />

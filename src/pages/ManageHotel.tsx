@@ -597,6 +597,13 @@ export default function ManageHotel() {
       // `status` from page load overwrite an admin's decision.
       for (const field of HOTEL_READONLY_FIELDS) delete updateData[field];
 
+      // Strip out any undefined values to avoid Firestore errors
+      Object.keys(updateData).forEach(key => {
+        if (updateData[key] === undefined) {
+          delete updateData[key];
+        }
+      });
+
       await updateDoc(doc(db, 'hotels', id), updateData);
       setHotel({ ...hotel, ...updateData } as Hotel);
       toast.success('Property details updated successfully!');
@@ -794,6 +801,13 @@ export default function ManageHotel() {
         blockedDates: [...new Set(blockedDates ?? [])].sort(),
       } as Record<string, unknown>;
       delete roomPayload.id;
+
+      // Strip out any undefined values to avoid Firestore errors
+      Object.keys(roomPayload).forEach(key => {
+        if (roomPayload[key] === undefined) {
+          delete roomPayload[key];
+        }
+      });
 
             if (editingRoomId === 'new') {
         const docRef = await addDoc(collection(db, 'room_types'), roomPayload);
@@ -1247,66 +1261,33 @@ export default function ManageHotel() {
               <>
                 {/* Compact Single-Row Mobile & Tablet Section Bar */}
                 <div className="flex items-center gap-2">
-                  <div className="relative flex-1 min-w-0">
-                    <div className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-stone-500">
-                      <CurrentIcon className="w-4 h-4" />
-                    </div>
-                    <select
-                      id="hotel-dashboard-section-dropdown"
-                      value={activeTab}
-                      onChange={(e) => {
-                        requestTab(e.target.value as Tab);
-                        setIsMobileNavOpen(false);
-                      }}
-                      className="w-full bg-white border border-stone-200 rounded-xl pl-8.5 pr-8 py-2 text-xs sm:text-sm font-semibold text-stone-900 appearance-none shadow-2xs focus:ring-2 focus:ring-stone-900 focus:outline-none cursor-pointer"
-                    >
-                      {tabsList.map((tab) => {
-                        const pendingCount = tab.id === 'bookings' ? bookings.filter(b => b.status === 'pending').length : 0;
-                        const unreadInquiryCount = tab.id === 'inquiries' ? inquiries.filter(i => 
-                          i.lastSenderId !== user?.uid && 
-                          i.updatedAt && 
-                          (!i.managerLastOpenedAt || i.updatedAt > i.managerLastOpenedAt)
-                        ).length : 0;
-                        let badge = '';
-                        if (pendingCount > 0) badge += ` · (${pendingCount} pending)`;
-                        if (unreadInquiryCount > 0) badge += ` · (${unreadInquiryCount} new)`;
-                        if (dirtyOn(tab.id)) badge += ' · (unsaved)';
-                        return (
-                          <option key={`nav-opt-sel-${tab.id}`} value={tab.id}>
-                            {tab.label}{badge}
-                          </option>
-                        );
-                      })}
-                    </select>
-                    <ChevronDown className="w-4 h-4 text-stone-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  </div>
-
-                  {(currentPendingCount > 0 || currentUnreadCount > 0 || dirtyOn(activeTab)) && (
-                    <div className="flex items-center gap-1 shrink-0">
-                      {dirtyOn(activeTab) && (
-                        <span title="Unsaved changes" className="h-2 w-2 rounded-full bg-amber-500 shrink-0" />
-                      )}
-                      {currentPendingCount > 0 && (
-                        <span className="bg-emerald-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
-                          {currentPendingCount}
-                        </span>
-                      )}
-                      {currentUnreadCount > 0 && (
-                        <span className="bg-rose-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
-                          {currentUnreadCount}
-                        </span>
-                      )}
-                    </div>
-                  )}
-
                   <button
                     type="button"
                     onClick={() => setIsMobileNavOpen(!isMobileNavOpen)}
-                    className="shrink-0 px-2.5 sm:px-3 py-2 bg-white border border-stone-200 rounded-xl text-xs font-semibold text-stone-700 hover:bg-stone-50 shadow-2xs flex items-center gap-1 transition cursor-pointer"
-                    title="Browse all sections as grid"
+                    className="flex-1 w-full flex items-center justify-between bg-white border border-stone-200 rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-stone-900 shadow-2xs hover:bg-stone-50 transition cursor-pointer"
                   >
-                    <span>{isMobileNavOpen ? 'Close' : 'Grid'}</span>
-                    <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isMobileNavOpen ? 'rotate-180' : ''}`} />
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <CurrentIcon className="w-4 h-4 text-stone-500 shrink-0" />
+                      <span className="truncate">{currentTabObj.label}</span>
+                      {(currentPendingCount > 0 || currentUnreadCount > 0 || dirtyOn(activeTab)) && (
+                        <div className="flex items-center gap-1 shrink-0 ml-1">
+                          {dirtyOn(activeTab) && (
+                            <span title="Unsaved changes" className="h-2 w-2 rounded-full bg-stone-300 shrink-0" />
+                          )}
+                          {currentPendingCount > 0 && (
+                            <span className="bg-stone-700 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+                              {currentPendingCount}
+                            </span>
+                          )}
+                          {currentUnreadCount > 0 && (
+                            <span className="bg-stone-700 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+                              {currentUnreadCount}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <ChevronDown className={`w-4 h-4 text-stone-400 shrink-0 transition-transform duration-200 ${isMobileNavOpen ? 'rotate-180' : ''}`} />
                   </button>
                 </div>
 
@@ -1342,15 +1323,15 @@ export default function ManageHotel() {
                           </div>
                           <div className="flex items-center gap-1.5 shrink-0">
                             {dirtyOn(tab.id) && (
-                              <span title="Unsaved changes" className="h-2 w-2 rounded-full bg-amber-500" />
+                              <span title="Unsaved changes" className="h-2 w-2 rounded-full bg-stone-300" />
                             )}
                             {pendingCount > 0 && (
-                              <span className="bg-emerald-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+                              <span className="bg-stone-700 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
                                 {pendingCount}
                               </span>
                             )}
                             {unreadInquiryCount > 0 && (
-                              <span className="bg-rose-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+                              <span className="bg-stone-700 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
                                 {unreadInquiryCount}
                               </span>
                             )}
@@ -1403,22 +1384,22 @@ export default function ManageHotel() {
                 <Icon className={`h-4 w-4 shrink-0 ${isActive ? 'text-white' : 'text-stone-500'}`} />
                 <span>{tab.label}</span>
                 {dirtyOn(tab.id) && (
-                  <span title="Unsaved changes" className="h-2 w-2 rounded-full bg-amber-500 shrink-0" />
+                  <span title="Unsaved changes" className="h-2 w-2 rounded-full bg-stone-300 shrink-0" />
                 )}
                 {tab.id === 'restaurant' && hotel.restaurant?.enabled && (
                   <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full uppercase shrink-0 ${
-                    isActive ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-800'
+                    isActive ? 'bg-white/20 text-white' : 'bg-stone-100 text-stone-700'
                   }`}>
                     Live
                   </span>
                 )}
                 {pendingCount > 0 && (
-                  <span className="bg-emerald-600 text-white text-[11px] px-2 py-0.5 rounded-full shrink-0 font-bold">
+                  <span className={`text-[11px] px-2 py-0.5 rounded-full shrink-0 font-bold ${isActive ? 'bg-white/20 text-white' : 'bg-stone-100 text-stone-700'}`}>
                     {pendingCount}
                   </span>
                 )}
                 {unreadInquiryCount > 0 && (
-                  <span className="inline-flex items-center gap-1 bg-rose-600 text-white text-[11px] px-2 py-0.5 rounded-full shadow-xs shrink-0 font-bold">
+                  <span className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full shadow-xs shrink-0 font-bold ${isActive ? 'bg-white/20 text-white' : 'bg-stone-100 text-stone-700'}`}>
                     <Bell className="w-3 h-3 animate-bell-ring" />
                     {unreadInquiryCount} new
                   </span>
@@ -1499,34 +1480,6 @@ export default function ManageHotel() {
 
   <SectionCard title="Property Category" description="Choose a category for your property.">
     <div className="space-y-3">
-      {/* Mobile Quick Dropdown */}
-      <div className="sm:hidden">
-        <label htmlFor="mobile-property-category-select" className="block text-[11px] font-bold text-stone-500 uppercase tracking-wider mb-1">Quick Select Category</label>
-        <div className="relative">
-          <select
-            id="mobile-property-category-select"
-            value={(editHotelData.categories ?? [])[0] || ''}
-            onChange={(e) => {
-              const val = e.target.value;
-              if (!val) return;
-              const current = editHotelData.categories ?? [];
-              if (!current.includes(val)) {
-                setEditHotelData({ ...editHotelData, categories: [...current, val] });
-              }
-            }}
-            className="w-full bg-stone-50 border border-stone-200 rounded-xl pl-3 pr-8 py-2 text-xs font-semibold text-stone-800 appearance-none outline-none focus:border-stone-900"
-          >
-            <option value="">+ Add category from list...</option>
-            {PROPERTY_CATEGORIES.map((cat, idx) => (
-              <option key={`cat-opt-${cat}-${idx}`} value={cat} disabled={(editHotelData.categories ?? []).includes(cat)}>
-                {cat} {(editHotelData.categories ?? []).includes(cat) ? '✓ (Selected)' : ''}
-              </option>
-            ))}
-          </select>
-          <ChevronDown className="w-4 h-4 text-stone-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-        </div>
-      </div>
-
       <div>
         <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Category Tags</label>
         <div className="flex flex-wrap gap-1.5 sm:gap-2">
@@ -2377,10 +2330,10 @@ export default function ManageHotel() {
               <button
                 type="button"
                 onClick={() => setShowBulkEditor(prev => !prev)}
-                className="inline-flex items-center gap-1.5 bg-amber-400 hover:bg-amber-300 text-stone-950 font-bold px-4 py-2 rounded-xl text-xs transition cursor-pointer shadow-2xs"
+                className="inline-flex items-center gap-1.5 bg-stone-900 hover:bg-stone-800 text-white font-bold px-4 py-2 rounded-xl text-xs transition cursor-pointer shadow-2xs"
               >
                 <SlidersHorizontal className="w-3.5 h-3.5" />
-                <span>{showBulkEditor ? 'Close Bulk Room Editor' : '⚡ Bulk Room Rates & Promos Editor'}</span>
+                <span>{showBulkEditor ? 'Close Bulk Room Editor' : 'Bulk Room Rates & Promos Editor'}</span>
               </button>
             </div>
           )}
@@ -2426,11 +2379,11 @@ export default function ManageHotel() {
                     onClick={() => setShowBulkEditor(prev => !prev)}
                     className={`flex items-center justify-center gap-1.5 px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-full text-xs sm:text-sm font-semibold transition shadow-2xs cursor-pointer ${
                       showBulkEditor
-                        ? 'bg-amber-400 text-stone-950 hover:bg-amber-300 ring-2 ring-amber-500/50'
+                        ? 'bg-stone-900 text-white hover:bg-stone-800 ring-2 ring-stone-900/50'
                         : 'bg-white hover:bg-stone-100 text-stone-800 border border-stone-200'
                     }`}
                   >
-                    <SlidersHorizontal className="h-4 w-4 text-amber-600" />
+                    <SlidersHorizontal className="h-4 w-4" />
                     <span>{showBulkEditor ? 'Close Bulk Editor' : 'Bulk Edit Rates & Promos'}</span>
                   </button>
                 )}
