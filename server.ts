@@ -1,9 +1,10 @@
+import 'dotenv/config';
 import express from 'express';
 import path from 'path';
 import multer from 'multer';
 import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
-import { getPublicAIStatus, getAdminAIConfig, loadAIConfig, saveAIConfig, AIProviderId, getEffectiveApiKey } from './server/aiConfig';
+import { getPublicAIStatus, getAdminAIConfig, loadAIConfig, saveAIConfig, AIProviderId, getEffectiveApiKey, fetchLiveGeminiModels } from './server/aiConfig';
 import { 
   executeAIGeneration, 
   executeOperationsAssistantChat, 
@@ -281,14 +282,25 @@ async function startServer() {
   // Global Admin Test Connection
   app.post('/api/admin/ai-test', async (req, res) => {
     try {
-      const { provider } = req.body;
+      const { provider, apiKey, model } = req.body;
       if (!provider) {
         return res.status(400).json({ error: 'Provider is required' });
       }
-      const testResult = await testProviderConnection(provider as AIProviderId);
+      const testResult = await testProviderConnection(provider as AIProviderId, apiKey, model);
       res.json(testResult);
     } catch (err: any) {
       res.status(500).json({ error: err?.message || 'Connection test failed' });
+    }
+  });
+
+  // Check live modern Gemini models directly from Google API
+  app.get('/api/admin/gemini-live-models', async (req, res) => {
+    try {
+      const apiKey = typeof req.query.apiKey === 'string' ? req.query.apiKey : undefined;
+      const result = await fetchLiveGeminiModels(apiKey);
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err?.message || 'Failed to fetch live models' });
     }
   });
 

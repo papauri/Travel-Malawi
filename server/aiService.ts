@@ -1,4 +1,4 @@
-import { AIProviderId, getEffectiveApiKey, loadAIConfig, markProviderValidity, getAvailableProviders, AISystemConfig } from './aiConfig';
+import { AIProviderId, getEffectiveApiKey, loadAIConfig, saveAIConfig, markProviderValidity, getAvailableProviders, AISystemConfig } from './aiConfig';
 
 export interface GenerationRequest {
   action: 'draft' | 'polish' | 'shorten' | 'highlights' | 'suggest_amenities' | 'suggest_rooms' | 'review_listing' | 'suggest_rate' | 'lookup_property';
@@ -363,19 +363,18 @@ async function callGemini(
   temperature: number = 0.7,
   maxTokens: number = 750
 ): Promise<string> {
-  let cleanModel = model.replace(/^models\//, '');
-  // Map legacy, typo, or experimental flash model names to production gemini-2.0-flash
+  let cleanModel = (model || '').replace(/^models\//, '').trim();
+  // Automatically upgrade any legacy/deprecated models (gemini-2.0-flash, gemini-1.5-flash, gemini-1.5-pro, etc.) to modern Gemini 3.8 Flash
   if (
-    cleanModel === 'gemini-3.6-flash' ||
-    cleanModel === 'gemini-3.8-flash' ||
-    cleanModel === 'gemini-2.5-flash' ||
-    cleanModel === 'gemini-flash' ||
-    cleanModel === 'gemini-flash-latest' ||
-    !cleanModel
+    !cleanModel ||
+    cleanModel === 'gemini-2.0-flash' ||
+    cleanModel === 'gemini-2.0-pro' ||
+    cleanModel === 'gemini-2.0-flash-thinking' ||
+    cleanModel === 'gemini-1.5-flash' ||
+    cleanModel === 'gemini-1.5-pro' ||
+    cleanModel === 'gemini-pro'
   ) {
-    cleanModel = 'gemini-2.0-flash';
-  } else if (cleanModel.includes('pro') && (cleanModel.includes('3.1') || cleanModel.includes('3.0') || cleanModel.includes('preview'))) {
-    cleanModel = 'gemini-1.5-pro';
+    cleanModel = 'gemini-3.8-flash';
   }
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${apiKey}`;
   const maxRetries = 4;
@@ -625,7 +624,7 @@ async function executeWithProvider(
         return callGemini(
           'gemini',
           apiKey,
-          model || 'gemini-2.0-flash',
+          model || 'gemini-3.8-flash',
           SYSTEM_PROMPT,
           userPrompt,
           0.7,
@@ -1700,7 +1699,7 @@ USER MESSAGE:
         case 'groq':
           return callOpenAICompatible('groq', 'https://api.groq.com/openai/v1/chat/completions', apiKey, model || 'llama-3.1-8b-instant', chatSystemPrompt, chatUserPrompt, 0.5, 300);
         case 'gemini':
-          return callGemini('gemini', apiKey, model || 'gemini-2.0-flash', chatSystemPrompt, chatUserPrompt, 0.5, 300);
+          return callGemini('gemini', apiKey, model || 'gemini-3.8-flash', chatSystemPrompt, chatUserPrompt, 0.5, 300);
         case 'anthropic':
           return callAnthropic('anthropic', apiKey, model || 'claude-3-5-haiku-20241022', chatSystemPrompt, chatUserPrompt, 0.5, 300);
         default:
@@ -2054,7 +2053,7 @@ USER MESSAGE:
         return callGemini(
           'gemini',
           apiKey,
-          model || 'gemini-2.0-flash',
+          model || 'gemini-3.8-flash',
           OPERATIONS_SYSTEM_PROMPT,
           finalUserPrompt,
           0.4,
@@ -2271,7 +2270,11 @@ export async function executeOperationsAssistantChat(req: OperationsAssistantReq
   throw lastError || new Error('All AI providers failed.');
 }
 
-export async function testProviderConnection(providerId: AIProviderId): Promise<{
+export async function testProviderConnection(
+  providerId: AIProviderId,
+  overrideApiKey?: string,
+  overrideModel?: string
+): Promise<{
   success: boolean;
   sample?: string;
   latencyMs: number;
@@ -2282,15 +2285,26 @@ export async function testProviderConnection(providerId: AIProviderId): Promise<
   const startTime = Date.now();
   try {
     const config = loadAIConfig();
-    const apiKey = getEffectiveApiKey(providerId);
+    
+    // If an explicit API key was submitted with the test, persist it
+    if (overrideApiKey && overrideApiKey.trim().length > 5) {
+      config.providers[providerId].apiKey = overrideApiKey.trim();
+      config.providers[providerId].enabled = true;
+      if (overrideModel && overrideModel.trim()) {
+        config.providers[providerId].model = overrideModel.trim();
+      }
+      saveAIConfig(config);
+    }
 
-    if (!apiKey) {
+    const apiKey = getEffectiveApiKey(providerId, true);
+
+    if (!apiKey || apiKey.trim().length < 6) {
       return {
         success: false,
         latencyMs: 0,
         provider: providerId,
-        model: config.providers[providerId]?.model || '',
-        error: `No API key provided for ${providerId}.`,
+        model: overrideModel || config.providers[providerId]?.model || '',
+        error: `No API key configured for ${providerId.toUpperCase()}. Please enter your API key and save it.`,
       };
     }
 
@@ -2394,8 +2408,10 @@ Rules:
         let extractedText: string;
 
         if (providerId === 'gemini') {
-          const rawModel = config.providers.gemini?.model || 'gemini-2.0-flash';
-          const model = (rawModel.includes('3.8') || rawModel.includes('3.6') || rawModel.includes('2.5') || !rawModel) ? 'gemini-2.0-flash' : rawModel;
+          let model = (config.providers.gemini?.model || 'gemini-3.8-flash').replace(/^models\//, '').trim();
+          if (!model || model.includes('2.0') || model.includes('1.5') || model === 'gemini-pro') {
+            model = 'gemini-3.8-flash';
+          }
           const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
           const response = await fetch(url, {
             method: 'POST',
@@ -2528,7 +2544,7 @@ Rules:
 
         let responseText: string;
         if (providerId === 'gemini') {
-          responseText = await callGemini(providerId, apiKey, model || 'gemini-2.0-flash', 'You extract structured menu data.', fullPrompt);
+          responseText = await callGemini(providerId, apiKey, model || 'gemini-3.8-flash', 'You extract structured menu data.', fullPrompt);
         } else if (providerId === 'anthropic') {
           responseText = await callAnthropic(providerId, apiKey, model || 'claude-3-5-haiku-20241022', 'You extract structured menu data.', fullPrompt);
         } else {
@@ -2618,8 +2634,10 @@ Rules:
         let extractedText: string;
 
         if (providerId === 'gemini') {
-          const rawModel = config.providers.gemini?.model || 'gemini-2.0-flash';
-          const model = (rawModel.includes('3.8') || rawModel.includes('3.6') || rawModel.includes('2.5') || !rawModel) ? 'gemini-2.0-flash' : rawModel;
+          let model = (config.providers.gemini?.model || 'gemini-3.8-flash').replace(/^models\//, '').trim();
+          if (!model || model.includes('2.0') || model.includes('1.5') || model === 'gemini-pro') {
+            model = 'gemini-3.8-flash';
+          }
           const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
           const response = await fetch(url, {
             method: 'POST',
@@ -2744,7 +2762,7 @@ Rules:
 
         let responseText: string;
         if (providerId === 'gemini') {
-          responseText = await callGemini(providerId, apiKey, model || 'gemini-2.0-flash', 'You extract structured property data.', fullPrompt);
+          responseText = await callGemini(providerId, apiKey, model || 'gemini-3.8-flash', 'You extract structured property data.', fullPrompt);
         } else if (providerId === 'anthropic') {
           responseText = await callAnthropic(providerId, apiKey, model || 'claude-3-5-haiku-20241022', 'You extract structured property data.', fullPrompt);
         } else {
@@ -3003,7 +3021,7 @@ Generate a comprehensive journey analysis. Return strictly a JSON object with:
 
       let rawResponse: string;
       if (providerId === 'gemini') {
-        rawResponse = await callGemini(providerId, apiKey, model || 'gemini-2.0-flash', systemPrompt, userPrompt, 0.7, 1800);
+        rawResponse = await callGemini(providerId, apiKey, model || 'gemini-3.8-flash', systemPrompt, userPrompt, 0.7, 1800);
       } else if (providerId === 'anthropic') {
         rawResponse = await callAnthropic(providerId, apiKey, model || 'claude-3-5-haiku-20241022', systemPrompt, userPrompt, 0.7, 1800);
       } else {
@@ -3079,7 +3097,7 @@ Keep answers concise, direct, helpful, and formatted with clean paragraphs or br
 
         let answer: string;
         if (providerId === 'gemini') {
-          answer = await callGemini(providerId, apiKey, model || 'gemini-2.0-flash', systemPrompt, userPrompt, 0.7, 800);
+          answer = await callGemini(providerId, apiKey, model || 'gemini-3.8-flash', systemPrompt, userPrompt, 0.7, 800);
         } else if (providerId === 'anthropic') {
           answer = await callAnthropic(providerId, apiKey, model || 'claude-3-5-haiku-20241022', systemPrompt, userPrompt, 0.7, 800);
         } else {

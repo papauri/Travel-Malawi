@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Power, CheckCircle2, AlertTriangle, Key, ExternalLink, 
-  RefreshCw, Play, Loader2, Eye, EyeOff, Cpu, ShieldAlert, Check
+  RefreshCw, Play, Loader2, Eye, EyeOff, Cpu, ShieldAlert, Check,
+  Sparkles, Globe, ChevronDown, ChevronUp
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -54,6 +55,19 @@ export default function AdminAISettings() {
     latencyMs?: number;
     error?: string;
   } | null>(null);
+
+  // Live models lookup state
+  const [liveGeminiModels, setLiveGeminiModels] = useState<Array<{
+    id: string;
+    name: string;
+    displayName: string;
+    description: string;
+    isLatest: boolean;
+    isSweetSpot: boolean;
+  }> | null>(null);
+  const [fetchingLiveModels, setFetchingLiveModels] = useState(false);
+  const [liveModelsError, setLiveModelsError] = useState<string | null>(null);
+  const [showLiveModels, setShowLiveModels] = useState(false);
 
   const fetchConfig = async () => {
     try {
@@ -139,18 +153,33 @@ export default function AdminAISettings() {
   };
 
   const handleSelectActiveProvider = async (providerId: string) => {
-    if (!config || config.activeProvider === providerId) return;
+    if (!config) return;
     setSaving(true);
     try {
+      const payload: any = { activeProvider: providerId };
+      const pendingKey = keyInputs[providerId]?.trim();
+      const pendingModel = modelInputs[providerId]?.trim();
+      if (pendingKey || pendingModel) {
+        payload.providerUpdates = {
+          [providerId]: {
+            ...(pendingKey ? { apiKey: pendingKey } : {}),
+            ...(pendingModel ? { model: pendingModel } : {}),
+            enabled: true,
+          },
+        };
+      }
       const res = await fetch('/api/admin/ai-config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ activeProvider: providerId }),
+        body: JSON.stringify(payload),
       });
       if (res.ok) {
         const data = await res.json();
         setConfig(data.config);
-        toast.success(`Active AI provider changed to ${data.config.providers[providerId]?.name || providerId}`);
+        if (pendingKey) {
+          setKeyInputs(prev => ({ ...prev, [providerId]: '' }));
+        }
+        toast.success(`Active AI provider set to ${data.config.providers[providerId]?.name || providerId}`);
       } else {
         toast.error('Failed to set active provider');
       }
@@ -161,16 +190,21 @@ export default function AdminAISettings() {
     }
   };
 
-  const handleSaveProvider = async (providerId: string) => {
+  const handleSaveProvider = async (providerId: string, overrideModel?: string) => {
     setSaving(true);
     try {
       const updates: any = {};
       const newKey = keyInputs[providerId]?.trim();
-      const newModel = modelInputs[providerId]?.trim();
+      const newModel = overrideModel?.trim() || modelInputs[providerId]?.trim();
 
       const providerUpdate: any = {};
-      if (newKey) providerUpdate.apiKey = newKey;
-      if (newModel) providerUpdate.model = newModel;
+      if (newKey) {
+        providerUpdate.apiKey = newKey;
+        providerUpdate.enabled = true; // Automatically enable when a key is saved
+      }
+      if (newModel) {
+        providerUpdate.model = newModel;
+      }
 
       updates[providerId] = providerUpdate;
 
@@ -183,9 +217,11 @@ export default function AdminAISettings() {
       if (res.ok) {
         const data = await res.json();
         setConfig(data.config);
-        // Clear sensitive input
         setKeyInputs(prev => ({ ...prev, [providerId]: '' }));
-        toast.success(`Saved settings for ${config?.providers[providerId]?.name || providerId}`);
+        if (overrideModel) {
+          setModelInputs(prev => ({ ...prev, [providerId]: overrideModel }));
+        }
+        toast.success(`Active model updated to ${newModel || 'default'}`);
       } else {
         toast.error('Failed to save provider settings');
       }
@@ -196,20 +232,60 @@ export default function AdminAISettings() {
     }
   };
 
+  const handleFetchLiveGeminiModels = async () => {
+    setFetchingLiveModels(true);
+    setLiveModelsError(null);
+    setShowLiveModels(true);
+    try {
+      const pendingKey = keyInputs['gemini']?.trim();
+      const url = pendingKey 
+        ? `/api/admin/gemini-live-models?apiKey=${encodeURIComponent(pendingKey)}`
+        : '/api/admin/gemini-live-models';
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.success && Array.isArray(data.models)) {
+        setLiveGeminiModels(data.models);
+        toast.success(`Queried Google API: ${data.models.length} active models available`);
+      } else {
+        setLiveModelsError(data.error || 'Failed to fetch live models from Google API');
+        toast.error(data.error || 'Failed to query live Google models');
+      }
+    } catch (err: any) {
+      setLiveModelsError(err.message || 'Error connecting to Google API');
+      toast.error('Error contacting live Google API');
+    } finally {
+      setFetchingLiveModels(false);
+    }
+  };
+
   const handleRunTest = async (providerId: string) => {
     setTestingProvider(providerId);
     setTestResult(null);
     try {
+      const pendingKey = keyInputs[providerId]?.trim();
+      const currentModel = modelInputs[providerId]?.trim() || config?.providers[providerId]?.model;
       const res = await fetch('/api/admin/ai-test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provider: providerId }),
+        body: JSON.stringify({
+          provider: providerId,
+          ...(pendingKey ? { apiKey: pendingKey } : {}),
+          ...(currentModel ? { model: currentModel } : {}),
+        }),
       });
 
       const data = await res.json();
       setTestResult(data);
       if (data.success) {
         toast.success(`${config?.providers[providerId]?.name} connected (${data.latencyMs}ms)`);
+        if (pendingKey) {
+          setKeyInputs(prev => ({ ...prev, [providerId]: '' }));
+          const refRes = await fetch('/api/admin/ai-config');
+          if (refRes.ok) {
+            const fresh = await refRes.json();
+            setConfig(fresh);
+          }
+        }
       } else {
         toast.error(`Test failed: ${data.error || 'Connection error'}`);
       }
@@ -323,11 +399,17 @@ export default function AdminAISettings() {
 
       {/* 2. ACTIVE PROVIDER SELECTION */}
       <div className="bg-white border border-stone-200 rounded-2xl p-6 md:p-8 shadow-2xs space-y-6">
-        <div>
-          <h3 className="font-serif font-bold text-xl text-stone-900">Active AI Engine</h3>
-          <p className="text-stone-500 text-xs md:text-sm mt-1">
-            Choose which provider powers all listing generation and text refinements across the platform.
-          </p>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h3 className="font-serif font-bold text-xl text-stone-900">Active AI Engine</h3>
+            <p className="text-stone-500 text-xs md:text-sm mt-1">
+              Choose which provider powers listing generation, vision OCR, concierge assistance, and reminders.
+            </p>
+          </div>
+          <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2 text-emerald-800 text-xs flex items-center gap-2 shrink-0">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>Active engine preference is permanently saved and will never auto-switch.</span>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -514,24 +596,55 @@ export default function AdminAISettings() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* API Key Field */}
                   <div>
-                    <label className="block text-xs font-semibold text-stone-600 mb-1.5">
-                      API Key {p.maskedKey && <span className="text-stone-400 font-normal font-mono">({p.maskedKey})</span>}
-                    </label>
-                    <div className="relative">
-                      <input
-                        type={isEditingKey ? 'text' : 'password'}
-                        value={keyInputs[pid] || ''}
-                        onChange={e => setKeyInputs(prev => ({ ...prev, [pid]: e.target.value }))}
-                        placeholder={p.isConfigured ? 'Enter new key to update...' : 'Enter API key (e.g. sk-...)'}
-                        className="w-full bg-stone-50 border border-stone-200 rounded-xl pl-3.5 pr-10 py-2 text-xs font-mono outline-none focus:border-stone-900 transition"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowKey(prev => ({ ...prev, [pid]: !prev[pid] }))}
-                        className="absolute right-3 top-2.5 text-stone-400 hover:text-stone-600 cursor-pointer"
-                      >
-                        {isEditingKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                      </button>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-xs font-semibold text-stone-600">
+                        API Key {p.maskedKey && <span className="text-stone-400 font-normal font-mono">({p.maskedKey})</span>}
+                      </label>
+                      {p.isConfigured && (
+                        <span className="text-[10px] text-emerald-600 font-medium">
+                          {p.source === 'environment' ? 'Active via Environment' : 'Key Saved'}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <input
+                          type={isEditingKey ? 'text' : 'password'}
+                          value={keyInputs[pid] || ''}
+                          onChange={e => setKeyInputs(prev => ({ ...prev, [pid]: e.target.value }))}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter' && keyInputs[pid]?.trim()) {
+                              handleSaveProvider(pid);
+                            }
+                          }}
+                          placeholder={
+                            p.isConfigured 
+                              ? (p.source === 'environment' ? 'Configured in system environment' : 'Enter new key to update...')
+                              : pid === 'gemini'
+                              ? 'Enter Gemini API key (starts with AIzaSy...)'
+                              : 'Enter API key (e.g. sk-...)'
+                          }
+                          className="w-full bg-stone-50 border border-stone-200 rounded-xl pl-3.5 pr-10 py-2 text-xs font-mono outline-none focus:border-stone-900 transition"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowKey(prev => ({ ...prev, [pid]: !prev[pid] }))}
+                          className="absolute right-3 top-2.5 text-stone-400 hover:text-stone-600 cursor-pointer"
+                        >
+                          {isEditingKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
+                      {hasInputValue && (
+                        <button
+                          type="button"
+                          disabled={saving}
+                          onClick={() => handleSaveProvider(pid)}
+                          className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl transition cursor-pointer flex items-center gap-1.5 shrink-0 shadow-sm"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                          <span>Save Key</span>
+                        </button>
+                      )}
                     </div>
                   </div>
 
@@ -549,11 +662,11 @@ export default function AdminAISettings() {
                       />
                       <button
                         type="button"
-                        disabled={saving || (!hasInputValue && modelInputs[pid] === p.model)}
+                        disabled={saving || (modelInputs[pid] === undefined || modelInputs[pid] === p.model)}
                         onClick={() => handleSaveProvider(pid)}
                         className="px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold rounded-xl transition disabled:opacity-30 disabled:cursor-not-allowed shrink-0 cursor-pointer"
                       >
-                        Save
+                        Save Model
                       </button>
                     </div>
                   </div>
@@ -562,9 +675,26 @@ export default function AdminAISettings() {
                 {/* Recommended Models & Sweet Spots */}
                 {p.recommendedModels && p.recommendedModels.length > 0 && (
                   <div className="bg-stone-50/80 p-3 rounded-xl border border-stone-200/60 space-y-1.5">
-                    <span className="text-[10px] uppercase font-bold tracking-wider text-stone-400">
-                      Recommended Models &amp; Sweet Spots:
-                    </span>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] uppercase font-bold tracking-wider text-stone-400">
+                        Recommended Models &amp; Sweet Spots:
+                      </span>
+                      {pid === 'gemini' && (
+                        <button
+                          type="button"
+                          onClick={handleFetchLiveGeminiModels}
+                          disabled={fetchingLiveModels}
+                          className="text-[10px] font-semibold text-amber-800 hover:text-amber-950 flex items-center gap-1 cursor-pointer transition disabled:opacity-50"
+                        >
+                          {fetchingLiveModels ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <Globe className="w-3 h-3" />
+                          )}
+                          <span>Check Live Google Models</span>
+                        </button>
+                      )}
+                    </div>
                     <div className="flex flex-wrap gap-1.5">
                       {p.recommendedModels.map((m, mIdx) => {
                         const isCurrent = (modelInputs[pid] ?? p.model) === m.id;
@@ -574,6 +704,7 @@ export default function AdminAISettings() {
                             type="button"
                             onClick={() => {
                               setModelInputs(prev => ({ ...prev, [pid]: m.id }));
+                              handleSaveProvider(pid, m.id);
                             }}
                             className={`text-[11px] px-2.5 py-1 rounded-lg border transition cursor-pointer flex items-center gap-1.5 ${
                               isCurrent
@@ -594,6 +725,90 @@ export default function AdminAISettings() {
                         );
                       })}
                     </div>
+
+                    {/* Live Google API Models Results Section */}
+                    {pid === 'gemini' && showLiveModels && (
+                      <div className="mt-3 pt-3 border-t border-stone-200/70 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5 text-xs font-bold text-stone-800">
+                            <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                            <span>Live Google Models (Direct from API)</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setShowLiveModels(false)}
+                            className="text-[10px] text-stone-400 hover:text-stone-600 cursor-pointer"
+                          >
+                            Hide
+                          </button>
+                        </div>
+
+                        {fetchingLiveModels && (
+                          <div className="flex items-center gap-2 py-2 text-xs text-stone-500">
+                            <Loader2 className="w-3.5 h-3.5 animate-spin text-stone-700" />
+                            <span>Connecting to Google Generative Language API...</span>
+                          </div>
+                        )}
+
+                        {liveModelsError && (
+                          <div className="text-[11px] text-red-600 bg-red-50 p-2 rounded-lg border border-red-200">
+                            {liveModelsError}
+                          </div>
+                        )}
+
+                        {liveGeminiModels && liveGeminiModels.length > 0 && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-56 overflow-y-auto pr-1">
+                            {liveGeminiModels.map((lm) => {
+                              const isSelected = (modelInputs['gemini'] ?? p.model) === lm.id;
+                              return (
+                                <div
+                                  key={lm.id}
+                                  className={`p-2 rounded-lg border text-left flex flex-col justify-between gap-1 transition ${
+                                    isSelected 
+                                      ? 'bg-amber-50/80 border-amber-300 ring-1 ring-amber-400' 
+                                      : 'bg-white border-stone-200 hover:border-stone-300'
+                                  }`}
+                                >
+                                  <div>
+                                    <div className="flex items-center justify-between gap-1">
+                                      <span className="text-xs font-mono font-bold text-stone-900 truncate">
+                                        {lm.id}
+                                      </span>
+                                      {lm.isLatest && (
+                                        <span className="text-[9px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded uppercase shrink-0">
+                                          Latest
+                                        </span>
+                                      )}
+                                    </div>
+                                    <p className="text-[10px] text-stone-500 line-clamp-2 mt-0.5">
+                                      {lm.description || lm.name}
+                                    </p>
+                                  </div>
+                                  <div className="pt-1 flex items-center justify-between">
+                                    {isSelected ? (
+                                      <span className="text-[10px] font-bold text-emerald-700 flex items-center gap-1">
+                                        <Check className="w-3 h-3" /> Active Model
+                                      </span>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setModelInputs(prev => ({ ...prev, gemini: lm.id }));
+                                          handleSaveProvider('gemini', lm.id);
+                                        }}
+                                        className="text-[10px] font-semibold text-stone-700 hover:text-stone-950 bg-stone-100 hover:bg-stone-200 px-2 py-0.5 rounded cursor-pointer transition"
+                                      >
+                                        Use This Model
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
 
