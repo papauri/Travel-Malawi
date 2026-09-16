@@ -123,14 +123,14 @@ export default function AdminDocsHub() {
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       {/* Top Header Card */}
-      <div className="bg-stone-900 text-white rounded-3xl p-6 sm:p-8 relative overflow-hidden shadow-sm border border-stone-800">
+      <div className="bg-stone-900 text-white rounded-2xl p-5 sm:p-7 relative overflow-hidden shadow-2xs border border-stone-800">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-semibold uppercase tracking-wider border border-emerald-500/30">
-              <ShieldCheck className="w-3.5 h-3.5" />
+            <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-md bg-stone-800 text-stone-200 text-xs font-semibold uppercase tracking-wider border border-stone-700">
+              <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
               <span>Restricted &bull; Global Admin Only</span>
             </div>
-            <h2 className="text-2xl sm:text-3xl font-serif font-bold text-white tracking-tight">
+            <h2 className="text-xl sm:text-2xl font-serif font-bold text-white tracking-tight">
               Executive Documentation &amp; Strategy Hub
             </h2>
             <p className="text-stone-300 text-xs sm:text-sm max-w-2xl leading-relaxed">
@@ -138,20 +138,20 @@ export default function AdminDocsHub() {
             </p>
           </div>
 
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-2.5 shrink-0">
             <button
               onClick={() => handleDownload('text')}
               disabled={!currentContent.plainText}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition shadow-xs cursor-pointer disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-200 font-semibold text-xs border border-stone-700 transition shadow-2xs cursor-pointer disabled:opacity-50"
               title="Download as clean, universally readable text file (.txt)"
             >
               <Download className="w-4 h-4" />
-              <span>Download .TXT (Readable)</span>
+              <span>Download .TXT</span>
             </button>
             <button
               onClick={() => handleDownload('md')}
               disabled={!currentContent.rawMd}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-200 font-semibold text-xs border border-stone-700 transition cursor-pointer disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-200 font-semibold text-xs border border-stone-700 transition cursor-pointer disabled:opacity-50"
               title="Download raw markdown document (.md)"
             >
               <FileText className="w-4 h-4" />
@@ -226,7 +226,7 @@ export default function AdminDocsHub() {
         </div>
 
         {/* Right Column: Document Viewer & Tools */}
-        <div className="lg:col-span-8 bg-white border border-stone-200 rounded-3xl overflow-hidden shadow-xs flex flex-col min-h-[600px]">
+        <div className="lg:col-span-8 bg-white border border-stone-200 rounded-2xl overflow-hidden shadow-2xs flex flex-col min-h-[600px]">
           
           {/* Viewer Toolbar */}
           <div className="p-4 sm:p-5 border-b border-stone-200 bg-stone-50/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4">

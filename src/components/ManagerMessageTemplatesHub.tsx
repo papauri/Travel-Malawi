@@ -310,8 +310,8 @@ export default function ManagerMessageTemplatesHub({
   };
 
   return (
-    <div className="bg-white rounded-3xl border border-stone-200 shadow-sm overflow-hidden mb-8">
-      <div className="p-6 md:p-8 bg-stone-50 border-b border-stone-100 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+    <div className="bg-white rounded-2xl border border-stone-200 shadow-2xs overflow-hidden mb-8">
+      <div className="p-5 md:p-7 bg-stone-50 border-b border-stone-100 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <MessageSquare className="w-5 h-5 text-stone-900" />

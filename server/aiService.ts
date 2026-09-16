@@ -265,7 +265,6 @@ async function waitBackoff(attempt: number, retryHeader: string | null, baseMs =
       ms = Math.min(15000, (parsed + 0.5) * 1000);
     }
   }
-  console.warn(`[AI Service] 429 rate limit reached. Backing off for ${Math.round(ms)}ms before retry (attempt ${attempt + 1})...`);
   await new Promise(resolve => setTimeout(resolve, ms));
 }
 
@@ -1716,7 +1715,6 @@ USER MESSAGE:
           newLearnedRule = String(parsed.rule).trim();
         }
       } catch (e) {
-        console.error('Failed to parse learned rule JSON in quick chat:', e);
       }
     }
 
@@ -1736,7 +1734,6 @@ USER MESSAGE:
           }
         }
       } catch (e) {
-        console.error('Failed to parse autonomous patch JSON in quick chat:', e);
       }
     }
 
@@ -2114,7 +2111,6 @@ USER MESSAGE:
         actionProposal.type = 'add_amenity';
       }
     } catch (e) {
-      console.error('Failed to parse action proposal JSON:', e);
     }
   }
 
@@ -2128,7 +2124,6 @@ USER MESSAGE:
         newLearnedRule = String(parsed.rule).trim();
       }
     } catch (e) {
-      console.error('Failed to parse learned rule JSON:', e);
     }
   }
 
@@ -2149,7 +2144,6 @@ USER MESSAGE:
         }
       }
     } catch (e) {
-      console.error('Failed to parse autonomous patch JSON:', e);
     }
   }
 
@@ -2185,7 +2179,6 @@ USER MESSAGE:
         suggestedFollowUps = parsed.slice(0, 3).map(String);
       }
     } catch (e) {
-      console.error('Failed to parse suggested_follow_ups JSON:', e);
     }
   }
 
@@ -2504,7 +2497,6 @@ Rules:
         }
         throw new Error('Could not parse menu structure from response');
       } catch (err: any) {
-        console.warn(`[Menu OCR] ${providerId} failed: ${err.message}`);
         continue;
       }
     }
@@ -2570,7 +2562,6 @@ Rules:
         }
         throw new Error('Could not parse menu from response');
       } catch (err: any) {
-        console.warn(`[Menu Parse] ${providerId} failed: ${err.message}`);
         continue;
       }
     }
@@ -2728,7 +2719,6 @@ Rules:
         }
         throw new Error('Could not parse property structure from response');
       } catch (err: any) {
-        console.warn(`[Property OCR] ${providerId} failed: ${err.message}`);
         continue;
       }
     }
@@ -2788,7 +2778,6 @@ Rules:
         }
         throw new Error('Could not parse property from response');
       } catch (err: any) {
-        console.warn(`[Property Parse] ${providerId} failed: ${err.message}`);
         continue;
       }
     }
@@ -3053,7 +3042,6 @@ Generate a comprehensive journey analysis. Return strictly a JSON object with:
         };
       }
     } catch (err: any) {
-      console.warn(`[Trip Insights] ${providerId} generation failed: ${err.message}. Trying next provider...`);
       continue;
     }
   }
@@ -3118,7 +3106,6 @@ Keep answers concise, direct, helpful, and formatted with clean paragraphs or br
           };
         }
       } catch (err: any) {
-        console.warn(`[Trip Chat] ${providerId} failed: ${err.message}`);
         continue;
       }
     }

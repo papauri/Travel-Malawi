@@ -5,7 +5,7 @@ import { db } from '../lib/firebase';
 import { Hotel, User, Booking, Role } from '../types';
 import { SystemSettings } from '../hooks/useSystemSettings';
 import { 
-  Shield, Building2, CheckCircle, CheckCircle2, XCircle, Clock, MapPin, 
+  Shield, ShieldCheck, Building2, CheckCircle, CheckCircle2, XCircle, Clock, MapPin, 
   MapPinOff, Users, Edit2, Edit3, Key, Trash2, Star, ExternalLink, 
   MessageSquare, MessageSquareOff, LayoutDashboard, CalendarRange, FileText, 
   Search, Activity, Cpu, Target, Download, ChevronDown
@@ -22,6 +22,7 @@ import AdminDocsHub from '../components/AdminDocsHub';
 import AdminEmailSettings from '../components/AdminEmailSettings';
 import AdminWhatsAppSettings from '../components/AdminWhatsAppSettings';
 import AdminLogs from '../components/AdminLogs';
+import { logSystemEvent } from '../lib/logger';
 import { getHotelImage } from '../lib/images';
 import { isAdmin, isGlobalAdmin, isMarketing, isHotelManager, userRoles, toRoleFields } from '../lib/roles';
 import { formatMoney } from '../lib/booking';
@@ -59,6 +60,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   
   const [currentHotelPage, setCurrentHotelPage] = useState(1);
+  const [currentFeaturedPage, setCurrentFeaturedPage] = useState(1);
   const [onlyBadPins, setOnlyBadPins] = useState(false);
   const [hotelSearch, setHotelSearch] = useState('');
   
@@ -182,6 +184,7 @@ export default function AdminDashboard() {
   };
 
   const handleDeleteHotel = async (hotelId: string) => {
+    const targetHotel = hotels.find(h => h.id === hotelId);
     try {
       await deleteDoc(doc(db, 'hotels', hotelId));
       try {
@@ -191,6 +194,12 @@ export default function AdminDashboard() {
       }
       toast.success('Listing deleted');
       setHotels(hotels.filter(h => h.id !== hotelId));
+
+      await logSystemEvent('action', `Admin deleted property listing: ${targetHotel?.name || hotelId}`, {
+        hotelId,
+        hotelName: targetHotel?.name,
+        location: targetHotel?.location,
+      }, user, 'property');
     } catch (error) {
       console.error(error);
       toast.error('Failed to delete listing');
@@ -198,10 +207,18 @@ export default function AdminDashboard() {
   };
 
   const handleUpdateBookingStatus = async (bookingId: string, newStatus: string) => {
+    const targetBooking = bookings.find(b => b.id === bookingId);
     try {
       await updateDoc(doc(db, 'bookings', bookingId), { status: newStatus });
       setBookings(bookings.map(b => b.id === bookingId ? { ...b, status: newStatus as any } : b));
       toast.success(`Booking status updated to ${newStatus}`);
+
+      await logSystemEvent('action', `Admin updated booking status: Ref ${targetBooking?.reference || bookingId} to ${newStatus}`, {
+        bookingId,
+        reference: targetBooking?.reference,
+        newStatus,
+        previousStatus: targetBooking?.status,
+      }, user, 'booking');
     } catch (err) {
       console.error(err);
       toast.error('Failed to update booking status.');
@@ -210,10 +227,16 @@ export default function AdminDashboard() {
 
   const handleDeleteBooking = async (bookingId: string) => {
     if (!window.confirm('Are you sure you want to permanently delete this booking?')) return;
+    const targetBooking = bookings.find(b => b.id === bookingId);
     try {
       await deleteDoc(doc(db, 'bookings', bookingId));
       setBookings(bookings.filter(b => b.id !== bookingId));
       toast.success('Booking deleted.');
+
+      await logSystemEvent('action', `Admin permanently deleted booking: Ref ${targetBooking?.reference || bookingId}`, {
+        bookingId,
+        reference: targetBooking?.reference,
+      }, user, 'booking');
     } catch (err) {
       console.error(err);
       toast.error('Failed to delete booking.');
@@ -235,6 +258,12 @@ export default function AdminDashboard() {
       });
       setHotels(hotels.map(h => (h.id === hotel.id ? { ...h, featured: next, featuredAt: next ? Date.now() : undefined } : h)));
       toast.success(next ? `${hotel.name} is now featured.` : `${hotel.name} is no longer featured.`);
+
+      await logSystemEvent('action', `Admin toggled featured status: ${hotel.name} -> ${next ? 'Featured' : 'Standard'}`, {
+        hotelId: hotel.id,
+        hotelName: hotel.name,
+        featured: next,
+      }, user, 'property');
     } catch (error) {
       console.error('Error updating featured flag:', error);
       toast.error('Could not change the featured status.');
@@ -244,11 +273,18 @@ export default function AdminDashboard() {
   const handleUpdateStatus = async (hotelId: string, newStatus: 'approved' | 'rejected' | 'pending') => {
     if (updatingId) return;
     setUpdatingId(hotelId);
+    const targetHotel = hotels.find(h => h.id === hotelId);
     try {
       const hotelRef = doc(db, 'hotels', hotelId);
       await updateDoc(hotelRef, { status: newStatus });
       setHotels(hotels.map(h => h.id === hotelId ? { ...h, status: newStatus } : h));
       toast.success(`Hotel status updated to ${newStatus}`);
+
+      await logSystemEvent('action', `Admin set property status: "${targetHotel?.name || hotelId}" -> ${newStatus.toUpperCase()}`, {
+        hotelId,
+        hotelName: targetHotel?.name,
+        status: newStatus,
+      }, user, 'property');
     } catch (error) {
       console.error("Error updating status:", error);
       toast.error('Failed to update hotel status');
@@ -282,6 +318,12 @@ export default function AdminDashboard() {
       
       setUsers(users.map(u => u.uid === targetUser.uid ? { ...u, role: legacyRole, roles } : u));
       toast.success(`Roles updated for ${targetUser.displayName || targetUser.email}`);
+
+      await logSystemEvent('action', `Admin updated roles for ${targetUser.displayName || targetUser.email}: [${newRoles.join(', ')}]`, {
+        targetUserId: targetUser.uid,
+        targetEmail: targetUser.email,
+        roles: newRoles,
+      }, user, 'admin');
     } catch (error) {
       console.error('Error updating user roles:', error);
       toast.error('Failed to update roles.');
@@ -313,6 +355,12 @@ export default function AdminDashboard() {
       } : u));
       
       toast.success(`Account access ${isSuspended ? 'restored' : 'suspended'}.`);
+
+      await logSystemEvent('action', `Admin ${isSuspended ? 'restored' : 'suspended'} user account: ${targetUser.displayName || targetUser.email}`, {
+        targetUserId: targetUser.uid,
+        targetEmail: targetUser.email,
+        status: nextStatus,
+      }, user, 'security');
       
       // Notify via server API
       if (targetUser.email) {
@@ -346,6 +394,11 @@ export default function AdminDashboard() {
       await deleteDoc(doc(db, 'users', targetUser.uid));
       setUsers(users.filter(u => u.uid !== targetUser.uid));
       toast.success(`User profile deleted successfully.`);
+
+      await logSystemEvent('action', `Admin deleted user profile: ${targetUser.displayName || targetUser.email}`, {
+        targetUserId: targetUser.uid,
+        targetEmail: targetUser.email,
+      }, user, 'security');
       
       // Notify via server API
       if (targetUser.email) {
@@ -529,7 +582,7 @@ export default function AdminDashboard() {
       { id: 'bookings' as Tab, label: 'All Bookings', icon: CalendarRange },
       { id: 'destinations' as Tab, label: 'Destinations', icon: Navigation },
       { id: 'content' as Tab, label: 'Content & Legal', icon: FileText },
-      { id: 'logs' as Tab, label: 'System Logs', icon: Activity, visible: isGlobalAdmin(user) },
+      { id: 'logs' as Tab, label: 'Audit & Telemetry Logs', icon: ShieldCheck, visible: isGlobalAdmin(user) },
       { id: 'ai' as Tab, label: 'Assistant & Provider Keys', icon: Cpu, visible: isGlobalAdmin(user) },
       { id: 'settings' as Tab, label: 'Channels & Settings', icon: Settings, visible: isGlobalAdmin(user), badge: 'Super Admin' },
       { id: 'docs' as Tab, label: 'Executive Docs (.txt)', icon: BookOpen, badge: 'Admin' },
@@ -765,59 +818,70 @@ export default function AdminDashboard() {
           <div className="space-y-8 animate-in fade-in duration-300">
             <h2 className="text-3xl font-serif font-bold text-stone-900">Platform Overview</h2>
             
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5 lg:gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5">
               <button
                 onClick={() => setActiveTab('properties')}
-                className="bg-white p-3.5 sm:p-4 lg:p-6 rounded-2xl lg:rounded-3xl border border-stone-200 shadow-2xs text-left hover:border-stone-300 hover:shadow-sm transition focus:outline-none focus:ring-2 focus:ring-stone-900"
+                className="bg-white p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-stone-200 shadow-2xs text-left hover:border-stone-300 hover:bg-stone-50/50 transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-stone-900"
               >
-                <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 bg-blue-50 text-blue-600 rounded-xl lg:rounded-2xl flex items-center justify-center mb-2.5 sm:mb-3 lg:mb-4">
-                  <Building2 className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6" />
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-stone-100 text-stone-700 flex items-center justify-center mb-2">
+                  <Building2 className="w-4 h-4" />
                 </div>
-                <p className="text-stone-500 text-xs sm:text-sm font-medium mb-0.5 sm:mb-1 truncate">Total Properties</p>
-                <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-stone-900">{stats.totalProperties}</p>
+                <p className="text-stone-500 text-xs font-medium mb-0.5 truncate">Total Properties</p>
+                <p className="text-lg sm:text-xl font-bold text-stone-900">{stats.totalProperties}</p>
               </button>
               
               <button
                 onClick={() => setActiveTab('users')}
-                className="bg-white p-3.5 sm:p-4 lg:p-6 rounded-2xl lg:rounded-3xl border border-stone-200 shadow-2xs text-left hover:border-stone-300 hover:shadow-sm transition focus:outline-none focus:ring-2 focus:ring-stone-900"
+                className="bg-white p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-stone-200 shadow-2xs text-left hover:border-stone-300 hover:bg-stone-50/50 transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-stone-900"
               >
-                <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 bg-emerald-50 text-emerald-600 rounded-xl lg:rounded-2xl flex items-center justify-center mb-2.5 sm:mb-3 lg:mb-4">
-                  <Users className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6" />
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-stone-100 text-stone-700 flex items-center justify-center mb-2">
+                  <Users className="w-4 h-4" />
                 </div>
-                <p className="text-stone-500 text-xs sm:text-sm font-medium mb-0.5 sm:mb-1 truncate">Total Users</p>
-                <div className="flex flex-wrap items-baseline gap-1 sm:gap-2">
-                  <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-stone-900">{stats.totalUsers}</p>
-                  <span className="text-[10px] sm:text-xs text-stone-400 font-medium">{stats.managersCount} mgrs</span>
+                <p className="text-stone-500 text-xs font-medium mb-0.5 truncate">Total Users</p>
+                <div className="flex flex-wrap items-baseline gap-1 sm:gap-1.5">
+                  <p className="text-lg sm:text-xl font-bold text-stone-900">{stats.totalUsers}</p>
+                  <span className="text-[11px] text-stone-400 font-normal">{stats.managersCount} mgrs</span>
                 </div>
               </button>
               
               <button
                 onClick={() => setActiveTab('bookings')}
-                className="bg-white p-3.5 sm:p-4 lg:p-6 rounded-2xl lg:rounded-3xl border border-stone-200 shadow-2xs text-left hover:border-stone-300 hover:shadow-sm transition focus:outline-none focus:ring-2 focus:ring-stone-900"
+                className="bg-white p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-stone-200 shadow-2xs text-left hover:border-stone-300 hover:bg-stone-50/50 transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-stone-900"
               >
-                <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 bg-purple-50 text-purple-600 rounded-xl lg:rounded-2xl flex items-center justify-center mb-2.5 sm:mb-3 lg:mb-4">
-                  <CalendarRange className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6" />
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-stone-100 text-stone-700 flex items-center justify-center mb-2">
+                  <CalendarRange className="w-4 h-4" />
                 </div>
-                <p className="text-stone-500 text-xs sm:text-sm font-medium mb-0.5 sm:mb-1 truncate">Total Bookings</p>
-                <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-stone-900">{stats.totalBookings}</p>
+                <p className="text-stone-500 text-xs font-medium mb-0.5 truncate">Total Bookings</p>
+                <p className="text-lg sm:text-xl font-bold text-stone-900">{stats.totalBookings}</p>
               </button>
               
               <button
                 onClick={() => setActiveTab('properties')}
-                className="bg-white p-3.5 sm:p-4 lg:p-6 rounded-2xl lg:rounded-3xl border border-stone-200 shadow-2xs text-left hover:border-stone-300 hover:shadow-sm transition focus:outline-none focus:ring-2 focus:ring-stone-900"
+                className="bg-white p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-stone-200 shadow-2xs text-left hover:border-stone-300 hover:bg-stone-50/50 transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-stone-900"
               >
-                <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 bg-amber-50 text-amber-600 rounded-xl lg:rounded-2xl flex items-center justify-center mb-2.5 sm:mb-3 lg:mb-4">
-                  <Activity className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6" />
+                <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center mb-2 ${
+                  stats.pendingProperties > 0 ? 'bg-amber-100 text-amber-900' : 'bg-stone-100 text-stone-700'
+                }`}>
+                  <Activity className="w-4 h-4" />
                 </div>
-                <p className="text-stone-500 text-xs sm:text-sm font-medium mb-0.5 sm:mb-1 truncate">Pending Approvals</p>
-                <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-stone-900">{stats.pendingProperties}</p>
+                <p className="text-stone-500 text-xs font-medium mb-0.5 truncate">Pending Approvals</p>
+                <div className="flex items-baseline gap-1.5">
+                  <p className={`text-lg sm:text-xl font-bold ${stats.pendingProperties > 0 ? 'text-amber-900' : 'text-stone-900'}`}>
+                    {stats.pendingProperties}
+                  </p>
+                  {stats.pendingProperties > 0 && (
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200/60">
+                      Needs Review
+                    </span>
+                  )}
+                </div>
               </button>
             </div>
             
             {isGlobalAdmin(user) && (
               <div className="mt-8">
                 <h3 className="text-xl font-serif font-bold text-stone-900 mb-4">Global Settings</h3>
-                <div className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm flex items-center justify-between">
+                <div className="bg-white p-5 sm:p-6 rounded-2xl border border-stone-200 shadow-2xs flex items-center justify-between">
                   <div>
                     <h4 className="font-bold text-stone-900">Premium Listing Plans</h4>
                     <p className="text-stone-500 text-sm mt-1">Enable or disable premium plan selection during onboarding.</p>
@@ -846,17 +910,17 @@ export default function AdminDashboard() {
             </div>
             
             
-            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-5">
               {/* Bookings Trend Chart */}
-              <div className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm flex flex-col h-full">
-                <h3 className="font-bold text-stone-900 text-lg mb-2">Booking Volume</h3>
-                <p className="text-sm text-stone-500 mb-6">Confirmed bookings over the last 6 months.</p>
-                <div className="flex-1 min-h-[250px]">
+              <div className="bg-white p-5 sm:p-6 rounded-2xl border border-stone-200 shadow-2xs flex flex-col h-full">
+                <h3 className="font-bold text-stone-900 text-lg mb-1">Booking Volume</h3>
+                <p className="text-xs text-stone-500 mb-5">Confirmed bookings over the last 6 months.</p>
+                <div className="flex-1 min-h-[240px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                       <defs>
                         <linearGradient id="colorBookings" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#059669" stopOpacity={0.3}/>
+                          <stop offset="5%" stopColor="#059669" stopOpacity={0.25}/>
                           <stop offset="95%" stopColor="#059669" stopOpacity={0}/>
                         </linearGradient>
                       </defs>
@@ -864,46 +928,46 @@ export default function AdminDashboard() {
                       <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#78716c' }} dy={10} />
                       <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#78716c' }} />
                       <RechartsTooltip 
-                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}
+                        contentStyle={{ borderRadius: '10px', border: '1px solid #e7e5e4', boxShadow: '0 2px 4px -1px rgb(0 0 0 / 0.06)' }}
                         labelStyle={{ color: '#292524', fontWeight: 'bold', marginBottom: '4px' }}
                       />
-                      <Area type="monotone" dataKey="bookings" name="Bookings" stroke="#059669" strokeWidth={3} fillOpacity={1} fill="url(#colorBookings)" />
+                      <Area type="monotone" dataKey="bookings" name="Bookings" stroke="#059669" strokeWidth={2.5} fillOpacity={1} fill="url(#colorBookings)" />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
               </div>
 
               {/* Users Growth Chart */}
-              <div className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm flex flex-col h-full">
-                <h3 className="font-bold text-stone-900 text-lg mb-2">User Growth</h3>
-                <p className="text-sm text-stone-500 mb-6">New user sign-ups over the last 6 months.</p>
-                <div className="flex-1 min-h-[250px]">
+              <div className="bg-white p-5 sm:p-6 rounded-2xl border border-stone-200 shadow-2xs flex flex-col h-full">
+                <h3 className="font-bold text-stone-900 text-lg mb-1">User Growth</h3>
+                <p className="text-xs text-stone-500 mb-5">New user sign-ups over the last 6 months.</p>
+                <div className="flex-1 min-h-[240px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                       <defs>
                         <linearGradient id="colorUsers" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3}/>
-                          <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
+                          <stop offset="5%" stopColor="#78716c" stopOpacity={0.25}/>
+                          <stop offset="95%" stopColor="#78716c" stopOpacity={0}/>
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e7e5e4" />
                       <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#78716c' }} dy={10} />
                       <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#78716c' }} />
                       <RechartsTooltip 
-                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}
+                        contentStyle={{ borderRadius: '10px', border: '1px solid #e7e5e4', boxShadow: '0 2px 4px -1px rgb(0 0 0 / 0.06)' }}
                         labelStyle={{ color: '#292524', fontWeight: 'bold', marginBottom: '4px' }}
                       />
-                      <Area type="monotone" dataKey="users" name="New Users" stroke="#2563eb" strokeWidth={3} fillOpacity={1} fill="url(#colorUsers)" />
+                      <Area type="monotone" dataKey="users" name="New Users" stroke="#57534e" strokeWidth={2.5} fillOpacity={1} fill="url(#colorUsers)" />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
               </div>
 
               {/* Property Growth Chart */}
-              <div className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm flex flex-col h-full">
-                <h3 className="font-bold text-stone-900 text-lg mb-2">Property Listings</h3>
-                <p className="text-sm text-stone-500 mb-6">New properties listed over the last 6 months.</p>
-                <div className="flex-1 min-h-[250px]">
+              <div className="bg-white p-5 sm:p-6 rounded-2xl border border-stone-200 shadow-2xs flex flex-col h-full">
+                <h3 className="font-bold text-stone-900 text-lg mb-1">Property Listings</h3>
+                <p className="text-xs text-stone-500 mb-5">New properties listed over the last 6 months.</p>
+                <div className="flex-1 min-h-[240px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e7e5e4" />
@@ -911,10 +975,10 @@ export default function AdminDashboard() {
                       <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#78716c' }} />
                       <RechartsTooltip 
                         cursor={{ fill: '#f5f5f4' }}
-                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}
+                        contentStyle={{ borderRadius: '10px', border: '1px solid #e7e5e4', boxShadow: '0 2px 4px -1px rgb(0 0 0 / 0.06)' }}
                         labelStyle={{ color: '#292524', fontWeight: 'bold', marginBottom: '4px' }}
                       />
-                      <Bar dataKey="properties" name="New Properties" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="properties" name="New Properties" fill="#d97706" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -923,7 +987,7 @@ export default function AdminDashboard() {
 
             
             {/* Featured Stays Manager */}
-            <div className="bg-white rounded-3xl border border-stone-200 p-6 shadow-sm">
+            <div className="bg-white rounded-2xl border border-stone-200 p-5 sm:p-6 shadow-2xs">
               <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
                 <div>
                   <h3 className="font-bold text-stone-900 text-xl">Manage Featured Stays</h3>
@@ -984,7 +1048,7 @@ export default function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-stone-100">
-                    {featuredCandidateStats.map(({ hotel, bookings }, idx) => (
+                    {featuredCandidateStats.slice((currentFeaturedPage - 1) * itemsPerPage, currentFeaturedPage * itemsPerPage).map(({ hotel, bookings }, idx) => (
                       <tr key={`feat-candidate-${hotel.id || 'hotel'}-${idx}`} className={`transition ${hotel.featured ? 'bg-amber-50/30' : 'hover:bg-stone-50'}`}>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-4">
@@ -1028,6 +1092,16 @@ export default function AdminDashboard() {
                   </tbody>
                 </table>
               </div>
+              
+              {featuredCandidateStats.length > itemsPerPage && (
+                <div className="p-4 border-t border-stone-100">
+                  <Pagination
+                    currentPage={currentFeaturedPage}
+                    totalPages={Math.ceil(featuredCandidateStats.length / itemsPerPage)}
+                    onPageChange={setCurrentFeaturedPage}
+                  />
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -1065,7 +1139,7 @@ export default function AdminDashboard() {
 
             <div className="space-y-3 sm:space-y-4">
               {visibleHotels.slice((currentHotelPage - 1) * itemsPerPage, currentHotelPage * itemsPerPage).map((hotel, index) => (
-                <div key={`admin-hotel-${hotel.id || index}-${index}`} className="bg-white rounded-xl sm:rounded-2xl md:rounded-3xl p-3 sm:p-4 md:p-5 shadow-2xs border border-stone-200 flex flex-col sm:flex-row gap-3 sm:gap-4 md:gap-5 hover:border-stone-300 transition">
+                <div key={`admin-hotel-${hotel.id || index}-${index}`} className="bg-white rounded-xl sm:rounded-2xl p-3 sm:p-4 md:p-5 shadow-2xs border border-stone-200 flex flex-col sm:flex-row gap-3 sm:gap-4 md:gap-5 hover:border-stone-300 transition">
                   <div className="w-full aspect-[16/10] sm:aspect-auto sm:h-32 md:h-38 sm:w-36 md:w-48 lg:w-56 bg-stone-100 rounded-lg sm:rounded-xl overflow-hidden shrink-0">
                     <SmartImage src={getHotelImage(hotel)} alt={hotel.name} className="w-full h-full object-cover" />
                   </div>
@@ -1263,7 +1337,7 @@ export default function AdminDashboard() {
               ))}
               
               {visibleHotels.length === 0 && (
-                <div className="bg-stone-50 rounded-3xl p-12 text-center text-stone-500">
+                <div className="bg-stone-50 rounded-2xl p-10 text-center text-stone-500 border border-stone-200">
                   No hotel listings found matching criteria.
                 </div>
               )}
@@ -1311,22 +1385,22 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            <div className="bg-white rounded-3xl border border-stone-200 shadow-sm overflow-hidden">
+            <div className="bg-white rounded-2xl border border-stone-200 shadow-2xs overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse min-w-[800px]">
                   <thead>
                     <tr className="bg-stone-50 border-b border-stone-200">
-                      <th className="px-6 py-4 text-xs font-bold text-stone-500 uppercase tracking-wider">User</th>
-                      <th className="px-6 py-4 text-xs font-bold text-stone-500 uppercase tracking-wider">Joined</th>
-                      <th className="px-6 py-4 text-xs font-bold text-stone-500 uppercase tracking-wider">Roles</th>
-                      <th className="px-6 py-4 text-xs font-bold text-stone-500 uppercase tracking-wider text-right">Actions</th>
+                      <th className="px-6 py-3.5 text-xs font-bold text-stone-500 uppercase tracking-wider">User</th>
+                      <th className="px-6 py-3.5 text-xs font-bold text-stone-500 uppercase tracking-wider">Joined</th>
+                      <th className="px-6 py-3.5 text-xs font-bold text-stone-500 uppercase tracking-wider">Roles</th>
+                      <th className="px-6 py-3.5 text-xs font-bold text-stone-500 uppercase tracking-wider text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-stone-100">
                     {visibleUsers.slice((currentUserPage - 1) * itemsPerPage, currentUserPage * itemsPerPage).map((u, index) => {
                       const rolesList = userRoles(u);
                       return (
-                        <tr key={`admin-user-${u.uid || index}-${index}`} className={`hover:bg-stone-50 transition ${u.status === 'suspended' || u.accessRevoked ? 'opacity-50 grayscale' : ''}`}>
+                        <tr key={`admin-user-${u.uid || index}-${index}`} className={`hover:bg-stone-50/70 transition ${u.status === 'suspended' || u.accessRevoked ? 'opacity-50 grayscale' : ''}`}>
                           <td className="px-6 py-4">
                             <p className="font-bold text-stone-900 flex items-center gap-2">
                               {u.displayName || 'No Name'}
@@ -1343,40 +1417,40 @@ export default function AdminDashboard() {
                             {new Date(u.createdAt).toLocaleDateString()}
                           </td>
                           <td className="px-6 py-4">
-                            <div className="flex flex-wrap gap-2">
+                            <div className="flex flex-wrap gap-1.5">
                               {rolesList.includes('admin') && (
-                                <span className="bg-purple-100 text-purple-700 px-2.5 py-1 rounded-md text-xs font-bold tracking-wide">
+                                <span className="bg-amber-100 text-amber-900 border border-amber-200/80 px-2.5 py-0.5 rounded-md text-xs font-bold tracking-wide">
                                   ADMIN
                                 </span>
                               )}
                               {rolesList.includes('global_admin') && (
-                                <span className="bg-red-100 text-red-700 px-2.5 py-1 rounded-md text-xs font-bold tracking-wide">
+                                <span className="bg-stone-900 text-white px-2.5 py-0.5 rounded-md text-xs font-bold tracking-wide">
                                   GLOBAL ADMIN
                                 </span>
                               )}
                               {rolesList.includes('marketing') && (
-                                <span className="bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-md text-xs font-bold tracking-wide">
+                                <span className="bg-stone-100 text-stone-800 border border-stone-200 px-2.5 py-0.5 rounded-md text-xs font-bold tracking-wide">
                                   MARKETING
                                 </span>
                               )}
                               {rolesList.includes('hotel_manager') && (
-                                <span className="bg-blue-100 text-blue-700 px-2.5 py-1 rounded-md text-xs font-bold tracking-wide">
+                                <span className="bg-stone-100 text-stone-800 border border-stone-200 px-2.5 py-0.5 rounded-md text-xs font-bold tracking-wide">
                                   MANAGER
                                 </span>
                               )}
                               {rolesList.includes('traveller') && (
-                                <span className="bg-stone-100 text-stone-600 px-2.5 py-1 rounded-md text-xs font-bold tracking-wide">
+                                <span className="bg-stone-50 text-stone-600 border border-stone-200 px-2.5 py-0.5 rounded-md text-xs font-medium tracking-wide">
                                   TRAVELLER
                                 </span>
                               )}
                             </div>
                           </td>
                           <td className="px-6 py-4 text-right">
-                            <div className="flex items-center justify-end gap-2 flex-wrap">
+                            <div className="flex items-center justify-end gap-1.5 flex-wrap">
                               <button
                                 onClick={() => handleToggleUserSuspension(u)}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-                                  (u.status === 'suspended' || u.accessRevoked) ? 'bg-red-100 text-red-700 hover:bg-red-200' : 'bg-stone-200 text-stone-700 hover:bg-red-100 hover:text-red-700'
+                                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition ${
+                                  (u.status === 'suspended' || u.accessRevoked) ? 'bg-red-100 text-red-700 hover:bg-red-200' : 'bg-stone-100 text-stone-700 hover:bg-red-50 hover:text-red-700 border border-stone-200'
                                 }`}
                               >
                                 {(u.status === 'suspended' || u.accessRevoked) ? 'Restore Access' : 'Revoke Access'}
@@ -1384,7 +1458,7 @@ export default function AdminDashboard() {
 
                               <button
                                 onClick={() => handleDeleteUser(u)}
-                                className="px-3 py-1.5 rounded-lg text-xs font-semibold transition bg-red-50 text-red-600 hover:bg-red-600 hover:text-white"
+                                className="px-2.5 py-1 rounded-lg text-xs font-semibold transition bg-stone-100 text-stone-600 hover:bg-red-600 hover:text-white border border-stone-200"
                                 title="Permanently delete user profile"
                               >
                                 Delete
@@ -1392,8 +1466,8 @@ export default function AdminDashboard() {
 
                               <button
                                 onClick={() => handleToggleUserRole(u, 'hotel_manager')}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-                                  rolesList.includes('hotel_manager') ? 'bg-stone-200 text-stone-700 hover:bg-stone-300' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
+                                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition ${
+                                  rolesList.includes('hotel_manager') ? 'bg-stone-200 text-stone-700 hover:bg-stone-300' : 'bg-stone-100 text-stone-800 hover:bg-stone-200 border border-stone-200'
                                 }`}
                               >
                                 {rolesList.includes('hotel_manager') ? 'Revoke Manager' : 'Make Manager'}
@@ -1401,8 +1475,8 @@ export default function AdminDashboard() {
                               
                               <button
                                 onClick={() => handleToggleUserRole(u, 'admin')}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-                                  rolesList.includes('admin') ? 'bg-stone-200 text-stone-700 hover:bg-stone-300' : 'bg-purple-50 text-purple-600 hover:bg-purple-100'
+                                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition ${
+                                  rolesList.includes('admin') ? 'bg-stone-200 text-stone-700 hover:bg-stone-300' : 'bg-amber-50 text-amber-900 hover:bg-amber-100 border border-amber-200'
                                 }`}
                               >
                                 {rolesList.includes('admin') ? 'Revoke Admin' : 'Make Admin'}
@@ -1410,8 +1484,8 @@ export default function AdminDashboard() {
 
                               <button
                                 onClick={() => handleToggleUserRole(u, 'marketing')}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-                                  rolesList.includes('marketing') ? 'bg-stone-200 text-stone-700 hover:bg-stone-300' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
+                                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition ${
+                                  rolesList.includes('marketing') ? 'bg-stone-200 text-stone-700 hover:bg-stone-300' : 'bg-stone-100 text-stone-800 hover:bg-stone-200 border border-stone-200'
                                 }`}
                               >
                                 {rolesList.includes('marketing') ? 'Revoke Marketing' : 'Make Marketing'}
@@ -1554,18 +1628,18 @@ export default function AdminDashboard() {
           <div className="space-y-6 animate-in fade-in duration-300">
             <h2 className="text-3xl font-serif font-bold text-stone-900">Platform Bookings</h2>
 
-            <div className="bg-white rounded-3xl border border-stone-200 shadow-sm overflow-hidden">
+            <div className="bg-white rounded-2xl border border-stone-200 shadow-2xs overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse min-w-[1000px]">
                   <thead>
                     <tr className="bg-stone-50 border-b border-stone-200">
-                      <th className="px-6 py-4 text-xs font-bold text-stone-500 uppercase tracking-wider">Ref</th>
-                      <th className="px-6 py-4 text-xs font-bold text-stone-500 uppercase tracking-wider">Property</th>
-                      <th className="px-6 py-4 text-xs font-bold text-stone-500 uppercase tracking-wider">Guest</th>
-                      <th className="px-6 py-4 text-xs font-bold text-stone-500 uppercase tracking-wider">Dates</th>
-                      <th className="px-6 py-4 text-xs font-bold text-stone-500 uppercase tracking-wider">Amount</th>
-                      <th className="px-6 py-4 text-xs font-bold text-stone-500 uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-4 text-xs font-bold text-stone-500 uppercase tracking-wider text-right">Actions</th>
+                      <th className="px-6 py-3.5 text-xs font-bold text-stone-500 uppercase tracking-wider">Ref</th>
+                      <th className="px-6 py-3.5 text-xs font-bold text-stone-500 uppercase tracking-wider">Property</th>
+                      <th className="px-6 py-3.5 text-xs font-bold text-stone-500 uppercase tracking-wider">Guest</th>
+                      <th className="px-6 py-3.5 text-xs font-bold text-stone-500 uppercase tracking-wider">Dates</th>
+                      <th className="px-6 py-3.5 text-xs font-bold text-stone-500 uppercase tracking-wider">Amount</th>
+                      <th className="px-6 py-3.5 text-xs font-bold text-stone-500 uppercase tracking-wider">Status</th>
+                      <th className="px-6 py-3.5 text-xs font-bold text-stone-500 uppercase tracking-wider text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-stone-100">
@@ -1675,7 +1749,7 @@ export default function AdminDashboard() {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Custom Destinations Manager */}
-              <div className="bg-white rounded-3xl border border-stone-200 p-6 shadow-sm flex flex-col h-full">
+              <div className="bg-white rounded-2xl border border-stone-200 p-5 sm:p-6 shadow-2xs flex flex-col h-full">
                 <h3 className="font-bold text-stone-900 text-lg mb-2">Active Popular List</h3>
                 <p className="text-sm text-stone-500 mb-6">
                   These destinations will be shown exactly as listed when Manual Mode is enabled.
@@ -1729,7 +1803,7 @@ export default function AdminDashboard() {
               </div>
 
               {/* Data-driven Recommendations */}
-              <div className="bg-white rounded-3xl border border-stone-200 p-6 shadow-sm flex flex-col h-full max-h-[600px]">
+              <div className="bg-white rounded-2xl border border-stone-200 p-5 sm:p-6 shadow-2xs flex flex-col h-full max-h-[600px]">
                 <h3 className="font-bold text-stone-900 text-lg mb-2">Performance Data</h3>
                 <p className="text-sm text-stone-500 mb-6">
                   Calculated from live platform data (Bookings carry more weight). Click to add to your custom list.
@@ -1772,7 +1846,7 @@ export default function AdminDashboard() {
           <div className="space-y-6 animate-in fade-in duration-300 pb-20">
             <h2 className="text-3xl font-serif font-bold text-stone-900">Content & Legal</h2>
             
-            <div className="bg-white rounded-3xl border border-stone-200 shadow-sm p-6 md:p-8 space-y-8">
+            <div className="bg-white rounded-2xl border border-stone-200 shadow-2xs p-5 sm:p-6 md:p-8 space-y-8">
               <div>
                 <h3 className="text-lg font-bold text-stone-900 mb-4 border-b border-stone-100 pb-2">Global Domain Settings</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

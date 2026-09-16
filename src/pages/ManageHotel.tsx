@@ -34,6 +34,7 @@ import AvailabilityCalendar from '../components/AvailabilityCalendar';
 import OpeningHoursEditor from '../components/OpeningHoursEditor';
 import MenuEditor, { emptyRestaurant } from '../components/MenuEditor';
 import { fastDeleteOrClearChat } from '../lib/chatDeletion';
+import { logSystemEvent } from '../lib/logger';
 import MenuTemplateView from '../components/MenuTemplates';
 import AIAssistantButton from '../components/AIAssistantButton';
 import toast from 'react-hot-toast';
@@ -319,6 +320,12 @@ export default function ManageHotel() {
       await updateDoc(doc(db, 'hotels', id), { isOnline: newStatus });
       setHotel(prev => prev ? { ...prev, isOnline: newStatus } : null);
       setEditHotelData(prev => ({ ...prev, isOnline: newStatus }));
+
+      await logSystemEvent('action', `Manager toggled property status to ${newStatus ? 'ONLINE' : 'OFFLINE'} for ${hotel.name}`, {
+        hotelId: id,
+        isOnline: newStatus
+      }, user, 'property');
+
       if (newStatus) {
         toast.success(`${hotel.name} is now ONLINE! Guests will see you as available for live chat.`);
       } else {
@@ -607,6 +614,11 @@ export default function ManageHotel() {
       await updateDoc(doc(db, 'hotels', id), updateData);
       setHotel({ ...hotel, ...updateData } as Hotel);
       toast.success('Property details updated successfully!');
+
+      await logSystemEvent('action', `Manager updated property details: ${hotel.name}`, {
+        hotelId: id,
+        updatedFields: Object.keys(updateData)
+      }, user, 'property');
     } catch (error) {
       console.error("Error updating hotel:", error);
       toast.error('Failed to update property details.');
@@ -809,13 +821,15 @@ export default function ManageHotel() {
         }
       });
 
-            if (editingRoomId === 'new') {
+      if (editingRoomId === 'new') {
         const docRef = await addDoc(collection(db, 'room_types'), roomPayload);
         setRooms([...rooms, { id: docRef.id, ...roomPayload } as RoomType]);
         setEditingRoomId(docRef.id);
+        await logSystemEvent('action', `Manager added new room type "${roomPayload.name}" for ${hotel.name}`, { hotelId: id, roomId: docRef.id }, user, 'property');
       } else if (editingRoomId) {
         await updateDoc(doc(db, 'room_types', editingRoomId), roomPayload);
         setRooms(rooms.map(r => r.id === editingRoomId ? { ...r, ...roomPayload } as RoomType : r));
+        await logSystemEvent('action', `Manager updated room type "${roomPayload.name}" for ${hotel.name}`, { hotelId: id, roomId: editingRoomId }, user, 'property');
       }
       toast.success('Room saved.');
     } catch (error) {

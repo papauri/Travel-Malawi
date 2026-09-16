@@ -3,12 +3,13 @@ import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useAuthDialog } from '../contexts/AuthDialogContext';
-import { Search, LogIn, User as UserIcon, Briefcase, Building2, Heart, Menu, X, LogOut, Settings, ShieldCheck, BookOpen, Bell } from 'lucide-react';
+import { Search, LogIn, User as UserIcon, Briefcase, Building2, Heart, Menu, X, LogOut, Settings, ShieldCheck, BookOpen, Bell, WifiOff } from 'lucide-react';
 import { isHotelManager, isTraveller, describeRoles, isAdmin, isMarketing } from '../lib/roles';
 import { motion, AnimatePresence } from 'motion/react';
 import { openAccessPermissionsModal } from './AccessRequestModal';
 import { useUnreadBroadcasts } from '../hooks/useUnreadBroadcasts';
 import { useUnreadMessages } from '../hooks/useUnreadMessages';
+import { useNetworkStatus } from '../hooks/useNetworkStatus';
 import { readStoredCurrency, storeCurrency, onCurrencyChange } from '../lib/currency';
 import { CurrencyCode } from '../types';
 
@@ -21,6 +22,7 @@ export default function MobileNav() {
   const isManager = isHotelManager(user);
   const unreadBroadcasts = useUnreadBroadcasts();
   const { unreadCount, isVibrating } = useUnreadMessages();
+  const { isOnline } = useNetworkStatus();
   const [currency, setCurrency] = useState<CurrencyCode>(readStoredCurrency);
 
   useEffect(() => {
@@ -97,7 +99,15 @@ export default function MobileNav() {
               <div className="p-5 flex items-center justify-between border-b border-stone-100 relative">
                 <div className="flex items-center gap-3">
                   <h2 className="font-serif font-bold text-xl text-stone-900">Menu</h2>
-                  <div className="flex items-center bg-stone-100 p-0.5 rounded-full border border-stone-200 text-xs font-bold">
+                  
+                  {!isOnline && (
+                    <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200/50 text-[10px] font-bold uppercase tracking-wider">
+                      <WifiOff className="w-3 h-3" />
+                      <span>Offline</span>
+                    </div>
+                  )}
+
+                  <div className="flex items-center bg-stone-100 p-0.5 rounded-full border border-stone-200 text-xs font-bold ml-1">
                     <button
                       type="button"
                       onClick={() => { setCurrency('MWK'); storeCurrency('MWK'); }}

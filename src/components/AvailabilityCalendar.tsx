@@ -298,7 +298,7 @@ export default function AvailabilityCalendar({
   ];
 
   return (
-    <div className="bg-white rounded-3xl border border-stone-200 shadow-sm overflow-hidden">
+    <div className="bg-white rounded-2xl border border-stone-200 shadow-2xs overflow-hidden">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between px-4 sm:px-6 md:px-8 py-4 sm:py-6 border-b border-stone-100 gap-4">
         <div className="flex-1">

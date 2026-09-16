@@ -39,6 +39,7 @@ export default defineConfig(() => {
           ]
         },
         workbox: {
+          navigateFallbackDenylist: [/^\/api/],
           maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
           globIgnores: ['**/server.cjs', '**/server.cjs.map', '**/host_app_*.png'],
           globPatterns: ['**/*.{js,css,html,ico,svg,webmanifest}'],
@@ -79,6 +80,41 @@ export default defineConfig(() => {
                 expiration: {
                   maxEntries: 1000,
                   maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
+                },
+                cacheableResponse: {
+                  statuses: [0, 200]
+                }
+              }
+            },
+            {
+              urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
+              handler: 'StaleWhileRevalidate',
+              options: {
+                cacheName: 'google-fonts-stylesheets',
+              }
+            },
+            {
+              urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'google-fonts-webfonts',
+                expiration: {
+                  maxEntries: 30,
+                  maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year
+                },
+                cacheableResponse: {
+                  statuses: [0, 200]
+                }
+              }
+            },
+            {
+              urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp)$/i,
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'travel-malawi-images-v1',
+                expiration: {
+                  maxEntries: 200,
+                  maxAgeSeconds: 60 * 60 * 24 * 14 // 14 days
                 },
                 cacheableResponse: {
                   statuses: [0, 200]

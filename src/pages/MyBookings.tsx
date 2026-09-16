@@ -17,6 +17,7 @@ import Modal, { fieldClass, labelClass } from '../components/Modal';
 import Pagination from '../components/Pagination';
 import FieldError from '../components/FieldError';
 import BookingChat from '../components/BookingChat';
+import { logSystemEvent } from '../lib/logger';
 import { useChatModal } from '../contexts/ChatModalContext';
 import StayVoucherModal from '../components/StayVoucherModal';
 import { getHotelImage } from '../lib/images';
@@ -199,6 +200,12 @@ export default function MyBookings() {
       });
       setHostBookings(prev => prev.map(b => (b.id === booking.id ? { ...b, status: 'confirmed' } : b)));
       toast.success(`Booking ${booking.reference || ''} confirmed!`);
+
+      await logSystemEvent('action', `Manager confirmed booking ${booking.reference}`, {
+        bookingId: booking.id,
+        reference: booking.reference,
+        status: 'confirmed'
+      }, user, 'booking');
     } catch (err) {
       console.error('Error confirming booking:', err);
       toast.error('Failed to confirm booking.');
@@ -219,6 +226,12 @@ export default function MyBookings() {
       });
       setHostBookings(prev => prev.map(b => (b.id === booking.id ? { ...b, status: 'rejected' } : b)));
       toast.success(`Booking ${booking.reference || ''} declined.`);
+
+      await logSystemEvent('action', `Manager rejected booking ${booking.reference}`, {
+        bookingId: booking.id,
+        reference: booking.reference,
+        status: 'rejected'
+      }, user, 'booking');
     } catch (err) {
       console.error('Error declining booking:', err);
       toast.error('Failed to decline booking.');
@@ -309,6 +322,13 @@ export default function MyBookings() {
         prev.map(b => (b.id === booking.id ? { ...b, status: 'cancelled', cancelledAt: Date.now(), cancelledBy: 'guest' } : b))
       );
       toast.success('Booking cancelled. The property has been notified.');
+
+      await logSystemEvent('action', `Guest cancelled booking ${booking.reference}`, {
+        bookingId: booking.id,
+        reference: booking.reference,
+        status: 'cancelled',
+        cancelledBy: 'guest'
+      }, user, 'booking');
     } catch (error) {
       console.error('Error cancelling booking:', error);
       toast.error('Could not cancel this booking. Please contact the property directly.');
@@ -1120,6 +1140,7 @@ function ReviewDialog({
 }
 
 function QuickEditBookingModal({ booking, onClose, onUpdated }: { booking: EnrichedBooking, onClose: () => void, onUpdated: () => void }) {
+  const { user } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const [guestName, setGuestName] = useState(booking.guestName || '');
   const [guestPhone, setGuestPhone] = useState(booking.guestPhone || booking.guestWhatsapp || '');
@@ -1138,6 +1159,13 @@ function QuickEditBookingModal({ booking, onClose, onUpdated }: { booking: Enric
         updatedAt: Date.now()
       });
       toast.success('Booking updated.');
+
+      await logSystemEvent('action', `Quick edited booking ${booking.reference}`, {
+        bookingId: booking.id,
+        reference: booking.reference,
+        updatedFields: { guestName, guestPhone, guestEmail }
+      }, user, 'booking');
+
       onUpdated();
       onClose();
     } catch (err) {

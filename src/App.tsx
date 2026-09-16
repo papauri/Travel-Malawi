@@ -28,6 +28,7 @@ import PropertyListingGuide from './pages/PropertyListingGuide';
 import PlatformGuideUat from './pages/PlatformGuideUat';
 import GlobalNotificationManager from './components/GlobalNotificationManager';
 import PageLoader from './components/PageLoader';
+import OfflineIndicator from './components/OfflineIndicator';
 import CompareWidget from './components/CompareWidget';
 import OperationsCopilot from './components/OperationsCopilot';
 import AccessRequestModal from './components/AccessRequestModal';
@@ -124,6 +125,7 @@ function RootContent({ children }: { children?: React.ReactNode }) {
       {/* Strictly scoped to current authenticated session - unmounted and completely destroyed on logout or user switch */}
       {user && <OperationsCopilot key={`operations-copilot-${user.uid}`} />}
       <PageLoader />
+      <OfflineIndicator />
       <main className="flex-1">
         {children || <Outlet />}
       </main>

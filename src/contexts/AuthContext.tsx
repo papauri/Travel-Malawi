@@ -18,6 +18,12 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db, googleProvider } from '../lib/firebase';
 import { User, Role } from '../types';
 import { isHotelManager, toRoleFields, userRoles } from '../lib/roles';
+import {
+  logAuthEvent,
+  logSessionEvent,
+  getSessionDurationMinutes,
+  clearSessionTracking,
+} from '../lib/logger';
 
 interface AuthContextType {
   user: User | null;
@@ -102,6 +108,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
           const appUser = await loadOrCreateUser(firebaseUser);
           setUser(appUser);
+
+          // Track session in system logs once per browser session per user
+          if (typeof window !== 'undefined') {
+            const loggedUser = sessionStorage.getItem('tm_session_logged_user');
+            if (loggedUser !== appUser.uid) {
+              sessionStorage.setItem('tm_session_logged_user', appUser.uid);
+              logSessionEvent(appUser, 'session_start', {
+                email: appUser.email,
+                role: appUser.role,
+                roles: appUser.roles,
+                provider: firebaseUser.providerData?.[0]?.providerId || 'password',
+                isAnonymous: firebaseUser.isAnonymous,
+              }).catch(() => {});
+            }
+          }
         } catch (err) {
           console.error('Error loading user profile:', err);
           // Fallback to basic user profile so UI loads seamlessly
@@ -115,6 +136,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           });
         }
       } else {
+        if (typeof window !== 'undefined') {
+          sessionStorage.removeItem('tm_session_logged_user');
+        }
         setUser(null);
       }
       setLoading(false);
@@ -124,28 +148,53 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signIn = async (email: string, password: string) => {
     const cleanEmail = email.trim();
-    const result = await signInWithEmailAndPassword(auth, cleanEmail, password);
     try {
-      const appUser = await loadOrCreateUser(result.user);
-      setUser(appUser);
-    } catch (err) {
-      console.error('Error loading user profile after sign-in:', err);
-      setUser({
-        uid: result.user.uid,
-        email: result.user.email || cleanEmail,
-        displayName: result.user.displayName || cleanEmail.split('@')[0] || 'User',
-        role: 'traveller',
-        roles: ['traveller'],
-        createdAt: Date.now(),
+      const result = await signInWithEmailAndPassword(auth, cleanEmail, password);
+      let appUser: User;
+      try {
+        appUser = await loadOrCreateUser(result.user);
+        setUser(appUser);
+      } catch (err) {
+        console.error('Error loading user profile after sign-in:', err);
+        appUser = {
+          uid: result.user.uid,
+          email: result.user.email || cleanEmail,
+          displayName: result.user.displayName || cleanEmail.split('@')[0] || 'User',
+          role: 'traveller',
+          roles: ['traveller'],
+          createdAt: Date.now(),
+        };
+        setUser(appUser);
+      }
+
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('tm_session_logged_user', appUser.uid);
+      }
+
+      // Log successful login
+      await logAuthEvent('login', `User signed in: ${appUser.displayName || appUser.email}`, appUser, {
+        method: 'password',
+        email: cleanEmail,
+        role: appUser.role,
+        roles: appUser.roles,
       });
+    } catch (err: any) {
+      console.error('Login error:', err);
+      // Log failed login attempt
+      await logAuthEvent('login_failed', `Failed login attempt for ${cleanEmail}: ${err?.message || 'Invalid credentials'}`, null, {
+        method: 'password',
+        email: cleanEmail,
+        errorCode: err?.code || 'auth/error',
+      });
+      throw err;
     }
   };
 
   const signUp = async (email: string, password: string, displayName: string, roles: Role[]) => {
     signingUpRef.current = true;
+    const cleanEmail = email.trim();
+    const cleanName = displayName.trim();
     try {
-      const cleanEmail = email.trim();
-      const cleanName = displayName.trim();
       const result = await createUserWithEmailAndPassword(auth, cleanEmail, password);
       
       if (cleanName) {
@@ -172,6 +221,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       setUser(newUser);
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('tm_session_logged_user', newUser.uid);
+      }
+
+      // Log account creation
+      await logAuthEvent('signup', `New user registered: ${newUser.displayName} (${newUser.email}) as [${roles.join(', ')}]`, newUser, {
+        method: 'password',
+        email: newUser.email,
+        roles,
+      });
+    } catch (err: any) {
+      console.error('Sign-up error:', err);
+      await logAuthEvent('login_failed', `Registration failed for ${cleanEmail}: ${err?.message || 'Error creating account'}`, null, {
+        method: 'password',
+        email: cleanEmail,
+        roles,
+        errorCode: err?.code || 'auth/error',
+      });
+      throw err;
     } finally {
       signingUpRef.current = false;
       setLoading(false);
@@ -179,15 +247,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signInWithGoogle = async (roles: Role[] = ['traveller']) => {
-    const result = await signInWithPopup(auth, googleProvider);
-    const appUser = await loadOrCreateUser(result.user, roles);
-    setUser(appUser);
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const appUser = await loadOrCreateUser(result.user, roles);
+      setUser(appUser);
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('tm_session_logged_user', appUser.uid);
+      }
+
+      await logAuthEvent('login', `User signed in via Google: ${appUser.displayName || appUser.email}`, appUser, {
+        method: 'google.com',
+        email: appUser.email,
+        role: appUser.role,
+        roles: appUser.roles,
+      });
+    } catch (err: any) {
+      console.error('Google sign-in error:', err);
+      if (err?.code !== 'auth/popup-closed-by-user') {
+        await logAuthEvent('login_failed', `Google sign-in failed: ${err?.message || 'Popup cancelled or failed'}`, null, {
+          method: 'google.com',
+          errorCode: err?.code || 'auth/popup-error',
+        });
+      }
+      throw err;
+    }
   };
 
   const resetPassword = async (email: string) => {
     const cleanEmail = email.trim();
     if (!cleanEmail) throw new Error('Please provide an email address.');
     await sendPasswordResetEmail(auth, cleanEmail);
+    await logAuthEvent('password_reset', `Password reset requested for: ${cleanEmail}`, null, {
+      email: cleanEmail,
+    });
     // Background notification via server SMTP if configured
     fetch('/api/auth/notify-password-reset', {
       method: 'POST',
@@ -224,10 +316,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (isHotelManager(user)) return;
     const roleFields = toRoleFields([...userRoles(user), 'hotel_manager']);
     await setDoc(doc(db, 'users', user.uid), roleFields, { merge: true });
-    setUser({ ...user, ...roleFields });
+    const updatedUser = { ...user, ...roleFields };
+    setUser(updatedUser);
+    await logAuthEvent('role_change', `User added Host / Property Manager role: ${user.displayName || user.email}`, updatedUser, {
+      grantedRole: 'hotel_manager',
+      allRoles: userRoles(updatedUser),
+    });
   };
 
   const logOut = async () => {
+    const currentUser = user;
+    if (currentUser) {
+      const duration = getSessionDurationMinutes();
+      await logAuthEvent('logout', `User signed out: ${currentUser.displayName || currentUser.email} (${duration}m active session)`, currentUser, {
+        email: currentUser.email,
+        sessionDurationMinutes: duration,
+      });
+    }
+    clearSessionTracking();
     await signOut(auth);
     setUser(null);
   };

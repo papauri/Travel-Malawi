@@ -224,8 +224,8 @@ export default function ManagerDashboard() {
     return (
       <div className="min-h-screen bg-stone-50 py-8 sm:py-12 px-3.5 sm:px-6 lg:px-8">
         <div className="max-w-2xl mx-auto">
-          <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-8 md:p-10 border border-stone-200 shadow-2xs text-center">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-stone-100 flex items-center justify-center text-stone-800 mx-auto mb-4">
+          <div className="bg-white rounded-2xl p-5 sm:p-8 border border-stone-200 shadow-2xs text-center">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-stone-100 flex items-center justify-center text-stone-800 mx-auto mb-4">
               <Lock className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
             <h1 className="text-xl sm:text-2xl md:text-3xl font-serif font-bold text-stone-900">
@@ -236,7 +236,7 @@ export default function ManagerDashboard() {
             </p>
 
             <div className="mt-6 grid sm:grid-cols-2 gap-3 text-left">
-              <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-stone-50 border border-stone-200 text-xs space-y-2">
+              <div className="p-3.5 sm:p-4 rounded-xl bg-stone-50 border border-stone-200 text-xs space-y-2">
                 <div className="font-bold text-stone-900 flex items-center justify-between">
                   <span>Guest Account</span>
                   <span className="text-[10px] text-stone-500 uppercase">Traveler</span>
@@ -256,7 +256,7 @@ export default function ManagerDashboard() {
                 </ul>
               </div>
 
-              <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-stone-900 text-white border border-stone-800 text-xs space-y-2">
+              <div className="p-3.5 sm:p-4 rounded-xl bg-stone-900 text-white border border-stone-800 text-xs space-y-2">
                 <div className="font-bold text-white flex items-center justify-between">
                   <span>Property Owner Account</span>
                   <span className="text-[10px] text-stone-300 uppercase font-semibold">Host</span>
@@ -303,7 +303,7 @@ export default function ManagerDashboard() {
     return (
       <div className="min-h-screen bg-stone-50 py-8 sm:py-12 px-3.5 sm:px-6 lg:px-8">
         <div className="max-w-2xl mx-auto">
-          <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-8 md:p-10 border border-stone-200 shadow-2xs text-center">
+          <div className="bg-white rounded-2xl p-5 sm:p-8 border border-stone-200 shadow-2xs text-center">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-stone-100 text-stone-700 border border-stone-200 text-xs font-medium mb-4">
               <UserCheck className="w-3.5 h-3.5 text-stone-500" />
               <span className="truncate max-w-[200px] sm:max-w-none">Signed in as Guest ({user.email})</span>
@@ -315,7 +315,7 @@ export default function ManagerDashboard() {
               You are currently signed in with a Guest account. To view the Host Dashboard and list properties, activate your free host permissions below.
             </p>
 
-            <div className="mt-5 p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-stone-50 border border-stone-200 text-xs text-left space-y-2 max-w-md mx-auto">
+            <div className="mt-5 p-3.5 sm:p-4 rounded-xl bg-stone-50 border border-stone-200 text-xs text-left space-y-2 max-w-md mx-auto">
               <div className="font-semibold text-stone-900">What will be enabled:</div>
               <ul className="text-stone-600 space-y-1.5">
                 <li className="flex items-center gap-2">
@@ -569,7 +569,7 @@ export default function ManagerDashboard() {
       {/* Property Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4 md:gap-5">
         {hotels.length === 0 ? (
-          <div className="col-span-full bg-white p-6 sm:p-10 md:p-12 text-center rounded-2xl sm:rounded-3xl border border-stone-200 shadow-2xs">
+          <div className="col-span-full bg-white p-6 sm:p-10 md:p-12 text-center rounded-2xl border border-stone-200 shadow-2xs">
             <Building2 className="h-10 w-10 sm:h-12 sm:w-12 text-stone-300 mx-auto mb-3 sm:mb-4" />
             <h3 className="text-lg sm:text-xl font-serif text-stone-900 mb-1.5">Nothing listed yet</h3>
             <p className="text-stone-500 text-xs sm:text-sm max-w-md mx-auto mb-5 sm:mb-6">
@@ -602,7 +602,7 @@ export default function ManagerDashboard() {
             return (
               <div
                 key={`mgr-hotel-${hotel.id}`}
-                className="group bg-white rounded-2xl md:rounded-3xl shadow-2xs border border-stone-200 overflow-hidden flex flex-col hover:border-stone-300 hover:shadow-sm transition duration-200"
+                className="group bg-white rounded-2xl shadow-2xs border border-stone-200 overflow-hidden flex flex-col hover:border-stone-300 hover:shadow-sm transition duration-200"
               >
                 {/* Card Media Header */}
                 <div className="w-full aspect-[16/10] sm:aspect-auto sm:h-36 md:h-44 bg-stone-100 relative shrink-0 overflow-hidden">

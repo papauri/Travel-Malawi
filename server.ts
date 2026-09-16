@@ -4,7 +4,17 @@ import path from 'path';
 import multer from 'multer';
 import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
-import { getPublicAIStatus, getAdminAIConfig, loadAIConfig, saveAIConfig, AIProviderId, getEffectiveApiKey, fetchLiveGeminiModels } from './server/aiConfig';
+import { 
+  getPublicAIStatus, 
+  getAdminAIConfig, 
+  loadAIConfig, 
+  saveAIConfig, 
+  AIProviderId, 
+  getEffectiveApiKey, 
+  fetchLiveGeminiModels,
+  fetchLiveProviderModels,
+  fetchAllLiveProviderModels 
+} from './server/aiConfig';
 import { 
   executeAIGeneration, 
   executeOperationsAssistantChat, 
@@ -78,6 +88,85 @@ async function startServer() {
 
   app.get('/health', (req, res) => {
     res.status(200).json({ status: 'ok', time: new Date().toISOString() });
+  });
+
+  // Client telemetry: IP address & location resolution for Intune-style audit logs
+  app.get('/api/client-telemetry', async (req, res) => {
+    try {
+      const forwarded = req.headers['x-forwarded-for'];
+      let ip = (typeof forwarded === 'string' ? forwarded.split(',')[0] : (req.socket.remoteAddress || '')).trim();
+      if (ip.startsWith('::ffff:')) {
+        ip = ip.substring(7);
+      }
+
+      let geo: {
+        city?: string;
+        region?: string;
+        country?: string;
+        countryCode?: string;
+        timezone?: string;
+        org?: string;
+      } = {};
+
+      const isPrivateOrLoopback =
+        !ip ||
+        ip === '127.0.0.1' ||
+        ip === '::1' ||
+        ip.startsWith('10.') ||
+        ip.startsWith('192.168.') ||
+        ip.startsWith('172.16.') ||
+        ip.startsWith('172.17.') ||
+        ip.startsWith('172.18.') ||
+        ip.startsWith('172.19.') ||
+        ip.startsWith('172.20.') ||
+        ip.startsWith('172.21.') ||
+        ip.startsWith('172.22.') ||
+        ip.startsWith('172.23.') ||
+        ip.startsWith('172.24.') ||
+        ip.startsWith('172.25.') ||
+        ip.startsWith('172.26.') ||
+        ip.startsWith('172.27.') ||
+        ip.startsWith('172.28.') ||
+        ip.startsWith('172.29.') ||
+        ip.startsWith('172.30.') ||
+        ip.startsWith('172.31.');
+
+      if (!isPrivateOrLoopback) {
+        try {
+          const geoRes = await fetch(`https://ipapi.co/${ip}/json/`, {
+            headers: { 'User-Agent': 'TravelMalawi-Audit/1.0' },
+            signal: AbortSignal.timeout(2000),
+          });
+          if (geoRes.ok) {
+            const data = await geoRes.json();
+            if (!data.error) {
+              geo = {
+                city: data.city,
+                region: data.region,
+                country: data.country_name,
+                countryCode: data.country_code,
+                timezone: data.timezone,
+                org: data.org,
+              };
+            }
+          }
+        } catch {
+          // ignore lookup error
+        }
+      }
+
+      res.status(200).json({
+        ip: ip || '127.0.0.1',
+        geo,
+        userAgent: req.headers['user-agent'] || '',
+      });
+    } catch {
+      res.status(200).json({
+        ip: '127.0.0.1',
+        geo: {},
+        userAgent: req.headers['user-agent'] || '',
+      });
+    }
   });
 
   // API route for upload
@@ -293,7 +382,30 @@ async function startServer() {
     }
   });
 
-  // Check live modern Gemini models directly from Google API
+  // Check live models for a single provider (Gemini, OpenAI, Groq, Mistral, DeepSeek, Anthropic)
+  app.get('/api/admin/live-models', async (req, res) => {
+    try {
+      const provider = (req.query.provider as AIProviderId) || 'gemini';
+      const apiKey = typeof req.query.apiKey === 'string' ? req.query.apiKey : undefined;
+      const result = await fetchLiveProviderModels(provider, apiKey);
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err?.message || 'Failed to fetch live models' });
+    }
+  });
+
+  // Query live models for ALL providers simultaneously
+  app.post('/api/admin/live-models-all', async (req, res) => {
+    try {
+      const customKeys = (req.body?.customKeys && typeof req.body.customKeys === 'object') ? req.body.customKeys : undefined;
+      const results = await fetchAllLiveProviderModels(customKeys);
+      res.json({ success: true, providers: results, timestamp: Date.now() });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err?.message || 'Failed to query all providers' });
+    }
+  });
+
+  // Backward-compatible alias for Gemini live models
   app.get('/api/admin/gemini-live-models', async (req, res) => {
     try {
       const apiKey = typeof req.query.apiKey === 'string' ? req.query.apiKey : undefined;
@@ -385,7 +497,6 @@ async function startServer() {
       } catch (aiErr: any) {
         // If AI fails but we have text, gracefully fallback to local parser
         if (isText) {
-          console.warn('[parse-menu] AI error, automatically falling back to localMenuParser:', aiErr?.message);
           const { parseMenuText } = await import('./server/localMenuParser');
           const textContent = buffer.toString('utf-8');
           const parsed = parseMenuText(textContent, currencies);
@@ -740,7 +851,6 @@ async function startServer() {
     try {
       const { fired } = checkAndFireReminders();
       if (fired.length > 0) {
-        console.log(`[Reminders] Fired ${fired.length} reminder(s)`);
       }
     } catch (err) {
       console.error('[Reminders] Error checking reminders:', err);

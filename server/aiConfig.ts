@@ -429,90 +429,507 @@ export interface LiveModelInfo {
   description: string;
   isLatest: boolean;
   isSweetSpot: boolean;
-  isDeprecated: boolean;
+  isDeprecated?: boolean;
 }
 
-export async function fetchLiveGeminiModels(apiKey?: string): Promise<{
+export interface LiveProviderModelsResult {
+  provider: AIProviderId;
+  providerName: string;
   success: boolean;
   models: LiveModelInfo[];
   latestRecommendation: string;
+  source: 'live_api' | 'catalog';
   error?: string;
-}> {
-  const key = apiKey || getEffectiveApiKey('gemini', true);
-  if (!key || key.length < 6) {
+  latencyMs?: number;
+}
+
+export async function fetchLiveProviderModels(
+  provider: AIProviderId,
+  apiKey?: string
+): Promise<LiveProviderModelsResult> {
+  const providerConf = DEFAULT_PROVIDERS[provider];
+  const providerName = providerConf?.name || provider;
+  const key = apiKey?.trim() || getEffectiveApiKey(provider, true);
+  const defaultRecommendation = providerConf?.defaultModel || '';
+  const startTime = Date.now();
+
+  if (!key || key.length < 5) {
+    // Return verified catalog models with notice that key is required for live endpoint
+    const fallbackModels: LiveModelInfo[] = (providerConf?.recommendedModels || []).map(m => ({
+      id: m.id,
+      name: m.name,
+      displayName: m.name,
+      description: m.description,
+      isLatest: m.id.includes('latest') || m.id.includes('3.8') || m.id.includes('3.7') || m.id.includes('4o'),
+      isSweetSpot: !!m.isSweetSpot,
+    }));
+
     return {
+      provider,
+      providerName,
       success: false,
-      models: [],
-      latestRecommendation: 'gemini-3.8-flash',
-      error: 'No Gemini API key configured. Please enter and save your API key first.',
+      models: fallbackModels,
+      latestRecommendation: defaultRecommendation,
+      source: 'catalog',
+      error: `No API key configured for ${providerName}. Please enter and save an API key to query live models directly.`,
+      latencyMs: 0,
     };
   }
 
   try {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
-    if (!res.ok) {
-      const errBody = await res.text();
+    if (provider === 'gemini') {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
+      const latencyMs = Date.now() - startTime;
+      if (!res.ok) {
+        const errBody = await res.text();
+        return {
+          provider,
+          providerName,
+          success: false,
+          models: (providerConf.recommendedModels || []).map(m => ({
+            id: m.id,
+            name: m.name,
+            displayName: m.name,
+            description: m.description,
+            isLatest: m.id.includes('3.8') || m.id.includes('3.7'),
+            isSweetSpot: !!m.isSweetSpot,
+          })),
+          latestRecommendation: 'gemini-3.8-flash',
+          source: 'catalog',
+          error: `Google API returned ${res.status}: ${errBody.slice(0, 150)}`,
+          latencyMs,
+        };
+      }
+
+      const data = await res.json();
+      const rawList: any[] = data.models || [];
+      const liveModels: LiveModelInfo[] = rawList
+        .map(m => {
+          const id = m.name?.replace(/^models\//, '') || '';
+          const isDeprecated = id.includes('2.0') || id.includes('1.5') || id === 'gemini-pro';
+          const isLatest = id.startsWith('gemini-3.8') || id.startsWith('gemini-3.7') || id === 'gemini-flash-latest';
+          const isSweetSpot = id === 'gemini-3.8-flash' || id === 'gemini-3.7-flash' || id === 'gemini-3.1-flash-lite' || id === 'gemini-flash-latest';
+          return {
+            id,
+            name: m.displayName || id,
+            displayName: m.displayName || id,
+            description: m.description || '',
+            isLatest,
+            isSweetSpot,
+            isDeprecated,
+          };
+        })
+        .filter(m => {
+          if (!m.id.startsWith('gemini')) return false;
+          if (m.id.includes('embedding') || m.id.includes('robotics') || m.id.includes('transcribe') || m.id.includes('tts') || m.id.includes('audio')) return false;
+          if (m.isDeprecated) return false;
+          return true;
+        })
+        .sort((a, b) => {
+          if (a.id === 'gemini-3.8-flash') return -1;
+          if (b.id === 'gemini-3.8-flash') return 1;
+          if (a.id === 'gemini-3.7-flash') return -1;
+          if (b.id === 'gemini-3.7-flash') return 1;
+          if (a.id === 'gemini-3.6-flash') return -1;
+          if (b.id === 'gemini-3.6-flash') return 1;
+          if (a.id === 'gemini-flash-latest') return -1;
+          if (b.id === 'gemini-flash-latest') return 1;
+          return a.id.localeCompare(b.id);
+        });
+
       return {
-        success: false,
-        models: [],
+        provider,
+        providerName,
+        success: true,
+        models: liveModels,
         latestRecommendation: 'gemini-3.8-flash',
-        error: `Google API returned ${res.status}: ${errBody.slice(0, 150)}`,
+        source: 'live_api',
+        latencyMs,
       };
     }
 
-    const data = await res.json();
-    const rawList: any[] = data.models || [];
+    if (provider === 'openai') {
+      const res = await fetch('https://api.openai.com/v1/models', {
+        headers: { Authorization: `Bearer ${key}` },
+      });
+      const latencyMs = Date.now() - startTime;
+      if (!res.ok) {
+        const errBody = await res.text();
+        return {
+          provider,
+          providerName,
+          success: false,
+          models: (providerConf.recommendedModels || []).map(m => ({
+            id: m.id,
+            name: m.name,
+            displayName: m.name,
+            description: m.description,
+            isLatest: true,
+            isSweetSpot: !!m.isSweetSpot,
+          })),
+          latestRecommendation: 'gpt-4o-mini',
+          source: 'catalog',
+          error: `OpenAI API returned ${res.status}: ${errBody.slice(0, 150)}`,
+          latencyMs,
+        };
+      }
 
-    // Filter and map models suitable for text/vision generation
-    const liveModels: LiveModelInfo[] = rawList
-      .map(m => {
-        const id = m.name?.replace(/^models\//, '') || '';
-        const isDeprecated = id.includes('2.0') || id.includes('1.5') || id === 'gemini-pro';
-        const isLatest = id.startsWith('gemini-3.8') || id.startsWith('gemini-3.7') || id === 'gemini-flash-latest';
-        const isSweetSpot = id === 'gemini-3.8-flash' || id === 'gemini-3.7-flash' || id === 'gemini-3.1-flash-lite' || id === 'gemini-flash-latest';
+      const data = await res.json();
+      const rawList: any[] = data.data || [];
+      const liveModels: LiveModelInfo[] = rawList
+        .filter((m: any) => {
+          const id = m.id || '';
+          if (!id.startsWith('gpt-') && !id.startsWith('o1') && !id.startsWith('o3') && !id.startsWith('chatgpt-')) return false;
+          if (id.includes('whisper') || id.includes('dall-e') || id.includes('tts') || id.includes('embedding') || id.includes('realtime') || id.includes('audio')) return false;
+          return true;
+        })
+        .map((m: any) => {
+          const id = m.id;
+          const isLatest = id.startsWith('gpt-4o') || id.startsWith('o1') || id.startsWith('o3') || id.startsWith('gpt-4.5');
+          const isSweetSpot = id === 'gpt-4o-mini' || id === 'o3-mini';
+          return {
+            id,
+            name: id.toUpperCase().replace('-', ' '),
+            displayName: id,
+            description: `Live OpenAI model (Owner: ${m.owned_by || 'system'})`,
+            isLatest,
+            isSweetSpot,
+          };
+        })
+        .sort((a, b) => {
+          if (a.id === 'gpt-4o-mini') return -1;
+          if (b.id === 'gpt-4o-mini') return 1;
+          if (a.id === 'gpt-4o') return -1;
+          if (b.id === 'gpt-4o') return 1;
+          if (a.id === 'o3-mini') return -1;
+          if (b.id === 'o3-mini') return 1;
+          return a.id.localeCompare(b.id);
+        });
 
+      return {
+        provider,
+        providerName,
+        success: true,
+        models: liveModels,
+        latestRecommendation: 'gpt-4o-mini',
+        source: 'live_api',
+        latencyMs,
+      };
+    }
+
+    if (provider === 'groq') {
+      const res = await fetch('https://api.groq.com/openai/v1/models', {
+        headers: { Authorization: `Bearer ${key}` },
+      });
+      const latencyMs = Date.now() - startTime;
+      if (!res.ok) {
+        const errBody = await res.text();
+        return {
+          provider,
+          providerName,
+          success: false,
+          models: (providerConf.recommendedModels || []).map(m => ({
+            id: m.id,
+            name: m.name,
+            displayName: m.name,
+            description: m.description,
+            isLatest: true,
+            isSweetSpot: !!m.isSweetSpot,
+          })),
+          latestRecommendation: 'llama-3.1-8b-instant',
+          source: 'catalog',
+          error: `Groq API returned ${res.status}: ${errBody.slice(0, 150)}`,
+          latencyMs,
+        };
+      }
+
+      const data = await res.json();
+      const rawList: any[] = data.data || [];
+      const liveModels: LiveModelInfo[] = rawList
+        .filter((m: any) => {
+          const id = m.id || '';
+          if (id.includes('whisper')) return false;
+          return true;
+        })
+        .map((m: any) => {
+          const id = m.id;
+          const isLatest = id.includes('llama-3.3') || id.includes('llama-3.1') || id.includes('qwq') || id.includes('deepseek');
+          const isSweetSpot = id === 'llama-3.1-8b-instant';
+          return {
+            id,
+            name: id,
+            displayName: id,
+            description: `Active Groq LPU model (Context: ${m.context_window ? `${m.context_window / 1024}k` : 'Standard'})`,
+            isLatest,
+            isSweetSpot,
+          };
+        })
+        .sort((a, b) => {
+          if (a.id === 'llama-3.1-8b-instant') return -1;
+          if (b.id === 'llama-3.1-8b-instant') return 1;
+          if (a.id === 'llama-3.3-70b-versatile') return -1;
+          if (b.id === 'llama-3.3-70b-versatile') return 1;
+          return a.id.localeCompare(b.id);
+        });
+
+      return {
+        provider,
+        providerName,
+        success: true,
+        models: liveModels,
+        latestRecommendation: 'llama-3.1-8b-instant',
+        source: 'live_api',
+        latencyMs,
+      };
+    }
+
+    if (provider === 'mistral') {
+      const res = await fetch('https://api.mistral.ai/v1/models', {
+        headers: { Authorization: `Bearer ${key}` },
+      });
+      const latencyMs = Date.now() - startTime;
+      if (!res.ok) {
+        const errBody = await res.text();
+        return {
+          provider,
+          providerName,
+          success: false,
+          models: (providerConf.recommendedModels || []).map(m => ({
+            id: m.id,
+            name: m.name,
+            displayName: m.name,
+            description: m.description,
+            isLatest: true,
+            isSweetSpot: !!m.isSweetSpot,
+          })),
+          latestRecommendation: 'mistral-small-latest',
+          source: 'catalog',
+          error: `Mistral API returned ${res.status}: ${errBody.slice(0, 150)}`,
+          latencyMs,
+        };
+      }
+
+      const data = await res.json();
+      const rawList: any[] = data.data || [];
+      const liveModels: LiveModelInfo[] = rawList
+        .filter((m: any) => {
+          const id = m.id || '';
+          if (id.includes('embed') || id.includes('moderation')) return false;
+          return true;
+        })
+        .map((m: any) => {
+          const id = m.id;
+          const isLatest = id.includes('latest') || id.includes('2409') || id.includes('nemo');
+          const isSweetSpot = id === 'mistral-small-latest' || id === 'ministral-8b-latest';
+          return {
+            id,
+            name: id,
+            displayName: id,
+            description: m.description || `Mistral model (${m.capabilities?.completion_chat ? 'Chat supported' : 'Standard'})`,
+            isLatest,
+            isSweetSpot,
+          };
+        })
+        .sort((a, b) => {
+          if (a.id === 'mistral-small-latest') return -1;
+          if (b.id === 'mistral-small-latest') return 1;
+          if (a.id === 'ministral-8b-latest') return -1;
+          if (b.id === 'ministral-8b-latest') return 1;
+          if (a.id === 'mistral-large-latest') return -1;
+          if (b.id === 'mistral-large-latest') return 1;
+          return a.id.localeCompare(b.id);
+        });
+
+      return {
+        provider,
+        providerName,
+        success: true,
+        models: liveModels,
+        latestRecommendation: 'mistral-small-latest',
+        source: 'live_api',
+        latencyMs,
+      };
+    }
+
+    if (provider === 'deepseek') {
+      const res = await fetch('https://api.deepseek.com/models', {
+        headers: { Authorization: `Bearer ${key}` },
+      });
+      const latencyMs = Date.now() - startTime;
+      if (!res.ok) {
+        const errBody = await res.text();
+        return {
+          provider,
+          providerName,
+          success: false,
+          models: (providerConf.recommendedModels || []).map(m => ({
+            id: m.id,
+            name: m.name,
+            displayName: m.name,
+            description: m.description,
+            isLatest: true,
+            isSweetSpot: !!m.isSweetSpot,
+          })),
+          latestRecommendation: 'deepseek-chat',
+          source: 'catalog',
+          error: `DeepSeek API returned ${res.status}: ${errBody.slice(0, 150)}`,
+          latencyMs,
+        };
+      }
+
+      const data = await res.json();
+      const rawList: any[] = data.data || [];
+      const liveModels: LiveModelInfo[] = rawList.map((m: any) => {
+        const id = m.id;
+        const isSweetSpot = id === 'deepseek-chat';
         return {
           id,
-          name: m.displayName || id,
-          displayName: m.displayName || id,
-          description: m.description || '',
-          isLatest,
+          name: id === 'deepseek-chat' ? 'DeepSeek V3 (Chat)' : id === 'deepseek-reasoner' ? 'DeepSeek R1 (Reasoner)' : id,
+          displayName: id,
+          description: id === 'deepseek-chat' ? 'Ultra-low cost high intelligence ($0.14/1M)' : 'Deep chain-of-thought mathematical reasoning',
+          isLatest: true,
           isSweetSpot,
-          isDeprecated,
         };
-      })
-      .filter(m => {
-        // Exclude embeddings, audio-only, speech, robotics, and deprecated models
-        if (!m.id.startsWith('gemini')) return false;
-        if (m.id.includes('embedding') || m.id.includes('robotics') || m.id.includes('transcribe') || m.id.includes('tts') || m.id.includes('audio')) return false;
-        if (m.isDeprecated) return false;
-        return true;
-      })
-      .sort((a, b) => {
-        // Sort latest flagship models first
-        if (a.id === 'gemini-3.8-flash') return -1;
-        if (b.id === 'gemini-3.8-flash') return 1;
-        if (a.id === 'gemini-3.7-flash') return -1;
-        if (b.id === 'gemini-3.7-flash') return 1;
-        if (a.id === 'gemini-3.6-flash') return -1;
-        if (b.id === 'gemini-3.6-flash') return 1;
-        if (a.id === 'gemini-flash-latest') return -1;
-        if (b.id === 'gemini-flash-latest') return 1;
-        return a.id.localeCompare(b.id);
       });
 
-    return {
-      success: true,
-      models: liveModels,
-      latestRecommendation: 'gemini-3.8-flash',
-    };
+      return {
+        provider,
+        providerName,
+        success: true,
+        models: liveModels.length > 0 ? liveModels : [
+          { id: 'deepseek-chat', name: 'DeepSeek V3 (Chat)', displayName: 'deepseek-chat', description: 'Universal chat & code', isLatest: true, isSweetSpot: true },
+          { id: 'deepseek-reasoner', name: 'DeepSeek R1 (Reasoner)', displayName: 'deepseek-reasoner', description: 'Deep reasoning model', isLatest: true, isSweetSpot: false },
+        ],
+        latestRecommendation: 'deepseek-chat',
+        source: 'live_api',
+        latencyMs,
+      };
+    }
+
+    if (provider === 'anthropic') {
+      let liveModels: LiveModelInfo[] = [];
+      let latencyMs = 0;
+      let usedLiveApi = false;
+
+      try {
+        const res = await fetch('https://api.anthropic.com/v1/models', {
+          headers: {
+            'x-api-key': key,
+            'anthropic-version': '2023-06-01',
+          },
+        });
+        latencyMs = Date.now() - startTime;
+        if (res.ok) {
+          const data = await res.json();
+          const rawList: any[] = data.data || [];
+          liveModels = rawList.map((m: any) => ({
+            id: m.id,
+            name: m.display_name || m.id,
+            displayName: m.display_name || m.id,
+            description: `Anthropic Claude model (Created: ${m.created_at || 'recent'})`,
+            isLatest: m.id.includes('3-7') || m.id.includes('3-5'),
+            isSweetSpot: m.id.includes('haiku'),
+          }));
+          usedLiveApi = liveModels.length > 0;
+        }
+      } catch {
+        // Fall back to verified modern models catalog
+      }
+
+      if (liveModels.length === 0) {
+        liveModels = [
+          {
+            id: 'claude-3-7-sonnet-20250219',
+            name: 'Claude 3.7 Sonnet',
+            displayName: 'Claude 3.7 Sonnet',
+            description: '🌟 Hybrid reasoning & flagship frontier intelligence',
+            isLatest: true,
+            isSweetSpot: false,
+          },
+          {
+            id: 'claude-3-5-sonnet-20241022',
+            name: 'Claude 3.5 Sonnet',
+            displayName: 'Claude 3.5 Sonnet',
+            description: '🧠 High reasoning and deep multimodal analysis',
+            isLatest: true,
+            isSweetSpot: false,
+          },
+          {
+            id: 'claude-3-5-haiku-20241022',
+            name: 'Claude 3.5 Haiku',
+            displayName: 'Claude 3.5 Haiku',
+            description: '⚡ Sweet Spot: Ultra-fast sub-second latency with low token pricing',
+            isLatest: true,
+            isSweetSpot: true,
+          },
+          {
+            id: 'claude-3-opus-20240229',
+            name: 'Claude 3 Opus',
+            displayName: 'Claude 3 Opus',
+            description: 'Complex multi-step synthesis and hospitality operations planning',
+            isLatest: false,
+            isSweetSpot: false,
+          },
+        ];
+      }
+
+      return {
+        provider,
+        providerName,
+        success: true,
+        models: liveModels,
+        latestRecommendation: 'claude-3-5-haiku-20241022',
+        source: usedLiveApi ? 'live_api' : 'catalog',
+        latencyMs: latencyMs || (Date.now() - startTime),
+      };
+    }
+
+    throw new Error(`Unsupported provider: ${provider}`);
   } catch (err: any) {
     return {
+      provider,
+      providerName,
       success: false,
-      models: [],
-      latestRecommendation: 'gemini-3.8-flash',
-      error: err.message || 'Failed to query live Google models',
+      models: (providerConf.recommendedModels || []).map(m => ({
+        id: m.id,
+        name: m.name,
+        displayName: m.name,
+        description: m.description,
+        isLatest: true,
+        isSweetSpot: !!m.isSweetSpot,
+      })),
+      latestRecommendation: defaultRecommendation,
+      source: 'catalog',
+      error: err.message || `Failed to connect to ${providerName} API`,
+      latencyMs: Date.now() - startTime,
     };
   }
 }
+
+export async function fetchAllLiveProviderModels(
+  customKeys?: Record<string, string>
+): Promise<Record<AIProviderId, LiveProviderModelsResult>> {
+  const providers = Object.keys(DEFAULT_PROVIDERS) as AIProviderId[];
+  const results = await Promise.all(
+    providers.map(p => fetchLiveProviderModels(p, customKeys?.[p]))
+  );
+  
+  const map: Partial<Record<AIProviderId, LiveProviderModelsResult>> = {};
+  results.forEach(r => {
+    map[r.provider] = r;
+  });
+  return map as Record<AIProviderId, LiveProviderModelsResult>;
+}
+
+// Backward compatibility alias for Gemini
+export async function fetchLiveGeminiModels(apiKey?: string) {
+  const result = await fetchLiveProviderModels('gemini', apiKey);
+  return {
+    success: result.success,
+    models: result.models,
+    latestRecommendation: result.latestRecommendation,
+    error: result.error,
+  };
+}
+
 

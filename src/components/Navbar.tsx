@@ -7,13 +7,14 @@ import React, { useEffect, useState, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useAuthDialog } from '../contexts/AuthDialogContext';
-import { LogOut, Bell, Palmtree, ChevronDown, LayoutDashboard, Briefcase, ShieldCheck, Building2, Volume2, VolumeX, Heart, UserCircle, BookOpen, MessageSquare } from 'lucide-react';
+import { LogOut, Bell, Palmtree, ChevronDown, LayoutDashboard, Briefcase, ShieldCheck, Building2, Volume2, VolumeX, Heart, UserCircle, BookOpen, MessageSquare, WifiOff } from 'lucide-react';
 import { isSoundEnabled, onSoundPreferenceChange, setSoundEnabled } from '../lib/notificationSound';
 import { requestBrowserNotifications } from './GlobalNotificationManager';
 import { describeRoles, isAdmin, isGlobalAdmin, isMarketing, isHotelManager, isTraveller } from '../lib/roles';
 import { useUnreadBroadcasts } from '../hooks/useUnreadBroadcasts';
 import { useUnreadMessages } from '../hooks/useUnreadMessages';
 import { usePresence, PresenceStatus } from '../hooks/usePresence';
+import { useNetworkStatus } from '../hooks/useNetworkStatus';
 import { collection, query, where, onSnapshot, getDocs, limit } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import NotificationBell from './NotificationBell';
@@ -27,6 +28,7 @@ export default function Navbar() {
   const unreadBroadcasts = useUnreadBroadcasts();
   const { activeChatsCount } = useUnreadMessages();
   const { presence, setManualStatus } = usePresence();
+  const { isOnline } = useNetworkStatus();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const [soundOn, setSoundOn] = useState(isSoundEnabled);
@@ -97,16 +99,31 @@ export default function Navbar() {
     <nav className="sticky top-0 z-[100] w-full bg-white/95 backdrop-blur-md border-b border-stone-200/70 shadow-2xs transition-all">
       <div className="mx-auto max-w-7xl px-3 sm:px-4 md:px-6 lg:px-8 w-full">
         <div className="flex items-center justify-between h-14 sm:h-16 md:h-16 lg:h-18">
-          {/* Logo */}
-          <Link to="/" className="flex items-center gap-1.5 sm:gap-2 group shrink-0">
-            <div className="relative flex items-center justify-center">
-              <Palmtree className="h-4.5 w-4.5 sm:h-5 sm:w-5 md:h-5.5 md:w-5.5 text-stone-900 transition group-hover:text-emerald-700" />
-              <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-emerald-500 ring-2 ring-white" />
-            </div>
-            <span className="text-lg sm:text-xl md:text-2xl font-serif font-bold tracking-tight text-stone-900 group-hover:text-stone-700 transition whitespace-nowrap">
-              Travel Malawi
-            </span>
-          </Link>
+          {/* Logo & Network Status */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Link to="/" className="flex items-center gap-1.5 sm:gap-2 group shrink-0">
+              <div className="relative flex items-center justify-center">
+                <Palmtree className="h-4.5 w-4.5 sm:h-5 sm:w-5 md:h-5.5 md:w-5.5 text-stone-900 transition group-hover:text-emerald-700" />
+                <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-emerald-500 ring-2 ring-white" />
+              </div>
+              <span className="text-lg sm:text-xl md:text-2xl font-serif font-bold tracking-tight text-stone-900 group-hover:text-stone-700 transition whitespace-nowrap">
+                Travel Malawi
+              </span>
+            </Link>
+
+            {!isOnline && (
+              <div 
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-stone-900 text-stone-200 border border-stone-800 text-[11px] font-semibold shadow-2xs"
+                title="Internet connection is offline. Cached guides and stays remain available."
+              >
+                <div className="relative">
+                  <WifiOff className="w-3 h-3 text-amber-400" />
+                  <span className="absolute -top-0.5 -right-0.5 w-1 h-1 rounded-full bg-amber-400 animate-pulse" />
+                </div>
+                <span className="hidden sm:inline">Offline</span>
+              </div>
+            )}
+          </div>
 
           {/* Right side navigation container */}
           <div className="flex items-center gap-1.5 sm:gap-2 md:gap-2.5 lg:gap-3.5 shrink-0">

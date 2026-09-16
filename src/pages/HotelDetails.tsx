@@ -37,6 +37,7 @@ import { getSingleCachedHotel, saveSingleCachedHotel } from '../lib/mapCache';
 import DatePicker from '../components/DatePicker';
 import { computeBookingPricing, formatMoney, makeBookingReference } from '../lib/booking';
 import { isTraveller, isAdmin, isHotelManager } from '../lib/roles';
+import { logSystemEvent } from '../lib/logger';
 import { validateBooking, errorsByField, BookingField, MAX_SPECIAL_REQUESTS } from '../lib/validateBooking';
 import { assessBooking, readSubmissionLog, recordSubmission } from '../lib/spam';
 import {
@@ -494,6 +495,17 @@ export default function HotelDetails() {
       });
 
       recordSubmission();
+
+      await logSystemEvent('action', `New booking requested at ${hotel?.name || 'Property'} (Ref: ${reference})`, {
+        reference,
+        hotelId: hotel?.id,
+        roomTypeId: selectedRoom.id,
+        checkIn,
+        checkOut,
+        guestsCount,
+        currency,
+        total: pricing.total
+      }, user, 'booking');
 
       if (hotel?.managerEmail) {
         fetch('/api/notify', {

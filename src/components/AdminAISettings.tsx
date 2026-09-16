@@ -56,18 +56,27 @@ export default function AdminAISettings() {
     error?: string;
   } | null>(null);
 
-  // Live models lookup state
-  const [liveGeminiModels, setLiveGeminiModels] = useState<Array<{
-    id: string;
-    name: string;
-    displayName: string;
-    description: string;
-    isLatest: boolean;
-    isSweetSpot: boolean;
-  }> | null>(null);
-  const [fetchingLiveModels, setFetchingLiveModels] = useState(false);
-  const [liveModelsError, setLiveModelsError] = useState<string | null>(null);
-  const [showLiveModels, setShowLiveModels] = useState(false);
+  // Universal Live models lookup state for ALL providers
+  const [liveModelsMap, setLiveModelsMap] = useState<Record<string, {
+    provider: string;
+    providerName: string;
+    success: boolean;
+    models: Array<{
+      id: string;
+      name: string;
+      displayName: string;
+      description: string;
+      isLatest: boolean;
+      isSweetSpot: boolean;
+    }>;
+    latestRecommendation: string;
+    source: 'live_api' | 'catalog';
+    error?: string;
+    latencyMs?: number;
+  }>>({});
+  const [fetchingProviderModels, setFetchingProviderModels] = useState<Record<string, boolean>>({});
+  const [showLiveModelsFor, setShowLiveModelsFor] = useState<Record<string, boolean>>({});
+  const [fetchingAllProviders, setFetchingAllProviders] = useState(false);
 
   const fetchConfig = async () => {
     try {
@@ -232,31 +241,65 @@ export default function AdminAISettings() {
     }
   };
 
-  const handleFetchLiveGeminiModels = async () => {
-    setFetchingLiveModels(true);
-    setLiveModelsError(null);
-    setShowLiveModels(true);
+  const handleFetchLiveModelsForProvider = async (providerId: string) => {
+    setFetchingProviderModels(prev => ({ ...prev, [providerId]: true }));
+    setShowLiveModelsFor(prev => ({ ...prev, [providerId]: true }));
     try {
-      const pendingKey = keyInputs['gemini']?.trim();
+      const pendingKey = keyInputs[providerId]?.trim();
       const url = pendingKey 
-        ? `/api/admin/gemini-live-models?apiKey=${encodeURIComponent(pendingKey)}`
-        : '/api/admin/gemini-live-models';
+        ? `/api/admin/live-models?provider=${encodeURIComponent(providerId)}&apiKey=${encodeURIComponent(pendingKey)}`
+        : `/api/admin/live-models?provider=${encodeURIComponent(providerId)}`;
       const res = await fetch(url);
       const data = await res.json();
+      setLiveModelsMap(prev => ({
+        ...prev,
+        [providerId]: data,
+      }));
       if (data.success && Array.isArray(data.models)) {
-        setLiveGeminiModels(data.models);
-        toast.success(`Queried Google API: ${data.models.length} active models available`);
-      } else {
-        setLiveModelsError(data.error || 'Failed to fetch live models from Google API');
-        toast.error(data.error || 'Failed to query live Google models');
+        toast.success(`Queried ${data.providerName || providerId} API: ${data.models.length} active models`);
+      } else if (data.error) {
+        toast.error(data.error);
       }
     } catch (err: any) {
-      setLiveModelsError(err.message || 'Error connecting to Google API');
-      toast.error('Error contacting live Google API');
+      toast.error(`Error contacting ${providerId} API`);
     } finally {
-      setFetchingLiveModels(false);
+      setFetchingProviderModels(prev => ({ ...prev, [providerId]: false }));
     }
   };
+
+  const handleFetchAllLiveModels = async () => {
+    setFetchingAllProviders(true);
+    try {
+      const customKeys: Record<string, string> = {};
+      Object.entries(keyInputs).forEach(([k, v]) => {
+        if (v?.trim()) customKeys[k] = v.trim();
+      });
+
+      const res = await fetch('/api/admin/live-models-all', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customKeys }),
+      });
+      const data = await res.json();
+      if (data.success && data.providers) {
+        setLiveModelsMap(data.providers);
+        const openMap: Record<string, boolean> = {};
+        Object.keys(data.providers).forEach(k => {
+          openMap[k] = true;
+        });
+        setShowLiveModelsFor(openMap);
+        toast.success('Queried all AI providers! Active models refreshed.');
+      } else {
+        toast.error(data.error || 'Failed to query providers');
+      }
+    } catch (err: any) {
+      toast.error('Failed to query all AI providers');
+    } finally {
+      setFetchingAllProviders(false);
+    }
+  };
+
+  const handleFetchLiveGeminiModels = () => handleFetchLiveModelsForProvider('gemini');
 
   const handleRunTest = async (providerId: string) => {
     setTestingProvider(providerId);
@@ -486,11 +529,28 @@ export default function AdminAISettings() {
 
       {/* 3. API KEYS & MODEL CONFIGURATION */}
       <div className="bg-white border border-stone-200 rounded-2xl p-6 md:p-8 shadow-2xs space-y-6">
-        <div>
-          <h3 className="font-serif font-bold text-xl text-stone-900">Provider Credentials & Models</h3>
-          <p className="text-stone-500 text-xs md:text-sm mt-1">
-            Store API keys securely on the server. Keys are masked and never exposed to client browsers. Enable or completely disable individual AI APIs as desired.
-          </p>
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div>
+            <h3 className="font-serif font-bold text-xl text-stone-900">Provider Credentials &amp; Models</h3>
+            <p className="text-stone-500 text-xs md:text-sm mt-1">
+              Store API keys securely on the server. Query live model catalogs across all supported AI providers in real-time.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleFetchAllLiveModels}
+            disabled={fetchingAllProviders}
+            className="inline-flex items-center justify-center gap-2 px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300/80 rounded-xl text-xs font-bold transition cursor-pointer disabled:opacity-50 shrink-0 shadow-2xs"
+            title="Query active models across all 6 API providers simultaneously"
+          >
+            {fetchingAllProviders ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-700" />
+            ) : (
+              <Globe className="w-3.5 h-3.5 text-amber-700" />
+            )}
+            <span>{fetchingAllProviders ? 'Querying All APIs...' : 'Query All Provider APIs'}</span>
+          </button>
         </div>
 
         <div className="space-y-6 divide-y divide-stone-100">
@@ -679,21 +739,20 @@ export default function AdminAISettings() {
                       <span className="text-[10px] uppercase font-bold tracking-wider text-stone-400">
                         Recommended Models &amp; Sweet Spots:
                       </span>
-                      {pid === 'gemini' && (
-                        <button
-                          type="button"
-                          onClick={handleFetchLiveGeminiModels}
-                          disabled={fetchingLiveModels}
-                          className="text-[10px] font-semibold text-amber-800 hover:text-amber-950 flex items-center gap-1 cursor-pointer transition disabled:opacity-50"
-                        >
-                          {fetchingLiveModels ? (
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                          ) : (
-                            <Globe className="w-3 h-3" />
-                          )}
-                          <span>Check Live Google Models</span>
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleFetchLiveModelsForProvider(pid)}
+                        disabled={fetchingProviderModels[pid]}
+                        className="text-[10px] font-semibold text-amber-800 hover:text-amber-950 flex items-center gap-1 cursor-pointer transition disabled:opacity-50"
+                        title={`Query live models directly from ${p.name} API`}
+                      >
+                        {fetchingProviderModels[pid] ? (
+                          <Loader2 className="w-3 h-3 animate-spin text-amber-700" />
+                        ) : (
+                          <Globe className="w-3 h-3 text-amber-700" />
+                        )}
+                        <span>Check Live {p.name} Models</span>
+                      </button>
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       {p.recommendedModels.map((m, mIdx) => {
@@ -726,43 +785,68 @@ export default function AdminAISettings() {
                       })}
                     </div>
 
-                    {/* Live Google API Models Results Section */}
-                    {pid === 'gemini' && showLiveModels && (
+                    {/* Live Provider API Models Results Section */}
+                    {showLiveModelsFor[pid] && (
                       <div className="mt-3 pt-3 border-t border-stone-200/70 space-y-2">
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-1.5 text-xs font-bold text-stone-800">
-                            <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-                            <span>Live Google Models (Direct from API)</span>
+                          <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1.5 text-xs font-bold text-stone-800">
+                              <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                              <span>Live {p.name} Models</span>
+                            </div>
+                            {liveModelsMap[pid]?.source === 'live_api' && (
+                              <span className="text-[9px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded uppercase">
+                                Live API
+                              </span>
+                            )}
+                            {liveModelsMap[pid]?.source === 'catalog' && (
+                              <span className="text-[9px] bg-stone-200/80 text-stone-700 font-medium px-1.5 py-0.2 rounded">
+                                Verified Catalog
+                              </span>
+                            )}
+                            {liveModelsMap[pid]?.latencyMs !== undefined && liveModelsMap[pid]?.latencyMs! > 0 && (
+                              <span className="text-[9px] text-stone-400 font-mono">
+                                {liveModelsMap[pid]?.latencyMs}ms
+                              </span>
+                            )}
                           </div>
                           <button
                             type="button"
-                            onClick={() => setShowLiveModels(false)}
+                            onClick={() => setShowLiveModelsFor(prev => ({ ...prev, [pid]: false }))}
                             className="text-[10px] text-stone-400 hover:text-stone-600 cursor-pointer"
                           >
                             Hide
                           </button>
                         </div>
 
-                        {fetchingLiveModels && (
+                        {fetchingProviderModels[pid] && (
                           <div className="flex items-center gap-2 py-2 text-xs text-stone-500">
                             <Loader2 className="w-3.5 h-3.5 animate-spin text-stone-700" />
-                            <span>Connecting to Google Generative Language API...</span>
+                            <span>Connecting to {p.name} API in real-time...</span>
                           </div>
                         )}
 
-                        {liveModelsError && (
-                          <div className="text-[11px] text-red-600 bg-red-50 p-2 rounded-lg border border-red-200">
-                            {liveModelsError}
+                        {liveModelsMap[pid]?.error && (
+                          <div className="text-[11px] text-amber-800 bg-amber-50 p-2.5 rounded-lg border border-amber-200 flex items-start gap-2">
+                            <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+                            <div className="space-y-0.5">
+                              <div className="font-semibold">{liveModelsMap[pid]?.error}</div>
+                              {liveModelsMap[pid]?.source === 'catalog' && (
+                                <div className="text-[10px] text-amber-700/80">
+                                  Displaying current verified model options below:
+                                </div>
+                              )}
+                            </div>
                           </div>
                         )}
 
-                        {liveGeminiModels && liveGeminiModels.length > 0 && (
+                        {liveModelsMap[pid]?.models && liveModelsMap[pid].models.length > 0 && (
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-56 overflow-y-auto pr-1">
-                            {liveGeminiModels.map((lm) => {
-                              const isSelected = (modelInputs['gemini'] ?? p.model) === lm.id;
+                            {liveModelsMap[pid].models.map((lm) => {
+                              const isSelected = (modelInputs[pid] ?? p.model) === lm.id;
                               return (
                                 <div
-                                  key={lm.id}
+                                  key={`${pid}-${lm.id}`}
                                   className={`p-2 rounded-lg border text-left flex flex-col justify-between gap-1 transition ${
                                     isSelected 
                                       ? 'bg-amber-50/80 border-amber-300 ring-1 ring-amber-400' 
@@ -779,6 +863,11 @@ export default function AdminAISettings() {
                                           Latest
                                         </span>
                                       )}
+                                      {lm.isSweetSpot && !lm.isLatest && (
+                                        <span className="text-[9px] bg-amber-100 text-amber-900 font-bold px-1.5 py-0.2 rounded uppercase shrink-0">
+                                          Sweet Spot
+                                        </span>
+                                      )}
                                     </div>
                                     <p className="text-[10px] text-stone-500 line-clamp-2 mt-0.5">
                                       {lm.description || lm.name}
@@ -793,8 +882,8 @@ export default function AdminAISettings() {
                                       <button
                                         type="button"
                                         onClick={() => {
-                                          setModelInputs(prev => ({ ...prev, gemini: lm.id }));
-                                          handleSaveProvider('gemini', lm.id);
+                                          setModelInputs(prev => ({ ...prev, [pid]: lm.id }));
+                                          handleSaveProvider(pid, lm.id);
                                         }}
                                         className="text-[10px] font-semibold text-stone-700 hover:text-stone-950 bg-stone-100 hover:bg-stone-200 px-2 py-0.5 rounded cursor-pointer transition"
                                       >

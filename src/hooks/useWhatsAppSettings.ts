@@ -27,7 +27,8 @@ export function useWhatsAppSettings() {
   const fetchStatus = useCallback(async () => {
     try {
       const res = await fetch('/api/whatsapp/status');
-      if (res.ok) {
+      const contentType = res.headers.get("content-type");
+      if (res.ok && contentType && contentType.includes("application/json")) {
         const data: WhatsAppStatus = await res.json();
         cachedStatus = data;
         setStatus(data);

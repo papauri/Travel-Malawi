@@ -482,7 +482,7 @@ export default function BulkRoomEditor({
   };
 
   return (
-    <div className={`bg-white rounded-2xl md:rounded-3xl border border-stone-200 shadow-sm overflow-hidden ${isEmbedded ? '' : 'max-w-5xl mx-auto'}`}>
+    <div className={`bg-white rounded-2xl border border-stone-200 shadow-2xs overflow-hidden ${isEmbedded ? '' : 'max-w-5xl mx-auto'}`}>
       {/* Header Banner */}
       <div className="bg-stone-900 text-white p-4 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
