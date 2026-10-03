@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { 
-  Building2, CheckCircle2, ArrowLeft, Smartphone, MessageSquare, 
-  MapPin, Printer, ShieldCheck, 
-  Send, Share2, Download, Copy, Check, Target, Users, Sparkles
+import {
+  ArrowLeft, MessageSquare, Printer, Send, Download, Copy, Check
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -106,341 +104,239 @@ export default function OperationsStarterPack() {
     }
   };
 
+  const inputClass =
+    'w-full border border-stone-300 rounded-md px-3 py-2 text-sm text-stone-900 placeholder-stone-400 bg-white focus:outline-none focus:border-stone-500';
+  const labelClass = 'block text-sm font-medium text-stone-700 mb-1';
+  const secondaryBtn =
+    'inline-flex items-center gap-1.5 border border-stone-300 text-stone-800 rounded-md px-3 py-1.5 text-sm hover:bg-stone-50 cursor-pointer';
+  const primaryBtn =
+    'inline-flex items-center gap-1.5 bg-stone-900 text-white rounded-md px-3 py-1.5 text-sm hover:bg-stone-800 cursor-pointer disabled:opacity-50';
+  const th = 'bg-stone-50 text-left font-medium text-stone-900 px-3 py-2';
+  const td = 'px-3 py-2 border-t border-stone-200 align-top';
+
   return (
-    <div className="min-h-screen bg-stone-100/60 py-6 sm:py-10 px-4 sm:px-6 lg:px-8 print:p-0 print:bg-white text-stone-900 font-sans">
-      
-      {/* Standardized Top Utility Bar (Hidden during print) */}
-      <div className="max-w-4xl mx-auto mb-6 bg-white border border-stone-200 rounded-2xl p-4 sm:px-6 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-4 print:hidden">
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          <Link 
-            to="/list-your-property" 
-            className="p-2 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl transition text-xs font-semibold inline-flex items-center gap-1.5"
-            title="Return to Host Hub"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span className="hidden sm:inline">Partner Hub</span>
-          </Link>
-          <div className="h-4 w-px bg-stone-200 hidden sm:block" />
-          <div className="min-w-0">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-purple-900 bg-purple-100/80 px-2 py-0.5 rounded">
-              Field Operations
-            </span>
-            <div className="text-xs font-bold text-stone-900 truncate">
-              Operations &amp; Field Conversion Playbook
+    <div className="min-h-screen bg-white text-stone-700 font-sans">
+      <main className="max-w-3xl mx-auto px-5 py-12 print:py-0">
+
+        {/* Header */}
+        <header className="border-b border-stone-200 pb-6 mb-8">
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <p className="text-sm text-stone-500">Field operations &middot; Operational standard 2026</p>
+            <div className="flex items-center gap-2 flex-wrap print:hidden">
+              <Link to="/list-your-property" className={secondaryBtn}>
+                <ArrowLeft size={16} className="text-stone-500" />
+                Partner Hub
+              </Link>
+              <DocQuickEditButton
+                docId="operations-starter-pack"
+                onSaved={() => refreshDoc()}
+              />
+              <button onClick={handleShareWhatsApp} className={secondaryBtn}>
+                <MessageSquare size={16} className="text-stone-500" />
+                Share
+              </button>
+              <button onClick={handleCopyLink} className={secondaryBtn} title="Copy link">
+                {copiedLink ? <Check size={16} className="text-stone-500" /> : <Copy size={16} className="text-stone-500" />}
+                {copiedLink ? 'Copied' : 'Copy link'}
+              </button>
+              <button onClick={handleDownload} className={secondaryBtn}>
+                <Download size={16} className="text-stone-500" />
+                HTML
+              </button>
+              <button onClick={handlePrint} className={primaryBtn}>
+                <Printer size={16} />
+                Print / PDF
+              </button>
             </div>
           </div>
-        </div>
 
-        <div className="flex items-center gap-2 shrink-0 flex-wrap w-full sm:w-auto justify-end">
-          <DocQuickEditButton 
-            docId="operations-starter-pack" 
-            onSaved={() => refreshDoc()} 
-          />
-
-          <button
-            onClick={handleShareWhatsApp}
-            className="px-3 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs inline-flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
-          >
-            <MessageSquare className="w-3.5 h-3.5" />
-            <span>Share on WhatsApp</span>
-          </button>
-
-          <button
-            onClick={handlePrint}
-            className="px-3 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-semibold text-xs inline-flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
-          >
-            <Printer className="w-3.5 h-3.5" />
-            <span>Print / PDF</span>
-          </button>
-
-          <button
-            onClick={handleDownload}
-            className="px-3 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 font-semibold text-xs border border-stone-200 transition inline-flex items-center gap-1.5 cursor-pointer"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">HTML</span>
-          </button>
-
-          <button
-            onClick={handleCopyLink}
-            className="p-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-600 border border-stone-200 transition cursor-pointer"
-            title="Copy link"
-          >
-            {copiedLink ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4 text-stone-600" />}
-          </button>
-        </div>
-      </div>
-
-      {/* Main Document Body */}
-      <main className="max-w-4xl mx-auto bg-white border border-stone-200 rounded-3xl p-6 sm:p-10 shadow-xs space-y-10 print:border-none print:shadow-none print:p-0">
-        
-        {/* Document Header */}
-        <header className="border-b border-stone-200 pb-8 space-y-4">
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <span className="text-xs font-mono uppercase tracking-widest text-stone-600 font-semibold">
-              Travel Malawi &bull; Field Operations Series
-            </span>
-            <span className="text-xs font-mono text-stone-600">
-              Operational Standard 2026
-            </span>
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="font-serif text-2xl sm:text-4xl font-bold text-stone-900 tracking-tight leading-tight">
-                {customTitle}
-              </h1>
-              {isCustomized && (
-                <span className="text-[10px] uppercase font-bold tracking-wider text-amber-800 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded">
-                  Live Customized Edition
-                </span>
-              )}
-            </div>
-            {lastEditedBy && (
-              <p className="text-[11px] text-stone-500 font-mono">
-                Maintained by {lastEditedBy}
-              </p>
-            )}
-          </div>
-
-          <p className="text-sm sm:text-base text-stone-600 leading-relaxed max-w-3xl">
-            {customSubtitle}
-          </p>
+          <h1 className="mt-4 text-3xl font-semibold text-stone-900">{customTitle}</h1>
+          <p className="mt-2 text-stone-500">{customSubtitle}</p>
+          {(isCustomized || lastEditedBy) && (
+            <p className="mt-2 text-sm text-stone-500">
+              {isCustomized && 'Customised edition'}
+              {isCustomized && lastEditedBy && ' · '}
+              {lastEditedBy && `Maintained by ${lastEditedBy}`}
+            </p>
+          )}
         </header>
 
-        {/* Section 1: The Principle of Zero Inertia */}
-        <section className="space-y-4">
-          <div className="flex items-center gap-2">
-            <span className="w-6 h-6 rounded-full bg-stone-900 text-white font-mono text-xs flex items-center justify-center font-bold">1</span>
-            <h2 className="font-serif text-xl sm:text-2xl font-bold text-stone-900">
-              The Golden Rule: The Principle of Zero Inertia
-            </h2>
-          </div>
-
-          <p className="text-sm text-stone-700 leading-relaxed">
-            Lodge owners and general managers in Malawi are chronically busy with generator fuel, seasonal lake road repairs, and kitchen supplies. <strong>Any request that feels like administrative work will be postponed indefinitely.</strong>
-          </p>
-
-          <div className="bg-stone-50 border border-stone-200 rounded-2xl p-5 space-y-2">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-stone-600">The Field Mandate</h3>
-            <p className="text-sm font-semibold text-stone-900">
-              Never ask a host to &ldquo;sign up,&rdquo; &ldquo;fill out a form,&rdquo; or &ldquo;learn a system.&rdquo;
+        <div className="text-[15px] leading-relaxed">
+          {/* Section 1 */}
+          <section>
+            <h2 className="text-xl font-semibold text-stone-900">1. The golden rule: the principle of zero inertia</h2>
+            <p className="mt-3 text-stone-700">
+              Lodge owners and general managers in Malawi are chronically busy with generator fuel, seasonal lake road repairs, and kitchen supplies. <strong className="font-semibold text-stone-900">Any request that feels like administrative work will be postponed indefinitely.</strong>
             </p>
-            <p className="text-xs text-stone-600 leading-relaxed">
-              Instead, make the entry barrier zero: <em>&ldquo;Send us 3 photos and your rate card on WhatsApp. Our concierge team formats your verified digital storefront in 8 minutes for free.&rdquo;</em>
-            </p>
-          </div>
-        </section>
-
-        {/* Section 2: 3-Touch WhatsApp Sequence */}
-        <section className="space-y-4">
-          <div className="flex items-center gap-2">
-            <span className="w-6 h-6 rounded-full bg-stone-900 text-white font-mono text-xs flex items-center justify-center font-bold">2</span>
-            <h2 className="font-serif text-xl sm:text-2xl font-bold text-stone-900">
-              The 3-Touch WhatsApp Conversion Cadence
-            </h2>
-          </div>
-
-          <div className="space-y-3">
-            <div className="p-4 rounded-xl border border-stone-200 bg-white space-y-1.5">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded">
-                Touch 1 (Day 1): The Sincere Compliment + Provocative Question
-              </span>
-              <p className="text-xs font-mono bg-stone-50 p-3 rounded-lg text-stone-800 leading-relaxed">
-                &ldquo;Muli bwanji [Manager Name]! We&apos;ve been admiring the stunning lakefront cottages at [Property Name]. Quick question: on your weekend bookings from Lilongwe and Blantyre, are you still paying foreign booking websites 18% to 22% in commission?&rdquo;
+            <div className="mt-4 bg-stone-50 border-l-2 border-stone-300 px-4 py-3 text-stone-700">
+              <p className="font-semibold text-stone-900">
+                The field mandate: never ask a host to &ldquo;sign up,&rdquo; &ldquo;fill out a form,&rdquo; or &ldquo;learn a system.&rdquo;
               </p>
-              <p className="text-[11px] text-stone-600 italic">
-                Psychology: Opens a conversational loop without being aggressive. Reminds them of the commission deduction.
+              <p className="mt-1">
+                Instead, make the entry barrier zero: &ldquo;Send us 3 photos and your rate card on WhatsApp. Our concierge team formats your verified digital storefront in 8 minutes for free.&rdquo;
               </p>
             </div>
+          </section>
 
-            <div className="p-4 rounded-xl border border-stone-200 bg-white space-y-1.5">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-blue-800 bg-blue-50 px-2 py-0.5 rounded">
-                Touch 2 (Day 2): The Zero-Inertia Value Demo
-              </span>
-              <p className="text-xs font-mono bg-stone-50 p-3 rounded-lg text-stone-800 leading-relaxed">
-                &ldquo;We put together a private preview of what [Property Name] looks like on Travel Malawi with direct Airtel Money/Mpamba settlement and 0% commission. Guests chat directly to your WhatsApp line. Would you like us to activate this for your lodge?&rdquo;
-              </p>
-              <p className="text-[11px] text-stone-600 italic">
-                Psychology: Endowment effect. The work is already done; they feel natural pride in the result.
-              </p>
-            </div>
-
-            <div className="p-4 rounded-xl border border-stone-200 bg-white space-y-1.5">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800 bg-amber-50 px-2 py-0.5 rounded">
-                Touch 3 (Day 3): The Founding Host Scarcity Close
-              </span>
-              <p className="text-xs font-mono bg-stone-50 p-3 rounded-lg text-stone-800 leading-relaxed">
-                &ldquo;Takulandirani [Manager Name] — we are locking our inaugural Founding Host Cohort for [Region] at 10 flagship properties this Friday (0% commission forever + free verified profiling). We have 2 slots remaining in your zone and wanted to offer you first right of refusal before opening to others.&rdquo;
-              </p>
-              <p className="text-[11px] text-stone-600 italic">
-                Psychology: Loss aversion and prestige. No reputable lodge wants to be left out of the national directory.
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {/* Section 3: Disarming the 4 Objections */}
-        <section className="space-y-4">
-          <div className="flex items-center gap-2">
-            <span className="w-6 h-6 rounded-full bg-stone-900 text-white font-mono text-xs flex items-center justify-center font-bold">3</span>
-            <h2 className="font-serif text-xl sm:text-2xl font-bold text-stone-900">
-              Disarming the 4 Host Objections
-            </h2>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="border-b border-stone-200 text-stone-500 font-mono uppercase tracking-wider">
-                  <th className="py-2.5 px-3">Host Objection</th>
-                  <th className="py-2.5 px-3">Underlying Fear</th>
-                  <th className="py-2.5 px-3">Cunning Turnaround Script</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-stone-100 text-stone-700">
-                <tr>
-                  <td className="py-3 px-3 font-semibold text-stone-900">&ldquo;We already use Booking.com.&rdquo;</td>
-                  <td className="py-3 px-3 text-stone-500 italic">Fear of losing foreign traffic.</td>
-                  <td className="py-3 px-3">&ldquo;Keep it! We don&apos;t want you to leave it. We simply capture your domestic and regional travelers at 0% commission. Why pay 20% on a guest driving from Lilongwe?&rdquo;</td>
-                </tr>
-                <tr>
-                  <td className="py-3 px-3 font-semibold text-stone-900">&ldquo;I don&apos;t have time for another app.&rdquo;</td>
-                  <td className="py-3 px-3 text-stone-500 italic">Fear of operational complexity.</td>
-                  <td className="py-3 px-3">&ldquo;You will never log into an app. Guest inquiries land straight in your WhatsApp with room, dates, and total calculated. You confirm with one tap.&rdquo;</td>
-                </tr>
-                <tr>
-                  <td className="py-3 px-3 font-semibold text-stone-900">&ldquo;Why is it free? What is the catch?&rdquo;</td>
-                  <td className="py-3 px-3 text-stone-500 italic">Suspicion of hidden future fees.</td>
-                  <td className="py-3 px-3">&ldquo;No catch. We are partnering with 10 flagship stays per region to build the national network. We monetize optional corporate marketing packages later, never your baseline bookings.&rdquo;</td>
-                </tr>
-                <tr>
-                  <td className="py-3 px-3 font-semibold text-stone-900">&ldquo;We only take cash on arrival.&rdquo;</td>
-                  <td className="py-3 px-3 text-stone-500 italic">Fear of banking issues.</td>
-                  <td className="py-3 px-3">&ldquo;You can keep doing that! We also enable guests to send deposits to your Airtel Money or Mpamba so you eliminate last-minute weekend no-shows.&rdquo;</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        {/* Section 4: SUBMIT BACK TO US (Field Scout Form) */}
-        <section id="scout-form" className="pt-6 border-t border-stone-200 space-y-6">
-          <div className="bg-stone-900 text-white rounded-3xl p-6 sm:p-8 space-y-6">
-            <div className="space-y-2">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-stone-800 text-stone-200 text-xs font-bold uppercase tracking-wider">
-                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                <span>Field Scout &amp; Property Lead Submission</span>
+          {/* Section 2 */}
+          <section>
+            <h2 className="text-xl font-semibold text-stone-900 mt-10">2. The 3-touch WhatsApp conversion cadence</h2>
+            <div className="mt-4 space-y-6">
+              <div>
+                <h3 className="text-base font-semibold text-stone-900">Touch 1 (day 1): the sincere compliment + provocative question</h3>
+                <p className="mt-2 bg-stone-50 border-l-2 border-stone-300 px-4 py-3 text-stone-700">
+                  &ldquo;Muli bwanji [Manager Name]! We&apos;ve been admiring the stunning lakefront cottages at [Property Name]. Quick question: on your weekend bookings from Lilongwe and Blantyre, are you still paying foreign booking websites 18% to 22% in commission?&rdquo;
+                </p>
+                <p className="mt-2 text-sm text-stone-500">
+                  Psychology: Opens a conversational loop without being aggressive. Reminds them of the commission deduction.
+                </p>
               </div>
-              <h2 className="font-serif text-xl sm:text-2xl font-bold text-white">
-                Log a New Lodge Lead or Field Observation
-              </h2>
-              <p className="text-xs sm:text-sm text-stone-300 leading-relaxed max-w-xl">
-                Met a lodge manager or identified a promising cottage along the lake? Enter their contact info below to dispatch the concierge onboarding sequence.
-              </p>
+
+              <div>
+                <h3 className="text-base font-semibold text-stone-900">Touch 2 (day 2): the zero-inertia value demo</h3>
+                <p className="mt-2 bg-stone-50 border-l-2 border-stone-300 px-4 py-3 text-stone-700">
+                  &ldquo;We put together a private preview of what [Property Name] looks like on Travel Malawi with direct Airtel Money/Mpamba settlement and 0% commission. Guests chat directly to your WhatsApp line. Would you like us to activate this for your lodge?&rdquo;
+                </p>
+                <p className="mt-2 text-sm text-stone-500">
+                  Psychology: Endowment effect. The work is already done; they feel natural pride in the result.
+                </p>
+              </div>
+
+              <div>
+                <h3 className="text-base font-semibold text-stone-900">Touch 3 (day 3): the founding host scarcity close</h3>
+                <p className="mt-2 bg-stone-50 border-l-2 border-stone-300 px-4 py-3 text-stone-700">
+                  &ldquo;Takulandirani [Manager Name] — we are locking our inaugural Founding Host Cohort for [Region] at 10 flagship properties this Friday (0% commission forever + free verified profiling). We have 2 slots remaining in your zone and wanted to offer you first right of refusal before opening to others.&rdquo;
+                </p>
+                <p className="mt-2 text-sm text-stone-500">
+                  Psychology: Loss aversion and prestige. No reputable lodge wants to be left out of the national directory.
+                </p>
+              </div>
             </div>
+          </section>
+
+          {/* Section 3 */}
+          <section>
+            <h2 className="text-xl font-semibold text-stone-900 mt-10">3. Disarming the 4 host objections</h2>
+            <div className="mt-4 overflow-x-auto">
+              <table className="w-full text-sm border border-stone-200 border-collapse">
+                <thead>
+                  <tr>
+                    <th className={th}>Host objection</th>
+                    <th className={th}>Underlying fear</th>
+                    <th className={th}>Turnaround script</th>
+                  </tr>
+                </thead>
+                <tbody className="text-stone-700">
+                  <tr>
+                    <td className={`${td} font-medium text-stone-900`}>&ldquo;We already use Booking.com.&rdquo;</td>
+                    <td className={`${td} text-stone-500`}>Fear of losing foreign traffic.</td>
+                    <td className={td}>&ldquo;Keep it! We don&apos;t want you to leave it. We simply capture your domestic and regional travelers at 0% commission. Why pay 20% on a guest driving from Lilongwe?&rdquo;</td>
+                  </tr>
+                  <tr>
+                    <td className={`${td} font-medium text-stone-900`}>&ldquo;I don&apos;t have time for another app.&rdquo;</td>
+                    <td className={`${td} text-stone-500`}>Fear of operational complexity.</td>
+                    <td className={td}>&ldquo;You will never log into an app. Guest inquiries land straight in your WhatsApp with room, dates, and total calculated. You confirm with one tap.&rdquo;</td>
+                  </tr>
+                  <tr>
+                    <td className={`${td} font-medium text-stone-900`}>&ldquo;Why is it free? What is the catch?&rdquo;</td>
+                    <td className={`${td} text-stone-500`}>Suspicion of hidden future fees.</td>
+                    <td className={td}>&ldquo;No catch. We are partnering with 10 flagship stays per region to build the national network. We monetize optional corporate marketing packages later, never your baseline bookings.&rdquo;</td>
+                  </tr>
+                  <tr>
+                    <td className={`${td} font-medium text-stone-900`}>&ldquo;We only take cash on arrival.&rdquo;</td>
+                    <td className={`${td} text-stone-500`}>Fear of banking issues.</td>
+                    <td className={td}>&ldquo;You can keep doing that! We also enable guests to send deposits to your Airtel Money or Mpamba so you eliminate last-minute weekend no-shows.&rdquo;</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          {/* Section 4: field scout form */}
+          <section id="scout-form" className="mt-12 pt-8 border-t border-stone-200">
+            <h2 className="text-xl font-semibold text-stone-900">Log a new lodge lead or field observation</h2>
+            <p className="mt-2 text-stone-500">
+              Met a lodge manager or identified a promising cottage along the lake? Enter their contact info below to dispatch the concierge onboarding sequence.
+            </p>
 
             {submitted ? (
-              <div className="bg-stone-800 border border-stone-700 rounded-2xl p-6 text-center space-y-3">
-                <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto">
-                  <CheckCircle2 className="w-6 h-6" />
-                </div>
-                <h3 className="text-base font-bold text-white">
-                  Field Lead Logged Successfully
-                </h3>
-                <p className="text-xs text-stone-300 max-w-md mx-auto">
-                  Reference: <span className="font-mono text-amber-300 font-bold">{submissionId}</span>. The record is now visible in the Admin Hub for immediate onboarding dispatch.
+              <div className="mt-6 bg-stone-50 border-l-2 border-stone-300 px-4 py-3">
+                <p className="font-medium text-stone-900">Field lead logged</p>
+                <p className="text-stone-700">
+                  Reference: <span className="font-mono">{submissionId}</span>. The record is now visible in the Admin Hub for immediate onboarding dispatch.
                 </p>
               </div>
             ) : (
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="mt-6 space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-medium text-stone-300 mb-1">
-                      Target Lodge / Cottage Name *
-                    </label>
+                    <label className={labelClass}>Target lodge / cottage name *</label>
                     <input
                       type="text"
                       required
                       placeholder="e.g. Mufasa Eco Lodge, Cape Maclear"
                       value={formData.targetStay}
                       onChange={e => setFormData({ ...formData, targetStay: e.target.value })}
-                      className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white placeholder-stone-500 focus:outline-none focus:border-stone-500"
+                      className={inputClass}
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-stone-300 mb-1">
-                      Region / Area
-                    </label>
+                    <label className={labelClass}>Region / area</label>
                     <input
                       type="text"
                       placeholder="e.g. Nkhata Bay, Senga Bay, Liwonde"
                       value={formData.targetLocation}
                       onChange={e => setFormData({ ...formData, targetLocation: e.target.value })}
-                      className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white placeholder-stone-500 focus:outline-none focus:border-stone-500"
+                      className={inputClass}
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-stone-300 mb-1">
-                      Scout / Field Officer Name
-                    </label>
+                    <label className={labelClass}>Scout / field officer name</label>
                     <input
                       type="text"
                       placeholder="Your name"
                       value={formData.scoutName}
                       onChange={e => setFormData({ ...formData, scoutName: e.target.value })}
-                      className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white placeholder-stone-500 focus:outline-none focus:border-stone-500"
+                      className={inputClass}
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-stone-300 mb-1">
-                      Host WhatsApp / Phone Number
-                    </label>
+                    <label className={labelClass}>Host WhatsApp / phone number</label>
                     <input
                       type="tel"
-                      placeholder="+265 99 123 4567"
+                      placeholder="Include country code"
                       value={formData.scoutPhone}
                       onChange={e => setFormData({ ...formData, scoutPhone: e.target.value })}
-                      className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white placeholder-stone-500 focus:outline-none focus:border-stone-500"
+                      className={inputClass}
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-stone-300 mb-1">
-                    Field Notes &amp; Current Status
-                  </label>
+                  <label className={labelClass}>Field notes &amp; current status</label>
                   <textarea
-                    rows={2}
+                    rows={3}
                     placeholder="e.g. Owner expressed interest; currently frustrated with Booking.com 20% fee; has 6 chalets on beach"
                     value={formData.notes}
                     onChange={e => setFormData({ ...formData, notes: e.target.value })}
-                    className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-white placeholder-stone-500 focus:outline-none focus:border-stone-500"
+                    className={inputClass}
                   />
                 </div>
 
-                <div className="pt-2 flex items-center justify-between gap-4 flex-wrap">
-                  <span className="text-[11px] text-stone-400">
-                    &bull; Real-time sync with Admin Hub &bull; Automatic WhatsApp dispatch ready
-                  </span>
-
-                  <button
-                    type="submit"
-                    disabled={submitting}
-                    className="px-6 py-2.5 rounded-full bg-white hover:bg-stone-100 text-stone-900 font-semibold text-xs transition cursor-pointer flex items-center gap-1.5 shadow-xs disabled:opacity-50"
-                  >
-                    <Send className="w-3.5 h-3.5" />
-                    <span>{submitting ? 'Submitting…' : 'Submit Field Observation'}</span>
+                <div className="flex items-center justify-between gap-4 flex-wrap">
+                  <span className="text-sm text-stone-500">Sent directly to the Admin Hub.</span>
+                  <button type="submit" disabled={submitting} className={primaryBtn}>
+                    <Send size={16} />
+                    {submitting ? 'Submitting…' : 'Submit field observation'}
                   </button>
                 </div>
               </form>
             )}
-          </div>
-        </section>
-
+          </section>
+        </div>
       </main>
     </div>
   );

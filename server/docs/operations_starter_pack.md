@@ -1,57 +1,52 @@
-# TRAVEL MALAWI — OPERATIONS & FIELD CONVERSION PLAYBOOK
-**Host Acquisition, Objection Disarming & Quality Control Protocols**
-*Internal Team Field Handbook & Conversion Playbook*
+# Operations and Field Playbook
+*Partner outreach, common objections and listing quality checks*
 
----
+## 1. Keep it easy for the property owner
 
-## I. THE PSYCHOLOGICAL ANCHOR: THE PRINCIPLE OF ZERO INERTIA
+Lodge owners and managers in Malawi are busy with generators, road repairs, staff and supplies. **Anything that feels like extra work is likely to be postponed.**
 
-Lodge owners and general managers in Malawi are chronically busy. Between generator maintenance, seasonal lake road repairs, staffing, and kitchen supplies, **any request that feels like "work" will be ignored or postponed indefinitely**.
+### The main rule for field outreach
 
-### The Golden Rule of Field Acquisition
-**Never ask a host to "sign up," "fill out a form," or "learn a system."**
-Instead, remove 100% of the cognitive burden:
-> *"Send us 3 photos and your current rate card on WhatsApp. Our concierge team builds your verified digital storefront in 8 minutes for free."*
+**Do not ask a host to "sign up", "fill out a form" or "learn a system".** Do the work for them:
 
----
+> Send us four photos and your current rates on WhatsApp. Our team will build your listing for free, usually within about eight minutes.
 
-## II. THE 3-TOUCH WHATSAPP CONVERSION SEQUENCE
+## 2. Three-message WhatsApp sequence
 
-Use this exact cadenced sequence on WhatsApp or in-person with lodge managers and cottage owners:
+Use this sequence on WhatsApp or in person with lodge managers and cottage owners.
 
-### Touch 1: The Sincere Compliment + Provocative Question
-> *"Muli bwanji [Manager Name]! We've been admiring the stunning lakefront cottages at [Property Name]. Quick question: on your weekend bookings from Lilongwe and Blantyre, are you still paying foreign booking websites 18% to 22% in commission?"*
+### Message 1: Introduction and question
 
-*Psychological Target*: Opens a conversational loop, reminds them of the commission wound without being aggressive.
+> Muli bwanji [Manager name]. We have seen the lakefront cottages at [Property name] and they look lovely. Quick question: for your weekend guests from Lilongwe and Blantyre, are you still paying foreign booking websites 18% to 22% commission?
 
-### Touch 2: The Zero-Inertia Value Demo (24 Hours Later)
-> *"We put together a private preview of what [Property Name] looks like on Travel Malawi with direct Airtel Money/Mpamba settlement and 0% commission: [Sample Listing Link]. Guests chat directly to your WhatsApp line. Would you like us to activate this for your lodge?"*
+*Purpose:* Start a conversation and raise the cost of commission without being pushy.
 
-*Psychological Target*: Demonstrates work already done (endowment effect). They already feel ownership of the profile.
+### Message 2: Show a preview (24 hours later)
 
-### Touch 3: The Velvet Rope / Scarcity Close (48 Hours Later)
-> *"Takulandirani [Manager Name] — we are locking our inaugural Founding Host Cohort for [Region Name] at 10 flagship properties this Friday (0% commission for 90 days + free professional profiling). We have 2 slots remaining in your zone and wanted to offer you first right of refusal before opening to others."*
+> We have put together a private preview of how [Property name] would look on Travel Malawi, with Airtel Money and TNM Mpamba deposits paid directly to you and 0% commission: [Preview link]. Guests message your WhatsApp directly. Would you like us to make it live?
 
-*Psychological Target*: Loss aversion and status. Nobody likes losing an exclusive invitation.
+*Purpose:* Show work already done, so the owner can see the result straight away.
 
----
+### Message 3: Founding partner invitation (48 hours later)
 
-## III. DISARMING THE 4 CRITICAL OBJECTIONS
+> Takulandirani [Manager name]. We are confirming our founding partner group for [Region] this Friday, limited to 10 properties (0% commission for 90 days and free listing setup). There are 2 places left in your area and we wanted to offer you one first.
 
-| The Host Objection | The Underlying Fear | The Cunning Turnaround Script |
+*Purpose:* Make clear that places in the founding group are limited.
+
+## 3. Common objections
+
+| Objection | Underlying concern | Suggested response |
 | :--- | :--- | :--- |
-| **"We already use Booking.com."** | *Fear of disruption or loss of foreign traffic.* | *"Fantastic — definitely keep it! We don't want you to leave it. We simply capture your domestic, corporate, and regional travelers at 0% commission. Why pay $25 to Amsterdam when a guest is driving from Area 43?"* |
-| **"I don't have time to manage another app."** | *Fear of operational complexity & learning curve.* | *"You will never have to log into an app. When a traveler requests a stay, their inquiry lands straight in your WhatsApp with room type, dates, and total calculated. You confirm with one tap."* |
-| **"Why is it free? What is the catch?"** | *Suspicion of hidden fees or future exploitation.* | *"No catch. We are partnering with 10 flagship stays per region to build the country's national network. We make money on optional corporate marketing packages later, never by taxing your baseline room bookings."* |
-| **"We only take cash on arrival."** | *Fear of payment disputes and tax complications.* | *"You can keep doing that! We also enable guests to send deposits straight to your personal Airtel Money, TNM Mpamba, or National Bank of Malawi account so you eliminate last-minute weekend no-shows."* |
+| "We already use Booking.com." | Losing international guests. | "Please keep it. We focus on your domestic, corporate and regional guests at 0% commission, so you are not paying $25 commission on a guest driving from Area 43." |
+| "I don't have time to manage another app." | Complexity and learning time. | "You do not need to log in to anything. Booking requests arrive on your WhatsApp with room type, dates and total already calculated, and you confirm with one reply." |
+| "Why is it free? What is the catch?" | Hidden fees later. | "There is no catch. We are starting with a limited group of founding properties in each region to build the network. We plan to earn from optional marketing packages, not from commission on your room bookings during launch." |
+| "We only take cash on arrival." | Payment disputes and tax questions. | "You can keep doing that. Guests can also send a deposit to your Airtel Money, TNM Mpamba or bank account (NBM, Standard Bank, FDH Bank or Centenary Bank), which reduces last-minute no-shows." |
 
----
+## 4. Listing quality checks
 
-## IV. QUALITY ASSURANCE STANDARDS (THE 4 PILLARS)
+Before a property is marked **Approved** in the Admin Dashboard, check:
 
-Before any property is marked **Approved** in the Admin Dashboard:
-
-1. **Exact Gate GPS Coordinates**: Pinned to the actual vehicle entrance gate, not the district post office. (Vital for our offline satellite navigation system).
-2. **Authentic Photography (Minimum 3 Photos)**: Exterior view, bed/room interior, and bathroom or lake/bush vista. No blurry or watermark-stamped images.
-3. **Transparent Dual Pricing**: Published cleanly in MWK (rounded to nearest 1,000) and USD (rounded to nearest $5).
-4. **Verified Host WhatsApp Line**: Direct telephone contact verified via test message within 15 minutes.
+1. **Gate GPS coordinates.** The pin is at the vehicle entrance gate, not the district post office. Offline navigation depends on this.
+2. **Real photos (at least 3).** Outside view, bedroom, and bathroom or view. No blurry or watermarked images.
+3. **Prices in both currencies.** MWK rounded to the nearest 1,000 and USD in whole dollars or rounded to the nearest $5.
+4. **Verified WhatsApp number.** The host replies to a test message within 15 minutes.

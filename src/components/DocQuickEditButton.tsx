@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Edit3, Sparkles, ExternalLink } from 'lucide-react';
+import { Edit3 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { isMarketing, isAdmin, isGlobalAdmin } from '../lib/roles';
 import DocEditorModal from './DocEditorModal';
@@ -28,29 +28,24 @@ export default function DocQuickEditButton({
   return (
     <>
       {variant === 'banner' ? (
-        <div className={`p-3 bg-amber-50 border border-amber-200/80 rounded-2xl flex items-center justify-between gap-3 text-amber-900 ${className} print:hidden`}>
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-            <span className="text-xs font-semibold">
-              <strong>Marketing &amp; Admin Mode:</strong> You can customize this document's text and messaging anytime.
-            </span>
-          </div>
+        <div className={`bg-stone-50 border-l-2 border-stone-300 px-4 py-3 flex items-center justify-between gap-3 text-sm text-stone-700 ${className} print:hidden`}>
+          <span>You can edit this document's text as a marketing or admin user.</span>
           <button
             onClick={() => setIsEditorOpen(true)}
-            className="px-3 py-1.5 bg-amber-900 hover:bg-amber-950 text-white rounded-xl text-xs font-bold inline-flex items-center gap-1.5 transition cursor-pointer shadow-xs shrink-0"
+            className="px-3 py-1.5 bg-stone-900 hover:bg-stone-800 text-white rounded-md text-sm inline-flex items-center gap-1.5 transition cursor-pointer shrink-0"
           >
-            <Edit3 className="w-3.5 h-3.5" />
-            <span>Edit Document</span>
+            <Edit3 size={16} />
+            <span>Edit document</span>
           </button>
         </div>
       ) : (
         <button
           onClick={() => setIsEditorOpen(true)}
-          className={`px-3 py-2 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-900 font-semibold text-xs inline-flex items-center gap-1.5 border border-amber-300/80 transition cursor-pointer shadow-xs ${className} print:hidden`}
+          className={`px-3 py-1.5 rounded-md border border-stone-300 text-stone-800 text-sm inline-flex items-center gap-1.5 hover:bg-stone-50 transition cursor-pointer ${className} print:hidden`}
           title="Edit this document content (Marketing & Super Admin)"
         >
-          <Edit3 className="w-3.5 h-3.5 text-amber-800" />
-          <span>Edit Content</span>
+          <Edit3 size={16} className="text-stone-500" />
+          <span>Edit</span>
         </button>
       )}
 

@@ -1,296 +1,105 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Travel Malawi — Stay Owner Partner Leaflet: What You Get</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,600&display=swap" rel="stylesheet">
+  <title>What You Get as a Partner Property — Travel Malawi</title>
   <style>
-    :root {
-      --primary: #1c1917;
-      --accent: #d97706;
-      --emerald: #059669;
-      --bg: #f5f5f4;
-      --card: #ffffff;
-      --border: #e7e5e4;
-      --text: #1c1917;
-      --text-muted: #57534e;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-      background-color: var(--bg);
-      color: var(--text);
-      line-height: 1.6;
-      padding: 0;
-      margin: 0;
-    }
-    .container {
-      max-width: 820px;
-      margin: 0 auto;
-      padding: 32px 20px 80px;
-    }
-    .toolbar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      background: #ffffff;
-      border: 1px solid var(--border);
-      padding: 12px 20px;
-      border-radius: 14px;
-      margin-bottom: 24px;
-      flex-wrap: wrap;
-    }
-    .btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 8px 14px;
-      border-radius: 8px;
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      text-decoration: none;
-      transition: all 0.15s ease;
-      border: 1px solid var(--border);
-      background: #fafaf9;
-      color: #1c1917;
-    }
-    .btn:hover { background: #f5f5f4; }
-    .btn-primary { background: #1c1917; color: #ffffff; border-color: #1c1917; }
-    .btn-primary:hover { background: #292524; color: #ffffff; }
-    .btn-whatsapp { background: #059669; color: #ffffff; border-color: #059669; }
-    .btn-whatsapp:hover { background: #047857; color: #ffffff; }
-
-    .doc-sheet {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 18px;
-      padding: 40px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.02);
-    }
-    .doc-pre {
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--text-muted);
-      margin-bottom: 8px;
-    }
-    .doc-title {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: 28px;
-      font-weight: 700;
-      color: #1c1917;
-      line-height: 1.25;
-      margin-bottom: 12px;
-    }
-    .doc-intro {
-      font-size: 14px;
-      color: var(--text-muted);
-      line-height: 1.6;
-      margin-bottom: 24px;
-    }
-
-    .kpi-row {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 12px;
-      padding: 16px 0;
-      border-top: 1px solid var(--border);
-      border-bottom: 1px solid var(--border);
-      margin-bottom: 28px;
-      text-align: center;
-    }
-    .kpi-val { font-size: 20px; font-weight: 800; color: #1c1917; }
-    .kpi-lbl { font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 600; margin-top: 2px; }
-
-    .benefit-item {
-      display: flex;
-      align-items: flex-start;
-      gap: 12px;
-      padding: 14px;
-      background: #fafaf9;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      margin-bottom: 10px;
-    }
-    .benefit-num {
-      width: 24px;
-      height: 24px;
-      border-radius: 50%;
-      background: #1c1917;
-      color: #fff;
-      font-size: 12px;
-      font-weight: 700;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      shrink: 0;
-      margin-top: 2px;
-    }
-    .benefit-title { font-size: 13px; font-weight: 700; color: #1c1917; }
-    .benefit-desc { font-size: 12px; color: var(--text-muted); margin-top: 2px; line-height: 1.5; }
-
-    .steps-box {
-      background: #f5f5f4;
-      border-radius: 12px;
-      padding: 20px;
-      margin: 28px 0;
-    }
-    .steps-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 12px;
-      margin-top: 12px;
-    }
-    .step-card {
-      background: #fff;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 12px;
-    }
-    .step-card strong { display: block; font-size: 12px; margin-bottom: 4px; }
-    .step-card p { font-size: 11px; color: var(--text-muted); margin: 0; }
-
-    .offer-box {
-      border: 1px dashed var(--border);
-      border-radius: 12px;
-      padding: 20px;
-      text-align: center;
-      background: #fafaf9;
-      margin-top: 24px;
-    }
-
-    @media print {
-      body { background: #fff; }
-      .container { max-width: 100%; padding: 0; }
-      .toolbar { display: none !important; }
-      .doc-sheet { border: none; padding: 0; box-shadow: none; }
-    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #ffffff; color: #44403c; font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 15px; line-height: 1.6; }
+    main { max-width: 720px; margin: 48px auto; padding: 0 20px; }
+    .category { margin: 0 0 4px; font-size: 13px; color: #78716c; }
+    h1, h2, h3 { color: #1c1917; font-weight: 600; line-height: 1.3; }
+    h1 { margin: 0 0 8px; font-size: 28px; }
+    .subtitle { margin: 0; color: #78716c; }
+    .rule { margin: 20px 0 0; border: 0; border-top: 1px solid #e7e5e4; }
+    h2 { margin: 36px 0 12px; font-size: 20px; }
+    h3 { margin: 24px 0 8px; font-size: 16px; }
+    p { margin: 0 0 12px; }
+    ul, ol { margin: 0 0 12px; padding-left: 24px; }
+    li { margin: 4px 0; }
+    strong { color: #1c1917; font-weight: 600; }
+    a { color: #1c1917; }
+    table { width: 100%; margin: 0 0 16px; border-collapse: collapse; font-size: 14px; }
+    th, td { padding: 8px 12px; border: 1px solid #e7e5e4; text-align: left; vertical-align: top; }
+    th { background: #fafaf9; color: #1c1917; font-weight: 600; }
+    .note { margin: 0 0 16px; padding: 12px 16px; background: #fafaf9; border-left: 2px solid #d6d3d1; }
+    .note p:last-child { margin-bottom: 0; }
+    code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; }
+    pre { margin: 24px 0 0; white-space: pre-wrap; word-break: break-word; color: #44403c; }
+    fieldset { margin: 0 0 16px; padding: 0; border: 0; }
+    legend { margin: 0 0 4px; padding: 0; color: #1c1917; font-weight: 600; }
+    label { display: block; margin: 12px 0 4px; color: #1c1917; font-weight: 600; font-size: 14px; }
+    label.option { margin: 4px 0; color: #44403c; font-weight: 400; }
+    input, select, textarea, button { font: inherit; }
+    input[type="text"], input[type="email"], input[type="tel"], input[type="number"], select, textarea { width: 100%; padding: 8px 10px; color: #1c1917; background: #ffffff; border: 1px solid #d6d3d1; border-radius: 4px; }
+    button { margin-top: 16px; padding: 8px 16px; color: #ffffff; background: #1c1917; border: 1px solid #1c1917; border-radius: 4px; cursor: pointer; }
+    footer { display: flex; justify-content: space-between; gap: 16px; margin-top: 48px; padding-top: 12px; border-top: 1px solid #e7e5e4; font-size: 13px; color: #78716c; }
+    @media (max-width: 600px) { h1 { font-size: 24px; } }
+    @media print { main { max-width: none; margin: 0; padding: 0; } body, h1, h2, h3, strong, a, .category, .subtitle, footer { color: #000000; } button { display: none; } }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="toolbar">
-      <span style="font-size: 12px; font-weight: 700; color: var(--text-muted);">
-        Travel Malawi &bull; Partner One-Pager
-      </span>
-      <div class="btn-group">
-        <a href="https://api.whatsapp.com/send?text=Travel%20Malawi%20Host%20Partner%20Leaflet" target="_blank" class="btn btn-whatsapp">
-          Share on WhatsApp
-        </a>
-        <button class="btn btn-primary" onclick="window.print()">Print / Save PDF</button>
-        <button class="btn" onclick="navigator.clipboard.writeText(window.location.href); alert('Link copied!');">
-          Copy Link
-        </button>
-      </div>
-    </div>
-
-    <div class="doc-sheet">
-      <div class="doc-pre">Direct Hospitality Platform &bull; Host Overview</div>
-      <h1 class="doc-title">Keep 100% of What You Earn.<br>Welcome More Guests Directly.</h1>
-      <p class="doc-intro">
-        Tired of foreign travel engines taking 15% to 25% of your room earnings and delaying international payments? <strong>Travel Malawi</strong> connects you straight to travelers with direct Kwacha payouts, zero setup costs, and direct WhatsApp messaging.
-      </p>
-
-      <div class="kpi-row">
-        <div>
-          <div class="kpi-val">0%</div>
-          <div class="kpi-lbl">Launch Commission</div>
-        </div>
-        <div>
-          <div class="kpi-val" style="color: #059669;">Instant</div>
-          <div class="kpi-lbl">Airtel &bull; Mpamba &bull; Banks</div>
-        </div>
-        <div>
-          <div class="kpi-val">Direct</div>
-          <div class="kpi-lbl">WhatsApp Inquiries</div>
-        </div>
-      </div>
-
-      <h2 style="font-family: 'Playfair Display', serif; font-size: 18px; margin-bottom: 14px;">
-        What Stays Get as a Verified Partner
-      </h2>
-
-      <div class="benefit-item">
-        <div class="benefit-num">1</div>
-        <div>
-          <div class="benefit-title">Your Own Dedicated Storefront</div>
-          <div class="benefit-desc">A fast mobile webpage displaying your rooms, transparent rates in Kwacha and USD, food menu, and accurate GPS directions.</div>
-        </div>
-      </div>
-
-      <div class="benefit-item">
-        <div class="benefit-num">2</div>
-        <div>
-          <div class="benefit-title">Direct Local Kwacha Payments</div>
-          <div class="benefit-desc">Receive deposits straight to Airtel Money, TNM Mpamba, or your bank account (NBM, Standard Bank, FDH Bank). No overseas conversion delays.</div>
-        </div>
-      </div>
-
-      <div class="benefit-item">
-        <div class="benefit-num">3</div>
-        <div>
-          <div class="benefit-title">Direct Guest WhatsApp Line</div>
-          <div class="benefit-desc">Booking inquiries arrive directly on your phone with traveler names, dates, and calculated totals. You keep full client ownership.</div>
-        </div>
-      </div>
-
-      <div class="benefit-item">
-        <div class="benefit-num">4</div>
-        <div>
-          <div class="benefit-title">Room Calendar &amp; Overbooking Lock</div>
-          <div class="benefit-desc">Prevent double-bookings with live availability. Easily block dates when rooms are booked offline or held for private buyouts.</div>
-        </div>
-      </div>
-
-      <div class="benefit-item">
-        <div class="benefit-num">5</div>
-        <div>
-          <div class="benefit-title">Ulendo 24/7 Guest Concierge</div>
-          <div class="benefit-desc">Our built-in digital assistant answers prospective travelers day and night in English and Chichewa regarding solar power, menus, and lake excursions.</div>
-        </div>
-      </div>
-
-      <div class="steps-box">
-        <h3 style="font-size: 13px; font-weight: 700; margin-bottom: 2px;">How To Get Listed (Under 8 Minutes)</h3>
-        <p style="font-size: 11px; color: var(--text-muted); margin: 0;">Our hospitality team formats your profile for free.</p>
-        <div class="steps-grid">
-          <div class="step-card">
-            <strong>1. Send 4 Photos</strong>
-            <p>Send photos of your bed, view, bathroom, and dining table on WhatsApp.</p>
-          </div>
-          <div class="step-card">
-            <strong>2. Share Rate Card</strong>
-            <p>Text your room names and nightly rates in MWK or USD.</p>
-          </div>
-          <div class="step-card">
-            <strong>3. Welcome Guests</strong>
-            <p>Your verified listing goes live with direct WhatsApp inquiry routing.</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="offer-box">
-        <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #d97706; margin-bottom: 4px;">
-          Founding Partner Cohort
-        </div>
-        <div style="font-size: 16px; font-family: 'Playfair Display', serif; font-weight: 700; margin-bottom: 6px;">
-          0% Commission for Your First 90 Days
-        </div>
-        <p style="font-size: 12px; color: var(--text-muted); max-width: 480px; margin: 0 auto 12px;">
-          We are accepting 10 founding properties per district across Lake Malawi, Lilongwe, Blantyre, and the National Parks.
-        </p>
-        <a href="https://wa.me/265999000000?text=Hello%20Travel%20Malawi%20team,%20we%20would%20like%20to%20register%20our%20stay." target="_blank" class="btn btn-whatsapp" style="padding: 10px 18px; font-size: 13px;">
-          Message Host Team on WhatsApp
-        </a>
-      </div>
-    </div>
-  </div>
+<main>
+  <header>
+    <p class="category">Partner Leaflet</p>
+    <h1>What You Get as a Partner Property</h1>
+    <p class="subtitle">A one-page summary for lodge, cottage and hotel owners</p>
+    <hr class="rule">
+  </header>
+  <h2>Keep more of what you earn</h2>
+  <p>Tired of paying 15% to 25% of every booking to foreign travel websites that do not know Malawi?</p>
+  <p><strong>Travel Malawi</strong> is a direct booking platform for independent properties in Malawi. It was designed with Malawian lodge managers, safari operators and cottage owners, and connects you directly with domestic travellers, international visitors, NGO staff and business travellers.</p>
+  <h2>Five things you get from day one</h2>
+  <h3>1. Your own booking page</h3>
+  <ul>
+    <li>A fast, mobile-friendly page showing your rooms, rates in Kwacha and USD, amenities, menu and activities.</li>
+    <li>A photo gallery of your rooms.</li>
+    <li>Accurate GPS location and directions, so guests can find you on unpaved roads.</li>
+  </ul>
+  <h3>2. Payments to your own accounts</h3>
+  <ul>
+    <li>Guests pay deposits directly to your Airtel Money or TNM Mpamba account in Malawian Kwacha (MWK).</li>
+    <li>Bank transfers to National Bank of Malawi (NBM), Standard Bank, FDH Bank or Centenary Bank.</li>
+    <li>Visa and Mastercard, and cash on arrival if your policy allows it.</li>
+    <li>No foreign exchange losses and no waiting for international transfers.</li>
+  </ul>
+  <h3>3. Ulendo, the AI concierge</h3>
+  <ul>
+    <li>Ulendo (Chichewa for &quot;journey&quot;) answers guest questions at any time of day.</li>
+    <li>It handles common questions such as &quot;Do you have solar backup?&quot;, &quot;Can we arrange a boat to Bird Island?&quot; or &quot;What is for dinner?&quot;</li>
+    <li>It replies in English, and in Chichewa when a guest writes in Chichewa.</li>
+    <li>It takes booking requests and passes them to you.</li>
+  </ul>
+  <h3>4. Calendar and room availability</h3>
+  <ul>
+    <li>Live availability that prevents double bookings.</li>
+    <li>Block dates in one step when rooms are booked offline or reserved for groups.</li>
+    <li>Change rates for several rooms at once for busy weekends (Easter, Lake of Stars, Christmas).</li>
+  </ul>
+  <h3>5. Reviews and direct guest contact</h3>
+  <ul>
+    <li>Show your TripAdvisor and Google reviews on your listing.</li>
+    <li>Chat directly with guests, so returning travellers come straight back to you.</li>
+  </ul>
+  <h2>How to join (about 10 minutes)</h2>
+  <ol>
+    <li><strong>Send your details.</strong> Send four photos (bed, view, bathroom, dining), your room names and rates in MWK or USD, and your WhatsApp number.</li>
+    <li><strong>We build your page.</strong> Our team sets up your listing at no cost.</li>
+    <li><strong>Receive guests directly.</strong> Guests find you and pay you directly, and you keep 100% of the room rate during the launch period.</li>
+  </ol>
+  <h2>Founding partner offer</h2>
+  <ul>
+    <li><strong>0% commission</strong> for your first 90 days.</li>
+    <li><strong>Free listing setup</strong>, including your menu.</li>
+    <li><strong>Featured placement</strong> on the Travel Malawi homepage.</li>
+  </ul>
+  <p>Places are limited to 10 founding properties per area, across Lake Malawi, Lilongwe, Blantyre and the national parks.</p>
+  <p><strong>Takulandirani.</strong> To list your property, contact the Travel Malawi operations team.</p>
+  <footer>
+    <span>Travel Malawi</span>
+    <span>Updated October 2026</span>
+  </footer>
+</main>
 </body>
 </html>

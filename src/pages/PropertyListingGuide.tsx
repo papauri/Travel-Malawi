@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { 
-  Building2, CheckCircle2, ArrowLeft, Smartphone, MessageSquare, 
-  MapPin, Printer, ShieldCheck, 
-  Send, Share2, Download, Copy, Check, Sparkles, BedDouble, Camera, Compass
+import {
+  ArrowLeft, MessageSquare, Printer, Send, Download, Copy, Check
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -109,341 +107,236 @@ export default function PropertyListingGuide() {
     }
   };
 
+  const inputClass =
+    'w-full border border-stone-300 rounded-md px-3 py-2 text-sm text-stone-900 placeholder-stone-400 bg-white focus:outline-none focus:border-stone-500';
+  const labelClass = 'block text-sm font-medium text-stone-700 mb-1';
+  const secondaryBtn =
+    'inline-flex items-center gap-1.5 border border-stone-300 text-stone-800 rounded-md px-3 py-1.5 text-sm hover:bg-stone-50 cursor-pointer';
+  const primaryBtn =
+    'inline-flex items-center gap-1.5 bg-stone-900 text-white rounded-md px-3 py-1.5 text-sm hover:bg-stone-800 cursor-pointer disabled:opacity-50';
+
   return (
-    <div className="min-h-screen bg-stone-100/60 py-6 sm:py-10 px-4 sm:px-6 lg:px-8 print:p-0 print:bg-white text-stone-900 font-sans">
-      
-      {/* Standardized Top Utility Bar (Hidden during print) */}
-      <div className="max-w-4xl mx-auto mb-6 bg-white border border-stone-200 rounded-2xl p-4 sm:px-6 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-4 print:hidden">
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          <Link 
-            to="/list-your-property" 
-            className="p-2 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl transition text-xs font-semibold inline-flex items-center gap-1.5"
-            title="Return to Host Hub"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span className="hidden sm:inline">Host Hub</span>
-          </Link>
-          <div className="h-4 w-px bg-stone-200 hidden sm:block" />
-          <div className="min-w-0">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded">
-              Listing Standards
-            </span>
-            <div className="text-xs font-bold text-stone-900 truncate">
-              Property Listing Master Guide
+    <div className="min-h-screen bg-white text-stone-700 font-sans">
+      <main className="max-w-3xl mx-auto px-5 py-12 print:py-0">
+
+        {/* Header */}
+        <header className="border-b border-stone-200 pb-6 mb-8">
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <p className="text-sm text-stone-500">Listing standards &middot; 2026</p>
+            <div className="flex items-center gap-2 flex-wrap print:hidden">
+              <Link to="/list-your-property" className={secondaryBtn}>
+                <ArrowLeft size={16} className="text-stone-500" />
+                Host Hub
+              </Link>
+              <DocQuickEditButton
+                docId="property-listing-guide"
+                onSaved={() => refreshDoc()}
+              />
+              <button onClick={handleShareWhatsApp} className={secondaryBtn}>
+                <MessageSquare size={16} className="text-stone-500" />
+                Share
+              </button>
+              <button onClick={handleCopyLink} className={secondaryBtn} title="Copy link">
+                {copiedLink ? <Check size={16} className="text-stone-500" /> : <Copy size={16} className="text-stone-500" />}
+                {copiedLink ? 'Copied' : 'Copy link'}
+              </button>
+              <button onClick={handleDownload} className={secondaryBtn}>
+                <Download size={16} className="text-stone-500" />
+                HTML
+              </button>
+              <button onClick={handlePrint} className={primaryBtn}>
+                <Printer size={16} />
+                Print / PDF
+              </button>
             </div>
           </div>
-        </div>
 
-        <div className="flex items-center gap-2 shrink-0 flex-wrap w-full sm:w-auto justify-end">
-          <DocQuickEditButton 
-            docId="property-listing-guide" 
-            onSaved={() => refreshDoc()} 
-          />
-
-          <button
-            onClick={handleShareWhatsApp}
-            className="px-3 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs inline-flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
-          >
-            <MessageSquare className="w-3.5 h-3.5" />
-            <span>Share on WhatsApp</span>
-          </button>
-
-          <button
-            onClick={handlePrint}
-            className="px-3 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-semibold text-xs inline-flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
-          >
-            <Printer className="w-3.5 h-3.5" />
-            <span>Print / PDF</span>
-          </button>
-
-          <button
-            onClick={handleDownload}
-            className="px-3 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 font-semibold text-xs border border-stone-200 transition inline-flex items-center gap-1.5 cursor-pointer"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">HTML</span>
-          </button>
-
-          <button
-            onClick={handleCopyLink}
-            className="p-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-600 border border-stone-200 transition cursor-pointer"
-            title="Copy link"
-          >
-            {copiedLink ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4 text-stone-600" />}
-          </button>
-        </div>
-      </div>
-
-      {/* Main Document Body */}
-      <main className="max-w-4xl mx-auto bg-white border border-stone-200 rounded-3xl p-6 sm:p-10 shadow-xs space-y-10 print:border-none print:shadow-none print:p-0">
-        
-        {/* Document Header */}
-        <header className="border-b border-stone-200 pb-8 space-y-4">
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <span className="text-xs font-mono uppercase tracking-widest text-stone-600 font-semibold">
-              Travel Malawi &bull; Merchandising Standards
-            </span>
-            <span className="text-xs font-mono text-stone-600">
-              Listing Guide 2026
-            </span>
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="font-serif text-2xl sm:text-4xl font-bold text-stone-900 tracking-tight leading-tight">
-                {customTitle}
-              </h1>
-              {isCustomized && (
-                <span className="text-[10px] uppercase font-bold tracking-wider text-amber-800 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded">
-                  Live Customized Edition
-                </span>
-              )}
-            </div>
-            {lastEditedBy && (
-              <p className="text-[11px] text-stone-500 font-mono">
-                Maintained by {lastEditedBy}
-              </p>
-            )}
-          </div>
-
-          <p className="text-sm sm:text-base text-stone-600 leading-relaxed max-w-3xl">
-            {customSubtitle}
-          </p>
+          <h1 className="mt-4 text-3xl font-semibold text-stone-900">{customTitle}</h1>
+          <p className="mt-2 text-stone-500">{customSubtitle}</p>
+          {(isCustomized || lastEditedBy) && (
+            <p className="mt-2 text-sm text-stone-500">
+              {isCustomized && 'Customised edition'}
+              {isCustomized && lastEditedBy && ' · '}
+              {lastEditedBy && `Maintained by ${lastEditedBy}`}
+            </p>
+          )}
         </header>
 
-        {/* Section 1: The Architecture of Desire */}
-        <section className="space-y-4">
-          <div className="flex items-center gap-2">
-            <span className="w-6 h-6 rounded-full bg-stone-900 text-white font-mono text-xs flex items-center justify-center font-bold">1</span>
-            <h2 className="font-serif text-xl sm:text-2xl font-bold text-stone-900">
-              The Architecture of Desire: Dissolving Anxiety
-            </h2>
-          </div>
+        <div className="text-[15px] leading-relaxed">
+          {/* Section 1 */}
+          <section>
+            <h2 className="text-xl font-semibold text-stone-900">1. The architecture of desire: dissolving anxiety</h2>
+            <p className="mt-3 text-stone-700">
+              A mediocre listing gives specifications. A high-converting listing <strong className="font-semibold text-stone-900">dissolves traveler hesitation before it arises</strong>.
+            </p>
 
-          <p className="text-sm text-stone-700 leading-relaxed">
-            A mediocre listing gives specifications. A high-converting listing <strong>dissolves traveler hesitation before it arises</strong>.
-          </p>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="p-4 rounded-xl border border-stone-200 bg-stone-50/50 space-y-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800">Anxiety 1</span>
-              <h3 className="text-xs font-bold text-stone-900">&ldquo;Will the power go off?&rdquo;</h3>
-              <p className="text-xs text-stone-600">
-                Specify backup: <em>&ldquo;24/7 Solar battery inverter backup with silent generator standby.&rdquo;</em>
-              </p>
-            </div>
-
-            <div className="p-4 rounded-xl border border-stone-200 bg-stone-50/50 space-y-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-blue-800">Anxiety 2</span>
-              <h3 className="text-xs font-bold text-stone-900">&ldquo;Will my car get stuck?&rdquo;</h3>
-              <p className="text-xs text-stone-600">
-                Give clear ground reality: <em>&ldquo;Suitable for 2WD saloon cars in dry season; 4WD recommended during Jan–March rains.&rdquo;</em>
-              </p>
-            </div>
-
-            <div className="p-4 rounded-xl border border-stone-200 bg-stone-50/50 space-y-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800">Anxiety 3</span>
-              <h3 className="text-xs font-bold text-stone-900">&ldquo;Will there be hot water?&rdquo;</h3>
-              <p className="text-xs text-stone-600">
-                Reassure immediately: <em>&ldquo;Pressurized solar hot showers with dedicated borehole water supply.&rdquo;</em>
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {/* Section 2: Room Naming Psychology */}
-        <section className="space-y-4">
-          <div className="flex items-center gap-2">
-            <span className="w-6 h-6 rounded-full bg-stone-900 text-white font-mono text-xs flex items-center justify-center font-bold">2</span>
-            <h2 className="font-serif text-xl sm:text-2xl font-bold text-stone-900">
-              Room Naming: From Commodity to Coveted
-            </h2>
-          </div>
-
-          <p className="text-sm text-stone-700 leading-relaxed">
-            Never label rooms by numbers or generic terms. Generic names invite price haggling and degrade perceived luxury:
-          </p>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="border-b border-stone-200 text-stone-500 font-mono uppercase tracking-wider">
-                  <th className="py-2.5 px-3">Commodity Label (Avoid)</th>
-                  <th className="py-2.5 px-3 bg-stone-50 font-bold text-stone-900">Psychological Name (Use)</th>
-                  <th className="py-2.5 px-3">Why It Commands 30% Higher Rates</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-stone-100 text-stone-700">
-                <tr>
-                  <td className="py-3 px-3 text-stone-500 italic">Room 1 (Standard)</td>
-                  <td className="py-3 px-3 bg-stone-50 font-bold text-emerald-800">Sunrise Shore Chalet</td>
-                  <td className="py-3 px-3">Vividly paints the picture of dawn over Lake Malawi.</td>
-                </tr>
-                <tr>
-                  <td className="py-3 px-3 text-stone-500 italic">Double Room</td>
-                  <td className="py-3 px-3 bg-stone-50 font-bold text-emerald-800">Acacia Canopy Suite</td>
-                  <td className="py-3 px-3">Evokes privacy, nature, and serene bush luxury.</td>
-                </tr>
-                <tr>
-                  <td className="py-3 px-3 text-stone-500 italic">Family Unit</td>
-                  <td className="py-3 px-3 bg-stone-50 font-bold text-emerald-800">Baobab Family Cottage (Self-Catering)</td>
-                  <td className="py-3 px-3">Reassures parents of independence, kitchen facilities, and space.</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        {/* Section 3: Road & GPS Guidance */}
-        <section className="space-y-4">
-          <div className="flex items-center gap-2">
-            <span className="w-6 h-6 rounded-full bg-stone-900 text-white font-mono text-xs flex items-center justify-center font-bold">3</span>
-            <h2 className="font-serif text-xl sm:text-2xl font-bold text-stone-900">
-              The 3-Part Road Direction Formula
-            </h2>
-          </div>
-
-          <div className="bg-stone-50 border border-stone-200 rounded-2xl p-5 space-y-3">
-            <div className="space-y-2 text-xs sm:text-sm text-stone-700 leading-relaxed">
-              <p><strong>1. The Highway Junction:</strong> <em>&ldquo;Turn off the M5 Lakeshore Road at km marker 42 (opposite Monkey Bay Post Office).&rdquo;</em></p>
-              <p><strong>2. Track Condition:</strong> <em>&ldquo;Follow the graded gravel track for 3.8 km. Suitable for all standard 2WD vehicles.&rdquo;</em></p>
-              <p><strong>3. Gate Landmark &amp; GPS Pin:</strong> <em>&ldquo;Look for our carved wooden boat sign on your right. Drop gate GPS coordinates so guests can navigate offline with Travel Malawi&apos;s cached satellite maps.&rdquo;</em></p>
-            </div>
-          </div>
-        </section>
-
-        {/* Section 4: SUBMIT BACK TO US (Listing Request) */}
-        <section id="listing-form" className="pt-6 border-t border-stone-200 space-y-6">
-          <div className="bg-stone-900 text-white rounded-3xl p-6 sm:p-8 space-y-6">
-            <div className="space-y-2">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-stone-800 text-stone-200 text-xs font-bold uppercase tracking-wider">
-                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                <span>Express Listing Submission</span>
+            <div className="mt-4 space-y-4">
+              <div>
+                <h3 className="text-base font-semibold text-stone-900">&ldquo;Will the power go off?&rdquo;</h3>
+                <p className="text-stone-700">
+                  Specify backup: &ldquo;24/7 Solar battery inverter backup with silent generator standby.&rdquo;
+                </p>
               </div>
-              <h2 className="font-serif text-xl sm:text-2xl font-bold text-white">
-                Submit Your Property for Listing Curation
-              </h2>
-              <p className="text-xs sm:text-sm text-stone-300 leading-relaxed max-w-xl">
-                Prefer our hospitality team to write your room names and format your listing? Submit your property details below for free curation.
-              </p>
+              <div>
+                <h3 className="text-base font-semibold text-stone-900">&ldquo;Will my car get stuck?&rdquo;</h3>
+                <p className="text-stone-700">
+                  Give clear ground reality: &ldquo;Suitable for 2WD saloon cars in dry season; 4WD recommended during Jan–March rains.&rdquo;
+                </p>
+              </div>
+              <div>
+                <h3 className="text-base font-semibold text-stone-900">&ldquo;Will there be hot water?&rdquo;</h3>
+                <p className="text-stone-700">
+                  Reassure immediately: &ldquo;Pressurized solar hot showers with dedicated borehole water supply.&rdquo;
+                </p>
+              </div>
             </div>
+          </section>
+
+          {/* Section 2 */}
+          <section>
+            <h2 className="text-xl font-semibold text-stone-900 mt-10">2. Room naming: from commodity to coveted</h2>
+            <p className="mt-3 text-stone-700">
+              Never label rooms by numbers or generic terms. Generic names invite price haggling and degrade perceived luxury:
+            </p>
+
+            <div className="mt-4 overflow-x-auto">
+              <table className="w-full text-sm border border-stone-200 border-collapse">
+                <thead>
+                  <tr>
+                    <th className="bg-stone-50 text-left font-medium text-stone-900 px-3 py-2">Commodity label (avoid)</th>
+                    <th className="bg-stone-50 text-left font-medium text-stone-900 px-3 py-2">Psychological name (use)</th>
+                    <th className="bg-stone-50 text-left font-medium text-stone-900 px-3 py-2">Why it commands 30% higher rates</th>
+                  </tr>
+                </thead>
+                <tbody className="text-stone-700">
+                  <tr>
+                    <td className="px-3 py-2 border-t border-stone-200 text-stone-500">Room 1 (Standard)</td>
+                    <td className="px-3 py-2 border-t border-stone-200 font-medium text-stone-900">Sunrise Shore Chalet</td>
+                    <td className="px-3 py-2 border-t border-stone-200">Vividly paints the picture of dawn over Lake Malawi.</td>
+                  </tr>
+                  <tr>
+                    <td className="px-3 py-2 border-t border-stone-200 text-stone-500">Double Room</td>
+                    <td className="px-3 py-2 border-t border-stone-200 font-medium text-stone-900">Acacia Canopy Suite</td>
+                    <td className="px-3 py-2 border-t border-stone-200">Evokes privacy, nature, and serene bush luxury.</td>
+                  </tr>
+                  <tr>
+                    <td className="px-3 py-2 border-t border-stone-200 text-stone-500">Family Unit</td>
+                    <td className="px-3 py-2 border-t border-stone-200 font-medium text-stone-900">Baobab Family Cottage (Self-Catering)</td>
+                    <td className="px-3 py-2 border-t border-stone-200">Reassures parents of independence, kitchen facilities, and space.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          {/* Section 3 */}
+          <section>
+            <h2 className="text-xl font-semibold text-stone-900 mt-10">3. The 3-part road direction formula</h2>
+            <ol className="mt-3 list-decimal pl-5 space-y-2 text-stone-700">
+              <li><strong className="font-semibold text-stone-900">The highway junction:</strong> &ldquo;Turn off the M5 Lakeshore Road at km marker 42 (opposite Monkey Bay Post Office).&rdquo;</li>
+              <li><strong className="font-semibold text-stone-900">Track condition:</strong> &ldquo;Follow the graded gravel track for 3.8 km. Suitable for all standard 2WD vehicles.&rdquo;</li>
+              <li><strong className="font-semibold text-stone-900">Gate landmark &amp; GPS pin:</strong> &ldquo;Look for our carved wooden boat sign on your right. Drop gate GPS coordinates so guests can navigate offline with Travel Malawi&apos;s cached satellite maps.&rdquo;</li>
+            </ol>
+          </section>
+
+          {/* Section 4: listing request form */}
+          <section id="listing-form" className="mt-12 pt-8 border-t border-stone-200">
+            <h2 className="text-xl font-semibold text-stone-900">Submit your property for listing curation</h2>
+            <p className="mt-2 text-stone-500">
+              Prefer our hospitality team to write your room names and format your listing? Submit your property details below for free curation.
+            </p>
 
             {submitted ? (
-              <div className="bg-stone-800 border border-stone-700 rounded-2xl p-6 text-center space-y-3">
-                <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto">
-                  <CheckCircle2 className="w-6 h-6" />
-                </div>
-                <h3 className="text-base font-bold text-white">
-                  Listing Request Logged
-                </h3>
-                <p className="text-xs text-stone-300 max-w-md mx-auto">
-                  Reference: <span className="font-mono text-amber-300 font-bold">{submissionId}</span>. Our merchandising team will reach out on WhatsApp at <strong>{formData.contactPhone}</strong> with your listing preview draft.
+              <div className="mt-6 bg-stone-50 border-l-2 border-stone-300 px-4 py-3">
+                <p className="font-medium text-stone-900">Listing request logged</p>
+                <p className="text-stone-700">
+                  Reference: <span className="font-mono">{submissionId}</span>. Our merchandising team will reach out on WhatsApp at <strong className="font-semibold">{formData.contactPhone}</strong> with your listing preview draft.
                 </p>
               </div>
             ) : (
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="mt-6 space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-medium text-stone-300 mb-1">
-                      Property Name *
-                    </label>
+                    <label className={labelClass}>Property name *</label>
                     <input
                       type="text"
                       required
                       placeholder="e.g. Chembe Beach Chalets"
                       value={formData.propName}
                       onChange={e => setFormData({ ...formData, propName: e.target.value })}
-                      className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white placeholder-stone-500 focus:outline-none focus:border-stone-500"
+                      className={inputClass}
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-stone-300 mb-1">
-                      Location / Beach / Town *
-                    </label>
+                    <label className={labelClass}>Location / beach / town *</label>
                     <input
                       type="text"
                       required
                       placeholder="e.g. Cape Maclear, Lake Malawi"
                       value={formData.propLoc}
                       onChange={e => setFormData({ ...formData, propLoc: e.target.value })}
-                      className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white placeholder-stone-500 focus:outline-none focus:border-stone-500"
+                      className={inputClass}
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-stone-300 mb-1">
-                      Manager / Host Name
-                    </label>
+                    <label className={labelClass}>Manager / host name</label>
                     <input
                       type="text"
                       placeholder="Your name"
                       value={formData.contactName}
                       onChange={e => setFormData({ ...formData, contactName: e.target.value })}
-                      className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white placeholder-stone-500 focus:outline-none focus:border-stone-500"
+                      className={inputClass}
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-stone-300 mb-1">
-                      WhatsApp Number *
-                    </label>
+                    <label className={labelClass}>WhatsApp number *</label>
                     <input
                       type="tel"
                       required
-                      placeholder="+265 99 123 4567"
+                      placeholder="Include country code"
                       value={formData.contactPhone}
                       onChange={e => setFormData({ ...formData, contactPhone: e.target.value })}
-                      className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white placeholder-stone-500 focus:outline-none focus:border-stone-500"
+                      className={inputClass}
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-stone-300 mb-1">
-                      Current Room Types
-                    </label>
+                    <label className={labelClass}>Current room types</label>
                     <input
                       type="text"
                       placeholder="e.g. 2 Double lakeview rooms, 1 cottage"
                       value={formData.roomTypes}
                       onChange={e => setFormData({ ...formData, roomTypes: e.target.value })}
-                      className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white placeholder-stone-500 focus:outline-none focus:border-stone-500"
+                      className={inputClass}
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-stone-300 mb-1">
-                      Key Amenities
-                    </label>
+                    <label className={labelClass}>Key amenities</label>
                     <input
                       type="text"
                       placeholder="e.g. Solar power, hot showers, Starlink Wi-Fi"
                       value={formData.amenities}
                       onChange={e => setFormData({ ...formData, amenities: e.target.value })}
-                      className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white placeholder-stone-500 focus:outline-none focus:border-stone-500"
+                      className={inputClass}
                     />
                   </div>
                 </div>
 
-                <div className="pt-2 flex items-center justify-between gap-4 flex-wrap">
-                  <span className="text-[11px] text-stone-400">
-                    &bull; 100% Free curation &bull; 0% Commission &bull; Instant WhatsApp inquiries
-                  </span>
-
-                  <button
-                    type="submit"
-                    disabled={submitting}
-                    className="px-6 py-2.5 rounded-full bg-white hover:bg-stone-100 text-stone-900 font-semibold text-xs transition cursor-pointer flex items-center gap-1.5 shadow-xs disabled:opacity-50"
-                  >
-                    <Send className="w-3.5 h-3.5" />
-                    <span>{submitting ? 'Submitting…' : 'Submit for Free Listing'}</span>
+                <div className="flex items-center justify-between gap-4 flex-wrap">
+                  <span className="text-sm text-stone-500">Free curation &middot; 0% commission &middot; Direct WhatsApp inquiries</span>
+                  <button type="submit" disabled={submitting} className={primaryBtn}>
+                    <Send size={16} />
+                    {submitting ? 'Submitting…' : 'Submit for free listing'}
                   </button>
                 </div>
               </form>
             )}
-          </div>
-        </section>
-
+          </section>
+        </div>
       </main>
     </div>
   );

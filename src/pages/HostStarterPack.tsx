@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { 
-  Building2, CheckCircle2, ArrowLeft, Smartphone, MessageSquare, 
-  DollarSign, MapPin, Camera, Copy, Check, Printer, ShieldCheck, 
-  Send, Share2, Download, ExternalLink, Sparkles
+import {
+  ArrowLeft, MessageSquare, Copy, Check, Printer, Send, Download
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -120,409 +118,282 @@ export default function HostStarterPack() {
     }
   };
 
+  const inputClass =
+    'w-full border border-stone-300 rounded-md px-3 py-2 text-sm text-stone-900 placeholder-stone-400 bg-white focus:outline-none focus:border-stone-500';
+  const labelClass = 'block text-sm font-medium text-stone-700 mb-1';
+  const secondaryBtn =
+    'inline-flex items-center gap-1.5 border border-stone-300 text-stone-800 rounded-md px-3 py-1.5 text-sm hover:bg-stone-50 cursor-pointer';
+  const primaryBtn =
+    'inline-flex items-center gap-1.5 bg-stone-900 text-white rounded-md px-3 py-1.5 text-sm hover:bg-stone-800 cursor-pointer disabled:opacity-50';
+
+  const TEMPLATE_CONFIRMATION =
+    "Muli bwanji [Guest Name]! Thank you for choosing [Property Name]. Your stay is provisionally reserved for [Check-in Date] to [Check-out Date] in our [Room Type]. Total: MK [Amount]. To confirm your dates, please transfer the 50% deposit via Airtel Money/Mpamba to [Phone Number] or Bank [Account]. Let us know once sent so we hold your room!";
+  const TEMPLATE_DIRECTIONS =
+    "Muli bwanji [Guest Name]! Looking forward to welcoming you today at [Property Name]. When traveling down the M5 / Lakeshore Road, turn off at [Landmark]. Follow our marked signs for 3.5 km. Gate GPS pin: [Google Maps / GPS link]. Our manager [Manager Name] is on standby at [Phone Number] if you need guidance!";
+
   return (
-    <div className="min-h-screen bg-stone-100/60 py-6 sm:py-10 px-4 sm:px-6 lg:px-8 print:p-0 print:bg-white text-stone-900 font-sans">
-      
-      {/* Standardized Top Utility Bar (Hidden during print) */}
-      <div className="max-w-4xl mx-auto mb-6 bg-white border border-stone-200 rounded-2xl p-4 sm:px-6 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-4 print:hidden">
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          <Link 
-            to="/list-your-property" 
-            className="p-2 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl transition text-xs font-semibold inline-flex items-center gap-1.5"
-            title="Return to Host Hub"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span className="hidden sm:inline">Host Hub</span>
-          </Link>
-          <div className="h-4 w-px bg-stone-200 hidden sm:block" />
-          <div className="min-w-0">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800 bg-amber-100/80 px-2 py-0.5 rounded">
-              Host Toolkit
-            </span>
-            <div className="text-xs font-bold text-stone-900 truncate">
-              Host Onboarding Starter Pack
+    <div className="min-h-screen bg-white text-stone-700 font-sans">
+      <main className="max-w-3xl mx-auto px-5 py-12 print:py-0">
+
+        {/* Header */}
+        <header className="border-b border-stone-200 pb-6 mb-8">
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <p className="text-sm text-stone-500">Host toolkit &middot; Revised edition 2026</p>
+            <div className="flex items-center gap-2 flex-wrap print:hidden">
+              <Link to="/list-your-property" className={secondaryBtn}>
+                <ArrowLeft size={16} className="text-stone-500" />
+                Host Hub
+              </Link>
+              <DocQuickEditButton
+                docId="host-onboarding-pack"
+                onSaved={() => refreshDoc()}
+              />
+              <button onClick={handleShareWhatsApp} className={secondaryBtn}>
+                <MessageSquare size={16} className="text-stone-500" />
+                Share
+              </button>
+              <button onClick={handleCopyLink} className={secondaryBtn} title="Copy link">
+                {copiedLink ? <Check size={16} className="text-stone-500" /> : <Copy size={16} className="text-stone-500" />}
+                {copiedLink ? 'Copied' : 'Copy link'}
+              </button>
+              <button onClick={handleDownload} className={secondaryBtn}>
+                <Download size={16} className="text-stone-500" />
+                HTML
+              </button>
+              <button onClick={handlePrint} className={primaryBtn}>
+                <Printer size={16} />
+                Print / PDF
+              </button>
             </div>
           </div>
-        </div>
 
-        <div className="flex items-center gap-2 shrink-0 flex-wrap w-full sm:w-auto justify-end">
-          <DocQuickEditButton 
-            docId="host-onboarding-pack" 
-            onSaved={() => refreshDoc()} 
-          />
+          <h1 className="mt-4 text-3xl font-semibold text-stone-900">{customTitle}</h1>
+          <p className="mt-2 text-stone-500">{customSubtitle}</p>
+          {(isCustomized || lastEditedBy) && (
+            <p className="mt-2 text-sm text-stone-500">
+              {isCustomized && 'Customised edition'}
+              {isCustomized && lastEditedBy && ' · '}
+              {lastEditedBy && `Maintained by ${lastEditedBy}`}
+            </p>
+          )}
 
-          <button
-            onClick={handleShareWhatsApp}
-            className="px-3 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs inline-flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
-          >
-            <MessageSquare className="w-3.5 h-3.5" />
-            <span>Share on WhatsApp</span>
-          </button>
-
-          <button
-            onClick={handlePrint}
-            className="px-3 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-semibold text-xs inline-flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
-          >
-            <Printer className="w-3.5 h-3.5" />
-            <span>Print / PDF</span>
-          </button>
-
-          <button
-            onClick={handleDownload}
-            className="px-3 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 font-semibold text-xs border border-stone-200 transition inline-flex items-center gap-1.5 cursor-pointer"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">HTML</span>
-          </button>
-
-          <button
-            onClick={handleCopyLink}
-            className="p-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-600 border border-stone-200 transition cursor-pointer"
-            title="Copy link"
-          >
-            {copiedLink ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4 text-stone-600" />}
-          </button>
-        </div>
-      </div>
-
-      {/* Main Document Body */}
-      <main className="max-w-4xl mx-auto bg-white border border-stone-200 rounded-3xl p-6 sm:p-10 shadow-xs space-y-10 print:border-none print:shadow-none print:p-0">
-        
-        {/* Document Header */}
-        <header className="border-b border-stone-200 pb-8 space-y-4">
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <span className="text-xs font-mono uppercase tracking-widest text-stone-600 font-semibold">
-              Travel Malawi &bull; Partner Operations Series
-            </span>
-            <span className="text-xs font-mono text-stone-600">
-              Revised Edition 2026
-            </span>
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="font-serif text-2xl sm:text-4xl font-bold text-stone-900 tracking-tight leading-tight">
-                {customTitle}
-              </h1>
-              {isCustomized && (
-                <span className="text-[10px] uppercase font-bold tracking-wider text-amber-800 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded">
-                  Live Customized Edition
-                </span>
-              )}
-            </div>
-            {lastEditedBy && (
-              <p className="text-[11px] text-stone-500 font-mono">
-                Maintained by {lastEditedBy}
-              </p>
-            )}
-          </div>
-
-          <p className="text-sm sm:text-base text-stone-600 leading-relaxed max-w-3xl">
-            {customSubtitle}
-          </p>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 border-t border-stone-100 text-xs">
+          <dl className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
             <div>
-              <span className="text-stone-600 block">Commission</span>
-              <strong className="text-stone-900 text-sm">0% Direct</strong>
+              <dt className="text-stone-500">Commission</dt>
+              <dd className="font-medium text-stone-900">0% direct</dd>
             </div>
             <div>
-              <span className="text-stone-600 block">Payout Speed</span>
-              <strong className="text-stone-900 text-sm">Instant to You</strong>
+              <dt className="text-stone-500">Payout speed</dt>
+              <dd className="font-medium text-stone-900">Instant to you</dd>
             </div>
             <div>
-              <span className="text-stone-600 block">Payout Rails</span>
-              <strong className="text-stone-900 text-sm">Airtel / Mpamba / Bank</strong>
+              <dt className="text-stone-500">Payout rails</dt>
+              <dd className="font-medium text-stone-900">Airtel / Mpamba / Bank</dd>
             </div>
             <div>
-              <span className="text-stone-600 block">Setup Time</span>
-              <strong className="text-stone-900 text-sm">Under 8 Minutes</strong>
+              <dt className="text-stone-500">Setup time</dt>
+              <dd className="font-medium text-stone-900">Under 8 minutes</dd>
             </div>
-          </div>
+          </dl>
         </header>
 
-        {/* Section 1: The Psychological Anchor */}
-        <section className="space-y-4">
-          <div className="flex items-center gap-2">
-            <span className="w-6 h-6 rounded-full bg-stone-900 text-white font-mono text-xs flex items-center justify-center font-bold">1</span>
-            <h2 className="font-serif text-xl sm:text-2xl font-bold text-stone-900">
-              The Psychological Anchor: The Velvet Storefront
-            </h2>
-          </div>
-
-          <p className="text-sm text-stone-700 leading-relaxed">
-            Travelers in 2026 do not buy "rooms." They buy <strong>sanctuary, status, and clean arrival</strong>.
-          </p>
-
-          <div className="bg-stone-50 border border-stone-200 rounded-2xl p-5 space-y-3">
-            <h3 className="text-sm font-bold text-stone-900">The 4-Second First Impression</h3>
-            <p className="text-xs sm:text-sm text-stone-600 leading-relaxed">
+        <div className="text-[15px] leading-relaxed">
+          {/* Section 1 */}
+          <section>
+            <h2 className="text-xl font-semibold text-stone-900">1. The psychological anchor: the velvet storefront</h2>
+            <p className="mt-3 text-stone-700">
+              Travelers in 2026 do not buy "rooms." They buy <strong className="font-semibold text-stone-900">sanctuary, status, and clean arrival</strong>.
+            </p>
+            <h3 className="mt-4 text-base font-semibold text-stone-900">The 4-second first impression</h3>
+            <p className="text-stone-700">
               When a traveler lands on your listing, they make an emotional decision within 4 seconds. If the photos are dark, rates unclear, or WhatsApp replies delayed, they drop off and book a commercial chain hotel in town. With clean photos, honest pricing, and direct WhatsApp contact, you immediately outperform 90% of regional competitors.
             </p>
-          </div>
-        </section>
+          </section>
 
-        {/* Section 2: The 4 Golden Photos */}
-        <section className="space-y-5">
-          <div className="flex items-center gap-2">
-            <span className="w-6 h-6 rounded-full bg-stone-900 text-white font-mono text-xs flex items-center justify-center font-bold">2</span>
-            <h2 className="font-serif text-xl sm:text-2xl font-bold text-stone-900">
-              The 4 Photos That Win the Booking
-            </h2>
-          </div>
+          {/* Section 2 */}
+          <section>
+            <h2 className="text-xl font-semibold text-stone-900 mt-10">2. The 4 photos that win the booking</h2>
+            <p className="mt-3 text-stone-700">
+              You do not need an expensive camera crew. Any smartphone taken in morning natural light with a wiped clean lens works best.
+            </p>
 
-          <p className="text-sm text-stone-700 leading-relaxed">
-            You do not need an expensive camera crew. Any smartphone taken in morning natural light with a wiped clean lens works best.
-          </p>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="p-5 rounded-2xl border border-stone-200 bg-stone-50/50 space-y-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded">
-                1. The Bed (The Sleep Shot)
-              </span>
-              <h3 className="text-sm font-bold text-stone-900">Clean, crisp linens in daylight</h3>
-              <p className="text-xs text-stone-600 leading-relaxed">
-                Smooth sheets, pillows fluffed, natural side window light. Dissolves the guest&apos;s #1 hidden worry: <em>&ldquo;Will I sleep comfortably without noise or dust?&rdquo;</em>
-              </p>
-            </div>
-
-            <div className="p-5 rounded-2xl border border-stone-200 bg-stone-50/50 space-y-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-blue-800 bg-blue-100 px-2 py-0.5 rounded">
-                2. The View (The Aspiration Shot)
-              </span>
-              <h3 className="text-sm font-bold text-stone-900">The horizon from your patio or balcony</h3>
-              <p className="text-xs text-stone-600 leading-relaxed">
-                Lake Malawi&apos;s blue waters, Mulanje&apos;s granite peaks, or a lush garden. This is the photo guests screenshot to send to their friends: <em>&ldquo;Look where we are going!&rdquo;</em>
-              </p>
-            </div>
-
-            <div className="p-5 rounded-2xl border border-stone-200 bg-stone-50/50 space-y-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800 bg-amber-100 px-2 py-0.5 rounded">
-                3. The Bathroom (The Hygiene Shot)
-              </span>
-              <h3 className="text-sm font-bold text-stone-900">Spotless shower, mirror, and dry floor</h3>
-              <p className="text-xs text-stone-600 leading-relaxed">
-                Clean white tiles, folded towel, bright shower. Removes unspoken traveler hesitation and seals high-value bookings.
-              </p>
-            </div>
-
-            <div className="p-5 rounded-2xl border border-stone-200 bg-stone-50/50 space-y-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-purple-800 bg-purple-100 px-2 py-0.5 rounded">
-                4. The Gathering Spot (The Connection Shot)
-              </span>
-              <h3 className="text-sm font-bold text-stone-900">Boma firepit, patio dining, or fresh lake fish</h3>
-              <p className="text-xs text-stone-600 leading-relaxed">
-                Shows where the guest will unwind with a cold drink after a long drive. Reassures them that food and relaxation are ready.
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {/* Section 3: Dual Pricing & Anchoring */}
-        <section className="space-y-4">
-          <div className="flex items-center gap-2">
-            <span className="w-6 h-6 rounded-full bg-stone-900 text-white font-mono text-xs flex items-center justify-center font-bold">3</span>
-            <h2 className="font-serif text-xl sm:text-2xl font-bold text-stone-900">
-              The Psychology of Dual Pricing &amp; Anchoring
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="p-5 rounded-2xl border border-stone-200 bg-white space-y-2">
-              <h3 className="text-sm font-bold text-stone-900">1. Clean Malawian Kwacha (MWK)</h3>
-              <p className="text-xs text-stone-600 leading-relaxed">
-                Always round cleanly to the nearest 1,000 MWK (e.g. <strong>MK 85,000</strong> or <strong>MK 120,000</strong>). Never use awkward figures like MK 84,350 that look like automated algorithm taxes.
-              </p>
-            </div>
-
-            <div className="p-5 rounded-2xl border border-stone-200 bg-white space-y-2">
-              <h3 className="text-sm font-bold text-stone-900">2. Clean US Dollars (USD)</h3>
-              <p className="text-xs text-stone-600 leading-relaxed">
-                Round to whole dollars or the nearest $5 ($60, $75, $90, $120). International travelers and NGO consultants appreciate clear, predictable pricing.
-              </p>
-            </div>
-          </div>
-
-          <div className="bg-stone-50 border border-stone-200 rounded-2xl p-5 text-xs text-stone-700 leading-relaxed">
-            <strong className="text-stone-900">The Premium Anchor Rule:</strong> Always list your best room or executive suite first (e.g. <em>Executive Lake Chalet</em> at MK 165,000). When travelers see that first, their brain adopts it as the benchmark. Your <em>Garden Cottage</em> at MK 75,000 immediately feels like an irresistible bargain.
-          </div>
-        </section>
-
-        {/* Section 4: Ready-to-Use WhatsApp Templates */}
-        <section className="space-y-5">
-          <div className="flex items-center gap-2">
-            <span className="w-6 h-6 rounded-full bg-stone-900 text-white font-mono text-xs flex items-center justify-center font-bold">4</span>
-            <h2 className="font-serif text-xl sm:text-2xl font-bold text-stone-900">
-              Copy-and-Paste WhatsApp Guest Templates
-            </h2>
-          </div>
-
-          <p className="text-sm text-stone-700 leading-relaxed">
-            Keep your communications sharp and professional. Tap any template below to copy it instantly:
-          </p>
-
-          <div className="space-y-4">
-            {/* Template A: Booking Confirmation */}
-            <div className="p-5 rounded-2xl border border-stone-200 bg-stone-50/50 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-stone-900">Template 1: Instant Booking Confirmation</span>
-                <button
-                  onClick={() => copyTemplate(
-                    "Muli bwanji [Guest Name]! Thank you for choosing [Property Name]. Your stay is provisionally reserved for [Check-in Date] to [Check-out Date] in our [Room Type]. Total: MK [Amount]. To confirm your dates, please transfer the 50% deposit via Airtel Money/Mpamba to [Phone Number] or Bank [Account]. Let us know once sent so we hold your room!",
-                    't1'
-                  )}
-                  className="px-2.5 py-1 rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-[11px] font-semibold inline-flex items-center gap-1 transition cursor-pointer"
-                >
-                  {copiedTemplate === 't1' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                  <span>{copiedTemplate === 't1' ? 'Copied' : 'Copy'}</span>
-                </button>
+            <div className="mt-4 space-y-4">
+              <div>
+                <h3 className="text-base font-semibold text-stone-900">1. The bed (the sleep shot): clean, crisp linens in daylight</h3>
+                <p className="text-stone-700">
+                  Smooth sheets, pillows fluffed, natural side window light. Dissolves the guest&apos;s #1 hidden worry: &ldquo;Will I sleep comfortably without noise or dust?&rdquo;
+                </p>
               </div>
-              <p className="text-xs font-mono bg-white p-3.5 rounded-xl border border-stone-200 text-stone-700 leading-relaxed">
-                &ldquo;Muli bwanji [Guest Name]! Thank you for choosing [Property Name]. Your stay is provisionally reserved for [Check-in Date] to [Check-out Date] in our [Room Type]. Total: MK [Amount]. To confirm your dates, please transfer the 50% deposit via Airtel Money/Mpamba to [Phone Number] or Bank [Account]. Let us know once sent so we hold your room!&rdquo;
-              </p>
-            </div>
-
-            {/* Template B: Directions & Arrival */}
-            <div className="p-5 rounded-2xl border border-stone-200 bg-stone-50/50 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-stone-900">Template 2: Road Directions &amp; Gate Pin</span>
-                <button
-                  onClick={() => copyTemplate(
-                    "Muli bwanji [Guest Name]! Looking forward to welcoming you today at [Property Name]. When traveling down the M5 / Lakeshore Road, turn off at [Landmark]. Follow our marked signs for 3.5 km. Gate GPS pin: [Google Maps / GPS link]. Our manager [Manager Name] is on standby at [Phone Number] if you need guidance!",
-                    't2'
-                  )}
-                  className="px-2.5 py-1 rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-[11px] font-semibold inline-flex items-center gap-1 transition cursor-pointer"
-                >
-                  {copiedTemplate === 't2' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                  <span>{copiedTemplate === 't2' ? 'Copied' : 'Copy'}</span>
-                </button>
+              <div>
+                <h3 className="text-base font-semibold text-stone-900">2. The view (the aspiration shot): the horizon from your patio or balcony</h3>
+                <p className="text-stone-700">
+                  Lake Malawi&apos;s blue waters, Mulanje&apos;s granite peaks, or a lush garden. This is the photo guests screenshot to send to their friends: &ldquo;Look where we are going!&rdquo;
+                </p>
               </div>
-              <p className="text-xs font-mono bg-white p-3.5 rounded-xl border border-stone-200 text-stone-700 leading-relaxed">
-                &ldquo;Muli bwanji [Guest Name]! Looking forward to welcoming you today at [Property Name]. When traveling down the M5 / Lakeshore Road, turn off at [Landmark]. Follow our marked signs for 3.5 km. Gate GPS pin: [Google Maps / GPS link]. Our manager [Manager Name] is on standby at [Phone Number] if you need guidance!&rdquo;
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {/* Section 5: SUBMIT BACK TO US (Interactive Form) */}
-        <section id="onboarding-form" className="pt-6 border-t border-stone-200 space-y-6">
-          <div className="bg-stone-900 text-white rounded-3xl p-6 sm:p-8 space-y-6">
-            <div className="space-y-2">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-stone-800 text-amber-300 text-xs font-bold uppercase tracking-wider">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Fast-Track Listing &bull; Zero Commission</span>
+              <div>
+                <h3 className="text-base font-semibold text-stone-900">3. The bathroom (the hygiene shot): spotless shower, mirror, and dry floor</h3>
+                <p className="text-stone-700">
+                  Clean white tiles, folded towel, bright shower. Removes unspoken traveler hesitation and seals high-value bookings.
+                </p>
               </div>
-              <h2 className="font-serif text-xl sm:text-2xl font-bold text-white">
-                Submit Your Property for Instant Listing
-              </h2>
-              <p className="text-xs sm:text-sm text-stone-300 leading-relaxed max-w-xl">
-                Fill out the 4 details below. Our hospitality operations team will review your stay, configure your direct booking storefront, and reach out on WhatsApp in under 24 hours.
-              </p>
+              <div>
+                <h3 className="text-base font-semibold text-stone-900">4. The gathering spot (the connection shot): boma firepit, patio dining, or fresh lake fish</h3>
+                <p className="text-stone-700">
+                  Shows where the guest will unwind with a cold drink after a long drive. Reassures them that food and relaxation are ready.
+                </p>
+              </div>
             </div>
+          </section>
+
+          {/* Section 3 */}
+          <section>
+            <h2 className="text-xl font-semibold text-stone-900 mt-10">3. The psychology of dual pricing &amp; anchoring</h2>
+            <div className="mt-4 space-y-4">
+              <div>
+                <h3 className="text-base font-semibold text-stone-900">Clean Malawian Kwacha (MWK)</h3>
+                <p className="text-stone-700">
+                  Always round cleanly to the nearest 1,000 MWK (e.g. MK 85,000 or MK 120,000). Never use awkward figures like MK 84,350 that look like automated algorithm taxes.
+                </p>
+              </div>
+              <div>
+                <h3 className="text-base font-semibold text-stone-900">Clean US Dollars (USD)</h3>
+                <p className="text-stone-700">
+                  Round to whole dollars or the nearest $5 ($60, $75, $90, $120). International travelers and NGO consultants appreciate clear, predictable pricing.
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 bg-stone-50 border-l-2 border-stone-300 px-4 py-3 text-stone-700">
+              <strong className="font-semibold text-stone-900">The premium anchor rule:</strong> Always list your best room or executive suite first (e.g. Executive Lake Chalet at MK 165,000). When travelers see that first, their brain adopts it as the benchmark. Your Garden Cottage at MK 75,000 immediately feels like an irresistible bargain.
+            </div>
+          </section>
+
+          {/* Section 4 */}
+          <section>
+            <h2 className="text-xl font-semibold text-stone-900 mt-10">4. Copy-and-paste WhatsApp guest templates</h2>
+            <p className="mt-3 text-stone-700">
+              Keep your communications sharp and professional. Copy any template below and fill in the bracketed details.
+            </p>
+
+            <div className="mt-4 space-y-6">
+              <div>
+                <div className="flex items-center justify-between gap-4">
+                  <h3 className="text-base font-semibold text-stone-900">Template 1: Instant booking confirmation</h3>
+                  <button onClick={() => copyTemplate(TEMPLATE_CONFIRMATION, 't1')} className={`${secondaryBtn} print:hidden`}>
+                    {copiedTemplate === 't1' ? <Check size={16} className="text-stone-500" /> : <Copy size={16} className="text-stone-500" />}
+                    {copiedTemplate === 't1' ? 'Copied' : 'Copy'}
+                  </button>
+                </div>
+                <p className="mt-2 bg-stone-50 border-l-2 border-stone-300 px-4 py-3 text-stone-700">
+                  {TEMPLATE_CONFIRMATION}
+                </p>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between gap-4">
+                  <h3 className="text-base font-semibold text-stone-900">Template 2: Road directions &amp; gate pin</h3>
+                  <button onClick={() => copyTemplate(TEMPLATE_DIRECTIONS, 't2')} className={`${secondaryBtn} print:hidden`}>
+                    {copiedTemplate === 't2' ? <Check size={16} className="text-stone-500" /> : <Copy size={16} className="text-stone-500" />}
+                    {copiedTemplate === 't2' ? 'Copied' : 'Copy'}
+                  </button>
+                </div>
+                <p className="mt-2 bg-stone-50 border-l-2 border-stone-300 px-4 py-3 text-stone-700">
+                  {TEMPLATE_DIRECTIONS}
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* Section 5: onboarding form */}
+          <section id="onboarding-form" className="mt-12 pt-8 border-t border-stone-200">
+            <h2 className="text-xl font-semibold text-stone-900">Submit your property for listing</h2>
+            <p className="mt-2 text-stone-500">
+              Fill out the details below. Our hospitality operations team will review your stay, configure your direct booking storefront, and reach out on WhatsApp in under 24 hours.
+            </p>
 
             {submitted ? (
-              <div className="bg-stone-800 border border-stone-700 rounded-2xl p-6 text-center space-y-3">
-                <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto">
-                  <CheckCircle2 className="w-6 h-6" />
-                </div>
-                <h3 className="text-base font-bold text-white">
-                  Takulandirani! We Have Received Your Property Details
-                </h3>
-                <p className="text-xs text-stone-300 max-w-md mx-auto">
-                  Reference: <span className="font-mono text-amber-300 font-bold">{submissionId}</span>. Our concierge team will reach out to you on WhatsApp at <strong>{formData.contactPhone}</strong> to confirm your photos and activate your 0% commission listing.
+              <div className="mt-6 bg-stone-50 border-l-2 border-stone-300 px-4 py-3">
+                <p className="font-medium text-stone-900">Takulandirani! We have received your property details</p>
+                <p className="text-stone-700">
+                  Reference: <span className="font-mono">{submissionId}</span>. Our concierge team will reach out to you on WhatsApp at <strong className="font-semibold">{formData.contactPhone}</strong> to confirm your photos and activate your 0% commission listing.
                 </p>
-                <div className="pt-2">
-                  <a
-                    href={`https://api.whatsapp.com/send?phone=265999000000&text=Muli%20bwanji!%20I%20just%20submitted%20my%20property%20${encodeURIComponent(formData.propName)}%20(Ref:%20${submissionId})`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold inline-flex items-center gap-1.5"
-                  >
-                    <MessageSquare className="w-3.5 h-3.5" />
-                    <span>Ping Concierge on WhatsApp</span>
-                  </a>
-                </div>
+                <a
+                  href={`https://api.whatsapp.com/send?text=Muli%20bwanji!%20I%20just%20submitted%20my%20property%20${encodeURIComponent(formData.propName)}%20(Ref:%20${submissionId})`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={`${secondaryBtn} mt-3 bg-white`}
+                >
+                  <MessageSquare size={16} className="text-stone-500" />
+                  Message us on WhatsApp
+                </a>
               </div>
             ) : (
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="mt-6 space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-medium text-stone-300 mb-1">
-                      Property Name *
-                    </label>
+                    <label className={labelClass}>Property name *</label>
                     <input
                       type="text"
                       required
                       placeholder="e.g. Sunbird Livingstonia, Chembe Lake Chalets"
                       value={formData.propName}
                       onChange={e => setFormData({ ...formData, propName: e.target.value })}
-                      className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white placeholder-stone-500 focus:outline-none focus:border-stone-500"
+                      className={inputClass}
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-stone-300 mb-1">
-                      Location / Region *
-                    </label>
+                    <label className={labelClass}>Location / region *</label>
                     <input
                       type="text"
                       required
                       placeholder="e.g. Cape Maclear, Mangochi, Lilongwe Area 10"
                       value={formData.propLoc}
                       onChange={e => setFormData({ ...formData, propLoc: e.target.value })}
-                      className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white placeholder-stone-500 focus:outline-none focus:border-stone-500"
+                      className={inputClass}
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-stone-300 mb-1">
-                      Host / Manager Name
-                    </label>
+                    <label className={labelClass}>Host / manager name</label>
                     <input
                       type="text"
-                      placeholder="e.g. Patrick Chirwa"
+                      placeholder="Your name"
                       value={formData.contactName}
                       onChange={e => setFormData({ ...formData, contactName: e.target.value })}
-                      className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white placeholder-stone-500 focus:outline-none focus:border-stone-500"
+                      className={inputClass}
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-stone-300 mb-1">
-                      Host WhatsApp / Phone *
-                    </label>
+                    <label className={labelClass}>Host WhatsApp / phone *</label>
                     <input
                       type="tel"
                       required
-                      placeholder="+265 99 123 4567"
+                      placeholder="Include country code"
                       value={formData.contactPhone}
                       onChange={e => setFormData({ ...formData, contactPhone: e.target.value })}
-                      className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white placeholder-stone-500 focus:outline-none focus:border-stone-500"
+                      className={inputClass}
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-stone-300 mb-1">
-                      Room Types / Units Available
-                    </label>
+                    <label className={labelClass}>Room types / units available</label>
                     <input
                       type="text"
                       placeholder="e.g. 4 Lakeview Chalets, 2 Family Cottages"
                       value={formData.roomTypes}
                       onChange={e => setFormData({ ...formData, roomTypes: e.target.value })}
-                      className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white placeholder-stone-500 focus:outline-none focus:border-stone-500"
+                      className={inputClass}
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-stone-300 mb-1">
-                      Starting Nightly Rate
-                    </label>
+                    <label className={labelClass}>Starting nightly rate</label>
                     <div className="flex gap-2">
                       <select
                         value={formData.currency}
                         onChange={e => setFormData({ ...formData, currency: e.target.value })}
-                        className="bg-stone-800 border border-stone-700 rounded-xl px-2.5 py-2.5 text-xs text-white focus:outline-none"
+                        className="border border-stone-300 rounded-md px-2 py-2 text-sm text-stone-900 bg-white focus:outline-none focus:border-stone-500"
                       >
                         <option value="MWK">MWK</option>
                         <option value="USD">USD</option>
@@ -532,44 +403,34 @@ export default function HostStarterPack() {
                         placeholder="e.g. 75,000 or 60"
                         value={formData.startingRate}
                         onChange={e => setFormData({ ...formData, startingRate: e.target.value })}
-                        className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white placeholder-stone-500 focus:outline-none focus:border-stone-500"
+                        className={inputClass}
                       />
                     </div>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-stone-300 mb-1">
-                    Special Features or Host Notes (Optional)
-                  </label>
+                  <label className={labelClass}>Special features or host notes (optional)</label>
                   <textarea
-                    rows={2}
+                    rows={3}
                     placeholder="e.g. Solar power backup, private beach, borehole water, boat tours available"
                     value={formData.notes}
                     onChange={e => setFormData({ ...formData, notes: e.target.value })}
-                    className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-white placeholder-stone-500 focus:outline-none focus:border-stone-500"
+                    className={inputClass}
                   />
                 </div>
 
-                <div className="pt-2 flex items-center justify-between gap-4 flex-wrap">
-                  <span className="text-[11px] text-stone-400">
-                    &bull; Zero commission forever &bull; Direct WhatsApp inquiries &bull; Free profile creation
-                  </span>
-
-                  <button
-                    type="submit"
-                    disabled={submitting}
-                    className="px-6 py-2.5 rounded-full bg-white hover:bg-stone-100 text-stone-900 font-semibold text-xs transition cursor-pointer flex items-center gap-1.5 shadow-xs disabled:opacity-50"
-                  >
-                    <Send className="w-3.5 h-3.5" />
-                    <span>{submitting ? 'Submitting…' : 'Submit Property for Listing'}</span>
+                <div className="flex items-center justify-between gap-4 flex-wrap">
+                  <span className="text-sm text-stone-500">Zero commission &middot; Direct WhatsApp inquiries &middot; Free profile creation</span>
+                  <button type="submit" disabled={submitting} className={primaryBtn}>
+                    <Send size={16} />
+                    {submitting ? 'Submitting…' : 'Submit property for listing'}
                   </button>
                 </div>
               </form>
             )}
-          </div>
-        </section>
-
+          </section>
+        </div>
       </main>
     </div>
   );

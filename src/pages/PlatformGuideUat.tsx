@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { 
-  Building2, CheckCircle2, ArrowLeft, Smartphone, MessageSquare, 
-  MapPin, Printer, ShieldCheck, 
-  Send, Share2, Download, Copy, Check, Sparkles, CheckSquare, Square, RefreshCw, AlertCircle
+import {
+  ArrowLeft, MessageSquare, Printer, Send, Copy, Check, RefreshCw
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -203,363 +201,273 @@ export default function PlatformGuideUat() {
     }
   };
 
+  const inputClass =
+    'w-full border border-stone-300 rounded-md px-3 py-2 text-sm text-stone-900 placeholder-stone-400 bg-white focus:outline-none focus:border-stone-500';
+  const labelClass = 'block text-sm font-medium text-stone-700 mb-1';
+
   return (
-    <div className="min-h-screen bg-stone-100/60 py-6 sm:py-10 px-4 sm:px-6 lg:px-8 print:p-0 print:bg-white text-stone-900 font-sans">
-      
-      {/* Standardized Top Utility Bar (Hidden during print) */}
-      <div className="max-w-4xl mx-auto mb-6 bg-white border border-stone-200 rounded-2xl p-4 sm:px-6 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-4 print:hidden">
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          <Link 
-            to="/" 
-            className="p-2 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl transition text-xs font-semibold inline-flex items-center gap-1.5"
-            title="Return to Home"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span className="hidden sm:inline">Home</span>
-          </Link>
-          <div className="h-4 w-px bg-stone-200 hidden sm:block" />
-          <div className="min-w-0">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-stone-800 bg-stone-100 px-2 py-0.5 rounded">
-              Platform &amp; QA
-            </span>
-            <div className="text-xs font-bold text-stone-900 truncate">
-              Platform Architecture &amp; Verification Manual
+    <div className="min-h-screen bg-white text-stone-700 font-sans">
+      <main className="max-w-3xl mx-auto px-5 py-12 print:py-0">
+
+        {/* Header */}
+        <header className="border-b border-stone-200 pb-6 mb-8">
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <p className="text-sm text-stone-500">Platform &amp; QA &middot; Release v2.5.0</p>
+            <div className="flex items-center gap-2 flex-wrap print:hidden">
+              <Link
+                to="/"
+                className="inline-flex items-center gap-1.5 border border-stone-300 text-stone-800 rounded-md px-3 py-1.5 text-sm hover:bg-stone-50"
+              >
+                <ArrowLeft size={16} className="text-stone-500" />
+                Home
+              </Link>
+              <DocQuickEditButton
+                docId="platform-guide-uat"
+                onSaved={() => refreshDoc()}
+              />
+              <button
+                onClick={handleShareWhatsApp}
+                className="inline-flex items-center gap-1.5 border border-stone-300 text-stone-800 rounded-md px-3 py-1.5 text-sm hover:bg-stone-50 cursor-pointer"
+              >
+                <MessageSquare size={16} className="text-stone-500" />
+                Share
+              </button>
+              <button
+                onClick={handleCopyLink}
+                className="inline-flex items-center gap-1.5 border border-stone-300 text-stone-800 rounded-md px-3 py-1.5 text-sm hover:bg-stone-50 cursor-pointer"
+                title="Copy link"
+              >
+                {copiedLink ? <Check size={16} className="text-stone-500" /> : <Copy size={16} className="text-stone-500" />}
+                {copiedLink ? 'Copied' : 'Copy link'}
+              </button>
+              <button
+                onClick={handlePrint}
+                className="inline-flex items-center gap-1.5 bg-stone-900 text-white rounded-md px-3 py-1.5 text-sm hover:bg-stone-800 cursor-pointer"
+              >
+                <Printer size={16} />
+                Print / PDF
+              </button>
             </div>
           </div>
-        </div>
 
-        <div className="flex items-center gap-2 shrink-0 flex-wrap w-full sm:w-auto justify-end">
-          <DocQuickEditButton 
-            docId="platform-guide-uat" 
-            onSaved={() => refreshDoc()} 
-          />
+          <h1 className="mt-4 text-3xl font-semibold text-stone-900">{customTitle}</h1>
+          <p className="mt-2 text-stone-500">{customSubtitle}</p>
+          {(isCustomized || lastEditedBy) && (
+            <p className="mt-2 text-sm text-stone-500">
+              {isCustomized && 'Customised edition'}
+              {isCustomized && lastEditedBy && ' · '}
+              {lastEditedBy && `Maintained by ${lastEditedBy}`}
+            </p>
+          )}
 
-          <button
-            onClick={handleShareWhatsApp}
-            className="px-3 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs inline-flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
-          >
-            <MessageSquare className="w-3.5 h-3.5" />
-            <span>Share on WhatsApp</span>
-          </button>
-
-          <button
-            onClick={handlePrint}
-            className="px-3 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-semibold text-xs inline-flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
-          >
-            <Printer className="w-3.5 h-3.5" />
-            <span>Print / PDF</span>
-          </button>
-
-          <button
-            onClick={handleCopyLink}
-            className="p-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-600 border border-stone-200 transition cursor-pointer"
-            title="Copy link"
-          >
-            {copiedLink ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4 text-stone-600" />}
-          </button>
-        </div>
-      </div>
-
-      {/* Main Document Body */}
-      <main className="max-w-4xl mx-auto bg-white border border-stone-200 rounded-3xl p-6 sm:p-10 shadow-xs space-y-8 print:border-none print:shadow-none print:p-0">
-        
-        {/* Document Header */}
-        <header className="border-b border-stone-200 pb-6 space-y-4">
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <span className="text-xs font-mono uppercase tracking-widest text-stone-600 font-semibold">
-              Travel Malawi &bull; Quality Assurance Standard
-            </span>
-            <span className="text-xs font-mono text-stone-600">
-              Release v2.5.0
-            </span>
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="font-serif text-2xl sm:text-4xl font-bold text-stone-900 tracking-tight leading-tight">
-                {customTitle}
-              </h1>
-              {isCustomized && (
-                <span className="text-[10px] uppercase font-bold tracking-wider text-amber-800 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded">
-                  Live Customized Edition
-                </span>
-              )}
-            </div>
-            {lastEditedBy && (
-              <p className="text-[11px] text-stone-500 font-mono">
-                Maintained by {lastEditedBy}
-              </p>
-            )}
-          </div>
-
-          <p className="text-sm sm:text-base text-stone-600 leading-relaxed max-w-3xl">
-            {customSubtitle}
-          </p>
-
-          <div className="flex items-center gap-2 pt-2 print:hidden">
+          <div className="mt-6 flex items-center gap-2 print:hidden">
             <button
               onClick={() => setActiveTab('guide')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
+              className={`rounded-md px-3 py-1.5 text-sm cursor-pointer ${
                 activeTab === 'guide'
-                  ? 'bg-stone-900 text-white shadow-xs'
-                  : 'bg-stone-100 hover:bg-stone-200 text-stone-700'
+                  ? 'bg-stone-900 text-white hover:bg-stone-800'
+                  : 'border border-stone-300 text-stone-800 hover:bg-stone-50'
               }`}
             >
-              Standard Guide
+              Guide
             </button>
             <button
               onClick={() => setActiveTab('checklist')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
+              className={`rounded-md px-3 py-1.5 text-sm cursor-pointer ${
                 activeTab === 'checklist'
-                  ? 'bg-stone-900 text-white shadow-xs'
-                  : 'bg-stone-100 hover:bg-stone-200 text-stone-700'
+                  ? 'bg-stone-900 text-white hover:bg-stone-800'
+                  : 'border border-stone-300 text-stone-800 hover:bg-stone-50'
               }`}
             >
-              <span>Interactive Checklist</span>
-              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-600 text-white">
-                {completedCount}/{UAT_TESTS.length}
-              </span>
+              Checklist ({completedCount}/{UAT_TESTS.length})
             </button>
           </div>
         </header>
 
         {activeTab === 'checklist' ? (
-          /* Interactive Verification Checklist */
-          <div className="space-y-6">
-            <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200 flex items-center justify-between gap-4">
-              <div>
-                <span className="text-xs text-stone-500 font-medium">Verification Progress</span>
-                <div className="text-base font-bold text-stone-900">
-                  {completedCount} of {UAT_TESTS.length} verified ({progressPercent}%)
-                </div>
-              </div>
+          <div className="text-[15px] leading-relaxed">
+            <div className="flex items-center justify-between gap-4 pb-4">
+              <p className="text-stone-700">
+                {completedCount} of {UAT_TESTS.length} verified ({progressPercent}%)
+              </p>
               <button
                 onClick={resetChecklist}
-                className="text-xs text-stone-500 hover:text-stone-900 flex items-center gap-1 transition cursor-pointer"
+                className="inline-flex items-center gap-1.5 border border-stone-300 text-stone-800 rounded-md px-3 py-1.5 text-sm hover:bg-stone-50 cursor-pointer"
               >
-                <RefreshCw className="w-3 h-3" />
-                <span>Reset</span>
+                <RefreshCw size={16} className="text-stone-500" />
+                Reset
               </button>
             </div>
 
-            <div className="space-y-3">
+            <ul className="border-t border-stone-200">
               {UAT_TESTS.map(t => {
                 const isChecked = !!completedTests[t.id];
                 return (
-                  <div
-                    key={t.id}
-                    onClick={() => toggleTest(t.id)}
-                    className={`p-4 rounded-2xl border transition cursor-pointer flex items-start gap-3.5 ${
-                      isChecked
-                        ? 'bg-emerald-50/40 border-emerald-200/80 text-stone-900'
-                        : 'bg-white border-stone-200 hover:border-stone-300'
-                    }`}
-                  >
-                    <div className="mt-0.5 text-stone-400">
-                      {isChecked ? (
-                        <CheckSquare className="w-5 h-5 text-emerald-600" />
-                      ) : (
-                        <Square className="w-5 h-5" />
-                      )}
-                    </div>
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs font-bold text-stone-500">[{t.id}]</span>
-                        <h4 className={`text-sm font-bold ${isChecked ? 'text-emerald-950 line-through' : 'text-stone-900'}`}>
-                          {t.title}
-                        </h4>
-                        <span className="text-[10px] font-semibold text-stone-400 bg-stone-100 px-2 py-0.5 rounded">
-                          {t.suite}
-                        </span>
+                  <li key={t.id} className="border-b border-stone-200 py-4">
+                    <label className="flex items-start gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => toggleTest(t.id)}
+                        className="mt-1 h-4 w-4 accent-stone-900"
+                      />
+                      <div>
+                        <h3 className={`text-base font-semibold ${isChecked ? 'text-stone-500 line-through' : 'text-stone-900'}`}>
+                          {t.id}. {t.title}
+                        </h3>
+                        <p className="text-sm text-stone-500">{t.suite}</p>
+                        <ul className="mt-2 list-disc pl-5 text-stone-700">
+                          {t.steps.map((st, sIdx) => (
+                            <li key={sIdx}>{st}</li>
+                          ))}
+                        </ul>
+                        <p className="mt-2 text-stone-700">
+                          <span className="font-medium text-stone-900">Expected:</span> {t.expected}
+                        </p>
                       </div>
-                      <div className="text-xs text-stone-600 space-y-0.5">
-                        {t.steps.map((st, sIdx) => (
-                          <div key={sIdx}>&bull; {st}</div>
-                        ))}
-                      </div>
-                      <div className="text-xs text-stone-500 pt-1">
-                        <strong>Expected:</strong> {t.expected}
-                      </div>
-                    </div>
-                  </div>
+                    </label>
+                  </li>
                 );
               })}
-            </div>
+            </ul>
           </div>
         ) : (
-          /* Standard Guide Content */
-          <div className="space-y-8">
-            <section className="space-y-3">
-              <h2 className="font-serif text-xl font-bold text-stone-900">
-                1. Core Architectural Pillars
-              </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs sm:text-sm">
-                <div className="p-4 rounded-2xl border border-stone-200 bg-stone-50/50 space-y-1">
-                  <strong className="text-stone-900 block">0% Commission Direct Bookings</strong>
-                  <p className="text-stone-600">
+          <div className="text-[15px] leading-relaxed">
+            <section>
+              <h2 className="text-xl font-semibold text-stone-900">1. Core architectural pillars</h2>
+              <div className="mt-4 space-y-4">
+                <div>
+                  <h3 className="text-base font-semibold text-stone-900">0% commission direct bookings</h3>
+                  <p className="text-stone-700">
                     Eliminates the 15%–25% commission tax imposed by foreign OTAs. Direct guest communication and reservation requests via WhatsApp and in-app vouchers.
                   </p>
                 </div>
-
-                <div className="p-4 rounded-2xl border border-stone-200 bg-stone-50/50 space-y-1">
-                  <strong className="text-stone-900 block">Native Dual Currency (MWK / USD)</strong>
-                  <p className="text-stone-600">
+                <div>
+                  <h3 className="text-base font-semibold text-stone-900">Native dual currency (MWK / USD)</h3>
+                  <p className="text-stone-700">
                     Dual currency engine allowing travelers to browse and book natively in clean Kwacha (rounded to nearest 1,000) or USD with zero forex spread penalty.
                   </p>
                 </div>
-
-                <div className="p-4 rounded-2xl border border-stone-200 bg-stone-50/50 space-y-1">
-                  <strong className="text-stone-900 block">Offline Satellite GPS Navigation</strong>
-                  <p className="text-stone-600">
+                <div>
+                  <h3 className="text-base font-semibold text-stone-900">Offline satellite GPS navigation</h3>
+                  <p className="text-stone-700">
                     Multi-tier map tile caching enabling vehicle drivers to locate remote bush chalets and lake gates even with zero cellular reception.
                   </p>
                 </div>
-
-                <div className="p-4 rounded-2xl border border-stone-200 bg-stone-50/50 space-y-1">
-                  <strong className="text-stone-900 block">Local Payment Rail Support</strong>
-                  <p className="text-stone-600">
+                <div>
+                  <h3 className="text-base font-semibold text-stone-900">Local payment rail support</h3>
+                  <p className="text-stone-700">
                     Full compatibility with Airtel Money, TNM Mpamba, National Bank of Malawi, Standard Bank, and FDH Bank transfers.
                   </p>
                 </div>
               </div>
             </section>
 
-            <section className="space-y-3">
-              <h2 className="font-serif text-xl font-bold text-stone-900">
-                2. Verification Protocols &amp; Standard Test Suites
-              </h2>
-              <p className="text-xs sm:text-sm text-stone-600 leading-relaxed">
-                Prior to approving any release or production update, the 6 core suites above must be validated across both desktop and mobile viewports (iOS Safari and Android Chrome).
+            <section>
+              <h2 className="text-xl font-semibold text-stone-900 mt-10">2. Verification protocols &amp; standard test suites</h2>
+              <p className="mt-3 text-stone-700">
+                Prior to approving any release or production update, the 6 core suites in the checklist must be validated across both desktop and mobile viewports (iOS Safari and Android Chrome).
               </p>
             </section>
           </div>
         )}
 
-        {/* Section: SUBMIT BACK TO US (QA / Defect Report Form) */}
-        <section id="qa-report-form" className="pt-6 border-t border-stone-200 space-y-6">
-          <div className="bg-stone-900 text-white rounded-3xl p-6 sm:p-8 space-y-6">
-            <div className="space-y-2">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-stone-800 text-stone-200 text-xs font-bold uppercase tracking-wider">
-                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                <span>QA &amp; Verification Reporting</span>
-              </div>
-              <h2 className="font-serif text-xl sm:text-2xl font-bold text-white">
-                Submit a Verification Finding or Defect Report
-              </h2>
-              <p className="text-xs sm:text-sm text-stone-300 leading-relaxed max-w-xl">
-                Encountered an issue during testing or have operational feedback? Submit the details directly to our engineering and operations team.
+        {/* QA / defect report form */}
+        <section id="qa-report-form" className="mt-12 pt-8 border-t border-stone-200 text-[15px] leading-relaxed">
+          <h2 className="text-xl font-semibold text-stone-900">Submit a verification finding or defect report</h2>
+          <p className="mt-2 text-stone-500">
+            Encountered an issue during testing or have operational feedback? Submit the details directly to our engineering and operations team.
+          </p>
+
+          {submitted ? (
+            <div className="mt-6 bg-stone-50 border-l-2 border-stone-300 px-4 py-3">
+              <p className="font-medium text-stone-900">Verification report logged</p>
+              <p className="text-stone-700">
+                Reference: <span className="font-mono">{submissionId}</span>. The finding is now tracked in the Admin Hub for review.
               </p>
             </div>
-
-            {submitted ? (
-              <div className="bg-stone-800 border border-stone-700 rounded-2xl p-6 text-center space-y-3">
-                <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto">
-                  <CheckCircle2 className="w-6 h-6" />
-                </div>
-                <h3 className="text-base font-bold text-white">
-                  Verification Report Logged
-                </h3>
-                <p className="text-xs text-stone-300 max-w-md mx-auto">
-                  Reference: <span className="font-mono text-amber-300 font-bold">{submissionId}</span>. The finding is now tracked in the Admin Hub for review.
-                </p>
-              </div>
-            ) : (
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-medium text-stone-300 mb-1">
-                      Tester / Reporter Name
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Your name"
-                      value={formData.testerName}
-                      onChange={e => setFormData({ ...formData, testerName: e.target.value })}
-                      className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white placeholder-stone-500 focus:outline-none focus:border-stone-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-stone-300 mb-1">
-                      WhatsApp / Phone / Email
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="+265 99 123 4567 or email"
-                      value={formData.testerContact}
-                      onChange={e => setFormData({ ...formData, testerContact: e.target.value })}
-                      className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white placeholder-stone-500 focus:outline-none focus:border-stone-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-stone-300 mb-1">
-                      Target Area / Test Suite
-                    </label>
-                    <select
-                      value={formData.testSuite}
-                      onChange={e => setFormData({ ...formData, testSuite: e.target.value })}
-                      className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white focus:outline-none focus:border-stone-500"
-                    >
-                      <option value="Discovery & Search">Discovery &amp; Search</option>
-                      <option value="Pricing & Currency">Pricing &amp; Currency (MWK / USD)</option>
-                      <option value="WhatsApp Direct Inquiry">WhatsApp Direct Inquiry</option>
-                      <option value="Offline Satellite GPS">Offline Satellite GPS</option>
-                      <option value="Host Stay OS">Host Stay OS &amp; Rates</option>
-                      <option value="Mobile UI & Performance">Mobile UI &amp; Performance</option>
-                      <option value="General Observation">General Observation</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-stone-300 mb-1">
-                      Severity Level
-                    </label>
-                    <select
-                      value={formData.severity}
-                      onChange={e => setFormData({ ...formData, severity: e.target.value })}
-                      className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white focus:outline-none focus:border-stone-500"
-                    >
-                      <option value="Low">Low (Cosmetic / Text)</option>
-                      <option value="Medium">Medium (Functional Quirk)</option>
-                      <option value="High">High (Blocking Flow)</option>
-                    </select>
-                  </div>
-                </div>
-
+          ) : (
+            <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-stone-300 mb-1">
-                    Defect Description &amp; Reproduction Steps *
-                  </label>
-                  <textarea
-                    rows={2}
-                    required
-                    placeholder="e.g. Switched to MWK on mobile Safari; prices displayed properly but booking modal showed USD symbol initially."
-                    value={formData.defectSummary}
-                    onChange={e => setFormData({ ...formData, defectSummary: e.target.value })}
-                    className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-white placeholder-stone-500 focus:outline-none focus:border-stone-500"
+                  <label className={labelClass}>Tester / reporter name</label>
+                  <input
+                    type="text"
+                    placeholder="Your name"
+                    value={formData.testerName}
+                    onChange={e => setFormData({ ...formData, testerName: e.target.value })}
+                    className={inputClass}
                   />
                 </div>
 
-                <div className="pt-2 flex items-center justify-between gap-4 flex-wrap">
-                  <span className="text-[11px] text-stone-400">
-                    &bull; Synced immediately to Admin Hub &bull; Helps maintain 99.9% booking reliability
-                  </span>
-
-                  <button
-                    type="submit"
-                    disabled={submitting}
-                    className="px-6 py-2.5 rounded-full bg-white hover:bg-stone-100 text-stone-900 font-semibold text-xs transition cursor-pointer flex items-center gap-1.5 shadow-xs disabled:opacity-50"
-                  >
-                    <Send className="w-3.5 h-3.5" />
-                    <span>{submitting ? 'Submitting…' : 'Submit Finding'}</span>
-                  </button>
+                <div>
+                  <label className={labelClass}>WhatsApp / phone / email</label>
+                  <input
+                    type="text"
+                    placeholder="Phone number or email"
+                    value={formData.testerContact}
+                    onChange={e => setFormData({ ...formData, testerContact: e.target.value })}
+                    className={inputClass}
+                  />
                 </div>
-              </form>
-            )}
-          </div>
-        </section>
 
+                <div>
+                  <label className={labelClass}>Target area / test suite</label>
+                  <select
+                    value={formData.testSuite}
+                    onChange={e => setFormData({ ...formData, testSuite: e.target.value })}
+                    className={inputClass}
+                  >
+                    <option value="Discovery & Search">Discovery &amp; Search</option>
+                    <option value="Pricing & Currency">Pricing &amp; Currency (MWK / USD)</option>
+                    <option value="WhatsApp Direct Inquiry">WhatsApp Direct Inquiry</option>
+                    <option value="Offline Satellite GPS">Offline Satellite GPS</option>
+                    <option value="Host Stay OS">Host Stay OS &amp; Rates</option>
+                    <option value="Mobile UI & Performance">Mobile UI &amp; Performance</option>
+                    <option value="General Observation">General Observation</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className={labelClass}>Severity level</label>
+                  <select
+                    value={formData.severity}
+                    onChange={e => setFormData({ ...formData, severity: e.target.value })}
+                    className={inputClass}
+                  >
+                    <option value="Low">Low (Cosmetic / Text)</option>
+                    <option value="Medium">Medium (Functional Quirk)</option>
+                    <option value="High">High (Blocking Flow)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className={labelClass}>Defect description &amp; reproduction steps *</label>
+                <textarea
+                  rows={3}
+                  required
+                  placeholder="e.g. Switched to MWK on mobile Safari; prices displayed properly but booking modal showed USD symbol initially."
+                  value={formData.defectSummary}
+                  onChange={e => setFormData({ ...formData, defectSummary: e.target.value })}
+                  className={inputClass}
+                />
+              </div>
+
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <span className="text-sm text-stone-500">Sent directly to the Admin Hub.</span>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="inline-flex items-center gap-1.5 bg-stone-900 text-white rounded-md px-3 py-1.5 text-sm hover:bg-stone-800 cursor-pointer disabled:opacity-50"
+                >
+                  <Send size={16} />
+                  {submitting ? 'Submitting…' : 'Submit finding'}
+                </button>
+              </div>
+            </form>
+          )}
+        </section>
       </main>
     </div>
   );

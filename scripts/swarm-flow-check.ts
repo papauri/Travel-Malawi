@@ -23,7 +23,8 @@ import { formatMoney, roomPrice, roomExtraGuestFee, packagePrice, resolveCurrenc
 import { userRoles, isGlobalAdmin, isAdmin, isMarketing, isHotelManager, isTraveller } from '../src/lib/roles';
 import { validateBooking } from '../src/lib/validateBooking';
 import { getAdminDocsList, getAdminDocContent } from '../server/docUtils';
-import { RoomType, BookingLike } from '../src/types';
+import { RoomType } from '../src/types';
+import type { BookingLike } from '../src/lib/availability';
 
 let totalTests = 0;
 let passedTests = 0;
@@ -180,10 +181,10 @@ console.log('\n=== SWARM AGENT 3: Role Hierarchy & Permissions ===');
 {
   const globalAdminUser = { role: 'global_admin' as const, roles: ['global_admin' as const], email: 'admin@travelmalawi.com' };
   const emailSuperAdmin = { role: 'traveller' as const, email: 'johnpaulchirwa@gmail.com' };
-  const adminUser = { role: 'admin' as const, roles: ['admin' as const] };
-  const marketingUser = { role: 'marketing' as const, roles: ['marketing' as const] };
+  const adminUser = { role: 'admin' as const, roles: ['admin' as const], email: '' };
+  const marketingUser = { role: 'marketing' as const, roles: ['marketing' as const], email: '' };
   const managerUser = { role: 'hotel_manager' as const, roles: ['hotel_manager' as const, 'traveller' as const] };
-  const guestUser = { role: 'traveller' as const, roles: ['traveller' as const] };
+  const guestUser = { role: 'traveller' as const, roles: ['traveller' as const], email: '' };
 
   assert('isGlobalAdmin identifies global_admin role', isGlobalAdmin(globalAdminUser) === true);
   assert('isGlobalAdmin identifies super admin email johnpaulchirwa@gmail.com', isGlobalAdmin(emailSuperAdmin) === true);

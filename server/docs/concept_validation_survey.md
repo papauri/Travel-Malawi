@@ -1,89 +1,87 @@
-# TRAVEL MALAWI — PRE-LAUNCH CONCEPT VALIDATION & DISCOVERY FRAMEWORK
-**The Warm Heart of Africa — Direct Booking & Hospitality Platform**
-*Confidential Executive Research Document & Partner Survey Instrument*
+# Pre-Launch Concept Validation Survey
+*Partner discovery framework and survey for lodges, cottages, hotels and camps in Malawi*
 
----
+## Summary
 
-## EXECUTIVE SUMMARY & PHILOSOPHY: THE "LISTEN-FIRST" LAUNCH
+Before opening Travel Malawi to domestic and international travellers, we are speaking with property operators first. Rather than asking lodge owners, boutique hoteliers, lakeside cottage hosts and safari camp managers to adopt another piece of software, we want to understand how they work today. We are talking to operators in Lilongwe, Blantyre, Mangochi, Cape Maclear, Nkhata Bay, Nyika, Majete and Liwonde.
 
-Before rolling out nationwide to international travelers and local adventurers, Travel Malawi is executing a **listen-first, collaborative pre-launch validation phase**. Rather than imposing another intrusive third-party software onto Malawian lodge owners, boutique hoteliers, lakeside cottage hosts, and safari camp managers, we are engaging key property operators in Lilongwe, Blantyre, Mangochi, Cape Maclear, Nkhata Bay, Nyika, Majete, and Liwonde.
+### Why we are starting this way
 
-### Why This Pre-Launch Approach?
-1. **Less Intrusive**: We do not pitch "revolutionary software." We listen to real day-to-day hospitality bottlenecks.
-2. **Co-Design With Stay Owners**: Properties become co-creators of features tailored to Malawian business realities (Airtel Money / TNM Mpamba reconciliation, fuel/generator backup disclosures, seasonal lake road access, forex exchange hurdles).
-3. **Guaranteed Early Adopter Advantage**: Founding hosts gain lifetime privileges, zero-commission introductory periods, and dedicated marketing support across Google, Instagram, and regional corporate networks.
+1. **Listen first.** We want to hear about real day-to-day problems before proposing anything.
+2. **Design with property owners.** Partners help shape features around how business works in Malawi: Airtel Money and TNM Mpamba reconciliation, generator and solar backup, seasonal road access, and foreign exchange.
+3. **Benefits for early partners.** Founding properties get a commission-free introductory period and help with marketing.
 
----
+## Part 1: Current habits and pain points
 
-## PILLAR 1: CURRENT HABITS & PAIN POINTS
+### 1.1 How properties in Malawi get bookings today
 
-### 1.1 How Stays in Malawi Currently Acquire Bookings
-Based on preliminary discussions across Southern, Central, and Northern Region operators, bookings typically arrive through four fragmented channels:
-* **Direct WhatsApp & Phone Calls (55-70%)**: High friction, repetitive back-and-forth answering room availability, photo requests, and account numbers at odd hours.
-* **Global Online Travel Agencies (OTAs - Booking.com, Airbnb) (20-30%)**: High commission deductions (15% to 25%), delayed international forex payouts requiring foreign bank accounts or costly intermediary wire fees, and rigid dispute resolution.
-* **Local Corporate / NGO & Government Purchase Orders (10-20%)**: Long invoice payment cycles (30 to 90 days), manual voucher management, and paper-based confirmations.
-* **Walk-Ins & Local Referrals (5-15%)**: Unpredictable, highly sensitive to weather and holiday calendars.
+From early conversations with operators in the Southern, Central and Northern regions, bookings usually come through four channels:
 
-### 1.2 The Core Operational Pain Points
-1. **The "Commission Drain"**: Stays lose up to a quarter of their revenue on foreign platforms that provide zero local ground support in Malawi.
-2. **Payment Settlement Bottlenecks**: Foreign OTAs struggle with Malawian Kwacha (MWK), forcing hosts through expensive USD conversion spreads or delaying disbursements for weeks.
-3. **Double-Booking Anxiety**: Updating calendars across WhatsApp, phone logs, and foreign booking engines leads to awkward double-bookings during peak holiday periods (Easter, Christmas, Lake of Stars).
-4. **Guest Communication Overhead**: Front desk and lodge managers spend 3-5 hours daily repeating basic information: road conditions, boat transfers, solar power hours, Wi-Fi speeds, and dietary options.
+* **WhatsApp and phone calls (about 55–70%).** A lot of back-and-forth about availability, photos and account numbers, often at odd hours.
+* **Foreign online travel agencies such as Booking.com and Airbnb (about 20–30%).** Commission of 15% to 25%, payouts in foreign currency that need a foreign bank account or carry wire fees, and limited local support.
+* **Corporate, NGO and government purchase orders (about 10–20%).** Payment cycles of 30 to 90 days and paper-based vouchers.
+* **Walk-ins and referrals (about 5–15%).** Unpredictable and affected by weather and holidays.
 
----
+### 1.2 Main operational problems
 
-## PILLAR 2: VALUE & INTEREST VALIDATION
+1. **Commission.** Properties can lose up to a quarter of their revenue to foreign platforms that offer no support on the ground in Malawi.
+2. **Payment delays.** Foreign platforms do not handle Malawian Kwacha (MWK) well, which means conversion costs or payouts that take weeks.
+3. **Double bookings.** Keeping calendars in sync across WhatsApp, phone logs and foreign booking sites leads to double bookings in busy periods (Easter, Christmas, Lake of Stars).
+4. **Repeated guest questions.** Managers spend hours each day answering the same questions about road conditions, boat transfers, power, Wi-Fi and meals.
 
-### 2.1 What Travel Malawi Delivers
-* **Zero-Tech Dedicated Storefront**: Each stay receives an elegant, mobile-optimized direct booking profile with high-definition imagery, verified map pins, and transparent policies.
-* **Direct Mobile Money & Local Bank Rails**: Guests pay seamlessly via Airtel Money, TNM Mpamba, or direct instant transfer to National Bank of Malawi (NBM), Standard Bank, FDH Bank, or Centenary Bank. Hosts receive instant settlement with zero international wire deductions.
-* **Ulendo AI Hospitality Concierge**: Our built-in conversational assistant answers prospective guests 24/7 in English and Chichewa, clarifying room amenities, meal times, and lake excursions while escalating booking requests directly to management.
-* **Smart Availability & Room Inventory Lock**: Real-time calendar synchronization prevents double bookings and enables one-click room blocking for corporate buyouts or maintenance.
-* **Social & Web Review Aggregation**: Seamlessly pull positive verified reviews from TripAdvisor, Google, and social platforms directly onto your official direct booking page.
+## Part 2: What Travel Malawi offers
 
----
+* **A property page with no technical setup.** Each property gets a mobile-friendly booking page with photos, a map pin and clear policies.
+* **Local payment options.** Guests pay deposits directly to the property by Airtel Money, TNM Mpamba, or bank transfer to National Bank of Malawi (NBM), Standard Bank, FDH Bank or Centenary Bank. Visa and Mastercard, and cash on arrival where the property allows it, are also accepted.
+* **Ulendo, the AI concierge.** Ulendo answers guest questions at any hour about rooms, meals and excursions, and passes booking requests to the property manager. It replies in English, and in Chichewa when a guest writes in Chichewa.
+* **Availability calendar.** Room availability is kept up to date and dates can be blocked for private bookings or maintenance, which prevents double bookings.
+* **Reviews.** Verified reviews from TripAdvisor and Google can be shown on the property page.
 
-## PILLAR 3: COMMITMENT & FOUNDING COHORT OFFER
+## Part 3: Founding partner offer
 
-### 3.1 The Founding Host Agreement
-* **0% Commission Window**: Founding properties keep 100% of room revenues for their first 90 days of active direct bookings.
-* **Free High-Resolution Property Profiling**: Our team assists in capturing and curating property photography, room categorization, and menu digitization at zero cost.
-* **Priority Placement**: Featured status on the Travel Malawi homepage and top ranking for destination searches (e.g., "Cape Maclear Cottages", "Liwonde Safari Camps").
-* **Direct Input into the Roadmap**: Direct monthly access to the Travel Malawi engineering and marketing team to prioritize features that help your specific lodge thrive.
+* **0% commission for 90 days.** Founding properties keep all room revenue for their first 90 days of bookings.
+* **Free listing setup.** Our team helps with photos, room categories and menus at no cost.
+* **Featured placement.** Founding properties are featured on the Travel Malawi homepage and in destination searches such as "Cape Maclear cottages" or "Liwonde safari camps".
+* **Input into the roadmap.** Monthly contact with the Travel Malawi team to discuss which features matter most to your property.
 
----
+## Partner survey
 
-## PARTNER SURVEY INSTRUMENT (PRINTABLE & SUBMISSIBLE)
+### Section A: Property profile
 
-### SECTION A: PROPERTY PROFILE
-* Property Name: ___________________________________________
-* Location / Region: [ ] Lakeshore (Mangochi / Cape Maclear / Nkhata Bay / Likoma)
-                     [ ] Urban Hub (Lilongwe / Blantyre / Mzuzu / Zomba)
-                     [ ] Safari & Wildlife (Liwonde / Majete / Nyika / Kasungu)
-                     [ ] Scenic Highlands (Mulanje / Zomba Plateau / Dedza)
-* Number of Rooms / Units: _______
-* Average Nightly Rate: MWK ______________ / USD $_________
+* Property name:
+* Region (choose one): Lakeshore (Mangochi, Cape Maclear, Nkhata Bay, Likoma); City (Lilongwe, Blantyre, Mzuzu, Zomba); Safari and wildlife (Liwonde, Majete, Nyika, Kasungu); Highlands (Mulanje, Zomba Plateau, Dedza)
+* Number of rooms or units:
+* Average nightly rate (MWK or USD):
 
-### SECTION B: CURRENT HABITS (RATE 1 to 5)
-1. "Managing direct inquiries on WhatsApp takes too much time." (1 = Disagree, 5 = Strongly Agree): [ ]
-2. "Foreign OTA commissions (15-25%) take too much from our profit." (1 = Disagree, 5 = Strongly Agree): [ ]
-3. "Receiving payouts from foreign platforms is slow or expensive." (1 = Disagree, 5 = Strongly Agree): [ ]
-4. "We experience occasional double-bookings due to manual tracking." (1 = Disagree, 5 = Strongly Agree): [ ]
+### Section B: Current habits
 
-### SECTION C: VALUE PROPOSITION RANKING
-Rank these features from 1 (Most Valuable) to 5 (Least Valuable):
-* [ ] Direct guest booking with zero foreign intermediary commission
-* [ ] Instant Malawian Kwacha payments via Airtel Money & TNM Mpamba
-* [ ] Ulendo AI answering guest questions 24/7 in English & Chichewa
-* [ ] Live room availability calendar with date blocking
-* [ ] Verified TripAdvisor review aggregation on our listing page
+Rate each statement from 1 (disagree) to 5 (strongly agree).
 
-### SECTION D: COMMITMENT
-Would you be open to joining our exclusive 10-Property Founding Host Cohort at 0% commission for the first 90 days?
-[ ] Yes, sign us up for early access!
-[ ] Yes, but we would like a 15-minute briefing first.
-[ ] Not right now, keep us updated as you launch.
+1. Managing direct enquiries on WhatsApp takes too much time.
+2. Foreign booking site commissions (15–25%) take too much of our profit.
+3. Receiving payouts from foreign platforms is slow or expensive.
+4. We sometimes get double bookings because we track availability by hand.
 
-* Contact Person: ___________________________________________
-* WhatsApp / Mobile: _________________________________________
-* Email Address: ___________________________________________
+### Section C: Most useful features
+
+Rank these from 1 (most useful) to 5 (least useful).
+
+* Direct guest bookings with no foreign commission
+* Kwacha payments by Airtel Money and TNM Mpamba
+* Ulendo answering guest questions at any hour
+* Live room availability calendar with date blocking
+* Verified TripAdvisor and Google reviews on our page
+
+### Section D: Interest
+
+Would you like to join the founding partner group (0% commission for the first 90 days)?
+
+* Yes, please sign us up.
+* Yes, but we would like a 15-minute briefing first.
+* Not right now, please keep us updated.
+
+Contact details:
+
+* Contact person:
+* WhatsApp or mobile number:
+* Email address:

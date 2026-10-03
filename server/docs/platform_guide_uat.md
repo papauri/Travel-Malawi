@@ -1,44 +1,43 @@
-# TRAVEL MALAWI — PLATFORM GUIDE & UAT VERIFICATION MANUAL
-**The Warm Heart of Africa — Direct Booking & Hospitality Platform**
-*Quality Assurance Protocols, Verification Checklists, and Acceptance Standards*
+# Platform Guide and UAT Checklist
+*Quality checks, test checklists and acceptance criteria for Travel Malawi*
 
----
+## 1. Purpose and audience
 
-## 1. PURPOSE & AUDIENCE
-This manual defines verification checklists, operational standards, and acceptance criteria for Travel Malawi. It is maintained for internal operations, ground team inspectors, marketing leads, and lodge onboarding specialists.
+This guide sets out the test checklists, standards and acceptance criteria for Travel Malawi. It is for the operations team, field inspectors, marketing and partner onboarding staff.
 
----
+## 2. Platform principles
 
-## 2. CORE SYSTEM ARCHITECTURE & DESIGN PILLARS
-* **Local First**: Built specifically for Malawian connectivity, supporting instant mobile money, local bank rails, and offline GPS caching.
-* **Zero Host Commission**: Direct relationship between guest and lodge manager with 0% platform deductions during launch.
-* **Dual Currency Precision**: Malawian Kwacha (MWK) rounded to the nearest 1,000 MWK; USD rounded to the nearest dollar.
-* **Adaptive AI Concierge (Ulendo)**: 24/7 intelligent assistance tuned with deep cultural and geographical knowledge of Malawi.
+* **Built for Malawi:** Supports mobile money, local bank transfers and offline maps for areas with poor connectivity.
+* **No host commission during launch:** Guests deal directly with the property manager, with 0% platform commission during the launch period.
+* **Two currencies:** Malawian Kwacha (MWK) rounded to the nearest 1,000; US dollars (USD) in whole dollars or rounded to the nearest $5.
+* **Payment options:** Airtel Money, TNM Mpamba, bank transfer (NBM, Standard Bank, FDH Bank, Centenary Bank), Visa and Mastercard, and cash on arrival where the property allows it.
+* **Ulendo AI concierge:** Answers guest and host questions at any hour, using local knowledge of Malawi.
 
----
+## 3. User acceptance tests
 
-## 3. USER ACCEPTANCE TEST (UAT) SUITES
+### Suite A: Search and listings
 
-### SUITE A: DISCOVERY & MERCHANDISING
-* **Test A1 (Destination Autocomplete)**: Verify instant filtering for key hubs: Lilongwe, Blantyre, Cape Maclear, Mangochi, Nkhata Bay, Nyika, Liwonde, Majete, Mulanje.
-* **Test A2 (View Modes)**: Seamless switching between Visual Photo Grid, High-Density Compact List, and Clustered Interactive Map.
-* **Test A3 (Currency Switcher)**: Toggle between MWK and USD; verify all rates update cleanly without UI jitter.
+* **A1 Destination search:** Typing filters results immediately for Lilongwe, Blantyre, Cape Maclear, Mangochi, Nkhata Bay, Nyika, Liwonde, Majete and Mulanje.
+* **A2 View modes:** Switching between photo grid, compact list and map works without errors.
+* **A3 Currency switch:** Switching between MWK and USD updates all prices correctly, with no layout shift.
 
-### SUITE B: BOOKING & GUEST COMMUNICATION
-* **Test B1 (Direct WhatsApp Inquiries)**: Verify 1-click WhatsApp launcher includes pre-filled dates, guest count, and room preference.
-* **Test B2 (Offline GPS Navigation)**: Ensure GPS coordinates launch device-native navigation (Google Maps, OsmAnd) without cellular data.
-* **Test B3 (Instant Booking Voucher)**: Confirm that booking voucher displays clear settlement details (Airtel Money, TNM Mpamba, or Bank Transfer).
+### Suite B: Booking and guest messages
 
-### SUITE C: PROPERTY MANAGER & HOST OPERATIONS
-* **Test C1 (Storefront Merchandising)**: Confirm property photo gallery, amenity badges, and check-in/out policies render crisp and legible.
-* **Test C2 (Inventory Blocking & Calendar)**: Verify date blocking prevents accidental double-bookings.
-* **Test C3 (Bulk Rate Adjustments)**: Ensure peak holiday surcharges or seasonal discounts apply correctly across multiple rooms.
+* **B1 WhatsApp enquiries:** The WhatsApp button opens a message with dates, number of guests and room already filled in.
+* **B2 Offline directions:** GPS coordinates open the phone's own navigation app (Google Maps or OsmAnd) and work without mobile data when maps have been saved.
+* **B3 Booking confirmation:** The confirmation shows clear payment details (Airtel Money, TNM Mpamba or bank transfer).
 
-### SUITE D: MARKETING & STRATEGIC DOCUMENTS
-* **Test D1 (1-Click Sharing)**: WhatsApp share, link copy, and clean print/PDF export function reliably on all partner documents.
-* **Test D2 (Inbound Partner Submissions)**: Confirm partner survey submissions, fast-track listing requests, and field scout notes route immediately to the Admin Documentation Hub.
+### Suite C: Property manager tools
 
----
+* **C1 Property page:** Photos, amenities and check-in and check-out policies display clearly.
+* **C2 Calendar and date blocking:** Blocking dates prevents double bookings, and check-out must be after check-in.
+* **C3 Bulk rate changes:** Seasonal increases or discounts apply correctly across several rooms.
 
-## 4. FIELD REPORTING & DEFECT ESCALATION
-Submit ground test findings, bug reports, or amenity discrepancies directly through the submission form at `/uat` or contact operations via WhatsApp (+265 999 00 00 00).
+### Suite D: Partner documents
+
+* **D1 Sharing:** WhatsApp sharing, copy link and print or save as PDF work on all partner documents.
+* **D2 Partner submissions:** Survey responses, listing requests and field notes arrive in the Admin Documentation Hub.
+
+## 4. Reporting issues
+
+Report test results, bugs or incorrect property details through the form at `/uat`, or contact the Travel Malawi operations team.

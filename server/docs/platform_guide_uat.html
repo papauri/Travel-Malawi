@@ -3,46 +3,90 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Travel Malawi — Platform Guide &amp; UAT Verification Manual</title>
+  <title>Platform Guide and UAT Checklist — Travel Malawi</title>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 820px; margin: 40px auto; padding: 0 24px; color: #1c1917; line-height: 1.6; background-color: #fafaf9; }
-    .card { background: #ffffff; border: 1px solid #e7e5e4; border-radius: 16px; padding: 32px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-    h1 { font-size: 26px; font-family: Georgia, serif; color: #0c0a09; margin-top: 0; margin-bottom: 8px; border-bottom: 2px solid #1c1917; padding-bottom: 12px; }
-    h2 { font-size: 18px; font-family: Georgia, serif; color: #1c1917; margin-top: 28px; margin-bottom: 12px; border-bottom: 1px solid #e7e5e4; padding-bottom: 6px; }
-    h3 { font-size: 14px; font-weight: 700; color: #44403c; margin-top: 18px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em; }
-    p, li { font-size: 13.5px; color: #292524; }
-    ul { padding-left: 20px; margin-bottom: 16px; }
-    li { margin-bottom: 6px; }
-    .badge { display: inline-block; background: #e7e5e4; color: #1c1917; padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; margin-bottom: 12px; }
-    .note { background: #f5f5f4; border-left: 4px solid #78716c; padding: 12px 16px; border-radius: 0 8px 8px 0; font-size: 13px; margin: 16px 0; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #ffffff; color: #44403c; font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 15px; line-height: 1.6; }
+    main { max-width: 720px; margin: 48px auto; padding: 0 20px; }
+    .category { margin: 0 0 4px; font-size: 13px; color: #78716c; }
+    h1, h2, h3 { color: #1c1917; font-weight: 600; line-height: 1.3; }
+    h1 { margin: 0 0 8px; font-size: 28px; }
+    .subtitle { margin: 0; color: #78716c; }
+    .rule { margin: 20px 0 0; border: 0; border-top: 1px solid #e7e5e4; }
+    h2 { margin: 36px 0 12px; font-size: 20px; }
+    h3 { margin: 24px 0 8px; font-size: 16px; }
+    p { margin: 0 0 12px; }
+    ul, ol { margin: 0 0 12px; padding-left: 24px; }
+    li { margin: 4px 0; }
+    strong { color: #1c1917; font-weight: 600; }
+    a { color: #1c1917; }
+    table { width: 100%; margin: 0 0 16px; border-collapse: collapse; font-size: 14px; }
+    th, td { padding: 8px 12px; border: 1px solid #e7e5e4; text-align: left; vertical-align: top; }
+    th { background: #fafaf9; color: #1c1917; font-weight: 600; }
+    .note { margin: 0 0 16px; padding: 12px 16px; background: #fafaf9; border-left: 2px solid #d6d3d1; }
+    .note p:last-child { margin-bottom: 0; }
+    code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; }
+    pre { margin: 24px 0 0; white-space: pre-wrap; word-break: break-word; color: #44403c; }
+    fieldset { margin: 0 0 16px; padding: 0; border: 0; }
+    legend { margin: 0 0 4px; padding: 0; color: #1c1917; font-weight: 600; }
+    label { display: block; margin: 12px 0 4px; color: #1c1917; font-weight: 600; font-size: 14px; }
+    label.option { margin: 4px 0; color: #44403c; font-weight: 400; }
+    input, select, textarea, button { font: inherit; }
+    input[type="text"], input[type="email"], input[type="tel"], input[type="number"], select, textarea { width: 100%; padding: 8px 10px; color: #1c1917; background: #ffffff; border: 1px solid #d6d3d1; border-radius: 4px; }
+    button { margin-top: 16px; padding: 8px 16px; color: #ffffff; background: #1c1917; border: 1px solid #1c1917; border-radius: 4px; cursor: pointer; }
+    footer { display: flex; justify-content: space-between; gap: 16px; margin-top: 48px; padding-top: 12px; border-top: 1px solid #e7e5e4; font-size: 13px; color: #78716c; }
+    @media (max-width: 600px) { h1 { font-size: 24px; } }
+    @media print { main { max-width: none; margin: 0; padding: 0; } body, h1, h2, h3, strong, a, .category, .subtitle, footer { color: #000000; } button { display: none; } }
   </style>
 </head>
 <body>
-  <div class="card">
-    <div class="badge">Platform Standards &amp; QA</div>
-    <h1>TRAVEL MALAWI — PLATFORM GUIDE &amp; UAT MANUAL</h1>
-    <p><em>Quality assurance protocols, verification checklists, and end-to-end user acceptance standards.</em></p>
-    
-    <h2>1. Purpose &amp; Overview</h2>
-    <p>This manual guides internal QA, operations, and partner support teams in verifying the integrity of the Travel Malawi booking platform across desktop, tablet, and mobile environments.</p>
-
-    <h2>2. Core System Pillars</h2>
-    <ul>
-      <li><strong>0% Commission Direct Booking:</strong> Direct host-to-guest financial settlement without third-party deductions.</li>
-      <li><strong>Local Rails:</strong> Seamless integration of Airtel Money, TNM Mpamba, and local bank transfers (MWK).</li>
-      <li><strong>Native Offline Directions:</strong> Decimal/DMS GPS coordinates cached for seamless arrival on remote lakeside and park roads.</li>
-    </ul>
-
-    <h2>3. Acceptance Checklist</h2>
-    <ul>
-      <li><strong>Discovery:</strong> Fast destination filtering across 9 primary regional tourism circuits.</li>
-      <li><strong>Instant Inquiries:</strong> Pre-filled WhatsApp direct booking threads with real-time property verification.</li>
-      <li><strong>Manager Storefront:</strong> Bulk room and rate modifications with inventory locking.</li>
-    </ul>
-
-    <div class="note">
-      <strong>Operations Dispatch:</strong> Log defects or field inspection results directly via <code>/uat</code> or WhatsApp +265 999 00 00 00.
-    </div>
-  </div>
+<main>
+  <header>
+    <p class="category">Platform Standards &amp; QA</p>
+    <h1>Platform Guide and UAT Checklist</h1>
+    <p class="subtitle">Quality checks, test checklists and acceptance criteria for Travel Malawi</p>
+    <hr class="rule">
+  </header>
+  <h2>1. Purpose and audience</h2>
+  <p>This guide sets out the test checklists, standards and acceptance criteria for Travel Malawi. It is for the operations team, field inspectors, marketing and partner onboarding staff.</p>
+  <h2>2. Platform principles</h2>
+  <ul>
+    <li><strong>Built for Malawi:</strong> Supports mobile money, local bank transfers and offline maps for areas with poor connectivity.</li>
+    <li><strong>No host commission during launch:</strong> Guests deal directly with the property manager, with 0% platform commission during the launch period.</li>
+    <li><strong>Two currencies:</strong> Malawian Kwacha (MWK) rounded to the nearest 1,000; US dollars (USD) in whole dollars or rounded to the nearest $5.</li>
+    <li><strong>Payment options:</strong> Airtel Money, TNM Mpamba, bank transfer (NBM, Standard Bank, FDH Bank, Centenary Bank), Visa and Mastercard, and cash on arrival where the property allows it.</li>
+    <li><strong>Ulendo AI concierge:</strong> Answers guest and host questions at any hour, using local knowledge of Malawi.</li>
+  </ul>
+  <h2>3. User acceptance tests</h2>
+  <h3>Suite A: Search and listings</h3>
+  <ul>
+    <li><strong>A1 Destination search:</strong> Typing filters results immediately for Lilongwe, Blantyre, Cape Maclear, Mangochi, Nkhata Bay, Nyika, Liwonde, Majete and Mulanje.</li>
+    <li><strong>A2 View modes:</strong> Switching between photo grid, compact list and map works without errors.</li>
+    <li><strong>A3 Currency switch:</strong> Switching between MWK and USD updates all prices correctly, with no layout shift.</li>
+  </ul>
+  <h3>Suite B: Booking and guest messages</h3>
+  <ul>
+    <li><strong>B1 WhatsApp enquiries:</strong> The WhatsApp button opens a message with dates, number of guests and room already filled in.</li>
+    <li><strong>B2 Offline directions:</strong> GPS coordinates open the phone's own navigation app (Google Maps or OsmAnd) and work without mobile data when maps have been saved.</li>
+    <li><strong>B3 Booking confirmation:</strong> The confirmation shows clear payment details (Airtel Money, TNM Mpamba or bank transfer).</li>
+  </ul>
+  <h3>Suite C: Property manager tools</h3>
+  <ul>
+    <li><strong>C1 Property page:</strong> Photos, amenities and check-in and check-out policies display clearly.</li>
+    <li><strong>C2 Calendar and date blocking:</strong> Blocking dates prevents double bookings, and check-out must be after check-in.</li>
+    <li><strong>C3 Bulk rate changes:</strong> Seasonal increases or discounts apply correctly across several rooms.</li>
+  </ul>
+  <h3>Suite D: Partner documents</h3>
+  <ul>
+    <li><strong>D1 Sharing:</strong> WhatsApp sharing, copy link and print or save as PDF work on all partner documents.</li>
+    <li><strong>D2 Partner submissions:</strong> Survey responses, listing requests and field notes arrive in the Admin Documentation Hub.</li>
+  </ul>
+  <h2>4. Reporting issues</h2>
+  <p>Report test results, bugs or incorrect property details through the form at <code>/uat</code>, or contact the Travel Malawi operations team.</p>
+  <footer>
+    <span>Travel Malawi</span>
+    <span>Updated October 2026</span>
+  </footer>
+</main>
 </body>
 </html>

@@ -21,8 +21,8 @@ export interface AdminDocMeta {
 export const ADMIN_DOCS: AdminDocMeta[] = [
   {
     id: 'concept-validation-survey',
-    title: 'Pre-Launch Concept Validation Survey & Pitch Deck',
-    subtitle: 'Three-pillar partner discovery framework (1. Habits & Pain Points, 2. Value Validation, 3. Commitment) with dashboard mockups & blurred metrics',
+    title: 'Pre-Launch Concept Validation Survey',
+    subtitle: "Partner discovery framework and survey for lodges, cottages, hotels and camps in Malawi",
     category: 'Concept Discovery',
     filename: 'concept_validation_survey.md',
     htmlFilename: 'concept_validation_survey.html',
@@ -34,8 +34,8 @@ export const ADMIN_DOCS: AdminDocMeta[] = [
   },
   {
     id: 'stay-owner-leaflet',
-    title: 'Stay Owner Acquisition Leaflet ("What You Get")',
-    subtitle: 'Simple, illustrative one-pager leaflet for lodge & cottage owners: 0% launch commission, Airtel/Mpamba payouts, Ulendo AI concierge',
+    title: 'What You Get as a Partner Property',
+    subtitle: "A one-page summary for lodge, cottage and hotel owners",
     category: 'Partner Leaflet',
     filename: 'stay_owner_leaflet.md',
     htmlFilename: 'stay_owner_leaflet.html',
@@ -47,8 +47,8 @@ export const ADMIN_DOCS: AdminDocMeta[] = [
   },
   {
     id: 'marketing-presentation',
-    title: 'Marketing & Commercial Strategy Deck',
-    subtitle: 'The Sovereign Hospitality Rail: audience segmentation, loss aversion math, and the Trojan Horse acquisition formula',
+    title: 'Marketing and Commercial Strategy',
+    subtitle: "Direct booking for independent stays in Malawi: audiences, positioning and launch plan",
     category: 'Marketing',
     filename: 'marketing_presentation.md',
     htmlFilename: 'marketing_presentation.html',
@@ -60,8 +60,8 @@ export const ADMIN_DOCS: AdminDocMeta[] = [
   },
   {
     id: 'operations-starter-pack',
-    title: 'Operations & Field Conversion Playbook',
-    subtitle: 'Zero-inertia protocols: the 3-Touch WhatsApp sequence, psychological objection disarming, and quality control pillars',
+    title: 'Operations and Field Playbook',
+    subtitle: "Partner outreach, common objections and listing quality checks",
     category: 'Operations',
     filename: 'operations_starter_pack.md',
     htmlFilename: 'operations_starter_pack.html',
@@ -73,8 +73,8 @@ export const ADMIN_DOCS: AdminDocMeta[] = [
   },
   {
     id: 'host-onboarding-pack',
-    title: 'Host Acquisition & Onboarding Starter Pack',
-    subtitle: 'The 8-minute storefront: the 4 golden photos that sell sleep/aspiration, price anchoring, and zero-headache setup',
+    title: 'Host Onboarding Starter Pack',
+    subtitle: "How to set up a clear, trustworthy listing for an independent property in Malawi",
     category: 'Host Acquisition',
     filename: 'host_onboarding_starter_pack.md',
     htmlFilename: 'host_onboarding_starter_pack.html',
@@ -86,8 +86,8 @@ export const ADMIN_DOCS: AdminDocMeta[] = [
   },
   {
     id: 'property-listing-guide',
-    title: 'Property Listing Master Reference',
-    subtitle: 'Merchandising psychology: evocative room naming, the 5 essential Malawian amenities, and remote road anxiety disarming',
+    title: 'Property Listing Reference',
+    subtitle: "How to write clear listings that answer travellers' questions before they ask",
     category: 'Property Onboarding',
     filename: 'property_listing_guide.md',
     htmlFilename: 'property_listing_guide.html',
@@ -99,8 +99,8 @@ export const ADMIN_DOCS: AdminDocMeta[] = [
   },
   {
     id: 'platform-guide-uat',
-    title: 'Platform Guide & UAT Verification Manual',
-    subtitle: 'Quality assurance protocols, verification checklists, and end-to-end user acceptance standards',
+    title: 'Platform Guide and UAT Checklist',
+    subtitle: "Quality checks, test checklists and acceptance criteria for Travel Malawi",
     category: 'Platform Standards & QA',
     filename: 'platform_guide_uat.md',
     htmlFilename: 'platform_guide_uat.html',
@@ -411,10 +411,14 @@ export function getAdminDocContent(id: string, format: 'text' | 'md' | 'html' = 
 }
 
 /**
- * Generates clean, responsive, editorial standalone HTML for a document
+ * Generates a plain, standalone HTML version of a document.
+ * Uses the same stylesheet as the hand-built guides in server/docs/*.html.
  */
 function generateStyledHtml(docMeta: AdminDocMeta, rawMarkdown: string): string {
   const plainText = markdownToReadableText(rawMarkdown);
+  const updated = docMeta.lastEditedAt
+    ? `Updated ${new Date(docMeta.lastEditedAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}`
+    : "";
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -422,28 +426,57 @@ function generateStyledHtml(docMeta: AdminDocMeta, rawMarkdown: string): string 
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${escapeHtml(docMeta.title)} — Travel Malawi</title>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 840px; margin: 40px auto; padding: 0 24px; color: #1c1917; line-height: 1.6; background-color: #fafaf9; }
-    .card { background: #ffffff; border: 1px solid #e7e5e4; border-radius: 16px; padding: 36px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-    .badge { display: inline-block; background: #e7e5e4; color: #1c1917; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; margin-bottom: 12px; }
-    h1 { font-size: 26px; font-family: Georgia, serif; color: #0c0a09; margin-top: 0; margin-bottom: 8px; border-bottom: 2px solid #1c1917; padding-bottom: 12px; }
-    .subtitle { font-size: 14px; color: #57534e; margin-bottom: 24px; font-style: italic; }
-    pre { background: #f5f5f4; border: 1px solid #e7e5e4; border-radius: 12px; padding: 20px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 13px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; color: #292524; }
-    .footer { margin-top: 24px; padding-top: 16px; border-top: 1px solid #e7e5e4; font-size: 12px; color: #78716c; display: flex; justify-content: space-between; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #ffffff; color: #44403c; font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 15px; line-height: 1.6; }
+    main { max-width: 720px; margin: 48px auto; padding: 0 20px; }
+    .category { margin: 0 0 4px; font-size: 13px; color: #78716c; }
+    h1, h2, h3 { color: #1c1917; font-weight: 600; line-height: 1.3; }
+    h1 { margin: 0 0 8px; font-size: 28px; }
+    .subtitle { margin: 0; color: #78716c; }
+    .rule { margin: 20px 0 0; border: 0; border-top: 1px solid #e7e5e4; }
+    h2 { margin: 36px 0 12px; font-size: 20px; }
+    h3 { margin: 24px 0 8px; font-size: 16px; }
+    p { margin: 0 0 12px; }
+    ul, ol { margin: 0 0 12px; padding-left: 24px; }
+    li { margin: 4px 0; }
+    strong { color: #1c1917; font-weight: 600; }
+    a { color: #1c1917; }
+    table { width: 100%; margin: 0 0 16px; border-collapse: collapse; font-size: 14px; }
+    th, td { padding: 8px 12px; border: 1px solid #e7e5e4; text-align: left; vertical-align: top; }
+    th { background: #fafaf9; color: #1c1917; font-weight: 600; }
+    .note { margin: 0 0 16px; padding: 12px 16px; background: #fafaf9; border-left: 2px solid #d6d3d1; }
+    .note p:last-child { margin-bottom: 0; }
+    code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; }
+    pre { margin: 24px 0 0; white-space: pre-wrap; word-break: break-word; color: #44403c; }
+    fieldset { margin: 0 0 16px; padding: 0; border: 0; }
+    legend { margin: 0 0 4px; padding: 0; color: #1c1917; font-weight: 600; }
+    label { display: block; margin: 12px 0 4px; color: #1c1917; font-weight: 600; font-size: 14px; }
+    label.option { margin: 4px 0; color: #44403c; font-weight: 400; }
+    input, select, textarea, button { font: inherit; }
+    input[type="text"], input[type="email"], input[type="tel"], input[type="number"], select, textarea { width: 100%; padding: 8px 10px; color: #1c1917; background: #ffffff; border: 1px solid #d6d3d1; border-radius: 4px; }
+    button { margin-top: 16px; padding: 8px 16px; color: #ffffff; background: #1c1917; border: 1px solid #1c1917; border-radius: 4px; cursor: pointer; }
+    footer { display: flex; justify-content: space-between; gap: 16px; margin-top: 48px; padding-top: 12px; border-top: 1px solid #e7e5e4; font-size: 13px; color: #78716c; }
+    @media (max-width: 600px) { h1 { font-size: 24px; } }
+    @media print { main { max-width: none; margin: 0; padding: 0; } body, h1, h2, h3, strong, a, .category, .subtitle, footer { color: #000000; } button { display: none; } }
   </style>
 </head>
 <body>
-  <div class="card">
-    <div class="badge">${escapeHtml(docMeta.category)}</div>
+<main>
+  <header>
+    <p class="category">${escapeHtml(docMeta.category)}</p>
     <h1>${escapeHtml(docMeta.title)}</h1>
-    <div class="subtitle">${escapeHtml(docMeta.subtitle)}</div>
-    <pre>${escapeHtml(plainText)}</pre>
-    <div class="footer">
-      <span>Travel Malawi Hospitality Rail &bull; Official Partner Document</span>
-      <span>${docMeta.lastEditedAt ? `Updated: ${new Date(docMeta.lastEditedAt).toLocaleDateString()}` : 'Live Standard'}</span>
-    </div>
-  </div>
+    <p class="subtitle">${escapeHtml(docMeta.subtitle)}</p>
+    <hr class="rule">
+  </header>
+  <pre>${escapeHtml(plainText)}</pre>
+  <footer>
+    <span>Travel Malawi</span>
+    <span>${escapeHtml(updated)}</span>
+  </footer>
+</main>
 </body>
-</html>`;
+</html>
+`;
 }
 
 function escapeHtml(text: string): string {
