@@ -1081,6 +1081,35 @@ export default function ManageHotel() {
           });
         } catch { /* non-critical */ }
       }
+
+      if (booking.guestEmail) {
+        let subject = '';
+        let message = '';
+        const hotelName = hotel?.name || 'the property';
+
+        if (status === 'confirmed') {
+          subject = `Booking Confirmed: ${hotelName}`;
+          message = `Dear ${booking.guestName},\n\nGreat news! Your booking at ${hotelName} has been confirmed.\n\nDates: ${booking.checkIn} to ${booking.checkOut}\nReference: #${booking.reference}\n\nWe look forward to hosting you!`;
+        } else if (status === 'rejected') {
+          subject = `Booking Declined: ${hotelName}`;
+          message = `Dear ${booking.guestName},\n\nWe regret to inform you that your booking request at ${hotelName} (Ref: #${booking.reference}) could not be accommodated for your requested dates (${booking.checkIn} to ${booking.checkOut}) and has been declined.\n\nPlease contact the property for alternative dates.`;
+        } else if (status === 'cancelled') {
+          subject = `Booking Cancelled: ${hotelName}`;
+          message = `Dear ${booking.guestName},\n\nYour booking at ${hotelName} (Ref: #${booking.reference}) for ${booking.checkIn} to ${booking.checkOut} has been cancelled by the property manager.\n\nIf you have any questions, please reach out to the property.`;
+        }
+
+        if (subject && message) {
+          fetch('/api/notify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: booking.guestEmail,
+              subject,
+              message,
+            })
+          }).catch(console.error);
+        }
+      }
     } catch (error: any) {
       console.error("Error updating booking:", error);
       if (error.message === 'ROOM_UNAVAILABLE') {

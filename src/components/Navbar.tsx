@@ -142,7 +142,7 @@ export default function Navbar() {
                     >
                       <span>Dashboard</span>
                       {pendingCount > 0 && (
-                        <span className="bg-rose-600 text-white text-[10px] font-bold px-1.5 py-0.2 rounded-full flex items-center justify-center leading-none">
+                        <span className="bg-rose-600 text-white text-[10px] font-bold min-w-4 h-4 px-1 rounded-full flex items-center justify-center leading-none">
                           {pendingCount}
                         </span>
                       )}

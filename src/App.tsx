@@ -26,6 +26,8 @@ import MarketingDeck from './pages/MarketingDeck';
 import OperationsStarterPack from './pages/OperationsStarterPack';
 import PropertyListingGuide from './pages/PropertyListingGuide';
 import PlatformGuideUat from './pages/PlatformGuideUat';
+import ConceptValidationSurvey from './pages/ConceptValidationSurvey';
+import StayOwnerLeaflet from './pages/StayOwnerLeaflet';
 import GlobalNotificationManager from './components/GlobalNotificationManager';
 import PageLoader from './components/PageLoader';
 import OfflineIndicator from './components/OfflineIndicator';
@@ -189,6 +191,12 @@ const router = createBrowserRouter([
       { path: "uat-guide", element: <PlatformGuideUat /> },
       { path: "platform-guide", element: <PlatformGuideUat /> },
       { path: "uat-manual", element: <PlatformGuideUat /> },
+      { path: "concept-validation", element: <ConceptValidationSurvey /> },
+      { path: "concept-survey", element: <ConceptValidationSurvey /> },
+      { path: "survey", element: <ConceptValidationSurvey /> },
+      { path: "stay-owner-leaflet", element: <StayOwnerLeaflet /> },
+      { path: "leaflet", element: <StayOwnerLeaflet /> },
+      { path: "host-leaflet", element: <StayOwnerLeaflet /> },
       { path: "admin/hotel/:id", element: <ManageHotel /> },
       { path: "*", element: <NotFound /> }
     ]

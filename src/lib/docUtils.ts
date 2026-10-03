@@ -2,11 +2,17 @@ export interface AdminDocMeta {
   id: string;
   title: string;
   subtitle: string;
-  category: 'Marketing' | 'Operations' | 'Host Acquisition' | 'Property Onboarding';
+  category: string;
   filename: string;
+  htmlFilename?: string;
+  liveUrl?: string;
+  hasHtml?: boolean;
   sizeBytes: number;
   wordCount: number;
   estimatedReadMinutes: number;
+  lastEditedBy?: string;
+  lastEditedAt?: string;
+  isCustomized?: boolean;
 }
 
 /**

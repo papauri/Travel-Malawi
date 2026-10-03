@@ -1,651 +1,452 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { 
-  Building2, 
-  CheckCircle2, 
-  ArrowRight, 
-  Globe, 
-  Smartphone, 
-  MessageSquare, 
-  DollarSign, 
-  MapPin, 
-  Camera, 
-  Copy, 
-  Check, 
-  Printer, 
-  ShieldCheck,
-  Award,
-  TrendingUp,
-  Target,
-  Users,
-  Compass,
-  Calendar,
-  Share2,
-  PhoneCall,
-  Laptop,
-  Download,
-  FileDown,
-  FileText
+  Building2, CheckCircle2, ArrowLeft, Smartphone, MessageSquare, 
+  DollarSign, MapPin, Printer, ShieldCheck, 
+  Send, Share2, Download, Copy, Check, TrendingUp, Target, Users, Sparkles
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useAuth } from '../contexts/AuthContext';
-import { isAdmin, isMarketing } from '../lib/roles';
-import { useSystemSettings } from '../hooks/useSystemSettings';
-import EditableSection from '../components/EditableSection';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '../lib/firebase';
+import DocQuickEditButton from '../components/DocQuickEditButton';
+import { useDocContent } from '../hooks/useDocContent';
 
 export default function MarketingDeck() {
-  const { user, loading } = useAuth();
-  const navigate = useNavigate();
-  const isGlobalAdmin = isAdmin(user);
-  const { settings } = useSystemSettings();
-  const domainHost = settings.platformDomain ? new URL(settings.platformDomain).hostname : 'travel-malawi.com';
-  const [copiedScript, setCopiedScript] = useState<string | null>(null);
+  const { title: customTitle, subtitle: customSubtitle, isCustomized, lastEditedBy, refreshDoc } = useDocContent(
+    'marketing-presentation',
+    'The Sovereign Direct Booking Rail for Malawi',
+    'Eliminating middleman extraction, unlocking domestic liquidity, and returning pricing sovereignty to independent Malawian lodges and safari camps.'
+  );
 
-  useEffect(() => {
-    if (!loading && (!user || (!isAdmin(user) && !isMarketing(user)))) {
-      navigate('/');
-    }
-  }, [user, loading, navigate]);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [submissionId, setSubmissionId] = useState<string | null>(null);
 
-  const copyToClipboard = (text: string, id: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedScript(id);
-    toast.success('Script copied to clipboard!');
-    setTimeout(() => setCopiedScript(null), 2500);
+  const [formData, setFormData] = useState({
+    partnerName: '',
+    partnerType: 'lodge',
+    contactName: '',
+    contactPhone: '',
+    contactEmail: '',
+    notes: ''
+  });
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(window.location.href);
+    setCopiedLink(true);
+    toast.success('Link copied to clipboard');
+    setTimeout(() => setCopiedLink(false), 2000);
+  };
+
+  const handleShareWhatsApp = () => {
+    const text = `Muli bwanji! Here is the Travel Malawi Commercial Strategy & Partner Deck: ${window.location.href}`;
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
   };
 
   const handlePrint = () => {
     window.print();
   };
 
+  const handleDownload = () => {
+    const link = document.createElement('a');
+    link.href = '/api/admin/docs/marketing-presentation?format=html&download=1';
+    link.download = 'travel_malawi_commercial_strategy.html';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success('Downloaded strategy deck (.html)');
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.partnerName.trim() || (!formData.contactPhone.trim() && !formData.contactEmail.trim())) {
+      toast.error('Please enter your organisation name and contact info.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const payload = {
+        type: 'partner_inquiry',
+        sourceDoc: 'Commercial Strategy Deck',
+        propName: formData.partnerName,
+        propLoc: formData.partnerType,
+        contactName: formData.contactName,
+        contactPhone: formData.contactPhone,
+        contactEmail: formData.contactEmail,
+        notes: `Partnership type: ${formData.partnerType}. Inquiries: ${formData.notes}`,
+        pilotInterest: 'yes'
+      };
+
+      const res = await fetch('/api/surveys/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      const refId = data.id || `partner-${Date.now()}`;
+
+      try {
+        await addDoc(collection(db, 'surveys'), {
+          ...payload,
+          id: refId,
+          submittedAt: serverTimestamp(),
+          clientTimestamp: new Date().toISOString()
+        });
+      } catch (err) {
+        console.warn('Firestore sync failed, local submission retained:', err);
+      }
+
+      setSubmissionId(refId);
+      setSubmitted(true);
+      toast.success('Zikomo! Your partnership inquiry has been received.');
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to submit inquiry.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-stone-50 text-stone-800 pb-24">
-      {/* Top Utility Bar */}
-      <div className="bg-stone-900 text-stone-300 py-3 px-4 sm:px-6 lg:px-8 border-b border-stone-800 text-xs">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="inline-block w-2 h-2 rounded-full bg-emerald-400" />
-            <span className="text-stone-300 font-medium">Internal Marketing &amp; Operations Executive Brief</span>
+    <div className="min-h-screen bg-stone-100/60 py-6 sm:py-10 px-4 sm:px-6 lg:px-8 print:p-0 print:bg-white text-stone-900 font-sans">
+      
+      {/* Standardized Top Utility Bar (Hidden during print) */}
+      <div className="max-w-4xl mx-auto mb-6 bg-white border border-stone-200 rounded-2xl p-4 sm:px-6 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-4 print:hidden">
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <Link 
+            to="/list-your-property" 
+            className="p-2 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl transition text-xs font-semibold inline-flex items-center gap-1.5"
+            title="Return to Host Hub"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span className="hidden sm:inline">Partner Hub</span>
+          </Link>
+          <div className="h-4 w-px bg-stone-200 hidden sm:block" />
+          <div className="min-w-0">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-stone-800 bg-stone-100 px-2 py-0.5 rounded">
+              Commercial Strategy
+            </span>
+            <div className="text-xs font-bold text-stone-900 truncate">
+              Executive Strategy &amp; Market Positioning Deck
+            </div>
           </div>
-          <div className="flex items-center gap-4">
-            {isGlobalAdmin && (
-              <Link
-                to="/admin"
-                className="inline-flex items-center gap-1.5 text-stone-300 hover:text-emerald-300 transition text-xs font-semibold"
-                title="Open Admin Executive Strategy Docs Hub (.txt & .md)"
-              >
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Admin Strategy Hub (.txt)</span>
-              </Link>
-            )}
-            <Link to="/uat" className="text-emerald-400 hover:text-emerald-300 transition text-xs font-semibold flex items-center gap-1">
-              <span>UAT Manual &amp; QA</span>
-            </Link>
-            <Link to="/host-guide" className="text-stone-400 hover:text-emerald-300 transition text-xs">
-              Host Starter Pack &rarr;
-            </Link>
-            <button 
-              onClick={handlePrint}
-              className="inline-flex items-center gap-1.5 text-stone-300 hover:text-white transition cursor-pointer"
-            >
-              <Printer className="w-3.5 h-3.5" />
-              <span>Print / Save PDF</span>
-            </button>
-          </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0 flex-wrap w-full sm:w-auto justify-end">
+          <DocQuickEditButton 
+            docId="marketing-presentation" 
+            onSaved={() => refreshDoc()} 
+          />
+
+          <button
+            onClick={handleShareWhatsApp}
+            className="px-3 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs inline-flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+          >
+            <MessageSquare className="w-3.5 h-3.5" />
+            <span>Share on WhatsApp</span>
+          </button>
+
+          <button
+            onClick={handlePrint}
+            className="px-3 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-semibold text-xs inline-flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+          >
+            <Printer className="w-3.5 h-3.5" />
+            <span>Print / PDF</span>
+          </button>
+
+          <button
+            onClick={handleDownload}
+            className="px-3 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 font-semibold text-xs border border-stone-200 transition inline-flex items-center gap-1.5 cursor-pointer"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">HTML</span>
+          </button>
+
+          <button
+            onClick={handleCopyLink}
+            className="p-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-600 border border-stone-200 transition cursor-pointer"
+            title="Copy link"
+          >
+            {copiedLink ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4 text-stone-600" />}
+          </button>
         </div>
       </div>
 
-      {/* Hero Header */}
-      <header className="relative overflow-hidden bg-stone-900 text-white pt-16 pb-20 px-4 sm:px-6 lg:px-8">
-        <div className="absolute top-0 right-1/4 w-96 h-96 bg-emerald-900/20 rounded-full blur-3xl pointer-events-none" />
-        <div className="max-w-6xl mx-auto relative z-10">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-800/60 text-xs font-semibold uppercase tracking-wider mb-6">
-            <Target className="w-4 h-4 text-emerald-400" />
-            <span>Executive Platform &amp; Operations Playbook</span>
+      {/* Main Document Body */}
+      <main className="max-w-4xl mx-auto bg-white border border-stone-200 rounded-3xl p-6 sm:p-10 shadow-xs space-y-10 print:border-none print:shadow-none print:p-0">
+        
+        {/* Document Header */}
+        <header className="border-b border-stone-200 pb-8 space-y-4">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <span className="text-xs font-mono uppercase tracking-widest text-stone-600 font-semibold">
+              Travel Malawi &bull; Commercial Deck
+            </span>
+            <span className="text-xs font-mono text-stone-600">
+              Partner Edition 2026
+            </span>
           </div>
 
-          <h1 className="font-serif text-3xl sm:text-5xl md:text-6xl text-white tracking-tight leading-tight max-w-4xl">
-            <EditableSection
-              docId="docs_marketing"
-              fieldId="hero_title"
-              defaultText="The Big Picture: Leading Marketing & Operations for Travel Malawi"
-              multiline
-            />
-          </h1>
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="font-serif text-2xl sm:text-4xl font-bold text-stone-900 tracking-tight leading-tight">
+                {customTitle}
+              </h1>
+              {isCustomized && (
+                <span className="text-[10px] uppercase font-bold tracking-wider text-amber-800 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded">
+                  Live Customized Edition
+                </span>
+              )}
+            </div>
+            {lastEditedBy && (
+              <p className="text-[11px] text-stone-500 font-mono">
+                Maintained by {lastEditedBy}
+              </p>
+            )}
+          </div>
 
-          <p className="mt-6 text-stone-300 text-base sm:text-xl max-w-3xl leading-relaxed font-light">
-            <EditableSection
-              docId="docs_marketing"
-              fieldId="hero_subtitle"
-              defaultText="You were brought on to lead everything outside of coding—host and property acquisition, brand growth, guest concierge, and community partnerships. This playbook gives you the complete picture of our product, value proposition, and operational roadmap."
-              multiline
-            />
+          <p className="text-sm sm:text-base text-stone-600 leading-relaxed max-w-3xl">
+            {customSubtitle}
+          </p>
+        </header>
+
+        {/* Section 1: The Leaking Bucket */}
+        <section className="space-y-4">
+          <div className="flex items-center gap-2">
+            <span className="w-6 h-6 rounded-full bg-stone-900 text-white font-mono text-xs flex items-center justify-center font-bold">1</span>
+            <h2 className="font-serif text-xl sm:text-2xl font-bold text-stone-900">
+              The Market Absurdity: The Leaking Bucket
+            </h2>
+          </div>
+
+          <p className="text-sm text-stone-700 leading-relaxed">
+            Every year, Malawian lodges surrender <strong>15% to 25% of their gross revenue</strong> to European online travel agencies (OTAs) simply to host guests who are:
           </p>
 
-          <div className="mt-8 flex flex-wrap items-center gap-3 text-xs text-stone-400">
-            <span className="bg-stone-800/80 px-3 py-1.5 rounded-full border border-stone-700 flex items-center gap-1.5 text-stone-200">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> 100% Code &amp; Technology Ready
-            </span>
-            <span className="bg-stone-800/80 px-3 py-1.5 rounded-full border border-stone-700 flex items-center gap-1.5 text-stone-200">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> 0% Commission Direct Booking Engine
-            </span>
-            <span className="bg-stone-800/80 px-3 py-1.5 rounded-full border border-stone-700 flex items-center gap-1.5 text-stone-200">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Live Google Maps Malawi Autocomplete
-            </span>
-            <span className="bg-stone-800/80 px-3 py-1.5 rounded-full border border-stone-700 flex items-center gap-1.5 text-stone-200">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Dual MWK / USD Real-Time Parity
-            </span>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="p-4 rounded-xl border border-stone-200 bg-stone-50/50 space-y-1.5">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500">Case A</span>
+              <h3 className="text-xs font-bold text-stone-900">The Lilongwe Resident</h3>
+              <p className="text-xs text-stone-600">
+                A diplomat or NGO professional driving 3 hours from Area 10 for a weekend on the lake.
+              </p>
+            </div>
+
+            <div className="p-4 rounded-xl border border-stone-200 bg-stone-50/50 space-y-1.5">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500">Case B</span>
+              <h3 className="text-xs font-bold text-stone-900">The Blantyre Corporate</h3>
+              <p className="text-xs text-stone-600">
+                A business executive traveling to Salima or Mangochi for a quarterly offsite.
+              </p>
+            </div>
+
+            <div className="p-4 rounded-xl border border-stone-200 bg-stone-50/50 space-y-1.5">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500">Case C</span>
+              <h3 className="text-xs font-bold text-stone-900">The International Eco-Traveler</h3>
+              <p className="text-xs text-stone-600">
+                A safari traveler who discovered the lodge online and wanted a direct way to book without getting lost.
+              </p>
+            </div>
           </div>
-        </div>
-      </header>
 
-      {/* Main Container */}
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 space-y-16">
-
-        {/* Section 1: The Market Opportunity & Why Online Presence Wins */}
-        <section className="bg-white rounded-3xl p-8 sm:p-12 shadow-sm border border-stone-200">
-          <div className="max-w-3xl">
-            <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider">1. The Market Dynamics</span>
-            <h2 className="text-2xl sm:text-3xl font-serif text-stone-900 mt-2 font-bold tracking-tight">
-              The Reality of Malawian Tourism Today
-            </h2>
-            <p className="text-stone-600 mt-3 text-base leading-relaxed">
-              Malawi has world-class freshwater beaches on Lake Malawi, uncrowded Big 5 wildlife reserves in Liwonde and Majete, and mountain retreats in Mulanje and Zomba. Yet, the hospitality landscape suffers from severe fragmentation:
+          <div className="bg-amber-50/70 border border-amber-200/80 rounded-2xl p-5 text-xs text-amber-950 leading-relaxed space-y-1.5">
+            <strong className="block text-sm font-bold text-amber-900">The Cold Math:</strong>
+            <p>
+              A 10-room lodge charging MK 90,000/night with 50% occupancy surrenders <strong>MK 8,100,000 to MK 13,500,000 every single year</strong> in commission fees to overseas corporations that provide zero customer service in Malawi. Travel Malawi keeps 100% of that revenue in the lodge owner&apos;s hands.
             </p>
           </div>
+        </section>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-            <div className="p-6 rounded-2xl bg-stone-50 border border-stone-200/80 flex flex-col justify-between">
-              <div>
-                <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center font-bold mb-4">
-                  <Globe className="w-5 h-5" />
-                </div>
-                <h3 className="font-serif font-bold text-stone-900 text-lg">
-                  Audience A: International Tourists &amp; Expats (85%+ Advance Bookings)
-                </h3>
-                <p className="text-stone-600 text-sm mt-2 leading-relaxed">
-                  Travelers from the UK, US, South Africa, and Europe plan trips 2 to 6 months in advance. If a Malawian hotel or lodge is not online with high-res photos and transparent rates, <strong>it simply does not exist to them</strong>. They end up booking big international hotel chains instead of authentic local lodges and resorts.
-                </p>
-              </div>
-              <div className="mt-4 pt-3 border-t border-stone-200 text-xs font-semibold text-emerald-800">
-                Our Advantage: Editorial showcases with verified USD pricing and direct WhatsApp contact.
-              </div>
-            </div>
-
-            <div className="p-6 rounded-2xl bg-stone-50 border border-stone-200/80 flex flex-col justify-between">
-              <div>
-                <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-800 flex items-center justify-center font-bold mb-4">
-                  <Smartphone className="w-5 h-5" />
-                </div>
-                <h3 className="font-serif font-bold text-stone-900 text-lg">
-                  Audience B: Domestic Weekend Getaways (Lilongwe &amp; Blantyre)
-                </h3>
-                <p className="text-stone-600 text-sm mt-2 leading-relaxed">
-                  Local professionals, families, government officials, and NGOs search for weekend breaks on their smartphones. They pay in <strong>Malawian Kwacha (MWK)</strong> using <strong>Airtel Money or TNM Mpamba</strong>. Foreign sites fail them because they charge in foreign currency and hide phone numbers.
-                </p>
-              </div>
-              <div className="mt-4 pt-3 border-t border-stone-200 text-xs font-semibold text-emerald-800">
-                Our Advantage: Dual-currency rates and 1-click WhatsApp messaging to the manager.
-              </div>
-            </div>
+        {/* Section 2: Competitive Comparison */}
+        <section className="space-y-4">
+          <div className="flex items-center gap-2">
+            <span className="w-6 h-6 rounded-full bg-stone-900 text-white font-mono text-xs flex items-center justify-center font-bold">2</span>
+            <h2 className="font-serif text-xl sm:text-2xl font-bold text-stone-900">
+              Competitive Leverage Matrix
+            </h2>
           </div>
 
-          {/* Competitive Table */}
-          <div className="mt-10 overflow-x-auto">
-            <table className="w-full text-left text-sm border-collapse">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="border-b border-stone-200 text-xs uppercase font-bold text-stone-500">
-                  <th className="py-3 px-4">Feature</th>
-                  <th className="py-3 px-4">Booking.com / Agoda</th>
-                  <th className="py-3 px-4">Airbnb</th>
-                  <th className="py-3 px-4 text-emerald-800 bg-emerald-50 font-bold rounded-t-lg">Travel Malawi</th>
+                <tr className="border-b border-stone-200 text-stone-500 font-mono uppercase tracking-wider">
+                  <th className="py-3 px-3">Friction Point</th>
+                  <th className="py-3 px-3">Legacy European OTAs</th>
+                  <th className="py-3 px-3">Direct WhatsApp Only</th>
+                  <th className="py-3 px-3 bg-stone-100/70 font-bold text-stone-900 rounded-t-lg">Travel Malawi Rail</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-100 text-stone-700">
                 <tr>
-                  <td className="py-3.5 px-4 font-semibold text-stone-900">Commission Rate</td>
-                  <td className="py-3.5 px-4 text-red-600">15% – 25% per booking</td>
-                  <td className="py-3.5 px-4 text-red-600">3% host + ~14% guest</td>
-                  <td className="py-3.5 px-4 font-bold text-emerald-800 bg-emerald-50/60">0% Commission</td>
+                  <td className="py-3 px-3 font-semibold text-stone-900">Commission Cut</td>
+                  <td className="py-3 px-3 text-red-600">15% to 25% deducted</td>
+                  <td className="py-3 px-3">0%</td>
+                  <td className="py-3 px-3 bg-stone-50 font-bold text-emerald-800">0% Guaranteed</td>
                 </tr>
                 <tr>
-                  <td className="py-3.5 px-4 font-semibold text-stone-900">Host Payouts</td>
-                  <td className="py-3.5 px-4">Held overseas 30–60 days</td>
-                  <td className="py-3.5 px-4">Foreign bank / Payoneer</td>
-                  <td className="py-3.5 px-4 font-bold text-emerald-800 bg-emerald-50/60">Direct to Host (Airtel, Mpamba, Bank)</td>
+                  <td className="py-3 px-3 font-semibold text-stone-900">Payout Settlement</td>
+                  <td className="py-3 px-3 text-stone-500">30–60 days via overseas bank</td>
+                  <td className="py-3 px-3 text-stone-500">Cash on arrival (High no-shows)</td>
+                  <td className="py-3 px-3 bg-stone-50 font-bold text-emerald-800">Instant MWK (Airtel/Mpamba/Banks)</td>
                 </tr>
                 <tr>
-                  <td className="py-3.5 px-4 font-semibold text-stone-900">Guest Communication</td>
-                  <td className="py-3.5 px-4">Masked / Prohibited</td>
-                  <td className="py-3.5 px-4">Blocked until booked</td>
-                  <td className="py-3.5 px-4 font-bold text-emerald-800 bg-emerald-50/60">Direct WhatsApp &amp; Phone Call</td>
+                  <td className="py-3 px-3 font-semibold text-stone-900">Guest Communication</td>
+                  <td className="py-3 px-3 text-stone-500">Masked emails; numbers blocked</td>
+                  <td className="py-3 px-3 text-stone-500">Unstructured, manual messaging</td>
+                  <td className="py-3 px-3 bg-stone-50 font-bold text-stone-900">Direct WhatsApp with booking voucher</td>
                 </tr>
                 <tr>
-                  <td className="py-3.5 px-4 font-semibold text-stone-900">Currency Support</td>
-                  <td className="py-3.5 px-4">Foreign forex conversion fees</td>
-                  <td className="py-3.5 px-4">USD converted rates</td>
-                  <td className="py-3.5 px-4 font-bold text-emerald-800 bg-emerald-50/60">Simultaneous MWK &amp; USD Rates</td>
+                  <td className="py-3 px-3 font-semibold text-stone-900">Navigation &amp; Arrival</td>
+                  <td className="py-3 px-3 text-stone-500">Fails when cell reception drops</td>
+                  <td className="py-3 px-3 text-stone-500">Vague text directions</td>
+                  <td className="py-3 px-3 bg-stone-50 font-bold text-stone-900">Cached Offline Satellite GPS &amp; Gate Pin</td>
                 </tr>
               </tbody>
             </table>
           </div>
         </section>
 
-        {/* Section 2: Real App Capabilities & Visual Proof */}
-        <section className="bg-white rounded-3xl p-8 sm:p-12 shadow-sm border border-stone-200">
-          <div className="max-w-3xl">
-            <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider">2. Product Tour &amp; Proof</span>
-            <h2 className="text-2xl sm:text-3xl font-serif text-stone-900 mt-2 font-bold tracking-tight">
-              Showcasing the Actual Platform
+        {/* Section 3: The Trojan Horse Strategy */}
+        <section className="space-y-4">
+          <div className="flex items-center gap-2">
+            <span className="w-6 h-6 rounded-full bg-stone-900 text-white font-mono text-xs flex items-center justify-center font-bold">3</span>
+            <h2 className="font-serif text-xl sm:text-2xl font-bold text-stone-900">
+              The Trojan Horse Strategy: Zero Friction Adoption
             </h2>
-            <p className="text-stone-600 mt-3 text-base leading-relaxed">
-              When pitching to hotel managers or marketing to travelers, you can show real, verified screens of our live application. All test property names are masked to protect unverified properties:
-            </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
-            {/* Screen 1: Listings */}
-            <div className="space-y-3">
-              <div className="overflow-hidden rounded-2xl border border-stone-200 bg-stone-100 shadow-sm">
-                <img 
-                  src="/host_app_listing_cards.png" 
-                  alt="Guest Discovery Feed" 
-                  className="w-full h-auto object-cover"
-                />
+          <div className="bg-stone-50 border border-stone-200 rounded-2xl p-6 space-y-3">
+            <h3 className="text-sm font-bold text-stone-900">
+              &ldquo;We never ask a lodge to leave Booking.com.&rdquo;
+            </h3>
+            <p className="text-xs sm:text-sm text-stone-600 leading-relaxed">
+              Asking a lodge manager to drop their existing channels triggers loss aversion. Instead, we say:
+            </p>
+            <blockquote className="border-l-2 border-stone-900 pl-4 py-1 text-xs sm:text-sm font-serif italic text-stone-800">
+              &ldquo;Keep your international OTA listing active for whatever foreign travelers it catches. But list your rooms on Travel Malawi to capture your domestic and regional weekend guests at 0% commission. Why give away 20% to Amsterdam when a guest is driving from Area 43?&rdquo;
+            </blockquote>
+          </div>
+        </section>
+
+        {/* Section 4: SUBMIT BACK TO US (Partnership Form) */}
+        <section id="partner-form" className="pt-6 border-t border-stone-200 space-y-6">
+          <div className="bg-stone-900 text-white rounded-3xl p-6 sm:p-8 space-y-6">
+            <div className="space-y-2">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-stone-800 text-stone-200 text-xs font-bold uppercase tracking-wider">
+                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                <span>Commercial &amp; Partnership Inquiry</span>
               </div>
-              <h4 className="font-serif font-bold text-stone-900 text-base">A. Guest Discovery &amp; Rate Parity</h4>
-              <p className="text-stone-600 text-xs leading-relaxed">
-                Featured property cards display real-time dual pricing (e.g. <strong>MK 220,000 / night ($250)</strong>), guest compare badges, and filtered categories (Lake &amp; Beach, Safari &amp; Wildlife, Mountain).
+              <h2 className="font-serif text-xl sm:text-2xl font-bold text-white">
+                Register as a Strategic Partner
+              </h2>
+              <p className="text-xs sm:text-sm text-stone-300 leading-relaxed max-w-xl">
+                Whether you manage a lodge portfolio, corporate travel account, or safari transport fleet, let our team tailor a direct integration.
               </p>
             </div>
 
-            {/* Screen 2: Acquisition Banner */}
-            <div className="space-y-3">
-              <div className="overflow-hidden rounded-2xl border border-stone-200 bg-stone-100 shadow-sm">
-                <img 
-                  src="/host_app_acquisition_banner.png" 
-                  alt="Host Acquisition Banner" 
-                  className="w-full h-auto object-cover"
-                />
-              </div>
-              <h4 className="font-serif font-bold text-stone-900 text-base">B. The 0% Commission Host Guarantee</h4>
-              <p className="text-stone-600 text-xs leading-relaxed">
-                Our acquisition banner greets visiting property owners with our 0% fee guarantee, instant WhatsApp alerts, and a 1-click link to the Host Starter Pack.
-              </p>
-            </div>
-
-            {/* Screen 3: Google Maps Autocomplete */}
-            <div className="space-y-3">
-              <div className="overflow-hidden rounded-2xl border border-stone-200 bg-stone-100 shadow-sm">
-                <img 
-                  src="/host_app_google_maps_autocomplete.png" 
-                  alt="Google Maps Malawi Autocomplete" 
-                  className="w-full h-auto object-cover"
-                />
-              </div>
-              <h4 className="font-serif font-bold text-stone-900 text-base">C. Live Google Maps Malawi Autocomplete</h4>
-              <p className="text-stone-600 text-xs leading-relaxed">
-                As property owners type their name, our system connects directly to Google Maps across Malawi to auto-populate town, district, and exact GPS coordinates in under 2 seconds.
-              </p>
-            </div>
-
-            {/* Screen 4: Availability Calendar */}
-            <div className="space-y-3">
-              <div className="overflow-hidden rounded-2xl border border-stone-200 bg-stone-100 shadow-sm">
-                <img 
-                  src="/host_app_availability_calendar.png" 
-                  alt="Availability Calendar" 
-                  className="w-full h-auto object-cover"
-                />
-              </div>
-              <h4 className="font-serif font-bold text-stone-900 text-base">D. Real-Time Availability Calendar</h4>
-              <p className="text-stone-600 text-xs leading-relaxed">
-                Room cards include a full monthly availability calendar with 1-click date blocking, verified water/power badges, and transparent cancellation terms.
-              </p>
-            </div>
-
-            {/* Screen 5: Offline Map & GPS */}
-            <div className="space-y-3 md:col-span-2 bg-stone-50 p-6 rounded-2xl border border-stone-200">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-stone-200 text-stone-800 flex items-center justify-center">
-                  <Compass className="w-5 h-5" />
+            {submitted ? (
+              <div className="bg-stone-800 border border-stone-700 rounded-2xl p-6 text-center space-y-3">
+                <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto">
+                  <CheckCircle2 className="w-6 h-6" />
                 </div>
+                <h3 className="text-base font-bold text-white">
+                  Zikomo! We Have Received Your Partnership Request
+                </h3>
+                <p className="text-xs text-stone-300 max-w-md mx-auto">
+                  Reference: <span className="font-mono text-amber-300 font-bold">{submissionId}</span>. Our executive partnerships lead will contact you within 24 hours.
+                </p>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-stone-300 mb-1">
+                      Organisation / Property Name *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Nyika Lodges Group, Chembe Cottages"
+                      value={formData.partnerName}
+                      onChange={e => setFormData({ ...formData, partnerName: e.target.value })}
+                      className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white placeholder-stone-500 focus:outline-none focus:border-stone-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-stone-300 mb-1">
+                      Partnership Category
+                    </label>
+                    <select
+                      value={formData.partnerType}
+                      onChange={e => setFormData({ ...formData, partnerType: e.target.value })}
+                      className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white focus:outline-none focus:border-stone-500"
+                    >
+                      <option value="lodge">Independent Lodge / Cottage</option>
+                      <option value="hotel_group">Hotel Group / Resort Chain</option>
+                      <option value="safari_tour">Safari / Tour Operator</option>
+                      <option value="corporate">Corporate / NGO Travel Desk</option>
+                      <option value="investor">Ecosystem / Strategic Investor</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-stone-300 mb-1">
+                      Lead Contact Name
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Grace Banda"
+                      value={formData.contactName}
+                      onChange={e => setFormData({ ...formData, contactName: e.target.value })}
+                      className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white placeholder-stone-500 focus:outline-none focus:border-stone-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-stone-300 mb-1">
+                      WhatsApp / Phone *
+                    </label>
+                    <input
+                      type="tel"
+                      required
+                      placeholder="+265 99 123 4567"
+                      value={formData.contactPhone}
+                      onChange={e => setFormData({ ...formData, contactPhone: e.target.value })}
+                      className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white placeholder-stone-500 focus:outline-none focus:border-stone-500"
+                    />
+                  </div>
+                </div>
+
                 <div>
-                  <h4 className="font-serif font-bold text-stone-900 text-base">E. Download Offline Maps &amp; Remote GPS Navigation</h4>
-                  <p className="text-stone-500 text-xs">PWA CacheStorage + Satellite GNSS Tracking</p>
+                  <label className="block text-xs font-medium text-stone-300 mb-1">
+                    Partnership Goals / Strategic Inquiries
+                  </label>
+                  <textarea
+                    rows={2}
+                    placeholder="e.g. Listing 5 properties in Lake Malawi region, bulk corporate bookings for Lilongwe staff"
+                    value={formData.notes}
+                    onChange={e => setFormData({ ...formData, notes: e.target.value })}
+                    className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-white placeholder-stone-500 focus:outline-none focus:border-stone-500"
+                  />
                 </div>
-              </div>
-              <p className="text-stone-600 text-xs leading-relaxed max-w-3xl">
-                Travelers in Malawi often drive through national parks, dirt tracks, and remote lake coves with zero mobile signal. Guests can 1-click download full offline map packages (regional highways, unpaved bush tracks, and lodge grounds) directly to their device. The built-in satellite GPS engine calculates live distance to the lodge, compass bearing, driving estimates, and exports coordinates to Garmin 4x4 units or offline apps (OsmAnd, Organic Maps) without requiring cellular data.
-              </p>
-            </div>
-          </div>
-        </section>
 
-        {/* Section 3: The Operational Mandate (Your Day-to-Day Responsibilities) */}
-        <section className="bg-white rounded-3xl p-8 sm:p-12 shadow-sm border border-stone-200">
-          <div className="max-w-3xl">
-            <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider">3. Operational Mandate</span>
-            <h2 className="text-2xl sm:text-3xl font-serif text-stone-900 mt-2 font-bold tracking-tight">
-              The 4 Pillars of Your Role
-            </h2>
-            <p className="text-stone-600 mt-3 text-base leading-relaxed">
-              Here is how your weekly workflow breaks down to drive revenue and platform scale:
-            </p>
-          </div>
+                <div className="pt-2 flex items-center justify-between gap-4 flex-wrap">
+                  <span className="text-[11px] text-stone-400">
+                    &bull; Strict confidentiality &bull; Fast executive turnaround &bull; National Malawi coverage
+                  </span>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-            {/* Pillar 1 */}
-            <div className="border border-stone-200 rounded-2xl p-6 hover:border-emerald-500/50 transition">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
-                  1
-                </div>
-                <h3 className="font-serif font-bold text-stone-900 text-lg">Property &amp; Host Acquisition</h3>
-              </div>
-              <p className="text-stone-600 text-xs sm:text-sm leading-relaxed">
-                Identify and contact top-tier and mid-tier accommodations across Mangochi, Cape Maclear, Likoma, Zomba, Liwonde, and Lilongwe. Reach out via WhatsApp or phone, pitch the 0% commission advantage, and guide them to list on <code className="bg-stone-100 px-1 py-0.5 rounded text-stone-800 text-xs">/list-your-property</code>.
-              </p>
-              <div className="mt-4 pt-3 border-t border-stone-100 text-xs text-stone-500 font-medium">
-                Goal: 50 Verified Live Properties in First 60 Days.
-              </div>
-            </div>
-
-            {/* Pillar 2 */}
-            <div className="border border-stone-200 rounded-2xl p-6 hover:border-emerald-500/50 transition">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
-                  2
-                </div>
-                <h3 className="font-serif font-bold text-stone-900 text-lg">Listing Curation &amp; Quality Control</h3>
-              </div>
-              <p className="text-stone-600 text-xs sm:text-sm leading-relaxed">
-                Review submitted properties in the <code className="bg-stone-100 px-1 py-0.5 rounded text-stone-800 text-xs">/admin</code> dashboard. Audit photography quality using our 5 smartphone photography rules, verify that WhatsApp contact numbers are active, and verify Google Maps location pins before approving.
-              </p>
-              <div className="mt-4 pt-3 border-t border-stone-100 text-xs text-stone-500 font-medium">
-                Goal: 100% of approved properties meet high editorial standards.
-              </div>
-            </div>
-
-            {/* Pillar 3 */}
-            <div className="border border-stone-200 rounded-2xl p-6 hover:border-emerald-500/50 transition">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
-                  3
-                </div>
-                <h3 className="font-serif font-bold text-stone-900 text-lg">Social Media &amp; Audience Growth</h3>
-              </div>
-              <p className="text-stone-600 text-xs sm:text-sm leading-relaxed">
-                Run our Instagram, TikTok, and Facebook channels. Post short video reels of Lake Malawi sunsets, luxury safari tents, and mountain hikes. Share weekly &quot;Where to Stay This Weekend&quot; roundups for Lilongwe and Blantyre professionals.
-              </p>
-              <div className="mt-4 pt-3 border-t border-stone-100 text-xs text-stone-500 font-medium">
-                Goal: 10,000+ targeted Malawian and diaspora followers.
-              </div>
-            </div>
-
-            {/* Pillar 4 */}
-            <div className="border border-stone-200 rounded-2xl p-6 hover:border-emerald-500/50 transition">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
-                  4
-                </div>
-                <h3 className="font-serif font-bold text-stone-900 text-lg">High-Touch Guest Concierge</h3>
-              </div>
-              <p className="text-stone-600 text-xs sm:text-sm leading-relaxed">
-                Support domestic and international travelers planning trips. Help them arrange 4x4 transfers, boat pickups to Likoma or Domwe Island, and guide them on seasonal weather and road conditions. This builds unmatched brand loyalty.
-              </p>
-              <div className="mt-4 pt-3 border-t border-stone-100 text-xs text-stone-500 font-medium">
-                Goal: Fast, friendly support that turns inquiries into confirmed stays.
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Section 4: Ready-to-Use Outreach Scripts */}
-        <section className="bg-white rounded-3xl p-8 sm:p-12 shadow-sm border border-stone-200">
-          <div className="max-w-3xl">
-            <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider">4. Outreach Scripts</span>
-            <h2 className="text-2xl sm:text-3xl font-serif text-stone-900 mt-2 font-bold tracking-tight">
-              Host &amp; Property Acquisition Pitch Scripts
-            </h2>
-            <p className="text-stone-600 mt-3 text-base leading-relaxed">
-              When contacting hotel, resort, lodge, B&amp;B, cottage, or guest house owners or general managers, use these battle-tested scripts. Click to copy directly to your clipboard:
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-            {/* Script 1 */}
-            <div className="bg-stone-50 border border-stone-200 rounded-2xl p-6 flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">Script 1: WhatsApp</span>
                   <button
-                    onClick={() => copyToClipboard(`Hello [Manager Name]! My name is [Your Name], Head of Operations at Travel Malawi (${domainHost}). We've launched Malawi's dedicated direct-booking platform connecting domestic and international travelers directly to premier accommodations. Unlike international booking sites that charge 15-20% commission, Travel Malawi is 100% 0% commission. Guests pay you directly via your own Airtel Money, Mpamba, or bank transfer, and inquiries go straight to your WhatsApp. We would love to feature [Hotel/Resort/Lodge Name] at no cost. Would you like me to send the 5-minute listing link, or can I set up your profile for you if you share your rates and photos?`, 'scriptWA')}
-                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-700 hover:text-emerald-700 bg-white border border-stone-200 px-3 py-1.5 rounded-full transition cursor-pointer"
+                    type="submit"
+                    disabled={submitting}
+                    className="px-6 py-2.5 rounded-full bg-white hover:bg-stone-100 text-stone-900 font-semibold text-xs transition cursor-pointer flex items-center gap-1.5 shadow-xs disabled:opacity-50"
                   >
-                    {copiedScript === 'scriptWA' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                    <span>{copiedScript === 'scriptWA' ? 'Copied' : 'Copy Script'}</span>
+                    <Send className="w-3.5 h-3.5" />
+                    <span>{submitting ? 'Submitting…' : 'Submit Partnership Inquiry'}</span>
                   </button>
                 </div>
-                <h4 className="font-serif font-bold text-stone-900 text-base mb-2">WhatsApp to Property Host / Reservations</h4>
-                <p className="text-stone-600 text-xs sm:text-sm italic leading-relaxed bg-white p-4 rounded-xl border border-stone-200/60 font-mono">
-                  &ldquo;Hello [Manager Name]! My name is [Your Name], Head of Operations at Travel Malawi ({domainHost}). We&apos;ve launched Malawi&apos;s dedicated direct-booking platform connecting domestic and international travelers directly to premier accommodations. Unlike international booking sites that charge 15-20% commission, Travel Malawi is 100% 0% commission. Guests pay you directly via your own Airtel Money, Mpamba, or bank transfer, and inquiries go straight to your WhatsApp. We would love to feature [Hotel/Resort/Lodge Name] at no cost. Would you like me to send the 5-minute listing link, or can I set up your profile for you if you share your rates and photos?&rdquo;
-                </p>
-              </div>
-            </div>
-
-            {/* Script 2 */}
-            <div className="bg-stone-50 border border-stone-200 rounded-2xl p-6 flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">Script 2: Phone Call</span>
-                  <button
-                    onClick={() => copyToClipboard(`"Good morning! May I speak with the hotel/lodge manager or reservations team regarding new guest bookings? ... Hi [Name], my name is [Your Name] with Travel Malawi. We are building the central online home for hospitality in Malawi, helping travelers from Lilongwe, Blantyre, and overseas book stays. We charge 0% commission—you keep 100% of your nightly rates, guests pay you directly into your local mobile money or bank, and guest messages come straight to your reservations WhatsApp. Can I send a quick overview and onboarding link to your WhatsApp number?"`, 'scriptPhone')}
-                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-700 hover:text-emerald-700 bg-white border border-stone-200 px-3 py-1.5 rounded-full transition cursor-pointer"
-                  >
-                    {copiedScript === 'scriptPhone' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                    <span>{copiedScript === 'scriptPhone' ? 'Copied' : 'Copy Script'}</span>
-                  </button>
-                </div>
-                <h4 className="font-serif font-bold text-stone-900 text-base mb-2">3-Minute Phone Call Pitch</h4>
-                <p className="text-stone-600 text-xs sm:text-sm italic leading-relaxed bg-white p-4 rounded-xl border border-stone-200/60 font-mono">
-                  &ldquo;Good morning! May I speak with the hotel/lodge manager or reservations team regarding new guest bookings? ... Hi [Name], my name is [Your Name] with Travel Malawi. We are building the central online home for hospitality in Malawi, helping travelers from Lilongwe, Blantyre, and overseas book stays. We charge 0% commission—you keep 100% of your nightly rates, guests pay you directly into your local mobile money or bank, and guest messages come straight to your reservations WhatsApp. Can I send a quick overview and onboarding link to your WhatsApp number?&rdquo;
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Section 5: First 90 Days Execution Roadmap */}
-        <section className="bg-white rounded-3xl p-8 sm:p-12 shadow-sm border border-stone-200">
-          <div className="max-w-3xl">
-            <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider">5. Execution Milestones</span>
-            <h2 className="text-2xl sm:text-3xl font-serif text-stone-900 mt-2 font-bold tracking-tight">
-              Your First 90-Day Growth Roadmap
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
-            <div className="p-6 rounded-2xl bg-stone-50 border border-stone-200">
-              <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">Days 1 – 30</span>
-              <h4 className="font-serif font-bold text-stone-900 text-lg mt-1">Anchor Acquisition</h4>
-              <ul className="mt-3 space-y-2 text-xs text-stone-600 leading-relaxed">
-                <li>&bull; Onboard 25 anchor hotels and lodges across Cape Maclear, Mangochi, and Lilongwe.</li>
-                <li>&bull; Audit photography and verify Google Maps pins for each stay.</li>
-                <li>&bull; Launch official Instagram and Facebook channels with high-res property photography.</li>
-              </ul>
-            </div>
-
-            <div className="p-6 rounded-2xl bg-stone-50 border border-stone-200">
-              <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">Days 31 – 60</span>
-              <h4 className="font-serif font-bold text-stone-900 text-lg mt-1">Audience Expansion</h4>
-              <ul className="mt-3 space-y-2 text-xs text-stone-600 leading-relaxed">
-                <li>&bull; Expand to 60 properties including Liwonde, Majete, and Zomba.</li>
-                <li>&bull; Run targeted Facebook/Instagram ad campaigns aimed at weekend travelers in Lilongwe &amp; Blantyre.</li>
-                <li>&bull; Partner with local 4x4 car rental companies in Lilongwe and Blantyre.</li>
-              </ul>
-            </div>
-
-            <div className="p-6 rounded-2xl bg-stone-50 border border-stone-200">
-              <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">Days 61 – 90</span>
-              <h4 className="font-serif font-bold text-stone-900 text-lg mt-1">Ecosystem Dominance</h4>
-              <ul className="mt-3 space-y-2 text-xs text-stone-600 leading-relaxed">
-                <li>&bull; Reach 100+ active properties across all regions of Malawi.</li>
-                <li>&bull; Partner with Ulendo Airlink and domestic tour operators.</li>
-                <li>&bull; Publish seasonal guides (e.g. &quot;Top 10 Lake Malawi Beach Cottages for Easter&quot;).</li>
-              </ul>
-            </div>
-          </div>
-        </section>
-
-        {/* Section 8: Downloadable Strategic Resources (RESTRICTED TO GLOBAL ADMIN) */}
-        <section className="p-8 sm:p-10 rounded-3xl bg-white border border-stone-200/90 shadow-sm">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-stone-200 pb-6 mb-8">
-            <div>
-              <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold uppercase tracking-wider mb-2">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Restricted Access &bull; Global Admin Only</span>
-              </div>
-              <h3 className="text-2xl sm:text-3xl font-serif font-bold text-stone-900 mt-1 tracking-tight">
-                Executive Strategy &amp; Operations Documentation
-              </h3>
-              <p className="text-xs sm:text-sm text-stone-500 mt-1">
-                Internal strategic documents available as interactive digital pages, protected from public exposure.
-              </p>
-            </div>
-
-            {isGlobalAdmin && (
-              <Link
-                to="/admin"
-                className="self-start md:self-auto inline-flex items-center gap-2 px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-bold transition shadow-xs"
-              >
-                <span>Open Admin Strategy Hub</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
+              </form>
             )}
-          </div>
-
-          {isGlobalAdmin ? (
-            <div className="grid md:grid-cols-3 gap-6">
-              {/* Card 1: Marketing Presentation Deck */}
-              <div className="p-6 rounded-2xl bg-stone-50 border border-stone-200 flex flex-col justify-between hover:border-stone-300 transition">
-                <div>
-                  <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold mb-4">
-                    <FileText className="w-5 h-5" />
-                  </div>
-                  <h4 className="font-serif font-bold text-stone-900 text-lg">Marketing Strategy Deck</h4>
-                  <p className="text-xs font-mono text-emerald-700 mt-0.5">/marketing</p>
-                  <p className="text-xs text-stone-600 mt-3 leading-relaxed">
-                    Executive market sizing, audience personas, competitive benchmarks, and the 30-60-90 day growth engine.
-                  </p>
-                </div>
-                <div className="mt-6 pt-4 border-t border-stone-200 flex items-center gap-2">
-                  <Link
-                    to="/marketing"
-                    className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 px-3 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-bold transition shadow-xs"
-                  >
-                    <span>View Page</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </Link>
-                </div>
-              </div>
-
-              {/* Card 2: Operations Starter Pack */}
-              <div className="p-6 rounded-2xl bg-stone-50 border border-stone-200 flex flex-col justify-between hover:border-stone-300 transition">
-                <div>
-                  <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-800 flex items-center justify-center font-bold mb-4">
-                    <FileText className="w-5 h-5" />
-                  </div>
-                  <h4 className="font-serif font-bold text-stone-900 text-lg">Operations Starter Pack</h4>
-                  <p className="text-xs font-mono text-blue-700 mt-0.5">/operations-guide</p>
-                  <p className="text-xs text-stone-600 mt-3 leading-relaxed">
-                    Complete operational playbook for onboarding hotels and lodges, field acquisition protocols, pricing rules, and WhatsApp templates.
-                  </p>
-                </div>
-                <div className="mt-6 pt-4 border-t border-stone-200 flex items-center gap-2">
-                  <Link
-                    to="/operations-guide"
-                    className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 px-3 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-bold transition shadow-xs"
-                  >
-                    <span>View Page</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </Link>
-                </div>
-              </div>
-
-              {/* Card 3: Host Onboarding Starter Pack */}
-              <div className="p-6 rounded-2xl bg-stone-50 border border-stone-200 flex flex-col justify-between hover:border-stone-300 transition">
-                <div>
-                  <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center font-bold mb-4">
-                    <FileText className="w-5 h-5" />
-                  </div>
-                  <h4 className="font-serif font-bold text-stone-900 text-lg">Host Onboarding Starter Pack</h4>
-                  <p className="text-xs font-mono text-amber-700 mt-0.5">/host-guide</p>
-                  <p className="text-xs text-stone-600 mt-3 leading-relaxed">
-                    Host guide explaining online presence benefits, 8-minute listing walkthroughs, smartphone photography tips, and FAQs.
-                  </p>
-                </div>
-                <div className="mt-6 pt-4 border-t border-stone-200 flex items-center gap-2">
-                  <Link
-                    to="/host-guide"
-                    className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 px-3 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-bold transition shadow-xs"
-                  >
-                    <span>View Page</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </Link>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="p-8 rounded-2xl bg-stone-50 border border-stone-200 text-center max-w-xl mx-auto my-4">
-              <div className="w-12 h-12 rounded-full bg-stone-200 text-stone-600 flex items-center justify-center mx-auto mb-3">
-                <ShieldCheck className="w-6 h-6 text-stone-500" />
-              </div>
-              <h4 className="font-serif font-bold text-stone-900 text-base sm:text-lg">
-                Confidential Strategic Documentation
-              </h4>
-              <p className="text-xs sm:text-sm text-stone-600 mt-2 leading-relaxed">
-                The full executive strategy decks, operations starter packs, and raw documentation are restricted exclusively to Global Administrators.
-              </p>
-              <div className="mt-5">
-                <Link
-                  to="/admin"
-                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-bold transition shadow-xs"
-                >
-                  <span>Sign In as Global Admin</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
-              </div>
-            </div>
-          )}
-        </section>
-
-        {/* Bottom CTA Banner */}
-        <section className="rounded-3xl bg-stone-900 text-white p-8 sm:p-12 border border-stone-800 text-center relative overflow-hidden">
-          <div className="max-w-2xl mx-auto relative z-10">
-            <span className="text-xs font-bold text-emerald-400 uppercase tracking-widest">Let&apos;s Build Together</span>
-            <h2 className="text-3xl sm:text-4xl font-serif font-bold text-white mt-3 tracking-tight">
-              Ready to Take Malawi&apos;s Tourism to the Next Level?
-            </h2>
-            <p className="text-stone-300 text-sm sm:text-base mt-3 leading-relaxed">
-              Explore the host onboarding guide, check out the live properties on the homepage, or open the admin portal to manage listings.
-            </p>
-
-            <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link
-                to="/host-guide"
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-emerald-700 hover:bg-emerald-600 text-white font-semibold px-8 py-4 rounded-full text-base transition shadow-lg active:scale-95"
-              >
-                <span>Explore Host Starter Pack</span>
-                <ArrowRight className="w-5 h-5" />
-              </Link>
-              <Link
-                to="/admin"
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-white font-medium px-6 py-4 rounded-full text-base transition border border-stone-700"
-              >
-                <span>Open Admin Portal</span>
-              </Link>
-            </div>
           </div>
         </section>
 

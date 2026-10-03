@@ -82,20 +82,26 @@ function trailFor(pathname: string, label: string): Crumb[] {
   if (pathname === '/privacy') return [home, { label: 'Privacy Policy' }];
   if (pathname === '/terms') return [home, { label: 'Terms of Service' }];
   if (pathname === '/refunds') return [home, { label: 'Refunds & Cancellations' }];
+  if (pathname === '/concept-validation' || pathname === '/concept-survey' || pathname === '/survey') {
+    return [home, { label: 'Partner Documents', to: '/list-your-property' }, { label: 'Concept Validation Survey' }];
+  }
+  if (pathname === '/stay-owner-leaflet' || pathname === '/leaflet' || pathname === '/host-leaflet') {
+    return [home, { label: 'Partner Documents', to: '/list-your-property' }, { label: 'Stay Owner Leaflet' }];
+  }
   if (pathname === '/host-guide' || pathname === '/starter-pack' || pathname === '/host-starter-pack') {
-    return [home, { label: 'Host Starter Pack & Guide' }];
+    return [home, { label: 'Partner Documents', to: '/list-your-property' }, { label: 'Host Starter Pack & Guide' }];
   }
   if (pathname === '/marketing' || pathname === '/marketing-deck') {
-    return [home, { label: 'Marketing Deck' }];
+    return [home, { label: 'Partner Documents', to: '/list-your-property' }, { label: 'Commercial Strategy Deck' }];
   }
   if (pathname === '/operations-guide') {
-    return [home, { label: 'Operations Starter Pack' }];
+    return [home, { label: 'Partner Documents', to: '/list-your-property' }, { label: 'Operations Playbook' }];
   }
   if (pathname === '/listing-guide') {
-    return [home, { label: 'How to List Guide' }];
+    return [home, { label: 'Partner Documents', to: '/list-your-property' }, { label: 'Property Listing Guide' }];
   }
   if (pathname === '/uat' || pathname === '/uat-guide' || pathname === '/platform-guide' || pathname === '/uat-manual') {
-    return [home, { label: 'Platform Guide & UAT Manual' }];
+    return [home, { label: 'Platform & QA' }, { label: 'Platform Guide & UAT Manual' }];
   }
 
   return [home, { label: 'Not found' }];

@@ -62,6 +62,17 @@ service cloud.firestore {
       allow write: if isGlobalAdmin();
     }
 
+    match /documents/{docId} {
+      allow read: if true;
+      allow write: if isGlobalAdmin() || isAdmin() || isMarketing();
+    }
+
+    match /surveys/{surveyId} {
+      allow read: if isAdmin() || isMarketing();
+      allow create: if true;
+      allow update, delete: if isAdmin() || isMarketing();
+    }
+
     match /presence/{userId} {
       allow read: if true;
       allow write: if isAuthenticated() && request.auth.uid == userId;

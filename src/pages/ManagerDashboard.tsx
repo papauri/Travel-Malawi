@@ -695,15 +695,15 @@ export default function ManagerDashboard() {
                       </Link>
                     </div>
 
-                    <div className="flex items-center justify-between text-[11px] text-stone-500 pt-0.5 px-1">
+                    <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-2 text-[11px] text-stone-500 pt-0.5 px-1">
                       <Link
                         to={`/dashboard/hotel/${hotel.id}?tab=rooms`}
-                        className="hover:text-stone-900 font-medium"
+                        className="hover:text-stone-900 font-medium shrink-0"
                       >
                         Edit Rooms &amp; Rates →
                       </Link>
 
-                      <div className="flex items-center gap-2.5">
+                      <div className="flex flex-wrap items-center gap-2.5">
                         <button
                           type="button"
                           onClick={(e) => {

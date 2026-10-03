@@ -34,7 +34,7 @@ import {
   sendTestTemplateEmail,
   getAllPendingReminders
 } from './server/reminders';
-import { getAdminDocsList, getAdminDocContent } from './server/docUtils';
+import { getAdminDocsList, getAdminDocContent, saveAdminDoc, resetAdminDoc } from './server/docUtils';
 import { getAdminEmailConfig, saveEmailConfig, testSMTPConnection, sendSystemEmail } from './server/emailConfig';
 import { 
   getAdminWhatsAppConfig, 
@@ -871,27 +871,267 @@ async function startServer() {
     }
   });
 
-  // Get specific document in readable plain text (.txt) or markdown (.md)
+  // Get specific document in readable plain text (.txt), markdown (.md), or standalone styled HTML (.html)
   app.get('/api/admin/docs/:id', (req, res) => {
     try {
-      const format = req.query.format === 'md' || req.query.format === 'markdown' ? 'md' : 'text';
+      const rawFormat = String(req.query.format || '').toLowerCase();
+      let format: 'text' | 'md' | 'html' = 'text';
+      if (rawFormat === 'html') {
+        format = 'html';
+      } else if (rawFormat === 'md' || rawFormat === 'markdown') {
+        format = 'md';
+      }
+
       const isDownload = req.query.download === '1' || req.query.download === 'true';
+      const isRawView = req.query.raw === '1' || req.query.raw === 'true';
       const docResult = getAdminDocContent(req.params.id, format);
 
       if (!docResult) {
         return res.status(404).json({ error: 'Document not found' });
       }
 
+      const mimeType = format === 'html' 
+        ? 'text/html; charset=utf-8' 
+        : format === 'text' 
+        ? 'text/plain; charset=utf-8' 
+        : 'text/markdown; charset=utf-8';
+
       if (isDownload) {
-        const mimeType = format === 'text' ? 'text/plain; charset=utf-8' : 'text/markdown; charset=utf-8';
         res.setHeader('Content-Type', mimeType);
         res.setHeader('Content-Disposition', `attachment; filename="${docResult.filename}"`);
+        return res.send(docResult.content);
+      }
+
+      // If user asks for raw html rendering directly in browser tab
+      if (isRawView && format === 'html') {
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
         return res.send(docResult.content);
       }
 
       res.json(docResult);
     } catch (err: any) {
       res.status(500).json({ error: err?.message || 'Failed to read document' });
+    }
+  });
+
+  // Public alias for accessing current document content
+  app.get('/api/docs/:id', (req, res) => {
+    try {
+      const rawFormat = String(req.query.format || '').toLowerCase();
+      let format: 'text' | 'md' | 'html' = 'text';
+      if (rawFormat === 'html') format = 'html';
+      else if (rawFormat === 'md' || rawFormat === 'markdown') format = 'md';
+
+      const docResult = getAdminDocContent(req.params.id, format);
+      if (!docResult) {
+        return res.status(404).json({ error: 'Document not found' });
+      }
+      res.json(docResult);
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || 'Failed to read document' });
+    }
+  });
+
+  // Update document content & metadata (Easily editable by Marketing and Super Admin)
+  app.put('/api/admin/docs/:id', (req, res) => {
+    try {
+      const { title, subtitle, category, content, lastEditedBy } = req.body || {};
+      const result = saveAdminDoc(req.params.id, {
+        title,
+        subtitle,
+        category,
+        content,
+        lastEditedBy: lastEditedBy || 'Marketing / Super Admin',
+      });
+
+      if (!result.success) {
+        return res.status(400).json({ error: result.error || 'Failed to save document' });
+      }
+
+      res.json({
+        success: true,
+        doc: result.doc,
+        message: 'Document saved and updated successfully',
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || 'Failed to update document' });
+    }
+  });
+
+  // Also support POST for client frameworks that prefer POST for updates
+  app.post('/api/admin/docs/:id', (req, res) => {
+    try {
+      const { title, subtitle, category, content, lastEditedBy } = req.body || {};
+      const result = saveAdminDoc(req.params.id, {
+        title,
+        subtitle,
+        category,
+        content,
+        lastEditedBy: lastEditedBy || 'Marketing / Super Admin',
+      });
+
+      if (!result.success) {
+        return res.status(400).json({ error: result.error || 'Failed to save document' });
+      }
+
+      res.json({
+        success: true,
+        doc: result.doc,
+        message: 'Document saved and updated successfully',
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || 'Failed to update document' });
+    }
+  });
+
+  // Reset document to factory default template
+  app.post('/api/admin/docs/:id/reset', (req, res) => {
+    try {
+      const result = resetAdminDoc(req.params.id);
+      if (!result.success) {
+        return res.status(400).json({ error: result.error || 'Failed to reset document' });
+      }
+
+      res.json({
+        success: true,
+        doc: result.doc,
+        content: result.content,
+        message: 'Document restored to original factory defaults',
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || 'Failed to reset document' });
+    }
+  });
+
+  // Review Scraper endpoint
+  app.post('/api/admin/scrape-reviews', async (req, res) => {
+    try {
+      const status = getPublicAIStatus();
+      if (!status.enabled || !status.available) {
+        return res.status(503).json({ error: 'AI provider must be active to scrape reviews.' });
+      }
+
+      const { hotelName, location } = req.body;
+      if (!hotelName) {
+        return res.status(400).json({ error: 'Hotel name is required' });
+      }
+
+      const result = await executeAIGeneration({
+        action: 'scrape_reviews',
+        entityType: 'property',
+        details: {
+          name: hotelName,
+          location: location || ''
+        }
+      });
+      
+      res.json(result);
+    } catch (err: any) {
+      console.error('Scraping Error:', err);
+      res.status(500).json({ error: err?.message || 'Failed to scrape reviews' });
+    }
+  });
+
+  // ----------------------------------------------------
+  // PARTNER SURVEY SUBMISSION API (PUBLIC & ADMIN)
+  // ----------------------------------------------------
+
+  const SURVEYS_FILE = path.join(process.cwd(), 'server', 'data', 'surveys.json');
+
+  // Helper to read surveys
+  const readSurveys = (): any[] => {
+    try {
+      if (fs.existsSync(SURVEYS_FILE)) {
+        const raw = fs.readFileSync(SURVEYS_FILE, 'utf-8');
+        return JSON.parse(raw);
+      }
+    } catch {
+      // fallback
+    }
+    return [];
+  };
+
+  // Helper to save surveys
+  const saveSurveys = (surveys: any[]) => {
+    const dir = path.dirname(SURVEYS_FILE);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(SURVEYS_FILE, JSON.stringify(surveys, null, 2), 'utf-8');
+  };
+
+  // Public endpoint for submitting partner surveys, host onboarding requests, and document feedback
+  app.post('/api/surveys/submit', (req, res) => {
+    try {
+      const {
+        type,
+        docType,
+        sourceDoc,
+        propName,
+        propLoc,
+        contactName,
+        contactEmail,
+        contactPhone,
+        notes,
+        channels,
+        painPoints,
+        features,
+        pilotInterest,
+        roomTypes,
+        feedback
+      } = req.body || {};
+
+      if (!propName && !contactPhone && !contactName && !contactEmail && !feedback && !notes) {
+        return res.status(400).json({ error: 'Please provide at least a property name, contact details, or notes.' });
+      }
+
+      const submissionType = type || docType || 'concept_survey';
+      const surveys = readSurveys();
+      const newSubmission = {
+        id: `sub-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        type: submissionType,
+        sourceDoc: sourceDoc || 'Document Hub',
+        propName: String(propName || 'Unnamed Stay / Partner').trim(),
+        propLoc: String(propLoc || '').trim(),
+        contactName: String(contactName || '').trim(),
+        contactEmail: String(contactEmail || '').trim(),
+        contactPhone: String(contactPhone || '').trim(),
+        notes: String(notes || feedback || '').trim(),
+        roomTypes: String(roomTypes || '').trim(),
+        channels: Array.isArray(channels) ? channels : [],
+        painPoints: painPoints || {},
+        features: Array.isArray(features) ? features : [],
+        pilotInterest: pilotInterest || 'yes',
+        status: 'new',
+        submittedAt: new Date().toISOString(),
+        userAgent: req.headers['user-agent'] || '',
+        ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1'
+      };
+
+      surveys.unshift(newSubmission);
+      saveSurveys(surveys);
+
+      console.log(`[Submission] Received new [${submissionType}] from "${newSubmission.propName}" (${newSubmission.contactPhone || newSubmission.contactEmail})`);
+
+      res.status(201).json({
+        success: true,
+        id: newSubmission.id,
+        message: 'Zikomo kwambiri! Your submission has been received by our hospitality team.',
+        submission: newSubmission
+      });
+    } catch (err: any) {
+      console.error('Survey submission error:', err);
+      res.status(500).json({ error: err?.message || 'Failed to record response' });
+    }
+  });
+
+  // Admin endpoint to view all survey responses
+  app.get('/api/admin/surveys', (req, res) => {
+    try {
+      const surveys = readSurveys();
+      res.json({ success: true, count: surveys.length, surveys });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || 'Failed to list surveys' });
     }
   });
 

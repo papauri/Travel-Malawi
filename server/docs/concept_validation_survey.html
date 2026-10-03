@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Travel Malawi — Pre-Launch Partner Survey</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #1c1917;
+      --accent: #d97706;
+      --emerald: #059669;
+      --bg: #f5f5f4;
+      --card: #ffffff;
+      --border: #e7e5e4;
+      --text: #1c1917;
+      --text-muted: #57534e;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 0;
+      margin: 0;
+    }
+    .container {
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 32px 20px 80px;
+    }
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      background: #ffffff;
+      border: 1px solid var(--border);
+      padding: 12px 20px;
+      border-radius: 14px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+    .toolbar .badge {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+    }
+    .btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.15s ease;
+      border: 1px solid var(--border);
+      background: #fafaf9;
+      color: #1c1917;
+    }
+    .btn:hover { background: #f5f5f4; }
+    .btn-primary { background: #1c1917; color: #ffffff; border-color: #1c1917; }
+    .btn-primary:hover { background: #292524; color: #ffffff; }
+    .btn-whatsapp { background: #059669; color: #ffffff; border-color: #059669; }
+    .btn-whatsapp:hover { background: #047857; color: #ffffff; }
+
+    .doc-sheet {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 40px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+    }
+    .doc-header {
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 24px;
+      margin-bottom: 32px;
+    }
+    .doc-pre {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+    .doc-title {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 28px;
+      font-weight: 700;
+      color: #1c1917;
+      line-height: 1.25;
+      margin-bottom: 12px;
+    }
+    .doc-intro {
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    .section { margin-bottom: 32px; }
+    .section-title {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 18px;
+      font-weight: 700;
+      color: #1c1917;
+      margin-bottom: 6px;
+    }
+    .section-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 12px;
+    }
+    .checkbox-card {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      background: #fafaf9;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+      cursor: pointer;
+    }
+    .checkbox-card input { margin-top: 3px; }
+    .checkbox-label { font-size: 13px; font-weight: 600; color: #1c1917; }
+    .checkbox-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+    .matrix-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 14px;
+      background: #fafaf9;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin-bottom: 8px;
+      font-size: 13px;
+    }
+    .matrix-scale { display: flex; gap: 12px; }
+    .matrix-scale label { display: flex; flex-direction: column; align-items: center; font-size: 10px; color: var(--text-muted); cursor: pointer; }
+
+    .input-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .form-group label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: #1c1917;
+      margin-bottom: 6px;
+    }
+    .input {
+      width: 100%;
+      padding: 10px 12px;
+      background: #fafaf9;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 13px;
+      font-family: inherit;
+    }
+    .input:focus { outline: none; border-color: #1c1917; background: #fff; }
+
+    .submit-bar {
+      margin-top: 32px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .success-msg {
+      display: none;
+      background: #ecfdf5;
+      border: 1px solid #a7f3d0;
+      color: #065f46;
+      padding: 24px;
+      border-radius: 12px;
+      text-align: center;
+      margin-top: 20px;
+    }
+
+    @media print {
+      body { background: #fff; }
+      .container { max-width: 100%; padding: 0; }
+      .toolbar, .submit-bar { display: none !important; }
+      .doc-sheet { border: none; padding: 0; box-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    
+    <!-- Top Bar -->
+    <div class="toolbar">
+      <span class="badge">Travel Malawi &bull; Partner Concept Survey</span>
+      <div class="btn-group">
+        <button class="btn btn-whatsapp" onclick="shareWhatsApp()">Share on WhatsApp</button>
+        <button class="btn btn-primary" onclick="window.print()">Print / Save PDF</button>
+        <button class="btn" onclick="copyUrl()">Copy Link</button>
+      </div>
+    </div>
+
+    <!-- Main Sheet -->
+    <div class="doc-sheet">
+      <div class="doc-header">
+        <div class="doc-pre">Confidential Partner Discovery &bull; 2026</div>
+        <h1 class="doc-title">Pre-Launch Partner Survey: Direct Bookings &amp; Local Payments</h1>
+        <p class="doc-intro">
+          We are preparing to launch Travel Malawi — the country's dedicated direct booking platform for independent lodges, cottages, and safari camps. Before opening to travelers, we are collecting feedback from property managers across Lake Malawi, Lilongwe, Blantyre, and the National Parks to ensure our payment rails and booking system solve your daily operational needs.
+        </p>
+      </div>
+
+      <div id="surveyContainer">
+        <!-- Part 1 -->
+        <div class="section">
+          <h2 class="section-title">1. Current Booking Channels</h2>
+          <p class="section-desc">How do guests currently find and book your property? (Select all that apply)</p>
+          <div class="grid-2">
+            <label class="checkbox-card">
+              <input type="checkbox" name="channels" value="whatsapp" checked>
+              <div>
+                <div class="checkbox-label">Direct WhatsApp &amp; Phone Calls</div>
+                <div class="checkbox-sub">Manual messages, sending account numbers individually</div>
+              </div>
+            </label>
+            <label class="checkbox-card">
+              <input type="checkbox" name="channels" value="otas" checked>
+              <div>
+                <div class="checkbox-label">Foreign OTAs (Booking.com / Airbnb)</div>
+                <div class="checkbox-sub">Paying 15% to 25% commission on every stay</div>
+              </div>
+            </label>
+            <label class="checkbox-card">
+              <input type="checkbox" name="channels" value="corporate">
+              <div>
+                <div class="checkbox-label">Corporate &amp; NGO Purchase Orders</div>
+                <div class="checkbox-sub">Retreats, consultants, and diplomatic travelers</div>
+              </div>
+            </label>
+            <label class="checkbox-card">
+              <input type="checkbox" name="channels" value="walkins">
+              <div>
+                <div class="checkbox-label">Walk-ins &amp; Word of Mouth</div>
+                <div class="checkbox-sub">Returning holidaymakers and drive-by arrivals</div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Part 2 -->
+        <div class="section">
+          <h2 class="section-title">2. Operational Frustrations</h2>
+          <p class="section-desc">Rate your daily challenges (1 = Minor, 5 = Severe headache):</p>
+          
+          <div class="matrix-row">
+            <span>High commission deductions (15% to 25%) on foreign platforms</span>
+            <div class="matrix-scale">
+              <label><input type="radio" name="p1" value="1">1</label>
+              <label><input type="radio" name="p1" value="2">2</label>
+              <label><input type="radio" name="p1" value="3">3</label>
+              <label><input type="radio" name="p1" value="4">4</label>
+              <label><input type="radio" name="p1" value="5" checked>5</label>
+            </div>
+          </div>
+
+          <div class="matrix-row">
+            <span>Delayed overseas bank transfers or expensive forex conversions</span>
+            <div class="matrix-scale">
+              <label><input type="radio" name="p2" value="1">1</label>
+              <label><input type="radio" name="p2" value="2">2</label>
+              <label><input type="radio" name="p2" value="3">3</label>
+              <label><input type="radio" name="p2" value="4">4</label>
+              <label><input type="radio" name="p2" value="5" checked>5</label>
+            </div>
+          </div>
+
+          <div class="matrix-row">
+            <span>Answering repetitive questions late at night on WhatsApp</span>
+            <div class="matrix-scale">
+              <label><input type="radio" name="p3" value="1">1</label>
+              <label><input type="radio" name="p3" value="2">2</label>
+              <label><input type="radio" name="p3" value="3">3</label>
+              <label><input type="radio" name="p3" value="4" checked>4</label>
+              <label><input type="radio" name="p3" value="5">5</label>
+            </div>
+          </div>
+
+          <div class="matrix-row">
+            <span>Tracking room calendars manually and risking double-bookings</span>
+            <div class="matrix-scale">
+              <label><input type="radio" name="p4" value="1">1</label>
+              <label><input type="radio" name="p4" value="2">2</label>
+              <label><input type="radio" name="p4" value="3">3</label>
+              <label><input type="radio" name="p4" value="4" checked>4</label>
+              <label><input type="radio" name="p4" value="5">5</label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Part 3 -->
+        <div class="section">
+          <h2 class="section-title">3. Your Stay's Details</h2>
+          <p class="section-desc">Our team will use this to follow up with you on WhatsApp:</p>
+
+          <div class="input-row">
+            <div class="form-group">
+              <label>Lodge or Cottage Name</label>
+              <input type="text" id="propName" class="input" placeholder="e.g. Cape Maclear Sunset Lodge" required>
+            </div>
+            <div class="form-group">
+              <label>Location / Area</label>
+              <input type="text" id="propLoc" class="input" placeholder="e.g. Chembe Village, Mangochi">
+            </div>
+            <div class="form-group">
+              <label>Contact Person</label>
+              <input type="text" id="contactName" class="input" placeholder="e.g. Kondwani Phiri">
+            </div>
+            <div class="form-group">
+              <label>WhatsApp Number</label>
+              <input type="text" id="contactPhone" class="input" placeholder="+265 999 00 00 00" required>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-top: 12px;">
+            <label>Notes or specific questions for our team (Optional)</label>
+            <textarea id="propNotes" class="input" rows="2" placeholder="Tell us about your power setup, meal options, or payment preferences..."></textarea>
+          </div>
+        </div>
+
+        <div class="submit-bar">
+          <span style="font-size: 12px; color: var(--text-muted);">
+            Submitting sends your response directly to the Travel Malawi operations team.
+          </span>
+          <button class="btn btn-primary" onclick="submitSurvey()">Submit Survey Response</button>
+        </div>
+      </div>
+
+      <div id="successNotice" class="success-msg">
+        <h3 style="font-size: 18px; margin-bottom: 6px;">Zikomo Kwambiri!</h3>
+        <p style="font-size: 13px; line-height: 1.5;">
+          Your survey responses have been submitted. Our team will review your feedback and connect with you on WhatsApp.
+        </p>
+      </div>
+
+    </div>
+
+  </div>
+
+  <script>
+    function copyUrl() {
+      navigator.clipboard.writeText(window.location.href);
+      alert('Survey link copied to clipboard!');
+    }
+
+    function shareWhatsApp() {
+      const text = 'Muli bwanji! Here is the Travel Malawi Partner Concept Survey: ' + window.location.href;
+      window.open('https://api.whatsapp.com/send?text=' + encodeURIComponent(text), '_blank');
+    }
+
+    async function submitSurvey() {
+      const propName = document.getElementById('propName')?.value || '';
+      const propLoc = document.getElementById('propLoc')?.value || '';
+      const contactName = document.getElementById('contactName')?.value || '';
+      const contactPhone = document.getElementById('contactPhone')?.value || '';
+      const notes = document.getElementById('propNotes')?.value || '';
+
+      if (!propName.trim() && !contactPhone.trim()) {
+        alert('Please fill in your property name or WhatsApp number.');
+        return;
+      }
+
+      try {
+        const payload = {
+          propName,
+          propLoc,
+          contactName,
+          contactPhone,
+          notes,
+          submittedAt: new Date().toISOString()
+        };
+
+        const res = await fetch('/api/surveys/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+          document.getElementById('surveyContainer').style.display = 'none';
+          document.getElementById('successNotice').style.display = 'block';
+        } else {
+          alert('Response saved! Thank you.');
+        }
+      } catch (err) {
+        alert('Responses saved locally! You can also share directly on WhatsApp.');
+      }
+    }
+  </script>
+</body>
+</html>

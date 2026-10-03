@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { 
   FileText, Download, Copy, Check, Printer, RefreshCw, 
   Search, BookOpen, ShieldCheck, ExternalLink,
-  Layers, Compass, Target, ArrowRight, Eye, Code2
+  Layers, Compass, Target, ArrowRight, Eye, Code2, Edit3
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { AdminDocMeta, markdownToReadableText } from '../lib/docUtils';
+import DocEditorModal from './DocEditorModal';
 
 interface AdminDocResponse {
   doc: AdminDocMeta;
@@ -16,12 +17,32 @@ interface AdminDocResponse {
 
 export default function AdminDocsHub() {
   const [docs, setDocs] = useState<AdminDocMeta[]>([]);
-  const [selectedDocId, setSelectedDocId] = useState<string>('marketing-presentation');
-  const [activeFormat, setActiveFormat] = useState<'text' | 'formatted' | 'md'>('text');
+  const [selectedDocId, setSelectedDocId] = useState<string>('concept-validation-survey');
+  const [activeFormat, setActiveFormat] = useState<'text' | 'formatted' | 'md'>('formatted');
   const [docData, setDocData] = useState<Record<string, { rawMd: string; plainText: string }>>({});
   const [loading, setLoading] = useState<boolean>(true);
   const [copied, setCopied] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [activeSection, setActiveSection] = useState<'library' | 'surveys'>('library');
+  const [surveys, setSurveys] = useState<any[]>([]);
+  const [loadingSurveys, setLoadingSurveys] = useState<boolean>(false);
+  const [editorDocId, setEditorDocId] = useState<string | null>(null);
+
+  // Check URL parameters for pre-selected docId or edit intent
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const urlDocId = params.get('docId');
+      if (urlDocId) {
+        setSelectedDocId(urlDocId);
+        if (params.get('edit') === '1' || params.get('edit') === 'true') {
+          setEditorDocId(urlDocId);
+        }
+      }
+    } catch {
+      // non-fatal
+    }
+  }, []);
 
   // Fetch documents metadata
   const fetchDocsList = async () => {
@@ -45,8 +66,25 @@ export default function AdminDocsHub() {
     }
   };
 
+  // Fetch surveys submitted by partners
+  const fetchSurveys = async () => {
+    try {
+      setLoadingSurveys(true);
+      const res = await fetch('/api/admin/surveys');
+      if (res.ok) {
+        const data = await res.json();
+        setSurveys(data.surveys || []);
+      }
+    } catch {
+      // non-fatal
+    } finally {
+      setLoadingSurveys(false);
+    }
+  };
+
   useEffect(() => {
     fetchDocsList();
+    fetchSurveys();
   }, []);
 
   // Fetch document content when selectedDocId changes
@@ -96,21 +134,27 @@ export default function AdminDocsHub() {
     setTimeout(() => setCopied(false), 2500);
   };
 
-  const handleDownload = (format: 'text' | 'md') => {
+  const handleDownload = (format: 'text' | 'md' | 'html') => {
     if (!currentDoc) return;
     const url = `/api/admin/docs/${currentDoc.id}?format=${format}&download=1`;
     const a = document.createElement('a');
     a.href = url;
     a.download = format === 'text' 
       ? currentDoc.filename.replace(/\.md$/, '.txt')
+      : format === 'html'
+      ? (currentDoc.htmlFilename || currentDoc.filename.replace(/\.md$/, '.html'))
       : currentDoc.filename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    toast.success(`Downloading ${format === 'text' ? 'Readable Text (.txt)' : 'Markdown (.md)'}`);
+    toast.success(`Downloading ${format === 'html' ? 'Standalone HTML (.html)' : format === 'text' ? 'Readable Text (.txt)' : 'Markdown (.md)'}`);
   };
 
   const handlePrint = () => {
+    if (currentDoc?.liveUrl) {
+      window.open(currentDoc.liveUrl, '_blank');
+      return;
+    }
     window.print();
   };
 
@@ -128,38 +172,311 @@ export default function AdminDocsHub() {
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-md bg-stone-800 text-stone-200 text-xs font-semibold uppercase tracking-wider border border-stone-700">
               <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
-              <span>Restricted &bull; Global Admin Only</span>
+              <span>Admin Documentation &amp; Outreach Hub</span>
             </div>
             <h2 className="text-xl sm:text-2xl font-serif font-bold text-white tracking-tight">
-              Executive Documentation &amp; Strategy Hub
+              Hospitality Outreach &amp; Strategy Library
             </h2>
             <p className="text-stone-300 text-xs sm:text-sm max-w-2xl leading-relaxed">
-              Confidential internal strategic playbooks, operational guides, and host acquisition frameworks. Available in clean readable text format (.txt) or markdown, protected from public exposure.
+              Standardized partner surveys, host leaflets, and operational guides. Download in clean readable text (.txt), standalone HTML, or print as crisp PDFs.
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0">
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
             <button
-              onClick={() => handleDownload('text')}
-              disabled={!currentContent.plainText}
-              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-200 font-semibold text-xs border border-stone-700 transition shadow-2xs cursor-pointer disabled:opacity-50"
-              title="Download as clean, universally readable text file (.txt)"
+              onClick={() => setActiveSection('library')}
+              className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition cursor-pointer ${
+                activeSection === 'library'
+                  ? 'bg-white text-stone-900 shadow-sm'
+                  : 'bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700'
+              }`}
             >
-              <Download className="w-4 h-4" />
-              <span>Download .TXT</span>
+              Document Library
             </button>
             <button
-              onClick={() => handleDownload('md')}
-              disabled={!currentContent.rawMd}
-              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-200 font-semibold text-xs border border-stone-700 transition cursor-pointer disabled:opacity-50"
-              title="Download raw markdown document (.md)"
+              onClick={() => setActiveSection('surveys')}
+              className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
+                activeSection === 'surveys'
+                  ? 'bg-white text-stone-900 shadow-sm'
+                  : 'bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700'
+              }`}
             >
-              <FileText className="w-4 h-4" />
-              <span>Download .MD</span>
+              <span>Survey Responses</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                surveys.length > 0 ? 'bg-emerald-500 text-white' : 'bg-stone-700 text-stone-300'
+              }`}>
+                {surveys.length}
+              </span>
             </button>
           </div>
         </div>
       </div>
+
+      {/* SECTION: INBOUND SURVEY RESPONSES */}
+      {activeSection === 'surveys' && (
+        <div className="bg-white border border-stone-200 rounded-2xl p-6 space-y-6 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-200 pb-4">
+            <div>
+              <h3 className="text-lg font-serif font-bold text-stone-900">
+                Inbound Partner Survey Submissions ({surveys.length})
+              </h3>
+              <p className="text-xs text-stone-500">
+                Lodge and cottage managers who completed the online concept survey.
+              </p>
+            </div>
+            <button
+              onClick={fetchSurveys}
+              disabled={loadingSurveys}
+              className="text-xs text-stone-600 hover:text-stone-900 font-semibold inline-flex items-center gap-1.5 transition"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loadingSurveys ? 'animate-spin' : ''}`} />
+              <span>Refresh Inbound Feed</span>
+            </button>
+          </div>
+
+          {surveys.length === 0 ? (
+            <div className="py-12 text-center space-y-3">
+              <div className="w-12 h-12 bg-stone-100 rounded-full flex items-center justify-center mx-auto text-stone-400">
+                <FileText className="w-6 h-6" />
+              </div>
+              <h4 className="text-sm font-bold text-stone-800">No Survey Submissions Yet</h4>
+              <p className="text-xs text-stone-500 max-w-sm mx-auto">
+                Share the Concept Survey link with prospective lodge managers over WhatsApp to collect their operational feedback.
+              </p>
+              <div className="pt-2">
+                <a
+                  href="/concept-validation"
+                  target="_blank"
+                  className="px-4 py-2 rounded-xl bg-stone-900 text-white text-xs font-semibold inline-flex items-center gap-1.5"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>Open Survey Page</span>
+                </a>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {surveys.map((survey, sIdx) => {
+                const phoneClean = (survey.contactPhone || '').replace(/[^0-9+]/g, '');
+                const waUrl = phoneClean ? `https://wa.me/${phoneClean.replace(/^\+/, '')}` : null;
+                return (
+                  <div key={survey.id || sIdx} className="p-4 sm:p-5 rounded-xl border border-stone-200 bg-stone-50/50 hover:bg-stone-50 transition space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-200/80 pb-2.5">
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
+                            survey.type === 'host_onboarding' || survey.type === 'listing_request'
+                              ? 'bg-amber-100 text-amber-900 border border-amber-200'
+                              : survey.type === 'partner_inquiry'
+                              ? 'bg-blue-100 text-blue-900 border border-blue-200'
+                              : survey.type === 'operations_feedback'
+                              ? 'bg-purple-100 text-purple-900 border border-purple-200'
+                              : 'bg-emerald-100 text-emerald-900 border border-emerald-200'
+                          }`}>
+                            {survey.type === 'host_onboarding' ? 'Host Fast-Track' :
+                             survey.type === 'listing_request' ? 'Listing Request' :
+                             survey.type === 'partner_inquiry' ? 'Partner Inquiry' :
+                             survey.type === 'operations_feedback' ? 'Ops Feedback' : 'Concept Survey'}
+                          </span>
+                          <h4 className="text-sm sm:text-base font-bold text-stone-900">{survey.propName}</h4>
+                          {survey.propLoc && (
+                            <span className="text-xs text-stone-500">({survey.propLoc})</span>
+                          )}
+                        </div>
+                        <div className="text-xs text-stone-600 mt-0.5">
+                          Contact: <strong>{survey.contactName || 'Manager'}</strong>
+                          {survey.contactPhone && <> &bull; <span>{survey.contactPhone}</span></>}
+                          {survey.contactEmail && <> &bull; <span className="text-stone-500">{survey.contactEmail}</span></>}
+                          {survey.sourceDoc && <> &bull; <span className="italic text-stone-400">via {survey.sourceDoc}</span></>}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        {waUrl && (
+                          <a
+                            href={waUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold inline-flex items-center gap-1.5 transition shadow-xs"
+                          >
+                            <span>WhatsApp Chat</span>
+                            &rarr;
+                          </a>
+                        )}
+                        <span className="text-[11px] text-stone-400 font-mono">
+                          {new Date(survey.submittedAt || Date.now()).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs text-stone-700">
+                      <div>
+                        <span className="text-stone-400 font-semibold block text-[10px] uppercase">Pilot Interest</span>
+                        <span className="font-bold text-emerald-800">
+                          {survey.pilotInterest === 'yes' ? 'Ready for Pilot (0% Tier)' : survey.pilotInterest === 'briefing' ? 'Requested Briefing Call' : 'Keep Informed'}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-stone-400 font-semibold block text-[10px] uppercase">Channels Used</span>
+                        <span>{Array.isArray(survey.channels) ? survey.channels.join(', ') : 'Not specified'}</span>
+                      </div>
+                      <div>
+                        <span className="text-stone-400 font-semibold block text-[10px] uppercase">Key Features Wanted</span>
+                        <span>{Array.isArray(survey.features) ? survey.features.join(', ') : 'Direct payouts'}</span>
+                      </div>
+                    </div>
+
+                    {survey.notes && (
+                      <div className="bg-white p-3 rounded-lg border border-stone-200 text-xs text-stone-700">
+                        <strong className="text-stone-900">Host Notes:</strong> {survey.notes}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* SECTION: DOCUMENT LIBRARY (Clean & Standardized) */}
+      {activeSection === 'library' && (
+        <>
+          {/* Quick-Access Document Spotlight */}
+          <div className="bg-white border border-stone-200 rounded-2xl p-5 sm:p-6 space-y-4 shadow-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-100 pb-3">
+              <div>
+                <span className="text-xs font-bold uppercase tracking-wider text-stone-500">
+                  Partner Outreach Instruments
+                </span>
+                <h3 className="text-base sm:text-lg font-serif font-bold text-stone-900 mt-0.5">
+                  Shareable Surveys &amp; Host Leaflets
+                </h3>
+              </div>
+              <span className="text-xs text-stone-400 font-mono">Clean HTML &bull; PDF Ready</span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Concept Survey Card */}
+              <div className="p-4 rounded-xl border border-stone-200 bg-stone-50 flex flex-col justify-between gap-3">
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded">
+                      Submissible Survey
+                    </span>
+                    <span className="text-xs text-stone-400 font-mono">Online + PDF</span>
+                  </div>
+                  <h4 className="text-sm font-bold text-stone-900">
+                    Pre-Launch Partner Discovery Survey
+                  </h4>
+                  <p className="text-xs text-stone-600 leading-relaxed">
+                    Evaluates lodge booking habits, OTA commission frustration, and local payout requirements. Enables managers to submit responses directly to our team.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 pt-2 border-t border-stone-200 flex-wrap">
+                  <a
+                    href="/concept-validation"
+                    target="_blank"
+                    className="px-3 py-1.5 rounded-lg bg-stone-900 hover:bg-stone-800 text-white font-semibold text-xs inline-flex items-center gap-1.5 transition"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    <span>Open Live Survey</span>
+                  </a>
+                  <a
+                    href="/api/admin/docs/concept-validation-survey?format=html&download=1"
+                    className="px-3 py-1.5 rounded-lg bg-white hover:bg-stone-100 text-stone-700 font-semibold text-xs inline-flex items-center gap-1.5 transition border border-stone-200"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Download HTML</span>
+                  </a>
+                </div>
+              </div>
+
+              {/* Stay Owner Leaflet Card */}
+              <div className="p-4 rounded-xl border border-stone-200 bg-stone-50 flex flex-col justify-between gap-3">
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800 bg-amber-100 px-2 py-0.5 rounded">
+                      Host Leaflet
+                    </span>
+                    <span className="text-xs text-stone-400 font-mono">One-Pager</span>
+                  </div>
+                  <h4 className="text-sm font-bold text-stone-900">
+                    Stay Owner Acquisition Leaflet ("What You Get")
+                  </h4>
+                  <p className="text-xs text-stone-600 leading-relaxed">
+                    Clean, simple one-pager ready to send via WhatsApp, email, or print. Explains 0% launch commission, Airtel/Mpamba payouts, and 8-minute listing setup.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 pt-2 border-t border-stone-200 flex-wrap">
+                  <a
+                    href="/stay-owner-leaflet"
+                    target="_blank"
+                    className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs inline-flex items-center gap-1.5 transition"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    <span>Open Live Leaflet</span>
+                  </a>
+                  <a
+                    href="/api/admin/docs/stay-owner-leaflet?format=html&download=1"
+                    className="px-3 py-1.5 rounded-lg bg-white hover:bg-stone-100 text-stone-700 font-semibold text-xs inline-flex items-center gap-1.5 transition border border-stone-200"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Download HTML</span>
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Live Links Bar */}
+            <div className="pt-3 border-t border-stone-100 flex items-center justify-between gap-3 flex-wrap text-xs">
+              <span className="text-stone-500 font-medium">All Live Partner Documents:</span>
+              <div className="flex items-center gap-2 flex-wrap">
+                <a
+                  href="/host-guide"
+                  target="_blank"
+                  className="px-2.5 py-1 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-800 font-medium inline-flex items-center gap-1 transition"
+                >
+                  <ExternalLink className="w-3 h-3 text-stone-500" />
+                  <span>Host Starter Pack</span>
+                </a>
+                <a
+                  href="/listing-guide"
+                  target="_blank"
+                  className="px-2.5 py-1 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-800 font-medium inline-flex items-center gap-1 transition"
+                >
+                  <ExternalLink className="w-3 h-3 text-stone-500" />
+                  <span>Listing Guide</span>
+                </a>
+                <a
+                  href="/marketing"
+                  target="_blank"
+                  className="px-2.5 py-1 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-800 font-medium inline-flex items-center gap-1 transition"
+                >
+                  <ExternalLink className="w-3 h-3 text-stone-500" />
+                  <span>Commercial Deck</span>
+                </a>
+                <a
+                  href="/operations-guide"
+                  target="_blank"
+                  className="px-2.5 py-1 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-800 font-medium inline-flex items-center gap-1 transition"
+                >
+                  <ExternalLink className="w-3 h-3 text-stone-500" />
+                  <span>Operations Playbook</span>
+                </a>
+                <a
+                  href="/uat"
+                  target="_blank"
+                  className="px-2.5 py-1 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-800 font-medium inline-flex items-center gap-1 transition"
+                >
+                  <ExternalLink className="w-3 h-3 text-stone-500" />
+                  <span>Platform &amp; UAT Guide</span>
+                </a>
+              </div>
+            </div>
+          </div>
 
       {/* Main Two-Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -192,13 +509,22 @@ export default function AdminDocsHub() {
                 >
                   <div>
                     <div className="flex items-center justify-between gap-2 mb-1.5">
-                      <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
-                        isSelected 
-                          ? 'bg-stone-800 text-emerald-400' 
-                          : 'bg-stone-100 text-stone-600'
-                      }`}>
-                        {doc.category}
-                      </span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                          isSelected 
+                            ? 'bg-stone-800 text-emerald-400' 
+                            : 'bg-stone-100 text-stone-600'
+                        }`}>
+                          {doc.category}
+                        </span>
+                        {doc.isCustomized && (
+                          <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded ${
+                            isSelected ? 'bg-amber-400/20 text-amber-300 border border-amber-400/30' : 'bg-amber-100 text-amber-800 border border-amber-200'
+                          }`}>
+                            Customized
+                          </span>
+                        )}
+                      </div>
                       <span className={`text-[11px] font-mono ${isSelected ? 'text-stone-400' : 'text-stone-400'}`}>
                         ~{doc.estimatedReadMinutes}m read
                       </span>
@@ -209,6 +535,11 @@ export default function AdminDocsHub() {
                     <p className={`text-xs mt-1.5 line-clamp-2 leading-relaxed ${isSelected ? 'text-stone-300' : 'text-stone-500'}`}>
                       {doc.subtitle}
                     </p>
+                    {doc.lastEditedBy && (
+                      <p className={`text-[10px] mt-1 ${isSelected ? 'text-stone-400' : 'text-stone-400'} italic`}>
+                        Customized by {doc.lastEditedBy}
+                      </p>
+                    )}
                   </div>
 
                   <div className={`pt-2 border-t flex items-center justify-between text-[11px] font-mono ${
@@ -285,6 +616,16 @@ export default function AdminDocsHub() {
                   <span>Raw .MD</span>
                 </button>
               </div>
+
+              {/* Edit Document Button (Marketing & Super Admin) */}
+              <button
+                onClick={() => setEditorDocId(selectedDocId)}
+                className="p-2 sm:px-3 sm:py-1.5 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-semibold inline-flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+                title="Edit document content & messaging (Marketing & Super Admin)"
+              >
+                <Edit3 className="w-3.5 h-3.5 text-amber-800" />
+                <span className="hidden sm:inline">Edit Content</span>
+              </button>
 
               {/* Copy Button */}
               <button
@@ -405,8 +746,29 @@ export default function AdminDocsHub() {
           </div>
 
         </div>
-
       </div>
-    </div>
-  );
+    </>
+  )}
+
+  {/* Modal Editor for Marketing & Super Admin */}
+  {editorDocId && (
+    <DocEditorModal
+      isOpen={!!editorDocId}
+      docId={editorDocId}
+      onClose={() => setEditorDocId(null)}
+      onSaved={(updatedDoc, newContent) => {
+        setDocData(prev => ({
+          ...prev,
+          [updatedDoc.id]: {
+            rawMd: newContent,
+            plainText: markdownToReadableText(newContent)
+          }
+        }));
+        setDocs(prev => prev.map(d => d.id === updatedDoc.id ? updatedDoc : d));
+        fetchDocsList();
+      }}
+    />
+  )}
+</div>
+);
 }

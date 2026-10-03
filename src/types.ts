@@ -204,6 +204,11 @@ export interface Hotel {
   /** Legacy embedded reviews, scraped at import time. Guest-written reviews
    *  live in the `reviews` collection instead — see `Review`. */
   reviews?: { author: string; rating: number; text: string; source: string; date: string }[];
+  reviewsSummary?: {
+    count: number;
+    averageRating: number;
+    recentReviews: any[];
+  };
   imageUrl: string;
   /** Reception / property trading hours. Absent means not published. */
   hours?: WeeklyHours;

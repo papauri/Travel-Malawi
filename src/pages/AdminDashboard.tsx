@@ -10,7 +10,7 @@ import {
   MessageSquare, MessageSquareOff, LayoutDashboard, CalendarRange, FileText, 
   Search, Activity, Cpu, Target, Download, ChevronDown
 } from 'lucide-react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import Pagination from '../components/Pagination';
 import { PIN_PROBLEM_LABELS, mapLinkUrl, pinProblem } from '../lib/geo';
 import toast from 'react-hot-toast';
@@ -19,6 +19,7 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import Modal from '../components/Modal';
 import AdminAISettings from '../components/AdminAISettings';
 import AdminDocsHub from '../components/AdminDocsHub';
+import AdminReviewScraper from '../components/AdminReviewScraper';
 import AdminEmailSettings from '../components/AdminEmailSettings';
 import AdminWhatsAppSettings from '../components/AdminWhatsAppSettings';
 import AdminLogs from '../components/AdminLogs';
@@ -30,13 +31,18 @@ import { Navigation, TrendingUp, BookOpen, Mail, Settings } from 'lucide-react';
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import PriceDisplay from '../components/PriceDisplay';
 
-type Tab = 'overview' | 'analytics' | 'properties' | 'users' | 'bookings' | 'destinations' | 'content' | 'ai' | 'logs' | 'docs' | 'settings';
+type Tab = 'overview' | 'analytics' | 'properties' | 'reviews' | 'users' | 'bookings' | 'destinations' | 'content' | 'ai' | 'logs' | 'docs' | 'settings';
 
 export default function AdminDashboard() {
   const { user, loading: authLoading, resetPassword } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   
-  const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const urlTab = searchParams.get('tab') as Tab | null;
+  const validTabs: Tab[] = ['overview', 'analytics', 'properties', 'reviews', 'users', 'bookings', 'destinations', 'content', 'ai', 'logs', 'docs', 'settings'];
+  const initialTab = urlTab && validTabs.includes(urlTab) ? urlTab : 'overview';
+  
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab);
   const [settingsSubTab, setSettingsSubTab] = useState<'email' | 'whatsapp'>('whatsapp');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
@@ -578,6 +584,7 @@ export default function AdminDashboard() {
       { id: 'overview' as Tab, label: 'Overview', icon: LayoutDashboard },
       { id: 'analytics' as Tab, label: 'Analytics', icon: TrendingUp },
       { id: 'properties' as Tab, label: 'Properties', icon: Building2, badge: stats.pendingProperties > 0 ? stats.pendingProperties : null },
+      { id: 'reviews' as Tab, label: 'Review Scraper', icon: Star },
       { id: 'users' as Tab, label: 'Users', icon: Users, visible: isGlobalAdmin(user) || isMarketing(user) },
       { id: 'bookings' as Tab, label: 'All Bookings', icon: CalendarRange },
       { id: 'destinations' as Tab, label: 'Destinations', icon: Navigation },
@@ -585,7 +592,7 @@ export default function AdminDashboard() {
       { id: 'logs' as Tab, label: 'Audit & Telemetry Logs', icon: ShieldCheck, visible: isGlobalAdmin(user) },
       { id: 'ai' as Tab, label: 'Assistant & Provider Keys', icon: Cpu, visible: isGlobalAdmin(user) },
       { id: 'settings' as Tab, label: 'Channels & Settings', icon: Settings, visible: isGlobalAdmin(user), badge: 'Super Admin' },
-      { id: 'docs' as Tab, label: 'Executive Docs (.txt)', icon: BookOpen, badge: 'Admin' },
+      { id: 'docs' as Tab, label: 'Executive Docs & Leaflets', icon: BookOpen, badge: 'New Assets' },
     ].filter(t => t.visible !== false);
   }, [stats.pendingProperties, user]);
 
@@ -705,15 +712,37 @@ export default function AdminDashboard() {
 
                   {/* Team Resources inside mobile drawer */}
                   <div className="pt-2 border-t border-stone-100 space-y-1.5">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 px-2 block">Team Resources</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 px-2 block">Pre-Launch &amp; Team Resources</span>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                      <Link
+                        to="/concept-validation"
+                        target="_blank"
+                        className="inline-flex items-center justify-between gap-1.5 px-3 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-950 text-xs font-semibold border border-amber-200/80"
+                      >
+                        <div className="flex items-center gap-2">
+                          <FileText className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                          <span>Concept Survey (PDF)</span>
+                        </div>
+                        <ExternalLink className="w-3 h-3 text-amber-600" />
+                      </Link>
+                      <Link
+                        to="/stay-owner-leaflet"
+                        target="_blank"
+                        className="inline-flex items-center justify-between gap-1.5 px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-950 text-xs font-semibold border border-emerald-200/80"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Building2 className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                          <span>Stay Owner Leaflet</span>
+                        </div>
+                        <ExternalLink className="w-3 h-3 text-emerald-600" />
+                      </Link>
                       <Link
                         to="/marketing"
                         target="_blank"
                         className="inline-flex items-center justify-between gap-1.5 px-3 py-2 rounded-xl bg-stone-50 hover:bg-stone-100 text-stone-700 text-xs font-medium border border-stone-200/60"
                       >
                         <div className="flex items-center gap-2">
-                          <Target className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                          <Target className="w-3.5 h-3.5 text-stone-600 shrink-0" />
                           <span>Marketing Playbook</span>
                         </div>
                         <ExternalLink className="w-3 h-3 text-stone-400" />
@@ -724,7 +753,7 @@ export default function AdminDashboard() {
                         className="inline-flex items-center justify-between gap-1.5 px-3 py-2 rounded-xl bg-stone-50 hover:bg-stone-100 text-stone-700 text-xs font-medium border border-stone-200/60"
                       >
                         <div className="flex items-center gap-2">
-                          <Building2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                          <Building2 className="w-3.5 h-3.5 text-stone-600 shrink-0" />
                           <span>Host Starter Pack</span>
                         </div>
                         <ExternalLink className="w-3 h-3 text-stone-400" />
@@ -773,14 +802,36 @@ export default function AdminDashboard() {
 
         {/* Team Resources in Sidebar on Desktop */}
         <div className="hidden lg:block pt-4 border-t border-stone-200/80 mt-2 space-y-1">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 px-3 block">Team Resources</span>
+          <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 px-3 block">Pre-Launch &amp; Team Resources</span>
+          <Link
+            to="/concept-validation"
+            target="_blank"
+            className="whitespace-nowrap shrink-0 w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-amber-950 bg-amber-50/80 hover:bg-amber-100 transition border border-amber-200/70"
+          >
+            <div className="flex items-center gap-2">
+              <FileText className="w-4 h-4 text-amber-700 shrink-0" />
+              <span>Concept Survey (PDF)</span>
+            </div>
+            <ExternalLink className="w-3 h-3 text-amber-600" />
+          </Link>
+          <Link
+            to="/stay-owner-leaflet"
+            target="_blank"
+            className="whitespace-nowrap shrink-0 w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-emerald-950 bg-emerald-50/80 hover:bg-emerald-100 transition border border-emerald-200/70"
+          >
+            <div className="flex items-center gap-2">
+              <Building2 className="w-4 h-4 text-emerald-700 shrink-0" />
+              <span>Stay Owner Leaflet</span>
+            </div>
+            <ExternalLink className="w-3 h-3 text-emerald-600" />
+          </Link>
           <Link
             to="/marketing"
             target="_blank"
             className="whitespace-nowrap shrink-0 w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-stone-700 hover:bg-stone-100 transition"
           >
             <div className="flex items-center gap-2">
-              <Target className="w-4 h-4 text-emerald-600 shrink-0" />
+              <Target className="w-4 h-4 text-stone-600 shrink-0" />
               <span>Marketing Playbook</span>
             </div>
             <ExternalLink className="w-3 h-3 text-stone-400" />
@@ -791,7 +842,7 @@ export default function AdminDashboard() {
             className="whitespace-nowrap shrink-0 w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-stone-700 hover:bg-stone-100 transition"
           >
             <div className="flex items-center gap-2">
-              <Building2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <Building2 className="w-4 h-4 text-stone-600 shrink-0" />
               <span>Host Starter Pack</span>
             </div>
             <ExternalLink className="w-3 h-3 text-stone-400" />
@@ -799,13 +850,13 @@ export default function AdminDashboard() {
           <button
             onClick={() => setActiveTab('docs')}
             className="whitespace-nowrap shrink-0 w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-stone-700 hover:bg-stone-100 transition cursor-pointer text-left"
-            title="Read or download executive docs in plain text or markdown"
+            title="Read or download executive docs in HTML, plain text, or markdown"
           >
             <div className="flex items-center gap-2">
-              <FileText className="w-4 h-4 text-purple-600 shrink-0" />
-              <span>Strategy Docs (.txt)</span>
+              <BookOpen className="w-4 h-4 text-purple-600 shrink-0" />
+              <span>Executive Docs &amp; Leaflets</span>
             </div>
-            <span className="text-[10px] bg-stone-200 text-stone-700 font-bold px-1.5 py-0.5 rounded">4 Docs</span>
+            <span className="text-[10px] bg-amber-200 text-amber-900 font-bold px-1.5 py-0.5 rounded">6 Docs</span>
           </button>
         </div>
       </div>
@@ -877,7 +928,105 @@ export default function AdminDashboard() {
                 </div>
               </button>
             </div>
-            
+
+            {/* Pre-Launch Concept Validation & Host Outreach Instruments */}
+            <div className="bg-stone-900 text-white rounded-2xl p-5 sm:p-7 border border-stone-800 shadow-sm space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-800 pb-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold uppercase tracking-wider text-amber-400">Pre-Launch Strategic Outreach</span>
+                    <span className="text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-800 px-2 py-0.5 rounded-full font-bold">
+                      HTML / PDF Downloadable
+                    </span>
+                  </div>
+                  <h3 className="text-xl font-serif font-bold text-white mt-1">
+                    Partner Concept Survey &amp; Host Acquisition Leaflet
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setActiveTab('docs')}
+                  className="text-xs text-stone-400 hover:text-white font-medium inline-flex items-center gap-1 transition"
+                >
+                  <span>View All 6 Strategic Docs</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Concept Survey Card */}
+                <div className="bg-stone-800/80 border border-stone-700/80 rounded-xl p-4 flex flex-col justify-between gap-3">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 bg-amber-950/60 px-2 py-0.5 rounded border border-amber-800/60">
+                        3-Pillar Validation
+                      </span>
+                      <span className="text-[11px] text-stone-400 font-mono">HTML + PDF Ready</span>
+                    </div>
+                    <h4 className="text-base font-serif font-bold text-white">
+                      Pre-Launch Concept Validation Survey
+                    </h4>
+                    <p className="text-xs text-stone-300 leading-relaxed">
+                      Evaluates 1. Current Habits &amp; Pain Points, 2. Value &amp; Interest Validation, 3. Early Adopter Commitment. Includes realistic dashboard visuals with masked financials for partner confidentiality.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-2 border-t border-stone-700/60 flex-wrap">
+                    <Link
+                      to="/concept-validation"
+                      target="_blank"
+                      className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-stone-950 font-bold text-xs inline-flex items-center gap-1.5 transition"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span>Open Live / Print PDF</span>
+                    </Link>
+                    <a
+                      href="/api/admin/docs/concept-validation-survey?format=html&download=1"
+                      className="px-3 py-1.5 rounded-lg bg-stone-700 hover:bg-stone-600 text-stone-200 font-semibold text-xs inline-flex items-center gap-1.5 transition border border-stone-600"
+                    >
+                      <Download className="w-3.5 h-3.5 text-amber-300" />
+                      <span>Download HTML</span>
+                    </a>
+                  </div>
+                </div>
+
+                {/* Stay Owner Leaflet Card */}
+                <div className="bg-stone-800/80 border border-stone-700/80 rounded-xl p-4 flex flex-col justify-between gap-3">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800/60">
+                        Host Outreach Leaflet
+                      </span>
+                      <span className="text-[11px] text-stone-400 font-mono">Flyer &bull; Brochure</span>
+                    </div>
+                    <h4 className="text-base font-serif font-bold text-white">
+                      Stay Owner Acquisition Leaflet ("What You Get")
+                    </h4>
+                    <p className="text-xs text-stone-300 leading-relaxed">
+                      High-impact, simple illustrative flyer ready to send via WhatsApp, email, or printed out for lodge owners. Features 0% launch commission, local mobile money, and Ulendo 24/7 AI concierge.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-2 border-t border-stone-700/60 flex-wrap">
+                    <Link
+                      to="/stay-owner-leaflet"
+                      target="_blank"
+                      className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-stone-950 font-bold text-xs inline-flex items-center gap-1.5 transition"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span>Open Live / Print PDF</span>
+                    </Link>
+                    <a
+                      href="/api/admin/docs/stay-owner-leaflet?format=html&download=1"
+                      className="px-3 py-1.5 rounded-lg bg-stone-700 hover:bg-stone-600 text-stone-200 font-semibold text-xs inline-flex items-center gap-1.5 transition border border-stone-600"
+                    >
+                      <Download className="w-3.5 h-3.5 text-emerald-300" />
+                      <span>Download HTML</span>
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {isGlobalAdmin(user) && (
               <div className="mt-8">
                 <h3 className="text-xl font-serif font-bold text-stone-900 mb-4">Global Settings</h3>
@@ -2025,6 +2174,14 @@ export default function AdminDashboard() {
 
             {settingsSubTab === 'whatsapp' ? <AdminWhatsAppSettings /> : <AdminEmailSettings />}
           </div>
+        )}
+
+        {/* ===================== REVIEW SCRAPER TAB ===================== */}
+        {activeTab === 'reviews' && (
+          <AdminReviewScraper 
+            hotels={hotels} 
+            onHotelUpdated={(updatedHotel) => setHotels(hotels.map(h => h.id === updatedHotel.id ? updatedHotel : h))} 
+          />
         )}
 
         <ConfirmDialog

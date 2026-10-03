@@ -323,6 +323,21 @@ export default function MyBookings() {
       );
       toast.success('Booking cancelled. The property has been notified.');
 
+      if (booking.hotel?.managerEmail || booking.hotel?.contactEmail) {
+        const managerEmail = booking.hotel.managerEmail || booking.hotel.contactEmail;
+        if (managerEmail) {
+          fetch('/api/notify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: managerEmail,
+              subject: `Guest Cancellation: ${booking.guestName} - ${booking.hotel?.name || 'Your Property'}`,
+              message: `Dear Manager,\n\nThe guest ${booking.guestName} has cancelled their booking (Ref: #${booking.reference}) for ${booking.checkIn} to ${booking.checkOut}.\n\nPlease check your host dashboard for details.`
+            })
+          }).catch(console.error);
+        }
+      }
+
       await logSystemEvent('action', `Guest cancelled booking ${booking.reference}`, {
         bookingId: booking.id,
         reference: booking.reference,

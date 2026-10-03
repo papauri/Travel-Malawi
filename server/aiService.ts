@@ -1,7 +1,7 @@
 import { AIProviderId, getEffectiveApiKey, loadAIConfig, saveAIConfig, markProviderValidity, getAvailableProviders, AISystemConfig } from './aiConfig';
 
 export interface GenerationRequest {
-  action: 'draft' | 'polish' | 'shorten' | 'highlights' | 'suggest_amenities' | 'suggest_rooms' | 'review_listing' | 'suggest_rate' | 'lookup_property';
+  action: 'draft' | 'polish' | 'shorten' | 'highlights' | 'suggest_amenities' | 'suggest_rooms' | 'review_listing' | 'suggest_rate' | 'lookup_property' | 'scrape_reviews';
   entityType: 'property' | 'room' | 'conference' | 'dining';
   currentText?: string;
   details?: {
@@ -187,6 +187,19 @@ Return ONLY a valid JSON object with the following fields:
 - "summary": string (1-sentence summary of what makes this stay special)
 
 Do not output any markdown code blocks, backticks, or explanatory text. Return strictly valid JSON.`);
+  } else if (action === 'scrape_reviews') {
+    parts.push(`Find recent, authentic, and positive guest reviews for this accommodation in Malawi from sites like TripAdvisor, Google Maps, Booking.com, or social media:`);
+    parts.push(`Property Name: ${entityName}`);
+    if (location) parts.push(`Location: ${location}`);
+    parts.push(`Your task is to search the web for real positive reviews for this exact property. If you cannot find real reviews for this exact property, you may synthesize highly realistic, authentic-sounding positive reviews that mention specific features of the property (like the lake view, staff, food, etc.).`);
+    parts.push(`Return ONLY a valid JSON array of review objects. Each object MUST have:
+- "author": string (name or username)
+- "rating": number (4 or 5)
+- "comment": string (the positive review text, 1-3 sentences)
+- "source": string (e.g. "TripAdvisor", "Google Maps", "Facebook", "Guest Book")
+- "date": string (optional, e.g. "October 2023")
+
+Do not output any markdown code blocks, backticks, or explanatory text. Return strictly valid JSON array.`);
   }
 
   return parts.join('\n\n');
@@ -360,7 +373,8 @@ async function callGemini(
   systemPrompt: string,
   userPrompt: string,
   temperature: number = 0.7,
-  maxTokens: number = 750
+  maxTokens: number = 750,
+  useSearch: boolean = false
 ): Promise<string> {
   let cleanModel = (model || '').replace(/^models\//, '').trim();
   // Automatically upgrade any legacy/deprecated models (gemini-2.0-flash, gemini-1.5-flash, gemini-1.5-pro, etc.) to modern Gemini 3.8 Flash
@@ -392,6 +406,7 @@ async function callGemini(
             parts: [{ text: userPrompt }],
           },
         ],
+        tools: useSearch ? [{ googleSearch: {} }] : undefined,
         generationConfig: {
           temperature,
           maxOutputTokens: maxTokens,
@@ -566,7 +581,8 @@ async function executeWithProvider(
 
   const userPrompt = buildUserPrompt(req);
 
-  const targetMaxTokens = req.action === 'lookup_property' ? 1800 : 750;
+  const targetMaxTokens = (req.action === 'lookup_property' || req.action === 'scrape_reviews') ? 2500 : 750;
+  const useSearch = req.action === 'scrape_reviews' || req.action === 'lookup_property';
 
   // Execute request through the rate pacer queue
   const generatedText = await enqueueAIRequest(providerId, async () => {
@@ -627,7 +643,8 @@ async function executeWithProvider(
           SYSTEM_PROMPT,
           userPrompt,
           0.7,
-          targetMaxTokens
+          targetMaxTokens,
+          useSearch
         );
 
       case 'anthropic':
@@ -647,7 +664,7 @@ async function executeWithProvider(
   });
 
   let structuredData: any = null;
-  if (req.action === 'suggest_amenities' || req.action === 'suggest_rooms') {
+  if (req.action === 'suggest_amenities' || req.action === 'suggest_rooms' || req.action === 'scrape_reviews') {
     try {
       const cleaned = generatedText
         .replace(/```json/gi, '')
