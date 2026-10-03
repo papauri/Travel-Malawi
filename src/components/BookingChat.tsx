@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { collection, query, orderBy, onSnapshot, addDoc, doc, setDoc, updateDoc, getDoc, getDocs, deleteDoc } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, addDoc, doc, setDoc, updateDoc, getDoc, getDocs, deleteDoc, arrayRemove } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Booking, Message, User, ChatPresenceState, Hotel, RoomType, Call } from '../types';
 import { 
@@ -19,7 +19,9 @@ import { useWebRTC } from '../lib/useWebRTC';
 import { CallModal } from './CallModal';
 import { getHotelDepositInfo, formatDepositSnippet, isCallingAllowed } from '../lib/depositInfo';
 import { isAdmin } from '../lib/roles';
-import { fastDeleteOrClearChat } from '../lib/chatDeletion';
+import { fastDeleteOrClearChat, clearedAtFor } from '../lib/chatDeletion';
+import { useConfirmBooking } from '../hooks/useConfirmBooking';
+import PriceMismatchNotice from './PriceMismatchNotice';
 
 interface Props {
   booking: Booking & { hotel?: Hotel; room?: RoomType };
@@ -38,6 +40,7 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const confirmFlow = useConfirmBooking();
   const [showVoucherModal, setShowVoucherModal] = useState(false);
   const [showDepositMenu, setShowDepositMenu] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
@@ -56,6 +59,9 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
   const lastTypingSentRef = useRef<number>(0);
 
   const isChatEnded = (liveBooking as any).chatStatus === 'ended' || (liveBooking as any).chatStatus === 'closed';
+  // A new message un-deletes the chat for both participants.
+  const restoreForParticipants = () =>
+    arrayRemove(...[liveBooking.guestId, liveBooking.managerId].filter(Boolean));
 
   const isManager = currentUser.uid === liveBooking.managerId || (hotel && hotel.managerId === currentUser.uid);
   const otherParticipantName = isManager ? liveBooking.guestName : (hotel?.name || 'Host');
@@ -365,79 +371,88 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
   };
 
   // --- ACTIONS: Approve & Issue Voucher ---
+  // Confirmation goes through the shared availability transaction; the voucher
+  // notice and reminders run only once the booking is actually confirmed.
   const handleApproveAndIssueVoucher = async () => {
     if (!liveBooking.id) return;
     setActionLoading(true);
     try {
       const newPin = liveBooking.arrivalPin || Math.floor(1000 + Math.random() * 9000).toString();
       const now = Date.now();
-      
       const patch = {
-        status: 'confirmed' as const,
         arrivalPin: newPin,
         voucherIssued: true,
         updatedAt: now,
       };
-
-      await updateDoc(doc(db, 'bookings', liveBooking.id), patch);
-      setLiveBooking(prev => ({ ...prev, ...patch }));
-
-      const voucherNoticeText = `🎉 Reservation Confirmed! Your Stay OS Digital Voucher has been issued.\n\n• Ref: ${liveBooking.reference || liveBooking.id.slice(0, 8)}\n• Dates: ${formatDateStr(liveBooking.checkIn)} – ${formatDateStr(liveBooking.checkOut)}\n• Room: ${room?.name || 'Selected Room'}\n• Balance Due: ${liveBooking.currency} ${liveBooking.total?.toLocaleString() ?? 0} (Payment on arrival)\n\nTap "View Digital Voucher" to access your verified booking pass, directions, and arrival PIN.`;
-
-      await addDoc(collection(db, 'bookings', liveBooking.id, 'messages'), {
-        bookingId: liveBooking.id,
-        hotelId: liveBooking.hotelId,
-        managerId: liveBooking.managerId,
-        guestId: liveBooking.guestId,
-        senderId: currentUser.uid,
-        senderName: currentUser.displayName || 'Host',
-        text: voucherNoticeText,
-        isVoucherNotice: true,
-        createdAt: now,
+      await confirmFlow.confirm(liveBooking, {
+        room,
+        hotel,
+        extraPatch: patch,
+        onConfirmed: (written) => afterVoucherConfirmed(written, now),
       });
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
-      await updateDoc(doc(db, 'bookings', liveBooking.id), {
-        lastMessageAt: now,
-        lastMessageText: '🎉 Booking Confirmed! Digital Voucher Issued.',
-        lastMessageSenderId: currentUser.uid,
-        lastMessageSenderName: currentUser.displayName || 'Host',
-      }).catch(() => {});
+  const afterVoucherConfirmed = async (written: Record<string, unknown>, now: number) => {
+    setLiveBooking(prev => ({ ...prev, ...(written as Partial<Booking>) }));
+    try {
+        const voucherNoticeText = `🎉 Reservation Confirmed! Your Travel Malawi digital voucher has been issued.\n\n• Ref: ${liveBooking.reference || liveBooking.id.slice(0, 8)}\n• Dates: ${formatDateStr(liveBooking.checkIn)} – ${formatDateStr(liveBooking.checkOut)}\n• Room: ${room?.name || 'Selected Room'}\n• Balance Due: ${liveBooking.currency} ${liveBooking.total?.toLocaleString() ?? 0} (Payment on arrival)\n\nTap "View Digital Voucher" to access your verified booking pass, directions, and arrival PIN.`;
 
-      try {
-        await fetch('/api/reminders/auto-generate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            id: liveBooking.id,
-            bookingId: liveBooking.id,
-            reference: liveBooking.reference,
-            hotelId: liveBooking.hotelId,
-            hotelName: hotel?.name || 'Your Property',
-            guestName: liveBooking.guestName,
-            guestPhone: liveBooking.guestPhone || '',
-            guestWhatsapp: liveBooking.guestWhatsapp || liveBooking.guestPhone || '',
-            guestEmail: liveBooking.guestEmail || '',
-            checkIn: liveBooking.checkIn,
-            checkOut: liveBooking.checkOut,
-            roomName: room?.name,
-            totalPrice: liveBooking.total ? `${liveBooking.total} ${liveBooking.currency || 'MWK'}` : undefined,
-            automationSettings: hotel?.emailAutomationSettings,
-            wifiName: hotel?.infrastructure?.wifiSSID,
-            wifiPassword: hotel?.infrastructure?.wifiPassword,
-            managerPhone: hotel?.contactPhone || hotel?.managerPhone,
-            managerEmail: hotel?.contactEmail || hotel?.managerEmail,
-          }),
+        await addDoc(collection(db, 'bookings', liveBooking.id, 'messages'), {
+          bookingId: liveBooking.id,
+          hotelId: liveBooking.hotelId,
+          managerId: liveBooking.managerId,
+          guestId: liveBooking.guestId,
+          senderId: currentUser.uid,
+          senderName: currentUser.displayName || 'Host',
+          text: voucherNoticeText,
+          isVoucherNotice: true,
+          createdAt: now,
         });
-      } catch {
-        // non-blocking
-      }
+
+        await updateDoc(doc(db, 'bookings', liveBooking.id), {
+          lastMessageAt: now,
+          lastMessageText: '🎉 Booking Confirmed! Digital Voucher Issued.',
+          lastMessageSenderId: currentUser.uid,
+          lastMessageSenderName: currentUser.displayName || 'Host',
+          chatDeletedBy: restoreForParticipants(),
+        }).catch(() => {});
+
+        try {
+          await fetch('/api/reminders/auto-generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id: liveBooking.id,
+              bookingId: liveBooking.id,
+              reference: liveBooking.reference,
+              hotelId: liveBooking.hotelId,
+              hotelName: hotel?.name || 'Your Property',
+              guestName: liveBooking.guestName,
+              guestPhone: liveBooking.guestPhone || '',
+              guestWhatsapp: liveBooking.guestWhatsapp || liveBooking.guestPhone || '',
+              guestEmail: liveBooking.guestEmail || '',
+              checkIn: liveBooking.checkIn,
+              checkOut: liveBooking.checkOut,
+              roomName: room?.name,
+              totalPrice: liveBooking.total ? `${liveBooking.total} ${liveBooking.currency || 'MWK'}` : undefined,
+              automationSettings: hotel?.emailAutomationSettings,
+              wifiName: hotel?.infrastructure?.wifiSSID,
+              wifiPassword: hotel?.infrastructure?.wifiPassword,
+              managerPhone: hotel?.contactPhone || hotel?.managerPhone,
+              managerEmail: hotel?.contactEmail || hotel?.managerEmail,
+            }),
+          });
+        } catch {
+          // non-blocking
+        }
 
       toast.success('Booking confirmed & Digital Voucher issued!');
     } catch (err) {
-      console.error('Failed to confirm booking:', err);
-      toast.error('Failed to approve booking.');
-    } finally {
-      setActionLoading(false);
+      console.error('Voucher notice failed after confirmation:', err);
+      toast.error('Booking confirmed, but the voucher message could not be sent. Please message the guest.');
     }
   };
 
@@ -493,6 +508,7 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
         lastMessageText: '🔑 Check-in Credentials sent.',
         lastMessageSenderId: currentUser.uid,
         lastMessageSenderName: currentUser.displayName || 'Host',
+        chatDeletedBy: restoreForParticipants(),
       }).catch(() => {});
 
       toast.success('Credentials shared with guest!');
@@ -538,8 +554,7 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
         chatStatus: 'active',
         chatClosedAt: null,
         chatClosedBy: null,
-        chatClearedAt: null,
-        chatClearedBy: null,
+        chatDeletedBy: restoreForParticipants(),
       }).catch(() => {});
 
       setTypingState(false);
@@ -582,8 +597,6 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
         chatStatus: 'active',
         chatClosedAt: null,
         chatClosedBy: null,
-        chatClearedAt: null,
-        chatClearedBy: null,
       });
       toast.success('Conversation reopened.');
     } catch (err) {
@@ -633,13 +646,20 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
   const depositInfo = getHotelDepositInfo(hotel);
 
   // Merge messages and calls sorted by createdAt
+  const myClearedAt = clearedAtFor(liveBooking as any, currentUser.uid, 'booking');
   const timelineItems = [
-    ...messages.map(m => ({ type: 'message' as const, data: m, createdAt: m.createdAt, id: m.id || `${m.createdAt}` })),
-    ...calls.map(c => ({ type: 'call' as const, data: c, createdAt: c.createdAt, id: c.id || `${c.createdAt}` }))
+    ...messages.filter(m => m.createdAt > myClearedAt).map(m => ({ type: 'message' as const, data: m, createdAt: m.createdAt, id: m.id || `${m.createdAt}` })),
+    ...calls.filter(c => c.createdAt > myClearedAt).map(c => ({ type: 'call' as const, data: c, createdAt: c.createdAt, id: c.id || `${c.createdAt}` }))
   ].sort((a, b) => a.createdAt - b.createdAt);
 
   return (
     <div className="flex flex-col h-full bg-stone-50 relative overflow-hidden rounded-t-3xl sm:rounded-2xl shadow-2xl">
+      <PriceMismatchNotice
+        mismatch={confirmFlow.mismatch}
+        busy={!!confirmFlow.busyId}
+        onConfirmAnyway={() => { confirmFlow.confirmAnyway(); }}
+        onDismiss={confirmFlow.dismiss}
+      />
       
       {/* 1. Top Header Bar with Sleek Dark Finish & Call Controls */}
       <div className="px-3.5 py-2.5 bg-stone-900 text-white flex items-center justify-between gap-2 shrink-0 border-b border-stone-800">
@@ -1127,7 +1147,9 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
 
             return (
               <div key={`msg-${item.id}`} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-fadeIn`}>
-                <span className="text-[10px] text-stone-400 mb-1 px-1">{msg.senderName}</span>
+                <span className="text-[10px] text-stone-400 mb-1 px-1">
+                  {msg.senderId === liveBooking.guestId ? (liveBooking.guestName || 'Guest') : (hotel?.name || 'Host')}
+                </span>
                 
                 {isVoucherMessage ? (
                   <div className="bg-emerald-950 text-white rounded-2xl p-4 max-w-[90%] sm:max-w-md shadow-md border border-emerald-800 space-y-3">
@@ -1135,7 +1157,7 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
                       <div className="flex items-center gap-2">
                         <ShieldCheck className="w-5 h-5 text-emerald-400" />
                         <span className="font-serif font-bold text-sm tracking-wide text-white">
-                          Stay OS Digital Voucher
+                          Travel Malawi Digital Voucher
                         </span>
                       </div>
                       <span className="text-[10px] font-mono font-bold bg-emerald-900 text-emerald-300 px-2 py-0.5 rounded">

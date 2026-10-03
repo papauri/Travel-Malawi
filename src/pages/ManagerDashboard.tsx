@@ -113,10 +113,8 @@ export default function ManagerDashboard() {
           if (h.contactEmail && h.contactEmail.toLowerCase() === userEmailLower) return true;
         }
         if ((h as any).ownerId === user?.uid || (h as any).createdBy === user?.uid) return true;
-        
-        // Unassigned properties belong to the signed-in user
-        if (!hasAssignedManager) return true;
 
+        // Unassigned properties are managed by admins only.
         return false;
       });
 
@@ -126,18 +124,29 @@ export default function ManagerDashboard() {
       // you today, so each card carries its room count and pending requests.
       const ids = hotelsData.map(h => h.id).filter(Boolean) as string[];
       if (ids.length > 0) {
-        // `in` takes at most 30 values per query, which is far more properties
-        // than one manager will have, but the slice keeps it honest.
-        const batch = ids.slice(0, 30);
-        const [roomSnap, bookingSnap] = await Promise.all([
-          getDocs(query(collection(db, 'room_types'), where('hotelId', 'in', batch))),
-          getDocs(query(collection(db, 'bookings'), where('hotelId', 'in', batch))),
-        ]);
-        setRooms(roomSnap.docs.map(d => ({ id: d.id, ...d.data() } as RoomType)));
-        setBookings(bookingSnap.docs.map(d => ({ id: d.id, ...d.data() } as Booking)));
+        // `in` takes at most 30 values per query, so admins with many
+        // properties are fetched in chunks rather than silently truncated.
+        const chunks: string[][] = [];
+        for (let i = 0; i < ids.length; i += 30) chunks.push(ids.slice(i, i + 30));
+        const roomResults = await Promise.all(chunks.map(batch =>
+          getDocs(query(collection(db, 'room_types'), where('hotelId', 'in', batch)))
+        ));
+        setRooms(roomResults.flatMap(roomSnap => roomSnap.docs.map(d => ({ id: d.id, ...d.data() } as RoomType))));
+        // Bookings are private: the rules authorise a manager per property, which
+        // needs one equality query per hotel rather than an 'in' query.
+        const bookingResults = await Promise.all(ids.map(hid =>
+          getDocs(query(collection(db, 'bookings'), where('hotelId', '==', hid)))
+            .then(snap => snap.docs.map(d => ({ id: d.id, ...d.data() } as Booking)))
+            .catch(err => {
+              console.warn(`Bookings for ${hid} unavailable:`, err?.message ?? err);
+              return [] as Booking[];
+            })
+        ));
+        setBookings(bookingResults.flat());
       }
     } catch (error) {
       console.error("Error fetching hotels:", error);
+      toast.error('Could not load your properties. Check your connection and refresh.');
     } finally {
       setLoading(false);
     }

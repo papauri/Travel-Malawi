@@ -17,7 +17,8 @@ import {
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db, googleProvider } from '../lib/firebase';
 import { User, Role } from '../types';
-import { isHotelManager, toRoleFields, userRoles } from '../lib/roles';
+import { isHotelManager, isOwnerEmail, toRoleFields, userRoles } from '../lib/roles';
+import toast from 'react-hot-toast';
 import {
   logAuthEvent,
   logSessionEvent,
@@ -52,6 +53,14 @@ const AuthContext = createContext<AuthContextType>({
 
 export const useAuth = () => useContext(AuthContext);
 
+/** Thrown when an administrator has suspended or revoked the account. */
+class AccountSuspendedError extends Error {
+  constructor() {
+    super('Your account has been suspended. Contact the Travel Malawi team if you think this is a mistake.');
+    this.name = 'AccountSuspendedError';
+  }
+}
+
 async function loadOrCreateUser(
   firebaseUser: FirebaseUser,
   defaultRoles: Role[] = ['traveller']
@@ -64,7 +73,7 @@ async function loadOrCreateUser(
     userData = { uid: firebaseUser.uid, ...userDoc.data() } as User;
     if (userData.accessRevoked || userData.status === 'suspended') {
       await signOut(auth);
-      throw new Error('Your account access has been suspended or revoked by an administrator.');
+      throw new AccountSuspendedError();
     }
   } else {
     userData = {
@@ -77,7 +86,7 @@ async function loadOrCreateUser(
   }
 
   // Force global admin role for the requested email
-  if (userData.email === 'johnpaulchirwa@gmail.com') {
+  if (isOwnerEmail(userData.email)) {
     const roles = Array.isArray(userData.roles) ? userData.roles : (userData.role ? [userData.role] : []);
     if (!roles.includes('admin')) {
       const updatedRoles = [...roles, 'admin'] as Role[];
@@ -124,6 +133,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
           }
         } catch (err) {
+          if (err instanceof AccountSuspendedError) {
+            // loadOrCreateUser has already signed them out; never fall back
+            // to a traveller session for a suspended account.
+            setUser(null);
+            toast.error(err.message);
+            setLoading(false);
+            return;
+          }
           console.error('Error loading user profile:', err);
           // Fallback to basic user profile so UI loads seamlessly
           setUser({
@@ -155,6 +172,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         appUser = await loadOrCreateUser(result.user);
         setUser(appUser);
       } catch (err) {
+        // A suspended account must fail the sign-in, not log in as a traveller.
+        if (err instanceof AccountSuspendedError) throw err;
         console.error('Error loading user profile after sign-in:', err);
         appUser = {
           uid: result.user.uid,

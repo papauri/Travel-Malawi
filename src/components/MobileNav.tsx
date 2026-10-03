@@ -8,7 +8,7 @@ import { isHotelManager, isTraveller, describeRoles, isAdmin, isMarketing } from
 import { motion, AnimatePresence } from 'motion/react';
 import { openAccessPermissionsModal } from './AccessRequestModal';
 import { useUnreadBroadcasts } from '../hooks/useUnreadBroadcasts';
-import { useUnreadMessages } from '../hooks/useUnreadMessages';
+import { useUnreadMessages } from '../contexts/UnreadMessagesContext';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
 import { readStoredCurrency, storeCurrency, onCurrencyChange } from '../lib/currency';
 import { CurrencyCode } from '../types';

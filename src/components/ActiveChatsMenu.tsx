@@ -17,7 +17,8 @@ import { useModalScrollIsolation } from '../hooks/useModalScrollIsolation';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 import { useChatModal } from '../contexts/ChatModalContext';
-import { useUnreadMessages, ActiveChatItem } from '../hooks/useUnreadMessages';
+import { ActiveChatItem } from '../hooks/useUnreadMessages';
+import { useUnreadMessages } from '../contexts/UnreadMessagesContext';
 import { isHotelManager } from '../lib/roles';
 
 function formatTimeAgo(timestamp: number): string {

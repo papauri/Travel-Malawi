@@ -24,6 +24,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { describeAIError } from '../hooks/useAIAssistant';
 import { Hotel } from '../types';
 import { getHotelImages } from '../lib/images';
 
@@ -52,6 +53,8 @@ export interface TripInsightsData {
   packingHighlights: string[];
   provider?: string;
   model?: string;
+  /** Present when the server could not use an AI provider and sent standard route notes. */
+  aiNotice?: string;
 }
 
 interface Props {
@@ -84,7 +87,7 @@ export default function TripAIInsights({ hotels, onOpenListing }: Props) {
   // Chat Concierge State
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
-  const [chatMessages, setChatMessages] = useState<Array<{ role: 'user' | 'assistant'; text: string; time: string }>>([]);
+  const [chatMessages, setChatMessages] = useState<Array<{ role: 'user' | 'assistant'; text: string; time: string; notice?: string }>>([]);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   // Cache key based on hotels list
@@ -138,20 +141,26 @@ export default function TripAIInsights({ hotels, onOpenListing }: Props) {
       });
 
       if (!res.ok) {
-        throw new Error(`Server returned ${res.status}`);
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(describeAIError(res, errData));
       }
 
       const data: TripInsightsData = await res.json();
       setInsights(data);
-      try {
-        sessionStorage.setItem(cacheKey, JSON.stringify(data));
-      } catch {
-        // ignore
+      if (data.aiNotice) {
+        // Standard notes are not cached, so the next try can reach the AI service.
+        toast(data.aiNotice);
+      } else {
+        try {
+          sessionStorage.setItem(cacheKey, JSON.stringify(data));
+        } catch {
+          // ignore
+        }
+        toast.success('Journey insights ready');
       }
-      toast.success('Journey Insights generated!');
     } catch (err: any) {
       console.error('Failed to generate insights:', err);
-      toast.error('Could not generate insights right now. Please try again.');
+      toast.error(err?.message?.startsWith('Server returned') ? "Ulendo couldn't reach the AI service. Please try again." : err?.message || "Ulendo couldn't reach the AI service. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -190,14 +199,15 @@ export default function TripAIInsights({ hotels, onOpenListing }: Props) {
       });
 
       if (!res.ok) {
-        throw new Error(`Server responded with ${res.status}`);
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(describeAIError(res, errData));
       }
 
       const data = await res.json();
       const replyTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       setChatMessages(prev => [
         ...prev,
-        { role: 'assistant', text: data.answer, time: replyTime },
+        { role: 'assistant', text: data.answer, time: replyTime, notice: data.aiNotice },
       ]);
     } catch (err: any) {
       console.error('Chat Concierge Error:', err);
@@ -206,8 +216,9 @@ export default function TripAIInsights({ hotels, onOpenListing }: Props) {
         ...prev,
         {
           role: 'assistant',
-          text: 'Along your itinerary, daytime driving on the main highways (M1, M3, M5) is paved and scenic. Keep cash handy for toll gates and lakeside fish stalls, and feel free to ask about any specific lodge leg!',
+          text: 'Along your itinerary, daytime driving on the main highways (M1, M3, M5) is paved and scenic. Keep cash handy for toll gates and lakeside fish stalls.',
           time: replyTime,
+          notice: err?.message || "Ulendo couldn't reach the AI service, so this is a standard route note.",
         },
       ]);
     } finally {
@@ -370,6 +381,12 @@ Plan and book direct with 0% fees on Travel Malawi: https://travel-malawi.ai.stu
           animate={{ opacity: 1, y: 0 }}
           className="space-y-6"
         >
+          {insights.aiNotice && (
+            <p role="status" className="bg-stone-50 border-l-2 border-stone-300 px-4 py-3 text-sm text-stone-700">
+              {insights.aiNotice}
+            </p>
+          )}
+
           {/* Executive Overview Header Card */}
           <div className="bg-[#FAF8F5] rounded-3xl p-6 sm:p-8 border border-stone-200/90 shadow-xs space-y-5">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-stone-200/70">
@@ -640,6 +657,9 @@ Plan and book direct with 0% fees on Travel Malawi: https://travel-malawi.ai.stu
                       : 'bg-white text-stone-800 border border-stone-200 rounded-bl-xs shadow-2xs'
                   }`}
                 >
+                  {msg.notice && (
+                    <p className="text-xs text-stone-500 border-l-2 border-stone-300 pl-2 mb-1.5">{msg.notice}</p>
+                  )}
                   <p className="whitespace-pre-line">{msg.text}</p>
                   <span className={`block text-[10px] mt-1 text-right ${msg.role === 'user' ? 'text-stone-400' : 'text-stone-400'}`}>
                     {msg.time}

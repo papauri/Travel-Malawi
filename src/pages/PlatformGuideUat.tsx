@@ -51,7 +51,7 @@ const UAT_TESTS: TestCase[] = [
   },
   {
     id: 'B1',
-    suite: 'Direct Inquiries & Stay OS',
+    suite: 'Direct Inquiries & Host Tools',
     title: 'Pre-filled WhatsApp Direct Inquiry',
     steps: [
       'Open any verified stay detail page',
@@ -422,7 +422,7 @@ export default function PlatformGuideUat() {
                     <option value="Pricing & Currency">Pricing &amp; Currency (MWK / USD)</option>
                     <option value="WhatsApp Direct Inquiry">WhatsApp Direct Inquiry</option>
                     <option value="Offline Satellite GPS">Offline Satellite GPS</option>
-                    <option value="Host Stay OS">Host Stay OS &amp; Rates</option>
+                    <option value="Host tools">Host tools &amp; rates</option>
                     <option value="Mobile UI & Performance">Mobile UI &amp; Performance</option>
                     <option value="General Observation">General Observation</option>
                   </select>

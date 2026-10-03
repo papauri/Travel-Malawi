@@ -24,16 +24,17 @@ export function CompareProvider({ children }: { children: ReactNode }) {
   const [isCompareModalOpen, setIsCompareModalOpen] = useState(false);
 
   const toggleHotel = (item: CompareItem) => {
+    const isSelected = selectedHotels.some(h => h.hotel.id === item.hotel.id);
+    if (!isSelected && selectedHotels.length >= 3) {
+      // Outside the state updater so StrictMode's double-invoke can't fire it twice.
+      toast.error('You can compare up to 3 properties at a time.');
+      return;
+    }
     setSelectedHotels(prev => {
-      const isSelected = prev.some(h => h.hotel.id === item.hotel.id);
-      if (isSelected) {
+      if (prev.some(h => h.hotel.id === item.hotel.id)) {
         return prev.filter(h => h.hotel.id !== item.hotel.id);
       }
-      if (prev.length >= 3) {
-        toast.error('You can compare up to 3 properties at a time.');
-        return prev;
-      }
-      return [...prev, item];
+      return prev.length >= 3 ? prev : [...prev, item];
     });
   };
 

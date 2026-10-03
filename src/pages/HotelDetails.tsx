@@ -2,7 +2,10 @@ import { getActivePromotion, calculateSlashedPrice, getSaleTypeLabel, getSaleTyp
 import PromotionIcon from '../components/PromotionIcon';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { doc, getDoc, collection, query, where, getDocs, addDoc, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, onSnapshot } from 'firebase/firestore';
+import { createBookingWithSlot } from '../lib/bookingWrites';
+import { loadHotelSlots, loadRoomSlots } from '../lib/transactions';
+import { malawiToday } from '../lib/promotions';
 import { db } from '../lib/firebase';
 import { Hotel, RoomType, ConferenceRoom, Review, CurrencyCode, Broadcast } from '../types';
 import { useAuth } from '../contexts/AuthContext';
@@ -27,7 +30,7 @@ import { useBreadcrumbLabel } from '../components/Breadcrumbs';
 import WalkthroughTooltip from '../components/WalkthroughTooltip';
 import MaskedPlaceName from '../components/MaskedPlaceName';
 import { getHotelImage, getHotelImages, getRoomImage } from '../lib/images';
-import { formatDateStr, nightsBetween, todayStr } from '../lib/dates';
+import { addDays, formatDateStr, nightsBetween, todayStr } from '../lib/dates';
 import { formatTime, hasPublishedHours, isOpenAt, summariseHours } from '../lib/hours';
 import MenuTemplateView from '../components/MenuTemplates';
 import { BookingLike, isRoomAvailable, unitsRemaining } from '../lib/availability';
@@ -184,8 +187,10 @@ export default function HotelDetails() {
   // clash.
   useEffect(() => {
     if (!id) return;
-    getDocs(query(collection(db, 'bookings'), where('hotelId', '==', id)))
-      .then(snap => setBookings(snap.docs.map(d => d.data() as BookingLike)))
+    // Public inventory mirror: bookings themselves are private to the guest,
+    // the manager and admins.
+    loadHotelSlots(id)
+      .then(slots => setBookings(slots))
       .catch(err => console.warn('Live availability unavailable:', err?.message ?? err));
   }, [id]);
 
@@ -225,12 +230,9 @@ export default function HotelDetails() {
     );
 
     const unsub = onSnapshot(q, (snap) => {
-      const now = new Date();
-      now.setHours(0, 0, 0, 0);
-      const active = snap.docs.some(d => {
-        const checkOut = new Date(d.data().checkOut);
-        return checkOut >= now;
-      });
+      // Date strings compare lexically; "today" is Malawi's date, not UTC's.
+      const today = malawiToday();
+      const active = snap.docs.some(d => String(d.data().checkOut || '') >= today);
       setHasStayBooking(active);
     }, () => {
       setHasStayBooking(false);
@@ -354,24 +356,20 @@ export default function HotelDetails() {
   }, [hotel?.reviews, reviews]);
 
   /**
-   * Re-verifies availability against live Firestore data immediately before
-   * writing a booking, so two guests racing for the last room can't both win.
-   *
-   * If the read itself is refused — a signed-out guest against rules that
-   * require auth to read `bookings` — this deliberately allows the request
-   * through. A booking is a request, not a confirmation: the property re-checks
-   * inventory before confirming, and refusing every guest checkout because a
-   * verification query was denied is by far the worse failure.
+   * Re-verifies availability against the live inventory mirror immediately
+   * before writing a booking. If the check itself fails the booking is not
+   * sent: the caller tells the guest to retry rather than risk a clash.
    */
   async function checkRoomAvailability(room: RoomType, quantity: number): Promise<boolean> {
-    try {
-      const snap = await getDocs(query(collection(db, 'bookings'), where('roomTypeId', '==', room.id)));
-      const live = snap.docs.map(d => d.data() as BookingLike);
-      return isRoomAvailable(room, live, checkIn, checkOut, quantity);
-    } catch (error) {
-      console.warn('Could not verify live availability; deferring to the property:', error);
-      return true;
-    }
+    const live = await loadRoomSlots(room.id!);
+    return isRoomAvailable(room, live, checkIn, checkOut, quantity);
+  }
+
+  /** The promotion for a room, ranked by its real value at the displayed price. */
+  function roomPromotionFor(room: RoomType, date: string) {
+    if (!hotel) return null;
+    const roomCurrency = resolveCurrency(room, currency);
+    return getActivePromotion(hotel, date, 'room', room.id, { price: roomPrice(room, roomCurrency) ?? 0, currency: roomCurrency });
   }
 
   const initiateBooking = (room: RoomType) => {
@@ -451,7 +449,14 @@ export default function HotelDetails() {
     try {
       // Availability may have changed while the form was open, so it is
       // re-checked against live data rather than trusting the render-time view.
-      const isAvailable = await checkRoomAvailability(selectedRoom, 1);
+      let isAvailable: boolean;
+      try {
+        isAvailable = await checkRoomAvailability(selectedRoom, 1);
+      } catch (err) {
+        console.warn('Could not verify live availability:', err);
+        toast.error("We couldn't check availability just now. Please try again in a moment.");
+        return;
+      }
       if (!isAvailable) {
         toast.error("Sorry, that room was just taken for these dates. Please try different dates.");
         return;
@@ -459,13 +464,13 @@ export default function HotelDetails() {
 
       // Same helper that renders the on-screen breakdown, so the stored total
       // can never disagree with the price the guest was shown.
-      const activePromo = hotel && selectedRoom ? getActivePromotion(hotel, checkIn, 'room', selectedRoom.id) : null;
+      const activePromo = selectedRoom ? roomPromotionFor(selectedRoom, checkIn) : null;
       const pricing = computeBookingPricing(
         selectedRoom, checkIn, checkOut, guestsCount, 1, selectedPackages, currency, activePromo
       );
       const reference = makeBookingReference();
 
-      await addDoc(collection(db, 'bookings'), {
+      const bookingId = await createBookingWithSlot({
         reference,
         hotelId: hotel?.id,
         managerId: hotel?.managerId ?? null,
@@ -485,6 +490,8 @@ export default function HotelDetails() {
         extraGuestTotal: pricing.extraGuestTotal,
         packagesTotal: pricing.packagesTotal,
         currency: pricing.currency,
+        promotionId: activePromo?.id ?? null,
+        discountAmount: pricing.discountAmount,
         status: 'pending',
         // Written only when something actually tripped, so the manager sees a
         // warning on the booking rather than having to guess.
@@ -513,8 +520,10 @@ export default function HotelDetails() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             email: hotel.managerEmail,
+            hotelId: hotel.id,
+            bookingId,
             subject: `New booking request: ${guestName.trim()} at ${hotel.name}`,
-            message: `You have received a new booking request on Stay OS.\n\nGuest: ${guestName.trim()}\nDates: ${checkIn} to ${checkOut}\nRoom: ${selectedRoom.name}\nTotal: ${pricing.total} ${pricing.currency}\n\nPlease log in to review and confirm this booking.`
+            message: `You have received a new booking request on Travel Malawi.\n\nGuest: ${guestName.trim()}\nDates: ${checkIn} to ${checkOut}\nRoom: ${selectedRoom.name}\nTotal: ${pricing.total} ${pricing.currency}\n\nPlease log in to review and confirm this booking.`
           })
         }).catch(err => console.error('Failed to trigger offline notification', err));
       }
@@ -1051,7 +1060,7 @@ export default function HotelDetails() {
                   const roomDisplayCurrency = resolveCurrency(room, currency);
                   const isSoldOut = status ? !status.available : (room.quantity ?? 0) <= 0;
                   const hasDates = !!checkIn && !!checkOut && checkIn < checkOut;
-                  const roomPromo = hotel ? getActivePromotion(hotel, checkIn || todayStr(), 'room', room.id) : null;
+                  const roomPromo = roomPromotionFor(room, checkIn || malawiToday());
                   const baseRoomPrice = roomPrice(room, roomDisplayCurrency) ?? 0;
                   const roomSlashed = calculateSlashedPrice(baseRoomPrice, roomPromo, roomDisplayCurrency);
 
@@ -1221,7 +1230,7 @@ export default function HotelDetails() {
 
                 <div className="flex flex-col gap-4 sm:gap-5 md:gap-6 pb-2">
                 {conferenceRooms.map((room, cIdx) => {
-                  const confPromo = hotel ? getActivePromotion(hotel, checkIn || todayStr(), 'conference') : null;
+                  const confPromo = hotel ? getActivePromotion(hotel, checkIn || malawiToday(), 'conference') : null;
                   const confDisplayCurrency = room.priceCurrency || 'MWK';
                   const confBasePrice = room.price ?? null;
                   const confSlashed = confBasePrice != null && confPromo ? calculateSlashedPrice(confBasePrice, confPromo, confDisplayCurrency) : null;
@@ -1763,7 +1772,7 @@ export default function HotelDetails() {
             <div className="bg-white border border-stone-200/90 rounded-2xl p-4 sm:p-5 lg:p-6 shadow-xs space-y-3 sm:space-y-4">
               <div className="border-b border-stone-100 pb-2.5 sm:pb-3">
                 <h3 className="text-base sm:text-lg font-serif font-bold text-stone-900 flex items-center gap-2">
-                  <ShieldCheck className="h-4 w-4 text-emerald-600" /> Stay OS Verified
+                  <ShieldCheck className="h-4 w-4 text-emerald-600" /> Travel Malawi Verified
                 </h3>
                 <p className="text-stone-500 text-xs mt-0.5">Host-verified infrastructure & setup</p>
               </div>
@@ -1871,7 +1880,7 @@ export default function HotelDetails() {
       
       {/* Booking request */}
       {selectedRoom && (() => {
-        const activePromo = hotel ? getActivePromotion(hotel, checkIn, 'room', selectedRoom.id) : null;
+        const activePromo = roomPromotionFor(selectedRoom, checkIn);
         const pricing = computeBookingPricing(
           selectedRoom, checkIn, checkOut, guestsCount, 1, selectedPackages, currency, activePromo
         );
@@ -1946,7 +1955,7 @@ export default function HotelDetails() {
               </div>
 
               <div>
-                <label className={labelClass}>Email <span className="text-stone-400 font-normal">· optional</span></label>
+                <label className={labelClass}>Email</label>
                 <input
                   type="email"
                   value={guestEmail}
@@ -1992,9 +2001,7 @@ export default function HotelDetails() {
                     checkOut={checkOut}
                     isDateBlocked={(dateStr) => {
                       if (!selectedRoom) return false;
-                      const nextDay = new Date(dateStr);
-                      nextDay.setDate(nextDay.getDate() + 1);
-                      const nextDayStr = nextDay.toISOString().split('T')[0];
+                      const nextDayStr = addDays(dateStr, 1);
                       return unitsRemaining(selectedRoom, bookings, dateStr, nextDayStr) === 0;
                     }}
                     onSelect={(inDate, outDate) => {

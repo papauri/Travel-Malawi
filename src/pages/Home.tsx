@@ -138,9 +138,6 @@ export default function Home() {
 
   // Map View specific search and filter states
   const [mapSearchText, setMapSearchText] = useState('');
-  const [mapPriceRange, setMapPriceRange] = useState<'all' | 'budget' | 'moderate' | 'luxury'>('all');
-  const [mapMinRating, setMapMinRating] = useState<number>(0);
-  const [mapAmenityFilter, setMapAmenityFilter] = useState<string>('all');
   const [mapRadius, setMapRadius] = useState<number | 'any'>('any');
   const [showMapFiltersModal, setShowMapFiltersModal] = useState(false);
 
@@ -543,7 +540,8 @@ export default function Home() {
    */
   const ensureBookings = async (): Promise<BookingLike[]> => {
     if (bookingsLoaded) return bookings;
-    const snap = await getDocs(collection(db, 'bookings'));
+    // The public inventory mirror; bookings themselves are private.
+    const snap = await getDocs(collection(db, 'booking_slots'));
     const loaded = snap.docs.map(d => d.data() as BookingLike);
     setBookings(loaded);
     setBookingsLoaded(true);
@@ -661,30 +659,21 @@ export default function Home() {
     setPriceRange([priceLimitMin, priceLimitMax]);
     setIncludeUnpricedRooms(true);
     setMapSearchText('');
-    setMapPriceRange('all');
-    setMapMinRating(0);
-    setMapAmenityFilter('all');
   };
 
   const activeMapFiltersCount = useMemo(() => {
     let count = 0;
     if (mapSearchText.trim()) count++;
-    if (mapPriceRange !== 'all') count++;
     if (isPriceFiltered) count++;
-    if (mapMinRating > 0) count++;
-    if (mapAmenityFilter !== 'all') count++;
     if (mapRadius !== 'any') count++;
     if (activeCategory !== 'All') count++;
     return count;
-  }, [mapSearchText, mapPriceRange, isPriceFiltered, mapMinRating, mapAmenityFilter, activeCategory, mapRadius]);
+  }, [mapSearchText, isPriceFiltered, activeCategory, mapRadius]);
 
   const clearMapFilters = () => {
     setMapSearchText('');
-    setMapPriceRange('all');
     setPriceRange([priceLimitMin, priceLimitMax]);
     setIncludeUnpricedRooms(true);
-    setMapMinRating(0);
-    setMapAmenityFilter('all');
     setMapRadius('any');
     setActiveCategory('All');
     setActiveAmenities([]);
@@ -836,34 +825,9 @@ export default function Home() {
           }
         }
 
-        // Map Price filter
-        if (mapPriceRange !== 'all') {
-          const price = entry.priceFrom;
-          if (price === null) return false;
-          const usdValue = currency === 'USD' ? price : price / 1750;
-          if (mapPriceRange === 'budget' && usdValue > 80) return false;
-          if (mapPriceRange === 'moderate' && (usdValue < 80 || usdValue > 220)) return false;
-          if (mapPriceRange === 'luxury' && usdValue < 220) return false;
-        }
-
-        // Map Minimum Rating filter
-        if (mapMinRating > 0) {
-          const avg = entry.rating?.average ?? 0;
-          if (avg < mapMinRating) return false;
-        }
-
         // Map Radius filter
         if (showUserLocation && userLocation && mapRadius !== 'any') {
           if (entry.userDistance === null || entry.userDistance > mapRadius) return false;
-        }
-
-        // Map Amenity filter
-        if (mapAmenityFilter !== 'all') {
-          const target = mapAmenityFilter.toLowerCase();
-          const hotelAmenities = entry.hotel.amenities?.map(a => a.toLowerCase()) || [];
-          const desc = entry.hotel.description?.toLowerCase() || '';
-          const match = hotelAmenities.some(a => a.includes(target)) || desc.includes(target);
-          if (!match) return false;
         }
 
         // A property whose rooms have not been set up is still worth showing;
@@ -893,10 +857,26 @@ export default function Home() {
     return sorted;
   }, [
     hotels, roomsByHotel, bookings, ratingByHotel, activeCategory, 
-    appliedSearch, sortKey, currency, mapSearchText, mapPriceRange, 
-    mapMinRating, mapAmenityFilter, showUserLocation, userLocation,
+    appliedSearch, sortKey, currency, mapSearchText,
+    showUserLocation, userLocation,
     isPriceFiltered, priceRange, priceLimitMax, includeUnpricedRooms
   ]);
+
+  // Any change to what the visitor is filtering on starts them back at page 1,
+  // otherwise a narrower result set can leave them on an empty page.
+  const filterSignature = JSON.stringify([
+    activeCategory, activeAmenities, appliedSearch, sortKey, mapSearchText,
+    mapRadius, priceRange, includeUnpricedRooms,
+  ]);
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterSignature]);
+
+  // Data refreshes can also shrink the list; keep the page in range.
+  const totalPages = Math.max(1, Math.ceil(filteredHotels.length / itemsPerPage));
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
 
   /**
    * Prepared map markers for clustered Map View.

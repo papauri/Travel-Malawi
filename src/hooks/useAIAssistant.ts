@@ -284,6 +284,31 @@ function notifyStatus(s: AIStatus) {
   statusListeners.forEach(listener => listener(s));
 }
 
+
+/**
+ * Message for an HTTP 429 from the AI endpoints. The server names the provider
+ * and sends `retryAfter` (seconds); the Retry-After header is the fallback.
+ */
+export function describeRateLimit(res: Response, errData: { error?: string; retryAfter?: number } = {}): string {
+  const retryAfter = Number(errData.retryAfter) || Number(res.headers.get('retry-after')) || 0;
+  if (errData.error) return errData.error;
+  return retryAfter > 0
+    ? `Ulendo's AI provider is busy right now. Please try again in about ${retryAfter} seconds.`
+    : "Ulendo's AI provider is busy right now. Please try again shortly.";
+}
+
+/**
+ * A user-facing message for any failed Ulendo request: signed out (401), no
+ * access (403), rate limited (429), timed out (504), or the server's own text.
+ */
+export function describeAIError(res: Response, errData: { error?: string; retryAfter?: number } = {}): string {
+  if (res.status === 401) return 'Sign in to use Ulendo.';
+  if (res.status === 403) return "Your account doesn't have access to this Ulendo feature.";
+  if (res.status === 429) return describeRateLimit(res, errData);
+  if (res.status === 504) return 'Ulendo took too long to respond. Please try again.';
+  return errData.error || `Ulendo couldn't reach the AI service (${res.status}). Please try again.`;
+}
+
 export function useAIAssistant() {
   const [status, setStatus] = useState<AIStatus>(cachedStatus || {
     enabled: false,
@@ -340,12 +365,9 @@ export function useAIAssistant() {
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
-        let errMsg = errData.error || `Generation failed (${res.status})`;
-        if (res.status === 401 || res.status === 403 || errMsg.toLowerCase().includes('auth') || errMsg.toLowerCase().includes('invalid api key')) {
+        const errMsg = describeAIError(res, errData);
+        if (res.status === 403 || (errData.error || '').toLowerCase().includes('invalid api key')) {
           fetchStatus();
-        }
-        if (res.status === 429 || errMsg.toLowerCase().includes('rate limit')) {
-          errMsg = 'Rate Limit: Provider allows 1 request per second. Please wait a few seconds and try again.';
         }
         toast.error(errMsg);
         return null;
@@ -377,12 +399,9 @@ export function useAIAssistant() {
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
-        let errMsg = errData.error || `Generation failed (${res.status})`;
-        if (res.status === 401 || res.status === 403 || errMsg.toLowerCase().includes('auth') || errMsg.toLowerCase().includes('invalid api key')) {
+        const errMsg = describeAIError(res, errData);
+        if (res.status === 403 || (errData.error || '').toLowerCase().includes('invalid api key')) {
           fetchStatus();
-        }
-        if (res.status === 429 || errMsg.toLowerCase().includes('rate limit')) {
-          errMsg = 'Rate Limit: Provider allows 1 request per second. Please wait a few seconds and try again.';
         }
         toast.error(errMsg);
         return null;
@@ -410,11 +429,11 @@ export function useAIAssistant() {
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
-        const errMsg = errData.error || `Operations assistant failed (${res.status})`;
-        if (res.status === 401 || res.status === 403 || errMsg.toLowerCase().includes('auth') || errMsg.toLowerCase().includes('invalid api key')) {
+        const errMsg = describeAIError(res, errData);
+        if (res.status === 403 || (errData.error || '').toLowerCase().includes('invalid api key')) {
           fetchStatus();
         }
-        logSystemEvent('error', `Operations Chat API Error: ${errMsg}`, { status: res.status, errData, payload });
+        logSystemEvent('error', `Operations Chat API Error: ${errMsg}`, { status: res.status, errData });
         toast.error(errMsg);
         return null;
       }
@@ -423,8 +442,8 @@ export function useAIAssistant() {
       return data;
     } catch (err: any) {
       console.error('Operations chat error:', err);
-      logSystemEvent('error', `Operations Chat Exception: ${err?.message || 'Unknown Error'}`, { error: String(err), payload });
-      toast.error(err?.message || 'Failed to connect to Ulendo Concierge');
+      logSystemEvent('error', `Operations Chat Exception: ${err?.message || 'Unknown Error'}`, { error: String(err) });
+      toast.error("Ulendo couldn't reach the AI service. Check your connection and try again.");
       return null;
     } finally {
       setGenerating(false);

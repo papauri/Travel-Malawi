@@ -2,6 +2,14 @@ import fs from 'fs';
 import path from 'path';
 import nodemailer from 'nodemailer';
 
+function escapeHtml(text: unknown): string {
+  return String(text ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 export interface SMTPEmailConfig {
   smtpHost: string;
   smtpPort: number | string;
@@ -61,6 +69,16 @@ export function saveEmailConfig(config: Partial<SMTPEmailConfig>): SMTPEmailConf
   // If new password is blank or masked string ('********'), keep existing password
   let passwordToSave = config.smtpPass;
   if (!passwordToSave || passwordToSave.trim() === '' || passwordToSave === '********') {
+    // Keep the stored password only while it still points at the same
+    // server and account; moving it elsewhere requires re-entering it.
+    const moved = (['smtpHost', 'smtpUser'] as const).some(key =>
+      config[key] !== undefined &&
+      existing[key] &&
+      String(config[key]).trim().toLowerCase() !== String(existing[key]).trim().toLowerCase()
+    );
+    if (moved && existing.smtpPass) {
+      throw new Error('Enter the SMTP password again when changing the host or username.');
+    }
     passwordToSave = existing.smtpPass || '';
   }
 
@@ -105,8 +123,9 @@ function createTransporter(config: SMTPEmailConfig) {
       pass: config.smtpPass,
     },
     tls: {
-      // Do not fail on invalid certs in staging/development
-      rejectUnauthorized: false,
+      // Verify the server certificate so credentials are only sent to the
+      // genuine SMTP host. Set SMTP_ALLOW_INVALID_CERTS=true for local testing.
+      rejectUnauthorized: process.env.SMTP_ALLOW_INVALID_CERTS !== 'true',
     },
     connectionTimeout: 10000,
     greetingTimeout: 8000,
@@ -121,12 +140,25 @@ export async function testSMTPConnection(
   candidateConfig?: Partial<SMTPEmailConfig>
 ): Promise<{ success: boolean; message: string; details?: any }> {
   const savedConfig = loadEmailConfig();
+  const suppliedPass = candidateConfig?.smtpPass && candidateConfig.smtpPass !== '********'
+    ? candidateConfig.smtpPass
+    : '';
+
+  // The saved password is only ever sent to the saved server. Testing a
+  // different host, port or username requires typing the password again, so
+  // the stored secret cannot be redirected to another machine.
+  const differs = (key: 'smtpHost' | 'smtpPort' | 'smtpUser') =>
+    candidateConfig?.[key] !== undefined &&
+    String(candidateConfig[key]).trim().toLowerCase() !== String(savedConfig[key] ?? '').trim().toLowerCase();
+  const targetChanged = differs('smtpHost') || differs('smtpPort') || differs('smtpUser');
+  if (!suppliedPass && targetChanged) {
+    throw new Error('Enter the SMTP password to test a different host, port or username.');
+  }
+
   const activeConfig: SMTPEmailConfig = {
     ...savedConfig,
     ...candidateConfig,
-    smtpPass: (candidateConfig?.smtpPass && candidateConfig.smtpPass !== '********')
-      ? candidateConfig.smtpPass
-      : savedConfig.smtpPass,
+    smtpPass: suppliedPass || savedConfig.smtpPass,
   };
 
   if (!activeConfig.smtpHost || !activeConfig.smtpPort || !activeConfig.smtpUser) {
@@ -166,10 +198,10 @@ export async function testSMTPConnection(
                 <strong>Congratulations!</strong> Your outgoing SMTP server has been verified and authenticated successfully.
               </p>
               <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #57534e; line-height: 1.6;">
-                <li><strong>SMTP Host:</strong> ${activeConfig.smtpHost}</li>
-                <li><strong>Port / Security:</strong> ${activeConfig.smtpPort} (${activeConfig.smtpSecure || activeConfig.smtpPort === 465 ? 'SSL/TLS' : 'STARTTLS'})</li>
-                <li><strong>Sender:</strong> ${activeConfig.fromName || 'Travel Malawi'} &lt;${activeConfig.fromEmail || activeConfig.smtpUser}&gt;</li>
-                <li><strong>Recipient Test:</strong> ${testEmail.trim()}</li>
+                <li><strong>SMTP Host:</strong> ${escapeHtml(activeConfig.smtpHost)}</li>
+                <li><strong>Port / Security:</strong> ${escapeHtml(activeConfig.smtpPort)} (${activeConfig.smtpSecure || activeConfig.smtpPort === 465 ? 'SSL/TLS' : 'STARTTLS'})</li>
+                <li><strong>Sender:</strong> ${escapeHtml(activeConfig.fromName || 'Travel Malawi')} &lt;${escapeHtml(activeConfig.fromEmail || activeConfig.smtpUser)}&gt;</li>
+                <li><strong>Recipient Test:</strong> ${escapeHtml(testEmail.trim())}</li>
               </ul>
             </div>
 

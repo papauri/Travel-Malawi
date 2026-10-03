@@ -1,48 +1,64 @@
 import { useEffect } from 'react';
 
+// Number of mounted locks. Stacked modals share one lock: the page is locked
+// by the first and only released when the last one closes.
+let activeLocks = 0;
+let saved: { rootOverflow: string; bodyOverflow: string; paddingRight: string } | null = null;
+
+function getLenis(): any {
+  return (window as any).__lenis;
+}
+
+function acquire() {
+  activeLocks++;
+  if (activeLocks > 1) return;
+
+  const root = document.documentElement;
+  const body = document.body;
+  saved = {
+    rootOverflow: root.style.overflow,
+    bodyOverflow: body.style.overflow,
+    paddingRight: body.style.paddingRight,
+  };
+
+  // Only add padding if there's actually a scrollbar
+  const scrollbarWidth = window.innerWidth - root.clientWidth;
+  if (scrollbarWidth > 0) {
+    body.style.paddingRight = `${scrollbarWidth}px`;
+  }
+  root.style.overflow = 'hidden';
+  body.style.overflow = 'hidden';
+
+  // Stop Lenis instance from capturing wheel gestures while a modal is open
+  try {
+    getLenis()?.stop?.();
+  } catch (err) {
+    // Lenis not ready
+  }
+}
+
+function release() {
+  activeLocks = Math.max(0, activeLocks - 1);
+  if (activeLocks > 0 || !saved) return;
+
+  const root = document.documentElement;
+  const body = document.body;
+  root.style.overflow = saved.rootOverflow;
+  body.style.overflow = saved.bodyOverflow;
+  body.style.paddingRight = saved.paddingRight;
+  saved = null;
+
+  try {
+    getLenis()?.start?.();
+  } catch (err) {
+    // Lenis not ready
+  }
+}
+
 export function useBodyScrollLock(lock: boolean) {
   useEffect(() => {
     if (!lock) return;
-
-    const root = document.documentElement;
-    const body = document.body;
-    
-    const previousOverflow = root.style.overflow;
-    const previousBodyOverflow = body.style.overflow;
-    const previousPaddingRight = body.style.paddingRight;
-
-    // Calculate scrollbar width
-    const scrollbarWidth = window.innerWidth - root.clientWidth;
-
-    // Only add padding if there's actually a scrollbar
-    if (scrollbarWidth > 0) {
-      body.style.paddingRight = `${scrollbarWidth}px`;
-    }
-    root.style.overflow = 'hidden';
-    body.style.overflow = 'hidden';
-
-    // Stop Lenis instance from capturing wheel gestures while modal is open
-    const lenis = (window as any).__lenis;
-    if (lenis && typeof lenis.stop === 'function') {
-      try {
-        lenis.stop();
-      } catch (err) {
-        // Silently ignore if lenis is not ready
-      }
-    }
-
-    return () => {
-      root.style.overflow = previousOverflow;
-      body.style.overflow = previousBodyOverflow;
-      body.style.paddingRight = previousPaddingRight;
-
-      if (lenis && typeof lenis.start === 'function') {
-        try {
-          lenis.start();
-        } catch (err) {
-          // Silently ignore
-        }
-      }
-    };
+    acquire();
+    return release;
   }, [lock]);
 }

@@ -23,7 +23,10 @@ import StayVoucherModal from '../components/StayVoucherModal';
 import { getHotelImage } from '../lib/images';
 import { formatDateStr, daysUntil, nightsBetween } from '../lib/dates';
 import { cancellationTerms, formatMoney, isStayComplete, FREE_CANCELLATION_DAYS } from '../lib/booking';
-import { isTraveller } from '../lib/roles';
+import { isTraveller, isAdmin } from '../lib/roles';
+import { updateBookingWithSlot, cancelBookingReminders } from '../lib/bookingWrites';
+import { useConfirmBooking } from '../hooks/useConfirmBooking';
+import PriceMismatchNotice from '../components/PriceMismatchNotice';
 import PriceDisplay from '../components/PriceDisplay';
 
 type EnrichedBooking = Booking & { hotel?: Hotel; room?: RoomType };
@@ -44,6 +47,7 @@ export default function MyBookings() {
   const [confirmModalBooking, setConfirmModalBooking] = useState<EnrichedBooking | null>(null);
   const [reviewedBookingIds, setReviewedBookingIds] = useState<Set<string>>(new Set());
   const [busyId, setBusyId] = useState<string | null>(null);
+  const confirmFlow = useConfirmBooking();
   const { openBookingChat } = useChatModal();
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
@@ -87,7 +91,7 @@ export default function MyBookings() {
         const querySnapshot = await getDocs(collection(db, 'hotels'));
         const allHotels = querySnapshot.docs.map(d => ({ id: d.id, ...d.data() } as Hotel));
         const userEmailLower = user?.email?.toLowerCase();
-        const userIsAdmin = user ? (user.role === 'admin' || (user.roles && user.roles.includes('admin')) || userEmailLower === 'johnpaulchirwa@gmail.com') : false;
+        const userIsAdmin = isAdmin(user);
 
         const hotels = allHotels.filter(h => {
           if (userIsAdmin) return true;
@@ -111,16 +115,18 @@ export default function MyBookings() {
           setActiveMainTab('host');
           const hIds = hotels.map(h => h.id).filter(Boolean) as string[];
           if (hIds.length > 0) {
-            const batches = [];
-            for (let i = 0; i < hIds.length; i += 10) {
-              batches.push(hIds.slice(i, i + 10));
-            }
-            let allHostBookings: Booking[] = [];
-            for (const batch of batches) {
-              const bDocs = await getDocs(query(collection(db, 'bookings'), where('hotelId', 'in', batch)));
-              const batchBookings = bDocs.docs.map(d => ({ id: d.id, ...d.data() } as Booking));
-              allHostBookings = [...allHostBookings, ...batchBookings];
-            }
+            // One equality query per property: the rules authorise a manager's
+            // read through the hotel document, which they cannot do for an
+            // 'in' query. A hotel the rules refuse is skipped, not fatal.
+            const perHotel = await Promise.all(hIds.map(hid =>
+              getDocs(query(collection(db, 'bookings'), where('hotelId', '==', hid)))
+                .then(snap => snap.docs.map(d => ({ id: d.id, ...d.data() } as Booking)))
+                .catch(err => {
+                  console.warn(`Bookings for ${hid} unavailable:`, err?.message ?? err);
+                  return [] as Booking[];
+                })
+            ));
+            const allHostBookings: Booking[] = perHotel.flat();
 
             const roomIds = [...new Set(allHostBookings.map(b => b.roomTypeId).filter(Boolean) as string[])];
             const roomSnaps = await Promise.all(roomIds.map(rid => getDoc(doc(db, 'room_types', rid))));
@@ -191,39 +197,34 @@ export default function MyBookings() {
 
   const handleConfirmHostBooking = async (booking: EnrichedBooking) => {
     if (!booking.id) return;
-    setBusyId(booking.id);
-    try {
-      await updateDoc(doc(db, 'bookings', booking.id), {
-        status: 'confirmed',
-        confirmedAt: Date.now(),
-        updatedAt: Date.now(),
-      });
-      setHostBookings(prev => prev.map(b => (b.id === booking.id ? { ...b, status: 'confirmed' } : b)));
-      toast.success(`Booking ${booking.reference || ''} confirmed!`);
-
-      await logSystemEvent('action', `Manager confirmed booking ${booking.reference}`, {
-        bookingId: booking.id,
-        reference: booking.reference,
-        status: 'confirmed'
-      }, user, 'booking');
-    } catch (err) {
-      console.error('Error confirming booking:', err);
-      toast.error('Failed to confirm booking.');
-    } finally {
-      setBusyId(null);
-    }
+    const { hotel, room, ...plain } = booking;
+    await confirmFlow.confirm(plain as Booking, {
+      room: room ?? null,
+      hotel: hotel ?? null,
+      extraPatch: { updatedAt: Date.now() },
+      onConfirmed: async () => {
+        setHostBookings(prev => prev.map(b => (b.id === booking.id ? { ...b, status: 'confirmed' } : b)));
+        toast.success(`Booking ${booking.reference || ''} confirmed.`);
+        await logSystemEvent('action', `Manager confirmed booking ${booking.reference}`, {
+          bookingId: booking.id,
+          reference: booking.reference,
+          status: 'confirmed'
+        }, user, 'booking');
+      },
+    });
   };
 
   const handleRejectHostBooking = async (booking: EnrichedBooking) => {
     if (!booking.id) return;
     setBusyId(booking.id);
     try {
-      await updateDoc(doc(db, 'bookings', booking.id), {
+      await updateBookingWithSlot(booking.id, {
         status: 'rejected',
         rejectedAt: Date.now(),
         cancelledBy: 'manager',
         updatedAt: Date.now(),
-      });
+      }, booking as any);
+      cancelBookingReminders(booking.id);
       setHostBookings(prev => prev.map(b => (b.id === booking.id ? { ...b, status: 'rejected' } : b)));
       toast.success(`Booking ${booking.reference || ''} declined.`);
 
@@ -312,12 +313,13 @@ export default function MyBookings() {
     if (!booking.id) return;
     setBusyId(booking.id);
     try {
-      await updateDoc(doc(db, 'bookings', booking.id), {
+      await updateBookingWithSlot(booking.id, {
         status: 'cancelled',
         cancelledAt: Date.now(),
         cancelledBy: 'guest',
         updatedAt: Date.now(),
-      });
+      }, booking as any);
+      cancelBookingReminders(booking.id);
       setBookings(prev =>
         prev.map(b => (b.id === booking.id ? { ...b, status: 'cancelled', cancelledAt: Date.now(), cancelledBy: 'guest' } : b))
       );
@@ -331,6 +333,8 @@ export default function MyBookings() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               email: managerEmail,
+              hotelId: booking.hotelId,
+              bookingId: booking.id,
               subject: `Guest Cancellation: ${booking.guestName} - ${booking.hotel?.name || 'Your Property'}`,
               message: `Dear Manager,\n\nThe guest ${booking.guestName} has cancelled their booking (Ref: #${booking.reference}) for ${booking.checkIn} to ${booking.checkOut}.\n\nPlease check your host dashboard for details.`
             })
@@ -882,6 +886,13 @@ export default function MyBookings() {
           />
         )}
       </div>
+
+      <PriceMismatchNotice
+        mismatch={confirmFlow.mismatch}
+        busy={!!confirmFlow.busyId}
+        onConfirmAnyway={() => { confirmFlow.confirmAnyway(); }}
+        onDismiss={confirmFlow.dismiss}
+      />
 
       {confirmModalBooking && (() => {
         const booking = confirmModalBooking;

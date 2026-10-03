@@ -8,7 +8,8 @@ interface Props {
   booking: Booking | null;
   isOpen: boolean;
   onClose: () => void;
-  onSave: (bookingId: string, patch: Partial<Booking>) => Promise<void>;
+  /** Resolves to an error message to show, or null on success. */
+  onSave: (bookingId: string, patch: Partial<Booking>) => Promise<string | null | void>;
 }
 
 export default function EditBookingModal({ booking, isOpen, onClose, onSave }: Props) {
@@ -20,6 +21,7 @@ export default function EditBookingModal({ booking, isOpen, onClose, onSave }: P
   const [checkOut, setCheckOut] = useState('');
   const [guests, setGuests] = useState(1);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (booking && isOpen) {
@@ -30,14 +32,24 @@ export default function EditBookingModal({ booking, isOpen, onClose, onSave }: P
       setCheckIn(booking.checkIn || '');
       setCheckOut(booking.checkOut || '');
       setGuests(booking.guests || 1);
+      setError(null);
     }
   }, [booking, isOpen]);
 
   if (!isOpen || !booking) return null;
 
   const handleSave = async () => {
+    setError(null);
+    if (!checkIn || !checkOut || checkOut <= checkIn) {
+      setError('Check-out must be after check-in.');
+      return;
+    }
+    if (guests < 1) {
+      setError('There must be at least one guest.');
+      return;
+    }
     setSaving(true);
-    await onSave(booking.id!, {
+    const problem = await onSave(booking.id!, {
       guestName,
       guestEmail,
       guestPhone,
@@ -47,6 +59,7 @@ export default function EditBookingModal({ booking, isOpen, onClose, onSave }: P
       guests
     });
     setSaving(false);
+    if (typeof problem === 'string') setError(problem);
   };
 
   return (
@@ -77,6 +90,10 @@ export default function EditBookingModal({ booking, isOpen, onClose, onSave }: P
       }
     >
       <div className="space-y-4">
+        {error && (
+          <div className="bg-stone-50 border-l-2 border-stone-400 px-4 py-3 text-sm text-stone-800" role="alert">{error}</div>
+        )}
+        <p className="text-xs text-stone-500">Changing dates or guests re-checks availability and recalculates the total.</p>
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className={labelClass}>Check-in Date</label>

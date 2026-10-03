@@ -12,7 +12,7 @@ import { isSoundEnabled, onSoundPreferenceChange, setSoundEnabled } from '../lib
 import { requestBrowserNotifications } from './GlobalNotificationManager';
 import { describeRoles, isAdmin, isGlobalAdmin, isMarketing, isHotelManager, isTraveller } from '../lib/roles';
 import { useUnreadBroadcasts } from '../hooks/useUnreadBroadcasts';
-import { useUnreadMessages } from '../hooks/useUnreadMessages';
+import { useUnreadMessages } from '../contexts/UnreadMessagesContext';
 import { usePresence, PresenceStatus } from '../hooks/usePresence';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
 import { collection, query, where, onSnapshot, getDocs, limit } from 'firebase/firestore';

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { doc, updateDoc } from 'firebase/firestore';
 import { updateProfile } from 'firebase/auth';
@@ -26,6 +26,27 @@ export default function Profile() {
   
   const [isSaving, setIsSaving] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
+  // The uid whose stored profile the form currently holds. Saving is blocked
+  // until this matches the signed-in user, so a reload (where `user` is still
+  // null on the first render) can never write blank fields over real data.
+  const [hydratedUid, setHydratedUid] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user || hydratedUid === user.uid) return;
+    setDisplayName(user.displayName || '');
+    setPhone(user.phone || '');
+    setWhatsapp(user.whatsapp || '');
+    setCity(user.city || '');
+    setCountry(user.country || '');
+    setBio(user.bio || '');
+    setPreferredCurrency(user.preferredCurrency || 'USD');
+    setNotifications(user.notificationPreferences || {
+      emailBookings: true,
+      whatsappUpdates: false,
+      marketingEmails: false
+    });
+    setHydratedUid(user.uid);
+  }, [user, hydratedUid]);
 
   if (!user) {
     return (
@@ -39,6 +60,7 @@ export default function Profile() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (hydratedUid !== user.uid) return;
     setIsSaving(true);
     
     try {
@@ -253,7 +275,7 @@ export default function Profile() {
         <div className="pt-4 border-t border-stone-100 flex justify-end">
           <button
             type="submit"
-            disabled={isSaving}
+            disabled={isSaving || hydratedUid !== user.uid}
             className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl sm:rounded-full bg-stone-900 px-5 sm:px-6 py-2.5 text-xs sm:text-sm font-bold text-white transition hover:bg-stone-800 disabled:opacity-50 disabled:cursor-not-allowed shadow-2xs cursor-pointer"
           >
             {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}

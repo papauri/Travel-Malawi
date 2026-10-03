@@ -140,8 +140,9 @@ export default function ReminderTemplatesModal({
 
   // 1. Dispatch Email Immediately via SMTP
   const handleSendEmailNow = async () => {
-    if (!recipientEmail || !recipientEmail.includes('@')) {
-      toast.error('Please enter a valid guest email address.');
+    // The server only sends to the email stored on the booking.
+    if (!booking.guestEmail) {
+      toast.error('This booking has no guest email address.');
       return;
     }
 
@@ -156,7 +157,7 @@ export default function ReminderTemplatesModal({
           hotelId: hotel.id,
           hotelName: hotel.name,
           guestName: booking.guestName,
-          guestEmail: recipientEmail,
+          guestEmail: booking.guestEmail,
           subject: editedSubject,
           message: editedBody,
           html: htmlPreview,
@@ -168,7 +169,7 @@ export default function ReminderTemplatesModal({
         throw new Error(data.error || 'Failed to dispatch email reminder.');
       }
 
-      toast.success(`Email reminder sent successfully to ${recipientEmail}!`, {
+      toast.success(`Email reminder sent successfully to ${booking.guestEmail}!`, {
         icon: '✉️',
       });
       onReminderSent?.();
@@ -193,6 +194,7 @@ export default function ReminderTemplatesModal({
     try {
       await updateDoc(doc(db, 'bookings', booking.id), {
         guestWhatsapp: cleanNum,
+        updatedAt: Date.now(),
       });
       booking.guestWhatsapp = cleanNum;
       toast.success('Guest WhatsApp number saved to booking!');
@@ -206,7 +208,14 @@ export default function ReminderTemplatesModal({
 
   // 3. Dispatch WhatsApp reminder directly or via Meta Cloud API
   const handleSendWhatsAppNow = async () => {
-    const targetPhone = recipientWhatsapp.trim() || booking.guestPhone || '';
+    // The server only sends to a number stored on the booking, so a newly
+    // typed number is saved to the booking first.
+    const typed = recipientWhatsapp.trim();
+    if (typed && typed !== (booking.guestWhatsapp || '') && typed !== (booking.guestPhone || '')) {
+      await handleSaveGuestWhatsapp();
+      if (booking.guestWhatsapp !== typed) return;
+    }
+    const targetPhone = booking.guestWhatsapp || booking.guestPhone || '';
     if (!targetPhone) {
       toast.error('Please enter a WhatsApp phone number for the guest.');
       return;
@@ -277,8 +286,8 @@ export default function ReminderTemplatesModal({
     }
 
     const channel = scheduleChannel;
-    if (channel === 'email' && !recipientEmail) {
-      toast.error('Please enter a recipient email address for scheduling.');
+    if (channel === 'email' && !booking.guestEmail) {
+      toast.error('This booking has no guest email address.');
       return;
     }
     if (channel === 'whatsapp' && !recipientWhatsapp.trim()) {
@@ -297,8 +306,8 @@ export default function ReminderTemplatesModal({
           hotelId: hotel.id,
           hotelName: hotel.name,
           guestName: booking.guestName,
-          guestEmail: recipientEmail,
-          guestPhone: recipientWhatsapp.trim(),
+          guestEmail: booking.guestEmail || '',
+          guestPhone: booking.guestWhatsapp || booking.guestPhone || '',
           recipientType: 'guest',
           channel: channel === 'whatsapp' ? 'whatsapp' : (recipientEmail ? 'email' : 'in_app'),
           subject: editedSubject,
@@ -469,9 +478,10 @@ export default function ReminderTemplatesModal({
                     </label>
                     <input
                       type="email"
-                      value={recipientEmail}
-                      onChange={e => setRecipientEmail(e.target.value)}
-                      placeholder="guest@example.com"
+                      value={booking.guestEmail || ''}
+                      readOnly
+                      title="Reminders go to the email on the booking. Edit the booking to change it."
+                      placeholder="No email on this booking"
                       className="w-full bg-stone-50 border border-stone-200 px-3 py-2 rounded-xl text-xs focus:outline-none focus:border-stone-900 font-medium"
                     />
                   </div>
@@ -498,7 +508,7 @@ export default function ReminderTemplatesModal({
                       type="tel"
                       value={recipientWhatsapp}
                       onChange={e => setRecipientWhatsapp(e.target.value)}
-                      placeholder="+265 999 123 456"
+                      placeholder="Include country code"
                       className="w-full bg-stone-50 border border-stone-200 px-3 py-2 rounded-xl text-xs focus:outline-none focus:border-emerald-600 font-medium text-stone-900"
                     />
                   </div>
@@ -510,9 +520,10 @@ export default function ReminderTemplatesModal({
                   </label>
                   <input
                     type="email"
-                    value={recipientEmail}
-                    onChange={e => setRecipientEmail(e.target.value)}
-                    placeholder="guest@example.com"
+                    value={booking.guestEmail || ''}
+                    readOnly
+                    title="Reminders go to the email on the booking. Edit the booking to change it."
+                    placeholder="No email on this booking"
                     className="w-full bg-stone-50 border border-stone-200 px-3 py-2 rounded-xl text-xs focus:outline-none focus:border-stone-900 font-medium"
                   />
                 </div>
@@ -573,7 +584,7 @@ export default function ReminderTemplatesModal({
                 <button
                   type="button"
                   onClick={handleSendEmailNow}
-                  disabled={sendingEmail || !recipientEmail}
+                  disabled={sendingEmail || !booking.guestEmail}
                   className="flex-1 min-w-[150px] py-2.5 bg-stone-900 hover:bg-black text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-2 shadow-xs disabled:opacity-50 cursor-pointer"
                 >
                   {sendingEmail ? (

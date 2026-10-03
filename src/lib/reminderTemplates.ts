@@ -278,7 +278,7 @@ export function formatReminderEmailHtml(
 
         <!-- Footer -->
         <div style="background: #f5f5f4; padding: 20px 28px; border-top: 1px solid #e7e5e4; text-align: center; font-size: 12px; color: #78716c;">
-          <p style="margin: 0 0 6px; font-weight: 600; color: #44403c;">${hotelName} · Powered by Travel Malawi Stay OS</p>
+          <p style="margin: 0 0 6px; font-weight: 600; color: #44403c;">${hotelName} · Powered by Travel Malawi</p>
           <p style="margin: 0; font-size: 11px; color: #a8a29e;">
             This email was sent directly by property management regarding your confirmed booking.
           </p>

@@ -93,8 +93,16 @@ if (typeof window !== 'undefined') {
  * Plays a vibrant, crystal-clear concierge bell "DING!" notification chime.
  * Synthesized using harmonic overtones resembling a physical brass counter bell.
  */
+let lastDingAt = 0;
+// Several listeners can react to the same incoming message (the open chat, the
+// global notifier). Dings closer together than this collapse into one.
+const DING_DEDUPE_MS = 1500;
+
 export function playDingSound(volume = 0.22): void {
   if (!isSoundEnabled()) return;
+  const nowMs = Date.now();
+  if (nowMs - lastDingAt < DING_DEDUPE_MS) return;
+  lastDingAt = nowMs;
   const ctx = ensureContext();
   if (!ctx) return;
   if (ctx.state === 'suspended') {

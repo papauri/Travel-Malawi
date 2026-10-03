@@ -17,20 +17,32 @@ export default function SavedProperties() {
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'grid' | 'planner'>('grid');
 
+  const uid = user?.uid ?? null;
+  // Cache is per account so a shared device never shows one user's saved
+  // stays to another.
+  const cacheKey = uid ? `savedHotelsCache_${uid}` : null;
+
+  useEffect(() => {
+    try {
+      // Drop the old account-agnostic cache.
+      localStorage.removeItem('savedHotelsCache');
+    } catch (e) {}
+    if (!uid) setSavedHotels([]);
+  }, [uid]);
+
   useEffect(() => {
     async function loadSaved() {
-      if (savedHotelIds.length === 0) {
+      if (!cacheKey || savedHotelIds.length === 0) {
         setSavedHotels([]);
         setLoading(false);
         return;
       }
       
       try {
-        const cached = localStorage.getItem('savedHotelsCache');
+        const cached = localStorage.getItem(cacheKey);
         if (cached) {
-          const parsed = JSON.parse(cached);
-          // Only use cache if the saved IDs somewhat match to avoid stale data
-          setSavedHotels(parsed);
+          const parsed: Hotel[] = JSON.parse(cached);
+          setSavedHotels(parsed.filter(h => savedHotelIds.includes(h.id)));
           setLoading(false);
         }
       } catch (e) {
@@ -43,7 +55,7 @@ export default function SavedProperties() {
         const hotels = docs.filter(d => d.exists()).map(d => ({ id: d.id, ...d.data() } as Hotel));
         setSavedHotels(hotels);
         try {
-          localStorage.setItem('savedHotelsCache', JSON.stringify(hotels));
+          localStorage.setItem(cacheKey, JSON.stringify(hotels));
         } catch (e) {
           console.warn('Failed to cache saved hotels', e);
         }
@@ -57,7 +69,7 @@ export default function SavedProperties() {
     if (!wishlistLoading) {
       loadSaved();
     }
-  }, [savedHotelIds, wishlistLoading]);
+  }, [savedHotelIds, wishlistLoading, cacheKey]);
 
   if (authLoading || wishlistLoading || loading) {
     return (

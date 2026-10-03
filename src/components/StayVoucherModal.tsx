@@ -85,7 +85,7 @@ export default function StayVoucherModal({ booking, isOpen, onClose }: Props) {
               
               <div className="flex items-center gap-2 mb-4">
                 <ShieldCheck className="w-6 h-6 text-emerald-400" />
-                <span className="font-serif font-bold tracking-wide">Stay OS Digital Voucher</span>
+                <span className="font-serif font-bold tracking-wide">Travel Malawi Digital Voucher</span>
               </div>
               
               <h2 className="text-3xl font-serif font-bold text-white mb-2 pr-12 leading-tight">

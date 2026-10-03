@@ -138,15 +138,16 @@ export default function AvailabilityCalendar({
       if (!hotelId) return;
       setLoading(true);
       try {
+        // Reads the public inventory mirror; bookings themselves are private.
         // Status is filtered in JS: an inequality on status would force a
         // composite index, and the result set per hotel is small.
         const q = selectedRoomId
           ? query(
-              collection(db, 'bookings'),
+              collection(db, 'booking_slots'),
               where('hotelId', '==', hotelId),
               where('roomTypeId', '==', selectedRoomId)
             )
-          : query(collection(db, 'bookings'), where('hotelId', '==', hotelId));
+          : query(collection(db, 'booking_slots'), where('hotelId', '==', hotelId));
 
         const snap = await getDocs(q);
         setRawBookings(snap.docs.map(d => d.data() as BookingLike));

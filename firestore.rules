@@ -1,61 +1,216 @@
 rules_version = '2';
 
+// Security model (see SECURITY.md):
+// - Bookings hold guest contact details and are private to the guest, the
+//   property's manager and admins. Availability is computed from the public
+//   `booking_slots` mirror, which carries inventory fields only.
+// - Every write requires an active (not suspended or revoked) account, except
+//   the signed-out guest checkout and the public survey form.
+// - Nobody below global admin can grant themselves a higher role.
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    // ---- Helpers ----
-    function isAuthenticated() {
+
+    // ---- Identity ----
+
+    function signedIn() {
       return request.auth != null;
     }
 
-    function profile(uid) {
-      return get(/databases/$(database)/documents/users/$(uid)).data;
+    function userPath(uid) {
+      return /databases/$(database)/documents/users/$(uid);
     }
 
-    // An account can hold several roles at once. `roles` is the list; `role`
-    // is the first entry, kept for documents written before multi-role support.
-    function hasRole(uid, role) {
-      return isAuthenticated() &&
-        exists(/databases/$(database)/documents/users/$(uid)) &&
-        (profile(uid).get('role', '') == role || role in profile(uid).get('roles', []));
+    function profile(uid) {
+      return get(userPath(uid)).data;
+    }
+
+    // A missing profile counts as active: it is created on first sign-in, and
+    // the create rule below controls what goes into it.
+    function isActive() {
+      return signedIn() && (
+        !exists(userPath(request.auth.uid)) || (
+          profile(request.auth.uid).get('accessRevoked', false) != true &&
+          !(profile(request.auth.uid).get('status', 'active') in ['suspended', 'revoked', 'deactivated'])
+        )
+      );
+    }
+
+    function verifiedEmail() {
+      return signedIn()
+        && request.auth.token.get('email_verified', false) == true
+        && request.auth.token.get('email', '') != '';
+    }
+
+    // An account can hold several roles. `roles` is the list; `role` is the
+    // first entry, kept for documents written before multi-role support.
+    function hasRole(role) {
+      return isActive()
+        && exists(userPath(request.auth.uid))
+        && (profile(request.auth.uid).get('role', '') == role
+            || role in profile(request.auth.uid).get('roles', []));
+    }
+
+    // Mirrors OWNER_EMAILS in src/lib/roles.ts. Only a verified address counts.
+    function isOwner() {
+      return isActive() && verifiedEmail()
+        && request.auth.token.email.lower() in ['johnpaulchirwa@gmail.com', 'johnpaulchirwa@promanaged-it.com'];
     }
 
     function isGlobalAdmin() {
-      return isAuthenticated() && (hasRole(request.auth.uid, 'global_admin') || request.auth.token.email == 'johnpaulchirwa@gmail.com');
+      return hasRole('global_admin') || isOwner();
     }
 
     function isAdmin() {
-      return isAuthenticated() && (hasRole(request.auth.uid, 'admin') || isGlobalAdmin());
+      return hasRole('admin') || isGlobalAdmin();
     }
 
     function isMarketing() {
-      return isAuthenticated() && hasRole(request.auth.uid, 'marketing');
+      return hasRole('marketing');
+    }
+
+    // ---- Hotels ----
+
+    function hotelPath(hotelId) {
+      return /databases/$(database)/documents/hotels/$(hotelId);
     }
 
     function hotelData(hotelId) {
-      return get(/databases/$(database)/documents/hotels/$(hotelId)).data;
+      return get(hotelPath(hotelId)).data;
     }
 
-    function hotelManagerId(hotelId) {
-      return hotelData(hotelId).get('managerId', '');
+    // The hotel's manager uid, or '' when the hotel has none.
+    function currentManagerId(hotelId) {
+      return exists(hotelPath(hotelId)) ? hotelData(hotelId).get('managerId', '') : '';
     }
 
+    // True when `value` names the hotel's current manager, treating every
+    // "no manager" spelling ('' / null / 'unassigned') as the same.
+    function isCurrentManagerId(hotelId, value) {
+      return value == currentManagerId(hotelId)
+        || (value in ['', null, 'unassigned']
+            && currentManagerId(hotelId) in ['', null, 'unassigned']);
+    }
+
+    // The signed-in manager of a hotel. An unassigned hotel has no manager
+    // until an admin assigns one. Matching on the listing's contact email
+    // requires a verified address, so nobody can claim a hotel by signing up
+    // with someone else's email.
     function isManager(hotelId) {
-      return isAuthenticated() &&
-        exists(/databases/$(database)/documents/hotels/$(hotelId)) &&
-        (
-          hotelData(hotelId).get('managerId', '') == request.auth.uid ||
-          hotelData(hotelId).get('managerId', '') == '' ||
-          hotelData(hotelId).get('managerId', '') == 'unassigned' ||
-          (request.auth.token.email != null && (
-            hotelData(hotelId).get('managerEmail', '') == request.auth.token.email ||
-            hotelData(hotelId).get('ownerEmail', '') == request.auth.token.email
-          ))
+      return isActive()
+        && hotelId is string
+        && exists(hotelPath(hotelId))
+        && (
+          hotelData(hotelId).get('managerId', '') == request.auth.uid
+          || (verifiedEmail() && (
+               hotelData(hotelId).get('managerEmail', '') == request.auth.token.email
+               || hotelData(hotelId).get('ownerEmail', '') == request.auth.token.email
+             ))
         );
     }
 
-    function bookingDoc(bookingId) {
-      return get(/databases/$(database)/documents/bookings/$(bookingId)).data;
+    // ---- Bookings ----
+
+    function bookingPath(bookingId) {
+      return /databases/$(database)/documents/bookings/$(bookingId);
     }
+
+    function bookingDoc(bookingId) {
+      return get(bookingPath(bookingId)).data;
+    }
+
+    function isBookingParticipant(booking) {
+      return isActive() && (
+        booking.get('guestId', '') == request.auth.uid
+        || booking.get('managerId', '') == request.auth.uid
+        || isManager(booking.get('hotelId', ''))
+        || isAdmin()
+      );
+    }
+
+    function changed() {
+      return request.resource.data.diff(resource.data).affectedKeys();
+    }
+
+    function unchanged(field) {
+      return request.resource.data.get(field, null) == resource.data.get(field, null);
+    }
+
+    function isDate(value) {
+      return value is string && value.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+    }
+
+    // Chat bookkeeping either party writes on the booking (BookingChat,
+    // useUnreadMessages, chatDeletion).
+    function bookingChatFields() {
+      return ['lastMessageAt', 'lastMessageText', 'lastMessage', 'lastMessageSenderId',
+              'lastMessageSenderName', 'chatStatus', 'chatClosedAt', 'chatClosedBy',
+              'chatDeletedBy', 'chatClearedFor', 'updatedAt'];
+    }
+
+    function guestContactFields() {
+      return ['guestName', 'guestEmail', 'guestPhone', 'guestWhatsapp'];
+    }
+
+    function validContact() {
+      return request.resource.data.guestName is string
+        && request.resource.data.guestName.size() > 1
+        && request.resource.data.guestName.size() <= 100
+        && request.resource.data.guestEmail is string
+        && request.resource.data.guestEmail.matches('^[^@ ]+@[^@ ]+[.][^@ ]+$');
+    }
+
+    function validStay() {
+      return isDate(request.resource.data.checkIn)
+        && isDate(request.resource.data.checkOut)
+        && request.resource.data.checkIn < request.resource.data.checkOut
+        && request.resource.data.guests is int
+        && request.resource.data.guests > 0
+        && request.resource.data.guests <= 30
+        && request.resource.data.get('quantity', 1) is int
+        && request.resource.data.get('quantity', 1) > 0
+        && request.resource.data.get('quantity', 1) <= 20
+        && request.resource.data.total is number
+        && request.resource.data.total >= 0;
+    }
+
+    // Validate stay and contact fields only when an update touches them, so
+    // chat bookkeeping on older bookings missing a field still goes through.
+    function stayOkIfChanged() {
+      return !changed().hasAny(['checkIn', 'checkOut', 'guests', 'quantity', 'total']) || validStay();
+    }
+
+    function contactOkIfChanged() {
+      return !changed().hasAny(guestContactFields()) || validContact();
+    }
+
+    // ---- Chats ----
+
+    function chatPath(chatId) {
+      return /databases/$(database)/documents/hotel_chats/$(chatId);
+    }
+
+    function chatData(chatId) {
+      return get(chatPath(chatId)).data;
+    }
+
+    // Participants are the guest and manager stored on the chat, plus whoever
+    // currently manages the hotel (so a reassigned property's new manager can
+    // pick up the conversation), plus admins.
+    function isChatParticipant(chat) {
+      return isActive() && (
+        chat.get('guestId', '') == request.auth.uid
+        || chat.get('managerId', '') == request.auth.uid
+        || isManager(chat.get('hotelId', ''))
+        || isAdmin()
+      );
+    }
+
+    function isChatMember(chatId) {
+      return exists(chatPath(chatId)) && isChatParticipant(chatData(chatId));
+    }
+
+    // ================================================================
 
     match /system/{document=**} {
       allow read: if true;
@@ -64,7 +219,7 @@ service cloud.firestore {
 
     match /documents/{docId} {
       allow read: if true;
-      allow write: if isGlobalAdmin() || isAdmin() || isMarketing();
+      allow write: if isAdmin() || isMarketing();
     }
 
     match /surveys/{surveyId} {
@@ -75,399 +230,320 @@ service cloud.firestore {
 
     match /presence/{userId} {
       allow read: if true;
-      allow write: if isAuthenticated() && request.auth.uid == userId;
+      allow write: if isActive() && request.auth.uid == userId;
     }
 
     match /ai_directives/{directiveId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow read: if isActive() && (resource.data.get('userId', '') == request.auth.uid || isAdmin());
+      allow create: if isActive()
+                    && request.resource.data.userId == request.auth.uid
+                    && request.resource.data.get('text', '') is string
+                    && request.resource.data.get('text', '').size() <= 280;
+      allow update, delete: if isActive() && (resource.data.get('userId', '') == request.auth.uid || isAdmin());
     }
 
     match /users/{userId} {
-      // Profiles carry email addresses, so they are no longer world-readable.
-      // The admin dashboard lists managers, so admins keep collection access.
-      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin() || isMarketing());
-      // A user must not be able to make themselves an admin, through either
-      // the legacy `role` field or the `roles` list.
-      allow create: if isAuthenticated() && request.auth.uid == userId
-                    && request.resource.data.uid == userId
-                    && (
-                      (request.resource.data.role in ['traveller', 'hotel_manager']
-                       && request.resource.data.get('roles', ['traveller']).hasOnly(['traveller', 'hotel_manager']))
-                      || isGlobalAdmin()
+      // Profiles carry email addresses; admins and marketing list them.
+      allow read: if signedIn() && (request.auth.uid == userId || isAdmin() || isMarketing());
+
+      // A new account may only be a traveller and/or a host.
+      allow create: if isGlobalAdmin() || (
+                      signedIn()
+                      && request.auth.uid == userId
+                      && request.resource.data.uid == userId
+                      && request.resource.data.get('role', 'traveller') in ['traveller', 'hotel_manager']
+                      && request.resource.data.get('roles', ['traveller']).hasOnly(['traveller', 'hotel_manager'])
+                      && request.resource.data.get('accessRevoked', false) == false
+                      && !(request.resource.data.get('status', 'active') in ['suspended', 'revoked'])
                     );
-      // A user owns their own profile, including which of the two
-      // self-assignable roles they hold: someone who joined to book a stay can
-      // turn on hosting, and a host can edit their details. `admin` is the only
-      // thing out of reach — exactly as in `create` above, so the two rules
-      // read the same way.
-      allow update: if isGlobalAdmin()
-                    || (isAdmin() && !('global_admin' in request.resource.data.get('roles', [])))
-                    || (isMarketing() && request.resource.data.get('roles', ['traveller']).hasOnly(['traveller', 'hotel_manager']))
-                    || (
-                      isAuthenticated() && request.auth.uid == userId
-                      && (
-                        (request.resource.data.role in ['traveller', 'hotel_manager']
-                         && request.resource.data.get('roles', ['traveller']).hasOnly(['traveller', 'hotel_manager']))
-                        || isGlobalAdmin()
-                      )
-                    );
-      allow delete: if isGlobalAdmin() || (isAuthenticated() && request.auth.uid == userId);
+
+      allow update: if
+        // Global admins manage everything, including other admins.
+        isGlobalAdmin()
+
+        // Admins may grant up to `admin`, never `global_admin`, and may not
+        // touch a global admin's record.
+        || (isAdmin()
+            && !('global_admin' in resource.data.get('roles', []))
+            && resource.data.get('role', '') != 'global_admin'
+            && request.resource.data.get('roles', []).hasOnly(['traveller', 'hotel_manager', 'marketing', 'admin'])
+            && request.resource.data.get('role', 'traveller') in ['traveller', 'hotel_manager', 'marketing', 'admin'])
+
+        // Marketing may switch hosting on or off for ordinary accounts only.
+        || (isMarketing()
+            && request.auth.uid != userId
+            && resource.data.get('roles', ['traveller']).hasOnly(['traveller', 'hotel_manager'])
+            && resource.data.get('role', 'traveller') in ['traveller', 'hotel_manager']
+            && request.resource.data.get('roles', ['traveller']).hasOnly(['traveller', 'hotel_manager'])
+            && request.resource.data.get('role', 'traveller') in ['traveller', 'hotel_manager']
+            && unchanged('accessRevoked') && unchanged('status'))
+
+        // A user owns their profile and may turn hosting on or off. Any other
+        // role they hold must stay exactly as it is, and they cannot lift
+        // their own suspension.
+        || (isActive()
+            && request.auth.uid == userId
+            && !changed().hasAny(['uid', 'accessRevoked', 'accessRevokedAt', 'status'])
+            && request.resource.data.get('roles', []).toSet()
+                 .difference(['traveller', 'hotel_manager'].toSet())
+               == resource.data.get('roles', []).toSet()
+                 .difference(['traveller', 'hotel_manager'].toSet())
+            && (unchanged('role')
+                || request.resource.data.get('role', '') in ['traveller', 'hotel_manager']));
+
+      allow delete: if isGlobalAdmin() || (isActive() && request.auth.uid == userId);
     }
 
+    // Optimistic-lock counter used by the confirmation transaction. Only the
+    // room's manager or an admin may touch it.
     match /room_locks/{roomId} {
-      allow read, write: if true;
+      allow read, write: if isAdmin() || (
+        exists(/databases/$(database)/documents/room_types/$(roomId))
+        && isManager(get(/databases/$(database)/documents/room_types/$(roomId)).data.get('hotelId', ''))
+      );
     }
 
     match /hotels/{hotelId} {
       allow read: if true;
-      // Was `if true`, which let anyone create listings anonymously.
-      allow create: if isAuthenticated()
+      allow create: if isActive()
                     && request.resource.data.managerId == request.auth.uid
                     && request.resource.data.status == 'pending';
-      // Admins moderate listings (approve/reject), so they need write access
-      // here — the previous rules only allowed the owning manager, which meant
-      // the admin dashboard's approve/reject silently failed.
-      // A manager may edit their listing but not re-approve it, promote it, or
-      // hand it to someone else; only an admin may change `status`,
-      // `featured` or `managerId` or `adminChatEnabled`.
-      // `get(field, default)` because listings imported before moderation
-      // existed have no `status` field, and none has `featured` until an admin
-      // sets one — reading a missing field would fail the rule outright.
-      allow update: if isAdmin() || isMarketing() || (
-                      isManager(hotelId)
-                      && (
-                        request.resource.data.get('managerId', '') == resource.data.get('managerId', '')
-                        || resource.data.get('managerId', '') == ''
-                        || resource.data.get('managerId', '') == 'unassigned'
-                        || request.resource.data.managerId == request.auth.uid
-                      )
-                      && request.resource.data.get('status', 'approved')
-                         == resource.data.get('status', 'approved')
-                      && request.resource.data.get('featured', false)
-                         == resource.data.get('featured', false)
-                      && request.resource.data.get('adminChatEnabled', true)
-                         == resource.data.get('adminChatEnabled', true)
-                    );
+      // Only admins approve, feature, or assign a manager. Marketing may edit
+      // content and feature listings but not reassign them.
+      // `get(field, default)` because older listings lack some fields.
+      allow update: if isAdmin()
+                    || (isMarketing() && unchanged('managerId'))
+                    || (isManager(hotelId)
+                        && unchanged('managerId')
+                        && request.resource.data.get('status', 'approved') == resource.data.get('status', 'approved')
+                        && request.resource.data.get('featured', false) == resource.data.get('featured', false)
+                        && request.resource.data.get('adminChatEnabled', true) == resource.data.get('adminChatEnabled', true));
       allow delete: if isManager(hotelId) || isAdmin();
     }
 
     match /room_types/{roomId} {
       allow read: if true;
-      allow create: if isAuthenticated()
-                    && request.resource.data.hotelId is string
+      allow create: if request.resource.data.hotelId is string
                     && (isManager(request.resource.data.hotelId) || isAdmin() || isMarketing());
-      // A manager may edit their own room, but not reassign it onto a
-      // property they don't manage — `resource.data.hotelId` alone only
-      // proved the room currently belongs to them, not that it still would
-      // after the write, which let a manager rewrite `hotelId` and vandalise
-      // another property's room list.
-      allow update: if isAdmin() || isMarketing() || (
-                      resource.data.hotelId is string
-                      && isManager(resource.data.hotelId)
-                      && request.resource.data.hotelId == resource.data.hotelId
-                    );
+      // A room can never be moved onto another property.
+      allow update: if resource.data.hotelId is string
+                    && request.resource.data.hotelId == resource.data.hotelId
+                    && (isManager(resource.data.hotelId) || isAdmin() || isMarketing());
       allow delete: if resource.data.hotelId is string
                     && (isManager(resource.data.hotelId) || isAdmin() || isMarketing());
     }
 
+    // ---- Bookings ----
+
+    match /bookings/{bookingId} {
+      // Queries must be constrained by guestId == uid, managerId == uid or
+      // hotelId == <a hotel the caller manages>; admins may list everything.
+      allow read: if signedIn() && (
+                    resource.data.get('guestId', '') == request.auth.uid
+                    || resource.data.get('managerId', '') == request.auth.uid
+                    || isManager(resource.data.get('hotelId', ''))
+                    || isAdmin()
+                    || isMarketing()
+                  );
+
+      // Guest checkout works without an account. The client must also write
+      // booking_slots/{bookingId} in the same batch.
+      allow create: if request.resource.data.status == 'pending'
+                    && request.resource.data.hotelId is string
+                    && exists(hotelPath(request.resource.data.hotelId))
+                    && request.resource.data.roomTypeId is string
+                    && validContact()
+                    && validStay()
+                    && request.resource.data.get('specialRequests', '').size() <= 1000
+                    && request.resource.data.createdAt is number
+                    // The booking is routed to the hotel's current manager.
+                    && isCurrentManagerId(request.resource.data.hotelId, request.resource.data.get('managerId', null))
+                    && (request.auth == null
+                        ? request.resource.data.guestId == 'anonymous'
+                        : (isActive() && request.resource.data.guestId == request.auth.uid));
+
+      allow update: if isAdmin()
+        // The guest may cancel, correct their contact details, and keep the
+        // chat bookkeeping current. Nothing else.
+        || (isActive()
+            && resource.data.get('guestId', '') == request.auth.uid
+            && changed().hasOnly(bookingChatFields().concat(guestContactFields()).concat(
+                 ['status', 'cancelledAt', 'cancelledBy', 'guestLastSeenAt', 'guestLastOpenedAt']))
+            && (unchanged('status') || request.resource.data.status == 'cancelled')
+            && contactOkIfChanged())
+        // The property's manager runs the booking. Who, where and which room
+        // never change; managerId may only be re-pointed at the hotel's
+        // current manager. Edited dates and numbers must stay valid.
+        || (isManager(resource.data.get('hotelId', ''))
+            && unchanged('guestId')
+            && unchanged('hotelId')
+            && unchanged('roomTypeId')
+            && unchanged('createdAt')
+            && (unchanged('managerId')
+                || isCurrentManagerId(resource.data.hotelId, request.resource.data.get('managerId', null)))
+            && request.resource.data.get('status', 'pending')
+                 in ['pending', 'confirmed', 'rejected', 'cancelled', 'completed', 'checked_in', 'checked_out', 'no_show']
+            && stayOkIfChanged()
+            && contactOkIfChanged());
+
+      allow delete: if isAdmin() || isManager(resource.data.get('hotelId', ''));
+    }
+
+    // Public, PII-free mirror of each booking's inventory footprint. A slot
+    // can only be written alongside its booking and must match it exactly.
+    match /booking_slots/{bookingId} {
+      allow read: if true;
+      allow create, update: if existsAfter(bookingPath(bookingId))
+                    && request.resource.data.keys().hasOnly(
+                         ['hotelId', 'roomTypeId', 'checkIn', 'checkOut', 'quantity', 'status', 'updatedAt'])
+                    && request.resource.data.hotelId == getAfter(bookingPath(bookingId)).data.hotelId
+                    && request.resource.data.roomTypeId == getAfter(bookingPath(bookingId)).data.roomTypeId
+                    && request.resource.data.checkIn == getAfter(bookingPath(bookingId)).data.checkIn
+                    && request.resource.data.checkOut == getAfter(bookingPath(bookingId)).data.checkOut
+                    && request.resource.data.quantity == getAfter(bookingPath(bookingId)).data.get('quantity', 1)
+                    && request.resource.data.status == getAfter(bookingPath(bookingId)).data.get('status', 'pending');
+      allow delete: if !existsAfter(bookingPath(bookingId))
+                    && (isAdmin() || isManager(resource.data.get('hotelId', '')));
+    }
+
     match /bookings/{bookingId}/messages/{messageId} {
-      allow read: if isAuthenticated() && (
-        bookingDoc(bookingId).guestId == request.auth.uid ||
-        bookingDoc(bookingId).managerId == request.auth.uid ||
-        isAdmin()
-      );
-      allow create: if isAuthenticated() && (
-        request.resource.data.guestId == request.auth.uid ||
-        request.resource.data.managerId == request.auth.uid ||
-        isAdmin()
-      )
-      && request.resource.data.bookingId == bookingId
-      && request.resource.data.guestId == bookingDoc(bookingId).guestId
-      && request.resource.data.hotelId == bookingDoc(bookingId).hotelId
-      && request.resource.data.managerId == bookingDoc(bookingId).managerId
-      && request.resource.data.text is string
-      && request.resource.data.text.size() > 0
-      && request.resource.data.text.size() <= 2000
-      && request.resource.data.senderId == request.auth.uid
-      && request.resource.data.createdAt is number
-      && request.resource.data.senderName is string
-      && request.resource.data.senderName.size() <= 100;
-      
+      allow read: if isBookingParticipant(bookingDoc(bookingId));
+      allow create: if isBookingParticipant(bookingDoc(bookingId))
+                    && request.resource.data.senderId == request.auth.uid
+                    && request.resource.data.bookingId == bookingId
+                    && request.resource.data.guestId == bookingDoc(bookingId).get('guestId', '')
+                    && request.resource.data.hotelId == bookingDoc(bookingId).get('hotelId', '')
+                    && request.resource.data.get('managerId', null) == bookingDoc(bookingId).get('managerId', null)
+                    && request.resource.data.text is string
+                    && request.resource.data.text.size() > 0
+                    && request.resource.data.text.size() <= 4000
+                    && request.resource.data.createdAt is number
+                    && request.resource.data.senderName is string
+                    && request.resource.data.senderName.size() <= 100;
       allow update: if false;
-      allow delete: if isAuthenticated() && (
-        bookingDoc(bookingId).guestId == request.auth.uid ||
-        bookingDoc(bookingId).managerId == request.auth.uid ||
-        isManager(bookingDoc(bookingId).hotelId) ||
-        isAdmin()
-      );
+      // Deleting a chat is per user (chatDeletedBy / chatClearedFor), so
+      // shared history is only removed by an admin.
+      allow delete: if isAdmin();
     }
 
     match /bookings/{bookingId}/presence/{presenceId} {
-      allow read: if isAuthenticated() && (
-        bookingDoc(bookingId).guestId == request.auth.uid ||
-        bookingDoc(bookingId).managerId == request.auth.uid ||
-        isAdmin()
-      );
-      allow create, update: if isAuthenticated() && (
-        bookingDoc(bookingId).guestId == request.auth.uid ||
-        bookingDoc(bookingId).managerId == request.auth.uid ||
-        isAdmin()
-      );
-      allow delete: if isAuthenticated() && (
-        bookingDoc(bookingId).guestId == request.auth.uid ||
-        bookingDoc(bookingId).managerId == request.auth.uid ||
-        isAdmin()
-      );
+      allow read, write: if isBookingParticipant(bookingDoc(bookingId));
     }
 
     match /bookings/{bookingId}/calls/{callId} {
-      allow read, create, update: if isAuthenticated() && (
-        bookingDoc(bookingId).guestId == request.auth.uid ||
-        bookingDoc(bookingId).managerId == request.auth.uid ||
-        isManager(bookingDoc(bookingId).hotelId) ||
-        isAdmin()
-      );
-      allow delete: if isAuthenticated() && (
-        bookingDoc(bookingId).guestId == request.auth.uid ||
-        bookingDoc(bookingId).managerId == request.auth.uid ||
-        isManager(bookingDoc(bookingId).hotelId) ||
-        isAdmin()
-      );
-      
+      allow read, update: if isBookingParticipant(bookingDoc(bookingId));
+      allow create: if isBookingParticipant(bookingDoc(bookingId))
+                    && request.resource.data.callerId == request.auth.uid;
+      allow delete: if isAdmin();
+
       match /{candidateType}/{candidateId} {
-        allow read, create, update, delete: if isAuthenticated() && (
-          bookingDoc(bookingId).guestId == request.auth.uid ||
-          bookingDoc(bookingId).managerId == request.auth.uid ||
-          isManager(bookingDoc(bookingId).hotelId) ||
-          isAdmin()
-        );
+        allow read, create, update, delete: if isBookingParticipant(bookingDoc(bookingId));
       }
     }
 
-    match /bookings/{bookingId} {
-      // NOTE: this remains public because the availability calendar and the
-      // pre-booking availability check both run for signed-out guests, and
-      // Firestore rules cannot restrict a read to a subset of fields. That
-      // means guest contact details are world-readable. See SECURITY.md for
-      // the recommended fix (a derived, non-PII availability collection).
-      allow read: if true;
-
-      // Guest checkout works without an account, so creation stays open — but
-      // the payload is now constrained instead of arbitrary.
-      // Bounds mirror lib/validateBooking. The client enforces them for the
-      // guest's benefit; these enforce them for everyone else's, since anyone
-      // can post to this collection directly.
-      allow create: if request.resource.data.status == 'pending'
-                    && request.resource.data.hotelId is string
-                    && request.resource.data.roomTypeId is string
-                    && request.resource.data.checkIn is string
-                    && request.resource.data.checkOut is string
-                    && request.resource.data.checkIn.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
-                    && request.resource.data.checkOut.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
-                    && request.resource.data.checkIn < request.resource.data.checkOut
-                    && request.resource.data.guestName is string
-                    && request.resource.data.guestName.size() > 1
-                    && request.resource.data.guestName.size() <= 100
-                    && request.resource.data.guestEmail is string
-                    && request.resource.data.guestEmail.matches('^[^@ ]+@[^@ ]+[.][^@ ]+$')
-                    && request.resource.data.guests is int
-                    && request.resource.data.guests > 0
-                    && request.resource.data.guests <= 30
-                    && request.resource.data.quantity is int
-                    && request.resource.data.quantity > 0
-                    && request.resource.data.quantity <= 20
-                    && request.resource.data.total is number
-                    && request.resource.data.total >= 0
-                    && request.resource.data.get('specialRequests', '').size() <= 1000
-                    && request.resource.data.createdAt is number
-                    // An authenticated booker must not be able to file a
-                    // booking under someone else's account.
-                    && (request.auth == null
-                        ? request.resource.data.guestId == 'anonymous'
-                        : request.resource.data.guestId == request.auth.uid);
-
-      // The owning manager confirms, declines or cancels. A guest may only
-      // cancel: the previous rule let a guest write any status, so a booking
-      // could be self-confirmed without the property ever seeing it. Neither
-      // party may rewrite the dates, price or room after the fact.
-      // Immutable fields are compared through `get` with a default so that a
-      // record imported without one of them cannot be locked out of updates.
-      allow update: if isAdmin() || isMarketing() || (
-                      isAuthenticated()
-                      && request.resource.data.hotelId == resource.data.hotelId
-                      && request.resource.data.roomTypeId == resource.data.roomTypeId
-                      && request.resource.data.guestId == resource.data.guestId
-                      && request.resource.data.checkIn == resource.data.checkIn
-                      && request.resource.data.checkOut == resource.data.checkOut
-                      && request.resource.data.get('total', 0) == resource.data.get('total', 0)
-                      && (
-                        isManager(resource.data.hotelId)
-                        || (
-                          resource.data.guestId == request.auth.uid
-                          && (
-                            request.resource.data.status == 'cancelled'
-                            || request.resource.data.status == resource.data.status
-                          )
-                        )
-                      )
-                    );
-
-      // The manager owning the property may delete a booking from their
-      // dashboard. That button existed but the rule did not allow it, so every
-      // manager-side delete failed with a permission error.
-      allow delete: if isAuthenticated() && (
-                      resource.data.guestId == request.auth.uid
-                      || isManager(resource.data.hotelId)
-                      || isAdmin()
-                    );
-    }
+    // ---- Inquiry chats (guest <-> property, id = <hotelId>_<guestUid>) ----
 
     match /hotel_chats/{chatId} {
-      allow read: if isAuthenticated() && (
-        resource.data.guestId == request.auth.uid ||
-        resource.data.managerId == request.auth.uid ||
-        isManager(resource.data.hotelId) ||
-        isAdmin()
-      );
-      allow create: if isAuthenticated() && (
-        request.resource.data.guestId == request.auth.uid ||
-        request.resource.data.managerId == request.auth.uid ||
-        isManager(request.resource.data.hotelId) ||
-        isAdmin()
-      )
-      && request.resource.data.hotelId is string
-      && request.resource.data.managerId is string
-      && request.resource.data.guestId is string;
-      allow update: if isAuthenticated() && (
-        resource.data.guestId == request.auth.uid ||
-        resource.data.managerId == request.auth.uid ||
-        isManager(resource.data.hotelId) ||
-        isAdmin()
-      );
-      allow delete: if isAuthenticated() && (
-        resource.data.managerId == request.auth.uid ||
-        resource.data.guestId == request.auth.uid ||
-        (resource.data.hotelId is string && isManager(resource.data.hotelId)) ||
-        chatId.matches(".*_" + request.auth.uid) ||
-        chatId.matches(request.auth.uid + "_.*") ||
-        isAdmin()
-      );
+      // Queries must filter on guestId == uid, managerId == uid or hotelId.
+      allow read: if isChatParticipant(resource.data);
+
+      allow create: if isActive()
+                    && request.resource.data.hotelId is string
+                    && request.resource.data.guestId is string
+                    && chatId == request.resource.data.hotelId + '_' + request.resource.data.guestId
+                    && isCurrentManagerId(request.resource.data.hotelId, request.resource.data.get('managerId', null))
+                    && (request.resource.data.guestId == request.auth.uid
+                        || isManager(request.resource.data.hotelId)
+                        || isAdmin());
+
+      // Who the chat is between never changes, except that managerId may be
+      // re-pointed at the hotel's current manager after a reassignment.
+      allow update: if isChatParticipant(resource.data)
+                    && unchanged('guestId')
+                    && unchanged('hotelId')
+                    && (unchanged('managerId')
+                        || isCurrentManagerId(resource.data.hotelId, request.resource.data.get('managerId', null)));
+
+      allow delete: if isAdmin();
     }
+
     match /hotel_chats/{chatId}/messages/{messageId} {
-      allow read: if isAuthenticated() && (
-        (exists(/databases/$(database)/documents/hotel_chats/$(chatId)) && (
-          get(/databases/$(database)/documents/hotel_chats/$(chatId)).data.guestId == request.auth.uid ||
-          get(/databases/$(database)/documents/hotel_chats/$(chatId)).data.managerId == request.auth.uid
-        )) ||
-        chatId.matches(".*_" + request.auth.uid) ||
-        chatId.matches(request.auth.uid + "_.*") ||
-        isAdmin()
-      );
-      allow create: if isAuthenticated() && (
-        request.resource.data.senderId == request.auth.uid
-      )
-      && request.resource.data.chatId == chatId
-      && request.resource.data.text is string
-      && request.resource.data.text.size() > 0
-      && request.resource.data.text.size() <= 2000
-      && request.resource.data.createdAt is number
-      && request.resource.data.senderName is string
-      && request.resource.data.senderName.size() <= 100;
-      allow update: if isAuthenticated() && (
-        resource.data.senderId == request.auth.uid ||
-        isAdmin()
-      );
-      allow delete: if isAuthenticated() && (
-        resource.data.senderId == request.auth.uid ||
-        resource.data.get('managerId', '') == request.auth.uid ||
-        resource.data.get('guestId', '') == request.auth.uid ||
-        (resource.data.get('hotelId', '') != '' && isManager(resource.data.hotelId)) ||
-        chatId.matches(".*_" + request.auth.uid) ||
-        chatId.matches(request.auth.uid + "_.*") ||
-        (exists(/databases/$(database)/documents/hotel_chats/$(chatId)) && (
-          get(/databases/$(database)/documents/hotel_chats/$(chatId)).data.guestId == request.auth.uid ||
-          get(/databases/$(database)/documents/hotel_chats/$(chatId)).data.managerId == request.auth.uid ||
-          isManager(get(/databases/$(database)/documents/hotel_chats/$(chatId)).data.hotelId)
-        )) ||
-        isAdmin()
-      );
+      allow read: if isChatMember(chatId);
+      // The sender must be one side of the conversation. The very first
+      // message may arrive before the chat document exists, in which case the
+      // sender must be the guest the chat id names.
+      allow create: if isActive()
+                    && request.resource.data.senderId == request.auth.uid
+                    && request.resource.data.chatId == chatId
+                    && request.resource.data.text is string
+                    && request.resource.data.text.size() > 0
+                    && request.resource.data.text.size() <= 4000
+                    && request.resource.data.createdAt is number
+                    && request.resource.data.senderName is string
+                    && request.resource.data.senderName.size() <= 100
+                    && (exists(chatPath(chatId))
+                        ? (chatData(chatId).get('guestId', '') == request.auth.uid
+                           || chatData(chatId).get('managerId', '') == request.auth.uid
+                           || isManager(chatData(chatId).get('hotelId', ''))
+                           || isAdmin())
+                        : (request.resource.data.get('guestId', '') == request.auth.uid
+                           && chatId == request.resource.data.get('hotelId', '') + '_' + request.auth.uid));
+      allow update: if false;
+      allow delete: if isAdmin();
     }
 
     match /hotel_chats/{chatId}/calls/{callId} {
-      allow read: if isAuthenticated() && (
-        (exists(/databases/$(database)/documents/hotel_chats/$(chatId)) && (
-          get(/databases/$(database)/documents/hotel_chats/$(chatId)).data.guestId == request.auth.uid ||
-          get(/databases/$(database)/documents/hotel_chats/$(chatId)).data.managerId == request.auth.uid
-        )) ||
-        chatId.matches(".*_" + request.auth.uid) ||
-        chatId.matches(request.auth.uid + "_.*") ||
-        isAdmin()
-      );
-      allow create, update: if isAuthenticated() && (
-        (exists(/databases/$(database)/documents/hotel_chats/$(chatId)) && (
-          get(/databases/$(database)/documents/hotel_chats/$(chatId)).data.guestId == request.auth.uid ||
-          get(/databases/$(database)/documents/hotel_chats/$(chatId)).data.managerId == request.auth.uid
-        )) ||
-        chatId.matches(".*_" + request.auth.uid) ||
-        chatId.matches(request.auth.uid + "_.*") ||
-        isAdmin()
-      );
-      allow delete: if isAuthenticated() && (
-        (exists(/databases/$(database)/documents/hotel_chats/$(chatId)) && (
-          get(/databases/$(database)/documents/hotel_chats/$(chatId)).data.guestId == request.auth.uid ||
-          get(/databases/$(database)/documents/hotel_chats/$(chatId)).data.managerId == request.auth.uid ||
-          isManager(get(/databases/$(database)/documents/hotel_chats/$(chatId)).data.hotelId)
-        )) ||
-        chatId.matches(".*_" + request.auth.uid) ||
-        chatId.matches(request.auth.uid + "_.*") ||
-        isAdmin()
-      );
-      
+      allow read, update: if isChatMember(chatId);
+      allow create: if isChatMember(chatId) && request.resource.data.callerId == request.auth.uid;
+      allow delete: if isAdmin();
+
       match /{candidateType}/{candidateId} {
-        allow read, create, update, delete: if isAuthenticated() && (
-          (exists(/databases/$(database)/documents/hotel_chats/$(chatId)) && (
-            get(/databases/$(database)/documents/hotel_chats/$(chatId)).data.guestId == request.auth.uid ||
-            get(/databases/$(database)/documents/hotel_chats/$(chatId)).data.managerId == request.auth.uid
-          )) ||
-          chatId.matches(".*_" + request.auth.uid) ||
-          chatId.matches(request.auth.uid + "_.*") ||
-          isAdmin()
-        );
+        allow read, create, update, delete: if isChatMember(chatId);
       }
     }
 
-    
+    // ---- Everything else ----
 
     match /conference_rooms/{roomId} {
       allow read: if true;
-      allow create: if isAuthenticated() && (isManager(request.resource.data.hotelId) || isAdmin());
-      allow update: if isAuthenticated() && (isManager(resource.data.hotelId) || isAdmin());
-      allow delete: if isAuthenticated() && (isManager(resource.data.hotelId) || isAdmin());
-    }
-    
-    match /broadcasts/{broadcastId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && (isManager(request.resource.data.hotelId) || isAdmin());
-      allow update: if isAuthenticated() && (isManager(resource.data.hotelId) || isAdmin());
-      allow delete: if isAuthenticated() && (isManager(resource.data.hotelId) || isAdmin());
+      allow create: if isManager(request.resource.data.hotelId) || isAdmin();
+      allow update, delete: if isManager(resource.data.hotelId) || isAdmin();
     }
 
+    match /broadcasts/{broadcastId} {
+      allow read: if signedIn();
+      allow create: if isManager(request.resource.data.hotelId) || isAdmin();
+      allow update, delete: if isManager(resource.data.hotelId) || isAdmin();
+    }
+
+    // Client activity log (src/lib/logger.ts). Anyone may append, but only in
+    // the logger's shape, only as themselves, and within size limits.
     match /system_logs/{logId} {
       allow read: if isAdmin();
-      allow create: if true;
+      allow create: if request.resource.data.keys().hasOnly(
+                         ['timestamp', 'type', 'category', 'message', 'activity', 'status', 'target',
+                          'targetType', 'details', 'userId', 'userName', 'userEmail', 'userRole',
+                          'sessionId', 'userAgent', 'ip', 'location', 'device'])
+                    && request.resource.data.timestamp is number
+                    && request.resource.data.type is string
+                    && request.resource.data.type.size() <= 40
+                    && request.resource.data.message is string
+                    && request.resource.data.message.size() <= 2000
+                    && (request.resource.data.get('userAgent', null) == null
+                        || (request.resource.data.userAgent is string
+                            && request.resource.data.userAgent.size() <= 500))
+                    && (request.resource.data.get('userId', null) == null
+                        || (signedIn() && request.resource.data.userId == request.auth.uid));
+      allow update: if false;
       allow delete: if isAdmin();
     }
 
     match /reviews/{reviewId} {
       allow read: if true;
 
-      // A review must come from the signed-in guest's own booking, at the
-      // property being reviewed. Whether the stay is actually finished is
-      // checked in the client: rules have no clock to compare `checkOut`
-      // against, so this enforces ownership, and the UI enforces timing.
-      allow create: if isAuthenticated()
+      // A review must come from the signed-in guest's own confirmed booking,
+      // at the property being reviewed. Timing is enforced in the client.
+      allow create: if isActive()
                     && request.resource.data.guestId == request.auth.uid
                     && request.resource.data.hotelId is string
                     && request.resource.data.bookingId is string
@@ -478,23 +554,21 @@ service cloud.firestore {
                     && request.resource.data.text.size() > 0
                     && request.resource.data.text.size() <= 2000
                     && request.resource.data.createdAt is number
-                    && exists(/databases/$(database)/documents/bookings/$(request.resource.data.bookingId))
+                    && exists(bookingPath(request.resource.data.bookingId))
                     && bookingDoc(request.resource.data.bookingId).guestId == request.auth.uid
                     && bookingDoc(request.resource.data.bookingId).hotelId == request.resource.data.hotelId
                     && bookingDoc(request.resource.data.bookingId).status == 'confirmed';
 
-      // The author may correct their own review; only the rating and text.
-      allow update: if isAuthenticated()
+      allow update: if isActive()
                     && resource.data.guestId == request.auth.uid
-                    && request.resource.data.guestId == resource.data.guestId
-                    && request.resource.data.hotelId == resource.data.hotelId
-                    && request.resource.data.bookingId == resource.data.bookingId
+                    && unchanged('guestId')
+                    && unchanged('hotelId')
+                    && unchanged('bookingId')
                     && request.resource.data.rating is int
                     && request.resource.data.rating >= 1
                     && request.resource.data.rating <= 5;
 
-      allow delete: if isAuthenticated() &&
-                    (resource.data.guestId == request.auth.uid || isAdmin());
+      allow delete: if isActive() && (resource.data.guestId == request.auth.uid || isAdmin());
     }
   }
 }

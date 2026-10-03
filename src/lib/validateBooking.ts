@@ -60,8 +60,12 @@ export function validateBooking(input: BookingInput, room: RoomType | null): Fie
     errors.push({ field: 'guestName', message: `Please keep the name under ${MAX_NAME_LENGTH} characters.` });
   }
 
+  // Required: the property needs a way to confirm, and the database rejects a
+  // booking without one.
   const email = (input.guestEmail ?? '').trim();
-  if (email && !EMAIL_PATTERN.test(email)) {
+  if (!email) {
+    errors.push({ field: 'guestEmail', message: 'Please give an email address so the property can confirm your stay.' });
+  } else if (!EMAIL_PATTERN.test(email)) {
     errors.push({ field: 'guestEmail', message: 'That does not look like a valid email address.' });
   }
 

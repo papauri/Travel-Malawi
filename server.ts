@@ -1,53 +1,111 @@
 import 'dotenv/config';
 import express from 'express';
+import type { Response } from 'express';
 import path from 'path';
 import multer from 'multer';
 import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
-import { 
-  getPublicAIStatus, 
-  getAdminAIConfig, 
-  loadAIConfig, 
-  saveAIConfig, 
-  AIProviderId, 
-  getEffectiveApiKey, 
+import {
+  getPublicAIStatus,
+  getAdminAIConfig,
+  loadAIConfig,
+  saveAIConfig,
+  AIProviderId,
+  getEffectiveApiKey,
   fetchLiveGeminiModels,
   fetchLiveProviderModels,
-  fetchAllLiveProviderModels 
+  fetchAllLiveProviderModels
 } from './server/aiConfig';
-import { 
-  executeAIGeneration, 
-  executeOperationsAssistantChat, 
-  testProviderConnection, 
-  generateTripInsights, 
-  executeTripConciergeChat 
+import {
+  executeAIGeneration,
+  executeOperationsAssistantChat,
+  testProviderConnection,
+  generateTripInsights,
+  executeTripConciergeChat
 } from './server/aiService';
 import { sendOfflineNotification } from './server/notifications';
-import { 
-  generateAutoReminders, 
-  createManualReminder, 
-  getRemindersForBooking, 
+import {
+  generateAutoReminders,
+  createManualReminder,
+  getReminder,
+  getRemindersForBooking,
   getRemindersForHotel,
-  deleteReminder, 
-  checkAndFireReminders, 
+  deleteReminder,
+  cancelRemindersForBooking,
+  checkAndFireReminders,
   sendReminderEmailNow,
+  sendReminderWhatsAppNow,
   sendTestTemplateEmail,
   getAllPendingReminders
 } from './server/reminders';
 import { getAdminDocsList, getAdminDocContent, saveAdminDoc, resetAdminDoc } from './server/docUtils';
 import { getAdminEmailConfig, saveEmailConfig, testSMTPConnection, sendSystemEmail } from './server/emailConfig';
-import { 
-  getAdminWhatsAppConfig, 
-  getPublicWhatsAppStatus, 
-  saveWhatsAppConfig, 
-  testWhatsAppConnection, 
-  sendWhatsAppMessage 
+import {
+  getAdminWhatsAppConfig,
+  getPublicWhatsAppStatus,
+  saveWhatsAppConfig,
+  testWhatsAppConnection,
+  sendWhatsAppMessage
 } from './server/whatsappConfig';
-import { sendReminderWhatsAppNow } from './server/reminders';
+import {
+  optionalAuth,
+  requireAuth,
+  requireRole,
+  canManageHotel,
+  isAdminUser,
+  aiRoleFor,
+  readDoc,
+  queryDocs,
+  hotelEmails,
+  isSafeId,
+  rateLimit,
+  clientIp,
+  escapeHtml,
+  cleanText,
+  samePhone,
+  AuthUser,
+} from './server/auth';
+
+/** Logs the real error and returns a generic message to the client. */
+function sendError(res: Response, err: unknown, publicMessage: string, status = 500) {
+  console.error(`[API] ${publicMessage}:`, err);
+  res.status(status).json({ error: publicMessage });
+}
+
+/** AI failures: rate limits become 429 with a retry hint, everything else is generic. */
+function sendAIError(res: Response, err: any, publicMessage: string) {
+  if (err?.status === 429) {
+    const retryAfter = Number(err.retryAfterSec) > 0 ? Math.ceil(Number(err.retryAfterSec)) : 30;
+    res.setHeader('Retry-After', String(retryAfter));
+    console.warn('[API] AI rate limited:', err?.message);
+    res.status(429).json({ error: 'Ulendo is handling a lot of requests right now. Please try again shortly.', retryAfter });
+    return;
+  }
+  if (err?.status === 504) {
+    console.warn('[API] AI request timed out:', err?.message);
+    res.status(504).json({ error: 'Ulendo took too long to respond. Please try again.' });
+    return;
+  }
+  sendError(res, err, publicMessage);
+}
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const lower = (v: unknown) => (typeof v === 'string' ? v.trim().toLowerCase() : '');
 
 async function startServer() {
   const app = express();
   const PORT = 3000;
+
+  // Behind Cloud Run's front end: take the client address from the proxy hop.
+  app.set('trust proxy', 1);
+  app.disable('x-powered-by');
+
+  app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    next();
+  });
 
   // Setup storage folders
   const UPLOADS_DIR = path.join(process.cwd(), 'images');
@@ -56,30 +114,75 @@ async function startServer() {
   if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
   if (!fs.existsSync(BACKUPS_DIR)) fs.mkdirSync(BACKUPS_DIR, { recursive: true });
 
-  // Serve static images directly from the local folder
-  app.use('/images', express.static(UPLOADS_DIR));
+  const IMAGE_TYPES: Record<string, string> = {
+    'image/jpeg': 'jpg',
+    'image/png': 'png',
+    'image/webp': 'webp',
+    'image/gif': 'gif',
+  };
+  const IMAGE_EXT_RE = /\.(jpe?g|png|webp|gif)$/i;
+  const FOLDER_RE = /^[a-z0-9_-]+(\/[a-z0-9_-]+)*$/;
+
+  /** Resolves a path under base, or null if it would escape it. */
+  const safeJoin = (base: string, ...parts: string[]): string | null => {
+    const resolved = path.resolve(base, ...parts);
+    return resolved === base || resolved.startsWith(base + path.sep) ? resolved : null;
+  };
+
+  // Serve uploaded images only. Anything that is not an image file is refused,
+  // so an upload can never be served back as a page from this origin.
+  app.use('/images', (req, res, next) => {
+    if (!IMAGE_EXT_RE.test(req.path)) {
+      res.status(404).send('Not Found');
+      return;
+    }
+    res.setHeader('Content-Security-Policy', "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'");
+    next();
+  }, express.static(UPLOADS_DIR, { dotfiles: 'deny', index: false }));
 
   // Multer config for file upload
   const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-      const folder = req.body.folder || 'uploads';
-      const targetDir = path.join(UPLOADS_DIR, folder);
+      const folder = String(req.body?.folder || 'uploads');
+      const targetDir = FOLDER_RE.test(folder) ? safeJoin(UPLOADS_DIR, folder) : null;
+      if (!targetDir) {
+        cb(new Error('INVALID_FOLDER'), '');
+        return;
+      }
       if (!fs.existsSync(targetDir)) {
         fs.mkdirSync(targetDir, { recursive: true });
       }
       cb(null, targetDir);
     },
     filename: (req, file, cb) => {
-      const ext = file.mimetype.split('/')[1] || 'jpg';
+      const ext = IMAGE_TYPES[file.mimetype] || 'jpg';
       const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1e9)}.${ext}`;
       cb(null, uniqueName);
     }
   });
 
-  const upload = multer({ storage, limits: { fileSize: 8 * 1024 * 1024 } }); // 8MB limit
+  const upload = multer({
+    storage,
+    limits: { fileSize: 8 * 1024 * 1024 }, // 8MB limit
+    fileFilter: (req, file, cb) => cb(null, Boolean(IMAGE_TYPES[file.mimetype])),
+  });
 
   // Parse JSON bodies for API routes
-  app.use(express.json());
+  app.use(express.json({ limit: '200kb' }));
+
+  // Rate limiters (in-memory, per instance)
+  const aiLimiter = rateLimit({ name: 'ai', windowMs: 60_000, max: 12 });
+  const uploadLimiter = rateLimit({ name: 'upload', windowMs: 60_000, max: 30 });
+  const notifyAnonLimiter = rateLimit({ name: 'notify-anon', windowMs: 10 * 60_000, max: 5 });
+  const notifyUserLimiter = rateLimit({ name: 'notify-user', windowMs: 10 * 60_000, max: 40 });
+  const surveyLimiter = rateLimit({ name: 'survey', windowMs: 60 * 60_000, max: 10 });
+  const resetIpLimiter = rateLimit({ name: 'reset-ip', windowMs: 60 * 60_000, max: 5 });
+  const resetEmailLimiter = rateLimit({
+    name: 'reset-email',
+    windowMs: 15 * 60_000,
+    max: 1,
+    key: req => `email:${lower(req.body?.email)}`,
+  });
 
   // Health check routes for Cloud Run / AI Studio container probes
   app.get('/api/health', (req, res) => {
@@ -93,11 +196,7 @@ async function startServer() {
   // Client telemetry: IP address & location resolution for Intune-style audit logs
   app.get('/api/client-telemetry', async (req, res) => {
     try {
-      const forwarded = req.headers['x-forwarded-for'];
-      let ip = (typeof forwarded === 'string' ? forwarded.split(',')[0] : (req.socket.remoteAddress || '')).trim();
-      if (ip.startsWith('::ffff:')) {
-        ip = ip.substring(7);
-      }
+      const ip = clientIp(req);
 
       let geo: {
         city?: string;
@@ -110,30 +209,16 @@ async function startServer() {
 
       const isPrivateOrLoopback =
         !ip ||
+        ip === 'unknown' ||
         ip === '127.0.0.1' ||
         ip === '::1' ||
         ip.startsWith('10.') ||
         ip.startsWith('192.168.') ||
-        ip.startsWith('172.16.') ||
-        ip.startsWith('172.17.') ||
-        ip.startsWith('172.18.') ||
-        ip.startsWith('172.19.') ||
-        ip.startsWith('172.20.') ||
-        ip.startsWith('172.21.') ||
-        ip.startsWith('172.22.') ||
-        ip.startsWith('172.23.') ||
-        ip.startsWith('172.24.') ||
-        ip.startsWith('172.25.') ||
-        ip.startsWith('172.26.') ||
-        ip.startsWith('172.27.') ||
-        ip.startsWith('172.28.') ||
-        ip.startsWith('172.29.') ||
-        ip.startsWith('172.30.') ||
-        ip.startsWith('172.31.');
+        /^172\.(1[6-9]|2\d|3[01])\./.test(ip);
 
       if (!isPrivateOrLoopback) {
         try {
-          const geoRes = await fetch(`https://ipapi.co/${ip}/json/`, {
+          const geoRes = await fetch(`https://ipapi.co/${encodeURIComponent(ip)}/json/`, {
             headers: { 'User-Agent': 'TravelMalawi-Audit/1.0' },
             signal: AbortSignal.timeout(2000),
           });
@@ -169,125 +254,211 @@ async function startServer() {
     }
   });
 
-  // API route for upload
-  app.post('/api/upload', upload.single('image'), (req, res) => {
-    if (!req.file) {
-      return res.status(400).json({ error: 'No file uploaded' });
-    }
-    const folder = req.body.folder || 'uploads';
-    // Return relative URL so frontend can render it via static middleware
-    const imageUrl = `/images/${folder}/${req.file.filename}`;
-    res.json({ url: imageUrl });
-  });
-
-  // API route to archive (delete) a stay's images
-  app.post('/api/hotels/:id/archive-images', (req, res) => {
-    const { id } = req.params;
-    const hotelDir = path.join(UPLOADS_DIR, 'hotels', id);
-    const backupDir = path.join(BACKUPS_DIR, 'hotels', id);
-
-    if (fs.existsSync(hotelDir)) {
-      if (!fs.existsSync(path.dirname(backupDir))) {
-        fs.mkdirSync(path.dirname(backupDir), { recursive: true });
+  // API route for upload (signed-in users, images only, into an allowlisted folder)
+  app.post('/api/upload', requireAuth, uploadLimiter, (req, res) => {
+    upload.single('image')(req, res, (err: any) => {
+      if (err) {
+        const message = err?.message === 'INVALID_FOLDER'
+          ? 'Invalid upload folder.'
+          : err?.code === 'LIMIT_FILE_SIZE'
+          ? 'Image is larger than 8 MB.'
+          : 'Upload failed.';
+        if (!['INVALID_FOLDER'].includes(err?.message) && err?.code !== 'LIMIT_FILE_SIZE') {
+          console.error('[API] Upload error:', err);
+        }
+        return res.status(400).json({ error: message });
       }
-      // Move the folder
-      fs.renameSync(hotelDir, backupDir);
-    }
-    res.json({ success: true });
+      if (!req.file) {
+        return res.status(400).json({ error: 'No image uploaded. Only JPEG, PNG, WebP and GIF files are accepted.' });
+      }
+      const relative = path.relative(UPLOADS_DIR, req.file.path).split(path.sep).join('/');
+      // Return relative URL so frontend can render it via static middleware
+      res.json({ url: `/images/${relative}` });
+    });
   });
 
-  // API route to send offline notifications
-  app.post('/api/notify', async (req, res) => {
+  // API route to archive (delete) a stay's images — hotel manager or admin only
+  app.post('/api/hotels/:id/archive-images', requireAuth, async (req, res) => {
     try {
-      const { email, subject, message } = req.body;
-      if (!email || !subject || !message) {
-        return res.status(400).json({ error: 'Missing required fields' });
+      const id = String(req.params.id);
+      if (!isSafeId(id)) {
+        return res.status(400).json({ error: 'Invalid property id.' });
       }
-      
-      await sendOfflineNotification(email, subject, message);
+      if (!(await canManageHotel(req.authUser, id))) {
+        return res.status(403).json({ error: 'You do not have permission to do this.' });
+      }
+      const hotelsBase = path.join(UPLOADS_DIR, 'hotels');
+      const backupsBase = path.join(BACKUPS_DIR, 'hotels');
+      const hotelDir = safeJoin(hotelsBase, id);
+      const backupDir = safeJoin(backupsBase, id);
+      if (!hotelDir || !backupDir) {
+        return res.status(400).json({ error: 'Invalid property id.' });
+      }
+
+      if (fs.existsSync(hotelDir)) {
+        if (!fs.existsSync(backupsBase)) {
+          fs.mkdirSync(backupsBase, { recursive: true });
+        }
+        const target = fs.existsSync(backupDir) ? `${backupDir}-${Date.now()}` : backupDir;
+        fs.renameSync(hotelDir, target);
+      }
       res.json({ success: true });
-    } catch (err: any) {
-      console.error('Notification Error:', err);
-      res.status(500).json({ error: 'Failed to send notification' });
+    } catch (err) {
+      sendError(res, err, 'Failed to archive images');
     }
   });
+
+  // ----------------------------------------------------
+  // OFFLINE EMAIL NOTIFICATIONS
+  // ----------------------------------------------------
+
+  /**
+   * Sends a notification email. The recipient must be tied to the request:
+   * - admins may notify anyone;
+   * - with `bookingId`: the booking's guest or its hotel's contact addresses,
+   *   and a signed-in caller must be that guest or the hotel's manager;
+   * - with `hotelId` (or nothing): only that hotel's contact addresses, which is
+   *   how signed-out guests notify a property about a new booking request.
+   */
+  app.post(
+    '/api/notify',
+    optionalAuth,
+    (req, res, next) => (req.authUser ? notifyUserLimiter : notifyAnonLimiter)(req, res, next),
+    async (req, res) => {
+      try {
+        const email = lower(cleanText(req.body?.email, 254, true));
+        const subject = cleanText(req.body?.subject, 200, true);
+        const message = cleanText(req.body?.message, 5000);
+        const { hotelId, bookingId } = req.body || {};
+        if (!email.includes('@') || !subject || !message) {
+          return res.status(400).json({ error: 'Missing required fields' });
+        }
+
+        const user = req.authUser;
+        let allowed = isAdminUser(user);
+
+        if (!allowed && isSafeId(bookingId)) {
+          const booking = await readDoc('bookings', bookingId, user?.token);
+          if (booking) {
+            const hotel = isSafeId(booking.hotelId) ? await readDoc('hotels', booking.hotelId, user?.token) : null;
+            const managerAddresses = hotelEmails(hotel);
+            if (user) {
+              const isParty = booking.guestId === user.uid || (await canManageHotel(user, booking.hotelId));
+              allowed = isParty && (managerAddresses.includes(email) || lower(booking.guestEmail) === email);
+            } else {
+              allowed = managerAddresses.includes(email);
+            }
+          }
+        }
+
+        if (!allowed && isSafeId(hotelId)) {
+          allowed = hotelEmails(await readDoc('hotels', hotelId, user?.token)).includes(email);
+        }
+
+        if (!allowed && !bookingId && !hotelId) {
+          // Legacy callers send only the address: allow it when it is a
+          // registered property's manager address.
+          const raw = cleanText(req.body?.email, 254, true);
+          const matches = [
+            ...(await queryDocs('hotels', 'managerEmail', raw, user?.token, 1)),
+            ...(raw !== email ? await queryDocs('hotels', 'managerEmail', email, user?.token, 1) : []),
+          ];
+          allowed = matches.length > 0;
+        }
+
+        if (!allowed) {
+          return res.status(403).json({ error: 'This notification recipient is not allowed.' });
+        }
+
+        const result = await sendOfflineNotification(email, subject, message);
+        res.json({ success: true, emailSent: Boolean(result?.success) });
+      } catch (err) {
+        sendError(res, err, 'Failed to send notification');
+      }
+    }
+  );
+
   // ----------------------------------------------------
   // AI ASSISTANT API ROUTES (Server-side & Secure)
   // ----------------------------------------------------
 
-  // Public/Manager status check (returns whether AI is enabled and configured, NO secret keys)
+  /** Replaces any role the client claims with the verified one. */
+  const withVerifiedRole = (body: any, user: AuthUser) => ({
+    ...(body && typeof body === 'object' ? body : {}),
+    userRole: aiRoleFor(user),
+    userId: user.uid,
+  });
+
+  // Public status check (returns whether AI is enabled and configured, NO secret keys)
   app.get('/api/ai/status', (req, res) => {
     try {
       const status = getPublicAIStatus();
       res.json(status);
-    } catch (err: any) {
-      res.status(500).json({ error: err?.message || 'Failed to check AI status' });
+    } catch (err) {
+      sendError(res, err, 'Failed to check Ulendo status');
     }
   });
 
   // AI Content Generation endpoint (used by managers during onboarding & management)
-  app.post('/api/ai/generate', async (req, res) => {
+  app.post('/api/ai/generate', requireAuth, aiLimiter, async (req, res) => {
     try {
       const status = getPublicAIStatus();
       if (!status.enabled) {
-        return res.status(403).json({ error: 'AI Assistant is currently disabled by platform administration.' });
+        return res.status(403).json({ error: 'Ulendo is currently switched off by the platform team.' });
       }
       if (!status.available) {
-        return res.status(503).json({ error: 'AI Assistant is not yet configured with an active provider key.' });
+        return res.status(503).json({ error: 'Ulendo is not set up yet. An administrator needs to add an AI provider key.' });
       }
 
-      const result = await executeAIGeneration(req.body);
+      const result = await executeAIGeneration(withVerifiedRole(req.body, req.authUser!));
       res.json(result);
     } catch (err: any) {
-      console.error('AI Generation Error:', err);
-      res.status(500).json({ error: err?.message || 'AI generation failed' });
+      sendAIError(res, err, 'Ulendo could not complete that request. Please try again.');
     }
   });
 
-  // Dedicated Executive Operations Copilot endpoint for Admins & Property Managers
-  app.post('/api/ai/operations-chat', async (req, res) => {
+  // Operations assistant for admins & property managers
+  app.post('/api/ai/operations-chat', requireRole('hotel_manager', 'admin', 'marketing'), aiLimiter, async (req, res) => {
     try {
       const status = getPublicAIStatus();
       if (!status.enabled) {
-        return res.status(403).json({ error: 'AI Copilot is currently disabled by platform administration.' });
+        return res.status(403).json({ error: 'Ulendo is currently switched off by the platform team.' });
       }
       if (!status.available) {
-        return res.status(503).json({ error: 'AI Copilot is not yet configured with an active provider key.' });
+        return res.status(503).json({ error: 'Ulendo is not set up yet. An administrator needs to add an AI provider key.' });
       }
 
-      const result = await executeOperationsAssistantChat(req.body);
+      const result = await executeOperationsAssistantChat(withVerifiedRole(req.body, req.authUser!));
       res.json(result);
     } catch (err: any) {
-      console.error('AI Operations Chat Error:', err);
-      res.status(500).json({ error: err?.message || 'Failed to process operations assistant query' });
+      sendAIError(res, err, 'Ulendo could not answer that right now. Please try again.');
     }
   });
 
   // AI Trip Planner Insights endpoint for travellers
-  app.post('/api/ai/trip-insights', async (req, res) => {
+  app.post('/api/ai/trip-insights', requireAuth, aiLimiter, async (req, res) => {
     try {
-      const { stops, travelStyle, durationDays, customPreferences } = req.body;
+      const { stops, travelStyle, durationDays, customPreferences } = req.body || {};
       if (!Array.isArray(stops) || stops.length === 0) {
         return res.status(400).json({ error: 'At least one itinerary stop is required.' });
       }
 
       const insights = await generateTripInsights({
-        stops,
+        stops: stops.slice(0, 20),
         travelStyle,
         durationDays,
-        customPreferences,
+        customPreferences: typeof customPreferences === 'string' ? customPreferences.slice(0, 1000) : customPreferences,
       });
       res.json(insights);
     } catch (err: any) {
-      console.error('AI Trip Insights Error:', err);
-      res.status(500).json({ error: err?.message || 'Failed to generate journey insights' });
+      sendAIError(res, err, 'Ulendo could not prepare journey insights right now.');
     }
   });
 
   // AI Trip Planner Concierge Chat endpoint for travellers asking questions about their route
-  app.post('/api/ai/trip-chat', async (req, res) => {
+  app.post('/api/ai/trip-chat', requireAuth, aiLimiter, async (req, res) => {
     try {
-      const { stops, message, history } = req.body;
+      const { stops, message, history } = req.body || {};
       if (!message || typeof message !== 'string') {
         return res.status(400).json({ error: 'Message is required.' });
       }
@@ -296,32 +467,33 @@ async function startServer() {
       }
 
       const response = await executeTripConciergeChat({
-        stops,
-        message,
-        history,
+        stops: stops.slice(0, 20),
+        message: message.slice(0, 2000),
+        history: Array.isArray(history) ? history.slice(-20) : history,
       });
       res.json(response);
     } catch (err: any) {
-      console.error('AI Trip Chat Error:', err);
-      res.status(500).json({ error: err?.message || 'Failed to process trip question' });
+      sendAIError(res, err, 'Ulendo could not answer that right now.');
     }
   });
 
+  const adminOnly = requireRole('admin');
+
   // Global Admin AI Configuration (GET: view status & masked keys)
-  app.get('/api/admin/ai-config', (req, res) => {
+  app.get('/api/admin/ai-config', adminOnly, (req, res) => {
     try {
       const config = getAdminAIConfig();
       res.json(config);
-    } catch (err: any) {
-      res.status(500).json({ error: err?.message || 'Failed to get AI config' });
+    } catch (err) {
+      sendError(res, err, 'Failed to get AI config');
     }
   });
 
   // Global Admin AI Configuration (POST: update kill switch, active provider, keys, and models)
-  app.post('/api/admin/ai-config', (req, res) => {
+  app.post('/api/admin/ai-config', adminOnly, (req, res) => {
     try {
       const current = loadAIConfig();
-      const { enabled, activeProvider, providerUpdates } = req.body;
+      const { enabled, activeProvider, providerUpdates } = req.body || {};
 
       if (typeof enabled === 'boolean') {
         current.enabled = enabled;
@@ -362,28 +534,28 @@ async function startServer() {
 
       saveAIConfig(current);
       res.json({ success: true, config: getAdminAIConfig() });
-    } catch (err: any) {
-      console.error('Failed to update AI config:', err);
-      res.status(500).json({ error: err?.message || 'Failed to update AI config' });
+    } catch (err) {
+      sendError(res, err, 'Failed to update AI config');
     }
   });
 
   // Global Admin Test Connection
-  app.post('/api/admin/ai-test', async (req, res) => {
+  app.post('/api/admin/ai-test', adminOnly, async (req, res) => {
     try {
-      const { provider, apiKey, model } = req.body;
+      const { provider, apiKey, model } = req.body || {};
       if (!provider) {
         return res.status(400).json({ error: 'Provider is required' });
       }
       const testResult = await testProviderConnection(provider as AIProviderId, apiKey, model);
       res.json(testResult);
     } catch (err: any) {
+      // Admin-only diagnostic: the provider's message helps fix the key.
       res.status(500).json({ error: err?.message || 'Connection test failed' });
     }
   });
 
   // Check live models for a single provider (Gemini, OpenAI, Groq, Mistral, DeepSeek, Anthropic)
-  app.get('/api/admin/live-models', async (req, res) => {
+  app.get('/api/admin/live-models', adminOnly, async (req, res) => {
     try {
       const provider = (req.query.provider as AIProviderId) || 'gemini';
       const apiKey = typeof req.query.apiKey === 'string' ? req.query.apiKey : undefined;
@@ -395,7 +567,7 @@ async function startServer() {
   });
 
   // Query live models for ALL providers simultaneously
-  app.post('/api/admin/live-models-all', async (req, res) => {
+  app.post('/api/admin/live-models-all', adminOnly, async (req, res) => {
     try {
       const customKeys = (req.body?.customKeys && typeof req.body.customKeys === 'object') ? req.body.customKeys : undefined;
       const results = await fetchAllLiveProviderModels(customKeys);
@@ -406,7 +578,7 @@ async function startServer() {
   });
 
   // Backward-compatible alias for Gemini live models
-  app.get('/api/admin/gemini-live-models', async (req, res) => {
+  app.get('/api/admin/gemini-live-models', adminOnly, async (req, res) => {
     try {
       const apiKey = typeof req.query.apiKey === 'string' ? req.query.apiKey : undefined;
       const result = await fetchLiveGeminiModels(apiKey);
@@ -423,9 +595,9 @@ async function startServer() {
   });
 
   // Dedicated local menu decipher endpoint (100% offline rule-based parser)
-  app.post('/api/menu/parse-local', async (req, res) => {
+  app.post('/api/menu/parse-local', requireAuth, aiLimiter, async (req, res) => {
     try {
-      const text = typeof req.body?.text === 'string' ? req.body.text : '';
+      const text = typeof req.body?.text === 'string' ? req.body.text.slice(0, 100_000) : '';
       if (!text.trim()) {
         return res.status(400).json({ error: 'No menu text provided to parse' });
       }
@@ -433,13 +605,12 @@ async function startServer() {
       const { parseMenuText } = await import('./server/localMenuParser');
       const result = parseMenuText(text, currencies);
       res.json({ sections: result.sections, engine: 'local', stats: result.stats });
-    } catch (err: any) {
-      console.error('Local menu parse error:', err);
-      res.status(500).json({ error: err?.message || 'Failed to locally parse menu' });
+    } catch (err) {
+      sendError(res, err, 'Failed to read the menu text');
     }
   });
 
-  app.post('/api/ai/parse-menu', menuUpload.single('menu'), async (req, res) => {
+  app.post('/api/ai/parse-menu', requireAuth, aiLimiter, menuUpload.single('menu'), async (req, res) => {
     try {
       let buffer: Buffer;
       let mimeType: string;
@@ -450,7 +621,7 @@ async function startServer() {
         mimeType = req.file.mimetype;
         fileName = req.file.originalname;
       } else if (req.body?.text && typeof req.body.text === 'string' && req.body.text.trim().length > 0) {
-        buffer = Buffer.from(req.body.text, 'utf-8');
+        buffer = Buffer.from(req.body.text.slice(0, 100_000), 'utf-8');
         mimeType = 'text/plain';
         fileName = 'pasted-menu.txt';
       } else {
@@ -480,13 +651,6 @@ async function startServer() {
 
       // If AI is needed for images/PDFs or user requested AI deep parsing:
       if (!status.enabled || !status.available) {
-        if (isText) {
-          // Fallback to local parser for text
-          const { parseMenuText } = await import('./server/localMenuParser');
-          const textContent = buffer.toString('utf-8');
-          const parsed = parseMenuText(textContent, currencies);
-          return res.json({ sections: parsed.sections, engine: 'local_fallback', stats: parsed.stats });
-        }
         return res.status(503).json({ error: 'Scanning images or PDFs requires an active AI provider. For instant free deciphering, paste the menu text or upload a text/CSV file.' });
       }
 
@@ -507,12 +671,11 @@ async function startServer() {
         throw aiErr;
       }
     } catch (err: any) {
-      console.error('Menu parse error:', err);
-      res.status(500).json({ error: err?.message || 'Failed to parse menu' });
+      sendAIError(res, err, 'Failed to read the menu. Try pasting the menu as text.');
     }
   });
 
-  app.post('/api/ai/parse-property-doc', menuUpload.single('document'), async (req, res) => {
+  app.post('/api/ai/parse-property-doc', requireAuth, aiLimiter, menuUpload.single('document'), async (req, res) => {
     try {
       const status = getPublicAIStatus();
       if (!status.enabled || !status.available) {
@@ -528,7 +691,7 @@ async function startServer() {
         mimeType = req.file.mimetype;
         fileName = req.file.originalname;
       } else if (req.body?.text && typeof req.body.text === 'string' && req.body.text.trim().length > 0) {
-        buffer = Buffer.from(req.body.text, 'utf-8');
+        buffer = Buffer.from(req.body.text.slice(0, 100_000), 'utf-8');
         mimeType = 'text/plain';
         fileName = 'pasted-doc.txt';
       } else {
@@ -539,8 +702,7 @@ async function startServer() {
       const result = await parsePropertyDocContent(buffer, mimeType, fileName);
       res.json(result);
     } catch (err: any) {
-      console.error('Property doc parse error:', err);
-      res.status(500).json({ error: err?.message || 'Failed to parse property document' });
+      sendAIError(res, err, 'Failed to read the property document.');
     }
   });
 
@@ -548,106 +710,255 @@ async function startServer() {
   // BOOKING REMINDERS API
   // ----------------------------------------------------
 
-  // Generate auto-reminders when a booking is confirmed
-  app.post('/api/reminders/auto-generate', (req, res) => {
+  /**
+   * Loads a booking the caller manages (hotel manager or admin), reading it with
+   * the caller's own token. Sends the error response and returns null otherwise.
+   */
+  const loadManagedBooking = async (req: express.Request, res: Response, bookingId: unknown, hotelId?: unknown) => {
+    if (!isSafeId(bookingId)) {
+      res.status(400).json({ error: 'A valid booking id is required.' });
+      return null;
+    }
+    const user = req.authUser!;
+    const booking = await readDoc('bookings', bookingId, user.token);
+    if (!booking) {
+      res.status(404).json({ error: 'Booking not found.' });
+      return null;
+    }
+    if (hotelId && hotelId !== booking.hotelId) {
+      res.status(400).json({ error: 'Booking does not belong to this property.' });
+      return null;
+    }
+    if (!(await canManageHotel(user, booking.hotelId))) {
+      res.status(403).json({ error: 'You do not have permission to do this.' });
+      return null;
+    }
+    const hotel = isSafeId(booking.hotelId) ? await readDoc('hotels', booking.hotelId, user.token) : null;
+    return { booking, hotel };
+  };
+
+  // Generate auto-reminders when a booking is confirmed (hotel manager or admin)
+  app.post('/api/reminders/auto-generate', requireAuth, async (req, res) => {
     try {
-      const reminders = generateAutoReminders(req.body);
+      const body = req.body || {};
+      const loaded = await loadManagedBooking(req, res, body.bookingId || body.id, body.hotelId);
+      if (!loaded) return;
+      const { booking, hotel } = loaded;
+      if (!DATE_RE.test(String(booking.checkIn)) || !DATE_RE.test(String(booking.checkOut))) {
+        return res.status(400).json({ error: 'Booking dates are missing.' });
+      }
+
+      // Contact details and dates come from the stored booking, not the request.
+      const reminders = await generateAutoReminders({
+        ...body,
+        id: booking.id,
+        reference: booking.reference || body.reference,
+        hotelId: booking.hotelId,
+        hotelName: hotel?.name || body.hotelName || 'Your Property',
+        guestName: booking.guestName || 'Guest',
+        guestEmail: booking.guestEmail || '',
+        guestPhone: booking.guestPhone || '',
+        guestWhatsapp: booking.guestWhatsapp || booking.guestPhone || '',
+        checkIn: booking.checkIn,
+        checkOut: booking.checkOut,
+      });
       res.json({ success: true, reminders });
-    } catch (err: any) {
-      res.status(500).json({ error: err?.message || 'Failed to generate reminders' });
+    } catch (err) {
+      sendError(res, err, 'Failed to generate reminders');
     }
   });
 
-  // Check background scheduler daemon status (confirms cron runs continuously in-process)
-  app.get('/api/reminders/scheduler-status', (req, res) => {
+  // Check background scheduler daemon status (admin)
+  app.get('/api/reminders/scheduler-status', adminOnly, async (req, res) => {
     try {
-      const pending = getAllPendingReminders();
+      const pending = await getAllPendingReminders();
       res.json({
         daemonActive: true,
         intervalSeconds: 60,
         serverTime: new Date().toISOString(),
         pendingCount: pending.length,
-        message: 'Integrated background daemon running continuously every 60 seconds. No external server cron jobs needed.'
+        store: process.env.REMINDERS_STORE === 'firestore' ? 'firestore' : 'file',
+        message: 'Integrated background daemon running every 60 seconds.'
       });
-    } catch (err: any) {
-      res.status(500).json({ error: err?.message || 'Failed to get scheduler status' });
+    } catch (err) {
+      sendError(res, err, 'Failed to get scheduler status');
     }
   });
 
-  // Get all scheduled and sent reminders for an entire hotel/property
-  app.get('/api/reminders/hotel/:hotelId', (req, res) => {
+  // Get all scheduled and sent reminders for a property (hotel manager or admin)
+  app.get('/api/reminders/hotel/:hotelId', requireAuth, async (req, res) => {
     try {
-      const reminders = getRemindersForHotel(req.params.hotelId);
+      const hotelId = String(req.params.hotelId);
+      if (!(await canManageHotel(req.authUser, hotelId))) {
+        return res.status(403).json({ error: 'You do not have permission to do this.' });
+      }
+      const reminders = await getRemindersForHotel(hotelId);
       res.json({ reminders });
-    } catch (err: any) {
-      res.status(500).json({ error: err?.message || 'Failed to fetch hotel reminders' });
+    } catch (err) {
+      sendError(res, err, 'Failed to fetch hotel reminders');
     }
   });
 
-  // Get reminders for a specific booking
-  app.get('/api/reminders/:bookingId', (req, res) => {
+  // Cancel every pending reminder for a booking (guest of the booking, its manager, or admin)
+  app.post('/api/reminders/booking/:bookingId/cancel', requireAuth, async (req, res) => {
     try {
-      const reminders = getRemindersForBooking(req.params.bookingId);
+      const bookingId = String(req.params.bookingId);
+      const user = req.authUser!;
+      const booking = isSafeId(bookingId) ? await readDoc('bookings', bookingId, user.token) : null;
+      if (!booking) {
+        return res.status(404).json({ error: 'Booking not found.' });
+      }
+      const allowed = booking.guestId === user.uid || (await canManageHotel(user, booking.hotelId));
+      if (!allowed) {
+        return res.status(403).json({ error: 'You do not have permission to do this.' });
+      }
+      const cancelled = await cancelRemindersForBooking(bookingId);
+      res.json({ success: true, cancelled });
+    } catch (err) {
+      sendError(res, err, 'Failed to cancel reminders');
+    }
+  });
+
+  // Get reminders for a specific booking (its guest, its manager, or admin)
+  app.get('/api/reminders/:bookingId', requireAuth, async (req, res) => {
+    try {
+      const bookingId = String(req.params.bookingId);
+      const user = req.authUser!;
+      const booking = isSafeId(bookingId) ? await readDoc('bookings', bookingId, user.token) : null;
+      if (!booking) {
+        return res.status(404).json({ error: 'Booking not found.' });
+      }
+      const isGuest = booking.guestId === user.uid;
+      if (!isGuest && !(await canManageHotel(user, booking.hotelId))) {
+        return res.status(403).json({ error: 'You do not have permission to do this.' });
+      }
+      let reminders = await getRemindersForBooking(bookingId);
+      if (isGuest && !isAdminUser(user)) {
+        reminders = reminders.filter(r => r.recipientType === 'guest');
+      }
       res.json({ reminders });
-    } catch (err: any) {
-      res.status(500).json({ error: err?.message || 'Failed to fetch reminders' });
+    } catch (err) {
+      sendError(res, err, 'Failed to fetch reminders');
     }
   });
 
-  // Create a manual reminder
-  app.post('/api/reminders', (req, res) => {
+  // Create a manual reminder (hotel manager or admin)
+  app.post('/api/reminders', requireAuth, async (req, res) => {
     try {
-      const reminder = createManualReminder(req.body);
+      const body = req.body || {};
+      const loaded = await loadManagedBooking(req, res, body.bookingId, body.hotelId);
+      if (!loaded) return;
+      const { booking, hotel } = loaded;
+
+      const message = cleanText(body.message, 5000);
+      const scheduledFor = new Date(body.scheduledFor);
+      if (!message || Number.isNaN(scheduledFor.getTime())) {
+        return res.status(400).json({ error: 'A message and a valid date are required.' });
+      }
+      const channel = ['in_app', 'whatsapp_link', 'email'].includes(body.channel) ? body.channel : 'in_app';
+
+      const reminder = await createManualReminder({
+        bookingId: booking.id,
+        bookingRef: booking.reference || cleanText(body.bookingRef, 40, true) || booking.id.slice(0, 6),
+        hotelId: booking.hotelId,
+        hotelName: hotel?.name || cleanText(body.hotelName, 200, true),
+        guestName: booking.guestName || 'Guest',
+        guestEmail: booking.guestEmail || '',
+        guestPhone: booking.guestPhone || '',
+        guestWhatsapp: booking.guestWhatsapp || booking.guestPhone || '',
+        recipientType: body.recipientType === 'manager' ? 'manager' : 'guest',
+        channel,
+        subject: cleanText(body.subject, 200, true) || undefined,
+        message,
+        scheduledFor: scheduledFor.toISOString(),
+      });
       res.json({ success: true, reminder });
-    } catch (err: any) {
-      res.status(500).json({ error: err?.message || 'Failed to create reminder' });
+    } catch (err) {
+      sendError(res, err, 'Failed to create reminder');
     }
   });
 
-  // Delete a reminder
-  app.delete('/api/reminders/:id', (req, res) => {
+  // Delete a reminder (manager of its property, or admin)
+  app.delete('/api/reminders/:id', requireAuth, async (req, res) => {
     try {
-      const deleted = deleteReminder(req.params.id);
+      const reminder = await getReminder(String(req.params.id));
+      if (!reminder) {
+        return res.json({ success: false });
+      }
+      if (!(await canManageHotel(req.authUser, reminder.hotelId))) {
+        return res.status(403).json({ error: 'You do not have permission to do this.' });
+      }
+      const deleted = await deleteReminder(reminder.id);
       res.json({ success: deleted });
-    } catch (err: any) {
-      res.status(500).json({ error: err?.message || 'Failed to delete reminder' });
+    } catch (err) {
+      sendError(res, err, 'Failed to delete reminder');
     }
   });
 
-  // Dispatch an email reminder to guest immediately via configured SMTP
-  app.post('/api/reminders/send-email', async (req, res) => {
+  // Send an email reminder to the booking's guest now (hotel manager or admin)
+  app.post('/api/reminders/send-email', requireAuth, async (req, res) => {
     try {
-      const result = await sendReminderEmailNow(req.body);
+      const body = req.body || {};
+      const loaded = await loadManagedBooking(req, res, body.bookingId, body.hotelId);
+      if (!loaded) return;
+      const { booking, hotel } = loaded;
+
+      const to = lower(body.guestEmail);
+      if (!to || to !== lower(booking.guestEmail)) {
+        return res.status(403).json({ error: 'Reminders can only be emailed to the guest on this booking.' });
+      }
+      const subject = cleanText(body.subject, 200, true);
+      const message = cleanText(body.message, 10_000);
+      if (!subject || !message) {
+        return res.status(400).json({ error: 'Subject and message are required.' });
+      }
+
+      const result = await sendReminderEmailNow({
+        bookingId: booking.id,
+        bookingRef: booking.reference || cleanText(body.bookingRef, 40, true) || booking.id.slice(0, 6),
+        hotelId: booking.hotelId,
+        hotelName: hotel?.name || cleanText(body.hotelName, 200, true),
+        guestName: booking.guestName || 'Guest',
+        guestEmail: booking.guestEmail,
+        subject,
+        message,
+      });
       if (!result.success) {
-        return res.status(400).json({ error: result.error || 'Failed to send email reminder' });
+        console.error('[API] Reminder email failed:', result.error);
+        return res.status(400).json({ error: 'The email could not be sent. Check the SMTP settings.' });
       }
       res.json({ success: true, reminder: result.reminder });
-    } catch (err: any) {
-      res.status(500).json({ error: err?.message || 'Failed to send email reminder' });
+    } catch (err) {
+      sendError(res, err, 'Failed to send email reminder');
     }
   });
 
-  // Send a test template email to manager's inbox
-  app.post('/api/reminders/test-template', async (req, res) => {
+  // Send a test template email to the signed-in manager's own inbox
+  app.post('/api/reminders/test-template', requireRole('hotel_manager', 'admin', 'marketing'), async (req, res) => {
     try {
-      const { toEmail, hotelName, bookingRef, templateTitle, subject, message } = req.body;
+      const { toEmail, hotelName, bookingRef, templateTitle, subject, message } = req.body || {};
+      const user = req.authUser!;
       if (!toEmail || !subject || !message) {
         return res.status(400).json({ error: 'Recipient email, subject, and message are required.' });
       }
+      if (!isAdminUser(user) && lower(toEmail) !== user.email) {
+        return res.status(403).json({ error: 'Test emails can only be sent to your own address.' });
+      }
       const result = await sendTestTemplateEmail({
-        toEmail,
-        hotelName: hotelName || 'Property',
-        bookingRef,
-        templateTitle: templateTitle || 'Email Template',
-        subject,
-        message
+        toEmail: lower(toEmail),
+        hotelName: cleanText(hotelName, 200, true) || 'Property',
+        bookingRef: cleanText(bookingRef, 40, true) || undefined,
+        templateTitle: cleanText(templateTitle, 200, true) || 'Email Template',
+        subject: cleanText(subject, 200, true),
+        message: cleanText(message, 10_000),
       });
       if (!result.success) {
-        return res.status(400).json({ error: result.error || 'Failed to dispatch test email' });
+        console.error('[API] Test template email failed:', result.error);
+        return res.status(400).json({ error: 'The test email could not be sent. Check the SMTP settings.' });
       }
       res.json({ success: true });
-    } catch (err: any) {
-      res.status(500).json({ error: err?.message || 'Failed to send test email' });
+    } catch (err) {
+      sendError(res, err, 'Failed to send test email');
     }
   });
 
@@ -656,117 +967,106 @@ async function startServer() {
   // ----------------------------------------------------
 
   // Get current SMTP configuration (masked password)
-  app.get('/api/admin/email-config', (req, res) => {
+  app.get('/api/admin/email-config', adminOnly, (req, res) => {
     try {
       const config = getAdminEmailConfig();
       res.json({ config });
-    } catch (err: any) {
-      res.status(500).json({ error: err?.message || 'Failed to fetch email config' });
+    } catch (err) {
+      sendError(res, err, 'Failed to fetch email config');
     }
   });
 
   // Save updated SMTP configuration
-  app.post('/api/admin/email-config', (req, res) => {
+  app.post('/api/admin/email-config', adminOnly, (req, res) => {
     try {
-      const updated = saveEmailConfig(req.body);
+      saveEmailConfig(req.body || {});
       const safeConfig = getAdminEmailConfig();
       res.json({ success: true, config: safeConfig });
     } catch (err: any) {
-      res.status(500).json({ error: err?.message || 'Failed to save email config' });
+      res.status(400).json({ error: err?.message || 'Failed to save email config' });
     }
   });
 
   // Test SMTP connection and optional test email
-  app.post('/api/admin/email-test', async (req, res) => {
+  app.post('/api/admin/email-test', adminOnly, async (req, res) => {
     try {
       const { testEmail, config } = req.body || {};
       const result = await testSMTPConnection(testEmail, config);
       res.json(result);
     } catch (err: any) {
+      // Admin-only diagnostic: the SMTP server's reply helps fix the settings.
       res.status(400).json({ error: err?.message || 'SMTP connection test failed' });
     }
   });
 
-  // Password reset email notice via SMTP (aligned with auth flows)
-  app.post('/api/auth/notify-password-reset', async (req, res) => {
+  // Password reset email notice via SMTP (aligned with auth flows). Public, so
+  // it is rate limited per IP and per address and only ever sends fixed text.
+  app.post('/api/auth/notify-password-reset', resetIpLimiter, resetEmailLimiter, async (req, res) => {
     try {
-      const { email } = req.body;
-      if (!email) {
+      const cleanEmail = lower(cleanText(req.body?.email, 254, true));
+      if (!cleanEmail || !cleanEmail.includes('@')) {
         return res.status(400).json({ error: 'Email is required.' });
       }
 
-      const cleanEmail = String(email).trim().toLowerCase();
       const result = await sendSystemEmail({
         to: cleanEmail,
         subject: 'Security Alert: Password Reset Requested — Travel Malawi',
-        text: `Hello,\n\nA password reset request was initiated for your Travel Malawi account (${cleanEmail}).\n\nIf you requested this change, please check your inbox (including Spam/Junk folder) for the reset verification link.\n\nIf you did not make this request, your account remains secure and no action is required, or you can contact support at support@malawiscapes.com.`,
+        text: `Hello,\n\nA password reset request was initiated for your Travel Malawi account (${cleanEmail}).\n\nIf you requested this change, please check your inbox (including Spam/Junk folder) for the reset verification link.\n\nIf you did not make this request, your account remains secure and no action is required.`,
         html: `
-          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 560px; margin: 0 auto; padding: 28px 24px; border: 1px solid #e7e5e4; border-radius: 16px; background: #ffffff; color: #1c1917;">
-            <div style="text-align: center; margin-bottom: 24px;">
-              <span style="display: inline-block; padding: 5px 12px; background: #fef3c7; color: #b45309; font-size: 11px; font-weight: 700; border-radius: 9999px; text-transform: uppercase; letter-spacing: 0.05em;">
-                Security Notice
-              </span>
-              <h2 style="margin: 12px 0 6px; font-size: 20px; font-weight: 800; color: #1c1917;">Password Reset Notification</h2>
-              <p style="margin: 0; font-size: 13px; color: #78716c;">Travel Malawi Account Security</p>
-            </div>
-            <div style="background: #fafaf9; border-radius: 12px; padding: 18px 20px; margin-bottom: 20px; border: 1px solid #f5f5f4;">
-              <p style="margin: 0 0 10px; font-size: 14px; line-height: 1.5; color: #44403c;">
-                A password reset request was initiated for <strong>${cleanEmail}</strong>.
-              </p>
-              <p style="margin: 0; font-size: 13px; color: #57534e; line-height: 1.6;">
-                Please verify your inbox for the official reset verification link. If you did not request this, you may safely ignore this message or report it to platform administrators.
-              </p>
-            </div>
-            <p style="font-size: 12px; color: #a8a29e; text-align: center; margin: 0;">
-              Travel Malawi · Account Security Operations
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 560px; margin: 0 auto; padding: 28px 24px; border: 1px solid #e7e5e4; background: #ffffff; color: #1c1917;">
+            <h2 style="margin: 0 0 6px; font-size: 20px; font-weight: 600; color: #1c1917;">Password reset requested</h2>
+            <p style="margin: 0 0 16px; font-size: 13px; color: #78716c;">Travel Malawi account security</p>
+            <p style="margin: 0 0 10px; font-size: 14px; line-height: 1.5; color: #44403c;">
+              A password reset request was initiated for <strong>${escapeHtml(cleanEmail)}</strong>.
+            </p>
+            <p style="margin: 0; font-size: 13px; color: #57534e; line-height: 1.6;">
+              Check your inbox for the reset link. If you did not request this, you can ignore this message.
             </p>
           </div>
         `,
       });
 
       res.json({ success: true, emailSent: result.success });
-    } catch (err: any) {
-      // Non-fatal fallback
-      res.json({ success: true, emailSent: false, note: err?.message });
+    } catch (err) {
+      console.error('[API] Password reset notice failed:', err);
+      res.json({ success: true, emailSent: false });
     }
   });
 
-  // Account status notifications (revoked / restored)
-  app.post('/api/admin/notify-account-status', async (req, res) => {
+  // Account status notifications (revoked / restored) — admin only
+  app.post('/api/admin/notify-account-status', adminOnly, async (req, res) => {
     try {
-      const { email, status, name } = req.body;
-      if (!email) return res.status(400).json({ error: 'Email is required' });
+      const { email, status, name } = req.body || {};
+      const to = lower(cleanText(email, 254, true));
+      if (!to.includes('@')) return res.status(400).json({ error: 'Email is required' });
 
+      const displayName = cleanText(name, 120, true) || 'User';
       const isRevoked = status === 'revoked';
       const result = await sendSystemEmail({
-        to: String(email).trim(),
-        subject: isRevoked 
+        to,
+        subject: isRevoked
           ? 'Account Access Suspended — Travel Malawi'
           : 'Account Access Restored — Travel Malawi',
         text: isRevoked
-          ? `Hello ${name || 'User'},\n\nYour account access on Travel Malawi has been suspended by an administrator. Please reach out to support if you believe this was in error.`
-          : `Hello ${name || 'User'},\n\nYour account access on Travel Malawi has been restored. You may now sign in again.`,
+          ? `Hello ${displayName},\n\nYour account access on Travel Malawi has been suspended by an administrator. Please reach out to support if you believe this was in error.`
+          : `Hello ${displayName},\n\nYour account access on Travel Malawi has been restored. You may now sign in again.`,
         html: `
-          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 560px; margin: 0 auto; padding: 28px 24px; border: 1px solid #e7e5e4; border-radius: 16px; background: #ffffff; color: #1c1917;">
-            <div style="text-align: center; margin-bottom: 24px;">
-              <span style="display: inline-block; padding: 5px 12px; background: ${isRevoked ? '#fee2e2' : '#ecfdf5'}; color: ${isRevoked ? '#b91c1c' : '#047857'}; font-size: 11px; font-weight: 700; border-radius: 9999px; text-transform: uppercase;">
-                ${isRevoked ? 'Access Suspended' : 'Access Restored'}
-              </span>
-              <h2 style="margin: 12px 0 6px; font-size: 20px; font-weight: 800; color: #1c1917;">Account Status Update</h2>
-            </div>
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 560px; margin: 0 auto; padding: 28px 24px; border: 1px solid #e7e5e4; background: #ffffff; color: #1c1917;">
+            <h2 style="margin: 0 0 16px; font-size: 20px; font-weight: 600; color: #1c1917;">${isRevoked ? 'Account access suspended' : 'Account access restored'}</h2>
             <p style="font-size: 14px; line-height: 1.6; color: #44403c;">
-              Hello ${name || 'User'},<br/><br/>
-              ${isRevoked 
-                ? 'Your account access to the Travel Malawi platform has been suspended or revoked by an administrator.' 
-                : 'Your account access to the Travel Malawi platform has been successfully restored.'}
+              Hello ${escapeHtml(displayName)},<br/><br/>
+              ${isRevoked
+                ? 'Your account access to the Travel Malawi platform has been suspended by an administrator.'
+                : 'Your account access to the Travel Malawi platform has been restored.'}
             </p>
           </div>
         `
       });
 
       res.json({ success: true, emailSent: result.success });
-    } catch (err: any) {
-      res.json({ success: true, emailSent: false, note: err?.message });
+    } catch (err) {
+      console.error('[API] Account status email failed:', err);
+      res.json({ success: true, emailSent: false });
     }
   });
 
@@ -779,99 +1079,124 @@ async function startServer() {
     try {
       const status = getPublicWhatsAppStatus();
       res.json(status);
-    } catch (err: any) {
-      res.status(500).json({ error: err?.message || 'Failed to fetch WhatsApp status' });
+    } catch (err) {
+      sendError(res, err, 'Failed to fetch WhatsApp status');
     }
   });
 
   // Get current WhatsApp configuration (masked access token)
-  app.get('/api/admin/whatsapp-config', (req, res) => {
+  app.get('/api/admin/whatsapp-config', adminOnly, (req, res) => {
     try {
       const config = getAdminWhatsAppConfig();
       res.json({ config });
-    } catch (err: any) {
-      res.status(500).json({ error: err?.message || 'Failed to fetch WhatsApp config' });
+    } catch (err) {
+      sendError(res, err, 'Failed to fetch WhatsApp config');
     }
   });
 
   // Save updated WhatsApp configuration
-  app.post('/api/admin/whatsapp-config', (req, res) => {
+  app.post('/api/admin/whatsapp-config', adminOnly, (req, res) => {
     try {
-      saveWhatsAppConfig(req.body);
+      saveWhatsAppConfig(req.body || {});
       const safeConfig = getAdminWhatsAppConfig();
       res.json({ success: true, config: safeConfig });
-    } catch (err: any) {
-      res.status(500).json({ error: err?.message || 'Failed to save WhatsApp config' });
+    } catch (err) {
+      sendError(res, err, 'Failed to save WhatsApp config');
     }
   });
 
   // Test WhatsApp connection and optional test message
-  app.post('/api/admin/whatsapp-test', async (req, res) => {
+  app.post('/api/admin/whatsapp-test', adminOnly, async (req, res) => {
     try {
       const { testPhone, config } = req.body || {};
       const result = await testWhatsAppConnection(testPhone, config);
       res.json(result);
     } catch (err: any) {
+      // Admin-only diagnostic.
       res.status(400).json({ error: err?.message || 'WhatsApp connection test failed' });
     }
   });
 
-  // Send WhatsApp reminder immediately
-  app.post('/api/reminders/send-whatsapp', async (req, res) => {
+  // Send a WhatsApp reminder to the booking's guest now (hotel manager or admin)
+  app.post('/api/reminders/send-whatsapp', requireAuth, async (req, res) => {
     try {
-      const result = await sendReminderWhatsAppNow(req.body);
+      const body = req.body || {};
+      const loaded = await loadManagedBooking(req, res, body.bookingId, body.hotelId);
+      if (!loaded) return;
+      const { booking, hotel } = loaded;
+
+      const target = body.guestWhatsapp || body.guestPhone;
+      if (!target || !(samePhone(target, booking.guestWhatsapp) || samePhone(target, booking.guestPhone))) {
+        return res.status(403).json({ error: 'WhatsApp reminders can only go to the guest on this booking.' });
+      }
+      const message = cleanText(body.message, 4000);
+      if (!message) {
+        return res.status(400).json({ error: 'Message text is required.' });
+      }
+
+      const result = await sendReminderWhatsAppNow({
+        bookingId: booking.id,
+        bookingRef: booking.reference || cleanText(body.bookingRef, 40, true) || booking.id.slice(0, 6),
+        hotelId: booking.hotelId,
+        hotelName: hotel?.name || cleanText(body.hotelName, 200, true),
+        guestName: booking.guestName || 'Guest',
+        guestPhone: booking.guestPhone,
+        guestWhatsapp: String(target),
+        subject: cleanText(body.subject, 200, true) || undefined,
+        message,
+      });
       if (!result.success) {
-        return res.status(400).json({ error: result.error || 'Failed to dispatch WhatsApp reminder' });
+        console.error('[API] WhatsApp reminder failed:', result.error);
+        return res.status(400).json({ error: 'The WhatsApp message could not be sent. Check the WhatsApp settings.' });
       }
       res.json(result);
-    } catch (err: any) {
-      res.status(500).json({ error: err?.message || 'Failed to dispatch WhatsApp reminder' });
+    } catch (err) {
+      sendError(res, err, 'Failed to dispatch WhatsApp reminder');
     }
   });
 
-  // Generic send WhatsApp message endpoint
-  app.post('/api/whatsapp/send', async (req, res) => {
+  // Generic send WhatsApp message endpoint (admin only)
+  app.post('/api/whatsapp/send', adminOnly, async (req, res) => {
     try {
       const { to, message } = req.body || {};
       if (!to || !message) {
         return res.status(400).json({ error: 'Recipient phone number and message text are required.' });
       }
-      const result = await sendWhatsAppMessage(to, message);
+      const result = await sendWhatsAppMessage(String(to), cleanText(message, 4000));
       if (!result.success) {
         return res.status(400).json({ error: result.error || 'Failed to send WhatsApp message' });
       }
       res.json(result);
-    } catch (err: any) {
-      res.status(500).json({ error: err?.message || 'Failed to send WhatsApp message' });
+    } catch (err) {
+      sendError(res, err, 'Failed to send WhatsApp message');
     }
   });
 
-  // Start reminder cron (check every 60 seconds) with try/catch guard
+  // Start reminder cron (check every 60 seconds); a pass never overlaps the previous one
   const reminderInterval = setInterval(() => {
-    try {
-      const { fired } = checkAndFireReminders();
-      if (fired.length > 0) {
-      }
-    } catch (err) {
+    checkAndFireReminders().catch(err => {
       console.error('[Reminders] Error checking reminders:', err);
-    }
+    });
   }, 60_000);
 
   // ----------------------------------------------------
-  // GLOBAL ADMIN DOCUMENTATION API (RESTRICTED TO ADMIN)
+  // DOCUMENTATION API
   // ----------------------------------------------------
 
-  // List available executive documents
-  app.get('/api/admin/docs', (req, res) => {
+  const docEditors = requireRole('marketing', 'admin');
+
+  // List available documents (marketing / admin)
+  app.get('/api/admin/docs', docEditors, (req, res) => {
     try {
       const docs = getAdminDocsList();
       res.json({ docs });
-    } catch (err: any) {
-      res.status(500).json({ error: err?.message || 'Failed to list documents' });
+    } catch (err) {
+      sendError(res, err, 'Failed to list documents');
     }
   });
 
-  // Get specific document in readable plain text (.txt), markdown (.md), or standalone styled HTML (.html)
+  // Get a document as text, markdown, or standalone HTML. Public: these are the
+  // partner guides, also linked as plain downloads from the public guide pages.
   app.get('/api/admin/docs/:id', (req, res) => {
     try {
       const rawFormat = String(req.query.format || '').toLowerCase();
@@ -884,16 +1209,16 @@ async function startServer() {
 
       const isDownload = req.query.download === '1' || req.query.download === 'true';
       const isRawView = req.query.raw === '1' || req.query.raw === 'true';
-      const docResult = getAdminDocContent(req.params.id, format);
+      const docResult = getAdminDocContent(String(req.params.id), format);
 
       if (!docResult) {
         return res.status(404).json({ error: 'Document not found' });
       }
 
-      const mimeType = format === 'html' 
-        ? 'text/html; charset=utf-8' 
-        : format === 'text' 
-        ? 'text/plain; charset=utf-8' 
+      const mimeType = format === 'html'
+        ? 'text/html; charset=utf-8'
+        : format === 'text'
+        ? 'text/plain; charset=utf-8'
         : 'text/markdown; charset=utf-8';
 
       if (isDownload) {
@@ -909,8 +1234,8 @@ async function startServer() {
       }
 
       res.json(docResult);
-    } catch (err: any) {
-      res.status(500).json({ error: err?.message || 'Failed to read document' });
+    } catch (err) {
+      sendError(res, err, 'Failed to read document');
     }
   });
 
@@ -922,26 +1247,26 @@ async function startServer() {
       if (rawFormat === 'html') format = 'html';
       else if (rawFormat === 'md' || rawFormat === 'markdown') format = 'md';
 
-      const docResult = getAdminDocContent(req.params.id, format);
+      const docResult = getAdminDocContent(String(req.params.id), format);
       if (!docResult) {
         return res.status(404).json({ error: 'Document not found' });
       }
       res.json(docResult);
-    } catch (err: any) {
-      res.status(500).json({ error: err?.message || 'Failed to read document' });
+    } catch (err) {
+      sendError(res, err, 'Failed to read document');
     }
   });
 
-  // Update document content & metadata (Easily editable by Marketing and Super Admin)
-  app.put('/api/admin/docs/:id', (req, res) => {
+  // Update document content & metadata (marketing / admin)
+  const handleDocSave = (req: express.Request, res: Response) => {
     try {
       const { title, subtitle, category, content, lastEditedBy } = req.body || {};
-      const result = saveAdminDoc(req.params.id, {
+      const result = saveAdminDoc(String(req.params.id), {
         title,
         subtitle,
         category,
         content,
-        lastEditedBy: lastEditedBy || 'Marketing / Super Admin',
+        lastEditedBy: cleanText(lastEditedBy, 120, true) || req.authUser?.email || 'Marketing / Admin',
       });
 
       if (!result.success) {
@@ -953,41 +1278,17 @@ async function startServer() {
         doc: result.doc,
         message: 'Document saved and updated successfully',
       });
-    } catch (err: any) {
-      res.status(500).json({ error: err?.message || 'Failed to update document' });
+    } catch (err) {
+      sendError(res, err, 'Failed to update document');
     }
-  });
-
-  // Also support POST for client frameworks that prefer POST for updates
-  app.post('/api/admin/docs/:id', (req, res) => {
-    try {
-      const { title, subtitle, category, content, lastEditedBy } = req.body || {};
-      const result = saveAdminDoc(req.params.id, {
-        title,
-        subtitle,
-        category,
-        content,
-        lastEditedBy: lastEditedBy || 'Marketing / Super Admin',
-      });
-
-      if (!result.success) {
-        return res.status(400).json({ error: result.error || 'Failed to save document' });
-      }
-
-      res.json({
-        success: true,
-        doc: result.doc,
-        message: 'Document saved and updated successfully',
-      });
-    } catch (err: any) {
-      res.status(500).json({ error: err?.message || 'Failed to update document' });
-    }
-  });
+  };
+  app.put('/api/admin/docs/:id', docEditors, handleDocSave);
+  app.post('/api/admin/docs/:id', docEditors, handleDocSave);
 
   // Reset document to factory default template
-  app.post('/api/admin/docs/:id/reset', (req, res) => {
+  app.post('/api/admin/docs/:id/reset', docEditors, (req, res) => {
     try {
-      const result = resetAdminDoc(req.params.id);
+      const result = resetAdminDoc(String(req.params.id));
       if (!result.success) {
         return res.status(400).json({ error: result.error || 'Failed to reset document' });
       }
@@ -998,37 +1299,37 @@ async function startServer() {
         content: result.content,
         message: 'Document restored to original factory defaults',
       });
-    } catch (err: any) {
-      res.status(500).json({ error: err?.message || 'Failed to reset document' });
+    } catch (err) {
+      sendError(res, err, 'Failed to reset document');
     }
   });
 
-  // Review Scraper endpoint
-  app.post('/api/admin/scrape-reviews', async (req, res) => {
+  // Review Scraper endpoint (admin / marketing)
+  app.post('/api/admin/scrape-reviews', requireRole('admin', 'marketing'), aiLimiter, async (req, res) => {
     try {
       const status = getPublicAIStatus();
       if (!status.enabled || !status.available) {
         return res.status(503).json({ error: 'AI provider must be active to scrape reviews.' });
       }
 
-      const { hotelName, location } = req.body;
+      const hotelName = cleanText(req.body?.hotelName, 200, true);
+      const location = cleanText(req.body?.location, 200, true);
       if (!hotelName) {
         return res.status(400).json({ error: 'Hotel name is required' });
       }
 
-      const result = await executeAIGeneration({
+      const result = await executeAIGeneration(withVerifiedRole({
         action: 'scrape_reviews',
         entityType: 'property',
         details: {
           name: hotelName,
-          location: location || ''
+          location
         }
-      });
-      
+      }, req.authUser!));
+
       res.json(result);
     } catch (err: any) {
-      console.error('Scraping Error:', err);
-      res.status(500).json({ error: err?.message || 'Failed to scrape reviews' });
+      sendAIError(res, err, 'Failed to look up reviews');
     }
   });
 
@@ -1060,8 +1361,11 @@ async function startServer() {
     fs.writeFileSync(SURVEYS_FILE, JSON.stringify(surveys, null, 2), 'utf-8');
   };
 
+  const shortList = (value: unknown, maxItems: number) =>
+    Array.isArray(value) ? value.slice(0, maxItems).map(v => cleanText(v, 200, true)) : [];
+
   // Public endpoint for submitting partner surveys, host onboarding requests, and document feedback
-  app.post('/api/surveys/submit', (req, res) => {
+  app.post('/api/surveys/submit', surveyLimiter, (req, res) => {
     try {
       const {
         type,
@@ -1085,54 +1389,64 @@ async function startServer() {
         return res.status(400).json({ error: 'Please provide at least a property name, contact details, or notes.' });
       }
 
-      const submissionType = type || docType || 'concept_survey';
+      const safePainPoints: Record<string, number | string> = {};
+      if (painPoints && typeof painPoints === 'object' && !Array.isArray(painPoints)) {
+        for (const [k, v] of Object.entries(painPoints).slice(0, 20)) {
+          safePainPoints[cleanText(k, 60, true)] = typeof v === 'number' ? v : cleanText(v, 200, true);
+        }
+      }
+
+      const submissionType = cleanText(type || docType || 'concept_survey', 60, true);
       const surveys = readSurveys();
       const newSubmission = {
         id: `sub-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
         type: submissionType,
-        sourceDoc: sourceDoc || 'Document Hub',
-        propName: String(propName || 'Unnamed Stay / Partner').trim(),
-        propLoc: String(propLoc || '').trim(),
-        contactName: String(contactName || '').trim(),
-        contactEmail: String(contactEmail || '').trim(),
-        contactPhone: String(contactPhone || '').trim(),
-        notes: String(notes || feedback || '').trim(),
-        roomTypes: String(roomTypes || '').trim(),
-        channels: Array.isArray(channels) ? channels : [],
-        painPoints: painPoints || {},
-        features: Array.isArray(features) ? features : [],
-        pilotInterest: pilotInterest || 'yes',
+        sourceDoc: cleanText(sourceDoc, 120, true) || 'Document Hub',
+        propName: cleanText(propName, 200, true) || 'Unnamed Stay / Partner',
+        propLoc: cleanText(propLoc, 200, true),
+        contactName: cleanText(contactName, 120, true),
+        contactEmail: cleanText(contactEmail, 254, true),
+        contactPhone: cleanText(contactPhone, 40, true),
+        notes: cleanText(notes || feedback, 5000),
+        roomTypes: cleanText(roomTypes, 500),
+        channels: shortList(channels, 20),
+        painPoints: safePainPoints,
+        features: shortList(features, 20),
+        pilotInterest: cleanText(pilotInterest, 60, true) || 'yes',
         status: 'new',
         submittedAt: new Date().toISOString(),
-        userAgent: req.headers['user-agent'] || '',
-        ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1'
+        userAgent: cleanText(req.headers['user-agent'], 300, true),
+        ip: clientIp(req),
       };
 
       surveys.unshift(newSubmission);
       saveSurveys(surveys);
 
-      console.log(`[Submission] Received new [${submissionType}] from "${newSubmission.propName}" (${newSubmission.contactPhone || newSubmission.contactEmail})`);
-
+      const { ip: _ip, userAgent: _ua, ...publicSubmission } = newSubmission;
       res.status(201).json({
         success: true,
         id: newSubmission.id,
         message: 'Zikomo kwambiri! Your submission has been received by our hospitality team.',
-        submission: newSubmission
+        submission: publicSubmission
       });
-    } catch (err: any) {
-      console.error('Survey submission error:', err);
-      res.status(500).json({ error: err?.message || 'Failed to record response' });
+    } catch (err) {
+      sendError(res, err, 'Failed to record response');
     }
   });
 
   // Admin endpoint to view all survey responses
-  app.get('/api/admin/surveys', (req, res) => {
+  app.get('/api/admin/surveys', requireRole('admin', 'marketing'), (req, res) => {
     try {
       const surveys = readSurveys();
       res.json({ success: true, count: surveys.length, surveys });
-    } catch (err: any) {
-      res.status(500).json({ error: err?.message || 'Failed to list surveys' });
+    } catch (err) {
+      sendError(res, err, 'Failed to list surveys');
     }
+  });
+
+  // Unknown API routes return JSON 404 instead of falling through to the SPA.
+  app.use('/api', (req, res) => {
+    res.status(404).json({ error: 'Not found' });
   });
 
   // Explicitly block any direct public access to backend code, source maps, internal docs, or markdown files

@@ -110,22 +110,22 @@ export const DEFAULT_PROVIDERS: Record<AIProviderId, ProviderConfig> = {
   },
   groq: {
     enabled: false,
-    model: 'llama-3.1-8b-instant',
-    defaultModel: 'llama-3.1-8b-instant',
+    model: 'llama-3.3-70b-versatile',
+    defaultModel: 'llama-3.3-70b-versatile',
     name: 'Groq (Llama)',
     website: 'https://console.groq.com',
     rateLimitNotice: 'Free Tier: 30 req/min, blazing LPU inference speeds.',
     recommendedModels: [
       {
-        id: 'llama-3.1-8b-instant',
-        name: 'Llama 3.1 8B Instant',
-        description: '⚡ Sweet Spot: Ultra-fast edge inference with universal availability on Groq LPU',
+        id: 'llama-3.3-70b-versatile',
+        name: 'Llama 3.3 70B Versatile',
+        description: 'Recommended: strong reasoning for hospitality planning on Groq LPU',
         isSweetSpot: true,
       },
       {
-        id: 'llama-3.3-70b-versatile',
-        name: 'Llama 3.3 70B (Tier 2+)',
-        description: '🧠 High-reasoning 70B model (requires paid tier on GroqCloud)',
+        id: 'llama-3.1-8b-instant',
+        name: 'Llama 3.1 8B Instant',
+        description: 'Fastest and lightest option for tight free-tier quotas',
       },
     ],
   },
@@ -173,22 +173,22 @@ export const DEFAULT_PROVIDERS: Record<AIProviderId, ProviderConfig> = {
   },
   anthropic: {
     enabled: false,
-    model: 'claude-3-5-haiku-20241022',
-    defaultModel: 'claude-3-5-haiku-20241022',
+    model: 'claude-haiku-4-5-20251001',
+    defaultModel: 'claude-haiku-4-5-20251001',
     name: 'Anthropic Claude',
     website: 'https://console.anthropic.com',
     rateLimitNotice: 'Tier 1: 50 req/min on Haiku models.',
     recommendedModels: [
       {
-        id: 'claude-3-5-haiku-20241022',
-        name: 'Claude 3.5 Haiku',
-        description: '⚡ Sweet Spot: Fast, poetic hospitality writing and conversational flow',
+        id: 'claude-haiku-4-5-20251001',
+        name: 'Claude Haiku 4.5',
+        description: 'Recommended: fast, natural hospitality writing and conversation',
         isSweetSpot: true,
       },
       {
-        id: 'claude-3-5-sonnet-20241022',
-        name: 'Claude 3.5 Sonnet',
-        description: '🧠 Industry-leading writing, reasoning, and tone calibration',
+        id: 'claude-sonnet-5-5',
+        name: 'Claude Sonnet 5.5',
+        description: 'Stronger writing, reasoning and tone calibration',
       },
     ],
   },
@@ -276,8 +276,10 @@ export function loadAIConfig(): AISystemConfig {
         saveAIConfig(inMemoryConfig!);
       }
 
-      if (inMemoryConfig!.providers.groq?.model === 'llama-3.3-70b-versatile') {
-        inMemoryConfig!.providers.groq.model = 'llama-3.1-8b-instant';
+      // Retired Claude 3.x model IDs no longer resolve; move them to the current Haiku.
+      const currentAnthropicModel = inMemoryConfig!.providers.anthropic?.model || '';
+      if (!currentAnthropicModel || currentAnthropicModel.startsWith('claude-3')) {
+        inMemoryConfig!.providers.anthropic.model = DEFAULT_PROVIDERS.anthropic.defaultModel;
         saveAIConfig(inMemoryConfig!);
       }
       
@@ -478,7 +480,7 @@ export async function fetchLiveProviderModels(
 
   try {
     if (provider === 'gemini') {
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
+      const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models', { headers: { 'x-goog-api-key': key }, signal: AbortSignal.timeout(15000) });
       const latencyMs = Date.now() - startTime;
       if (!res.ok) {
         const errBody = await res.text();
@@ -636,7 +638,7 @@ export async function fetchLiveProviderModels(
             isLatest: true,
             isSweetSpot: !!m.isSweetSpot,
           })),
-          latestRecommendation: 'llama-3.1-8b-instant',
+          latestRecommendation: 'llama-3.3-70b-versatile',
           source: 'catalog',
           error: `Groq API returned ${res.status}: ${errBody.slice(0, 150)}`,
           latencyMs,
@@ -654,7 +656,7 @@ export async function fetchLiveProviderModels(
         .map((m: any) => {
           const id = m.id;
           const isLatest = id.includes('llama-3.3') || id.includes('llama-3.1') || id.includes('qwq') || id.includes('deepseek');
-          const isSweetSpot = id === 'llama-3.1-8b-instant';
+          const isSweetSpot = id === 'llama-3.3-70b-versatile';
           return {
             id,
             name: id,
@@ -665,10 +667,10 @@ export async function fetchLiveProviderModels(
           };
         })
         .sort((a, b) => {
-          if (a.id === 'llama-3.1-8b-instant') return -1;
-          if (b.id === 'llama-3.1-8b-instant') return 1;
           if (a.id === 'llama-3.3-70b-versatile') return -1;
           if (b.id === 'llama-3.3-70b-versatile') return 1;
+          if (a.id === 'llama-3.1-8b-instant') return -1;
+          if (b.id === 'llama-3.1-8b-instant') return 1;
           return a.id.localeCompare(b.id);
         });
 
@@ -677,7 +679,7 @@ export async function fetchLiveProviderModels(
         providerName,
         success: true,
         models: liveModels,
-        latestRecommendation: 'llama-3.1-8b-instant',
+        latestRecommendation: 'llama-3.3-70b-versatile',
         source: 'live_api',
         latencyMs,
       };
@@ -827,7 +829,7 @@ export async function fetchLiveProviderModels(
             name: m.display_name || m.id,
             displayName: m.display_name || m.id,
             description: `Anthropic Claude model (Created: ${m.created_at || 'recent'})`,
-            isLatest: m.id.includes('3-7') || m.id.includes('3-5'),
+            isLatest: !m.id.startsWith('claude-3'),
             isSweetSpot: m.id.includes('haiku'),
           }));
           usedLiveApi = liveModels.length > 0;
@@ -839,35 +841,19 @@ export async function fetchLiveProviderModels(
       if (liveModels.length === 0) {
         liveModels = [
           {
-            id: 'claude-3-7-sonnet-20250219',
-            name: 'Claude 3.7 Sonnet',
-            displayName: 'Claude 3.7 Sonnet',
-            description: '🌟 Hybrid reasoning & flagship frontier intelligence',
-            isLatest: true,
-            isSweetSpot: false,
-          },
-          {
-            id: 'claude-3-5-sonnet-20241022',
-            name: 'Claude 3.5 Sonnet',
-            displayName: 'Claude 3.5 Sonnet',
-            description: '🧠 High reasoning and deep multimodal analysis',
-            isLatest: true,
-            isSweetSpot: false,
-          },
-          {
-            id: 'claude-3-5-haiku-20241022',
-            name: 'Claude 3.5 Haiku',
-            displayName: 'Claude 3.5 Haiku',
-            description: '⚡ Sweet Spot: Ultra-fast sub-second latency with low token pricing',
+            id: 'claude-haiku-4-5-20251001',
+            name: 'Claude Haiku 4.5',
+            displayName: 'Claude Haiku 4.5',
+            description: 'Recommended: fast responses with low token pricing',
             isLatest: true,
             isSweetSpot: true,
           },
           {
-            id: 'claude-3-opus-20240229',
-            name: 'Claude 3 Opus',
-            displayName: 'Claude 3 Opus',
-            description: 'Complex multi-step synthesis and hospitality operations planning',
-            isLatest: false,
+            id: 'claude-sonnet-5-5',
+            name: 'Claude Sonnet 5.5',
+            displayName: 'Claude Sonnet 5.5',
+            description: 'Stronger reasoning and writing',
+            isLatest: true,
             isSweetSpot: false,
           },
         ];
@@ -878,7 +864,7 @@ export async function fetchLiveProviderModels(
         providerName,
         success: true,
         models: liveModels,
-        latestRecommendation: 'claude-3-5-haiku-20241022',
+        latestRecommendation: 'claude-haiku-4-5-20251001',
         source: usedLiveApi ? 'live_api' : 'catalog',
         latencyMs: latencyMs || (Date.now() - startTime),
       };

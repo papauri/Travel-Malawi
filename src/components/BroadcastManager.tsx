@@ -27,6 +27,10 @@ export default function BroadcastManager({ hotelId, managerId }: BroadcastManage
       docs.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
       setBroadcasts(docs);
       setLoading(false);
+    }, (err) => {
+      console.error('Error loading broadcasts:', err);
+      setLoading(false);
+      toast.error('Could not load broadcasts.');
     });
     return () => unsubscribe();
   }, [hotelId]);

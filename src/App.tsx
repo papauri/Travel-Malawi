@@ -4,7 +4,9 @@ import { AlertTriangle } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AuthDialogProvider } from './contexts/AuthDialogContext';
 import { ChatModalProvider } from './contexts/ChatModalContext';
+import { UnreadMessagesProvider } from './contexts/UnreadMessagesContext';
 import { CompareProvider } from './contexts/CompareContext';
+import { WishlistProvider } from './contexts/WishlistContext';
 import Breadcrumbs, { BreadcrumbProvider } from './components/Breadcrumbs';
 import Navbar from './components/Navbar';
 import MobileNav from './components/MobileNav';
@@ -141,12 +143,16 @@ function RootLayout({ children }: { children?: React.ReactNode }) {
   return (
       <AuthDialogProvider>
         <ChatModalProvider>
+          <UnreadMessagesProvider>
           <CompareProvider>
+            <WishlistProvider>
             <BreadcrumbProvider>
               <ScrollToTop />
               <RootContent>{children}</RootContent>
             </BreadcrumbProvider>
+            </WishlistProvider>
           </CompareProvider>
+          </UnreadMessagesProvider>
         </ChatModalProvider>
       </AuthDialogProvider>
   );

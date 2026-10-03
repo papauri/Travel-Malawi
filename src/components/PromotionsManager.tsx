@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Hotel, Promotion, SaleType, PromotionTarget, CurrencyCode, DiscountType, RoomType } from '../types';
 import SectionCard from './SectionCard';
 import { Percent, Plus, Trash2, Save, Loader2, Calendar, Eye, Tag, Sparkles, Check, DollarSign, Briefcase } from 'lucide-react';
 import { db } from '../lib/firebase';
-import { doc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, collection, query, where, getDocs, runTransaction } from 'firebase/firestore';
 import toast from 'react-hot-toast';
-import { SALE_TYPE_OPTIONS, PROMOTION_TARGET_OPTIONS, getSaleTypeLabel, getSaleTypeBadge, calculateSlashedPrice } from '../lib/promotions';
+import { SALE_TYPE_OPTIONS, PROMOTION_TARGET_OPTIONS, getSaleTypeLabel, getSaleTypeBadge, calculateSlashedPrice, malawiToday, validatePromotion, mergePromotions, MAX_PROMO_DISCOUNT_PERCENT } from '../lib/promotions';
 import PriceDisplay from './PriceDisplay';
 import PromotionIcon from './PromotionIcon';
 
@@ -17,6 +17,8 @@ interface PromotionsManagerProps {
 
 export default function PromotionsManager({ hotel, rooms, onUpdate }: PromotionsManagerProps) {
   const [promotions, setPromotions] = useState<Promotion[]>(hotel.promotions || []);
+  // The promotions as loaded or last saved, used to merge with concurrent edits.
+  const baselineRef = useRef<Promotion[]>(hotel.promotions || []);
   const [saving, setSaving] = useState(false);
   const [roomsList, setRoomsList] = useState<RoomType[]>(rooms || hotel.rooms || []);
 
@@ -28,7 +30,10 @@ export default function PromotionsManager({ hotel, rooms, onUpdate }: Promotions
     if (hotel.id) {
       getDocs(query(collection(db, 'room_types'), where('hotelId', '==', hotel.id))).then(snap => {
         setRoomsList(snap.docs.map(d => ({ id: d.id, ...d.data() } as RoomType)));
-      }).catch(err => console.error('Failed to fetch rooms for promotions:', err));
+      }).catch(err => {
+        console.error('Failed to fetch rooms for promotions:', err);
+        toast.error('Could not load rooms, so room-specific promotions are unavailable.');
+      });
     }
   }, [hotel.id, rooms]);
 
@@ -41,7 +46,7 @@ export default function PromotionsManager({ hotel, rooms, onUpdate }: Promotions
       discountType: 'percentage',
       discountPercentage: 20,
       isActive: true,
-      startDate: new Date().toISOString().split('T')[0],
+      startDate: malawiToday(),
     };
     setPromotions([...promotions, newPromo]);
   };
@@ -65,10 +70,26 @@ export default function PromotionsManager({ hotel, rooms, onUpdate }: Promotions
   };
 
   const savePromotions = async () => {
+    for (const promo of promotions) {
+      const problem = validatePromotion(promo);
+      if (problem) {
+        toast.error(`${promo.name || 'Promotion'}: ${problem}`);
+        return;
+      }
+    }
     setSaving(true);
     try {
-      await updateDoc(doc(db, 'hotels', hotel.id!), { promotions });
-      onUpdate(promotions);
+      const hotelRef = doc(db, 'hotels', hotel.id!);
+      const saved = await runTransaction(db, async tx => {
+        const snap = await tx.get(hotelRef);
+        const stored = ((snap.data()?.promotions as Promotion[] | undefined) ?? []);
+        const merged = mergePromotions(stored, baselineRef.current, promotions);
+        tx.update(hotelRef, { promotions: merged });
+        return merged;
+      });
+      baselineRef.current = saved;
+      setPromotions(saved);
+      onUpdate(saved);
       toast.success('Promotions and price slash logic saved successfully!');
     } catch (err) {
       console.error(err);
@@ -231,7 +252,7 @@ export default function PromotionsManager({ hotel, rooms, onUpdate }: Promotions
                         <input 
                           type="range"
                           min="5"
-                          max="80"
+                          max={MAX_PROMO_DISCOUNT_PERCENT}
                           step="5"
                           value={promo.discountPercentage}
                           onChange={e => updatePromo(promo.id, { discountPercentage: parseInt(e.target.value) || 0 })}
@@ -298,6 +319,7 @@ export default function PromotionsManager({ hotel, rooms, onUpdate }: Promotions
                       <input 
                         type="date" 
                         value={promo.endDate || ''} 
+                        min={promo.startDate || undefined}
                         onChange={e => updatePromo(promo.id, { endDate: e.target.value })}
                         className="w-full bg-stone-50 border border-stone-200 p-2.5 rounded-xl text-sm font-medium outline-none focus:border-stone-400"
                       />

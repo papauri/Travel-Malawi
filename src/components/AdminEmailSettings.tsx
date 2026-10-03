@@ -28,7 +28,7 @@ export default function AdminEmailSettings() {
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [testRecipient, setTestRecipient] = useState(user?.email || 'johnpaulchirwa@gmail.com');
+  const [testRecipient, setTestRecipient] = useState(user?.email || '');
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
   const [form, setForm] = useState<EmailConfigState>({
@@ -339,7 +339,7 @@ export default function AdminEmailSettings() {
                   type="text"
                   value={form.smtpUser}
                   onChange={e => setForm({ ...form, smtpUser: e.target.value })}
-                  placeholder="e.g. johnpaulchirwa@gmail.com or apikey"
+                  placeholder="e.g. you@example.com or apikey"
                   className="w-full bg-stone-50 border border-stone-200 px-3.5 py-2.5 rounded-xl text-sm font-mono focus:outline-none focus:border-stone-900"
                 />
               </div>

@@ -45,6 +45,15 @@ export function formatMoney(amount: number, currency: string = 'MWK'): string {
   return meta.code === 'MWK' ? `${meta.symbol} ${shown}` : `${meta.symbol}${shown}`;
 }
 
+/**
+ * Rounds a computed amount (a discount, a total) to the platform convention:
+ * MWK to the nearest 1,000 and USD to whole dollars. Never returns a negative.
+ */
+export function roundPrice(amount: number, currency: string = 'MWK'): number {
+  if (!Number.isFinite(amount) || amount <= 0) return 0;
+  return currency === 'USD' ? Math.round(amount) : Math.round(amount / 1000) * 1000;
+}
+
 type PriceMap = Partial<Record<CurrencyCode, number>> | undefined;
 
 function fromMap(map: PriceMap, currency: CurrencyCode): number | null {

@@ -24,9 +24,12 @@ import {
   addLearnedDirective, 
   addAutonomousPatch,
   removeLearnedDirective, 
-  LearnedDirective 
+  LearnedDirective,
+  MAX_DIRECTIVE_CHARS
 } from '../lib/assistantMemory';
 import { logSystemEvent } from '../lib/logger';
+import { confirmBooking, confirmErrorMessage, PriceMismatchError } from '../lib/transactions';
+import { updateBookingWithSlot, cancelBookingReminders } from '../lib/bookingWrites';
 import WalkthroughTooltip from './WalkthroughTooltip';
 
 interface ChatMessage {
@@ -37,6 +40,9 @@ interface ChatMessage {
   actionApplied?: boolean;
   actionRejected?: boolean;
   suggestedFollowUps?: string[];
+  /** A rule Ulendo proposes to remember; saved only if the user confirms. */
+  pendingRule?: { text: string; kind: 'directive' | 'patch'; trigger?: string; resolution?: string } | null;
+  ruleDecision?: 'saved' | 'dismissed';
   timestamp: number;
 }
 
@@ -304,8 +310,9 @@ export default function OperationsCopilot() {
         reviewDocs = reviewsSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) } as Review));
         broadcastDocs = broadcastsSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) } as Broadcast));
       } else {
-        // Property Managers: fetch all platform hotels to accurately identify the user's properties
-        // Just because a property has no manager assigned, it DOES belong to the signed-in user!
+        // Property managers: only hotels assigned to them (by uid, or by their
+        // verified email). Unassigned hotels belong to admins, not to whoever
+        // is signed in.
         const hotelsSnap = await getDocs(collection(db, 'hotels'));
         const allHotels = hotelsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Hotel));
 
@@ -325,19 +332,21 @@ export default function OperationsCopilot() {
             if (h.contactEmail && h.contactEmail.toLowerCase() === userEmailLower) return true;
           }
           if ((h as any).ownerId === user.uid || (h as any).createdBy === user.uid) return true;
-          
-          // CRITICAL: Unassigned properties belong to the signed-in user!
-          if (!hasAssignedManager) return true;
-
           return false;
         });
 
         const hotelIds = hotelDocs.map(h => h.id).filter(Boolean) as string[];
 
         if (hotelIds.length > 0) {
-          const [roomsSnap, bookingsSnap, confSnap, reviewsSnap, broadcastsSnap] = await Promise.all([
+          // Bookings are private: one equality query per property the manager runs.
+          const bookingsPerHotel = Promise.all(hotelIds.map(hid =>
+            getDocs(query(collection(db, 'bookings'), where('hotelId', '==', hid)))
+              .then(snap => snap.docs.map(d => ({ id: d.id, ...d.data() } as Booking)))
+              .catch(() => [] as Booking[])
+          )).then(lists => lists.flat());
+          const [roomsSnap, scopedBookings, confSnap, reviewsSnap, broadcastsSnap] = await Promise.all([
             getDocs(collection(db, 'room_types')),
-            getDocs(collection(db, 'bookings')),
+            bookingsPerHotel,
             getDocs(collection(db, 'conference_rooms')),
             getDocs(collection(db, 'reviews')),
             getDocs(collection(db, 'broadcasts')),
@@ -345,9 +354,7 @@ export default function OperationsCopilot() {
           roomDocs = roomsSnap.docs
             .map(d => ({ id: d.id, ...d.data() } as RoomType))
             .filter(r => hotelIds.includes(r.hotelId));
-          bookingDocs = bookingsSnap.docs
-            .map(d => ({ id: d.id, ...d.data() } as Booking))
-            .filter(b => hotelIds.includes(b.hotelId));
+          bookingDocs = scopedBookings;
           confDocs = confSnap.docs
             .map(d => ({ id: d.id, ...(d.data() as any) }))
             .filter((c: any) => hotelIds.includes(c.hotelId));
@@ -881,27 +888,13 @@ export default function OperationsCopilot() {
       const result = await operationsChat(payload);
 
       if (result) {
-        // If the response learned a new rule, save it!
-        if (result.newLearnedRule && user.uid) {
-          const saved = addLearnedDirective(user.uid, result.newLearnedRule, userIsAdmin ? 'admin' : 'hotel_manager');
-          setLearnedRules(getLearnedDirectives(user.uid));
-          toast.success(`Directive saved: "${saved.text.slice(0, 50)}..."`);
-        }
-
-        // If the AI autonomously generated a patch from a mistake, persist it!
-        if (result.autonomousPatch && user.uid) {
-          const patch = result.autonomousPatch;
-          const savedPatch = addAutonomousPatch(
-            user.uid,
-            patch.patch,
-            patch.trigger,
-            patch.resolution
-          );
-          setLearnedRules(getLearnedDirectives(user.uid));
-          toast.success(`Operational rule updated: "${savedPatch.text.slice(0, 50)}..."`, {
-            duration: 4000,
-          });
-        }
+        // Ulendo may propose a rule to remember. It is only saved after the user confirms,
+        // so text from reviews or guest messages can never become a standing rule on its own.
+        const pendingRule = result.autonomousPatch?.patch
+          ? { text: result.autonomousPatch.patch.slice(0, MAX_DIRECTIVE_CHARS), kind: 'patch' as const, trigger: result.autonomousPatch.trigger, resolution: result.autonomousPatch.resolution }
+          : result.newLearnedRule
+            ? { text: result.newLearnedRule.slice(0, MAX_DIRECTIVE_CHARS), kind: 'directive' as const }
+            : null;
 
         const assistantMsg: ChatMessage = {
           id: `assistant_${Date.now()}`,
@@ -909,6 +902,7 @@ export default function OperationsCopilot() {
           content: result.reply,
           actionProposal: result.actionProposal,
           suggestedFollowUps: result.suggestedFollowUps,
+          pendingRule,
           timestamp: Date.now(),
         };
         setMessages(prev => [...prev, assistantMsg]);
@@ -916,6 +910,22 @@ export default function OperationsCopilot() {
     } finally {
       setActiveQueryText('');
     }
+  };
+
+  const decidePendingRule = (msgId: string, save: boolean) => {
+    const msg = messages.find(m => m.id === msgId);
+    const rule = msg?.pendingRule;
+    if (!rule || !user?.uid) return;
+    if (save) {
+      if (rule.kind === 'patch') {
+        addAutonomousPatch(user.uid, rule.text, rule.trigger, rule.resolution);
+      } else {
+        addLearnedDirective(user.uid, rule.text, userIsAdmin ? 'admin' : 'hotel_manager');
+      }
+      setLearnedRules(getLearnedDirectives(user.uid));
+      toast.success('Ulendo will remember this');
+    }
+    setMessages(prev => prev.map(m => (m.id === msgId ? { ...m, ruleDecision: save ? 'saved' : 'dismissed' } : m)));
   };
 
   // Helper: determine target properties for an action proposal
@@ -1137,7 +1147,7 @@ export default function OperationsCopilot() {
           };
         }));
 
-        actionSummaryText = `Updated StayOS Daily Board (Dish of the Day: "${action.dishOfTheDay || 'Updated'}") for ${targetIds.length} properties.`;
+        actionSummaryText = `Updated the Daily Board (Dish of the Day: "${action.dishOfTheDay || 'Updated'}") for ${targetIds.length} properties.`;
         toast.success(`Updated Daily Board across ${targetIds.length} properties!`, { icon: '🍽️' });
 
       // 5. RESTAURANT / MENUS
@@ -1215,8 +1225,27 @@ export default function OperationsCopilot() {
           toast.error('Booking ID or status missing.');
           return;
         }
-        await updateDoc(doc(db, 'bookings', action.bookingId), { status: action.newStatus });
-        setBookings(prev => prev.map(b => b.id === action.bookingId ? { ...b, status: action.newStatus as any } : b));
+        const target = bookings.find(b => b.id === action.bookingId);
+        if (!target) {
+          toast.error('That booking is not in the loaded data. Refresh and try again.');
+          return;
+        }
+        if (action.newStatus === 'confirmed') {
+          // Same availability transaction and price check as every other confirm.
+          try {
+            const written = await confirmBooking(target, { extraPatch: { updatedAt: Date.now() } });
+            setBookings(prev => prev.map(b => b.id === action.bookingId ? { ...b, ...written } as Booking : b));
+          } catch (err) {
+            toast.error(err instanceof PriceMismatchError
+              ? 'The stored total is below the current price. Confirm it from the Bookings tab to review the price.'
+              : confirmErrorMessage(err));
+            return;
+          }
+        } else {
+          await updateBookingWithSlot(action.bookingId, { status: action.newStatus, updatedAt: Date.now() }, target as any);
+          if (action.newStatus === 'cancelled' || action.newStatus === 'rejected') cancelBookingReminders(action.bookingId);
+          setBookings(prev => prev.map(b => b.id === action.bookingId ? { ...b, status: action.newStatus as any } : b));
+        }
         actionSummaryText = `Updated booking **${action.bookingRef || action.bookingId}** status to **${action.newStatus}**.`;
         toast.success(`Booking status updated!`, { icon: '📅' });
 
@@ -1946,6 +1975,36 @@ export default function OperationsCopilot() {
                         )}
                       </div>
 
+                      {/* RULE CONFIRMATION: nothing is remembered without the user's say-so */}
+                      {msg.pendingRule && (
+                        <div className="mt-2 bg-stone-50 border-l-2 border-stone-300 px-3 py-2 text-sm text-stone-700">
+                          {msg.ruleDecision ? (
+                            <p className="text-stone-500">{msg.ruleDecision === 'saved' ? "Saved to Ulendo's memory." : 'Not saved.'}</p>
+                          ) : (
+                            <>
+                              <p>Remember this for future replies?</p>
+                              <p className="mt-1 text-stone-900">"{msg.pendingRule.text}"</p>
+                              <div className="mt-2 flex gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => decidePendingRule(msg.id, true)}
+                                  className="px-3 py-1 rounded-md bg-stone-900 text-white text-xs hover:bg-stone-800"
+                                >
+                                  Remember
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => decidePendingRule(msg.id, false)}
+                                  className="px-3 py-1 rounded-md border border-stone-300 text-stone-800 text-xs hover:bg-white"
+                                >
+                                  Don't save
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      )}
+
                       {/* ACTION PROPOSAL CARDS */}
                       {msg.actionProposal && (() => {
                         const proposal = msg.actionProposal;
@@ -1973,7 +2032,7 @@ export default function OperationsCopilot() {
                                   {proposal.type === 'update_room_price' && 'Proposed Rate Change'}
                                   {proposal.type === 'update_property_online' && 'Proposed Status Change'}
                                   {proposal.type === 'update_property_policy' && 'Proposed Policy Update'}
-                                  {proposal.type === 'update_daily_board' && 'StayOS Daily Board Update'}
+                                  {proposal.type === 'update_daily_board' && 'Daily Board update'}
                                   {proposal.type === 'add_restaurant_dish' && 'Dining Menu Addition'}
                                   {proposal.type === 'update_booking_status' && 'Proposed Booking Change'}
                                   {proposal.type === 'update_property_status' && 'Listing Approval / Status'}

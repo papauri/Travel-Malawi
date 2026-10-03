@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Booking, Hotel } from '../types';
 import { isHotelManager } from '../lib/roles';
 import { playChime, startRinging, stopRinging } from '../lib/notificationSound';
+import { lastMessageTime } from '../lib/chatDeletion';
 import { useChatModal } from '../contexts/ChatModalContext';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -254,7 +255,8 @@ export default function GlobalNotificationManager() {
         }
       }
 
-      const updatedAt = data.updatedAt || 0;
+      // Alert on real message activity only, not on status/presence/close bumps.
+      const updatedAt = lastMessageTime(data);
       const previousTimestamp = knownChatTimestamps.current[chatId] || 0;
       knownChatTimestamps.current[chatId] = updatedAt;
 

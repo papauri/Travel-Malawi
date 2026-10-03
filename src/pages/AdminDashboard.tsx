@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { collection, getDocs, doc, updateDoc, deleteDoc, getDoc, setDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, deleteDoc, getDoc, setDoc, query, where, writeBatch } from 'firebase/firestore';
+import { todayStr } from '../lib/dates';
 import { db } from '../lib/firebase';
 import { Hotel, User, Booking, Role } from '../types';
 import { SystemSettings } from '../hooks/useSystemSettings';
@@ -27,6 +28,9 @@ import { logSystemEvent } from '../lib/logger';
 import { getHotelImage } from '../lib/images';
 import { isAdmin, isGlobalAdmin, isMarketing, isHotelManager, userRoles, toRoleFields } from '../lib/roles';
 import { formatMoney } from '../lib/booking';
+import { updateBookingWithSlot, deleteBookingWithSlot, cancelBookingReminders } from '../lib/bookingWrites';
+import { useConfirmBooking } from '../hooks/useConfirmBooking';
+import PriceMismatchNotice from '../components/PriceMismatchNotice';
 import { Navigation, TrendingUp, BookOpen, Mail, Settings } from 'lucide-react';
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import PriceDisplay from '../components/PriceDisplay';
@@ -35,6 +39,7 @@ type Tab = 'overview' | 'analytics' | 'properties' | 'reviews' | 'users' | 'book
 
 export default function AdminDashboard() {
   const { user, loading: authLoading, resetPassword } = useAuth();
+  const confirmFlow = useConfirmBooking();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   
@@ -191,7 +196,29 @@ export default function AdminDashboard() {
 
   const handleDeleteHotel = async (hotelId: string) => {
     const targetHotel = hotels.find(h => h.id === hotelId);
+
+    // A listing with guests still due to arrive cannot be deleted: those
+    // bookings would point at nothing. Cancel or move them first.
+    const today = todayStr();
+    const upcoming = bookings.filter(b =>
+      b.hotelId === hotelId &&
+      (b.status === 'confirmed' || b.status === 'pending') &&
+      (b.checkOut ?? '') >= today
+    );
+    if (upcoming.length > 0) {
+      toast.error(`This listing has ${upcoming.length} upcoming booking${upcoming.length === 1 ? '' : 's'}. Cancel or move them before deleting.`);
+      return;
+    }
+
     try {
+      // Rooms go with the hotel so they do not linger as orphans in search.
+      const roomSnap = await getDocs(query(collection(db, 'room_types'), where('hotelId', '==', hotelId)));
+      const roomRefs = roomSnap.docs.map(d => d.ref);
+      for (let i = 0; i < roomRefs.length; i += 450) {
+        const batch = writeBatch(db);
+        roomRefs.slice(i, i + 450).forEach(ref => batch.delete(ref));
+        await batch.commit();
+      }
       await deleteDoc(doc(db, 'hotels', hotelId));
       try {
         await fetch(`/api/hotels/${hotelId}/archive-images`, { method: 'POST' });
@@ -214,17 +241,36 @@ export default function AdminDashboard() {
 
   const handleUpdateBookingStatus = async (bookingId: string, newStatus: string) => {
     const targetBooking = bookings.find(b => b.id === bookingId);
+    if (!targetBooking) return;
+    const logChange = () => logSystemEvent('action', `Admin updated booking status: Ref ${targetBooking.reference || bookingId} to ${newStatus}`, {
+      bookingId,
+      reference: targetBooking.reference,
+      newStatus,
+      previousStatus: targetBooking.status,
+    }, user, 'booking');
+
+    // Confirmation goes through the shared availability transaction, so an
+    // admin cannot overbook a room either.
+    if (newStatus === 'confirmed') {
+      await confirmFlow.confirm(targetBooking, {
+        extraPatch: { updatedAt: Date.now() },
+        onConfirmed: async (written) => {
+          setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, ...written } as Booking : b));
+          toast.success('Booking confirmed.');
+          await logChange();
+        },
+      });
+      return;
+    }
+
     try {
-      await updateDoc(doc(db, 'bookings', bookingId), { status: newStatus });
-      setBookings(bookings.map(b => b.id === bookingId ? { ...b, status: newStatus as any } : b));
+      const patch: Record<string, unknown> = { status: newStatus, updatedAt: Date.now() };
+      await updateBookingWithSlot(bookingId, patch, targetBooking as any);
+      if (newStatus === 'cancelled' || newStatus === 'rejected') cancelBookingReminders(bookingId);
+      setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, status: newStatus as any } : b));
       toast.success(`Booking status updated to ${newStatus}`);
 
-      await logSystemEvent('action', `Admin updated booking status: Ref ${targetBooking?.reference || bookingId} to ${newStatus}`, {
-        bookingId,
-        reference: targetBooking?.reference,
-        newStatus,
-        previousStatus: targetBooking?.status,
-      }, user, 'booking');
+      await logChange();
     } catch (err) {
       console.error(err);
       toast.error('Failed to update booking status.');
@@ -235,8 +281,9 @@ export default function AdminDashboard() {
     if (!window.confirm('Are you sure you want to permanently delete this booking?')) return;
     const targetBooking = bookings.find(b => b.id === bookingId);
     try {
-      await deleteDoc(doc(db, 'bookings', bookingId));
-      setBookings(bookings.filter(b => b.id !== bookingId));
+      await deleteBookingWithSlot(bookingId);
+      cancelBookingReminders(bookingId);
+      setBookings(prev => prev.filter(b => b.id !== bookingId));
       toast.success('Booking deleted.');
 
       await logSystemEvent('action', `Admin permanently deleted booking: Ref ${targetBooking?.reference || bookingId}`, {
@@ -612,6 +659,13 @@ export default function AdminDashboard() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 w-full flex flex-col lg:flex-row gap-6 lg:gap-8 min-h-screen">
       
+      <PriceMismatchNotice
+        mismatch={confirmFlow.mismatch}
+        busy={!!confirmFlow.busyId}
+        onConfirmAnyway={() => { confirmFlow.confirmAnyway(); }}
+        onDismiss={confirmFlow.dismiss}
+      />
+
       {/* Sidebar Navigation */}
       <div className="w-full lg:w-64 shrink-0 space-y-3 lg:space-y-4 lg:sticky lg:top-24 lg:self-start">
         <div className="flex items-center justify-between px-1 lg:px-2">

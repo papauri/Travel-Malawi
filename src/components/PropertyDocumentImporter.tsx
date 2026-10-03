@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Upload, FileText, Image, X, Check, Loader2, AlertCircle, ClipboardPaste, Building } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { describeAIError } from '../hooks/useAIAssistant';
 import { ListingDraft } from '../lib/listing';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { useModalScrollIsolation } from '../hooks/useModalScrollIsolation';
@@ -117,7 +118,7 @@ export default function PropertyDocumentImporter({ open, onClose, onImport }: Pr
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || `Processing failed (${res.status})`);
+        throw new Error(describeAIError(res, errData));
       }
 
       const data = await res.json();

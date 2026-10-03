@@ -1,5 +1,5 @@
 import { collection, addDoc, getDocs, query, orderBy, limit, onSnapshot, doc, deleteDoc, writeBatch } from 'firebase/firestore';
-import { db } from './firebase';
+import { auth, db } from './firebase';
 
 export type LogType = 'action' | 'error' | 'info' | 'auth' | 'session';
 export type LogCategory = 'auth' | 'session' | 'booking' | 'property' | 'admin' | 'security' | 'ai' | 'system';
@@ -517,22 +517,25 @@ export async function logSystemEvent(
     const telemetry = await getClientTelemetry();
     const { activity, status, target, targetType } = inferIntuneAttributes(message, type, resolvedCategory, details);
 
+    // The rules accept exactly these keys and these sizes, and a userId only
+    // when it is the signed-in caller's own.
+    const ownUserId = userId && auth.currentUser?.uid === userId ? userId : null;
     await addDoc(collection(db, 'system_logs'), {
       timestamp: Date.now(),
-      type,
+      type: String(type).slice(0, 40),
       category: resolvedCategory,
-      message,
+      message: String(message).slice(0, 2000),
       activity,
       status,
       target,
       targetType,
       details: details || null,
-      userId,
+      userId: ownUserId,
       userName,
       userEmail,
       userRole,
       sessionId,
-      userAgent,
+      userAgent: userAgent ? userAgent.slice(0, 500) : null,
       ip: telemetry.ip,
       location: telemetry.location,
       device: telemetry.device,

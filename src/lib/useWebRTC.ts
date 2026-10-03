@@ -16,6 +16,11 @@ const configuration = {
 
 export type NetworkQuality = 'excellent' | 'good' | 'fair' | 'poor' | 'unknown';
 
+/** An unanswered call stops ringing and is recorded as missed after this. */
+const RING_TIMEOUT_MS = 45_000;
+/** Ringing calls older than this are leftovers (caller closed the tab) and are ignored. */
+const STALE_CALL_MS = 60_000;
+
 export function useWebRTC(
   chatId: string, 
   currentUserId: string, 
@@ -32,6 +37,11 @@ export function useWebRTC(
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const pendingCandidates = useRef<RTCIceCandidate[]>([]);
+  // Refs mirror state so cleanup paths running from stale closures (snapshot
+  // listeners, unmount) still see the live stream and call.
+  const localStreamRef = useRef<MediaStream | null>(null);
+  const activeCallRef = useRef<Call | null>(null);
+  useEffect(() => { activeCallRef.current = activeCall; }, [activeCall]);
 
   // Listen for incoming calls
   useEffect(() => {
@@ -48,6 +58,7 @@ export function useWebRTC(
       snapshot.docChanges().forEach((change) => {
         if (change.type === 'added') {
           const callData = { id: change.doc.id, ...change.doc.data() } as Call;
+          if (!callData.createdAt || Date.now() - callData.createdAt > STALE_CALL_MS) return;
           setIncomingCall(callData);
         }
         if (change.type === 'modified') {
@@ -90,7 +101,7 @@ export function useWebRTC(
         }
       }
       
-      if (data.status === 'ended' || data.status === 'rejected') {
+      if (data.status === 'ended' || data.status === 'rejected' || data.status === 'missed') {
         cleanup();
       }
     });
@@ -132,6 +143,7 @@ export function useWebRTC(
       
       const stream = await navigator.mediaDevices.getUserMedia({ video, audio: true });
       
+      localStreamRef.current = stream;
       setLocalStream(stream);
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = stream;
@@ -268,17 +280,69 @@ export function useWebRTC(
     });
   };
 
-  const endCall = async () => {
-    if (activeCall?.id) {
-      const callRef = doc(db, chatCollection, chatId, 'calls', activeCall.id);
+  /** Signalling data is only needed while connecting; remove it once a call is over. */
+  const deleteCandidates = async (callId: string) => {
+    for (const name of ['callerCandidates', 'calleeCandidates']) {
+      try {
+        const snap = await getDocs(collection(db, chatCollection, chatId, 'calls', callId, name));
+        await Promise.allSettled(snap.docs.map(d => deleteDoc(d.ref)));
+      } catch {
+        // Best effort: the rules may not let this user remove the other side's candidates.
+      }
+    }
+  };
+
+  const finishCall = async (call: Call | null, status: 'ended' | 'missed') => {
+    if (call?.id && chatId) {
+      const callRef = doc(db, chatCollection, chatId, 'calls', call.id);
       await updateDoc(callRef, {
-        status: 'ended',
+        status,
         updatedAt: Date.now(),
         endedAt: Date.now()
-      });
+      }).catch(err => console.warn('Could not update call status:', err));
+      void deleteCandidates(call.id);
     }
     cleanup();
   };
+
+  const endCall = async () => {
+    const call = activeCallRef.current;
+    // Hanging up before the other side answered counts as a missed call for them.
+    await finishCall(call, call?.status === 'ringing' ? 'missed' : 'ended');
+  };
+
+  // Stop ringing after RING_TIMEOUT_MS if nobody answers (caller side).
+  useEffect(() => {
+    if (!activeCall?.id || activeCall.status !== 'ringing' || activeCall.callerId !== currentUserId) return;
+    const elapsed = Date.now() - (activeCall.createdAt || Date.now());
+    const timer = setTimeout(() => {
+      if (activeCallRef.current?.status === 'ringing') {
+        toast('No answer.', { icon: '📵' });
+        void finishCall(activeCallRef.current, 'missed');
+      }
+    }, Math.max(0, RING_TIMEOUT_MS - elapsed));
+    return () => clearTimeout(timer);
+  }, [activeCall?.id, activeCall?.status]);
+
+  // Drop the incoming-call prompt once the ring window has passed (callee side).
+  useEffect(() => {
+    if (!incomingCall) return;
+    const elapsed = Date.now() - (incomingCall.createdAt || Date.now());
+    const timer = setTimeout(() => setIncomingCall(null), Math.max(0, RING_TIMEOUT_MS - elapsed));
+    return () => clearTimeout(timer);
+  }, [incomingCall?.id]);
+
+  // Closing the chat mid-call must release the camera/mic and close the call record.
+  useEffect(() => {
+    return () => {
+      const call = activeCallRef.current;
+      if (call?.id && (call.status === 'ringing' || call.status === 'connected')) {
+        void finishCall(call, call.status === 'ringing' ? 'missed' : 'ended');
+      } else {
+        cleanup();
+      }
+    };
+  }, [chatId]);
 
   useEffect(() => {
     if (!activeCall || activeCall.status !== 'connected' || !peerConnection.current) {
@@ -335,10 +399,11 @@ export function useWebRTC(
       peerConnection.current = null;
     }
     pendingCandidates.current = [];
-    if (localStream) {
-      localStream.getTracks().forEach(track => track.stop());
-      setLocalStream(null);
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach(track => track.stop());
+      localStreamRef.current = null;
     }
+    setLocalStream(null);
     setRemoteStream(null);
     setActiveCall(null);
     setIncomingCall(null);

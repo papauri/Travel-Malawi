@@ -31,6 +31,8 @@ cp .env.example .env
 | `GEMINI_API_KEY` | Server, Ulendo concierge (primary) | Recommended |
 | `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `DEEPSEEK_API_KEY`, `MISTRAL_API_KEY`, `GROQ_API_KEY` | Server, fallback AI providers | Optional |
 | `GOOGLE_APPLICATION_CREDENTIALS` | Path to a Firebase service-account JSON for admin scripts | Only for `scripts/` |
+| `REMINDERS_STORE` | Server, where guest reminders are kept. `firestore` stores them in the `server_reminders` collection (needs Application Default Credentials with Firestore access, e.g. the Cloud Run service account). Unset keeps them in `data/reminders.json`, which is lost on every redeploy. | Set to `firestore` in production |
+| `SMTP_ALLOW_INVALID_CERTS` | Server, set to `true` to skip SMTP TLS certificate checks. For local testing only. | No |
 
 Notes:
 
@@ -88,7 +90,19 @@ Firestore uses a named database (see `firebase.json`). Deploy rules after changi
 npx firebase deploy --only firestore:rules,storage
 ```
 
-## 7. Data scripts
+## 7. Deploy order
+
+Bookings are private, and availability comes from the public `booking_slots` collection (see `SECURITY.md`). Do these steps in this order:
+
+1. **Deploy the app.** The new client writes a slot alongside every booking change, and its manager and guest queries are filtered the way the new rules require. It still works under the old rules.
+2. **Run the backfill:** `npm run data:backfill-slots`. This creates a slot for every existing booking. Skip it and every room looks free until it is re-booked, so confirmed stays could be double-sold.
+3. **Deploy the rules:** `npx firebase deploy --only firestore:rules,storage`.
+
+Then test while signed out: open a property, check that the calendar shades booked dates, and submit a booking. Test while signed in as a manager: confirm a booking.
+
+Rolling back: redeploy the previous `firestore.rules` from git. The slots are harmless under the old rules.
+
+## 8. Data scripts
 
 Need `GOOGLE_APPLICATION_CREDENTIALS`. Run with care against production.
 
@@ -99,8 +113,9 @@ Need `GOOGLE_APPLICATION_CREDENTIALS`. Run with care against production.
 | `npm run data:seed-restaurants` | Seed restaurant data |
 | `npm run data:repair` | Fix known data inconsistencies |
 | `npm run data:provision-storage` | Set up storage buckets and CORS |
+| `npm run data:backfill-slots` | Create a `booking_slots` mirror for every existing booking (run once, before deploying the new rules) |
 
-## 8. Guides
+## 9. Guides
 
 Partner and admin guides live in `server/docs/` as a Markdown source plus an HTML copy, and in `src/pages/` as in-app pages. Admins edit them in Admin Dashboard > Docs. All guides use the same plain theme: neutral greys, system font, single column, no colour accents.
 
@@ -111,4 +126,6 @@ Partner and admin guides live in `server/docs/` as a Markdown source plus an HTM
 | `429 Too Many Requests` from Gemini | Free tier allows 15 requests per minute. The server queue waits 4 seconds between calls; wait and retry, or add a fallback provider key. |
 | Port 3000 in use | Stop the other process, or change `PORT` in `server.ts`. |
 | Blank page after deploy | Clear the old service worker: browser DevTools > Application > Service Workers > Unregister. |
-| `Permission denied` from Firestore | Rules not deployed, or the user's role is missing. Check `firestore.rules` and the `users` document. |
+| `Permission denied` from Firestore | Rules not deployed, the user's role is missing, or the account is suspended. Booking and chat queries must be filtered by the signed-in user (see `SECURITY.md`). |
+| `401` from `/api/*` | The request had no valid Firebase ID token. Sign in again. |
+| Every room shows as available | `booking_slots` was not backfilled. Run `npm run data:backfill-slots`. |

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Bell, Volume2, VolumeX, MessageSquare, CheckCheck, Radio, ExternalLink, Calendar, X, XCircle } from 'lucide-react';
-import { useUnreadMessages, UnreadMessageItem } from '../hooks/useUnreadMessages';
+import { UnreadMessageItem } from '../hooks/useUnreadMessages';
+import { useUnreadMessages } from '../contexts/UnreadMessagesContext';
 import { useUnreadBroadcasts } from '../hooks/useUnreadBroadcasts';
 import { useChatModal } from '../contexts/ChatModalContext';
 import { isSoundEnabled, setSoundEnabled } from '../lib/notificationSound';

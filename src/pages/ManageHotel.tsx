@@ -1,5 +1,8 @@
 import PromotionsManager from '../components/PromotionsManager';
-import { safeRunTransactionAvailability } from '../lib/transactions';
+import { safeRunTransactionAvailability, confirmErrorMessage } from '../lib/transactions';
+import { updateBookingWithSlot, updateBookingWithSlotTx, deleteBookingWithSlot, cancelBookingReminders } from '../lib/bookingWrites';
+import { useConfirmBooking } from '../hooks/useConfirmBooking';
+import PriceMismatchNotice from '../components/PriceMismatchNotice';
 import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
@@ -40,7 +43,7 @@ import AIAssistantButton from '../components/AIAssistantButton';
 import toast from 'react-hot-toast';
 import { addDays, formatDateStr, isValidDateStr, nightsBetween, nightsInRange, todayStr } from '../lib/dates';
 import { isRoomAvailable } from '../lib/availability';
-import { formatMoney } from '../lib/booking';
+import { formatMoney, computeBookingPricing } from '../lib/booking';
 import { CURRENCIES, CURRENCY_CODES, currenciesForRooms, roomCurrencies, roomPrice } from '../lib/currency';
 import { defaultWeek } from '../lib/hours';
 import { SPAM_REASON_LABELS } from '../lib/spam';
@@ -142,6 +145,8 @@ function pickHotelFormData(data: Partial<Hotel>): Partial<Hotel> {
 /** Fields that describe the listing itself and are never edited from this form. */
 const HOTEL_READONLY_FIELDS = [
   'id', 'managerId', 'status', 'featured', 'featuredAt', 'createdAt', 'name', 'reviews',
+  // Edited by the promotions and bulk editors, which save on their own.
+  'promotions',
 ] as const;
 
 
@@ -228,6 +233,7 @@ export default function ManageHotel() {
   const [amenitiesExpanded, setAmenitiesExpanded] = useState(false);
   const [amenityInput, setAmenityInput] = useState("");
   const [confirmModalBooking, setConfirmModalBooking] = useState<string | null>(null);
+  const confirmFlow = useConfirmBooking();
   const [editModalBooking, setEditModalBooking] = useState<Booking | null>(null);
   const [bookingToDelete, setBookingToDelete] = useState<string | null>(null);
 
@@ -250,6 +256,7 @@ export default function ManageHotel() {
     try {
       await updateDoc(doc(db, 'bookings', bookingId), {
         guestWhatsapp: tempWhatsappNumber.trim(),
+        updatedAt: Date.now(),
       });
       setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, guestWhatsapp: tempWhatsappNumber.trim() } : b));
       setEditingWhatsappBookingId(null);
@@ -271,6 +278,10 @@ export default function ManageHotel() {
 
   // Edit states
   const [editHotelData, setEditHotelData] = useState<Partial<Hotel>>({});
+  // What the details form started from. Saving writes only the fields that
+  // differ from it, so changes made elsewhere since the page loaded (and the
+  // display-only fallback images) are never overwritten.
+  const editBaselineRef = useRef<Partial<Hotel>>({});
   const [showAddRoom, setShowAddRoom] = useState(false);
   const [showBulkEditor, setShowBulkEditor] = useState(false);
   const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
@@ -320,6 +331,7 @@ export default function ManageHotel() {
       await updateDoc(doc(db, 'hotels', id), { isOnline: newStatus });
       setHotel(prev => prev ? { ...prev, isOnline: newStatus } : null);
       setEditHotelData(prev => ({ ...prev, isOnline: newStatus }));
+      editBaselineRef.current = { ...editBaselineRef.current, isOnline: newStatus };
 
       await logSystemEvent('action', `Manager toggled property status to ${newStatus ? 'ONLINE' : 'OFFLINE'} for ${hotel.name}`, {
         hotelId: id,
@@ -351,6 +363,9 @@ export default function ManageHotel() {
     }
 
     let unsubInquiries: (() => void) | undefined;
+    // Set on cleanup so a fetch that resolves after unmount (or after `id`
+    // changes) does not subscribe a listener nobody will ever remove.
+    let cancelled = false;
 
     async function fetchData() {
       if (!id) return;
@@ -367,8 +382,8 @@ export default function ManageHotel() {
         const userEmailLower = user?.email?.toLowerCase();
         const canManage = Boolean(
           isAdmin(user) || isMarketing(user) ||
-          !hasAssignedManager || // Unassigned properties belong to the signed-in user!
-          hRaw?.managerId === user?.uid ||
+          // Unassigned properties are managed by admins only.
+          (hasAssignedManager && hRaw?.managerId === user?.uid) ||
           (userEmailLower && (
             (hRaw?.managerEmail && hRaw.managerEmail.toLowerCase() === userEmailLower) ||
             (hRaw?.ownerEmail && hRaw.ownerEmail.toLowerCase() === userEmailLower) ||
@@ -378,8 +393,10 @@ export default function ManageHotel() {
           hRaw?.createdBy === user?.uid
         );
 
+        if (cancelled) return;
         if (docSnap.exists() && canManage) {
-          const hData = { id: docSnap.id, ...docSnap.data() } as Hotel;
+          const rawHotel = { id: docSnap.id, ...docSnap.data() } as Hotel;
+          const hData = { ...rawHotel } as Hotel;
           
           // Seed missing images with local fallbacks so the admin sees exactly what guests see and can manage them.
           const local = localImagesForName(hData.name);
@@ -396,7 +413,10 @@ export default function ManageHotel() {
           }
 
           setHotel(hData);
-          setEditHotelData(hData);
+          // The edit form starts from the stored document, not the display copy,
+          // so the local fallback images are never written back to Firestore.
+          setEditHotelData(rawHotel);
+          editBaselineRef.current = rawHotel;
           setRestaurant(hData.restaurant ?? null);
         } else {
           navigate(backUrl);
@@ -417,6 +437,7 @@ export default function ManageHotel() {
           toast.error('Bookings could not be loaded. Property and room editing still work.');
         }
 
+        if (cancelled) return;
         try {
           const inquiriesQuery = query(
             collection(db, 'hotel_chats'),
@@ -445,6 +466,7 @@ export default function ManageHotel() {
     fetchData();
 
     return () => {
+      cancelled = true;
       if (unsubInquiries) unsubInquiries();
     };
   }, [id, user, authLoading, navigate]);
@@ -512,10 +534,7 @@ export default function ManageHotel() {
 
   const canSeeFinancials = Boolean(
     isAdmin(user) || isMarketing(user) ||
-    !hotel?.managerId ||
-    hotel?.managerId === 'unassigned' ||
-    hotel?.managerId === 'none' ||
-    hotel?.managerId === user?.uid ||
+    (!!hotel?.managerId && hotel.managerId === user?.uid) ||
     (user?.email && (
       (hotel?.managerEmail && hotel.managerEmail.toLowerCase() === user.email.toLowerCase()) ||
       (hotel?.ownerEmail && hotel.ownerEmail.toLowerCase() === user.email.toLowerCase()) ||
@@ -604,15 +623,23 @@ export default function ManageHotel() {
       // `status` from page load overwrite an admin's decision.
       for (const field of HOTEL_READONLY_FIELDS) delete updateData[field];
 
-      // Strip out any undefined values to avoid Firestore errors
+      // Strip out undefined values (Firestore rejects them) and anything the
+      // manager did not change in this form.
+      const baseline = editBaselineRef.current as Record<string, unknown>;
       Object.keys(updateData).forEach(key => {
-        if (updateData[key] === undefined) {
+        if (updateData[key] === undefined || JSON.stringify(updateData[key]) === JSON.stringify(baseline[key])) {
           delete updateData[key];
         }
       });
 
+      if (Object.keys(updateData).length === 0) {
+        toast.success('No changes to save.');
+        return;
+      }
+
       await updateDoc(doc(db, 'hotels', id), updateData);
       setHotel({ ...hotel, ...updateData } as Hotel);
+      editBaselineRef.current = { ...baseline, ...updateData } as Partial<Hotel>;
       toast.success('Property details updated successfully!');
 
       await logSystemEvent('action', `Manager updated property details: ${hotel.name}`, {
@@ -674,7 +701,7 @@ export default function ManageHotel() {
 
   const discardAndSwitch = () => {
     if (!pendingTab || !hotel) return;
-    if (activeTab === 'details') setEditHotelData(hotel);
+    if (activeTab === 'details') { setEditHotelData(hotel); editBaselineRef.current = hotel; }
     if (activeTab === 'restaurant') setRestaurant(hotel.restaurant ?? null);
     if (activeTab === 'rooms') { setEditingRoomId(null); setShowAddRoom(false); }
     goToTab(pendingTab);
@@ -1007,141 +1034,180 @@ export default function ManageHotel() {
     const booking = bookings.find(b => b.id === bookingId);
     if (!booking) return;
 
+    if (status === 'confirmed') {
+      // The shared confirm path: availability transaction, price check, slot.
+      const extraPatch: Record<string, unknown> = { updatedAt: Date.now() };
+      if (!booking.arrivalPin) extraPatch.arrivalPin = Math.floor(1000 + Math.random() * 9000).toString();
+      await confirmFlow.confirm(booking, {
+        room: rooms.find(r => r.id === booking.roomTypeId) ?? null,
+        hotel,
+        extraPatch,
+        onConfirmed: (written) => afterBookingStatusChange(booking, 'confirmed', written),
+      });
+      setConfirmModalBooking(null);
+      return;
+    }
+
     try {
       const patch: Record<string, unknown> = { status, updatedAt: Date.now() };
       if (status === 'cancelled') {
         patch.cancelledAt = Date.now();
         patch.cancelledBy = 'manager';
-      }
-      
-      // Generate Arrival PIN if confirmed and it doesn't have one
-      let newPin = booking.arrivalPin;
-      if (status === 'confirmed' && !newPin) {
-        newPin = Math.floor(1000 + Math.random() * 9000).toString();
-        patch.arrivalPin = newPin;
-      }
-      
-      if (status === 'confirmed') {
-        const room = rooms.find(r => r.id === booking.roomTypeId);
-        if (room) {
-          // This mathematically guarantees no double booking can happen during confirmation.
-          await safeRunTransactionAvailability(
-            room.id!,
-            room,
-            booking.checkIn,
-            booking.checkOut,
-            booking.quantity ?? 1,
-            (transaction) => {
-              transaction.update(doc(db, 'bookings', bookingId), patch);
-            },
-            bookingId // ignore this booking when calculating live availability
-          );
-        } else {
-          await updateDoc(doc(db, 'bookings', bookingId), patch);
-        }
       } else {
-        await updateDoc(doc(db, 'bookings', bookingId), patch);
+        patch.rejectedAt = Date.now();
       }
-      
-      setBookings(bookings.map(b => b.id === bookingId ? { ...b, ...patch } as Booking : b));
+      await updateBookingWithSlot(bookingId, patch, booking as any);
+      cancelBookingReminders(bookingId);
+      await afterBookingStatusChange(booking, status, patch);
+    } catch (error) {
+      console.error('Error updating booking:', error);
+      toast.error('Could not update this booking.');
       setConfirmModalBooking(null);
-      toast.success(
-        status === 'confirmed' ? 'Booking confirmed.' :
-        status === 'rejected' ? 'Booking declined.' : 'Booking cancelled.'
-      );
+    }
+  };
 
+  const afterBookingStatusChange = async (
+    booking: Booking,
+    status: 'confirmed' | 'rejected' | 'cancelled',
+    patch: Record<string, unknown>
+  ) => {
+    const bookingId = booking.id!;
+    setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, ...patch } as Booking : b));
+    setConfirmModalBooking(null);
+    toast.success(
+      status === 'confirmed' ? 'Booking confirmed.' :
+      status === 'rejected' ? 'Booking declined.' : 'Booking cancelled.'
+    );
+
+    if (status === 'confirmed') {
+      try {
+        const bookedRoom = rooms.find(r => r.id === booking.roomTypeId);
+        await fetch('/api/reminders/auto-generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: bookingId,
+            bookingId,
+            reference: booking.reference,
+            hotelId: hotel?.id,
+            hotelName: hotel?.name,
+            guestName: booking.guestName,
+            guestEmail: booking.guestEmail,
+            guestPhone: booking.guestPhone,
+            guestWhatsapp: booking.guestWhatsapp,
+            checkIn: booking.checkIn,
+            checkOut: booking.checkOut,
+            roomName: bookedRoom?.name || 'Standard Room',
+            totalPrice: booking.total ? `${booking.total} ${booking.currency || 'MWK'}` : undefined,
+            depositInstructions: hotel?.depositInfo?.airtelMoneyNumber
+              ? `Airtel: ${hotel.depositInfo.airtelMoneyNumber} (${hotel.depositInfo.airtelMoneyName || hotel.name})`
+              : undefined,
+            wifiName: hotel?.infrastructure?.wifiSSID,
+            wifiPassword: hotel?.infrastructure?.wifiPassword,
+            managerPhone: hotel?.contactPhone || hotel?.managerPhone,
+            managerEmail: hotel?.contactEmail || hotel?.managerEmail,
+            automationSettings: hotel?.emailAutomationSettings,
+          }),
+        });
+      } catch { /* non-critical */ }
+    }
+
+    if (booking.guestEmail) {
+      const hotelName = hotel?.name || 'the property';
+      let subject = '';
+      let message = '';
       if (status === 'confirmed') {
-        try {
-          const bookedRoom = rooms.find(r => r.id === booking.roomTypeId);
-          await fetch('/api/reminders/auto-generate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              id: bookingId,
-              reference: booking.reference,
-              hotelId: hotel?.id,
-              hotelName: hotel?.name,
-              guestName: booking.guestName,
-              guestEmail: booking.guestEmail,
-              guestPhone: booking.guestPhone,
-              guestWhatsapp: booking.guestWhatsapp,
-              checkIn: booking.checkIn,
-              checkOut: booking.checkOut,
-              roomName: bookedRoom?.name || 'Standard Room',
-              totalPrice: booking.total ? `${booking.total} ${booking.currency || 'MWK'}` : undefined,
-              depositInstructions: hotel?.depositInfo?.airtelMoneyNumber 
-                ? `Airtel: ${hotel.depositInfo.airtelMoneyNumber} (${hotel.depositInfo.airtelMoneyName || hotel.name})`
-                : undefined,
-              wifiName: hotel?.infrastructure?.wifiSSID,
-              wifiPassword: hotel?.infrastructure?.wifiPassword,
-              managerPhone: hotel?.contactPhone || hotel?.managerPhone,
-              managerEmail: hotel?.contactEmail || hotel?.managerEmail,
-              automationSettings: hotel?.emailAutomationSettings,
-            }),
-          });
-        } catch { /* non-critical */ }
-      }
-
-      if (booking.guestEmail) {
-        let subject = '';
-        let message = '';
-        const hotelName = hotel?.name || 'the property';
-
-        if (status === 'confirmed') {
-          subject = `Booking Confirmed: ${hotelName}`;
-          message = `Dear ${booking.guestName},\n\nGreat news! Your booking at ${hotelName} has been confirmed.\n\nDates: ${booking.checkIn} to ${booking.checkOut}\nReference: #${booking.reference}\n\nWe look forward to hosting you!`;
-        } else if (status === 'rejected') {
-          subject = `Booking Declined: ${hotelName}`;
-          message = `Dear ${booking.guestName},\n\nWe regret to inform you that your booking request at ${hotelName} (Ref: #${booking.reference}) could not be accommodated for your requested dates (${booking.checkIn} to ${booking.checkOut}) and has been declined.\n\nPlease contact the property for alternative dates.`;
-        } else if (status === 'cancelled') {
-          subject = `Booking Cancelled: ${hotelName}`;
-          message = `Dear ${booking.guestName},\n\nYour booking at ${hotelName} (Ref: #${booking.reference}) for ${booking.checkIn} to ${booking.checkOut} has been cancelled by the property manager.\n\nIf you have any questions, please reach out to the property.`;
-        }
-
-        if (subject && message) {
-          fetch('/api/notify', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              email: booking.guestEmail,
-              subject,
-              message,
-            })
-          }).catch(console.error);
-        }
-      }
-    } catch (error: any) {
-      console.error("Error updating booking:", error);
-      if (error.message === 'ROOM_UNAVAILABLE') {
-        toast.error('Sorry, this room is already fully committed for these dates.');
+        subject = `Booking Confirmed: ${hotelName}`;
+        message = `Dear ${booking.guestName},\n\nGreat news! Your booking at ${hotelName} has been confirmed.\n\nDates: ${booking.checkIn} to ${booking.checkOut}\nReference: #${booking.reference}\n\nWe look forward to hosting you!`;
+      } else if (status === 'rejected') {
+        subject = `Booking Declined: ${hotelName}`;
+        message = `Dear ${booking.guestName},\n\nWe regret to inform you that your booking request at ${hotelName} (Ref: #${booking.reference}) could not be accommodated for your requested dates (${booking.checkIn} to ${booking.checkOut}) and has been declined.\n\nPlease contact the property for alternative dates.`;
       } else {
-        toast.error('Could not update this booking.');
+        subject = `Booking Cancelled: ${hotelName}`;
+        message = `Dear ${booking.guestName},\n\nYour booking at ${hotelName} (Ref: #${booking.reference}) for ${booking.checkIn} to ${booking.checkOut} has been cancelled by the property manager.\n\nIf you have any questions, please reach out to the property.`;
       }
-      setConfirmModalBooking(null);
+      fetch('/api/notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: booking.guestEmail, bookingId, hotelId: booking.hotelId, subject, message }),
+      }).catch(console.error);
     }
   };
 
   const deleteBooking = async (bookingId: string) => {
     try {
-      await deleteDoc(doc(db, 'bookings', bookingId));
-      setBookings(bookings.filter(b => b.id !== bookingId));
+      await deleteBookingWithSlot(bookingId);
+      cancelBookingReminders(bookingId);
+      setBookings(prev => prev.filter(b => b.id !== bookingId));
       setBookingToDelete(null);
       toast.success('Booking deleted.');
     } catch (error) {
       console.error("Error deleting booking:", error);
-      toast.error('Failed to delete booking.');
+      toast.error('Failed to delete booking. Only admins can delete bookings; cancel it instead.');
     }
   };
 
-  const updateBookingDetails = async (bookingId: string, patch: Partial<Booking>) => {
+  /**
+   * Manager edits. Contact-only changes are written directly; a change of dates
+   * or party size is validated, re-checked against inventory (confirmed
+   * bookings, ignoring themselves) and repriced before it is saved.
+   */
+  const updateBookingDetails = async (bookingId: string, patch: Partial<Booking>): Promise<string | null> => {
+    const booking = bookings.find(b => b.id === bookingId);
+    if (!booking) return 'This booking is no longer loaded. Refresh and try again.';
+
+    const checkIn = patch.checkIn ?? booking.checkIn;
+    const checkOut = patch.checkOut ?? booking.checkOut;
+    const guests = patch.guests ?? booking.guests;
+    const stayChanged = checkIn !== booking.checkIn || checkOut !== booking.checkOut || guests !== booking.guests;
+    const full: Record<string, unknown> = { ...patch, updatedAt: Date.now() };
+
     try {
-      await updateDoc(doc(db, 'bookings', bookingId), patch);
-      setBookings(bookings.map(b => b.id === bookingId ? { ...b, ...patch } as Booking : b));
+      if (!stayChanged) {
+        delete full.checkIn;
+        delete full.checkOut;
+        delete full.guests;
+        await updateBookingWithSlot(bookingId, full, booking as any);
+      } else {
+        if (!checkIn || !checkOut || checkOut <= checkIn) return 'Check-out must be after check-in.';
+        const room = rooms.find(r => r.id === booking.roomTypeId);
+        if (!room) return 'The room type for this booking could not be found.';
+        if (room.maxGuests && guests > room.maxGuests) return `This room sleeps up to ${room.maxGuests}.`;
+
+        const promo = booking.promotionId ? hotel?.promotions?.find(p => p.id === booking.promotionId) ?? null : null;
+        const pricing = computeBookingPricing(
+          room, checkIn, checkOut, guests, booking.quantity || 1, booking.packageIds ?? [],
+          (booking.currency as CurrencyCode) || undefined, promo
+        );
+        full.checkIn = checkIn;
+        full.checkOut = checkOut;
+        full.guests = guests;
+        full.total = pricing.total;
+        full.extraGuestTotal = pricing.extraGuestTotal;
+        full.packagesTotal = pricing.packagesTotal;
+        full.discountAmount = pricing.discountAmount;
+
+        if (booking.status === 'confirmed') {
+          await safeRunTransactionAvailability(
+            room.id!, room, checkIn, checkOut, booking.quantity || 1,
+            (tx) => updateBookingWithSlotTx(tx, bookingId, full, booking as any),
+            bookingId
+          );
+        } else {
+          await updateBookingWithSlot(bookingId, full, booking as any);
+        }
+      }
+      setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, ...full } as Booking : b));
       setEditModalBooking(null);
-      toast.success('Booking updated.');
-    } catch (error) {
-      console.error("Error updating booking details:", error);
-      toast.error('Failed to update booking.');
+      toast.success(stayChanged
+        ? `Booking updated. New total: ${formatMoney(full.total as number, String(booking.currency || 'MWK'))}.`
+        : 'Booking updated.');
+      return null;
+    } catch (error: any) {
+      console.error('Error updating booking details:', error);
+      const msg = error?.message;
+      if (msg === 'ROOM_UNAVAILABLE' || msg === 'TOO_MANY_RETRIES') return confirmErrorMessage(error);
+      return 'Could not save these changes. Please try again.';
     }
   };
 
@@ -3767,6 +3833,12 @@ export default function ManageHotel() {
         />
       )}
       
+      <PriceMismatchNotice
+        mismatch={confirmFlow.mismatch}
+        busy={!!confirmFlow.busyId}
+        onConfirmAnyway={() => { confirmFlow.confirmAnyway(); }}
+        onDismiss={confirmFlow.dismiss}
+      />
       <EditBookingModal
         isOpen={!!editModalBooking}
         booking={editModalBooking}

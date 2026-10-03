@@ -1,5 +1,7 @@
 import { sendSystemEmail } from './emailConfig';
+import { escapeHtml } from './auth';
 
+/** Sends a plain-text notification; the text is escaped before it goes into HTML. */
 export async function sendOfflineNotification(email: string, subject: string, message: string) {
   try {
     const result = await sendSystemEmail({
@@ -9,7 +11,7 @@ export async function sendOfflineNotification(email: string, subject: string, me
       html: `
         <div style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; padding: 20px; color: #1c1917;">
           <h2 style="color: #1c1917;">Travel Malawi Notification</h2>
-          <p style="font-size: 14px; line-height: 1.6; color: #44403c;">${message.replace(/\n/g, '<br/>')}</p>
+          <p style="font-size: 14px; line-height: 1.6; color: #44403c;">${escapeHtml(message).replace(/\n/g, '<br/>')}</p>
         </div>
       `,
     });
@@ -19,4 +21,3 @@ export async function sendOfflineNotification(email: string, subject: string, me
     return { success: false, error: err?.message };
   }
 }
-

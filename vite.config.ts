@@ -11,31 +11,18 @@ export default defineConfig(() => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
+        includeAssets: ['favicon-32.png', 'apple-touch-icon.png', 'icons/*.png'],
         manifest: {
           name: 'Travel Malawi',
           short_name: 'TravelMalawi',
           description: 'A globally inclusive platform connecting the world to independent lodges and camps across Malawi.',
           theme_color: '#1c1917',
           background_color: '#1c1917',
-          display: 'fullscreen',
+          display: 'standalone',
           icons: [
-            {
-              src: 'https://cdn-icons-png.flaticon.com/512/826/826070.png',
-              sizes: '192x192',
-              type: 'image/png'
-            },
-            {
-              src: 'https://cdn-icons-png.flaticon.com/512/826/826070.png',
-              sizes: '512x512',
-              type: 'image/png'
-            },
-            {
-              src: 'https://cdn-icons-png.flaticon.com/512/826/826070.png',
-              sizes: '512x512',
-              type: 'image/png',
-              purpose: 'any maskable'
-            }
+            { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+            { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
+            { src: '/icons/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
           ]
         },
         workbox: {

@@ -12,6 +12,21 @@ import toast from 'react-hot-toast';
 
 import { createCachedStreetLayer, createCachedSatelliteLayer, prefetchMalawiMapTiles } from '../lib/mapCache';
 
+/** Escapes text for interpolation into Leaflet HTML strings. */
+const esc = (value: unknown): string =>
+  String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+/** Only http(s) image URLs are rendered; anything else is dropped. */
+const safeUrl = (url: unknown): string => {
+  if (typeof url !== 'string') return '';
+  return /^https?:\/\//i.test(url.trim()) ? esc(url.trim()) : '';
+};
+
 export interface LodgeMarker {
   id: string;
   name: string;
@@ -75,7 +90,7 @@ const createUserLiveLocationIcon = (label: string = 'You are here') => {
       <!-- Tooltip Tag -->
       <div class="absolute top-full mt-1.5 px-2 py-0.5 bg-blue-900/90 backdrop-blur-md text-white text-[10px] font-bold rounded-md shadow-md whitespace-nowrap border border-blue-700 pointer-events-none flex items-center gap-1">
         <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-        ${label}
+        ${esc(label)}
       </div>
     </div>
   `;
@@ -96,7 +111,7 @@ const createCustomPinIcon = (label?: string, image?: string) => {
       ${label ? `
         <div style="position: absolute; bottom: 70px; left: 50%; transform: translateX(-50%); padding: 5px 12px; background: #1c1917; color: #ffffff; font-size: 11px; font-weight: 700; border-radius: 9999px; box-shadow: 0 10px 25px rgba(0,0,0,0.4); white-space: nowrap; border: 1.5px solid rgba(255,255,255,0.35); pointer-events: none; display: flex; align-items: center; gap: 6px; max-width: 240px; z-index: 30;">
           <span style="width: 8px; height: 8px; border-radius: 9999px; background: #10b981; flex-shrink: 0; box-shadow: 0 0 10px #10b981;"></span>
-          <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${label}</span>
+          <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${esc(label)}</span>
         </div>
       ` : ''}
       
@@ -107,8 +122,8 @@ const createCustomPinIcon = (label?: string, image?: string) => {
         
         <!-- Circular Picture Frame with Stay Thumbnail -->
         <div style="position: relative; width: 52px; height: 52px; border-radius: 9999px; background: #1c1917; border: 3.5px solid #ffffff; box-shadow: 0 12px 28px -4px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(0,0,0,0.15); overflow: hidden; display: flex; align-items: center; justify-content: center; z-index: 10;">
-          ${image ? `
-            <img src="${image}" alt="${label || 'Stay'}" style="width: 100%; height: 100%; object-fit: cover; display: block;" referrerpolicy="no-referrer" onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';" />
+          ${safeUrl(image) ? `
+            <img src="${safeUrl(image)}" alt="${esc(label || 'Stay')}" style="width: 100%; height: 100%; object-fit: cover; display: block;" referrerpolicy="no-referrer" onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';" />
             <div style="display: none; width: 100%; height: 100%; background: #1c1917; align-items: center; justify-content: center; color: #10b981;">
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
@@ -153,7 +168,7 @@ const createOriginIcon = (label: string = 'Your Location') => {
         </div>
         <div class="absolute -bottom-1 w-2 h-2 bg-blue-600 rotate-45"></div>
       </div>
-      <div class="absolute top-full mt-1.5 px-2.5 py-1 bg-blue-900/90 backdrop-blur text-white text-[11px] font-bold rounded-lg shadow-lg whitespace-nowrap border border-blue-700 pointer-events-none">${label}</div>
+      <div class="absolute top-full mt-1.5 px-2.5 py-1 bg-blue-900/90 backdrop-blur text-white text-[11px] font-bold rounded-lg shadow-lg whitespace-nowrap border border-blue-700 pointer-events-none">${esc(label)}</div>
     </div>
   `;
 
@@ -210,10 +225,10 @@ export const createPopupHtml = (lodge: LodgeMarker) => {
     ? `<span class="text-xs font-bold text-emerald-700">${lodge.priceCurrency === 'USD' ? '$' : 'MK '}${lodge.priceFrom.toLocaleString()}</span> <span class="text-[10px] text-stone-500">/ night</span>`
     : `<span class="text-xs font-medium text-stone-500">Contact for rates</span>`;
 
-  const imageHtml = lodge.image
+  const imageHtml = safeUrl(lodge.image)
     ? `<div class="h-28 w-full bg-stone-100 overflow-hidden relative">
-         <img src="${lodge.image}" alt="${lodge.name}" class="w-full h-full object-cover" />
-         ${lodge.category ? `<span class="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-stone-900/80 backdrop-blur-md text-[10px] font-bold text-white uppercase tracking-wider">${lodge.category}</span>` : ''}
+         <img src="${safeUrl(lodge.image)}" alt="${esc(lodge.name)}" class="w-full h-full object-cover" />
+         ${lodge.category ? `<span class="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-stone-900/80 backdrop-blur-md text-[10px] font-bold text-white uppercase tracking-wider">${esc(lodge.category)}</span>` : ''}
        </div>`
     : '';
 
@@ -222,15 +237,15 @@ export const createPopupHtml = (lodge: LodgeMarker) => {
       ${imageHtml}
       <div class="p-3.5 space-y-2">
         <div>
-          <div class="font-serif font-bold text-base text-stone-900 leading-snug line-clamp-1">${lodge.name}</div>
+          <div class="font-serif font-bold text-base text-stone-900 leading-snug line-clamp-1">${esc(lodge.name)}</div>
           <div class="text-xs text-stone-500 flex items-center gap-1 mt-0.5 truncate">
             <svg class="w-3.5 h-3.5 text-stone-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
-            <span class="truncate">${lodge.location}</span>
+            <span class="truncate">${esc(lodge.location)}</span>
           </div>
         </div>
         <div class="flex items-center justify-between pt-2 border-t border-stone-100">
           <div>${priceLabel}</div>
-          <a href="/hotel/${lodge.id}" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-stone-900 hover:bg-emerald-800 text-white text-xs font-bold transition shadow-xs">
+          <a href="/hotel/${encodeURIComponent(lodge.id)}" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-stone-900 hover:bg-emerald-800 text-white text-xs font-bold transition shadow-xs">
             <span>View</span>
             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 12h14m-7-7 7 7-7 7"/></svg>
           </a>
@@ -629,8 +644,8 @@ export default function InteractiveMap({
         if (popupText) {
           marker.bindPopup(`
             <div style="font-family: sans-serif; padding: 4px; text-align: center; max-width: 180px;">
-              ${markerImage ? `<img src="${markerImage}" alt="${popupText}" style="width: 100%; height: 75px; object-fit: cover; border-radius: 8px; margin-bottom: 6px;" />` : ''}
-              <div style="font-weight: 700; font-size: 13px; color: #1c1917; line-height: 1.2;">${popupText}</div>
+              ${safeUrl(markerImage) ? `<img src="${safeUrl(markerImage)}" alt="${esc(popupText)}" style="width: 100%; height: 75px; object-fit: cover; border-radius: 8px; margin-bottom: 6px;" />` : ''}
+              <div style="font-weight: 700; font-size: 13px; color: #1c1917; line-height: 1.2;">${esc(popupText)}</div>
               <div style="font-size: 11px; color: #059669; font-weight: 600; margin-top: 3px;">📍 Exact Property Pinpoint</div>
             </div>
           `, {

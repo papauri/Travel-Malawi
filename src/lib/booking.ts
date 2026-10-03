@@ -8,7 +8,8 @@
 
 import { Booking, CurrencyCode, RoomType, Promotion } from '../types';
 import { DateStr, daysUntil, nightsBetween } from './dates';
-import { packagePrice, roomExtraGuestFee, roomPrice, roomPrimaryCurrency, resolveCurrency } from './currency';
+import { packagePrice, roomExtraGuestFee, roomPrice, roomPrimaryCurrency, resolveCurrency, roundPrice } from './currency';
+import { calculateSlashedPrice, MAX_PROMO_DISCOUNT_PERCENT } from './promotions';
 
 export interface BookingPricing {
   currency: CurrencyCode;
@@ -72,23 +73,15 @@ export function computeBookingPricing(
   let discountAmount = 0;
 
   if (typeof discountPercentageOrPromo === 'number') {
-    discountPercentage = Math.max(0, Math.min(100, discountPercentageOrPromo));
+    discountPercentage = Math.max(0, Math.min(MAX_PROMO_DISCOUNT_PERCENT, discountPercentageOrPromo));
     discountAmount = discountPercentage > 0 ? (accommodationTotal * discountPercentage) / 100 : 0;
   } else if (discountPercentageOrPromo) {
-    const promo = discountPercentageOrPromo;
-    if (promo.discountType === 'fixed_slash' && promo.fixedSlashAmount) {
-      const fixedSlash = promo.fixedSlashAmount[currency] ?? (
-        currency === 'USD'
-          ? Math.round((promo.fixedSlashAmount['MWK'] || 0) / 1750)
-          : (promo.fixedSlashAmount['USD'] || 0) * 1750
-      );
-      const totalFixedSlash = Math.max(0, fixedSlash) * nights * quantity;
-      discountAmount = Math.min(accommodationTotal, totalFixedSlash);
-      discountPercentage = accommodationTotal > 0 ? Math.round((discountAmount / accommodationTotal) * 100) : 0;
-    } else {
-      discountPercentage = Math.max(0, Math.min(100, promo.discountPercentage || 0));
-      discountAmount = discountPercentage > 0 ? (accommodationTotal * discountPercentage) / 100 : 0;
-    }
+    // Same per-night maths as the slashed price shown on the room card, so the
+    // promotion charged is exactly the promotion displayed. No currency
+    // conversion: a promotion with no amount in this currency does not apply.
+    const slashed = calculateSlashedPrice(basePrice, discountPercentageOrPromo, currency);
+    discountAmount = Math.min(accommodationTotal, slashed.slashedAmount * nights * quantity);
+    discountPercentage = slashed.discountPercentage;
   }
 
   return {
@@ -103,7 +96,7 @@ export function computeBookingPricing(
     packagesTotal,
     discountPercentage,
     discountAmount,
-    total: Math.max(0, accommodationTotal - discountAmount + packagesTotal),
+    total: roundPrice(accommodationTotal - discountAmount + packagesTotal, currency),
     unavailablePackageIds,
   };
 }

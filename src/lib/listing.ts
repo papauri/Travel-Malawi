@@ -1,4 +1,4 @@
-import { addDoc, collection, setDoc, doc, getDocs, query, where, limit } from "firebase/firestore";
+import { collection, doc, getDocs, query, where, limit, writeBatch } from "firebase/firestore";
 /**
  * Everything the "list your property" flow needs, in one place.
  *
@@ -461,9 +461,13 @@ export async function createListing(draft: ListingDraft, managerId: string): Pro
   const payload: Record<string, unknown> = { ...draftToHotel(draft, managerId) };
   if (payload.coordinates === undefined) delete payload.coordinates;
   const docId = draft.id || uuidv4();
-  await setDoc(doc(db, 'hotels', docId), payload);
 
-  // Create room documents
+  // The hotel and its rooms are written in one batch, so a failure part-way
+  // cannot leave a listing without rooms (which `hasDuplicateListing` would
+  // then stop the host from retrying).
+  const batch = writeBatch(db);
+  batch.set(doc(db, 'hotels', docId), payload);
+
   for (const r of (draft.rooms || [])) {
     const primaryCurrency = (r.currencies && r.currencies.length > 0) ? r.currencies[0] : 'USD';
     const roomPayload = {
@@ -479,8 +483,9 @@ export async function createListing(draft: ListingDraft, managerId: string): Pro
       blockedDates: [],
     };
     delete roomPayload.id;
-    await addDoc(collection(db, 'room_types'), roomPayload);
+    batch.set(doc(collection(db, 'room_types')), roomPayload);
   }
 
+  await batch.commit();
   return docId;
 }

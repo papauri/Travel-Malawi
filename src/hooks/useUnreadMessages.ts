@@ -12,7 +12,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { isHotelManager } from '../lib/roles';
 import { playDingSound } from '../lib/notificationSound';
 import { Booking } from '../types';
-import { fastDeleteOrClearChat } from '../lib/chatDeletion';
+import { fastDeleteOrClearChat, clearedAtFor, lastMessageTime } from '../lib/chatDeletion';
 
 export interface ActiveChatItem {
   id: string;
@@ -35,7 +35,14 @@ export interface ActiveChatItem {
 
 export type UnreadMessageItem = ActiveChatItem;
 
-export function useUnreadMessages() {
+/**
+ * Source of truth for chat unread state. Mounted once by
+ * UnreadMessagesProvider; components read it through `useUnreadMessages` from
+ * contexts/UnreadMessagesContext so the Firestore listeners run only once.
+ *
+ * Plays no sound itself: GlobalNotificationManager owns incoming-message alerts.
+ */
+export function useUnreadMessagesSource() {
   const { user } = useAuth();
   const [unreadItems, setUnreadItems] = useState<ActiveChatItem[]>([]);
   const [activeChats, setActiveChats] = useState<ActiveChatItem[]>([]);
@@ -135,7 +142,6 @@ export function useUnreadMessages() {
       });
 
       if (!isInitialLoad.current && hasNewIncoming) {
-        playDingSound(0.26);
         triggerVibration();
       }
 
@@ -160,11 +166,10 @@ export function useUnreadMessages() {
           // STRICT SECURITY: Only allow chats where this user is the guest
           if (data.guestId && data.guestId !== user.uid) return;
           const hasText = Boolean(data.lastMessage) && data.lastMessage.trim().length > 0;
-          const isDeleted = Boolean(data.isDeleted) || 
-            data.status === 'deleted' || 
-            (Array.isArray(data.deletedBy) && data.deletedBy.includes(user.uid));
-          const isCleared = data.status === 'cleared' || 
-            (data.clearedBy === user.uid && (data.clearedAt || 0) >= (data.updatedAt || 0));
+          const isDeleted = Array.isArray(data.deletedBy) && data.deletedBy.includes(user.uid);
+          const msgTime = lastMessageTime(data);
+          const clearedAt = clearedAtFor(data, user.uid, 'inquiry');
+          const isCleared = clearedAt > 0 && clearedAt >= msgTime;
           const isClosedOrEnded = data.status === 'ended' || data.status === 'closed' || data.status === 'inactive';
 
           if (isDeleted || isCleared || !hasText) {
@@ -175,9 +180,9 @@ export function useUnreadMessages() {
             !isClosedOrEnded &&
             data.lastSenderId &&
             data.lastSenderId !== user.uid &&
-            Boolean(data.updatedAt) &&
-            (!data.guestLastOpenedAt || data.updatedAt > data.guestLastOpenedAt) &&
-            (!data.guestLastSeenAt || data.updatedAt > data.guestLastSeenAt);
+            Boolean(msgTime) &&
+            (!data.guestLastOpenedAt || msgTime > data.guestLastOpenedAt) &&
+            (!data.guestLastSeenAt || msgTime > data.guestLastSeenAt);
 
           const item: ActiveChatItem = {
             id: d.id,
@@ -189,7 +194,7 @@ export function useUnreadMessages() {
             senderName: data.hotelName || 'Property Host',
             senderRoleTag: 'Host Reply' as const,
             lastMessage: data.lastMessage,
-            timestamp: data.updatedAt || data.createdAt || Date.now(),
+            timestamp: msgTime || Date.now(),
             isManagerView: false,
             isUnread: Boolean(isUnread),
             status: data.status || (isClosedOrEnded ? 'closed' : 'active'),
@@ -226,11 +231,10 @@ export function useUnreadMessages() {
             // STRICT SECURITY: Only allow chats where this user is the assigned manager
             if (data.managerId && data.managerId !== user.uid) return;
             const hasText = Boolean(data.lastMessage) && data.lastMessage.trim().length > 0;
-            const isDeleted = Boolean(data.isDeleted) || 
-              data.status === 'deleted' || 
-              (Array.isArray(data.deletedBy) && data.deletedBy.includes(user.uid));
-            const isCleared = data.status === 'cleared' || 
-              (data.clearedBy === user.uid && (data.clearedAt || 0) >= (data.updatedAt || 0));
+            const isDeleted = Array.isArray(data.deletedBy) && data.deletedBy.includes(user.uid);
+            const msgTime = lastMessageTime(data);
+            const clearedAt = clearedAtFor(data, user.uid, 'inquiry');
+            const isCleared = clearedAt > 0 && clearedAt >= msgTime;
             const isClosedOrEnded = data.status === 'ended' || data.status === 'closed' || data.status === 'inactive';
 
             if (isDeleted || isCleared || !hasText) {
@@ -241,9 +245,9 @@ export function useUnreadMessages() {
               !isClosedOrEnded &&
               data.lastSenderId &&
               data.lastSenderId !== user.uid &&
-              Boolean(data.updatedAt) &&
-              (!data.managerLastOpenedAt || data.updatedAt > data.managerLastOpenedAt) &&
-              (!data.managerLastSeenAt || data.updatedAt > data.managerLastSeenAt);
+              Boolean(msgTime) &&
+              (!data.managerLastOpenedAt || msgTime > data.managerLastOpenedAt) &&
+              (!data.managerLastSeenAt || msgTime > data.managerLastSeenAt);
 
             const item: ActiveChatItem = {
               id: d.id,
@@ -255,7 +259,7 @@ export function useUnreadMessages() {
               senderName: data.guestName || 'Guest',
               senderRoleTag: 'Guest Inquiry' as const,
               lastMessage: data.lastMessage,
-              timestamp: data.updatedAt || data.createdAt || Date.now(),
+              timestamp: msgTime || Date.now(),
               isManagerView: true,
               isUnread: Boolean(isUnread),
               status: data.status || (isClosedOrEnded ? 'closed' : 'active'),
@@ -294,11 +298,9 @@ export function useUnreadMessages() {
           const msgText = (data as any).lastMessageText || (data as any).lastMessage || '';
           const hasText = Boolean(msgText) && msgText.trim().length > 0;
           const isCancelled = data.status === 'cancelled' || data.status === 'rejected';
-          const isDeleted = Boolean((data as any).chatDeleted) || 
-            (data as any).chatStatus === 'deleted' || 
-            (Array.isArray((data as any).chatDeletedBy) && (data as any).chatDeletedBy.includes(user.uid));
-          const isCleared = (data as any).chatStatus === 'cleared' || 
-            ((data as any).chatClearedBy === user.uid && ((data as any).chatClearedAt || 0) >= ((data as any).lastMessageAt || 0));
+          const isDeleted = Array.isArray((data as any).chatDeletedBy) && (data as any).chatDeletedBy.includes(user.uid);
+          const clearedAt = clearedAtFor(data as any, user.uid, 'booking');
+          const isCleared = clearedAt > 0 && clearedAt >= ((data as any).lastMessageAt || 0);
           const isClosedOrEnded = (data as any).chatStatus === 'ended' || (data as any).chatStatus === 'closed' || (data as any).chatStatus === 'inactive';
 
           // Strictly require real messages; do not show empty bookings in active chats
@@ -306,7 +308,7 @@ export function useUnreadMessages() {
             return;
           }
 
-          const msgTime = (data as any).lastMessageAt || (data as any).updatedAt || data.createdAt;
+          const msgTime = (data as any).lastMessageAt || data.createdAt;
           const isUnread =
             !isClosedOrEnded &&
             (data as any).lastMessageSenderId &&
@@ -365,18 +367,16 @@ export function useUnreadMessages() {
             const msgText = (data as any).lastMessageText || (data as any).lastMessage || '';
             const hasText = Boolean(msgText) && msgText.trim().length > 0;
             const isCancelled = data.status === 'cancelled' || data.status === 'rejected';
-            const isDeleted = Boolean((data as any).chatDeleted) || 
-              (data as any).chatStatus === 'deleted' || 
-              (Array.isArray((data as any).chatDeletedBy) && (data as any).chatDeletedBy.includes(user.uid));
-            const isCleared = (data as any).chatStatus === 'cleared' || 
-              ((data as any).chatClearedBy === user.uid && ((data as any).chatClearedAt || 0) >= ((data as any).lastMessageAt || 0));
+            const isDeleted = Array.isArray((data as any).chatDeletedBy) && (data as any).chatDeletedBy.includes(user.uid);
+            const clearedAt = clearedAtFor(data as any, user.uid, 'booking');
+            const isCleared = clearedAt > 0 && clearedAt >= ((data as any).lastMessageAt || 0);
             const isClosedOrEnded = (data as any).chatStatus === 'ended' || (data as any).chatStatus === 'closed' || (data as any).chatStatus === 'inactive';
 
             if (isCancelled || isDeleted || isCleared || !hasText) {
               return;
             }
 
-            const msgTime = (data as any).lastMessageAt || (data as any).updatedAt || data.createdAt;
+            const msgTime = (data as any).lastMessageAt || data.createdAt;
             const isUnread =
               !isClosedOrEnded &&
               (data as any).lastMessageSenderId &&
@@ -462,7 +462,6 @@ export function useUnreadMessages() {
           closedAt: now,
           closedBy: user.uid,
           closedByName: user.displayName || user.email?.split('@')[0] || 'User',
-          updatedAt: now,
         });
       } else if (item.type === 'booking') {
         const rawBookingId = item.id.replace('booking_', '');
@@ -482,7 +481,6 @@ export function useUnreadMessages() {
   // Action: Reopen Conversation (moves back into Active Chats)
   const reopenConversation = async (item: ActiveChatItem) => {
     if (!user) return;
-    const now = Date.now();
     try {
       if (item.type === 'inquiry') {
         const chatRef = doc(db, 'hotel_chats', item.id);
@@ -494,7 +492,6 @@ export function useUnreadMessages() {
           endedAt: null,
           endedBy: null,
           endedByName: null,
-          updatedAt: now,
         });
       } else if (item.type === 'booking') {
         const rawBookingId = item.id.replace('booking_', '');

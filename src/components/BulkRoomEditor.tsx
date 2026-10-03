@@ -1,10 +1,12 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Hotel, RoomType, CurrencyCode, Promotion, SaleType, DiscountType } from '../types';
 import { db } from '../lib/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, writeBatch, runTransaction } from 'firebase/firestore';
 import toast from 'react-hot-toast';
-import { roomPrice, roomCurrencies, formatMoney } from '../lib/currency';
-import { SALE_TYPE_OPTIONS, getSaleTypeBadge, getSaleTypeLabel, calculateSlashedPrice, getPromotionStatus } from '../lib/promotions';
+import { roomPrice, roomCurrencies, formatMoney, roundPrice } from '../lib/currency';
+import { SALE_TYPE_OPTIONS, getSaleTypeBadge, getSaleTypeLabel, calculateSlashedPrice, getPromotionStatus, malawiToday, validatePromotion, MAX_PROMO_DISCOUNT_PERCENT } from '../lib/promotions';
+import { validateRoom, firstError } from '../lib/validateRoom';
+import { addDays } from '../lib/dates';
 import { saveUpdatedRooms, saveSingleCachedHotel } from '../lib/mapCache';
 import {
   SlidersHorizontal, Percent, DollarSign, Tag, Sparkles, Check,
@@ -14,7 +16,12 @@ import {
 } from 'lucide-react';
 
 export type BulkEditorMode = 'rates' | 'promotions' | 'active_promotions';
-export type RateAdjustmentType = 'percentage_discount' | 'percentage_increase' | 'amount_drop' | 'amount_increase' | 'fixed_price';
+export type RateAdjustmentType = 'percentage_discount' | 'percentage_increase' | 'amount_drop' | 'amount_increase';
+
+/** The deepest base-rate cut the bulk editor will apply. */
+const MAX_RATE_DISCOUNT_PERCENT = 90;
+/** Firestore allows 500 writes per batch; stay well under it. */
+const BATCH_CHUNK = 450;
 export type PromoDiscountMode = 'percentage' | 'fixed_slash';
 
 interface BulkRoomEditorProps {
@@ -54,11 +61,6 @@ export default function BulkRoomEditor({
   const [rateAmountCurrency, setRateAmountCurrency] = useState<CurrencyCode>('MWK');
   const [rateAmount, setRateAmount] = useState<number>(15000);
   const [customRateAmount, setCustomRateAmount] = useState<string>('15000');
-  const [fixedTargetPrice, setFixedTargetPrice] = useState<string>('80000');
-  const [roundToCleanNumbers, setRoundToCleanNumbers] = useState(true);
-
-  // Per-room manual overrides in the preview (optional fine-tuning)
-  const [manualPriceOverrides, setManualPriceOverrides] = useState<Record<string, { MWK?: number; USD?: number }>>({});
 
   // Promotions State
   const [promoSaleType, setPromoSaleType] = useState<SaleType>('flash_sale');
@@ -69,7 +71,7 @@ export default function BulkRoomEditor({
   const [promoSortedCurrency, setPromoSortedCurrency] = useState<CurrencyCode>('MWK');
   const [promoSortedAmount, setPromoSortedAmount] = useState<number>(20000);
   const [customPromoAmount, setCustomPromoAmount] = useState<string>('20000');
-  const [promoStartDate, setPromoStartDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
+  const [promoStartDate, setPromoStartDate] = useState<string>(() => malawiToday());
   const [promoEndDate, setPromoEndDate] = useState<string>('');
   const [promoBadgeText, setPromoBadgeText] = useState<string>('');
 
@@ -129,7 +131,6 @@ export default function BulkRoomEditor({
 
   const handleDeselectAll = () => {
     setSelectedRoomIds([]);
-    setManualPriceOverrides({});
   };
 
   const toggleRoomSelection = (id: string) => {
@@ -138,91 +139,49 @@ export default function BulkRoomEditor({
     );
   };
 
-  // Helper to round clean currency figures
-  const roundPrice = (amount: number, currency: CurrencyCode): number => {
-    if (!roundToCleanNumbers) return Math.round(amount);
-    if (currency === 'MWK') {
-      // Round to nearest 1,000 for MWK
-      return Math.round(amount / 1000) * 1000;
-    }
-    // Round to nearest whole dollar or 5 for USD
-    return Math.round(amount);
-  };
-
-  // Calculate new rates for a given room
+  /**
+   * The new rates for a room. Only currencies the room already sells in are
+   * touched (no exchange-rate guessing), every result is rounded to the
+   * platform convention, and `problem` explains why a room cannot be saved.
+   */
   const calculateNewRatesForRoom = (room: RoomType) => {
     const currencies = roomCurrencies(room);
-    let originalMWK = roomPrice(room, 'MWK');
-    let originalUSD = roomPrice(room, 'USD');
+    const originalMWK = roomPrice(room, 'MWK');
+    const originalUSD = roomPrice(room, 'USD');
 
-    // Dual-currency fallback: if one is missing, establish it cleanly via standard rate
-    if (originalMWK === null && originalUSD !== null) {
-      originalMWK = roundPrice(originalUSD * 1750, 'MWK');
-    } else if (originalUSD === null && originalMWK !== null) {
-      originalUSD = roundPrice(originalMWK / 1750, 'USD');
-    }
-
-    let newMWK = originalMWK;
-    let newUSD = originalUSD;
-
-    // Check manual override first
-    if (room.id && manualPriceOverrides[room.id]) {
-      const override = manualPriceOverrides[room.id];
-      if (override.MWK !== undefined) newMWK = override.MWK;
-      if (override.USD !== undefined) newUSD = override.USD;
-      return { originalMWK, originalUSD, newMWK, newUSD, currencies };
-    }
-
-    if (rateAdjustmentType === 'percentage_discount') {
-      const pct = ratePercentage;
-      const factor = Math.max(0, 1 - pct / 100);
-      if (originalMWK !== null) newMWK = roundPrice(originalMWK * factor, 'MWK');
-      if (originalUSD !== null) newUSD = roundPrice(originalUSD * factor, 'USD');
-    } else if (rateAdjustmentType === 'percentage_increase') {
-      const pct = ratePercentage;
-      const factor = 1 + pct / 100;
-      if (originalMWK !== null) newMWK = roundPrice(originalMWK * factor, 'MWK');
-      if (originalUSD !== null) newUSD = roundPrice(originalUSD * factor, 'USD');
-    } else if (rateAdjustmentType === 'amount_drop') {
-      if (rateAmountCurrency === 'MWK' && originalMWK !== null) {
-        newMWK = Math.max(0, originalMWK - rateAmount);
-        if (originalUSD !== null && originalMWK > 0) {
-          const ratio = newMWK / originalMWK;
-          newUSD = roundPrice(originalUSD * ratio, 'USD');
-        }
-      } else if (rateAmountCurrency === 'USD' && originalUSD !== null) {
-        newUSD = Math.max(0, originalUSD - rateAmount);
-        if (originalMWK !== null && originalUSD > 0) {
-          const ratio = newUSD / originalUSD;
-          newMWK = roundPrice(originalMWK * ratio, 'MWK');
+    const adjust = (original: number | null, currency: CurrencyCode): number | null => {
+      if (original === null) return null;
+      switch (rateAdjustmentType) {
+        case 'percentage_discount':
+          return roundPrice(original * (1 - Math.min(ratePercentage, MAX_RATE_DISCOUNT_PERCENT) / 100), currency);
+        case 'percentage_increase':
+          return roundPrice(original * (1 + ratePercentage / 100), currency);
+        case 'amount_drop':
+        case 'amount_increase': {
+          const sign = rateAdjustmentType === 'amount_drop' ? -1 : 1;
+          if (currency === rateAmountCurrency) return roundPrice(original + sign * rateAmount, currency);
+          // The other currency moves by the same proportion as the chosen one.
+          const anchor = rateAmountCurrency === 'MWK' ? originalMWK : originalUSD;
+          if (anchor === null || anchor <= 0) return original;
+          return roundPrice(original * ((anchor + sign * rateAmount) / anchor), currency);
         }
       }
-    } else if (rateAdjustmentType === 'amount_increase') {
-      if (rateAmountCurrency === 'MWK' && originalMWK !== null) {
-        newMWK = originalMWK + rateAmount;
-        if (originalUSD !== null && originalMWK > 0) {
-          const ratio = newMWK / originalMWK;
-          newUSD = roundPrice(originalUSD * ratio, 'USD');
-        }
-      } else if (rateAmountCurrency === 'USD' && originalUSD !== null) {
-        newUSD = originalUSD + rateAmount;
-        if (originalMWK !== null && originalUSD > 0) {
-          const ratio = newUSD / originalUSD;
-          newMWK = roundPrice(originalMWK * ratio, 'MWK');
-        }
-      }
-    } else if (rateAdjustmentType === 'fixed_price') {
-      const fixed = parseFloat(fixedTargetPrice) || 0;
-      if (rateAmountCurrency === 'MWK') {
-        newMWK = fixed;
-        newUSD = roundPrice(fixed / 1750, 'USD');
-      } else {
-        newUSD = fixed;
-        newMWK = roundPrice(fixed * 1750, 'MWK');
-      }
+    };
+
+    const newMWK = adjust(originalMWK, 'MWK');
+    const newUSD = adjust(originalUSD, 'USD');
+
+    let problem: string | null = null;
+    if ((newMWK !== null && newMWK <= 0) || (newUSD !== null && newUSD <= 0)) {
+      problem = 'This change would take the rate to zero or below.';
+    } else {
+      const prices = { ...(room.prices || {}) } as Record<string, number>;
+      if (newMWK !== null) prices.MWK = newMWK;
+      if (newUSD !== null) prices.USD = newUSD;
+      problem = firstError(validateRoom({ ...room, currencies, prices }) as Record<string, string | undefined>);
     }
 
-    return { originalMWK, originalUSD, newMWK, newUSD, currencies };
+    return { originalMWK, originalUSD, newMWK, newUSD, currencies, problem };
   };
 
   // Synchronize custom inputs
@@ -234,7 +193,7 @@ export default function BulkRoomEditor({
   const handleCustomPercentageInput = (str: string) => {
     setCustomRatePercentage(str);
     const parsed = parseFloat(str);
-    if (!isNaN(parsed) && parsed >= 0 && parsed <= 100) {
+    if (!isNaN(parsed) && parsed >= 0 && parsed <= MAX_RATE_DISCOUNT_PERCENT) {
       setRatePercentage(parsed);
     }
   };
@@ -260,7 +219,7 @@ export default function BulkRoomEditor({
   const handleCustomPromoPercentageInput = (str: string) => {
     setCustomPromoPercentage(str);
     const parsed = parseFloat(str);
-    if (!isNaN(parsed) && parsed >= 1 && parsed <= 99) {
+    if (!isNaN(parsed) && parsed >= 1 && parsed <= MAX_PROMO_DISCOUNT_PERCENT) {
       setPromoPercentage(parsed);
     }
   };
@@ -278,6 +237,16 @@ export default function BulkRoomEditor({
     }
   };
 
+  /** Reads the hotel's stored promotions, applies `change` and writes them back atomically. */
+  const updateStoredPromotions = (hotelId: string, change: (stored: Promotion[]) => Promotion[]) =>
+    runTransaction(db, async tx => {
+      const ref = doc(db, 'hotels', hotelId);
+      const snap = await tx.get(ref);
+      const next = change((snap.data()?.promotions as Promotion[] | undefined) ?? []);
+      tx.update(ref, { promotions: next });
+      return next;
+    });
+
   // Execute Base Rates Save
   const handleApplyBaseRates = async () => {
     if (selectedRooms.length === 0) {
@@ -285,9 +254,18 @@ export default function BulkRoomEditor({
       return;
     }
 
+    const blocked = selectedRooms
+      .map(room => ({ room, problem: calculateNewRatesForRoom(room).problem }))
+      .filter(r => r.problem);
+    if (blocked.length > 0) {
+      toast.error(`${blocked[0].room.name}: ${blocked[0].problem}${blocked.length > 1 ? ` (and ${blocked.length - 1} more)` : ''}`);
+      return;
+    }
+
     setSaving(true);
     try {
       const updatedRoomsList: RoomType[] = [];
+      const writes: Array<{ id: string; payload: Record<string, unknown>; room: RoomType }> = [];
 
       for (const room of selectedRooms) {
         if (!room.id) continue;
@@ -295,8 +273,8 @@ export default function BulkRoomEditor({
         const primary = room.currency || 'MWK';
 
         const updatedPrices: Record<string, number> = { ...(room.prices || {}) };
-        if (newMWK !== null && newMWK !== undefined) updatedPrices.MWK = newMWK;
-        if (newUSD !== null && newUSD !== undefined) updatedPrices.USD = newUSD;
+        if (newMWK !== null) updatedPrices.MWK = newMWK;
+        if (newUSD !== null) updatedPrices.USD = newUSD;
 
         const updatePayloadRaw: Partial<RoomType> = {
           hotelId: room.hotelId, // CRITICAL: preserve hotelId invariant
@@ -307,12 +285,33 @@ export default function BulkRoomEditor({
         };
 
         // Strip out undefined values
-        const updatePayload = Object.fromEntries(
+        const payload = Object.fromEntries(
           Object.entries(updatePayloadRaw).filter(([_, v]) => v !== undefined)
         );
+        writes.push({ id: room.id, payload, room });
+      }
 
-        await updateDoc(doc(db, 'room_types', room.id), updatePayload);
-        updatedRoomsList.push({ ...room, ...updatePayload });
+      // Each chunk commits atomically: a failure leaves that chunk untouched
+      // rather than half its rooms repriced.
+      for (let i = 0; i < writes.length; i += BATCH_CHUNK) {
+        const chunk = writes.slice(i, i + BATCH_CHUNK);
+        const batch = writeBatch(db);
+        for (const w of chunk) batch.update(doc(db, 'room_types', w.id), w.payload);
+        try {
+          await batch.commit();
+        } catch (err) {
+          console.error('Bulk rate batch failed:', err);
+          if (updatedRoomsList.length > 0) {
+            saveUpdatedRooms(updatedRoomsList);
+            onRoomsUpdated?.(updatedRoomsList);
+          }
+          throw new Error(
+            updatedRoomsList.length > 0
+              ? `Updated ${updatedRoomsList.length} rooms, then the rest failed. Try again for the remaining rooms.`
+              : 'Could not save the new rates. Check your connection and try again.'
+          );
+        }
+        for (const w of chunk) updatedRoomsList.push({ ...w.room, ...w.payload } as RoomType);
       }
 
       // 1. Immediately update offline / fast storage cache
@@ -325,7 +324,6 @@ export default function BulkRoomEditor({
       if (onRoomsUpdated) {
         onRoomsUpdated(updatedRoomsList);
       }
-      setManualPriceOverrides({});
     } catch (err: any) {
       console.error('Error applying bulk rates:', err);
       toast.error(err?.message || 'Failed to apply bulk rate changes.');
@@ -376,7 +374,7 @@ export default function BulkRoomEditor({
             ? { [promoSortedCurrency]: promoSortedAmount }
             : undefined,
           badgeText: badge,
-          startDate: promoStartDate || new Date().toISOString().split('T')[0],
+          startDate: promoStartDate || malawiToday(),
           endDate: promoEndDate || undefined,
           isActive: true,
           createdAt: Date.now(),
@@ -387,12 +385,12 @@ export default function BulkRoomEditor({
           Object.entries(newPromoRaw).filter(([_, v]) => v !== undefined)
         ) as Promotion;
 
-        const existingPromos = hotel.promotions || [];
-        const updatedPromos = [...existingPromos, newPromo];
+        const problem = validatePromotion(newPromo);
+        if (problem) throw new Error(problem);
 
-        await updateDoc(doc(db, 'hotels', hotelId), {
-          promotions: updatedPromos,
-        });
+        // Appended to what is stored now, not to the copy loaded with the page,
+        // so promotions saved meanwhile by someone else are kept.
+        const updatedPromos = await updateStoredPromotions(hotelId, stored => [...stored, newPromo]);
 
         const updatedHotel: Hotel = {
           ...hotel,
@@ -424,11 +422,10 @@ export default function BulkRoomEditor({
   const handleTogglePromotionActive = async (hotelId: string, promoId: string) => {
     const hotel = hotelsMap.get(hotelId);
     if (!hotel) return;
-    const updatedPromos = (hotel.promotions || []).map(p =>
-      p.id === promoId ? { ...p, isActive: !p.isActive } : p
-    );
     try {
-      await updateDoc(doc(db, 'hotels', hotelId), { promotions: updatedPromos });
+      const updatedPromos = await updateStoredPromotions(hotelId, stored =>
+        stored.map(p => (p.id === promoId ? { ...p, isActive: !p.isActive } : p))
+      );
       const updatedHotel: Hotel = { ...hotel, promotions: updatedPromos };
       saveSingleCachedHotel(updatedHotel);
       window.dispatchEvent(new CustomEvent('travel_malawi_hotels_updated', { detail: { hotels: [updatedHotel] } }));
@@ -442,19 +439,17 @@ export default function BulkRoomEditor({
   const handleExtendPromotion = async (hotelId: string, promoId: string, daysToAdd: number | null) => {
     const hotel = hotelsMap.get(hotelId);
     if (!hotel) return;
-    const today = new Date().toISOString().split('T')[0];
-    const updatedPromos = (hotel.promotions || []).map(p => {
-      if (p.id !== promoId) return p;
-      if (daysToAdd === null) {
-        const { endDate, ...rest } = p;
-        return { ...rest, isActive: true };
-      }
-      const base = p.endDate && p.endDate > today ? new Date(p.endDate) : new Date();
-      base.setDate(base.getDate() + daysToAdd);
-      return { ...p, endDate: base.toISOString().split('T')[0], isActive: true };
-    });
+    const today = malawiToday();
     try {
-      await updateDoc(doc(db, 'hotels', hotelId), { promotions: updatedPromos });
+      const updatedPromos = await updateStoredPromotions(hotelId, stored => stored.map(p => {
+        if (p.id !== promoId) return p;
+        if (daysToAdd === null) {
+          const { endDate, ...rest } = p;
+          return { ...rest, isActive: true };
+        }
+        const base = p.endDate && p.endDate > today ? p.endDate : today;
+        return { ...p, endDate: addDays(base, daysToAdd), isActive: true };
+      }));
       const updatedHotel: Hotel = { ...hotel, promotions: updatedPromos };
       saveSingleCachedHotel(updatedHotel);
       window.dispatchEvent(new CustomEvent('travel_malawi_hotels_updated', { detail: { hotels: [updatedHotel] } }));
@@ -468,9 +463,8 @@ export default function BulkRoomEditor({
   const handleDeletePromotion = async (hotelId: string, promoId: string) => {
     const hotel = hotelsMap.get(hotelId);
     if (!hotel) return;
-    const updatedPromos = (hotel.promotions || []).filter(p => p.id !== promoId);
     try {
-      await updateDoc(doc(db, 'hotels', hotelId), { promotions: updatedPromos });
+      const updatedPromos = await updateStoredPromotions(hotelId, stored => stored.filter(p => p.id !== promoId));
       const updatedHotel: Hotel = { ...hotel, promotions: updatedPromos };
       saveSingleCachedHotel(updatedHotel);
       window.dispatchEvent(new CustomEvent('travel_malawi_hotels_updated', { detail: { hotels: [updatedHotel] } }));
@@ -622,7 +616,7 @@ export default function BulkRoomEditor({
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {allPromotions.map(({ hotel, promo }) => {
-                const today = new Date().toISOString().split('T')[0];
+                const today = malawiToday();
                 const isExpired = promo.endDate && promo.endDate < today;
                 const isScheduled = promo.startDate && promo.startDate > today;
                 const isLive = promo.isActive && !isExpired && !isScheduled;
@@ -889,17 +883,7 @@ export default function BulkRoomEditor({
                   <TrendingDown className="w-4 h-4 text-stone-500" />
                   <span>Configure Base Rate Adjustment</span>
                 </h4>
-                <div className="flex items-center gap-2 text-xs">
-                  <label className="text-stone-600 cursor-pointer flex items-center gap-1.5">
-                    <input
-                      type="checkbox"
-                      checked={roundToCleanNumbers}
-                      onChange={(e) => setRoundToCleanNumbers(e.target.checked)}
-                      className="rounded text-stone-900 focus:ring-stone-900 h-3.5 w-3.5"
-                    />
-                    <span>Round clean amounts</span>
-                  </label>
-                </div>
+                <span className="text-xs text-stone-500">Rounded to MK 1,000 / whole dollars</span>
               </div>
 
               {/* Adjustment Method Tabs */}
@@ -966,7 +950,7 @@ export default function BulkRoomEditor({
                       <input
                         type="number"
                         min="1"
-                        max="99"
+                        max={rateAdjustmentType === 'percentage_discount' ? MAX_RATE_DISCOUNT_PERCENT : undefined}
                         step="0.5"
                         value={customRatePercentage}
                         onChange={(e) => handleCustomPercentageInput(e.target.value)}
@@ -1082,7 +1066,7 @@ export default function BulkRoomEditor({
                       </thead>
                       <tbody className="divide-y divide-stone-100">
                         {selectedRooms.map(room => {
-                          const { originalMWK, originalUSD, newMWK, newUSD } = calculateNewRatesForRoom(room);
+                          const { originalMWK, originalUSD, newMWK, newUSD, problem } = calculateNewRatesForRoom(room);
                           const hotel = hotelsMap.get(room.hotelId);
 
                           const diffMWK = originalMWK !== null && newMWK !== null ? newMWK - originalMWK : 0;
@@ -1105,6 +1089,7 @@ export default function BulkRoomEditor({
                                 {newUSD !== null && (
                                   <div className="text-stone-500 text-[10px]">{formatMoney(newUSD, 'USD')}</div>
                                 )}
+                                {problem && <div className="text-red-600 text-[10px] font-normal">{problem}</div>}
                               </td>
                               <td className="p-2.5 text-right">
                                 {diffMWK < 0 ? (

@@ -24,7 +24,7 @@ import { MenuSection, MenuItem, PriceMap } from '../types';
 import { parseMenuText } from '../lib/localMenuParser';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { useModalScrollIsolation } from '../hooks/useModalScrollIsolation';
-import { useAIAssistant } from '../hooks/useAIAssistant';
+import { useAIAssistant, describeAIError } from '../hooks/useAIAssistant';
 
 interface MenuImporterProps {
   open: boolean;
@@ -259,7 +259,7 @@ export default function MenuImporter({ open, onClose, onImport, currencies }: Me
             return;
           }
         }
-        throw new Error(data.error || `Processing failed (${res.status})`);
+        throw new Error(describeAIError(res, data));
       }
 
       if (data.sections && Array.isArray(data.sections) && data.sections.length > 0) {

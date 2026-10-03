@@ -1,6 +1,37 @@
 import { Hotel, RoomType, Promotion, SaleType, PromotionTarget, CurrencyCode } from '../types';
 import { DateStr } from './dates';
-import { formatMoney, roomPrice } from './currency';
+import { roomPrice, roundPrice } from './currency';
+
+/**
+ * The largest discount a promotion may take off a price. Applied identically
+ * to what is displayed and what is charged, so a 100% promo can never turn a
+ * stay into a free one.
+ */
+export const MAX_PROMO_DISCOUNT_PERCENT = 90;
+
+/** Today's date in Malawi (UTC+2), as YYYY-MM-DD. */
+export function malawiToday(): DateStr {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Africa/Blantyre', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date()) as DateStr;
+}
+
+/** Problems with a promotion's dates or amounts, or null if it can be saved. */
+export function validatePromotion(promo: Partial<Promotion>): string | null {
+  if (promo.startDate && promo.endDate && promo.endDate < promo.startDate) {
+    return 'The end date must be on or after the start date.';
+  }
+  if (promo.discountType === 'fixed_slash') {
+    const amounts = Object.values(promo.fixedSlashAmount ?? {}).filter((v): v is number => typeof v === 'number');
+    if (amounts.length === 0 || amounts.some(v => !(v > 0))) return 'Enter a slash amount greater than zero.';
+  } else {
+    const pct = promo.discountPercentage ?? 0;
+    if (!(pct >= 1 && pct <= MAX_PROMO_DISCOUNT_PERCENT)) {
+      return `The discount must be between 1% and ${MAX_PROMO_DISCOUNT_PERCENT}%.`;
+    }
+  }
+  return null;
+}
 
 export interface SlashedPriceResult {
   originalPrice: number;
@@ -130,17 +161,22 @@ export function getSaleTypeBadge(saleType?: SaleType, customLabel?: string, disc
 }
 
 /**
- * Returns the highest active promotion for the hotel on the given date and scope.
+ * Returns the best active promotion for the hotel on the given date and scope.
+ *
+ * Pass `pricing` to rank promotions by the amount they actually take off that
+ * price, which is the only fair comparison between percentage and fixed-amount
+ * promotions. Without it, promotions are ranked by their percentage.
  */
 export function getActivePromotion(
   hotel: Hotel,
   checkInDate?: DateStr,
   target: 'all' | 'room' | 'conference' = 'room',
-  roomId?: string
+  roomId?: string,
+  pricing?: { price: number; currency: CurrencyCode }
 ): Promotion | null {
   if (!hotel.promotions || hotel.promotions.length === 0) return null;
 
-  const compareDate = checkInDate || new Date().toISOString().split('T')[0];
+  const compareDate = checkInDate || malawiToday();
 
   const active = hotel.promotions.filter(p => {
     if (!p.isActive) return false;
@@ -168,19 +204,18 @@ export function getActivePromotion(
 
   if (active.length === 0) return null;
 
-  // Return the one with the highest discount
-  return active.reduce((prev, current) => {
-    const prevVal = prev.discountPercentage || 0;
-    const currVal = current.discountPercentage || 0;
-    return currVal > prevVal ? current : prev;
-  });
+  const value = (p: Promotion) =>
+    pricing
+      ? calculateSlashedPrice(pricing.price, p, pricing.currency).slashedAmount
+      : (p.discountPercentage || 0);
+  return active.reduce((prev, current) => (value(current) > value(prev) ? current : prev));
 }
 
 export type PromotionStatus = 'active' | 'scheduled' | 'expired' | 'paused';
 
 export function getPromotionStatus(promo: Promotion, compareDate?: DateStr): PromotionStatus {
   if (!promo.isActive) return 'paused';
-  const today = compareDate || new Date().toISOString().split('T')[0];
+  const today = compareDate || malawiToday();
   if (promo.startDate && promo.startDate > today) return 'scheduled';
   if (promo.endDate && promo.endDate < today) return 'expired';
   return 'active';
@@ -234,7 +269,7 @@ export function getHotelPricingSummary(
     const base = roomPrice(room, currency);
     if (base === null || base <= 0) continue;
 
-    const promo = getActivePromotion(hotel, checkInDate, 'room', room.id);
+    const promo = getActivePromotion(hotel, checkInDate, 'room', room.id, { price: base, currency });
     const slashed = calculateSlashedPrice(base, promo, currency);
     const effective = slashed.hasDiscount ? slashed.slashedPrice : base;
 
@@ -281,7 +316,7 @@ export function getHotelPricingSummary(
  */
 export function getAllActivePromotions(hotel: Hotel, checkInDate?: DateStr): Promotion[] {
   if (!hotel.promotions || hotel.promotions.length === 0) return [];
-  const compareDate = checkInDate || new Date().toISOString().split('T')[0];
+  const compareDate = checkInDate || malawiToday();
   return hotel.promotions.filter(p => {
     if (!p.isActive) return false;
     if (p.startDate && p.startDate > compareDate) return false;
@@ -311,25 +346,29 @@ export function calculateSlashedPrice(
     };
   }
 
-  let slashedPrice = originalPrice;
-  let discountPercentage = promo.discountPercentage || 0;
-  let slashedAmount = 0;
+  // The deepest cut allowed: the price never drops below this floor.
+  const maxSlash = originalPrice * (MAX_PROMO_DISCOUNT_PERCENT / 100);
+  let requestedSlash = 0;
 
   if (promo.discountType === 'fixed_slash' && promo.fixedSlashAmount) {
-    const slash = promo.fixedSlashAmount[currency] ?? (
-      currency === 'USD'
-        ? Math.round((promo.fixedSlashAmount['MWK'] || 0) / 1750)
-        : (promo.fixedSlashAmount['USD'] || 0) * 1750
-    );
-    slashedAmount = Math.min(originalPrice, Math.max(0, slash));
-    slashedPrice = Math.max(0, originalPrice - slashedAmount);
-    discountPercentage = originalPrice > 0 ? Math.round((slashedAmount / originalPrice) * 100) : 0;
+    // No currency conversion: a promotion set only in another currency does
+    // not apply to prices in this one.
+    requestedSlash = Math.max(0, promo.fixedSlashAmount[currency] ?? 0);
   } else {
-    // Percentage discount
-    discountPercentage = Math.min(99, Math.max(1, promo.discountPercentage || 0));
-    slashedAmount = Math.round(originalPrice * (discountPercentage / 100));
-    slashedPrice = Math.max(0, originalPrice - slashedAmount);
+    const pct = Math.min(MAX_PROMO_DISCOUNT_PERCENT, Math.max(0, promo.discountPercentage || 0));
+    requestedSlash = originalPrice * (pct / 100);
   }
+
+  let slashedPrice = originalPrice;
+  if (originalPrice > 0 && requestedSlash > 0) {
+    // Rounded to the platform convention (MWK nearest 1,000, USD whole dollars),
+    // but never down to zero and never above the original.
+    const floor = roundPrice(originalPrice - maxSlash, currency) || originalPrice - maxSlash;
+    const rounded = roundPrice(originalPrice - Math.min(requestedSlash, maxSlash), currency);
+    slashedPrice = Math.min(originalPrice, Math.max(rounded, floor));
+  }
+  const slashedAmount = Math.max(0, originalPrice - slashedPrice);
+  const discountPercentage = originalPrice > 0 ? Math.round((slashedAmount / originalPrice) * 100) : 0;
 
   const saleTypeLabel = getSaleTypeLabel(promo.saleType, promo.saleTypeCustomLabel);
   const badgeText = promo.badgeText || getSaleTypeBadge(promo.saleType, promo.saleTypeCustomLabel, discountPercentage);
@@ -344,4 +383,25 @@ export function calculateSlashedPrice(
     saleTypeLabel,
     badgeText,
   };
+}
+
+/**
+ * Applies one editor's changes on top of the promotions currently stored, so
+ * two people editing promotions at once do not erase each other's work.
+ *
+ * `baseline` is what the editor loaded and `next` is what it wants to save:
+ * promotions removed since the baseline are deleted, promotions in `next`
+ * replace the stored copy with the same id, and anything another editor added
+ * meanwhile is kept.
+ */
+export function mergePromotions(stored: Promotion[], baseline: Promotion[], next: Promotion[]): Promotion[] {
+  const nextIds = new Set(next.map(p => p.id));
+  const removed = new Set(baseline.map(p => p.id).filter(id => !nextIds.has(id)));
+  const byId = new Map(next.map(p => [p.id, p]));
+  const merged = stored
+    .filter(p => !removed.has(p.id))
+    .map(p => byId.get(p.id) ?? p);
+  const storedIds = new Set(stored.map(p => p.id));
+  for (const p of next) if (!storedIds.has(p.id)) merged.push(p);
+  return merged;
 }

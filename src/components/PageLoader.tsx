@@ -16,9 +16,10 @@ export default function PageLoader() {
       setProgress(85);
     }, 120);
 
+    let hideTimer: ReturnType<typeof setTimeout> | undefined;
     const endTimer = setTimeout(() => {
       setProgress(100);
-      setTimeout(() => {
+      hideTimer = setTimeout(() => {
         setIsNavigating(false);
         setProgress(0);
       }, 180);
@@ -27,6 +28,7 @@ export default function PageLoader() {
     return () => {
       clearTimeout(midTimer);
       clearTimeout(endTimer);
+      if (hideTimer) clearTimeout(hideTimer);
     };
   }, [location.pathname, location.search]);
 

@@ -1,8 +1,27 @@
 import fs from 'fs';
 import path from 'path';
+import { getApps, initializeApp } from 'firebase-admin/app';
+import { getFirestore, Firestore } from 'firebase-admin/firestore';
 import { sendSystemEmail } from './emailConfig';
 import { sendWhatsAppMessage } from './whatsappConfig';
+import { escapeHtml, PROJECT_ID, DATABASE_ID } from './auth';
 import { READY_REMINDER_TEMPLATES, fillTemplate, formatReminderEmailHtml, ReminderVariables } from '../src/lib/reminderTemplates';
+
+/**
+ * Booking reminders.
+ *
+ * Storage: a JSON file under data/ by default. Set REMINDERS_STORE=firestore to
+ * keep them in the `server_reminders` Firestore collection instead, using
+ * Application Default Credentials (e.g. the Cloud Run service account) — use
+ * this in production, because container disks are wiped on every redeploy.
+ *
+ * Delivery: a reminder is marked `sent` only once a channel reports success.
+ * Failures are retried with backoff and abandoned after MAX_ATTEMPTS; reminders
+ * more than a day overdue (e.g. after downtime) are expired rather than sent.
+ * Times are Malawi time (Africa/Blantyre, UTC+2, no DST) whatever the server TZ.
+ */
+
+export type ReminderStatus = 'pending' | 'sent' | 'failed' | 'expired' | 'cancelled' | 'skipped';
 
 export interface ServerReminder {
   id: string;
@@ -22,28 +41,131 @@ export interface ServerReminder {
   html?: string;
   scheduledFor: string;
   message: string;
+  /** True only once delivery succeeded. Kept for existing UI; prefer `status`. */
   sent: boolean;
   sentAt?: string;
+  status?: ReminderStatus;
+  attempts?: number;
+  nextAttemptAt?: string;
+  lastError?: string;
   createdAt: string;
+}
+
+const MAX_ATTEMPTS = 5;
+const RETRY_BASE_MS = 5 * 60 * 1000;
+const STALE_AFTER_MS = 24 * 60 * 60 * 1000;
+const MALAWI_OFFSET = '+02:00';
+
+/** A Malawi wall-clock time on a YYYY-MM-DD date, as an absolute Date. */
+function malawiTime(date: string, hhmm: string): Date {
+  return new Date(`${date}T${hhmm}:00${MALAWI_OFFSET}`);
+}
+
+function statusOf(r: ServerReminder): ReminderStatus {
+  return r.status || (r.sent ? 'sent' : 'pending');
+}
+
+// ---------------------------------------------------------------------------
+// Storage
+// ---------------------------------------------------------------------------
+
+interface ReminderStore {
+  all(): Promise<ServerReminder[]>;
+  byBooking(bookingId: string): Promise<ServerReminder[]>;
+  byHotel(hotelId: string): Promise<ServerReminder[]>;
+  get(id: string): Promise<ServerReminder | null>;
+  put(reminders: ServerReminder[]): Promise<void>;
+  remove(id: string): Promise<boolean>;
 }
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 const REMINDERS_FILE = path.join(DATA_DIR, 'reminders.json');
 
-function loadReminders(): ServerReminder[] {
-  try {
+class FileStore implements ReminderStore {
+  private read(): ServerReminder[] {
+    try {
+      if (!fs.existsSync(REMINDERS_FILE)) return [];
+      return JSON.parse(fs.readFileSync(REMINDERS_FILE, 'utf-8'));
+    } catch {
+      return [];
+    }
+  }
+  private write(list: ServerReminder[]) {
     if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-    if (!fs.existsSync(REMINDERS_FILE)) return [];
-    return JSON.parse(fs.readFileSync(REMINDERS_FILE, 'utf-8'));
-  } catch {
-    return [];
+    const tmp = `${REMINDERS_FILE}.tmp`;
+    fs.writeFileSync(tmp, JSON.stringify(list, null, 2));
+    fs.renameSync(tmp, REMINDERS_FILE);
+  }
+  async all() { return this.read(); }
+  async byBooking(bookingId: string) { return this.read().filter(r => r.bookingId === bookingId); }
+  async byHotel(hotelId: string) { return this.read().filter(r => r.hotelId === hotelId); }
+  async get(id: string) { return this.read().find(r => r.id === id) || null; }
+  async put(reminders: ServerReminder[]) {
+    if (reminders.length === 0) return;
+    const list = this.read();
+    for (const rem of reminders) {
+      const idx = list.findIndex(r => r.id === rem.id);
+      if (idx === -1) list.push(rem);
+      else list[idx] = rem;
+    }
+    this.write(list);
+  }
+  async remove(id: string) {
+    const list = this.read();
+    const next = list.filter(r => r.id !== id);
+    if (next.length === list.length) return false;
+    this.write(next);
+    return true;
   }
 }
 
-function saveReminders(reminders: ServerReminder[]) {
-  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-  fs.writeFileSync(REMINDERS_FILE, JSON.stringify(reminders, null, 2));
+class FirestoreStore implements ReminderStore {
+  private db: Firestore;
+  constructor() {
+    const app = getApps()[0] ?? initializeApp({ projectId: PROJECT_ID });
+    this.db = getFirestore(app, DATABASE_ID);
+  }
+  private col() { return this.db.collection('server_reminders'); }
+  async all() { return (await this.col().get()).docs.map(d => d.data() as ServerReminder); }
+  async byBooking(bookingId: string) {
+    return (await this.col().where('bookingId', '==', bookingId).get()).docs.map(d => d.data() as ServerReminder);
+  }
+  async byHotel(hotelId: string) {
+    return (await this.col().where('hotelId', '==', hotelId).get()).docs.map(d => d.data() as ServerReminder);
+  }
+  async get(id: string) {
+    const snap = await this.col().doc(id).get();
+    return snap.exists ? (snap.data() as ServerReminder) : null;
+  }
+  async put(reminders: ServerReminder[]) {
+    for (let i = 0; i < reminders.length; i += 400) {
+      const batch = this.db.batch();
+      for (const r of reminders.slice(i, i + 400)) {
+        // Firestore rejects undefined values.
+        batch.set(this.col().doc(r.id), JSON.parse(JSON.stringify(r)));
+      }
+      await batch.commit();
+    }
+  }
+  async remove(id: string) {
+    const ref = this.col().doc(id);
+    if (!(await ref.get()).exists) return false;
+    await ref.delete();
+    return true;
+  }
 }
+
+let store: ReminderStore | null = null;
+function getStore(): ReminderStore {
+  if (!store) {
+    store = process.env.REMINDERS_STORE === 'firestore' ? new FirestoreStore() : new FileStore();
+  }
+  return store;
+}
+
+// ---------------------------------------------------------------------------
+// Creation
+// ---------------------------------------------------------------------------
 
 export interface AutoReminderInput {
   id: string;
@@ -79,23 +201,27 @@ export interface AutoReminderInput {
   };
 }
 
-export function generateAutoReminders(booking: AutoReminderInput): ServerReminder[] {
-  const reminders = loadReminders();
-  const newReminders: ServerReminder[] = [];
-  const now = new Date();
-  const nowIso = now.toISOString();
-  const ref = booking.reference || booking.id.slice(0, 6);
+/** Email HTML built from plain text, with every input escaped. */
+function buildHtml(subject: string, body: string, hotelName: string, ref: string): string {
+  return formatReminderEmailHtml(escapeHtml(subject), escapeHtml(body), escapeHtml(hotelName), escapeHtml(ref));
+}
 
-  // Check if automation is globally disabled for this property
+export async function generateAutoReminders(booking: AutoReminderInput): Promise<ServerReminder[]> {
   if (booking.automationSettings && booking.automationSettings.autoRemindersEnabled === false) {
-    // Automation disabled by manager
     return [];
   }
 
-  // Remove previous un-sent reminders for this booking to avoid duplicates
-  const filtered = reminders.filter(r => !(r.bookingId === booking.id && !r.sent));
-
+  const existing = await getStore().byBooking(booking.id);
+  const now = new Date();
+  const nowIso = now.toISOString();
+  const ref = booking.reference || booking.id.slice(0, 6);
   const rules = booking.automationSettings?.rules || {};
+
+  // Templates already delivered (or given up on) for this booking are not
+  // queued again, so confirming twice does not send a second deposit reminder.
+  const settledTemplates = new Set(
+    existing.filter(r => r.templateId && statusOf(r) !== 'pending').map(r => r.templateId!)
+  );
 
   const vars: ReminderVariables = {
     guestName: booking.guestName,
@@ -108,46 +234,33 @@ export function generateAutoReminders(booking: AutoReminderInput): ServerReminde
     bookingRef: ref,
     arrivalPin: booking.arrivalPin || Math.floor(1000 + Math.random() * 9000).toString(),
     totalPrice: booking.totalPrice || 'As quoted',
-    depositInstructions: booking.depositInstructions || 'Contact hotel management for payment details.',
+    depositInstructions: booking.depositInstructions || 'Contact the property for payment details.',
     wifiName: booking.wifiName || `${booking.hotelName} Guest`,
     wifiPassword: booking.wifiPassword || 'Provided upon check-in',
-    managerPhone: booking.managerPhone || '+265 999 000 000',
-    managerEmail: booking.managerEmail || 'reservations@travelmalawi.com',
+    managerPhone: booking.managerPhone || 'via your Travel Malawi booking chat',
+    managerEmail: booking.managerEmail || 'via your Travel Malawi booking chat',
   };
 
-  const getTemplate = (id: string) => READY_REMINDER_TEMPLATES.find(t => t.id === id);
+  const newReminders: ServerReminder[] = [];
 
-  // Helper to build and queue a template-based reminder
-  const queueTemplateReminder = (
-    templateId: string,
-    type: ServerReminder['type'],
-    targetDate: Date,
-    defaultEnabled: boolean = true
-  ) => {
-    const tmpl = getTemplate(templateId);
+  const queue = (templateId: string, type: ServerReminder['type'], targetDate: Date, defaultEnabled = true) => {
+    const tmpl = READY_REMINDER_TEMPLATES.find(t => t.id === templateId);
     if (!tmpl) return;
+    if (settledTemplates.has(templateId)) return;
 
     const rule = rules[templateId];
     const isEnabled = rule !== undefined ? rule.enabled : defaultEnabled;
     if (!isEnabled) return;
-
-    // Only schedule if target is in the future
-    if (targetDate <= now) return;
+    if (Number.isNaN(targetDate.getTime()) || targetDate <= now) return;
 
     const channelChoice = rule?.channel || (booking.guestEmail ? 'email' : (booking.guestWhatsapp ? 'whatsapp' : 'in_app'));
-    const rawSubject = rule?.subjectOverride || tmpl.defaultSubject;
-    const rawBody = rule?.bodyOverride || tmpl.defaultBody;
-
-    const finalSubject = fillTemplate(rawSubject, vars);
-    let finalBody = fillTemplate(rawBody, vars);
-
+    const finalSubject = fillTemplate(rule?.subjectOverride || tmpl.defaultSubject, vars);
+    let finalBody = fillTemplate(rule?.bodyOverride || tmpl.defaultBody, vars);
     if (booking.automationSettings?.customSignature) {
       finalBody += `\n\n---\n${booking.automationSettings.customSignature}`;
     }
 
-    const htmlContent = formatReminderEmailHtml(finalSubject, finalBody, booking.hotelName, ref);
-
-    const reminder: ServerReminder = {
+    newReminders.push({
       id: `rem-${booking.id}-${templateId}`,
       bookingId: booking.id,
       bookingRef: ref,
@@ -163,58 +276,50 @@ export function generateAutoReminders(booking: AutoReminderInput): ServerReminde
       channel: channelChoice,
       subject: finalSubject,
       message: finalBody,
-      html: htmlContent,
+      html: buildHtml(finalSubject, finalBody, booking.hotelName, ref),
       scheduledFor: targetDate.toISOString(),
       sent: false,
+      status: 'pending',
+      attempts: 0,
       createdAt: nowIso,
-    };
-
-    newReminders.push(reminder);
+    });
   };
 
-  // 1. Deposit & Payment Reminder (Immediately or +10 minutes after confirmation)
-  const depositRule = rules['deposit_payment'];
-  const depositEnabled = depositRule !== undefined ? depositRule.enabled : true;
-  if (depositEnabled) {
-    const depositTime = new Date(now.getTime() + 5 * 60 * 1000); // 5 minutes after confirmation
-    queueTemplateReminder('deposit_payment', 'deposit_payment', depositTime, true);
-  }
+  // 1. Deposit & payment details, shortly after confirmation.
+  queue('deposit_payment', 'deposit_payment', new Date(now.getTime() + 5 * 60 * 1000));
 
-  // 2. 3-Day Pre-Arrival Welcome & Directions
-  const preArrivalRule = rules['pre_arrival_3d'];
-  const daysBeforeArrival = preArrivalRule?.timingDays !== undefined ? preArrivalRule.timingDays : 3;
-  const checkInDate = new Date(booking.checkIn + 'T09:00:00');
-  const arrivalWelcomeDate = new Date(checkInDate);
-  arrivalWelcomeDate.setDate(arrivalWelcomeDate.getDate() - daysBeforeArrival);
-  queueTemplateReminder('pre_arrival_3d', 'check_in_3d', arrivalWelcomeDate, true);
+  // 2. Pre-arrival welcome and directions (default 3 days before, 09:00).
+  const daysBefore = rules['pre_arrival_3d']?.timingDays ?? 3;
+  const preArrival = malawiTime(booking.checkIn, '09:00');
+  preArrival.setTime(preArrival.getTime() - daysBefore * 24 * 60 * 60 * 1000);
+  queue('pre_arrival_3d', 'check_in_3d', preArrival);
 
-  // 3. 24-Hour Final Arrival & Access PIN
-  const pinRule = rules['arrival_24h_pin'];
-  const hoursBeforePin = pinRule?.timingHours !== undefined ? pinRule.timingHours : 24;
-  const pinDate = new Date(checkInDate.getTime() - hoursBeforePin * 60 * 60 * 1000);
-  queueTemplateReminder('arrival_24h_pin', 'check_in_24h', pinDate, true);
+  // 3. Arrival PIN (default 24h before 09:00 on check-in day).
+  const hoursBefore = rules['arrival_24h_pin']?.timingHours ?? 24;
+  queue('arrival_24h_pin', 'check_in_24h', new Date(malawiTime(booking.checkIn, '09:00').getTime() - hoursBefore * 60 * 60 * 1000));
 
-  // 4. Check-In Day Morning Guide
-  const checkInMorning = new Date(booking.checkIn + 'T08:00:00');
-  queueTemplateReminder('check_in_welcome', 'check_in_welcome', checkInMorning, false);
+  // 4. Check-in morning guide.
+  queue('check_in_welcome', 'check_in_welcome', malawiTime(booking.checkIn, '08:00'), false);
 
-  // 5. Morning Check-Out Logistics
-  const checkOutMorning = new Date(booking.checkOut + 'T07:30:00');
-  queueTemplateReminder('check_out_logistics', 'check_out', checkOutMorning, true);
+  // 5. Check-out logistics.
+  queue('check_out_logistics', 'check_out', malawiTime(booking.checkOut, '07:30'));
 
-  // 6. Post-Stay Review Request
-  const reviewRule = rules['post_stay_review'];
-  const daysAfterCheckout = reviewRule?.timingDays !== undefined ? reviewRule.timingDays : 1;
-  const postCheckoutDate = new Date(booking.checkOut + 'T10:00:00');
-  postCheckoutDate.setDate(postCheckoutDate.getDate() + daysAfterCheckout);
-  queueTemplateReminder('post_stay_review', 'post_stay_review', postCheckoutDate, true);
+  // 6. Post-stay review request (default 1 day after check-out, 10:00).
+  const daysAfter = rules['post_stay_review']?.timingDays ?? 1;
+  queue('post_stay_review', 'post_stay_review', new Date(malawiTime(booking.checkOut, '10:00').getTime() + daysAfter * 24 * 60 * 60 * 1000));
 
-  const all = [...filtered, ...newReminders];
-  saveReminders(all);
+  // Pending reminders for templates no longer queued (e.g. a rule switched
+  // off since the last run) are cancelled rather than left to fire.
+  const queuedIds = new Set(newReminders.map(r => r.id));
+  const dropped = existing
+    .filter(r => statusOf(r) === 'pending' && r.templateId && !queuedIds.has(r.id))
+    .map(r => ({ ...r, status: 'cancelled' as const }));
+
+  await getStore().put([...dropped, ...newReminders]);
   return newReminders;
 }
 
-export function createManualReminder(data: {
+export async function createManualReminder(data: {
   bookingId: string;
   bookingRef: string;
   hotelId: string;
@@ -226,11 +331,10 @@ export function createManualReminder(data: {
   recipientType: 'guest' | 'manager';
   channel?: 'in_app' | 'whatsapp_link' | 'email';
   subject?: string;
-  html?: string;
   message: string;
   scheduledFor: string;
-}): ServerReminder {
-  const reminders = loadReminders();
+}): Promise<ServerReminder> {
+  const subject = data.subject || `Update on your stay at ${data.hotelName}`;
   const reminder: ServerReminder = {
     id: `rem-manual-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     bookingId: data.bookingId,
@@ -244,70 +348,141 @@ export function createManualReminder(data: {
     recipientType: data.recipientType,
     channel: data.channel || 'in_app',
     subject: data.subject,
-    html: data.html,
+    html: buildHtml(subject, data.message, data.hotelName, data.bookingRef),
     message: data.message,
     scheduledFor: data.scheduledFor,
     type: 'custom',
     sent: false,
+    status: 'pending',
+    attempts: 0,
     createdAt: new Date().toISOString(),
   };
-  reminders.push(reminder);
-  saveReminders(reminders);
+  await getStore().put([reminder]);
   return reminder;
 }
 
-export function getRemindersForBooking(bookingId: string): ServerReminder[] {
-  return loadReminders().filter(r => r.bookingId === bookingId);
+// ---------------------------------------------------------------------------
+// Queries and removal
+// ---------------------------------------------------------------------------
+
+export async function getReminder(id: string): Promise<ServerReminder | null> {
+  return getStore().get(id);
 }
 
-export function deleteReminder(reminderId: string): boolean {
-  const reminders = loadReminders();
-  const idx = reminders.findIndex(r => r.id === reminderId);
-  if (idx === -1) return false;
-  reminders.splice(idx, 1);
-  saveReminders(reminders);
-  return true;
+export async function getRemindersForBooking(bookingId: string): Promise<ServerReminder[]> {
+  return getStore().byBooking(bookingId);
 }
 
-export function checkAndFireReminders(): { fired: ServerReminder[] } {
-  const reminders = loadReminders();
-  const now = new Date();
+export async function getRemindersForHotel(hotelId: string): Promise<ServerReminder[]> {
+  return (await getStore().byHotel(hotelId))
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+}
+
+export async function getAllPendingReminders(): Promise<ServerReminder[]> {
+  return (await getStore().all()).filter(r => statusOf(r) === 'pending');
+}
+
+export async function deleteReminder(reminderId: string): Promise<boolean> {
+  return getStore().remove(reminderId);
+}
+
+/** Cancels every not-yet-sent reminder for a booking (e.g. on cancellation). */
+export async function cancelRemindersForBooking(bookingId: string): Promise<number> {
+  const pending = (await getStore().byBooking(bookingId)).filter(r => statusOf(r) === 'pending');
+  await getStore().put(pending.map(r => ({ ...r, status: 'cancelled' as const })));
+  return pending.length;
+}
+
+// ---------------------------------------------------------------------------
+// Delivery
+// ---------------------------------------------------------------------------
+
+type DeliveryOutcome = { delivered: boolean; permanent?: boolean; error?: string };
+
+async function deliver(r: ServerReminder): Promise<DeliveryOutcome> {
+  // In-app and manual WhatsApp-link reminders are surfaced in the UI at their
+  // scheduled time; reaching it is the delivery.
+  if (r.channel === 'in_app' || r.channel === 'whatsapp_link') return { delivered: true };
+
+  const errors: string[] = [];
+  let delivered = false;
+  let attempted = false;
+
+  if ((r.channel === 'email' || r.channel === 'both') && r.guestEmail) {
+    attempted = true;
+    const result = await sendSystemEmail({
+      to: r.guestEmail,
+      subject: r.subject || `Update on your stay at ${r.hotelName}`,
+      text: r.message,
+      html: r.html || buildHtml(r.subject || '', r.message, r.hotelName, r.bookingRef),
+    });
+    if (result.success) delivered = true;
+    else errors.push(`email: ${result.error || 'failed'}`);
+  }
+
+  const phone = r.guestWhatsapp || r.guestPhone;
+  if ((r.channel === 'whatsapp' || r.channel === 'both') && phone) {
+    attempted = true;
+    const result = await sendWhatsAppMessage(phone, r.message);
+    if (result.success && !result.isDirect) delivered = true;
+    else if (result.isDirect) errors.push('whatsapp: Cloud API not configured, message not sent');
+    else errors.push(`whatsapp: ${result.error || 'failed'}`);
+  }
+
+  if (!attempted) return { delivered: false, permanent: true, error: 'No contact details for the chosen channel' };
+  return { delivered, error: errors.join('; ') || undefined };
+}
+
+let firing = false;
+
+/** Called every minute by the server. Never runs two passes at once. */
+export async function checkAndFireReminders(): Promise<{ fired: ServerReminder[] }> {
+  if (firing) return { fired: [] };
+  firing = true;
   const fired: ServerReminder[] = [];
+  try {
+    const now = Date.now();
+    const due = (await getStore().all()).filter(r =>
+      statusOf(r) === 'pending' &&
+      new Date(r.scheduledFor).getTime() <= now &&
+      (!r.nextAttemptAt || new Date(r.nextAttemptAt).getTime() <= now)
+    );
 
-  for (const r of reminders) {
-    if (r.sent) continue;
-    const scheduledTime = new Date(r.scheduledFor);
-    if (scheduledTime <= now) {
-      r.sent = true;
-      r.sentAt = now.toISOString();
-      fired.push(r);
-
-      // If scheduled as email, dispatch via SMTP
-      if ((r.channel === 'email' || r.channel === 'both') && r.guestEmail) {
-        sendSystemEmail({
-          to: r.guestEmail,
-          subject: r.subject || `Update on your stay at ${r.hotelName}`,
-          text: r.message,
-          html: r.html || `<p>${r.message.replace(/\n/g, '<br/>')}</p>`,
-        }).catch(err => {
-          console.error(`[Reminders] Failed to dispatch scheduled email reminder ${r.id}:`, err);
-        });
+    const updates: ServerReminder[] = [];
+    for (const r of due) {
+      if (now - new Date(r.scheduledFor).getTime() > STALE_AFTER_MS) {
+        updates.push({ ...r, status: 'expired', lastError: 'More than 24 hours overdue; not sent.' });
+        continue;
       }
 
-      // If scheduled as whatsapp, dispatch via WhatsApp
-      if ((r.channel === 'whatsapp' || r.channel === 'whatsapp_link' || r.channel === 'both') && (r.guestWhatsapp || r.guestPhone)) {
-        const phone = r.guestWhatsapp || r.guestPhone!;
-        sendWhatsAppMessage(phone, r.message).catch(err => {
-          console.error(`[Reminders] Failed to dispatch scheduled WhatsApp reminder ${r.id}:`, err);
-        });
+      let outcome: DeliveryOutcome;
+      try {
+        outcome = await deliver(r);
+      } catch (err: any) {
+        outcome = { delivered: false, error: err?.message || 'Delivery error' };
+      }
+
+      if (outcome.delivered) {
+        const done = { ...r, sent: true, sentAt: new Date().toISOString(), status: 'sent' as const, lastError: outcome.error };
+        updates.push(done);
+        fired.push(done);
+        continue;
+      }
+
+      const attempts = (r.attempts || 0) + 1;
+      if (outcome.permanent || attempts >= MAX_ATTEMPTS) {
+        updates.push({ ...r, attempts, status: outcome.permanent ? 'skipped' : 'failed', lastError: outcome.error });
+        console.error(`[Reminders] Giving up on ${r.id}: ${outcome.error}`);
+      } else {
+        const delay = RETRY_BASE_MS * 2 ** (attempts - 1);
+        updates.push({ ...r, attempts, nextAttemptAt: new Date(now + delay).toISOString(), lastError: outcome.error });
       }
     }
-  }
 
-  if (fired.length > 0) {
-    saveReminders(reminders);
+    await getStore().put(updates);
+  } finally {
+    firing = false;
   }
-
   return { fired };
 }
 
@@ -332,9 +507,7 @@ export async function sendReminderWhatsAppNow(data: {
     return { success: false, error: result.error };
   }
 
-  // Record as completed reminder
   const now = new Date().toISOString();
-  const reminders = loadReminders();
   const reminder: ServerReminder = {
     id: `rem-wa-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     bookingId: data.bookingId,
@@ -350,20 +523,15 @@ export async function sendReminderWhatsAppNow(data: {
     subject: data.subject,
     message: data.message,
     scheduledFor: now,
-    sent: true,
-    sentAt: now,
+    // A direct wa.me link still has to be opened by the manager.
+    sent: !result.isDirect,
+    sentAt: result.isDirect ? undefined : now,
+    status: result.isDirect ? 'pending' : 'sent',
     createdAt: now,
   };
+  if (!result.isDirect) await getStore().put([reminder]);
 
-  reminders.push(reminder);
-  saveReminders(reminders);
-
-  return { 
-    success: true, 
-    reminder, 
-    directLink: result.directLink, 
-    isDirect: result.isDirect 
-  };
+  return { success: true, reminder, directLink: result.directLink, isDirect: result.isDirect };
 }
 
 export async function sendReminderEmailNow(data: {
@@ -375,27 +543,18 @@ export async function sendReminderEmailNow(data: {
   guestEmail: string;
   subject: string;
   message: string;
-  html?: string;
 }): Promise<{ success: boolean; reminder?: ServerReminder; error?: string }> {
   if (!data.guestEmail || !data.guestEmail.includes('@')) {
     return { success: false, error: 'A valid guest email address is required.' };
   }
 
-  // Send via SMTP
-  const emailResult = await sendSystemEmail({
-    to: data.guestEmail,
-    subject: data.subject,
-    text: data.message,
-    html: data.html || `<p>${data.message.replace(/\n/g, '<br/>')}</p>`,
-  });
-
+  const html = buildHtml(data.subject, data.message, data.hotelName, data.bookingRef);
+  const emailResult = await sendSystemEmail({ to: data.guestEmail, subject: data.subject, text: data.message, html });
   if (!emailResult.success) {
     return { success: false, error: emailResult.error };
   }
 
-  // Record as completed reminder
   const now = new Date().toISOString();
-  const reminders = loadReminders();
   const reminder: ServerReminder = {
     id: `rem-email-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     bookingId: data.bookingId,
@@ -409,27 +568,15 @@ export async function sendReminderEmailNow(data: {
     channel: 'email',
     subject: data.subject,
     message: data.message,
-    html: data.html,
+    html,
     scheduledFor: now,
     sent: true,
     sentAt: now,
+    status: 'sent',
     createdAt: now,
   };
-
-  reminders.push(reminder);
-  saveReminders(reminders);
-
+  await getStore().put([reminder]);
   return { success: true, reminder };
-}
-
-export function getAllPendingReminders(): ServerReminder[] {
-  return loadReminders().filter(r => !r.sent);
-}
-
-export function getRemindersForHotel(hotelId: string): ServerReminder[] {
-  return loadReminders()
-    .filter(r => r.hotelId === hotelId)
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
 export async function sendTestTemplateEmail(data: {
@@ -445,18 +592,16 @@ export async function sendTestTemplateEmail(data: {
   }
 
   const testSubject = `[TEST PREVIEW] ${data.subject}`;
-  const ref = data.bookingRef || 'TEST-1234';
-  const htmlBody = formatReminderEmailHtml(testSubject, data.message, data.hotelName, ref);
-
+  const htmlBody = buildHtml(testSubject, data.message, data.hotelName, data.bookingRef || 'TEST-1234');
   const fullHtml = `
-    <div style="max-width: 600px; margin: 0 auto 16px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 12px 16px; font-family: sans-serif; font-size: 13px; color: #92400e; text-align: center;">
-      <strong>⚠️ THIS IS A TEST EMAIL PREVIEW</strong><br/>
-      Sent by Travel Malawi Manager Portal for template: <em>${data.templateTitle}</em>.
+    <div style="max-width: 600px; margin: 0 auto 16px; background: #fafaf9; border: 1px solid #e7e5e4; padding: 12px 16px; font-family: sans-serif; font-size: 13px; color: #44403c; text-align: center;">
+      <strong>Test email preview</strong><br/>
+      Sent from the Travel Malawi manager portal for template: <em>${escapeHtml(data.templateTitle)}</em>.
     </div>
     ${htmlBody}
   `;
 
-  return await sendSystemEmail({
+  return sendSystemEmail({
     to: data.toEmail,
     subject: testSubject,
     text: `[TEST PREVIEW - ${data.templateTitle}]\n\n${data.message}`,

@@ -43,9 +43,15 @@ export function hasRole(user: Pick<User, 'role' | 'roles'> | null | undefined, r
 
 export const isTraveller = (user: Pick<User, 'role' | 'roles'> | null | undefined) => hasRole(user, 'traveller');
 export const isHotelManager = (user: Pick<User, 'role' | 'roles'> | null | undefined) => hasRole(user, 'hotel_manager');
-export const isGlobalAdmin = (user: Pick<User, 'role' | 'roles' | 'email'> | null | undefined) => 
-  hasRole(user, 'global_admin') || 
-  Boolean(user && 'email' in user && (user.email === 'johnpaulchirwa@gmail.com' || user.email === 'johnpaulchirwa@promanaged-it.com'));
+/** Platform owner accounts, always treated as global admins. */
+export const OWNER_EMAILS: readonly string[] = ['johnpaulchirwa@gmail.com', 'johnpaulchirwa@promanaged-it.com'];
+
+export const isOwnerEmail = (email: string | null | undefined): boolean =>
+  Boolean(email && OWNER_EMAILS.includes(email.toLowerCase()));
+
+export const isGlobalAdmin = (user: Pick<User, 'role' | 'roles' | 'email'> | null | undefined) =>
+  hasRole(user, 'global_admin') ||
+  Boolean(user && 'email' in user && isOwnerEmail(user.email));
 // A global admin is also an admin. 
 export const isAdmin = (user: Pick<User, 'role' | 'roles' | 'email'> | null | undefined) => hasRole(user, 'admin') || isGlobalAdmin(user);
 export const isMarketing = (user: Pick<User, 'role' | 'roles'> | null | undefined) => hasRole(user, 'marketing');

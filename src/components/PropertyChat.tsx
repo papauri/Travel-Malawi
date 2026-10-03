@@ -11,11 +11,12 @@ import {
   getDoc, 
   updateDoc, 
   deleteDoc, 
-  getDocs 
+  getDocs,
+  arrayRemove
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Hotel, Message, User, HotelChat, Call } from '../types';
-import { fastDeleteOrClearChat } from '../lib/chatDeletion';
+import { fastDeleteOrClearChat, clearedAtFor } from '../lib/chatDeletion';
 import { 
   Send, 
   Loader2, 
@@ -96,7 +97,9 @@ export default function PropertyChat({
   const activeGuestId = guestId || currentUser?.uid;
   const activeGuestName = guestName || currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Guest';
   const isManager = guestId !== undefined || (currentUser && liveHotel.managerId === currentUser.uid);
-  const effectiveManagerId = liveHotel.managerId || (isManager ? (currentUser?.uid || '') : '') || '';
+  // The hotel's real manager only. Rules reject a chat that names anyone else,
+  // and an unassigned hotel's inquiries are handled by admins.
+  const effectiveManagerId = liveHotel.managerId || '';
   const otherParticipantName = isManager ? activeGuestName : (liveHotel.name || 'Host');
 
   const {
@@ -458,7 +461,6 @@ export default function PropertyChat({
         endedAt: endTimestamp,
         endedBy: isManager ? 'manager' : 'guest',
         endedByName: senderDisplayName,
-        updatedAt: endTimestamp,
         [isManager ? 'managerTyping' : 'guestTyping']: false,
       });
 
@@ -484,9 +486,6 @@ export default function PropertyChat({
         closedAt: null,
         closedBy: null,
         closedByName: null,
-        clearedAt: null,
-        clearedBy: null,
-        updatedAt: Date.now(),
       });
       toast.success('Started a new conversation session!');
     } catch (error) {
@@ -570,6 +569,9 @@ export default function PropertyChat({
         [isManager ? 'managerTyping' : 'guestTyping']: false,
         [isManager ? 'managerLastSeenAt' : 'guestLastSeenAt']: now,
         [isManager ? 'managerLastOpenedAt' : 'guestLastOpenedAt']: now,
+        // A new message brings the chat back for anyone who deleted it.
+        deletedBy: arrayRemove(...[activeGuestId, effectiveManagerId].filter(Boolean)),
+        lastMessageAt: now,
         updatedAt: now
       }, { merge: true });
       
@@ -580,8 +582,9 @@ export default function PropertyChat({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             email: liveHotel.managerEmail,
+            hotelId: liveHotel.id || hotel.id,
             subject: `New message from ${senderDisplayName}`,
-            message: `You have a new message on Stay OS from ${senderDisplayName} regarding ${liveHotel.name}:\n\n"${textToSend}"\n\nPlease log in to reply.`
+            message: `You have a new message on Travel Malawi from ${senderDisplayName} regarding ${liveHotel.name}:\n\n"${textToSend}"\n\nPlease log in to reply.`
           })
         }).catch(err => console.error('Failed to trigger offline notification', err));
       }
@@ -606,9 +609,10 @@ export default function PropertyChat({
     | { type: 'message'; data: Message; id: string; createdAt: number }
     | { type: 'call'; data: Call; id: string; createdAt: number };
 
+  const myClearedAt = clearedAtFor(chatDocData as any, currentUser?.uid, 'inquiry');
   const timelineItems: TimelineItem[] = [
-    ...messages.map(m => ({ type: 'message' as const, data: m, id: m.id || String(m.createdAt), createdAt: m.createdAt })),
-    ...calls.map(c => ({ type: 'call' as const, data: c, id: c.id || String(c.createdAt), createdAt: c.createdAt }))
+    ...messages.filter(m => m.createdAt > myClearedAt).map(m => ({ type: 'message' as const, data: m, id: m.id || String(m.createdAt), createdAt: m.createdAt })),
+    ...calls.filter(c => c.createdAt > myClearedAt).map(c => ({ type: 'call' as const, data: c, id: c.id || String(c.createdAt), createdAt: c.createdAt }))
   ].sort((a, b) => a.createdAt - b.createdAt);
 
   // Find index of the last message sent by me
@@ -973,7 +977,9 @@ export default function PropertyChat({
                   className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-fadeIn`}
                 >
                   <span className="text-[10px] font-medium text-stone-400 mb-1 px-1">
-                    {msg.senderName}
+                    {msg.senderId === (chatDocData?.guestId || activeGuestId)
+                      ? (chatDocData?.guestName || activeGuestName)
+                      : (liveHotel.name || 'Host')}
                   </span>
                   <div 
                     className={`px-4 py-2.5 rounded-2xl max-w-[85%] text-sm leading-relaxed shadow-2xs ${

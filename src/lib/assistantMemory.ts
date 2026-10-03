@@ -108,6 +108,10 @@ export async function syncDirectivesWithCloud(userId: string = 'global'): Promis
   }
 }
 
+/** Learned directives are fed back into every Ulendo prompt, so keep them few and short. */
+export const MAX_LEARNED_DIRECTIVES = 20;
+export const MAX_DIRECTIVE_CHARS = 280;
+
 export function addLearnedDirective(
   userId: string = 'global',
   text: string,
@@ -116,7 +120,7 @@ export function addLearnedDirective(
   trigger?: string,
   resolution?: string
 ): LearnedDirective {
-  const clean = text.trim();
+  const clean = text.trim().slice(0, MAX_DIRECTIVE_CHARS);
   if (!clean) throw new Error('Directive text cannot be empty.');
 
   const current = getLearnedDirectives(userId);
@@ -148,7 +152,15 @@ export function addLearnedDirective(
     resolution,
   };
 
+  // Newest first; the oldest directives beyond the cap are dropped.
   const updated = [newItem, ...current];
+  const dropped = updated.slice(MAX_LEARNED_DIRECTIVES);
+  updated.length = Math.min(updated.length, MAX_LEARNED_DIRECTIVES);
+  if (userId && userId !== 'global') {
+    dropped
+      .filter(d => !d.id.startsWith('seed_'))
+      .forEach(d => deleteDoc(doc(db, 'ai_directives', d.id)).catch(() => {}));
+  }
   try {
     localStorage.setItem(`${STORAGE_PREFIX}${userId}`, JSON.stringify(updated));
   } catch (err) {

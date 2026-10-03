@@ -444,6 +444,12 @@ export interface Booking {
   total: number;
   /** The currency the guest was quoted and will pay in. */
   currency: CurrencyCode | string;
+  /** The promotion applied when the guest booked, and what it took off. */
+  promotionId?: string | null;
+  discountAmount?: number;
+  /** A manager confirmed despite the stored total being below the current price. */
+  priceOverrideAccepted?: boolean;
+  confirmedAt?: number;
   status: BookingStatus;
   arrivalPin?: string;
   lastMessageAt?: number;

@@ -159,6 +159,7 @@ export async function sendWhatsAppMessage(
     const url = `https://graph.facebook.com/v21.0/${encodeURIComponent(cfg.phoneNumberId)}/messages`;
     const response = await fetch(url, {
       method: 'POST',
+      signal: AbortSignal.timeout(15000),
       headers: {
         'Authorization': `Bearer ${cfg.accessToken}`,
         'Content-Type': 'application/json',
@@ -237,6 +238,7 @@ export async function testWhatsAppConnection(
     const verifyUrl = `https://graph.facebook.com/v21.0/${encodeURIComponent(active.phoneNumberId)}?fields=id,verified_name,display_phone_number,quality_rating`;
     const verifyRes = await fetch(verifyUrl, {
       method: 'GET',
+      signal: AbortSignal.timeout(15000),
       headers: {
         'Authorization': `Bearer ${active.accessToken}`,
       },
@@ -262,6 +264,7 @@ export async function testWhatsAppConnection(
       const sendUrl = `https://graph.facebook.com/v21.0/${encodeURIComponent(active.phoneNumberId)}/messages`;
       const sendRes = await fetch(sendUrl, {
         method: 'POST',
+        signal: AbortSignal.timeout(15000),
         headers: {
           'Authorization': `Bearer ${active.accessToken}`,
           'Content-Type': 'application/json',

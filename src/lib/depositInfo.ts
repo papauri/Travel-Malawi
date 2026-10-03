@@ -2,41 +2,11 @@ import { Hotel, DepositInfo, User } from '../types';
 import { isAdmin, isHotelManager } from './roles';
 
 /**
- * Verified test payment and deposit details for Blue Zebra Island Lodge
- * (Nankoma Island, Lake Malawi).
- */
-export const BLUE_ZEBRA_TEST_DEPOSIT_INFO: DepositInfo = {
-  airtelMoneyNumber: '+265 999 452 811',
-  airtelMoneyName: 'Blue Zebra Island Lodge Ltd',
-  mpambaNumber: '+265 888 231 904',
-  mpambaName: 'Blue Zebra Island Lodge',
-  bankName: 'National Bank of Malawi (NBM)',
-  bankAccountName: 'Blue Zebra Island Lodge Ltd',
-  bankAccountNumber: '1004829104',
-  bankBranch: 'Capital City Branch, Lilongwe',
-  bankSwiftCode: 'NBMAMWMW',
-  depositPercentage: 50,
-  instructions: '50% deposit required to secure reservation. Nankoma Island boat transfers included with confirmed voucher.'
-};
-
-/**
- * Returns configured deposit information for a property, automatically
- * falling back to realistic test details for Blue Zebra Island Lodge.
+ * The deposit details a property has configured, or empty fields when it has
+ * none. Nothing is ever filled in on the property's behalf: guests send real
+ * money to whatever is shown here.
  */
 export function getHotelDepositInfo(hotel?: Hotel | null): DepositInfo {
-  if (hotel?.depositInfo && (hotel.depositInfo.airtelMoneyNumber || hotel.depositInfo.bankAccountNumber)) {
-    return hotel.depositInfo;
-  }
-
-  // Auto-populate Blue Zebra test details
-  const isBlueZebra = 
-    hotel?.id === 'V8CSMEkXvhfFXlZlpb3R' || 
-    (hotel?.name && hotel.name.toLowerCase().includes('blue zebra'));
-
-  if (isBlueZebra) {
-    return BLUE_ZEBRA_TEST_DEPOSIT_INFO;
-  }
-
   return hotel?.depositInfo || {
     airtelMoneyNumber: '',
     airtelMoneyName: '',
