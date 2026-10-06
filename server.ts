@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import './server/envSanitizer';
 import express from 'express';
 import type { Response } from 'express';
 import path from 'path';
@@ -1175,7 +1176,7 @@ async function startServer() {
   // Start reminder cron (check every 60 seconds); a pass never overlaps the previous one
   const reminderInterval = setInterval(() => {
     checkAndFireReminders().catch(err => {
-      console.error('[Reminders] Error checking reminders:', err);
+      console.warn('[Reminders] Periodic reminder pass caught error:', err?.message || err);
     });
   }, 60_000);
 

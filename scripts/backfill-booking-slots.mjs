@@ -20,8 +20,8 @@ const config = JSON.parse(fs.readFileSync(new URL('../firebase-applet-config.jso
 const firebaseJson = JSON.parse(fs.readFileSync(new URL('../firebase.json', import.meta.url), 'utf-8'));
 const databaseId = config.firestoreDatabaseId || firebaseJson.firestore?.[0]?.database || '(default)';
 
-if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-  console.error('Set GOOGLE_APPLICATION_CREDENTIALS to a service-account key with Firestore access.');
+if (!process.env.GOOGLE_APPLICATION_CREDENTIALS || !fs.existsSync(process.env.GOOGLE_APPLICATION_CREDENTIALS)) {
+  console.error('Set GOOGLE_APPLICATION_CREDENTIALS to a valid service-account key file with Firestore access.');
   process.exit(1);
 }
 

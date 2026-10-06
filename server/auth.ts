@@ -9,6 +9,7 @@
  * the server can see on the caller's behalf.
  */
 
+import './envSanitizer';
 import fs from 'fs';
 import path from 'path';
 import type { Request, Response, NextFunction, RequestHandler } from 'express';

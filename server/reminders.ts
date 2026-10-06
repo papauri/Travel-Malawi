@@ -1,3 +1,4 @@
+import './envSanitizer';
 import fs from 'fs';
 import path from 'path';
 import { getApps, initializeApp } from 'firebase-admin/app';
@@ -155,10 +156,107 @@ class FirestoreStore implements ReminderStore {
   }
 }
 
+class HybridReminderStore implements ReminderStore {
+  private fileStore = new FileStore();
+  private firestoreStore: FirestoreStore | null = null;
+  private warnedFallback = false;
+  private disabledFirestore = false;
+
+  private getFirestore(): FirestoreStore | null {
+    if (this.disabledFirestore) return null;
+    if (!this.firestoreStore) {
+      try {
+        this.firestoreStore = new FirestoreStore();
+      } catch (err: any) {
+        this.handleFallback('initialization', err);
+        return null;
+      }
+    }
+    return this.firestoreStore;
+  }
+
+  private handleFallback(op: string, err: any) {
+    this.disabledFirestore = true;
+    if (!this.warnedFallback) {
+      this.warnedFallback = true;
+      console.warn(`[Reminders] Firestore unavailable (${err?.message || err}). Falling back to local file storage.`);
+    }
+  }
+
+  async all() {
+    const fs = this.getFirestore();
+    if (!fs) return this.fileStore.all();
+    try {
+      return await fs.all();
+    } catch (err: any) {
+      this.handleFallback('all()', err);
+      return this.fileStore.all();
+    }
+  }
+
+  async byBooking(bookingId: string) {
+    const fs = this.getFirestore();
+    if (!fs) return this.fileStore.byBooking(bookingId);
+    try {
+      return await fs.byBooking(bookingId);
+    } catch (err: any) {
+      this.handleFallback('byBooking()', err);
+      return this.fileStore.byBooking(bookingId);
+    }
+  }
+
+  async byHotel(hotelId: string) {
+    const fs = this.getFirestore();
+    if (!fs) return this.fileStore.byHotel(hotelId);
+    try {
+      return await fs.byHotel(hotelId);
+    } catch (err: any) {
+      this.handleFallback('byHotel()', err);
+      return this.fileStore.byHotel(hotelId);
+    }
+  }
+
+  async get(id: string) {
+    const fs = this.getFirestore();
+    if (!fs) return this.fileStore.get(id);
+    try {
+      return await fs.get(id);
+    } catch (err: any) {
+      this.handleFallback('get()', err);
+      return this.fileStore.get(id);
+    }
+  }
+
+  async put(reminders: ServerReminder[]) {
+    // Always mirror to file store
+    await this.fileStore.put(reminders);
+    const fs = this.getFirestore();
+    if (!fs) return;
+    try {
+      await fs.put(reminders);
+    } catch (err: any) {
+      this.handleFallback('put()', err);
+    }
+  }
+
+  async remove(id: string) {
+    const fileResult = await this.fileStore.remove(id);
+    const fs = this.getFirestore();
+    if (!fs) return fileResult;
+    try {
+      const fsResult = await fs.remove(id);
+      return fsResult || fileResult;
+    } catch (err: any) {
+      this.handleFallback('remove()', err);
+      return fileResult;
+    }
+  }
+}
+
 let store: ReminderStore | null = null;
 function getStore(): ReminderStore {
   if (!store) {
-    store = process.env.REMINDERS_STORE === 'firestore' ? new FirestoreStore() : new FileStore();
+    store = process.env.REMINDERS_STORE === 'firestore' ? new HybridReminderStore() : new FileStore();
   }
   return store;
 }
@@ -442,7 +540,15 @@ export async function checkAndFireReminders(): Promise<{ fired: ServerReminder[]
   const fired: ServerReminder[] = [];
   try {
     const now = Date.now();
-    const due = (await getStore().all()).filter(r =>
+    let allReminders: ServerReminder[] = [];
+    try {
+      allReminders = await getStore().all();
+    } catch (err: any) {
+      console.warn('[Reminders] Failed to read from reminder store:', err?.message || err);
+      return { fired: [] };
+    }
+
+    const due = allReminders.filter(r =>
       statusOf(r) === 'pending' &&
       new Date(r.scheduledFor).getTime() <= now &&
       (!r.nextAttemptAt || new Date(r.nextAttemptAt).getTime() <= now)

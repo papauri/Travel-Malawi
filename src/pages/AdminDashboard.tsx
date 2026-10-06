@@ -983,97 +983,89 @@ export default function AdminDashboard() {
               </button>
             </div>
 
-            {/* Pre-Launch Concept Validation & Host Outreach Instruments */}
-            <div className="bg-stone-900 text-white rounded-2xl p-5 sm:p-7 border border-stone-800 shadow-sm space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-800 pb-4">
+            {/* Partner Outreach & Guides */}
+            <div className="bg-white rounded-2xl p-5 sm:p-6 border border-stone-200 shadow-2xs space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-stone-100">
                 <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold uppercase tracking-wider text-amber-400">Pre-Launch Strategic Outreach</span>
-                    <span className="text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-800 px-2 py-0.5 rounded-full font-bold">
-                      HTML / PDF Downloadable
-                    </span>
-                  </div>
-                  <h3 className="text-xl font-serif font-bold text-white mt-1">
-                    Partner Concept Survey &amp; Host Acquisition Leaflet
+                  <h3 className="text-base sm:text-lg font-serif font-bold text-stone-900">
+                    Partner Materials &amp; Guides
                   </h3>
+                  <p className="text-xs text-stone-500 mt-0.5">
+                    Printable resources for partner onboarding and feedback
+                  </p>
                 </div>
                 <button
+                  type="button"
                   onClick={() => setActiveTab('docs')}
-                  className="text-xs text-stone-400 hover:text-white font-medium inline-flex items-center gap-1 transition"
+                  className="text-xs text-stone-600 hover:text-stone-900 font-medium inline-flex items-center gap-1.5 self-start sm:self-auto cursor-pointer transition hover:underline"
                 >
-                  <span>View All 6 Strategic Docs</span>
-                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>All Documents (6)</span>
+                  <ExternalLink className="w-3.5 h-3.5 text-stone-400" />
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                 {/* Concept Survey Card */}
-                <div className="bg-stone-800/80 border border-stone-700/80 rounded-xl p-4 flex flex-col justify-between gap-3">
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 bg-amber-950/60 px-2 py-0.5 rounded border border-amber-800/60">
-                        3-Pillar Validation
-                      </span>
-                      <span className="text-[11px] text-stone-400 font-mono">HTML + PDF Ready</span>
+                <div className="border border-stone-200 bg-stone-50/50 rounded-xl p-4 flex flex-col justify-between gap-3 hover:border-stone-300 transition">
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <h4 className="text-sm font-semibold text-stone-900">
+                        Concept Validation Survey
+                      </h4>
+                      <span className="text-[11px] text-stone-400">PDF &bull; Web</span>
                     </div>
-                    <h4 className="text-base font-serif font-bold text-white">
-                      Pre-Launch Concept Validation Survey
-                    </h4>
-                    <p className="text-xs text-stone-300 leading-relaxed">
-                      Evaluates 1. Current Habits &amp; Pain Points, 2. Value &amp; Interest Validation, 3. Early Adopter Commitment. Includes realistic dashboard visuals with masked financials for partner confidentiality.
+                    <p className="text-xs text-stone-600 leading-relaxed">
+                      Partner feedback questionnaire with preview dashboard visuals.
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-2 pt-2 border-t border-stone-700/60 flex-wrap">
+                  <div className="flex items-center gap-2 pt-2 border-t border-stone-200/70 flex-wrap">
                     <Link
                       to="/concept-validation"
                       target="_blank"
-                      className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-stone-950 font-bold text-xs inline-flex items-center gap-1.5 transition"
+                      className="px-3 py-1.5 rounded-lg border border-stone-300 bg-white hover:bg-stone-50 text-stone-800 font-medium text-xs inline-flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
                     >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                      <span>Open Live / Print PDF</span>
+                      <ExternalLink className="w-3.5 h-3.5 text-stone-500" />
+                      <span>View &amp; Print</span>
                     </Link>
                     <a
                       href="/api/admin/docs/concept-validation-survey?format=html&download=1"
-                      className="px-3 py-1.5 rounded-lg bg-stone-700 hover:bg-stone-600 text-stone-200 font-semibold text-xs inline-flex items-center gap-1.5 transition border border-stone-600"
+                      className="px-3 py-1.5 rounded-lg border border-stone-200 bg-white hover:bg-stone-50 text-stone-600 font-medium text-xs inline-flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
                     >
-                      <Download className="w-3.5 h-3.5 text-amber-300" />
+                      <Download className="w-3.5 h-3.5 text-stone-400" />
                       <span>Download HTML</span>
                     </a>
                   </div>
                 </div>
 
                 {/* Stay Owner Leaflet Card */}
-                <div className="bg-stone-800/80 border border-stone-700/80 rounded-xl p-4 flex flex-col justify-between gap-3">
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800/60">
-                        Host Outreach Leaflet
-                      </span>
-                      <span className="text-[11px] text-stone-400 font-mono">Flyer &bull; Brochure</span>
+                <div className="border border-stone-200 bg-stone-50/50 rounded-xl p-4 flex flex-col justify-between gap-3 hover:border-stone-300 transition">
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <h4 className="text-sm font-semibold text-stone-900">
+                        Stay Owner Acquisition Leaflet
+                      </h4>
+                      <span className="text-[11px] text-stone-400">Flyer &bull; Brochure</span>
                     </div>
-                    <h4 className="text-base font-serif font-bold text-white">
-                      Stay Owner Acquisition Leaflet ("What You Get")
-                    </h4>
-                    <p className="text-xs text-stone-300 leading-relaxed">
-                      High-impact, simple illustrative flyer ready to send via WhatsApp, email, or printed out for lodge owners. Features 0% launch commission, local mobile money, and Ulendo 24/7 AI concierge.
+                    <p className="text-xs text-stone-600 leading-relaxed">
+                      One-page host flyer covering 0% launch commission and direct payouts.
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-2 pt-2 border-t border-stone-700/60 flex-wrap">
+                  <div className="flex items-center gap-2 pt-2 border-t border-stone-200/70 flex-wrap">
                     <Link
                       to="/stay-owner-leaflet"
                       target="_blank"
-                      className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-stone-950 font-bold text-xs inline-flex items-center gap-1.5 transition"
+                      className="px-3 py-1.5 rounded-lg border border-stone-300 bg-white hover:bg-stone-50 text-stone-800 font-medium text-xs inline-flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
                     >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                      <span>Open Live / Print PDF</span>
+                      <ExternalLink className="w-3.5 h-3.5 text-stone-500" />
+                      <span>View &amp; Print</span>
                     </Link>
                     <a
                       href="/api/admin/docs/stay-owner-leaflet?format=html&download=1"
-                      className="px-3 py-1.5 rounded-lg bg-stone-700 hover:bg-stone-600 text-stone-200 font-semibold text-xs inline-flex items-center gap-1.5 transition border border-stone-600"
+                      className="px-3 py-1.5 rounded-lg border border-stone-200 bg-white hover:bg-stone-50 text-stone-600 font-medium text-xs inline-flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
                     >
-                      <Download className="w-3.5 h-3.5 text-emerald-300" />
+                      <Download className="w-3.5 h-3.5 text-stone-400" />
                       <span>Download HTML</span>
                     </a>
                   </div>

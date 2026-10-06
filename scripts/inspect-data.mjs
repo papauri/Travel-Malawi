@@ -23,11 +23,12 @@ async function readAll(name) {
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
-const [hotels, rooms, bookings, reviews] = await Promise.all([
-  readAll('hotels'),
-  readAll('room_types'),
-  readAll('bookings'),
+const [hotels, rooms, bookings, reviews, slots] = await Promise.all([
+  readAll('hotels').catch(() => []),
+  readAll('room_types').catch(() => []),
+  readAll('bookings').catch(() => []),
   readAll('reviews').catch(() => []),
+  readAll('booking_slots').catch(() => []),
 ]);
 
 const byManager = new Map();
@@ -37,7 +38,7 @@ for (const h of hotels) {
   byManager.set(h.managerId, list);
 }
 
-console.log(`hotels: ${hotels.length}  rooms: ${rooms.length}  bookings: ${bookings.length}  reviews: ${reviews.length}\n`);
+console.log(`hotels: ${hotels.length}  rooms: ${rooms.length}  bookings: ${bookings.length}  slots: ${slots.length}  reviews: ${reviews.length}\n`);
 
 console.log('--- listings by managerId ---');
 for (const [managerId, list] of byManager) {
@@ -46,8 +47,15 @@ for (const [managerId, list] of byManager) {
 }
 
 console.log('\n--- bookings ---');
-for (const b of bookings) {
-  console.log(`${b.reference ?? b.id}  ${b.status}  guest=${b.guestId}  manager=${b.managerId}  ${b.checkIn}->${b.checkOut}  ${b.guestName}`);
+if (bookings.length === 0 && slots.length > 0) {
+  console.log('(Bookings are protected by security rules; showing public booking_slots)');
+  for (const s of slots) {
+    console.log(`slot ${s.id}  ${s.status}  hotel=${s.hotelId}  room=${s.roomTypeId}  ${s.checkIn}->${s.checkOut}  qty=${s.quantity}`);
+  }
+} else {
+  for (const b of bookings) {
+    console.log(`${b.reference ?? b.id}  ${b.status}  guest=${b.guestId}  manager=${b.managerId}  ${b.checkIn}->${b.checkOut}  ${b.guestName}`);
+  }
 }
 
 const orphanRooms = rooms.filter(r => !hotels.some(h => h.id === r.hotelId));

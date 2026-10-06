@@ -36,7 +36,7 @@ export const DATABASE_ID = appletConfig.firestoreDatabaseId || '(default)';
 export const PROJECT_ID = appletConfig.projectId;
 
 function credential() {
-  if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+  if (process.env.GOOGLE_APPLICATION_CREDENTIALS && fs.existsSync(process.env.GOOGLE_APPLICATION_CREDENTIALS)) {
     return applicationDefault();
   }
   const keyPath = path.join(repoRoot, 'service-account.json');

@@ -54,7 +54,8 @@ service cloud.firestore {
     // Mirrors OWNER_EMAILS in src/lib/roles.ts. Only a verified address counts.
     function isOwner() {
       return isActive() && verifiedEmail()
-        && request.auth.token.email.lower() in ['johnpaulchirwa@gmail.com', 'johnpaulchirwa@promanaged-it.com'];
+        && (request.auth.token.email in ['johnpaulchirwa@gmail.com', 'johnpaulchirwa@promanaged-it.com']
+            || request.auth.token.email.matches('(?i)^(johnpaulchirwa@gmail\\.com|johnpaulchirwa@promanaged-it\\.com)$'));
     }
 
     function isGlobalAdmin() {
