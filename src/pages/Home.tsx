@@ -994,7 +994,7 @@ export default function Home() {
   return (
     <div className="flex flex-col min-h-screen">
       {/* Hero */}
-      <section className="relative z-20 min-h-[52svh] sm:min-h-[60svh] md:min-h-[72svh] lg:min-h-[88svh] xl:min-h-[92svh] 2xl:min-h-[95svh] w-full flex flex-col justify-center items-center pb-14 sm:pb-20 lg:pb-32 pt-24 sm:pt-28 lg:pt-36 bg-stone-950 overflow-hidden">
+      <section className="relative z-20 min-h-[50svh] sm:min-h-[54svh] md:min-h-[58svh] lg:min-h-[80svh] xl:min-h-[86svh] 2xl:min-h-[90svh] w-full flex flex-col justify-center items-center pb-12 sm:pb-16 md:pb-20 lg:pb-28 pt-20 sm:pt-24 md:pt-28 lg:pt-36 bg-stone-950 overflow-hidden">
         <motion.div
           initial={{ opacity: 0, scale: 1.08, filter: 'blur(10px)' }}
           animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
@@ -1064,17 +1064,17 @@ export default function Home() {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
-          className={`relative bg-[#FBF9F5]/98 backdrop-blur-xl rounded-2xl lg:rounded-full p-2 sm:p-2.5 lg:p-1.5
+          className={`relative bg-[#FBF9F5]/98 backdrop-blur-xl rounded-2xl md:rounded-full p-2 sm:p-2.5 md:p-1.5
                      shadow-[0_20px_45px_-12px_rgba(28,25,23,0.18)] border border-stone-200/90 ring-1 ring-stone-900/5
                      w-full transition-all ${
                        showRecentSearches || showGuestDropdown ? 'z-50' : 'z-30'
                      }`}
         >
-          <div className="grid grid-cols-2 lg:flex lg:flex-row lg:items-center gap-1.5 lg:gap-0 w-full text-left">
+          <div className="grid grid-cols-2 md:flex md:flex-row md:items-center gap-1.5 md:gap-0 w-full text-left">
             {/* Where */}
             <div
               ref={locationSearchRef}
-              className={`col-span-2 lg:flex-[1.4] lg:min-w-0 relative rounded-xl lg:rounded-full px-3.5 py-2 lg:px-4 lg:py-2 hover:bg-stone-100/60 transition group bg-stone-100/40 lg:bg-transparent border border-stone-200/50 lg:border-none ${
+              className={`col-span-2 md:flex-[1.4] md:min-w-0 relative rounded-xl md:rounded-full px-3.5 py-2 md:px-4 md:py-2 hover:bg-stone-100/60 transition group bg-stone-100/40 md:bg-transparent border border-stone-200/50 md:border-none ${
                 showRecentSearches ? 'z-50' : 'z-20'
               }`}
             >
@@ -1265,10 +1265,10 @@ export default function Home() {
               )}
             </div>
 
-            <div className="hidden lg:block h-6 w-px bg-stone-200/80 mx-1" />
+            <div className="hidden md:block h-6 w-px bg-stone-200/80 mx-1" />
 
             {/* Check In */}
-            <div className="col-span-1 lg:flex-1 lg:min-w-0 rounded-xl lg:rounded-full px-3 py-1.5 lg:px-3.5 lg:py-2 hover:bg-stone-100/60 transition bg-stone-100/40 lg:bg-transparent border border-stone-200/50 lg:border-none">
+            <div className="col-span-1 md:flex-1 md:min-w-0 rounded-xl md:rounded-full px-3 py-1.5 md:px-3.5 md:py-2 hover:bg-stone-100/60 transition bg-stone-100/40 md:bg-transparent border border-stone-200/50 md:border-none">
               <span className="block text-[9px] font-bold text-stone-500 uppercase tracking-[0.14em] mb-0.5">
                 Check in
               </span>
@@ -1285,10 +1285,10 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="hidden lg:block h-6 w-px bg-stone-200/80 mx-1" />
+            <div className="hidden md:block h-6 w-px bg-stone-200/80 mx-1" />
 
             {/* Check Out */}
-            <div className="col-span-1 lg:flex-1 lg:min-w-0 rounded-xl lg:rounded-full px-3 py-1.5 lg:px-3.5 lg:py-2 hover:bg-stone-100/60 transition bg-stone-100/40 lg:bg-transparent border border-stone-200/50 lg:border-none">
+            <div className="col-span-1 md:flex-1 md:min-w-0 rounded-xl md:rounded-full px-3 py-1.5 md:px-3.5 md:py-2 hover:bg-stone-100/60 transition bg-stone-100/40 md:bg-transparent border border-stone-200/50 md:border-none">
               <span className="block text-[9px] font-bold text-stone-500 uppercase tracking-[0.14em] mb-0.5">
                 Check out
               </span>
@@ -1305,12 +1305,12 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="hidden lg:block h-6 w-px bg-stone-200/80 mx-1" />
+            <div className="hidden md:block h-6 w-px bg-stone-200/80 mx-1" />
 
             {/* Who / Guests */}
             <div
               ref={guestSelectorRef}
-              className={`col-span-1 lg:flex-1 lg:min-w-0 relative rounded-xl lg:rounded-full px-3 py-1.5 lg:px-3.5 lg:py-2 hover:bg-stone-100/60 transition bg-stone-100/40 lg:bg-transparent border border-stone-200/50 lg:border-none ${
+              className={`col-span-1 md:flex-1 md:min-w-0 relative rounded-xl md:rounded-full px-3 py-1.5 md:px-3.5 md:py-2 hover:bg-stone-100/60 transition bg-stone-100/40 md:bg-transparent border border-stone-200/50 md:border-none ${
                 showGuestDropdown ? 'z-50' : 'z-20'
               }`}
             >
@@ -1374,11 +1374,11 @@ export default function Home() {
             </div>
 
             {/* Search CTA button */}
-            <div className="col-span-1 lg:shrink-0 flex items-center p-0.5">
+            <div className="col-span-1 md:shrink-0 flex items-center p-0.5">
               <button
                 onClick={handleSearch}
                 disabled={searching}
-                className="w-full lg:w-auto h-full min-h-[44px] flex items-center justify-center gap-2 bg-[#2D2A26] hover:bg-[#1F1D1A] active:scale-98 text-[#F5F2EB] rounded-xl lg:rounded-full px-5 lg:px-6 py-2.5 lg:py-2.5 font-medium text-xs sm:text-sm tracking-wide transition shadow-sm disabled:opacity-60"
+                className="w-full md:w-auto h-full min-h-[44px] flex items-center justify-center gap-2 bg-[#2D2A26] hover:bg-[#1F1D1A] active:scale-98 text-[#F5F2EB] rounded-xl md:rounded-full px-4 md:px-5 lg:px-6 py-2.5 font-medium text-xs sm:text-sm tracking-wide transition shadow-sm disabled:opacity-60"
               >
                 {searching
                   ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-stone-400 border-t-white" />
@@ -1870,7 +1870,7 @@ export default function Home() {
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {[...Array(8)].map((_, i) => (
                 <div key={`skeleton-${i}`} className="flex flex-col gap-3">
-                  <div className="animate-pulse bg-stone-200/80 rounded-2xl aspect-[4/5] w-full" />
+                  <div className="animate-pulse bg-stone-200/80 rounded-2xl aspect-[4/3] w-full" />
                   <div className="animate-pulse bg-stone-200/70 h-3 w-1/3 rounded-full mt-1" />
                   <div className="animate-pulse bg-stone-200/90 h-5 w-3/4 rounded-md" />
                   <div className="animate-pulse bg-stone-200/60 h-4 w-1/2 rounded-md" />

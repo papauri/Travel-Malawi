@@ -11,6 +11,16 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Responsive Tablet Density Scaling:
+   Tightens rem scale by ~6.25% on tablets (768px–1024px) so elements and
+   typography don't look excessively large or zoomed-in on iPads and Android tablets.
+   Mobile (<768px) remains 16px to prevent iOS Safari auto-zoom on form inputs. */
+@media (min-width: 768px) and (max-width: 1024px) {
+  :root {
+    font-size: 15px;
+  }
+}
+
 body {
   font-family: var(--font-sans);
   background-color: #FAFAFA;

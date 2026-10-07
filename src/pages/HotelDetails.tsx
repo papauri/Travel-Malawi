@@ -724,7 +724,7 @@ export default function HotelDetails() {
 
           <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
             {/* Quick Navigation & Action Pills */}
-            <div className="hidden lg:flex items-center gap-1.5 text-xs font-semibold text-stone-700">
+            <div className="hidden md:flex items-center gap-1 sm:gap-1.5 text-[11px] lg:text-xs font-semibold text-stone-700">
               <a 
                 href="#rooms-section" 
                 onClick={(e) => {
@@ -785,8 +785,8 @@ export default function HotelDetails() {
               </a>
             </div>
 
-            {/* Mobile / Tablet Quick Jump Dropdown */}
-            <details id="sticky-quick-nav-details" className="relative group lg:hidden">
+            {/* Mobile Quick Jump Dropdown */}
+            <details id="sticky-quick-nav-details" className="relative group md:hidden">
               <summary className="list-none flex items-center gap-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 h-8 sm:h-9 px-3 rounded-full text-xs font-semibold transition cursor-pointer select-none [&::-webkit-details-marker]:hidden shadow-2xs border border-stone-200/70">
                 <Compass className="w-3.5 h-3.5 text-stone-500 shrink-0" />
                 <span>Explore</span>
@@ -881,9 +881,9 @@ export default function HotelDetails() {
           boxes, so a listing with one image gave over half its header to two
           empty grey panels. */}
       <div className="w-full">
-        <div className={`grid gap-0 md:h-[68vh] ${hasGallery ? 'grid-cols-1 md:grid-cols-4' : 'grid-cols-1'}`}>
+        <div className={`grid gap-0 md:h-[50vh] lg:h-[66vh] ${hasGallery ? 'grid-cols-1 md:grid-cols-4' : 'grid-cols-1'}`}>
           {/* Main image */}
-          <div className={`relative rounded-none overflow-hidden h-[46vh] md:h-full group cursor-pointer ${hasGallery ? 'md:col-span-2 md:row-span-2' : ''}`} onClick={() => setShowHotelGallery(true)}>
+          <div className={`relative rounded-none overflow-hidden h-[44vh] sm:h-[48vh] md:h-full group cursor-pointer ${hasGallery ? 'md:col-span-2 md:row-span-2' : ''}`} onClick={() => setShowHotelGallery(true)}>
             <SmartImage src={hotelImages[0]} alt={hotel.name} loading="eager" className="w-full h-full object-cover transition duration-700 ease-out group-hover:scale-[1.04]" />
             <div className="absolute inset-0 bg-gradient-to-t from-stone-950/80 via-stone-950/10 to-transparent" />
             <div className="absolute bottom-0 left-0 w-full p-7 md:p-10 flex justify-between items-end">
@@ -1066,8 +1066,8 @@ export default function HotelDetails() {
         </div>
       </div>
 
-      <div className="max-w-[90rem] mx-auto px-3.5 sm:px-6 lg:px-12 py-5 sm:py-8 lg:py-16 grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8 lg:gap-14 xl:gap-20">
-        <div className="lg:col-span-2">
+      <div className="max-w-[90rem] mx-auto px-3.5 sm:px-6 lg:px-12 py-5 sm:py-8 lg:py-16 grid grid-cols-1 md:grid-cols-12 gap-6 sm:gap-8 lg:gap-12 xl:gap-16">
+        <div className="md:col-span-7 lg:col-span-8">
 
           <h2 className="text-2xl sm:text-3xl lg:text-4xl font-serif text-stone-900 mb-2.5 sm:mb-4 tracking-tight">About this property</h2>
           <FormattedDescription
@@ -1234,9 +1234,9 @@ export default function HotelDetails() {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true, margin: "-50px" }}
                     transition={{ duration: 0.5, ease: "easeOut" }}
-                    className="w-full flex flex-col sm:flex-row bg-white border border-stone-200/90 rounded-2xl sm:rounded-3xl shadow-xs hover:shadow-md transition-shadow duration-300 overflow-hidden p-3 sm:p-4 md:p-5 gap-4 sm:gap-5 md:gap-6"
+                    className="w-full flex flex-col sm:flex-row md:flex-col lg:flex-row bg-white border border-stone-200/90 rounded-2xl sm:rounded-3xl shadow-xs hover:shadow-md transition-shadow duration-300 overflow-hidden p-3 sm:p-4 md:p-5 gap-4 sm:gap-5 md:gap-6"
                   >
-                    <div className="w-full sm:w-[240px] md:w-[280px] lg:w-[320px] aspect-video overflow-hidden rounded-xl sm:rounded-2xl relative group shrink-0">
+                    <div className="w-full sm:w-[240px] md:w-full lg:w-[280px] xl:w-[320px] aspect-video overflow-hidden rounded-xl sm:rounded-2xl relative group shrink-0">
                       <RoomGallery 
                         images={Array.from(new Set([getRoomImage(room, hotel), ...(room.galleryUrls || [])]))}
                         altPrefix={room.name}
@@ -1978,9 +1978,9 @@ export default function HotelDetails() {
         </div>
         
         {/* Sticky Sidebar / Highlights */}
-        <div className="lg:sticky lg:top-36 flex flex-col gap-4 sm:gap-5 lg:gap-6 lg:max-h-[calc(100vh-9rem)] lg:overflow-y-auto pb-4 sm:pb-6 lg:pb-8 pr-0 lg:pr-2 pt-0 lg:pt-2">
+        <div className="md:col-span-5 lg:col-span-4 md:sticky md:top-24 lg:top-36 flex flex-col gap-4 sm:gap-5 lg:gap-6 md:max-h-[calc(100vh-7rem)] lg:max-h-[calc(100vh-9rem)] md:overflow-y-auto pb-4 sm:pb-6 lg:pb-8 pr-0 md:pr-1 lg:pr-2 pt-0 md:pt-1 lg:pt-2">
           {/* Quick Navigation Card */}
-          <div className="hidden lg:block bg-stone-900 text-white border border-stone-800 rounded-2xl p-4 sm:p-5 shadow-lg">
+          <div className="hidden md:block bg-stone-900 text-white border border-stone-800 rounded-2xl p-4 sm:p-5 shadow-lg">
             <h3 className="text-sm font-serif font-bold mb-2.5 flex items-center gap-2">
               <Navigation className="h-4 w-4 text-emerald-400" /> Quick Navigation
             </h3>
@@ -2096,7 +2096,7 @@ export default function HotelDetails() {
           </div>
         </div>
           {/* Full Directions & Navigation Panel for Guests */}
-          <div id="directions" className="scroll-mt-28 sm:scroll-mt-36 lg:scroll-mt-28 lg:col-span-3 mb-0 pt-6 sm:pt-8 border-t border-stone-200 relative z-10 bg-white">
+          <div id="directions" className="scroll-mt-28 sm:scroll-mt-36 lg:scroll-mt-28 md:col-span-12 mb-0 pt-6 sm:pt-8 border-t border-stone-200 relative z-10 bg-white">
             <div className="mb-5 sm:mb-8">
               <span className="text-[0.65rem] sm:text-[0.68rem] font-bold text-emerald-700 tracking-[0.16em] uppercase">Find Your Way</span>
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-serif text-stone-900 mt-0.5 sm:mt-1 tracking-tight">Location &amp; Driving Directions</h2>

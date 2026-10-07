@@ -409,8 +409,8 @@ export default function ManagerDashboard() {
         </div>
       </div>
 
-      {/* Overview Stats Bar (2 cols on mobile/tablet, 4 on desktop) */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-2.5 lg:gap-3.5 mb-4 sm:mb-6">
+      {/* Overview Stats Bar (2 cols on mobile, 4 on tablet & desktop) */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-2.5 md:gap-3 lg:gap-3.5 mb-4 sm:mb-6">
         <button
           onClick={() => {
             setStatusFilter('all');

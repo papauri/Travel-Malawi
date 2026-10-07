@@ -93,7 +93,7 @@ export default function HotelCard({
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: "-50px" }}
         transition={{ delay: index * 0.05, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-        className="relative w-full aspect-[16/11] sm:aspect-[4/3] md:aspect-[4/5] overflow-hidden bg-stone-100 rounded-xl sm:rounded-2xl"
+        className="relative w-full aspect-[16/11] sm:aspect-[4/3] overflow-hidden bg-stone-100 rounded-xl sm:rounded-2xl"
       >
         <button
           onClick={(e) => {

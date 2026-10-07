@@ -1496,7 +1496,7 @@ export default function ManageHotel() {
           </div>
 
           {showPerformanceStats && (
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3.5">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 md:gap-3.5">
               <div className="bg-white border border-stone-200 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-2xs">
                 <div className="flex items-center gap-1.5 text-stone-400 mb-1">
                   <Percent className="h-3.5 w-3.5" />
@@ -1547,8 +1547,8 @@ export default function ManageHotel() {
       )}
       {/* Dashboard Section Navigation */}
       <div className="sticky top-[88px] sm:top-[100px] md:top-[100px] lg:top-[108px] z-30 bg-stone-50/95 backdrop-blur-md py-2 sm:py-2.5 mb-5 sm:mb-7 border-b border-stone-200/80">
-        {/* Mobile / Tablet Collapsible Section Drawer (< lg) */}
-        <div className="lg:hidden space-y-2">
+        {/* Mobile Section Drawer (< md) */}
+        <div className="md:hidden space-y-2">
           {(() => {
             const tabsList = [
               { id: 'details' as Tab, label: 'Property details', icon: Building },
@@ -1661,8 +1661,8 @@ export default function ManageHotel() {
           })()}
         </div>
 
-        {/* Desktop Segmented Pills Navigation Bar (>= lg) */}
-        <div className="hidden lg:flex flex-wrap items-center gap-1.5 sm:gap-2 p-1.5 sm:p-2 bg-stone-100/90 rounded-2xl border border-stone-200 shadow-2xs">
+        {/* Tablet & Desktop Segmented Pills Navigation Bar (>= md) */}
+        <div className="hidden md:flex items-center overflow-x-auto scrollbar-none lg:flex-wrap gap-1.5 sm:gap-2 p-1.5 sm:p-2 bg-stone-100/90 rounded-2xl border border-stone-200 shadow-2xs">
           {([
             { id: 'details' as Tab, label: 'Property details', icon: Building },
             { id: 'media' as Tab, label: 'Media', icon: Eye },
@@ -1690,7 +1690,7 @@ export default function ManageHotel() {
                 key={tab.id}
                 type="button"
                 onClick={() => requestTab(tab.id)}
-                className={`flex items-center gap-2 px-3 sm:px-3.5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+                className={`flex items-center shrink-0 whitespace-nowrap gap-2 px-3 sm:px-3.5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
                   isActive
                     ? 'bg-stone-900 text-white shadow-xs'
                     : 'bg-white hover:bg-stone-50 text-stone-700 hover:text-stone-950 border border-stone-200/90 shadow-2xs'
