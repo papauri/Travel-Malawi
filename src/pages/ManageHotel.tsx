@@ -159,6 +159,7 @@ function RoomMediaEditor({ room, hotelId, onUpdate }: { room: RoomType, hotelId:
   const [saving, setSaving] = useState(false);
 
   const isDirty = imageUrl !== (room.imageUrl || '') || JSON.stringify(galleryUrls) !== JSON.stringify(room.galleryUrls || []);
+  const totalPhotos = (imageUrl ? 1 : 0) + galleryUrls.length;
 
   const handleSave = async () => {
     setSaving(true);
@@ -173,37 +174,61 @@ function RoomMediaEditor({ room, hotelId, onUpdate }: { room: RoomType, hotelId:
   };
 
   return (
-    <div className="bg-white border border-stone-200 rounded-2xl p-6 shadow-sm relative">
-      <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
-        <div>
-          <h3 className="text-xl font-bold text-stone-900">{room.name}</h3>
-          <p className="text-sm text-stone-500 mt-1">Upload distinct photos for this room type to eliminate confusion.</p>
+    <div className="bg-white border border-stone-200/90 rounded-2xl p-5 sm:p-6 shadow-xs relative transition-all">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 pb-4 border-b border-stone-100 gap-3">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-800 flex items-center justify-center shrink-0">
+            <BedDouble className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="text-base sm:text-lg font-bold text-stone-900">{room.name}</h3>
+              <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+                totalPhotos > 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-100 text-stone-600'
+              }`}>
+                {totalPhotos} {totalPhotos === 1 ? 'photo' : 'photos'}
+              </span>
+              {isDirty && (
+                <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-800 animate-pulse">
+                  Unsaved changes
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-stone-500 mt-0.5">High-quality photos for this specific room type.</p>
+          </div>
         </div>
+
+        {/* Compact, non-wide Save Button */}
         <button
           type="button"
           onClick={handleSave}
           disabled={!isDirty || saving}
-          className="bg-stone-100 text-stone-700 px-5 py-2.5 rounded-lg font-bold flex items-center gap-2 hover:bg-stone-200 disabled:opacity-50 transition"
+          className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition self-start sm:self-auto cursor-pointer ${
+            isDirty
+              ? 'bg-stone-900 hover:bg-stone-800 text-white shadow-xs'
+              : 'bg-stone-100 text-stone-400 cursor-not-allowed'
+          }`}
         >
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          Save Room Media
+          {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+          <span>Save Room Media</span>
         </button>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div className="lg:col-span-5 xl:col-span-4 bg-stone-50/60 p-4 rounded-xl border border-stone-200/80">
           <ImageUpload
-            label="Cover Photo"
-            hint="Make it a well-lit, wide shot of the bed and room."
+            label="Room Cover Photo"
+            hint="Wide shot of bed and room layout."
             tooltip="Guest View: This image appears as the primary thumbnail for this room type in the booking list on your property page."
             value={imageUrl}
             onChange={setImageUrl}
             folder={`hotels/${hotelId}/rooms`}
           />
         </div>
-        <div className="md:col-span-2">
+        <div className="lg:col-span-7 xl:col-span-8 bg-stone-50/60 p-4 rounded-xl border border-stone-200/80">
           <GalleryUpload
-            label="Gallery"
-            hint="Add photos of the en-suite bathroom, the view from this room, and specific room amenities."
+            label="Room Gallery"
+            hint="En-suite bathroom, balcony view, and specific amenities."
             tooltip="Guest View: These photos form the image carousel when a guest clicks to view more details about this specific room type."
             value={galleryUrls}
             onChange={setGalleryUrls}
@@ -248,6 +273,9 @@ export default function ManageHotel() {
   const [depositViewTab, setDepositViewTab] = useState<'all' | 'mobile_money' | 'bank_transfer'>('all');
   const [amenitiesExpanded, setAmenitiesExpanded] = useState(false);
   const [amenityInput, setAmenityInput] = useState("");
+  // Media Tab Sub-Navigation
+  const [mediaView, setMediaView] = useState<'property' | 'rooms' | 'preview'>('property');
+  const [selectedRoomMediaId, setSelectedRoomMediaId] = useState<string>('all');
   const [confirmModalBooking, setConfirmModalBooking] = useState<string | null>(null);
   const confirmFlow = useConfirmBooking();
   const [editModalBooking, setEditModalBooking] = useState<Booking | null>(null);
@@ -2793,133 +2821,378 @@ export default function ManageHotel() {
 
       {/* TAB CONTENT: ROOMS */}
       
-      {activeTab === 'media' && (
-        <div className="space-y-6">
-{/* LIVE PREVIEW: How your images look to guests */}
-          {(editHotelData.imageUrl || (editHotelData.galleryUrls && editHotelData.galleryUrls.length > 0) || rooms.some(r => r.imageUrl)) && (
-            <div className="bg-white rounded-2xl sm:rounded-2xl border border-stone-200 p-5 sm:p-6 md:p-8 shadow-sm">
-              <h3 className="text-lg font-serif font-bold text-stone-900 mb-6">How your photos look to guests</h3>
-              
-              {/* Property Gallery */}
-              {true && (
-                <div className="mb-8">
-                  <p className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-3">Property Gallery</p>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {true && (
-                      <div className="relative aspect-video rounded-xl overflow-hidden border-2 border-emerald-400">
-                        <SmartImage src={getHotelImage(editHotelData)} alt="Main" className="w-full h-full object-cover" />
-                        <span className="absolute top-2 left-2 bg-emerald-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">Main</span>
+      {activeTab === 'media' && (() => {
+        const propertyCoverCount = editHotelData.imageUrl ? 1 : 0;
+        const propertyGalleryCount = editHotelData.galleryUrls?.length || 0;
+        const roomMediaCount = rooms.reduce((acc, r) => acc + (r.imageUrl ? 1 : 0) + (r.galleryUrls?.length || 0), 0);
+        const totalMediaCount = propertyCoverCount + propertyGalleryCount + roomMediaCount;
+        const roomsPhotographed = rooms.filter(r => r.imageUrl || (r.galleryUrls && r.galleryUrls.length > 0)).length;
+
+        const displayedRooms = selectedRoomMediaId === 'all'
+          ? rooms
+          : rooms.filter((r, idx) => (r.id || String(idx)) === selectedRoomMediaId);
+
+        return (
+          <div className="space-y-6">
+            {/* Top Hub Header & Sub-Navigation */}
+            <div className="bg-white border border-stone-200/90 rounded-2xl p-5 sm:p-6 shadow-xs">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-5 border-b border-stone-100">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-xl sm:text-2xl font-serif font-bold text-stone-900">Media &amp; Photography</h2>
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-stone-100 text-stone-700">
+                      {totalMediaCount} photos total
+                    </span>
+                  </div>
+                  <p className="text-xs sm:text-sm text-stone-500 mt-1">
+                    Manage high-resolution photos for your property and individual rooms.
+                  </p>
+                </div>
+
+                {/* Header Action: Save Property Media Button */}
+                <div className="flex items-center gap-2 self-start md:self-auto">
+                  <button
+                    type="button"
+                    onClick={handleSaveHotel}
+                    disabled={saving || !hotelDirty}
+                    className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer ${
+                      hotelDirty
+                        ? "bg-stone-900 text-white hover:bg-stone-800 shadow-xs"
+                        : "bg-stone-100 text-stone-400 cursor-not-allowed"
+                    }`}
+                  >
+                    {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    <span>Save Property Media</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Sub-Navigation Tabs */}
+              <div className="flex items-center justify-between gap-3 pt-4 flex-wrap">
+                <div className="inline-flex items-center bg-stone-100 p-1 rounded-xl border border-stone-200/80">
+                  <button
+                    type="button"
+                    onClick={() => setMediaView('property')}
+                    className={`px-3.5 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition cursor-pointer ${
+                      mediaView === 'property'
+                        ? 'bg-white text-stone-900 shadow-xs'
+                        : 'text-stone-600 hover:text-stone-900'
+                    }`}
+                  >
+                    <Building className="h-3.5 w-3.5" />
+                    <span>Property Media</span>
+                    <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-stone-100 text-stone-600">
+                      {propertyCoverCount + propertyGalleryCount}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMediaView('rooms')}
+                    className={`px-3.5 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition cursor-pointer ${
+                      mediaView === 'rooms'
+                        ? 'bg-white text-stone-900 shadow-xs'
+                        : 'text-stone-600 hover:text-stone-900'
+                    }`}
+                  >
+                    <BedDouble className="h-3.5 w-3.5" />
+                    <span>Room Photos</span>
+                    <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-stone-100 text-stone-600">
+                      {roomsPhotographed}/{rooms.length}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMediaView('preview')}
+                    className={`px-3.5 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition cursor-pointer ${
+                      mediaView === 'preview'
+                        ? 'bg-white text-stone-900 shadow-xs'
+                        : 'text-stone-600 hover:text-stone-900'
+                    }`}
+                  >
+                    <Eye className="h-3.5 w-3.5" />
+                    <span>Guest Presentation</span>
+                  </button>
+                </div>
+
+                {/* Quick Status Badges */}
+                <div className="hidden sm:flex items-center gap-2 text-xs text-stone-500">
+                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg ${
+                    propertyCoverCount > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
+                  }`}>
+                    <span className={`h-1.5 w-1.5 rounded-full ${propertyCoverCount > 0 ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                    {propertyCoverCount > 0 ? 'Cover Photo Set' : 'Cover Photo Needed'}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-stone-100 text-stone-600">
+                    {propertyGalleryCount} Gallery Images
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* VIEW 1: PROPERTY MEDIA (Hero Cover + Main Gallery in balanced grid) */}
+            {mediaView === 'property' && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                  {/* Hero Cover Card */}
+                  <div className="lg:col-span-5 xl:col-span-4 bg-white border border-stone-200/90 rounded-2xl p-5 sm:p-6 shadow-xs space-y-4">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-stone-900 text-white">
+                          Hero Banner
+                        </span>
+                        <h3 className="text-base font-bold text-stone-900">Cover Photo</h3>
+                      </div>
+                      <p className="text-xs text-stone-500 mt-1">
+                        Spans the top header of your property listing and serves as the thumbnail in search results.
+                      </p>
+                    </div>
+
+                    <ImageUpload
+                      label="Cover Photo"
+                      hint="Choose an impressive exterior or best-view landscape shot."
+                      tooltip="Guest View: This image appears as the large hero banner spanning the top of your property page, and serves as the main thumbnail in search results."
+                      value={editHotelData.imageUrl || ''}
+                      onChange={(url) => setEditHotelData({ ...editHotelData, imageUrl: url })}
+                      folder={`hotels/${id}`}
+                    />
+                    <FieldError message={detailProblems.imageUrl} />
+                  </div>
+
+                  {/* Main Listing Gallery Card */}
+                  <div className="lg:col-span-7 xl:col-span-8 bg-white border border-stone-200/90 rounded-2xl p-5 sm:p-6 shadow-xs space-y-4">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-900">
+                          General
+                        </span>
+                        <h3 className="text-base font-bold text-stone-900">Main Property Gallery</h3>
+                      </div>
+                      <p className="text-xs text-stone-500 mt-1">
+                        Common grounds, dining areas, gardens, reception, and lake views. Drag photos to reorder.
+                      </p>
+                    </div>
+
+                    <GalleryUpload 
+                      label="Property Gallery"
+                      hint="Include common areas and surroundings. Do NOT put specific room photos here."
+                      tooltip="Guest View: These appear in the photo grid/carousel at the top of your property page, just below the cover photo."
+                      value={editHotelData.galleryUrls || []} 
+                      onChange={(urls) => setEditHotelData({ ...editHotelData, galleryUrls: urls })} 
+                      folder={`hotels/${id}/gallery`}
+                    />
+                  </div>
+                </div>
+
+                {/* Bottom Save Bar */}
+                <div className="flex items-center justify-between p-4 bg-stone-50 border border-stone-200 rounded-2xl">
+                  <div className="flex items-center gap-2">
+                    {hotelDirty ? (
+                      <span className="flex h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                    ) : (
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                    )}
+                    <span className="text-xs font-semibold text-stone-700">
+                      {hotelDirty ? 'You have unsaved property media changes' : 'Property media is saved'}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleSaveHotel}
+                    disabled={saving || !hotelDirty}
+                    className="bg-stone-900 text-white px-5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-stone-800 disabled:opacity-50 transition cursor-pointer"
+                  >
+                    {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                    <span>Save Property Media</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* VIEW 2: ROOM-SPECIFIC PHOTOS */}
+            {mediaView === 'rooms' && (
+              <div className="space-y-6">
+                {rooms.length === 0 ? (
+                  <div className="bg-white p-10 rounded-2xl text-center border border-stone-200 shadow-xs">
+                    <BedDouble className="h-10 w-10 text-stone-300 mx-auto mb-3" />
+                    <h3 className="text-base font-bold text-stone-800">No rooms configured yet</h3>
+                    <p className="text-xs text-stone-500 mt-1 max-w-sm mx-auto">
+                      Add room types to your listing first before adding room-specific media.
+                    </p>
+                    <button 
+                      onClick={() => requestTab('rooms')} 
+                      className="mt-4 px-4 py-2 bg-stone-900 text-white text-xs font-bold rounded-xl hover:bg-stone-800 transition"
+                    >
+                      Go to Rooms Tab
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    {/* Room Quick-Selector Bar */}
+                    <div className="bg-white border border-stone-200/90 rounded-2xl p-4 shadow-xs">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-xs font-bold text-stone-500 uppercase tracking-wider">
+                          Select Room Unit
+                        </span>
+                        <span className="text-xs text-stone-400">
+                          {displayedRooms.length} of {rooms.length} displayed
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedRoomMediaId('all')}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
+                            selectedRoomMediaId === 'all'
+                              ? 'bg-stone-900 text-white shadow-xs'
+                              : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                          }`}
+                        >
+                          All Rooms ({rooms.length})
+                        </button>
+                        {rooms.map((room, rIdx) => {
+                          const rId = room.id || String(rIdx);
+                          const isSelected = selectedRoomMediaId === rId;
+                          const hasCover = Boolean(room.imageUrl);
+                          const galCount = room.galleryUrls?.length || 0;
+                          const total = (hasCover ? 1 : 0) + galCount;
+
+                          return (
+                            <button
+                              key={`room-chip-${rId}`}
+                              type="button"
+                              onClick={() => setSelectedRoomMediaId(rId)}
+                              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap flex items-center gap-2 transition cursor-pointer ${
+                                isSelected
+                                  ? 'bg-stone-900 text-white shadow-xs'
+                                  : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                              }`}
+                            >
+                              <span>{room.name}</span>
+                              <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${
+                                isSelected
+                                  ? 'bg-white/20 text-white'
+                                  : total > 0
+                                  ? 'bg-emerald-100 text-emerald-800'
+                                  : 'bg-amber-100 text-amber-800'
+                              }`}>
+                                {total}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Room Media Cards */}
+                    <div className="space-y-6">
+                      {displayedRooms.map((room, rIdx) => (
+                        <RoomMediaEditor 
+                          key={`room-media-${room.id || rIdx}-${rIdx}`} 
+                          room={room} 
+                          hotelId={id!} 
+                          onUpdate={(updated) => setRooms(rooms.map(r => r.id === updated.id ? updated : r))} 
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* VIEW 3: GUEST PRESENTATION PREVIEW */}
+            {mediaView === 'preview' && (
+              <div className="space-y-6">
+                <div className="bg-white rounded-2xl border border-stone-200 p-5 sm:p-6 md:p-8 shadow-xs">
+                  <div className="mb-6">
+                    <h3 className="text-lg font-serif font-bold text-stone-900">Live Guest Presentation</h3>
+                    <p className="text-xs text-stone-500 mt-1">
+                      This is how travelers see your photos on search result cards and the property page.
+                    </p>
+                  </div>
+
+                  {/* Property Gallery Preview */}
+                  <div className="mb-8">
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-xs font-bold text-stone-500 uppercase tracking-wider">Property Showcase</p>
+                      <span className="text-xs text-stone-400">
+                        {propertyCoverCount + propertyGalleryCount} photos
+                      </span>
+                    </div>
+                    {propertyCoverCount + propertyGalleryCount === 0 ? (
+                      <p className="text-xs text-stone-400 italic">No property photos uploaded yet.</p>
+                    ) : (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                        {propertyCoverCount > 0 && (
+                          <div className="relative aspect-video rounded-xl overflow-hidden border-2 border-emerald-500 shadow-xs">
+                            <SmartImage src={getHotelImage(editHotelData)} alt="Main" className="w-full h-full object-cover" />
+                            <span className="absolute top-2 left-2 bg-emerald-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold uppercase shadow-xs">
+                              Main Cover
+                            </span>
+                          </div>
+                        )}
+                        {(editHotelData.galleryUrls || []).map((url, idx) => (
+                          <div key={`gal-prev-${idx}`} className="relative aspect-video rounded-xl overflow-hidden border border-stone-200">
+                            <SmartImage src={url} alt={`Gallery ${idx + 1}`} className="w-full h-full object-cover" />
+                            <span className="absolute top-2 left-2 bg-stone-900/70 text-white text-[10px] px-2 py-0.5 rounded-full">
+                              #{idx + 1}
+                            </span>
+                          </div>
+                        ))}
                       </div>
                     )}
-                    {(editHotelData.galleryUrls || []).map((url, idx) => (
-                      <div key={`gal-${idx}`} className="relative aspect-video rounded-xl overflow-hidden border border-stone-200">
-                        <SmartImage src={url} alt={`Gallery ${idx + 1}`} className="w-full h-full object-cover" />
-                        <span className="absolute top-2 left-2 bg-stone-900/70 text-white text-[10px] px-2 py-0.5 rounded-full">Gallery</span>
-                      </div>
-                    ))}
                   </div>
-                </div>
-              )}
 
-              {/* Room Images */}
-              {rooms.length > 0 && (
-                <div>
-                  <p className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-3">Room Images</p>
-                  <div className="space-y-6">
-                    {rooms.map((room, rIdx) => (
-                      <div key={`room-preview-${room.id || rIdx}-${rIdx}`} className="space-y-3">
-                        <p className="text-sm font-bold text-stone-700">{room.name}</p>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                          {true && (
-                            <div className="relative aspect-video rounded-xl overflow-hidden border-2 border-blue-400">
-                              <SmartImage src={getRoomImage(room, null)} alt={room.name} className="w-full h-full object-cover" />
-                              <span className="absolute top-2 left-2 bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider shadow-sm">Room Main</span>
+                  {/* Room Previews */}
+                  {rooms.length > 0 && (
+                    <div>
+                      <p className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-3">Room Type Previews</p>
+                      <div className="space-y-6">
+                        {rooms.map((room, rIdx) => {
+                          const hasCover = Boolean(room.imageUrl);
+                          const hasGallery = Boolean(room.galleryUrls && room.galleryUrls.length > 0);
+
+                          return (
+                            <div key={`room-preview-${room.id || rIdx}-${rIdx}`} className="p-4 bg-stone-50 rounded-xl border border-stone-200/80">
+                              <div className="flex items-center justify-between mb-2">
+                                <p className="text-sm font-bold text-stone-800">{room.name}</p>
+                                <span className="text-[11px] text-stone-500">
+                                  {(hasCover ? 1 : 0) + (room.galleryUrls?.length || 0)} photos
+                                </span>
+                              </div>
+                              {!hasCover && !hasGallery ? (
+                                <p className="text-xs text-stone-400 italic">No photos uploaded for this room.</p>
+                              ) : (
+                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                                  {hasCover && (
+                                    <div className="relative aspect-video rounded-xl overflow-hidden border-2 border-blue-500 shadow-xs">
+                                      <SmartImage src={getRoomImage(room, null)} alt={room.name} className="w-full h-full object-cover" />
+                                      <span className="absolute top-2 left-2 bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider shadow-sm">
+                                        Room Cover
+                                      </span>
+                                    </div>
+                                  )}
+                                  {(room.galleryUrls || []).map((url, idx) => (
+                                    <div key={`room-${room.id || rIdx}-gal-${idx}`} className="relative aspect-video rounded-xl overflow-hidden border border-stone-200">
+                                      <SmartImage src={url} alt={`Gallery ${idx + 1}`} className="w-full h-full object-cover" />
+                                      <span className="absolute top-2 left-2 bg-stone-900/70 text-white text-[10px] px-2 py-0.5 rounded-md">
+                                        Gallery
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                             </div>
-                          )}
-                          {(room.galleryUrls || []).map((url, idx) => (
-                            <div key={`room-${room.id || rIdx}-gal-${idx}`} className="relative aspect-video rounded-xl overflow-hidden border border-stone-200">
-                              <SmartImage src={url} alt={`Gallery ${idx + 1}`} className="w-full h-full object-cover" />
-                              <span className="absolute top-2 left-2 bg-stone-900/70 text-white text-[10px] px-2 py-0.5 rounded-md">Gallery</span>
-                            </div>
-                          ))}
-                        </div>
+                          );
+                        })}
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          )}
-          <SectionCard title="Cover Photo" description="This will be the large banner on your hotel's hero page, and the main thumbnail in search results.">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="md:col-span-2">
-                <ImageUpload
-                  label="Cover Photo"
-                  hint="Choose an impressive exterior or best-view shot."
-                  tooltip="Guest View: This image appears as the large hero banner spanning the top of your property page, and serves as the main thumbnail in search results."
-                  value={editHotelData.imageUrl || ''}
-                  onChange={(url) => setEditHotelData({ ...editHotelData, imageUrl: url })}
-                  folder={`hotels/${id}`}
-                />
-                <FieldError message={detailProblems.imageUrl} />
               </div>
-            </div>
-          </SectionCard>
-
-          <SectionCard title="Gallery" description="These appear in the main photo grid/carousel at the top of your property page.">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="md:col-span-2">
-                <GalleryUpload 
-                  label="Gallery"
-                  hint="Include common areas and surroundings. Do NOT put specific room photos here."
-                  tooltip="Guest View: These appear in the photo grid/carousel at the top of your property page, just below the cover photo."
-                  value={editHotelData.galleryUrls || []} 
-                  onChange={(urls) => setEditHotelData({ ...editHotelData, galleryUrls: urls })} 
-                  folder={`hotels/${id}/gallery`}
-                />
-              </div>
-            </div>
-          </SectionCard>
-
-          <div className="flex justify-end mb-8 border-b pb-8 border-stone-200">
-             <button
-                type="button"
-                onClick={handleSaveHotel}
-                disabled={saving || !hotelDirty}
-                className="bg-stone-900 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-stone-800 disabled:opacity-50 transition"
-              >
-                {saving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
-                Save Property Media
-              </button>
+            )}
           </div>
-
-          <div className="mb-4 mt-8">
-            <h2 className="text-2xl font-serif font-bold text-stone-900">Room-Specific Photos</h2>
-            <p className="text-stone-500 mt-1">Upload distinct photos for each room type to eliminate confusion.</p>
-          </div>
-
-          {rooms.length === 0 ? (
-            <div className="bg-stone-50 p-8 rounded-2xl text-center border border-stone-200">
-               <BedDouble className="h-10 w-10 text-stone-400 mx-auto mb-3" />
-               <p className="text-stone-500 font-medium">You haven't added any rooms yet.</p>
-               <button onClick={() => requestTab('rooms')} className="mt-4 text-emerald-600 font-bold hover:underline">Go to Rooms Tab</button>
-            </div>
-          ) : (
-            <div className="space-y-8">
-              {rooms.map((room, rIdx) => {
-                return (
-                  <RoomMediaEditor 
-                    key={`room-media-${room.id || rIdx}-${rIdx}`} 
-                    room={room} 
-                    hotelId={id!} 
-                    onUpdate={(updated) => setRooms(rooms.map(r => r.id === updated.id ? updated : r))} 
-                  />
-                )
-              })}
-            </div>
-          )}
-        </div>
-      )}
+        );
+      })()}
 
       {activeTab === 'conferences' && (
         <ConferenceManager hotelId={id!} />
