@@ -1,5 +1,5 @@
 import React, { useState, useRef } from "react";
-import { Upload, Link as LinkIcon, Image as ImageIcon, Loader2, X, GripVertical, Eye, Plus } from "lucide-react";
+import { Upload, Link as LinkIcon, Image as ImageIcon, Loader2, X, GripVertical, Eye, Plus, Star, ChevronLeft, ChevronRight } from "lucide-react";
 import Tooltip from './Tooltip';
 import Lightbox from './Lightbox';
 import { uploadImage, uploadErrorMessage, validateImage, IMAGE_ACCEPT_ATTR } from "../lib/uploadImage";
@@ -14,9 +14,20 @@ interface Props {
   hint?: React.ReactNode;
   folder?: string;
   tooltip?: string;
+  showCoverBadge?: boolean;
+  onSetCover?: (url: string, index: number) => void;
 }
 
-export default function GalleryUpload({ value = [], onChange, label = "Gallery", hint, folder = "gallery", tooltip }: Props) {
+export default function GalleryUpload({
+  value = [],
+  onChange,
+  label = "Gallery",
+  hint,
+  folder = "gallery",
+  tooltip,
+  showCoverBadge = false,
+  onSetCover,
+}: Props) {
   const [mode, setMode] = useState<"url" | "upload">("upload");
   const [urlInput, setUrlInput] = useState("");
   const [isUploading, setIsUploading] = useState(false);
@@ -113,6 +124,14 @@ export default function GalleryUpload({ value = [], onChange, label = "Gallery",
   const removeImage = (idx: number) => {
     const newUrls = [...value];
     newUrls.splice(idx, 1);
+    onChange(newUrls);
+  };
+
+  const moveImage = (from: number, to: number) => {
+    if (to < 0 || to >= value.length) return;
+    const newUrls = [...value];
+    const item = newUrls.splice(from, 1)[0];
+    newUrls.splice(to, 0, item);
     onChange(newUrls);
   };
 
@@ -287,7 +306,7 @@ export default function GalleryUpload({ value = [], onChange, label = "Gallery",
 
               {/* Position / Cover Badge */}
               <div className="absolute top-2 left-2 pointer-events-none z-10">
-                {idx === 0 ? (
+                {showCoverBadge && idx === 0 ? (
                   <span className="px-2 py-0.5 bg-amber-500 text-white text-[10px] font-bold rounded-md shadow-xs flex items-center gap-1">
                     ★ Cover
                   </span>
@@ -304,8 +323,51 @@ export default function GalleryUpload({ value = [], onChange, label = "Gallery",
                 <span>Move</span>
               </div>
 
+              {/* Reorder Arrows (◀ and ▶) for touch and quick sorting */}
+              <div className="absolute bottom-2 right-2 flex items-center gap-1 z-10 opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                {idx > 0 && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      moveImage(idx, idx - 1);
+                    }}
+                    className="p-1 bg-stone-900/80 hover:bg-stone-900 text-white rounded-md transition backdrop-blur-xs cursor-pointer shadow-xs"
+                    title="Move backward"
+                  >
+                    <ChevronLeft className="w-3 h-3" />
+                  </button>
+                )}
+                {idx < value.length - 1 && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      moveImage(idx, idx + 1);
+                    }}
+                    className="p-1 bg-stone-900/80 hover:bg-stone-900 text-white rounded-md transition backdrop-blur-xs cursor-pointer shadow-xs"
+                    title="Move forward"
+                  >
+                    <ChevronRight className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+
               {/* Action Buttons */}
               <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                {onSetCover && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSetCover(url, idx);
+                    }}
+                    className="p-1.5 bg-stone-900/80 hover:bg-amber-600 text-amber-300 hover:text-white rounded-lg transition-colors backdrop-blur-xs cursor-pointer shadow-xs"
+                    title="Promote to Cover Photo"
+                  >
+                    <Star className="w-3.5 h-3.5 fill-current" />
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={(e) => {

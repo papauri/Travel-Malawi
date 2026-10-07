@@ -692,8 +692,9 @@ export default function HotelDetails() {
 
   // Falls back to bundled photography when the record has no usable images.
   const hotelImages = getHotelImages(hotel);
-  // A single photograph gets the full width rather than a third of the grid.
-  const galleryImages = hotelImages.slice(1, 3);
+  const isFivePhotoHero = hotelImages.length >= 5;
+  // Dynamic header collage: 5 photos if >=5 available, otherwise up to 3 photos
+  const galleryImages = isFivePhotoHero ? hotelImages.slice(1, 5) : hotelImages.slice(1, 3);
   const hasGallery = galleryImages.length > 0;
 
   return (
@@ -941,15 +942,35 @@ export default function HotelDetails() {
           </div>
 
           {/* Supporting photographs, only when they exist */}
-          {galleryImages.map((url, index) => (
-            <div key={`${url}-${index}`} className="relative rounded-none overflow-hidden hidden md:block md:col-span-2 md:row-span-1 group cursor-pointer" onClick={() => setShowHotelGallery(true)}>
-              <SmartImage
-                src={url}
-                alt={`${hotel.name} — photograph ${index + 2}`}
-                className="w-full h-full object-cover group-hover:scale-[1.04] transition duration-700 ease-out"
-              />
-            </div>
-          ))}
+          {galleryImages.map((url, index) => {
+            const isLast = index === galleryImages.length - 1;
+            const remainingCount = hotelImages.length - (isFivePhotoHero ? 5 : 3);
+
+            return (
+              <div
+                key={`${url}-${index}`}
+                className={`relative rounded-none overflow-hidden hidden md:block group cursor-pointer ${
+                  isFivePhotoHero ? 'md:col-span-1 md:row-span-1' : 'md:col-span-2 md:row-span-1'
+                }`}
+                onClick={() => setShowHotelGallery(true)}
+              >
+                <SmartImage
+                  src={url}
+                  alt={`${hotel.name} — photograph ${index + 2}`}
+                  className="w-full h-full object-cover group-hover:scale-[1.04] transition duration-700 ease-out"
+                />
+                <div className="absolute inset-0 bg-stone-950/10 group-hover:bg-transparent transition pointer-events-none" />
+                {isLast && remainingCount > 0 && (
+                  <div className="absolute inset-0 bg-stone-950/45 hover:bg-stone-950/35 transition flex items-center justify-center p-2">
+                    <span className="bg-white/95 backdrop-blur-md text-stone-900 text-xs font-bold px-3.5 py-1.5 rounded-full shadow-lg flex items-center gap-1.5">
+                      <Images className="w-3.5 h-3.5 text-stone-700" />
+                      <span>+{remainingCount} photos</span>
+                    </span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
 
         <div className="max-w-[90rem] mx-auto px-4 lg:px-12">

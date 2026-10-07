@@ -14,6 +14,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Plus, CheckCircle2, XCircle, Clock, Save, Edit2, Trash2, Users, Calendar, Check, X, Building, BedDouble, Home, Loader2, Download, TrendingUp, Percent, Wallet, UtensilsCrossed, Eye, ChevronLeft, ExternalLink, AlertTriangle, ShieldCheck, UserCheck, User, Mail, Phone, Lock, UserCog, EyeOff } from 'lucide-react';
 import ImageUpload from '../components/ImageUpload';
 import GalleryUpload from '../components/GalleryUpload';
+import Lightbox from '../components/Lightbox';
 import StayOSManager from '../components/StayOSManager';
 import BroadcastManager from '../components/BroadcastManager';
 import ConferenceManager from '../components/ConferenceManager';
@@ -23,7 +24,7 @@ import Pagination from '../components/Pagination';
 import BookingChat from '../components/BookingChat';
 import PropertyChat from '../components/PropertyChat';
 import { useChatModal } from '../contexts/ChatModalContext';
-import { MessageSquare, Megaphone, Presentation, Bell, ChevronDown, SlidersHorizontal, Sparkles } from 'lucide-react';
+import { MessageSquare, Megaphone, Presentation, Bell, ChevronDown, SlidersHorizontal, Sparkles, Star, Images, Upload, GripVertical, ChevronRight, Layers, LayoutGrid } from 'lucide-react';
 import SmartImage from '../components/SmartImage';
 import ReminderTemplatesModal from '../components/ReminderTemplatesModal';
 import EditBookingModal from '../components/EditBookingModal';
@@ -221,18 +222,36 @@ function RoomMediaEditor({ room, hotelId, onUpdate }: { room: RoomType, hotelId:
             hint="Wide shot of bed and room layout."
             tooltip="Guest View: This image appears as the primary thumbnail for this room type in the booking list on your property page."
             value={imageUrl}
-            onChange={setImageUrl}
+            onChange={(url) => {
+              setImageUrl(url);
+              setIsDirty(true);
+            }}
             folder={`hotels/${hotelId}/rooms`}
           />
         </div>
         <div className="lg:col-span-7 xl:col-span-8 bg-stone-50/60 p-4 rounded-xl border border-stone-200/80">
           <GalleryUpload
             label="Room Gallery"
-            hint="En-suite bathroom, balcony view, and specific amenities."
+            hint="En-suite bathroom, balcony view, and specific amenities. Click ★ to promote any photo to Room Cover."
             tooltip="Guest View: These photos form the image carousel when a guest clicks to view more details about this specific room type."
             value={galleryUrls}
-            onChange={setGalleryUrls}
+            onChange={(urls) => {
+              setGalleryUrls(urls);
+              setIsDirty(true);
+            }}
             folder={`hotels/${hotelId}/rooms`}
+            showCoverBadge={false}
+            onSetCover={(url) => {
+              const oldCover = imageUrl;
+              setImageUrl(url);
+              const remaining = galleryUrls.filter(u => u !== url);
+              if (oldCover && oldCover !== url && !remaining.includes(oldCover)) {
+                remaining.unshift(oldCover);
+              }
+              setGalleryUrls(remaining);
+              setIsDirty(true);
+              toast.success("Promoted to Room Cover photo");
+            }}
           />
         </div>
       </div>
@@ -273,9 +292,11 @@ export default function ManageHotel() {
   const [depositViewTab, setDepositViewTab] = useState<'all' | 'mobile_money' | 'bank_transfer'>('all');
   const [amenitiesExpanded, setAmenitiesExpanded] = useState(false);
   const [amenityInput, setAmenityInput] = useState("");
-  // Media Tab Sub-Navigation
+  // Media Tab Sub-Navigation & Lightbox State
   const [mediaView, setMediaView] = useState<'property' | 'rooms' | 'preview'>('property');
   const [selectedRoomMediaId, setSelectedRoomMediaId] = useState<string>('all');
+  const [mediaLightboxImages, setMediaLightboxImages] = useState<string[] | null>(null);
+  const [mediaLightboxIndex, setMediaLightboxIndex] = useState<number>(0);
   const [confirmModalBooking, setConfirmModalBooking] = useState<string | null>(null);
   const confirmFlow = useConfirmBooking();
   const [editModalBooking, setEditModalBooking] = useState<Booking | null>(null);
@@ -2822,15 +2843,85 @@ export default function ManageHotel() {
       {/* TAB CONTENT: ROOMS */}
       
       {activeTab === 'media' && (() => {
-        const propertyCoverCount = editHotelData.imageUrl ? 1 : 0;
-        const propertyGalleryCount = editHotelData.galleryUrls?.length || 0;
+        const currentCover = editHotelData.imageUrl?.trim() || '';
+        const rawGallery = Array.isArray(editHotelData.galleryUrls)
+          ? editHotelData.galleryUrls
+          : typeof editHotelData.galleryUrls === 'string'
+          ? (editHotelData.galleryUrls as string).split(',')
+          : [];
+        const currentGallery = rawGallery.map((u: any) => typeof u === 'string' ? u.trim() : '').filter(Boolean);
+
+        // Unified Property Photo Collection:
+        // Index 0 is always the primary Cover Photo (Hero Slot 1 & Search Card Thumbnail).
+        // Index 1...N are the supporting gallery photos (Hero Slots 2+ & Full Listing Carousel).
+        const allPropertyPhotos: string[] = (() => {
+          const list: string[] = [];
+          if (currentCover) list.push(currentCover);
+          for (const url of currentGallery) {
+            if (url && !list.includes(url)) list.push(url);
+          }
+          return list;
+        })();
+
+        const propertyCoverCount = currentCover ? 1 : 0;
+        const propertyGalleryCount = currentGallery.length;
         const roomMediaCount = rooms.reduce((acc, r) => acc + (r.imageUrl ? 1 : 0) + (r.galleryUrls?.length || 0), 0);
-        const totalMediaCount = propertyCoverCount + propertyGalleryCount + roomMediaCount;
+        const totalMediaCount = allPropertyPhotos.length + roomMediaCount;
         const roomsPhotographed = rooms.filter(r => r.imageUrl || (r.galleryUrls && r.galleryUrls.length > 0)).length;
 
         const displayedRooms = selectedRoomMediaId === 'all'
           ? rooms
           : rooms.filter((r, idx) => (r.id || String(idx)) === selectedRoomMediaId);
+
+        // Handlers maintaining 100% data consistency between cover photo and library:
+        const handleSetPropertyCover = (url: string) => {
+          const remaining = allPropertyPhotos.filter(u => u !== url);
+          if (currentCover && currentCover !== url && !remaining.includes(currentCover)) {
+            remaining.unshift(currentCover);
+          }
+          setEditHotelData({
+            ...editHotelData,
+            imageUrl: url,
+            galleryUrls: remaining,
+          });
+          setHotelDirty(true);
+          toast.success("Promoted to Cover Photo (Hero Slot 1)");
+        };
+
+        const handleReorderPropertyPhotos = (newOrder: string[]) => {
+          if (newOrder.length === 0) {
+            setEditHotelData({
+              ...editHotelData,
+              imageUrl: '',
+              galleryUrls: [],
+            });
+          } else {
+            setEditHotelData({
+              ...editHotelData,
+              imageUrl: newOrder[0],
+              galleryUrls: newOrder.slice(1),
+            });
+          }
+          setHotelDirty(true);
+        };
+
+        const handleMovePropertyPhoto = (fromIdx: number, toIdx: number) => {
+          if (toIdx < 0 || toIdx >= allPropertyPhotos.length) return;
+          const newPhotos = [...allPropertyPhotos];
+          const [moved] = newPhotos.splice(fromIdx, 1);
+          newPhotos.splice(toIdx, 0, moved);
+          handleReorderPropertyPhotos(newPhotos);
+        };
+
+        const handleRemovePropertyPhoto = (index: number) => {
+          if (index < 0 || index >= allPropertyPhotos.length) return;
+          const newPhotos = [...allPropertyPhotos];
+          newPhotos.splice(index, 1);
+          handleReorderPropertyPhotos(newPhotos);
+          toast.success("Photo removed from property media");
+        };
+
+        const isFiveHero = allPropertyPhotos.length >= 5;
 
         return (
           <div className="space-y-6">
@@ -2845,7 +2936,7 @@ export default function ManageHotel() {
                     </span>
                   </div>
                   <p className="text-xs sm:text-sm text-stone-500 mt-1">
-                    Manage high-resolution photos for your property and individual rooms.
+                    Manage high-resolution photography for your property header, listing library, and room units.
                   </p>
                 </div>
 
@@ -2882,7 +2973,7 @@ export default function ManageHotel() {
                     <Building className="h-3.5 w-3.5" />
                     <span>Property Media</span>
                     <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-stone-100 text-stone-600">
-                      {propertyCoverCount + propertyGalleryCount}
+                      {allPropertyPhotos.length}
                     </span>
                   </button>
                   <button
@@ -2917,70 +3008,253 @@ export default function ManageHotel() {
                 {/* Quick Status Badges */}
                 <div className="hidden sm:flex items-center gap-2 text-xs text-stone-500">
                   <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg ${
-                    propertyCoverCount > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
+                    allPropertyPhotos.length > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
                   }`}>
-                    <span className={`h-1.5 w-1.5 rounded-full ${propertyCoverCount > 0 ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-                    {propertyCoverCount > 0 ? 'Cover Photo Set' : 'Cover Photo Needed'}
+                    <span className={`h-1.5 w-1.5 rounded-full ${allPropertyPhotos.length > 0 ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                    {allPropertyPhotos.length > 0 ? 'Cover Photo Set' : 'Cover Photo Needed'}
                   </span>
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-stone-100 text-stone-600">
-                    {propertyGalleryCount} Gallery Images
+                    {allPropertyPhotos.length} Total Property Photos
                   </span>
                 </div>
               </div>
             </div>
 
-            {/* VIEW 1: PROPERTY MEDIA (Hero Cover + Main Gallery in balanced grid) */}
+            {/* VIEW 1: PROPERTY MEDIA (Hero Collage Studio + Unified Library) */}
             {mediaView === 'property' && (
               <div className="space-y-6">
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                  {/* Hero Cover Card */}
-                  <div className="lg:col-span-5 xl:col-span-4 bg-white border border-stone-200/90 rounded-2xl p-5 sm:p-6 shadow-xs space-y-4">
+                {/* 1. Interactive Hero Collage Studio */}
+                <div className="bg-white border border-stone-200/90 rounded-2xl p-5 sm:p-6 shadow-xs space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-stone-100">
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-stone-900 text-white">
-                          Hero Banner
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-stone-900 text-white flex items-center gap-1">
+                          <Layers className="w-3 h-3 text-amber-400" />
+                          <span>Listing Header Preview</span>
                         </span>
-                        <h3 className="text-base font-bold text-stone-900">Cover Photo</h3>
+                        <h3 className="text-base font-bold text-stone-900">Hero Collage &amp; Slot Arranger</h3>
                       </div>
                       <p className="text-xs text-stone-500 mt-1">
-                        Spans the top header of your property listing and serves as the thumbnail in search results.
+                        This is the exact header collage travelers see at the top of your property page. Slot 1 is your primary Cover Photo and Search Thumbnail.
                       </p>
                     </div>
-
-                    <ImageUpload
-                      label="Cover Photo"
-                      hint="Choose an impressive exterior or best-view landscape shot."
-                      tooltip="Guest View: This image appears as the large hero banner spanning the top of your property page, and serves as the main thumbnail in search results."
-                      value={editHotelData.imageUrl || ''}
-                      onChange={(url) => setEditHotelData({ ...editHotelData, imageUrl: url })}
-                      folder={`hotels/${id}`}
-                    />
-                    <FieldError message={detailProblems.imageUrl} />
+                    <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+                      <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-stone-100 text-stone-700">
+                        {allPropertyPhotos.length >= 5 ? '5-Photo Luxury Collage' : allPropertyPhotos.length >= 2 ? '3-Photo Collage' : allPropertyPhotos.length === 1 ? 'Single Hero Shot' : 'No Photos Uploaded'}
+                      </span>
+                    </div>
                   </div>
 
-                  {/* Main Listing Gallery Card */}
-                  <div className="lg:col-span-7 xl:col-span-8 bg-white border border-stone-200/90 rounded-2xl p-5 sm:p-6 shadow-xs space-y-4">
+                  {allPropertyPhotos.length === 0 ? (
+                    <div className="border-2 border-dashed border-stone-300 rounded-2xl p-8 sm:p-12 text-center bg-stone-50/60 flex flex-col items-center justify-center">
+                      <ImageIcon className="h-10 w-10 text-stone-400 mb-2" />
+                      <h4 className="text-sm font-bold text-stone-800">Your property has no photos yet</h4>
+                      <p className="text-xs text-stone-500 max-w-sm mt-1 mb-4">
+                        Add photos in the library below. Your top photos will immediately populate this live Hero Header collage.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-2 aspect-[16/11] sm:aspect-[16/8] md:aspect-[16/6] rounded-2xl overflow-hidden bg-stone-900 p-2 border border-stone-800">
+                      {/* SLOT 1: Primary Cover Photo */}
+                      <div className={`relative rounded-xl overflow-hidden group bg-stone-950 ${allPropertyPhotos.length > 1 ? 'md:col-span-2 md:row-span-2' : 'md:col-span-4 md:row-span-2'}`}>
+                        <SmartImage src={allPropertyPhotos[0]} alt="Hero Slot 1 Cover" className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-stone-950/80 via-stone-950/20 to-transparent pointer-events-none" />
+                        
+                        {/* Top Left Badge */}
+                        <div className="absolute top-2.5 left-2.5 z-10 flex items-center gap-1.5 pointer-events-none">
+                          <span className="px-2.5 py-1 rounded-lg bg-amber-500 text-white text-[11px] font-bold shadow-md flex items-center gap-1 tracking-wide">
+                            <Star className="w-3.5 h-3.5 fill-current" />
+                            <span>Cover Photo · Hero Slot 1</span>
+                          </span>
+                        </div>
+
+                        {/* Bottom Info */}
+                        <div className="absolute bottom-2.5 left-2.5 z-10 text-white pointer-events-none">
+                          <p className="text-xs font-bold leading-tight drop-shadow-xs">{editHotelData.name || 'Your Property'}</p>
+                          <p className="text-[10px] text-white/70">Main Thumbnail in Search &amp; Hero Listing Banner</p>
+                        </div>
+
+                        {/* Hover Action Controls */}
+                        <div className="absolute top-2.5 right-2.5 z-10 flex items-center gap-1 opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                          {allPropertyPhotos.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleMovePropertyPhoto(0, 1)}
+                              className="p-1.5 bg-stone-900/80 hover:bg-stone-900 text-white rounded-lg transition backdrop-blur-xs cursor-pointer shadow-xs"
+                              title="Move to Slot 2"
+                            >
+                              <ChevronRight className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setMediaLightboxImages(allPropertyPhotos);
+                              setMediaLightboxIndex(0);
+                            }}
+                            className="p-1.5 bg-stone-900/80 hover:bg-stone-900 text-white rounded-lg transition backdrop-blur-xs cursor-pointer shadow-xs"
+                            title="View full screen"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleRemovePropertyPhoto(0)}
+                            className="p-1.5 bg-stone-900/80 hover:bg-red-600 text-white rounded-lg transition backdrop-blur-xs cursor-pointer shadow-xs"
+                            title="Remove cover photo"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* SUPPORTING SLOTS */}
+                      {allPropertyPhotos.length > 1 && (
+                        isFiveHero ? (
+                          /* 4-supporting grid (Slots 2, 3, 4, 5) */
+                          allPropertyPhotos.slice(1, 5).map((url, sIdx) => {
+                            const actualIdx = sIdx + 1;
+                            return (
+                              <div key={`hero-slot-${actualIdx}`} className="relative rounded-xl overflow-hidden group bg-stone-950 md:col-span-1 md:row-span-1">
+                                <SmartImage src={url} alt={`Hero Slot ${actualIdx + 1}`} className="w-full h-full object-cover" />
+                                <div className="absolute inset-0 bg-stone-950/20 group-hover:bg-transparent transition pointer-events-none" />
+
+                                {/* Slot Badge */}
+                                <div className="absolute top-2 left-2 z-10 pointer-events-none">
+                                  <span className="px-2 py-0.5 rounded-md bg-stone-900/80 text-white text-[10px] font-mono backdrop-blur-xs">
+                                    Slot #{actualIdx + 1}
+                                  </span>
+                                </div>
+
+                                {/* Actions */}
+                                <div className="absolute top-2 right-2 z-10 flex items-center gap-1 opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSetPropertyCover(url)}
+                                    className="p-1.5 bg-stone-900/85 hover:bg-amber-600 text-amber-300 hover:text-white rounded-lg transition backdrop-blur-xs cursor-pointer shadow-xs"
+                                    title="Promote to Cover Photo (Slot 1)"
+                                  >
+                                    <Star className="w-3.5 h-3.5 fill-current" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleMovePropertyPhoto(actualIdx, actualIdx - 1)}
+                                    className="p-1.5 bg-stone-900/85 hover:bg-stone-900 text-white rounded-lg transition backdrop-blur-xs cursor-pointer shadow-xs"
+                                    title="Move backward"
+                                  >
+                                    <ChevronLeft className="w-3.5 h-3.5" />
+                                  </button>
+                                  {actualIdx < allPropertyPhotos.length - 1 && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleMovePropertyPhoto(actualIdx, actualIdx + 1)}
+                                      className="p-1.5 bg-stone-900/85 hover:bg-stone-900 text-white rounded-lg transition backdrop-blur-xs cursor-pointer shadow-xs"
+                                      title="Move forward"
+                                    >
+                                      <ChevronRight className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemovePropertyPhoto(actualIdx)}
+                                    className="p-1.5 bg-stone-900/85 hover:bg-red-600 text-white rounded-lg transition backdrop-blur-xs cursor-pointer shadow-xs"
+                                    title="Remove"
+                                  >
+                                    <X className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })
+                        ) : (
+                          /* 2-supporting stacked grid (Slot 2 and Slot 3) */
+                          allPropertyPhotos.slice(1, 3).map((url, sIdx) => {
+                            const actualIdx = sIdx + 1;
+                            return (
+                              <div key={`hero-slot-${actualIdx}`} className="relative rounded-xl overflow-hidden group bg-stone-950 md:col-span-2 md:row-span-1">
+                                <SmartImage src={url} alt={`Hero Slot ${actualIdx + 1}`} className="w-full h-full object-cover" />
+                                <div className="absolute inset-0 bg-stone-950/20 group-hover:bg-transparent transition pointer-events-none" />
+
+                                {/* Slot Badge */}
+                                <div className="absolute top-2 left-2 z-10 pointer-events-none">
+                                  <span className="px-2 py-0.5 rounded-md bg-stone-900/80 text-white text-[10px] font-mono backdrop-blur-xs">
+                                    {actualIdx === 1 ? 'Slot #2 (Top-Right)' : 'Slot #3 (Bottom-Right)'}
+                                  </span>
+                                </div>
+
+                                {/* Actions */}
+                                <div className="absolute top-2 right-2 z-10 flex items-center gap-1 opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSetPropertyCover(url)}
+                                    className="p-1.5 bg-stone-900/85 hover:bg-amber-600 text-amber-300 hover:text-white rounded-lg transition backdrop-blur-xs cursor-pointer shadow-xs"
+                                    title="Promote to Cover Photo (Slot 1)"
+                                  >
+                                    <Star className="w-3.5 h-3.5 fill-current" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleMovePropertyPhoto(actualIdx, actualIdx - 1)}
+                                    className="p-1.5 bg-stone-900/85 hover:bg-stone-900 text-white rounded-lg transition backdrop-blur-xs cursor-pointer shadow-xs"
+                                    title="Move backward"
+                                  >
+                                    <ChevronLeft className="w-3.5 h-3.5" />
+                                  </button>
+                                  {actualIdx < allPropertyPhotos.length - 1 && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleMovePropertyPhoto(actualIdx, actualIdx + 1)}
+                                      className="p-1.5 bg-stone-900/85 hover:bg-stone-900 text-white rounded-lg transition backdrop-blur-xs cursor-pointer shadow-xs"
+                                      title="Move forward"
+                                    >
+                                      <ChevronRight className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemovePropertyPhoto(actualIdx)}
+                                    className="p-1.5 bg-stone-900/85 hover:bg-red-600 text-white rounded-lg transition backdrop-blur-xs cursor-pointer shadow-xs"
+                                    title="Remove"
+                                  >
+                                    <X className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })
+                        )
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* 2. Unified Property Media Library */}
+                <div className="bg-white border border-stone-200/90 rounded-2xl p-5 sm:p-6 shadow-xs space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-stone-100">
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-900">
-                          General
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-900">
+                          Complete Library
                         </span>
-                        <h3 className="text-base font-bold text-stone-900">Main Property Gallery</h3>
+                        <h3 className="text-base font-bold text-stone-900">All Property Photography</h3>
                       </div>
                       <p className="text-xs text-stone-500 mt-1">
-                        Common grounds, dining areas, gardens, reception, and lake views. Drag photos to reorder.
+                        All property photos in one synchronized place. Photo #1 is your Cover Photo. Click &ldquo;★&rdquo; on any photo to make it the Cover, or use arrows to reorder.
                       </p>
                     </div>
-
-                    <GalleryUpload 
-                      label="Property Gallery"
-                      hint="Include common areas and surroundings. Do NOT put specific room photos here."
-                      tooltip="Guest View: These appear in the photo grid/carousel at the top of your property page, just below the cover photo."
-                      value={editHotelData.galleryUrls || []} 
-                      onChange={(urls) => setEditHotelData({ ...editHotelData, galleryUrls: urls })} 
-                      folder={`hotels/${id}/gallery`}
-                    />
                   </div>
+
+                  <GalleryUpload 
+                    label="Property Photos"
+                    hint="Common grounds, dining areas, gardens, reception, beach, and surroundings. Upload high-res photos (drop files or paste links)."
+                    tooltip="Guest View: Photo #1 serves as your Cover Photo across search and header. Photos #2–#5 appear in your listing header collage, and all photos appear in the full guest gallery."
+                    value={allPropertyPhotos}
+                    onChange={(newPhotos) => handleReorderPropertyPhotos(newPhotos)}
+                    folder={`hotels/${id}/gallery`}
+                    showCoverBadge={true}
+                    onSetCover={(url) => handleSetPropertyCover(url)}
+                  />
+                  <FieldError message={detailProblems.imageUrl} />
                 </div>
 
                 {/* Bottom Save Bar */}
@@ -3102,81 +3376,123 @@ export default function ManageHotel() {
             {/* VIEW 3: GUEST PRESENTATION PREVIEW */}
             {mediaView === 'preview' && (
               <div className="space-y-6">
-                <div className="bg-white rounded-2xl border border-stone-200 p-5 sm:p-6 md:p-8 shadow-xs">
-                  <div className="mb-6">
+                <div className="bg-white rounded-2xl border border-stone-200 p-5 sm:p-6 md:p-8 shadow-xs space-y-8">
+                  <div>
                     <h3 className="text-lg font-serif font-bold text-stone-900">Live Guest Presentation</h3>
                     <p className="text-xs text-stone-500 mt-1">
-                      This is how travelers see your photos on search result cards and the property page.
+                      This is how travelers see your photography across search cards and the property page.
                     </p>
                   </div>
 
-                  {/* Property Gallery Preview */}
-                  <div className="mb-8">
+                  {/* 1. Search Result Card Preview */}
+                  <div className="p-5 bg-stone-50 rounded-2xl border border-stone-200/80">
                     <div className="flex items-center justify-between mb-3">
-                      <p className="text-xs font-bold text-stone-500 uppercase tracking-wider">Property Showcase</p>
-                      <span className="text-xs text-stone-400">
-                        {propertyCoverCount + propertyGalleryCount} photos
+                      <span className="text-xs font-bold text-stone-700 uppercase tracking-wider flex items-center gap-1.5">
+                        <LayoutGrid className="w-3.5 h-3.5 text-stone-500" />
+                        <span>Search Card Presentation</span>
                       </span>
+                      <span className="text-[11px] text-stone-400">Uses Cover Photo (Hero Slot 1)</span>
                     </div>
-                    {propertyCoverCount + propertyGalleryCount === 0 ? (
+                    
+                    <div className="max-w-xs bg-white rounded-2xl border border-stone-200 overflow-hidden shadow-xs">
+                      <div className="relative aspect-[4/3] bg-stone-100 overflow-hidden">
+                        <SmartImage
+                          src={allPropertyPhotos[0] || getHotelImage(editHotelData)}
+                          alt="Cover Card"
+                          className="w-full h-full object-cover"
+                        />
+                        <span className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-md bg-stone-900/80 text-white text-[10px] font-bold uppercase tracking-wider backdrop-blur-xs">
+                          {editHotelData.categories?.[0] || 'Lodge'}
+                        </span>
+                      </div>
+                      <div className="p-3.5 space-y-1">
+                        <p className="text-[10px] uppercase font-bold tracking-wider text-stone-400">{editHotelData.location || 'Malawi'}</p>
+                        <h4 className="font-serif font-bold text-sm text-stone-900 truncate">{editHotelData.name || 'Your Lodge Name'}</h4>
+                        <p className="text-xs text-stone-500 line-clamp-1">{editHotelData.description || 'Stunning accommodation in the Warm Heart of Africa.'}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 2. Listing Header Hero Collage Preview */}
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-xs font-bold text-stone-700 uppercase tracking-wider flex items-center gap-1.5">
+                        <Layers className="w-3.5 h-3.5 text-stone-500" />
+                        <span>Header Hero Presentation</span>
+                      </span>
+                      <span className="text-xs text-stone-400">{allPropertyPhotos.length} photos</span>
+                    </div>
+                    {allPropertyPhotos.length === 0 ? (
                       <p className="text-xs text-stone-400 italic">No property photos uploaded yet.</p>
                     ) : (
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                        {propertyCoverCount > 0 && (
-                          <div className="relative aspect-video rounded-xl overflow-hidden border-2 border-emerald-500 shadow-xs">
-                            <SmartImage src={getHotelImage(editHotelData)} alt="Main" className="w-full h-full object-cover" />
-                            <span className="absolute top-2 left-2 bg-emerald-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold uppercase shadow-xs">
-                              Main Cover
-                            </span>
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-1 aspect-[16/10] sm:aspect-[16/8] md:aspect-[16/6] rounded-2xl overflow-hidden bg-stone-900 border border-stone-800">
+                        {/* Main Cover */}
+                        <div className={`relative overflow-hidden ${allPropertyPhotos.length > 1 ? 'md:col-span-2 md:row-span-2' : 'md:col-span-4 md:row-span-2'}`}>
+                          <SmartImage src={allPropertyPhotos[0]} alt="Hero Cover" className="w-full h-full object-cover" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-stone-950/80 via-transparent to-transparent" />
+                          <div className="absolute bottom-3 left-3 text-white">
+                            <p className="text-xs text-white/80 font-medium">{editHotelData.location || 'Malawi'}</p>
+                            <h4 className="text-base sm:text-lg font-serif font-bold">{editHotelData.name || 'Your Property'}</h4>
                           </div>
+                        </div>
+
+                        {/* Supporting */}
+                        {allPropertyPhotos.length > 1 && (
+                          isFiveHero ? (
+                            allPropertyPhotos.slice(1, 5).map((url, idx) => (
+                              <div key={`prev-grid-5-${idx}`} className="relative overflow-hidden md:col-span-1 md:row-span-1">
+                                <SmartImage src={url} alt={`Hero ${idx + 2}`} className="w-full h-full object-cover" />
+                                {idx === 3 && allPropertyPhotos.length > 5 && (
+                                  <div className="absolute inset-0 bg-stone-950/45 flex items-center justify-center">
+                                    <span className="text-white text-xs font-bold px-2 py-1 rounded bg-black/50">
+                                      +{allPropertyPhotos.length - 5} more
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            ))
+                          ) : (
+                            allPropertyPhotos.slice(1, 3).map((url, idx) => (
+                              <div key={`prev-grid-3-${idx}`} className="relative overflow-hidden md:col-span-2 md:row-span-1">
+                                <SmartImage src={url} alt={`Hero ${idx + 2}`} className="w-full h-full object-cover" />
+                              </div>
+                            ))
+                          )
                         )}
-                        {(editHotelData.galleryUrls || []).map((url, idx) => (
-                          <div key={`gal-prev-${idx}`} className="relative aspect-video rounded-xl overflow-hidden border border-stone-200">
-                            <SmartImage src={url} alt={`Gallery ${idx + 1}`} className="w-full h-full object-cover" />
-                            <span className="absolute top-2 left-2 bg-stone-900/70 text-white text-[10px] px-2 py-0.5 rounded-full">
-                              #{idx + 1}
-                            </span>
-                          </div>
-                        ))}
                       </div>
                     )}
                   </div>
 
-                  {/* Room Previews */}
+                  {/* 3. Room Units Previews */}
                   {rooms.length > 0 && (
                     <div>
-                      <p className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-3">Room Type Previews</p>
-                      <div className="space-y-6">
+                      <p className="text-xs font-bold text-stone-700 uppercase tracking-wider mb-3">Room Accommodation Previews</p>
+                      <div className="space-y-4">
                         {rooms.map((room, rIdx) => {
                           const hasCover = Boolean(room.imageUrl);
-                          const hasGallery = Boolean(room.galleryUrls && room.galleryUrls.length > 0);
+                          const galCount = room.galleryUrls?.length || 0;
+                          const roomImages = [room.imageUrl, ...(room.galleryUrls || [])].filter(Boolean) as string[];
 
                           return (
                             <div key={`room-preview-${room.id || rIdx}-${rIdx}`} className="p-4 bg-stone-50 rounded-xl border border-stone-200/80">
                               <div className="flex items-center justify-between mb-2">
                                 <p className="text-sm font-bold text-stone-800">{room.name}</p>
                                 <span className="text-[11px] text-stone-500">
-                                  {(hasCover ? 1 : 0) + (room.galleryUrls?.length || 0)} photos
+                                  {roomImages.length} photos
                                 </span>
                               </div>
-                              {!hasCover && !hasGallery ? (
+                              {roomImages.length === 0 ? (
                                 <p className="text-xs text-stone-400 italic">No photos uploaded for this room.</p>
                               ) : (
                                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                                  {hasCover && (
-                                    <div className="relative aspect-video rounded-xl overflow-hidden border-2 border-blue-500 shadow-xs">
-                                      <SmartImage src={getRoomImage(room, null)} alt={room.name} className="w-full h-full object-cover" />
-                                      <span className="absolute top-2 left-2 bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider shadow-sm">
-                                        Room Cover
-                                      </span>
-                                    </div>
-                                  )}
-                                  {(room.galleryUrls || []).map((url, idx) => (
-                                    <div key={`room-${room.id || rIdx}-gal-${idx}`} className="relative aspect-video rounded-xl overflow-hidden border border-stone-200">
-                                      <SmartImage src={url} alt={`Gallery ${idx + 1}`} className="w-full h-full object-cover" />
-                                      <span className="absolute top-2 left-2 bg-stone-900/70 text-white text-[10px] px-2 py-0.5 rounded-md">
-                                        Gallery
-                                      </span>
+                                  {roomImages.map((url, idx) => (
+                                    <div key={`room-img-${rIdx}-${idx}`} className="relative aspect-video rounded-xl overflow-hidden border border-stone-200">
+                                      <SmartImage src={url} alt={`${room.name} ${idx + 1}`} className="w-full h-full object-cover" />
+                                      {idx === 0 && hasCover && (
+                                        <span className="absolute top-2 left-2 bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider shadow-sm">
+                                          Room Cover
+                                        </span>
+                                      )}
                                     </div>
                                   ))}
                                 </div>
@@ -4644,6 +4960,14 @@ export default function ManageHotel() {
         aiPowered={Boolean(aiStatus.enabled && aiStatus.available)}
         onApply={handleApplyLinkedData}
       />
+
+      {mediaLightboxImages && (
+        <Lightbox
+          images={mediaLightboxImages}
+          initialIndex={mediaLightboxIndex}
+          onClose={() => setMediaLightboxImages(null)}
+        />
+      )}
     </div>
   );
 }
