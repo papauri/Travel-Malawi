@@ -27,6 +27,18 @@ export function defaultWeek(open = '07:00', close = '22:00'): WeeklyHours {
   return Array.from({ length: 7 }, () => defaultDay(open, close));
 }
 
+/** Returns 7 days all configured for round-the-clock 24-hour service (All Day). */
+export function allDayWeek(): WeeklyHours {
+  return Array.from({ length: 7 }, () => ({ closed: false, open: '00:00', close: '00:00' }));
+}
+
+/** Checks whether all 7 days of the week are open around the clock (All Day / 24/7). */
+export function isWeekAllDay(hours: WeeklyHours | undefined | null): boolean {
+  const week = normaliseHours(hours);
+  if (!week) return false;
+  return week.every(day => !day.closed && day.open === day.close);
+}
+
 /** Pads, trims and repairs whatever is stored so the UI always has seven days. */
 export function normaliseHours(hours: WeeklyHours | undefined | null): WeeklyHours | null {
   if (!Array.isArray(hours) || hours.length === 0) return null;

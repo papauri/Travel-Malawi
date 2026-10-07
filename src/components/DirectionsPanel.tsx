@@ -17,6 +17,7 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import FormattedDescription from './FormattedDescription';
 import {
   LatLng,
   distanceKm,
@@ -484,7 +485,17 @@ export default function DirectionsPanel({
             <h4 className="text-xs font-bold text-amber-900 uppercase tracking-wider mb-1">
               Host Arrival Advice &amp; Directions
             </h4>
-            <p className="text-sm text-amber-900/90 leading-relaxed">{locationNotes}</p>
+            <FormattedDescription
+              text={locationNotes}
+              collapsible={true}
+              collapsedHeight={80}
+              expandLabel="See more details"
+              collapseLabel="Show less"
+              fadeGradientClass="from-transparent via-amber-50/60 to-amber-50"
+              buttonClassName="text-amber-950 font-bold text-xs"
+              className="text-amber-900 text-sm"
+              paragraphClassName="text-sm text-amber-900/90 leading-relaxed mb-1.5 last:mb-0"
+            />
           </div>
         </div>
       )}

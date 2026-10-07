@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { collection, getDocs, doc, updateDoc, deleteDoc, getDoc, setDoc, query, where, writeBatch } from 'firebase/firestore';
 import { todayStr } from '../lib/dates';
-import { db } from '../lib/firebase';
+import { db, auth } from '../lib/firebase';
 import { Hotel, User, Booking, Role } from '../types';
 import { SystemSettings } from '../hooks/useSystemSettings';
 import { 
@@ -114,6 +114,9 @@ export default function AdminDashboard() {
     actionName: string;
   } | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [isDeletingUser, setIsDeletingUser] = useState(false);
+  const [resetEmailTarget, setResetEmailTarget] = useState<string | null>(null);
   const [savingDestinations, setSavingDestinations] = useState(false);
   const [newDestination, setNewDestination] = useState('');
   const [quickResetEmail, setQuickResetEmail] = useState('');
@@ -433,41 +436,73 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleDeleteUser = async (targetUser: User) => {
+  const handleDeleteUser = (targetUser: User) => {
     if (targetUser.uid === user?.uid) {
       toast.error('Cannot delete your own account.');
       return;
     }
-    
-    if (!window.confirm(`WARNING: This will delete the profile document for ${targetUser.email} from the database. They will lose all data associated with this profile. Are you absolutely sure?`)) {
-      return;
-    }
-    
-    try {
-      await deleteDoc(doc(db, 'users', targetUser.uid));
-      setUsers(users.filter(u => u.uid !== targetUser.uid));
-      toast.success(`User profile deleted successfully.`);
+    setUserToDelete(targetUser);
+  };
 
-      await logSystemEvent('action', `Admin deleted user profile: ${targetUser.displayName || targetUser.email}`, {
+  const confirmDeleteUser = async () => {
+    if (!userToDelete) return;
+    const targetUser = userToDelete;
+    setIsDeletingUser(true);
+
+    try {
+      // 1. Delete user doc directly in Firestore client-side
+      try {
+        await deleteDoc(doc(db, 'users', targetUser.uid));
+      } catch (firestoreErr) {
+        console.warn('Direct Firestore deleteDoc warning:', firestoreErr);
+      }
+
+      // 2. Also call backend endpoint to delete from Firebase Auth and notify
+      try {
+        const token = await auth.currentUser?.getIdToken();
+        const res = await fetch('/api/admin/delete-user', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify({ uid: targetUser.uid })
+        });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          console.warn('Backend delete-user response:', errData);
+        }
+      } catch (backendErr) {
+        console.warn('Backend delete-user fetch warning:', backendErr);
+      }
+
+      setUsers(prev => prev.filter(u => u.uid !== targetUser.uid));
+      toast.success('User profile deleted successfully.');
+      setUserToDelete(null);
+
+      // 3. Audit logging (non-blocking)
+      logSystemEvent('action', `Admin deleted user profile: ${targetUser.displayName || targetUser.email || targetUser.uid}`, {
         targetUserId: targetUser.uid,
         targetEmail: targetUser.email,
-      }, user, 'security');
-      
-      // Notify via server API
+      }, user, 'security').catch(() => {});
+
+      // 4. Send notification if email exists (non-blocking)
       if (targetUser.email) {
         fetch('/api/admin/notify-account-status', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
             email: targetUser.email, 
-            status: 'revoked', // treat deletion as revocation for the email message
+            status: 'revoked',
             name: targetUser.displayName
           })
         }).catch(() => {});
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting user:', error);
-      toast.error('Failed to delete user profile.');
+      toast.error(error?.message || 'Failed to delete user profile.');
+    } finally {
+      setIsDeletingUser(false);
     }
   };
 
@@ -630,7 +665,7 @@ export default function AdminDashboard() {
     return [
       { id: 'overview' as Tab, label: 'Overview', icon: LayoutDashboard },
       { id: 'analytics' as Tab, label: 'Analytics', icon: TrendingUp },
-      { id: 'properties' as Tab, label: 'Properties', icon: Building2, badge: stats.pendingProperties > 0 ? stats.pendingProperties : null },
+      { id: 'properties' as Tab, label: 'Properties', icon: Building2 },
       { id: 'reviews' as Tab, label: 'Review Scraper', icon: Star },
       { id: 'users' as Tab, label: 'Users', icon: Users, visible: isGlobalAdmin(user) || isMarketing(user) },
       { id: 'bookings' as Tab, label: 'All Bookings', icon: CalendarRange },
@@ -638,10 +673,10 @@ export default function AdminDashboard() {
       { id: 'content' as Tab, label: 'Content & Legal', icon: FileText },
       { id: 'logs' as Tab, label: 'Audit & Telemetry Logs', icon: ShieldCheck, visible: isGlobalAdmin(user) },
       { id: 'ai' as Tab, label: 'Assistant & Provider Keys', icon: Cpu, visible: isGlobalAdmin(user) },
-      { id: 'settings' as Tab, label: 'Channels & Settings', icon: Settings, visible: isGlobalAdmin(user), badge: 'Super Admin' },
-      { id: 'docs' as Tab, label: 'Executive Docs & Leaflets', icon: BookOpen, badge: 'New Assets' },
+      { id: 'settings' as Tab, label: 'Channels & Settings', icon: Settings, visible: isGlobalAdmin(user) },
+      { id: 'docs' as Tab, label: 'Executive Docs & Leaflets', icon: BookOpen },
     ].filter(t => t.visible !== false);
-  }, [stats.pendingProperties, user]);
+  }, [user]);
 
   const currentTabItem = useMemo(() => {
     return adminTabs.find(t => t.id === activeTab) || adminTabs[0];
@@ -667,252 +702,214 @@ export default function AdminDashboard() {
       />
 
       {/* Sidebar Navigation */}
-      <div className="w-full lg:w-64 shrink-0 space-y-3 lg:space-y-4 lg:sticky lg:top-24 lg:self-start">
-        <div className="flex items-center justify-between px-1 lg:px-2">
-          <div className="flex items-center gap-3">
+      <div className="w-full lg:w-60 xl:w-64 shrink-0 lg:sticky lg:top-20 lg:self-start lg:max-h-[calc(100vh-5.5rem)] lg:flex lg:flex-col min-w-0">
+        <div className="flex items-center justify-between px-1 lg:px-2 pb-3 shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
             <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-stone-900 text-white flex items-center justify-center shrink-0 shadow-xs">
-              <Shield className="h-5 w-5 sm:h-6 sm:w-6" />
+              <Shield className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl sm:text-2xl font-serif font-bold text-stone-900 leading-tight">Admin</h1>
-                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
-                  isGlobalAdmin(user) 
-                    ? 'bg-amber-100 text-amber-900 border border-amber-200' 
-                    : isMarketing(user)
-                    ? 'bg-purple-100 text-purple-900 border border-purple-200'
-                    : 'bg-emerald-100 text-emerald-900 border border-emerald-200'
-                }`}>
-                  {isGlobalAdmin(user) ? 'Global Admin' : isMarketing(user) ? 'Marketing' : 'Admin'}
-                </span>
-              </div>
-              <p className="text-stone-500 text-xs sm:text-sm">Platform Management</p>
+            <div className="min-w-0">
+              <h1 className="text-xl sm:text-2xl font-serif font-bold text-stone-900 leading-tight">Admin</h1>
+              <p className="text-stone-500 text-xs sm:text-sm font-medium truncate mt-0.5">
+                {isGlobalAdmin(user) ? 'Global Admin' : isMarketing(user) ? 'Marketing' : 'Platform Management'}
+              </p>
             </div>
           </div>
         </div>
         
-        {/* Navigation Tabs Bar */}
-        <div className="relative">
-          <nav 
-            className="flex flex-col gap-2"
-            role="tablist"
-            aria-label="Admin Sections"
-          >
-            {/* Mobile & Tablet Collapsible Menu Trigger */}
-            <div className="lg:hidden space-y-2">
-              <button
-                type="button"
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="w-full flex items-center justify-between bg-white border border-stone-200 rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-stone-900 shadow-2xs hover:bg-stone-50 transition cursor-pointer"
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <CurrentTabIcon className="w-4 h-4 text-stone-500 shrink-0" />
-                  <span className="truncate">{currentTabItem.label}</span>
-                  {currentTabItem.badge && (
-                    <span className={`text-[10px] px-2 py-0.5 rounded-lg font-bold shrink-0 ml-1 ${typeof currentTabItem.badge === 'number' ? 'bg-amber-500 text-white' : 'bg-stone-100 text-stone-700'}`}>
-                      {currentTabItem.badge}
-                    </span>
-                  )}
-                </div>
-                <ChevronDown className={`w-4 h-4 text-stone-400 shrink-0 transition-transform duration-200 ${isMobileMenuOpen ? 'rotate-180' : ''}`} />
-              </button>
-
-              {/* Collapsible Drawer on Mobile & Tablet */}
-              {isMobileMenuOpen && (
-                <div 
-                  id="mobile-admin-drawer"
-                  className="mt-2 p-2.5 bg-white rounded-2xl border border-stone-200 shadow-xl space-y-2 animate-in fade-in slide-in-from-top-2 duration-200"
-                >
-                  <div className="flex items-center justify-between px-2 pt-1">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Select Section</span>
-                    <span className="text-[11px] text-stone-400 font-medium">{adminTabs.length} sections</span>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 max-h-[55vh] overflow-y-auto pr-1">
-                    {adminTabs.map(tab => {
-                      const TabIcon = tab.icon;
-                      const isSelected = activeTab === tab.id;
-                      return (
-                        <button
-                          key={`mob-tab-${tab.id}`}
-                          onClick={() => {
-                            setActiveTab(tab.id);
-                            setIsMobileMenuOpen(false);
-                          }}
-                          className={`flex items-center justify-between gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold transition text-left min-h-[44px] ${
-                            isSelected
-                              ? 'bg-stone-900 text-white shadow-2xs'
-                              : 'text-stone-700 hover:bg-stone-100'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2.5 truncate">
-                            <TabIcon className={`w-4 h-4 shrink-0 ${isSelected ? 'text-white' : 'text-stone-500'}`} />
-                            <span className="truncate">{tab.label}</span>
-                          </div>
-                          {tab.badge && (
-                            <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase shrink-0 ${
-                              isSelected 
-                                ? 'bg-white/20 text-white' 
-                                : typeof tab.badge === 'number' 
-                                  ? 'bg-amber-500 text-white' 
-                                  : 'bg-stone-100 text-stone-600'
-                            }`}>
-                              {tab.badge}
-                            </span>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {/* Team Resources inside mobile drawer */}
-                  <div className="pt-2 border-t border-stone-100 space-y-1.5">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 px-2 block">Pre-Launch &amp; Team Resources</span>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                      <Link
-                        to="/concept-validation"
-                        target="_blank"
-                        className="inline-flex items-center justify-between gap-1.5 px-3 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-950 text-xs font-semibold border border-amber-200/80"
-                      >
-                        <div className="flex items-center gap-2">
-                          <FileText className="w-3.5 h-3.5 text-amber-700 shrink-0" />
-                          <span>Concept Survey (PDF)</span>
-                        </div>
-                        <ExternalLink className="w-3 h-3 text-amber-600" />
-                      </Link>
-                      <Link
-                        to="/stay-owner-leaflet"
-                        target="_blank"
-                        className="inline-flex items-center justify-between gap-1.5 px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-950 text-xs font-semibold border border-emerald-200/80"
-                      >
-                        <div className="flex items-center gap-2">
-                          <Building2 className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-                          <span>Stay Owner Leaflet</span>
-                        </div>
-                        <ExternalLink className="w-3 h-3 text-emerald-600" />
-                      </Link>
-                      <Link
-                        to="/marketing"
-                        target="_blank"
-                        className="inline-flex items-center justify-between gap-1.5 px-3 py-2 rounded-xl bg-stone-50 hover:bg-stone-100 text-stone-700 text-xs font-medium border border-stone-200/60"
-                      >
-                        <div className="flex items-center gap-2">
-                          <Target className="w-3.5 h-3.5 text-stone-600 shrink-0" />
-                          <span>Marketing Playbook</span>
-                        </div>
-                        <ExternalLink className="w-3 h-3 text-stone-400" />
-                      </Link>
-                      <Link
-                        to="/host-guide"
-                        target="_blank"
-                        className="inline-flex items-center justify-between gap-1.5 px-3 py-2 rounded-xl bg-stone-50 hover:bg-stone-100 text-stone-700 text-xs font-medium border border-stone-200/60"
-                      >
-                        <div className="flex items-center gap-2">
-                          <Building2 className="w-3.5 h-3.5 text-stone-600 shrink-0" />
-                          <span>Host Starter Pack</span>
-                        </div>
-                        <ExternalLink className="w-3 h-3 text-stone-400" />
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Desktop Vertical Navigation */}
-            <div className="hidden lg:flex lg:flex-col gap-1.5">
-              {adminTabs.map(tab => {
-                const TabIcon = tab.icon;
-                const isSelected = activeTab === tab.id;
-                return (
-                  <button
-                    key={`desk-tab-${tab.id}`}
-                    ref={isSelected ? activeTabRef : undefined}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`whitespace-nowrap shrink-0 w-full flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold min-h-[44px] transition ${
-                      isSelected
-                        ? 'bg-stone-900 text-white shadow-xs'
-                        : 'text-stone-600 hover:bg-stone-100'
-                    }`}
-                  >
-                    <TabIcon className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
-                    <span>{tab.label}</span>
-                    {tab.badge && (
-                      <span className={`ml-auto text-[10px] px-1.5 py-0.5 rounded font-bold uppercase shrink-0 ${
-                        isSelected
-                          ? 'bg-white/20 text-white'
-                          : typeof tab.badge === 'number'
-                            ? 'bg-amber-500 text-white'
-                            : 'bg-stone-200 text-stone-700'
-                      }`}>
-                        {tab.badge}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </nav>
-        </div>
-
-        {/* Team Resources in Sidebar on Desktop */}
-        <div className="hidden lg:block pt-4 border-t border-stone-200/80 mt-2 space-y-1">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 px-3 block">Pre-Launch &amp; Team Resources</span>
-          <Link
-            to="/concept-validation"
-            target="_blank"
-            className="whitespace-nowrap shrink-0 w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-amber-950 bg-amber-50/80 hover:bg-amber-100 transition border border-amber-200/70"
-          >
-            <div className="flex items-center gap-2">
-              <FileText className="w-4 h-4 text-amber-700 shrink-0" />
-              <span>Concept Survey (PDF)</span>
-            </div>
-            <ExternalLink className="w-3 h-3 text-amber-600" />
-          </Link>
-          <Link
-            to="/stay-owner-leaflet"
-            target="_blank"
-            className="whitespace-nowrap shrink-0 w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-emerald-950 bg-emerald-50/80 hover:bg-emerald-100 transition border border-emerald-200/70"
-          >
-            <div className="flex items-center gap-2">
-              <Building2 className="w-4 h-4 text-emerald-700 shrink-0" />
-              <span>Stay Owner Leaflet</span>
-            </div>
-            <ExternalLink className="w-3 h-3 text-emerald-600" />
-          </Link>
-          <Link
-            to="/marketing"
-            target="_blank"
-            className="whitespace-nowrap shrink-0 w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-stone-700 hover:bg-stone-100 transition"
-          >
-            <div className="flex items-center gap-2">
-              <Target className="w-4 h-4 text-stone-600 shrink-0" />
-              <span>Marketing Playbook</span>
-            </div>
-            <ExternalLink className="w-3 h-3 text-stone-400" />
-          </Link>
-          <Link
-            to="/host-guide"
-            target="_blank"
-            className="whitespace-nowrap shrink-0 w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-stone-700 hover:bg-stone-100 transition"
-          >
-            <div className="flex items-center gap-2">
-              <Building2 className="w-4 h-4 text-stone-600 shrink-0" />
-              <span>Host Starter Pack</span>
-            </div>
-            <ExternalLink className="w-3 h-3 text-stone-400" />
-          </Link>
+        {/* Mobile & Tablet Collapsible Menu Trigger */}
+        <div className="lg:hidden space-y-2 mb-4">
           <button
-            onClick={() => setActiveTab('docs')}
-            className="whitespace-nowrap shrink-0 w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-stone-700 hover:bg-stone-100 transition cursor-pointer text-left"
-            title="Read or download executive docs in HTML, plain text, or markdown"
+            type="button"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="w-full flex items-center justify-between bg-white border border-stone-200 rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-stone-900 shadow-2xs hover:bg-stone-50 transition cursor-pointer"
           >
-            <div className="flex items-center gap-2">
-              <BookOpen className="w-4 h-4 text-purple-600 shrink-0" />
-              <span>Executive Docs &amp; Leaflets</span>
+            <div className="flex items-center gap-2.5 min-w-0">
+              <CurrentTabIcon className="w-4 h-4 text-stone-500 shrink-0" />
+              <span className="truncate">{currentTabItem.label}</span>
             </div>
-            <span className="text-[10px] bg-amber-200 text-amber-900 font-bold px-1.5 py-0.5 rounded">6 Docs</span>
+            <ChevronDown className={`w-4 h-4 text-stone-400 shrink-0 transition-transform duration-200 ${isMobileMenuOpen ? 'rotate-180' : ''}`} />
           </button>
+
+          {/* Collapsible Drawer on Mobile & Tablet */}
+          {isMobileMenuOpen && (
+            <div 
+              id="mobile-admin-drawer"
+              className="mt-2 p-2.5 bg-white rounded-2xl border border-stone-200 shadow-xl space-y-2 animate-in fade-in slide-in-from-top-2 duration-200"
+            >
+              <div className="flex items-center justify-between px-2 pt-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Select Section</span>
+                <span className="text-[11px] text-stone-400 font-medium">{adminTabs.length} sections</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 max-h-[55vh] overflow-y-auto pr-1">
+                {adminTabs.map(tab => {
+                  const TabIcon = tab.icon;
+                  const isSelected = activeTab === tab.id;
+                  return (
+                    <button
+                      key={`mob-tab-${tab.id}`}
+                      onClick={() => {
+                        setActiveTab(tab.id);
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold transition text-left min-h-[44px] ${
+                        isSelected
+                          ? 'bg-stone-900 text-white shadow-2xs'
+                          : 'text-stone-700 hover:bg-stone-100'
+                      }`}
+                    >
+                      <TabIcon className={`w-4 h-4 shrink-0 ${isSelected ? 'text-white' : 'text-stone-500'}`} />
+                      <span className="truncate">{tab.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Team Resources inside mobile drawer */}
+              <div className="pt-2 border-t border-stone-100 space-y-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 px-2 block">Pre-Launch &amp; Team Resources</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                  <Link
+                    to="/concept-validation"
+                    target="_blank"
+                    className="inline-flex items-center justify-between gap-1.5 px-3 py-2 rounded-xl bg-stone-50 hover:bg-stone-100 text-stone-800 text-xs font-medium border border-stone-200/60"
+                  >
+                    <div className="flex items-center gap-2">
+                      <FileText className="w-3.5 h-3.5 text-stone-600 shrink-0" />
+                      <span>Concept Survey (PDF)</span>
+                    </div>
+                    <ExternalLink className="w-3 h-3 text-stone-400" />
+                  </Link>
+                  <Link
+                    to="/stay-owner-leaflet"
+                    target="_blank"
+                    className="inline-flex items-center justify-between gap-1.5 px-3 py-2 rounded-xl bg-stone-50 hover:bg-stone-100 text-stone-800 text-xs font-medium border border-stone-200/60"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Building2 className="w-3.5 h-3.5 text-stone-600 shrink-0" />
+                      <span>Stay Owner Leaflet</span>
+                    </div>
+                    <ExternalLink className="w-3 h-3 text-stone-400" />
+                  </Link>
+                  <Link
+                    to="/marketing"
+                    target="_blank"
+                    className="inline-flex items-center justify-between gap-1.5 px-3 py-2 rounded-xl bg-stone-50 hover:bg-stone-100 text-stone-700 text-xs font-medium border border-stone-200/60"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Target className="w-3.5 h-3.5 text-stone-600 shrink-0" />
+                      <span>Marketing Playbook</span>
+                    </div>
+                    <ExternalLink className="w-3 h-3 text-stone-400" />
+                  </Link>
+                  <Link
+                    to="/host-guide"
+                    target="_blank"
+                    className="inline-flex items-center justify-between gap-1.5 px-3 py-2 rounded-xl bg-stone-50 hover:bg-stone-100 text-stone-700 text-xs font-medium border border-stone-200/60"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Building2 className="w-3.5 h-3.5 text-stone-600 shrink-0" />
+                      <span>Host Starter Pack</span>
+                    </div>
+                    <ExternalLink className="w-3 h-3 text-stone-400" />
+                  </Link>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
+
+        {/* Desktop Vertical Navigation with ONE single scrollbar */}
+        <nav 
+          className="hidden lg:flex lg:flex-col flex-1 min-h-0 overflow-y-auto overflow-x-hidden scrollbar-slim pr-1.5 space-y-4 pt-1 w-full min-w-0 overscroll-contain"
+          role="tablist"
+          aria-label="Admin Sections"
+        >
+          {/* Navigation Tabs */}
+          <div className="flex flex-col gap-1 w-full min-w-0">
+            {adminTabs.map(tab => {
+              const TabIcon = tab.icon;
+              const isSelected = activeTab === tab.id;
+              return (
+                <button
+                  key={`desk-tab-${tab.id}`}
+                  ref={isSelected ? activeTabRef : undefined}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs sm:text-[13px] font-medium transition cursor-pointer min-h-[38px] text-left min-w-0 ${
+                    isSelected
+                      ? 'bg-stone-900 text-white font-semibold shadow-xs'
+                      : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100/80'
+                  }`}
+                >
+                  <TabIcon className="w-4 h-4 shrink-0" />
+                  <span className="truncate">{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Pre-Launch & Team Resources integrated into SAME navbar */}
+          <div className="pt-3 border-t border-stone-200/70 space-y-1 w-full min-w-0 pb-4">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 px-3 block">
+              Pre-Launch &amp; Team Resources
+            </span>
+            <Link
+              to="/concept-validation"
+              target="_blank"
+              className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-xs text-stone-600 hover:text-stone-900 hover:bg-stone-100/80 transition min-w-0"
+            >
+              <div className="flex items-center gap-2 truncate">
+                <FileText className="w-3.5 h-3.5 text-stone-500 shrink-0" />
+                <span className="truncate">Concept Survey (PDF)</span>
+              </div>
+              <ExternalLink className="w-3 h-3 text-stone-400 shrink-0" />
+            </Link>
+            <Link
+              to="/stay-owner-leaflet"
+              target="_blank"
+              className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-xs text-stone-600 hover:text-stone-900 hover:bg-stone-100/80 transition min-w-0"
+            >
+              <div className="flex items-center gap-2 truncate">
+                <Building2 className="w-3.5 h-3.5 text-stone-500 shrink-0" />
+                <span className="truncate">Stay Owner Leaflet</span>
+              </div>
+              <ExternalLink className="w-3 h-3 text-stone-400 shrink-0" />
+            </Link>
+            <Link
+              to="/marketing"
+              target="_blank"
+              className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-xs text-stone-600 hover:text-stone-900 hover:bg-stone-100/80 transition min-w-0"
+            >
+              <div className="flex items-center gap-2 truncate">
+                <Target className="w-3.5 h-3.5 text-stone-500 shrink-0" />
+                <span className="truncate">Marketing Playbook</span>
+              </div>
+              <ExternalLink className="w-3 h-3 text-stone-400 shrink-0" />
+            </Link>
+            <Link
+              to="/host-guide"
+              target="_blank"
+              className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-xs text-stone-600 hover:text-stone-900 hover:bg-stone-100/80 transition min-w-0"
+            >
+              <div className="flex items-center gap-2 truncate">
+                <Building2 className="w-3.5 h-3.5 text-stone-500 shrink-0" />
+                <span className="truncate">Host Starter Pack</span>
+              </div>
+              <ExternalLink className="w-3 h-3 text-stone-400 shrink-0" />
+            </Link>
+            <button
+              type="button"
+              onClick={() => setActiveTab('docs')}
+              className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-xs text-stone-600 hover:text-stone-900 hover:bg-stone-100/80 transition cursor-pointer text-left min-w-0"
+              title="Read or download executive docs in HTML, plain text, or markdown"
+            >
+              <div className="flex items-center gap-2 truncate">
+                <BookOpen className="w-3.5 h-3.5 text-stone-500 shrink-0" />
+                <span className="truncate">Executive Docs &amp; Leaflets</span>
+              </div>
+            </button>
+          </div>
+        </nav>
       </div>
 
       {/* Main Content Area */}
@@ -970,14 +967,12 @@ export default function AdminDashboard() {
                   <Activity className="w-4 h-4" />
                 </div>
                 <p className="text-stone-500 text-xs font-medium mb-0.5 truncate">Pending Approvals</p>
-                <div className="flex items-baseline gap-1.5">
+                <div className="flex items-baseline gap-2">
                   <p className={`text-lg sm:text-xl font-bold ${stats.pendingProperties > 0 ? 'text-amber-900' : 'text-stone-900'}`}>
                     {stats.pendingProperties}
                   </p>
                   {stats.pendingProperties > 0 && (
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200/60">
-                      Needs Review
-                    </span>
+                    <span className="text-xs text-amber-800/80 font-normal">awaiting review</span>
                   )}
                 </div>
               </button>
@@ -1235,11 +1230,11 @@ export default function AdminDashboard() {
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse min-w-[800px]">
                   <thead>
-                    <tr className="bg-stone-50 border-b border-stone-200">
-                      <th className="px-6 py-4 text-xs font-bold text-stone-500 uppercase tracking-wider rounded-tl-xl">Property</th>
-                      <th className="px-6 py-4 text-xs font-bold text-stone-500 uppercase tracking-wider">Location</th>
-                      <th className="px-6 py-4 text-xs font-bold text-stone-500 uppercase tracking-wider">Total Bookings</th>
-                      <th className="px-6 py-4 text-xs font-bold text-stone-500 uppercase tracking-wider text-right rounded-tr-xl">Featured Status</th>
+                    <tr className="border-b border-stone-200">
+                      <th className="px-6 py-4 text-xs font-bold text-stone-500 uppercase tracking-wider rounded-tl-xl bg-stone-50">Property</th>
+                      <th className="px-6 py-4 text-xs font-bold text-stone-500 uppercase tracking-wider bg-stone-50">Location</th>
+                      <th className="px-6 py-4 text-xs font-bold text-stone-500 uppercase tracking-wider bg-stone-50">Total Bookings</th>
+                      <th className="px-6 py-4 text-xs font-bold text-stone-500 uppercase tracking-wider text-right rounded-tr-xl bg-stone-50">Featured Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-stone-100">
@@ -1580,15 +1575,15 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl border border-stone-200 shadow-2xs overflow-hidden">
+            <div className="bg-white rounded-2xl border border-stone-200 shadow-2xs overflow-hidden flex flex-col">
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse min-w-[800px]">
                   <thead>
-                    <tr className="bg-stone-50 border-b border-stone-200">
-                      <th className="px-6 py-3.5 text-xs font-bold text-stone-500 uppercase tracking-wider">User</th>
-                      <th className="px-6 py-3.5 text-xs font-bold text-stone-500 uppercase tracking-wider">Joined</th>
-                      <th className="px-6 py-3.5 text-xs font-bold text-stone-500 uppercase tracking-wider">Roles</th>
-                      <th className="px-6 py-3.5 text-xs font-bold text-stone-500 uppercase tracking-wider text-right">Actions</th>
+                    <tr className="border-b border-stone-200">
+                      <th className="px-6 py-3.5 text-xs font-bold text-stone-500 uppercase tracking-wider bg-stone-50">User</th>
+                      <th className="px-6 py-3.5 text-xs font-bold text-stone-500 uppercase tracking-wider bg-stone-50">Joined</th>
+                      <th className="px-6 py-3.5 text-xs font-bold text-stone-500 uppercase tracking-wider bg-stone-50">Roles</th>
+                      <th className="px-6 py-3.5 text-xs font-bold text-stone-500 uppercase tracking-wider text-right bg-stone-50">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-stone-100">
@@ -1600,7 +1595,7 @@ export default function AdminDashboard() {
                             <p className="font-bold text-stone-900 flex items-center gap-2">
                               {u.displayName || 'No Name'}
                               {(u.status === 'suspended' || u.accessRevoked) && (
-                                <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest">
+                                <span className="text-xs font-semibold text-red-600">
                                   Suspended
                                 </span>
                               )}
@@ -1612,30 +1607,30 @@ export default function AdminDashboard() {
                             {new Date(u.createdAt).toLocaleDateString()}
                           </td>
                           <td className="px-6 py-4">
-                            <div className="flex flex-wrap gap-1.5">
-                              {rolesList.includes('admin') && (
-                                <span className="bg-amber-100 text-amber-900 border border-amber-200/80 px-2.5 py-0.5 rounded-md text-xs font-bold tracking-wide">
-                                  ADMIN
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              {rolesList.includes('global_admin') && (
+                                <span className="bg-stone-900 text-white px-2 py-0.5 rounded text-[11px] font-medium tracking-wide">
+                                  Global Admin
                                 </span>
                               )}
-                              {rolesList.includes('global_admin') && (
-                                <span className="bg-stone-900 text-white px-2.5 py-0.5 rounded-md text-xs font-bold tracking-wide">
-                                  GLOBAL ADMIN
+                              {rolesList.includes('admin') && !rolesList.includes('global_admin') && (
+                                <span className="bg-amber-50 text-amber-900 border border-amber-200/60 px-2 py-0.5 rounded text-[11px] font-medium">
+                                  Admin
                                 </span>
                               )}
                               {rolesList.includes('marketing') && (
-                                <span className="bg-stone-100 text-stone-800 border border-stone-200 px-2.5 py-0.5 rounded-md text-xs font-bold tracking-wide">
-                                  MARKETING
+                                <span className="bg-stone-100 text-stone-700 px-2 py-0.5 rounded text-[11px] font-medium">
+                                  Marketing
                                 </span>
                               )}
                               {rolesList.includes('hotel_manager') && (
-                                <span className="bg-stone-100 text-stone-800 border border-stone-200 px-2.5 py-0.5 rounded-md text-xs font-bold tracking-wide">
-                                  MANAGER
+                                <span className="bg-stone-100 text-stone-700 px-2 py-0.5 rounded text-[11px] font-medium">
+                                  Manager
                                 </span>
                               )}
-                              {rolesList.includes('traveller') && (
-                                <span className="bg-stone-50 text-stone-600 border border-stone-200 px-2.5 py-0.5 rounded-md text-xs font-medium tracking-wide">
-                                  TRAVELLER
+                              {rolesList.includes('traveller') && !rolesList.includes('hotel_manager') && !rolesList.includes('admin') && !rolesList.includes('global_admin') && !rolesList.includes('marketing') && (
+                                <span className="text-xs text-stone-400">
+                                  Traveller
                                 </span>
                               )}
                             </div>
@@ -1688,24 +1683,7 @@ export default function AdminDashboard() {
 
                               {u.email && (
                                 <button
-                                  onClick={async () => {
-                                    const ok = window.confirm(`Send a password reset email to ${u.email}?`);
-                                    if (!ok) return;
-                                    try {
-                                      await resetPassword(u.email!);
-                                      toast.success(`Reset link sent to ${u.email}`);
-                                    } catch (err: any) {
-                                      const errorMsg =
-                                        err?.code === 'auth/user-not-found'
-                                          ? 'No user found with this email in Firebase Auth.'
-                                          : err?.code === 'auth/invalid-email'
-                                          ? 'Invalid email format.'
-                                          : err?.code === 'auth/too-many-requests'
-                                          ? 'Too many reset attempts. Please wait a moment.'
-                                          : err?.message || 'Failed to send reset link';
-                                      toast.error(errorMsg);
-                                    }
-                                  }}
+                                  onClick={() => setResetEmailTarget(u.email!)}
                                   className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 hover:text-stone-900 transition border border-stone-200/80"
                                   title={`Send password reset email to ${u.email}`}
                                 >
@@ -1730,7 +1708,7 @@ export default function AdminDashboard() {
               </div>
               
               {visibleUsers.length > itemsPerPage && (
-                <div className="p-4 border-t border-stone-100">
+                <div className="p-4 border-t border-stone-100 shrink-0 bg-white">
                   <Pagination
                     currentPage={currentUserPage}
                     totalPages={Math.ceil(visibleUsers.length / itemsPerPage)}
@@ -1823,18 +1801,18 @@ export default function AdminDashboard() {
           <div className="space-y-6 animate-in fade-in duration-300">
             <h2 className="text-3xl font-serif font-bold text-stone-900">Platform Bookings</h2>
 
-            <div className="bg-white rounded-2xl border border-stone-200 shadow-2xs overflow-hidden">
+            <div className="bg-white rounded-2xl border border-stone-200 shadow-2xs overflow-hidden flex flex-col">
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse min-w-[1000px]">
                   <thead>
-                    <tr className="bg-stone-50 border-b border-stone-200">
-                      <th className="px-6 py-3.5 text-xs font-bold text-stone-500 uppercase tracking-wider">Ref</th>
-                      <th className="px-6 py-3.5 text-xs font-bold text-stone-500 uppercase tracking-wider">Property</th>
-                      <th className="px-6 py-3.5 text-xs font-bold text-stone-500 uppercase tracking-wider">Guest</th>
-                      <th className="px-6 py-3.5 text-xs font-bold text-stone-500 uppercase tracking-wider">Dates</th>
-                      <th className="px-6 py-3.5 text-xs font-bold text-stone-500 uppercase tracking-wider">Amount</th>
-                      <th className="px-6 py-3.5 text-xs font-bold text-stone-500 uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-3.5 text-xs font-bold text-stone-500 uppercase tracking-wider text-right">Actions</th>
+                    <tr className="border-b border-stone-200">
+                      <th className="px-6 py-3.5 text-xs font-bold text-stone-500 uppercase tracking-wider bg-stone-50">Ref</th>
+                      <th className="px-6 py-3.5 text-xs font-bold text-stone-500 uppercase tracking-wider bg-stone-50">Property</th>
+                      <th className="px-6 py-3.5 text-xs font-bold text-stone-500 uppercase tracking-wider bg-stone-50">Guest</th>
+                      <th className="px-6 py-3.5 text-xs font-bold text-stone-500 uppercase tracking-wider bg-stone-50">Dates</th>
+                      <th className="px-6 py-3.5 text-xs font-bold text-stone-500 uppercase tracking-wider bg-stone-50">Amount</th>
+                      <th className="px-6 py-3.5 text-xs font-bold text-stone-500 uppercase tracking-wider bg-stone-50">Status</th>
+                      <th className="px-6 py-3.5 text-xs font-bold text-stone-500 uppercase tracking-wider text-right bg-stone-50">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-stone-100">
@@ -2244,6 +2222,48 @@ export default function AdminDashboard() {
             }
           }}
           onCancel={() => setConfirmAction(null)}
+        />
+
+        <ConfirmDialog
+          isOpen={!!userToDelete}
+          title="Delete User Profile"
+          message={`Are you sure you want to permanently delete the profile for ${userToDelete?.email || userToDelete?.displayName || userToDelete?.uid}? This will remove all their access and data.`}
+          confirmText={isDeletingUser ? "Deleting..." : "Yes, delete user"}
+          cancelText="Cancel"
+          isDestructive={true}
+          onConfirm={confirmDeleteUser}
+          onCancel={() => {
+            if (!isDeletingUser) setUserToDelete(null);
+          }}
+        />
+
+        <ConfirmDialog
+          isOpen={!!resetEmailTarget}
+          title="Reset Password"
+          message={`Send a password reset email to ${resetEmailTarget}?`}
+          confirmText="Send Reset Link"
+          cancelText="Cancel"
+          isDestructive={false}
+          onConfirm={async () => {
+            if (!resetEmailTarget) return;
+            const target = resetEmailTarget;
+            setResetEmailTarget(null);
+            try {
+              await resetPassword(target);
+              toast.success(`Reset link sent to ${target}`);
+            } catch (err: any) {
+              const errorMsg =
+                err?.code === 'auth/user-not-found'
+                  ? 'No user found with this email in Firebase Auth.'
+                  : err?.code === 'auth/invalid-email'
+                  ? 'Invalid email format.'
+                  : err?.code === 'auth/too-many-requests'
+                  ? 'Too many reset attempts. Please wait a moment.'
+                  : err?.message || 'Failed to send reset link';
+              toast.error(errorMsg);
+            }
+          }}
+          onCancel={() => setResetEmailTarget(null)}
         />
 
       </div>

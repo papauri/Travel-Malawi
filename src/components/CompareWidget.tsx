@@ -8,6 +8,7 @@ import { useCompare } from '../contexts/CompareContext';
 import { getHotelImages } from '../lib/images';
 import { formatMoney } from '../lib/currency';
 import PriceDisplay from './PriceDisplay';
+import FormattedDescription from './FormattedDescription';
 
 export default function CompareWidget() {
   const { selectedHotels, clearSelection, toggleHotel, isCompareModalOpen, setIsCompareModalOpen } = useCompare();
@@ -239,9 +240,16 @@ export default function CompareWidget() {
                             <hr className="border-stone-100" />
                             <div>
                               <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 mb-2 block">About</span>
-                              <p className="text-sm text-stone-600 line-clamp-4 leading-relaxed">
-                                {item.hotel.description}
-                              </p>
+                              <FormattedDescription
+                                text={item.hotel.description}
+                                collapsible={true}
+                                collapsedHeight={72}
+                                expandLabel="See more details"
+                                collapseLabel="Show less"
+                                fadeGradientClass="from-transparent to-white"
+                                buttonClassName="text-stone-900 font-semibold text-xs"
+                                className="text-sm text-stone-600 leading-relaxed"
+                              />
                             </div>
                           </>
                         )}

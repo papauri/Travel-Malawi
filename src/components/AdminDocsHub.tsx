@@ -234,7 +234,7 @@ export default function AdminDocsHub() {
               with prospective lodge managers over WhatsApp to collect their operational feedback.
             </div>
           ) : (
-            <ul className="mt-6 border-b border-stone-200">
+            <ul className="mt-6 border-b border-stone-200 max-h-[calc(100vh-20rem)] overflow-y-auto scrollbar-slim overscroll-contain pr-2">
               {surveys.map((survey, sIdx) => {
                 const phoneClean = (survey.contactPhone || '').replace(/[^0-9+]/g, '');
                 const waUrl = phoneClean ? `https://wa.me/${phoneClean.replace(/^\+/, '')}` : null;
@@ -309,10 +309,10 @@ export default function AdminDocsHub() {
               />
             </div>
 
-            <div className="mt-4 overflow-x-auto">
-              <table className="w-full text-sm border border-stone-200">
+            <div className="mt-4 overflow-x-auto border border-stone-200 rounded-xl">
+              <table className="w-full text-sm">
                 <thead>
-                  <tr>
+                  <tr className="border-b border-stone-200">
                     <th className={th}>Title</th>
                     <th className={th}>Category</th>
                     <th className={th}>Last edited</th>

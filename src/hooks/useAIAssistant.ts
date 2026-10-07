@@ -12,7 +12,7 @@ export interface AIStatus {
 }
 
 export interface AIGenerateOptions {
-  action: 'draft' | 'polish' | 'shorten' | 'highlights' | 'suggest_amenities' | 'suggest_rooms' | 'review_listing' | 'suggest_rate' | 'lookup_property' | 'write_message_template';
+  action: 'draft' | 'polish' | 'shorten' | 'highlights' | 'suggest_amenities' | 'suggest_rooms' | 'review_listing' | 'suggest_rate' | 'lookup_property' | 'write_message_template' | 'link_description_to_amenities_and_category';
   entityType: 'property' | 'room' | 'conference' | 'dining' | 'hotel';
   currentText?: string;
   details?: {

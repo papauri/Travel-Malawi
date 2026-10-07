@@ -14,7 +14,7 @@ import { collection, doc, getDocs, query, where, limit, writeBatch } from "fireb
  */
 
 import { db } from './firebase';
-import { Hotel } from '../types';
+import { Hotel, PropertyStayType, EntirePlaceDetails } from '../types';
 import { defaultWeek } from './hours';
 import { normalizeImageUrl } from './images';
 import { emailProblem, phoneProblem } from './contact';
@@ -104,6 +104,8 @@ export interface ListingDraft {
   id?: string;
   name: string;
   category: PropertyCategory | '';
+  stayType?: PropertyStayType;
+  entirePlaceDetails?: EntirePlaceDetails;
   location: string;
   locationNotes: string;
   description: string;
@@ -136,6 +138,18 @@ export function emptyDraft(): ListingDraft {
     id: uuidv4(),
     name: '',
     category: '',
+    stayType: 'rooms',
+    entirePlaceDetails: {
+      propertyType: 'Cottage',
+      bedrooms: 2,
+      bathrooms: 2,
+      beds: 3,
+      maxGuests: 6,
+      ratePerNightUsd: 120,
+      ratePerNightMwk: 210000,
+      hasPrivateKitchen: true,
+      hasDedicatedHost: true,
+    },
     location: '',
     locationNotes: '',
     description: '',
@@ -292,7 +306,14 @@ export function validateProperty(
 
 export function validateDraft(draft: ListingDraft): DraftErrors {
   const errors = validateProperty(draft, 'publish');
-  if (!draft.rooms || draft.rooms.length === 0) {
+  if (draft.stayType === 'entire_place') {
+    const ep = draft.entirePlaceDetails;
+    const usd = Number(ep?.ratePerNightUsd ?? 0);
+    const mwk = Number(ep?.ratePerNightMwk ?? 0);
+    if (usd <= 0 && mwk <= 0) {
+      errors.rooms = 'Set a nightly rate for the entire place in USD or MWK.';
+    }
+  } else if (!draft.rooms || draft.rooms.length === 0) {
     errors.rooms = 'Add at least one room type for guests to book.';
   } else {
     for (let i = 0; i < draft.rooms.length; i++) {
@@ -440,6 +461,8 @@ export function draftToHotel(draft: ListingDraft, managerId: string): Omit<Hotel
     amenities,
     // Was hard-coded to `[]`, which kept the listing out of every category filter.
     categories: draft.category ? [draft.category] : [],
+    stayType: draft.stayType || 'rooms',
+    entirePlaceDetails: draft.stayType === 'entire_place' ? draft.entirePlaceDetails : undefined,
     checkInTime: draft.checkInTime,
     checkOutTime: draft.checkOutTime,
     contactEmail: draft.contactEmail.trim(),
@@ -468,7 +491,36 @@ export async function createListing(draft: ListingDraft, managerId: string): Pro
   const batch = writeBatch(db);
   batch.set(doc(db, 'hotels', docId), payload);
 
-  for (const r of (draft.rooms || [])) {
+  // If this is an entire place stay and no individual rooms were manually entered,
+  // synthesize a whole-property room record so existing booking, calendar and availability logic work 100%
+  let roomsToWrite = draft.rooms || [];
+  if (draft.stayType === 'entire_place' && roomsToWrite.length === 0) {
+    const ep = draft.entirePlaceDetails || {};
+    const primaryRateUsd = Number(ep.ratePerNightUsd || 120);
+    const primaryRateMwk = Number(ep.ratePerNightMwk || 210000);
+    roomsToWrite = [
+      {
+        name: ep.propertyType ? `Entire ${ep.propertyType}` : 'Entire Property',
+        description: ep.wholeHouseDescription || `${draft.name} is rented exclusively as an entire private space. Includes all ${ep.bedrooms || 2} bedrooms, private grounds, and amenities.`,
+        maxGuests: Number(ep.maxGuests || 6),
+        quantity: 1,
+        currencies: ['USD', 'MWK'],
+        prices: {
+          USD: primaryRateUsd,
+          MWK: primaryRateMwk,
+        },
+        extraGuestFees: {
+          USD: 0,
+          MWK: 0,
+        },
+        amenities: draft.amenities || [],
+        galleryUrls: draft.galleryUrls || [],
+        imageUrl: draft.imageUrl || '',
+      } as RoomInput,
+    ];
+  }
+
+  for (const r of roomsToWrite) {
     const primaryCurrency = (r.currencies && r.currencies.length > 0) ? r.currencies[0] : 'USD';
     const roomPayload = {
       ...r,

@@ -15,8 +15,10 @@ import { useChatModal } from '../contexts/ChatModalContext';
 import { useManagerPresence } from '../hooks/usePresence';
 import PhoneInput from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
-import { MapPin, Megaphone, Calendar, Users, Star, CheckCircle2, ChevronRight, ChevronDown, Compass, Info, Plus, Minus, ShieldCheck, AlertTriangle, UtensilsCrossed, Clock, BedDouble, MessageSquare, MessageCircle, Images, Mail, PhoneCall, Phone, Navigation, CreditCard, LogIn, LogOut, Share, Zap, Droplets, Map, Wifi, Monitor, Tag } from 'lucide-react';
+import { MapPin, Megaphone, Calendar, Users, Star, CheckCircle2, ChevronRight, ChevronDown, Compass, Info, Plus, Minus, ShieldCheck, AlertTriangle, UtensilsCrossed, Clock, BedDouble, MessageSquare, MessageCircle, Images, Mail, PhoneCall, Phone, Navigation, CreditCard, LogIn, LogOut, Share, Share2, Zap, Droplets, Map, Wifi, WifiOff, HardDrive, Monitor, Tag } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useNetworkStatus } from '../hooks/useNetworkStatus';
+import { saveOfflineBooking } from '../lib/offlineBookingsDB';
 import AvailabilityCalendar from '../components/AvailabilityCalendar';
 import { motion } from 'motion/react';
 import Pagination from '../components/Pagination';
@@ -24,6 +26,7 @@ import PropertyChat from '../components/PropertyChat';
 import SmartImage from '../components/SmartImage';
 import DirectionsPanel from '../components/DirectionsPanel';
 import OfflineMapManager from '../components/OfflineMapManager';
+import FormattedDescription from '../components/FormattedDescription';
 import { ReviewModal } from '../components/ReviewModal';
 import InteractiveMap from '../components/InteractiveMap';
 import { useBreadcrumbLabel } from '../components/Breadcrumbs';
@@ -72,6 +75,7 @@ export default function HotelDetails() {
   };
 
   const today = todayStr();
+  const { isOnline } = useNetworkStatus();
   const [hotel, setHotel] = useState<Hotel | null>(() => (id ? getSingleCachedHotel(id) : null));
   const managerPresence = useManagerPresence(hotel?.managerId);
   const [rooms, setRooms] = useState<RoomType[]>([]);
@@ -445,16 +449,113 @@ export default function HotelDetails() {
     }
 
     setSaving(true);
-    setBookingStatus(`Submitting booking request for ${selectedRoom.name}...`);
+    setBookingStatus(isOnline ? `Submitting booking request for ${selectedRoom.name}...` : `Saving offline booking to device...`);
     try {
-      // Availability may have changed while the form was open, so it is
-      // re-checked against live data rather than trusting the render-time view.
+      // Calculate pricing and reference
+      const activePromo = selectedRoom ? roomPromotionFor(selectedRoom, checkIn) : null;
+      const pricing = computeBookingPricing(
+        selectedRoom, checkIn, checkOut, guestsCount, 1, selectedPackages, currency, activePromo
+      );
+      const reference = makeBookingReference();
+
+      // Common helper to save booking request to IndexedDB when offline
+      const saveOfflineAndNotify = async () => {
+        await saveOfflineBooking({
+          reference,
+          hotelId: hotel?.id || '',
+          hotelName: hotel?.name || 'Property',
+          roomTypeId: selectedRoom.id,
+          roomName: selectedRoom.name,
+          guestId: user?.uid || 'anonymous',
+          guestName: guestName.trim(),
+          guestEmail: guestEmail.trim(),
+          guestPhone: (guestPhone || '').trim(),
+          guestWhatsapp: (guestWhatsapp || '').trim(),
+          checkIn,
+          checkOut,
+          guests: guestsCount,
+          quantity: 1,
+          total: pricing.total,
+          currency: pricing.currency,
+          specialRequests: specialRequests.trim(),
+          packageIds: selectedPackages,
+          extraGuestTotal: pricing.extraGuestTotal,
+          packagesTotal: pricing.packagesTotal,
+          promotionId: activePromo?.id ?? null,
+          discountAmount: pricing.discountAmount,
+          managerId: hotel?.managerId ?? null,
+          managerEmail: hotel?.managerEmail ?? null,
+          bookingData: {
+            reference,
+            hotelId: hotel?.id,
+            managerId: hotel?.managerId ?? null,
+            roomTypeId: selectedRoom.id,
+            guestId: user?.uid || 'anonymous',
+            guestName: guestName.trim(),
+            guestEmail: guestEmail.trim(),
+            guestPhone: (guestPhone || '').trim(),
+            guestWhatsapp: (guestWhatsapp || '').trim(),
+            checkIn,
+            checkOut,
+            specialRequests: specialRequests.trim(),
+            guests: guestsCount,
+            quantity: 1,
+            total: pricing.total,
+            packageIds: selectedPackages,
+            extraGuestTotal: pricing.extraGuestTotal,
+            packagesTotal: pricing.packagesTotal,
+            currency: pricing.currency,
+            promotionId: activePromo?.id ?? null,
+            discountAmount: pricing.discountAmount,
+            status: 'pending',
+            createdAt: Date.now()
+          }
+        });
+
+        recordSubmission();
+
+        toast.custom(
+          (t) => (
+            <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-sm w-full bg-stone-900 text-white shadow-2xl rounded-2xl pointer-events-auto flex flex-col p-4 border border-stone-800`}>
+              <div className="flex items-start gap-3">
+                <div className="p-2 bg-amber-500/20 text-amber-400 rounded-xl shrink-0 mt-0.5">
+                  <HardDrive className="w-5 h-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold uppercase tracking-wider text-amber-400 mb-1">
+                    Saved Offline (IndexedDB)
+                  </p>
+                  <p className="text-sm font-medium text-stone-300 leading-relaxed mb-2">
+                    Your booking request has been saved securely to your device. It will automatically sync with Firebase once reconnected.
+                  </p>
+                  <div className="inline-flex items-center gap-1.5 bg-stone-800/80 px-2.5 py-1 rounded-lg border border-stone-700/50">
+                    <span className="text-[10px] text-stone-400 font-medium uppercase tracking-wider">Ref</span>
+                    <span className="text-xs font-mono font-bold text-white">{reference}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ),
+          { duration: 9000 }
+        );
+
+        setSelectedRoom(null);
+        if (user) navigate('/my-bookings');
+      };
+
+      // If user is currently offline, store directly to IndexedDB
+      if (!isOnline) {
+        await saveOfflineAndNotify();
+        return;
+      }
+
+      // Online: check live availability
       let isAvailable: boolean;
       try {
         isAvailable = await checkRoomAvailability(selectedRoom, 1);
       } catch (err) {
-        console.warn('Could not verify live availability:', err);
-        toast.error("We couldn't check availability just now. Please try again in a moment.");
+        console.warn('Could not verify live availability online, fallback to offline IndexedDB storage:', err);
+        await saveOfflineAndNotify();
         return;
       }
       if (!isAvailable) {
@@ -462,44 +563,41 @@ export default function HotelDetails() {
         return;
       }
 
-      // Same helper that renders the on-screen breakdown, so the stored total
-      // can never disagree with the price the guest was shown.
-      const activePromo = selectedRoom ? roomPromotionFor(selectedRoom, checkIn) : null;
-      const pricing = computeBookingPricing(
-        selectedRoom, checkIn, checkOut, guestsCount, 1, selectedPackages, currency, activePromo
-      );
-      const reference = makeBookingReference();
-
-      const bookingId = await createBookingWithSlot({
-        reference,
-        hotelId: hotel?.id,
-        managerId: hotel?.managerId ?? null,
-        roomTypeId: selectedRoom.id,
-        guestId: user?.uid || 'anonymous',
-        guestName: guestName.trim(),
-        guestEmail: guestEmail.trim(),
-        guestPhone: (guestPhone || '').trim(),
-        guestWhatsapp: (guestWhatsapp || '').trim(),
-        checkIn,
-        checkOut,
-        specialRequests: specialRequests.trim(),
-        guests: guestsCount,
-        quantity: 1,
-        total: pricing.total,
-        packageIds: selectedPackages,
-        extraGuestTotal: pricing.extraGuestTotal,
-        packagesTotal: pricing.packagesTotal,
-        currency: pricing.currency,
-        promotionId: activePromo?.id ?? null,
-        discountAmount: pricing.discountAmount,
-        status: 'pending',
-        // Written only when something actually tripped, so the manager sees a
-        // warning on the booking rather than having to guess.
-        ...(assessment.verdict === 'review'
-          ? { flagged: true, flagReasons: assessment.codes, flagScore: assessment.score }
-          : {}),
-        createdAt: Date.now()
-      });
+      let bookingId: string;
+      try {
+        bookingId = await createBookingWithSlot({
+          reference,
+          hotelId: hotel?.id,
+          managerId: hotel?.managerId ?? null,
+          roomTypeId: selectedRoom.id,
+          guestId: user?.uid || 'anonymous',
+          guestName: guestName.trim(),
+          guestEmail: guestEmail.trim(),
+          guestPhone: (guestPhone || '').trim(),
+          guestWhatsapp: (guestWhatsapp || '').trim(),
+          checkIn,
+          checkOut,
+          specialRequests: specialRequests.trim(),
+          guests: guestsCount,
+          quantity: 1,
+          total: pricing.total,
+          packageIds: selectedPackages,
+          extraGuestTotal: pricing.extraGuestTotal,
+          packagesTotal: pricing.packagesTotal,
+          currency: pricing.currency,
+          promotionId: activePromo?.id ?? null,
+          discountAmount: pricing.discountAmount,
+          status: 'pending',
+          ...(assessment.verdict === 'review'
+            ? { flagged: true, flagReasons: assessment.codes, flagScore: assessment.score }
+            : {}),
+          createdAt: Date.now()
+        });
+      } catch (writeErr: any) {
+        console.warn('Firebase booking write encountered network issue, saving to IndexedDB queue:', writeErr);
+        await saveOfflineAndNotify();
+        return;
+      }
 
       recordSubmission();
 
@@ -528,8 +626,7 @@ export default function HotelDetails() {
         }).catch(err => console.error('Failed to trigger offline notification', err));
       }
 
-      // The reference is the only handle a signed-out guest has on the booking,
-      // so it is surfaced rather than only stored.
+      // The reference is surfaced to the guest
       toast.custom(
         (t) => (
           <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-sm w-full bg-stone-900 text-white shadow-2xl rounded-2xl pointer-events-auto flex flex-col p-4 border border-stone-800`}>
@@ -555,8 +652,6 @@ export default function HotelDetails() {
         { duration: 8000 }
       );
       setSelectedRoom(null);
-      // A guest booking without an account has nothing to show on the bookings
-      // page, which is traveller-only.
       if (user) navigate('/my-bookings');
     } catch (error) {
       console.error("Booking error:", error);
@@ -616,23 +711,41 @@ export default function HotelDetails() {
         }`}
       >
         <div className="mx-auto max-w-7xl px-3 sm:px-4 md:px-6 lg:px-8 h-12 sm:h-14 flex items-center justify-between gap-2 sm:gap-4 w-full">
-          <h2 className="font-serif text-xs min-[400px]:text-sm sm:text-base md:text-lg font-bold text-stone-900 tracking-tight truncate min-w-0 flex-1">
-            <MaskedPlaceName name={hotel.name} fallback="[Your Lodge Name]" />
-          </h2>
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <h2 className="font-serif text-xs min-[400px]:text-sm sm:text-base md:text-lg font-bold text-stone-900 tracking-tight truncate min-w-0">
+              <MaskedPlaceName name={hotel.name} fallback="[Your Lodge Name]" />
+            </h2>
+            {hotel.stayType === 'entire_place' && (
+              <span className="hidden md:inline-flex items-center gap-1 bg-emerald-50 text-emerald-800 border border-emerald-200 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider shrink-0">
+                <Building className="w-3 h-3 text-emerald-600" /> Entire Place
+              </span>
+            )}
+          </div>
 
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            {/* Desktop Navigation Links */}
-            <nav className="hidden xl:flex items-center gap-1 text-xs font-semibold text-stone-600 mr-1">
+          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+            {/* Quick Navigation & Action Pills */}
+            <div className="hidden lg:flex items-center gap-1.5 text-xs font-semibold text-stone-700">
               <a 
                 href="#rooms-section" 
                 onClick={(e) => {
                   e.preventDefault();
                   document.getElementById('rooms-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }}
-                className="px-2.5 py-1.5 rounded-lg hover:bg-stone-100 hover:text-stone-900 transition flex items-center gap-1.5"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-stone-700 hover:text-stone-900 hover:bg-stone-100 transition border border-stone-200/70 shadow-2xs"
               >
-                <BedDouble className="w-3.5 h-3.5 text-stone-400" /> Accommodations
+                {hotel.stayType === 'entire_place' ? (
+                  <>
+                    <Building className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>The Space</span>
+                  </>
+                ) : (
+                  <>
+                    <BedDouble className="w-3.5 h-3.5 text-stone-500" />
+                    <span>Accommodations</span>
+                  </>
+                )}
               </a>
+
               {hotel.restaurant && hotel.restaurant.enabled !== false && (
                 <a 
                   href="#restaurant-menu" 
@@ -640,39 +753,44 @@ export default function HotelDetails() {
                     e.preventDefault();
                     document.getElementById('restaurant-menu')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                   }}
-                  className="px-2.5 py-1.5 rounded-lg hover:bg-stone-100 hover:text-stone-900 transition flex items-center gap-1.5"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-stone-700 hover:text-stone-900 hover:bg-stone-100 transition border border-stone-200/70 shadow-2xs"
                 >
-                  <UtensilsCrossed className="w-3.5 h-3.5 text-stone-400" /> Dining
+                  <UtensilsCrossed className="w-3.5 h-3.5 text-stone-500" />
+                  <span>Dining</span>
                 </a>
               )}
+
               <a 
                 href="#reviews" 
                 onClick={(e) => {
                   e.preventDefault();
                   document.getElementById('reviews')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }}
-                className="px-2.5 py-1.5 rounded-lg hover:bg-stone-100 hover:text-stone-900 transition flex items-center gap-1.5"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-stone-700 hover:text-stone-900 hover:bg-stone-100 transition border border-stone-200/70 shadow-2xs"
               >
-                <Star className="w-3.5 h-3.5 text-stone-400" /> Reviews
+                <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                <span>Reviews</span>
               </a>
+
               <a 
                 href="#directions" 
                 onClick={(e) => {
                   e.preventDefault();
                   document.getElementById('directions')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }}
-                className="px-2.5 py-1.5 rounded-lg hover:bg-stone-100 hover:text-stone-900 transition flex items-center gap-1.5"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-stone-700 hover:text-stone-900 hover:bg-stone-100 transition border border-stone-200/70 shadow-2xs"
               >
-                <MapPin className="w-3.5 h-3.5 text-stone-400" /> Location
+                <MapPin className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Location</span>
               </a>
-            </nav>
+            </div>
 
-            {/* Mobile & Tablet Jump to Dropdown */}
-            <details id="sticky-quick-nav-details" className="relative group xl:hidden">
-              <summary className="list-none flex items-center gap-1 bg-stone-100 hover:bg-stone-200 text-stone-700 h-8 sm:h-9 px-2 sm:px-2.5 md:px-3 rounded-full text-[11px] sm:text-xs font-semibold transition cursor-pointer select-none [&::-webkit-details-marker]:hidden shadow-2xs">
-                <Compass className="w-3.5 h-3.5 text-stone-500" />
-                <span className="hidden min-[380px]:inline">Jump to</span>
-                <ChevronDown className="w-3 h-3 text-stone-400 group-open:rotate-180 transition-transform" />
+            {/* Mobile / Tablet Quick Jump Dropdown */}
+            <details id="sticky-quick-nav-details" className="relative group lg:hidden">
+              <summary className="list-none flex items-center gap-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 h-8 sm:h-9 px-3 rounded-full text-xs font-semibold transition cursor-pointer select-none [&::-webkit-details-marker]:hidden shadow-2xs border border-stone-200/70">
+                <Compass className="w-3.5 h-3.5 text-stone-500 shrink-0" />
+                <span>Explore</span>
+                <ChevronDown className="w-3 h-3 text-stone-400 group-open:rotate-180 transition-transform ml-0.5" />
               </summary>
               <div className="absolute right-0 mt-2 w-48 bg-white border border-stone-200/90 rounded-2xl shadow-xl z-50 p-1.5 flex flex-col gap-0.5">
                 <a
@@ -684,7 +802,12 @@ export default function HotelDetails() {
                   }}
                   className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-stone-700 hover:bg-stone-100 hover:text-stone-900 rounded-xl transition"
                 >
-                  <BedDouble className="w-3.5 h-3.5 text-stone-500" /> Accommodations
+                  {hotel.stayType === 'entire_place' ? (
+                    <Building className="w-3.5 h-3.5 text-emerald-600" />
+                  ) : (
+                    <BedDouble className="w-3.5 h-3.5 text-stone-500" />
+                  )}
+                  <span>{hotel.stayType === 'entire_place' ? 'The Space' : 'Accommodations'}</span>
                 </a>
                 {hotel.restaurant && hotel.restaurant.enabled !== false && (
                   <a
@@ -708,7 +831,7 @@ export default function HotelDetails() {
                   }}
                   className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-stone-700 hover:bg-stone-100 hover:text-stone-900 rounded-xl transition"
                 >
-                  <Star className="w-3.5 h-3.5 text-stone-500" /> Reviews
+                  <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" /> Reviews
                 </a>
                 <a
                   href="#directions"
@@ -719,29 +842,34 @@ export default function HotelDetails() {
                   }}
                   className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-stone-700 hover:bg-stone-100 hover:text-stone-900 rounded-xl transition"
                 >
-                  <MapPin className="w-3.5 h-3.5 text-stone-500" /> Location
+                  <MapPin className="w-3.5 h-3.5 text-emerald-600" /> Location
                 </a>
               </div>
             </details>
 
-            {/* Share button */}
+            {/* Share button with icon matching Reviews and Location */}
             <button
+              type="button"
               onClick={handleShare}
-              className="flex items-center justify-center gap-1 bg-stone-100 hover:bg-stone-200 text-stone-700 h-8 sm:h-9 w-8 sm:w-9 min-[480px]:w-auto min-[480px]:px-3 rounded-full text-xs font-semibold transition-all shadow-2xs shrink-0 cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 h-8 sm:h-9 rounded-full text-xs font-semibold text-stone-700 hover:text-stone-900 hover:bg-stone-100 transition border border-stone-200/70 shadow-2xs cursor-pointer shrink-0"
               title="Share this property"
             >
-              <Share className="h-3.5 w-3.5 text-stone-600" />
-              <span className="hidden min-[480px]:inline">Share</span>
+              <Share2 className="w-3.5 h-3.5 text-stone-500 shrink-0" />
+              <span>Share</span>
             </button>
+
+            {/* Divider between navigational actions and primary CTA */}
+            <div className="h-5 w-px bg-stone-200/80 mx-0.5 sm:mx-1" aria-hidden="true" />
 
             {/* Book Now CTA */}
             <button
+              type="button"
               onClick={() => {
                 document.getElementById('rooms-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
               }}
-              className="bg-stone-900 text-white h-8 sm:h-9 px-3 sm:px-4 md:px-5 rounded-full text-[11px] sm:text-xs font-bold uppercase tracking-wider shrink-0 hover:bg-emerald-700 active:scale-95 transition-all shadow-2xs cursor-pointer flex items-center justify-center whitespace-nowrap"
+              className="bg-stone-900 text-white h-8 sm:h-9 px-4 sm:px-5 rounded-full text-xs font-bold uppercase tracking-wider shrink-0 hover:bg-stone-800 active:scale-95 transition-all shadow-xs cursor-pointer flex items-center justify-center whitespace-nowrap"
             >
-              Book Now
+              {hotel.stayType === 'entire_place' ? 'Book Entire Space' : 'Book Now'}
             </button>
           </div>
         </div>
@@ -901,6 +1029,13 @@ export default function HotelDetails() {
           )}
 
           <div className="mt-6 flex flex-wrap items-center gap-3">
+            {hotel.stayType === 'entire_place' && (
+              <div className="inline-flex items-center gap-1.5 bg-emerald-800 text-white px-3.5 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider shadow-2xs">
+                <Building className="h-3.5 w-3.5 text-emerald-300" />
+                <span>Entire Place · Whole Space</span>
+              </div>
+            )}
+
             {ratingSummary && (
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-1.5 bg-stone-900 text-white px-4 py-2 rounded-full">
@@ -935,7 +1070,16 @@ export default function HotelDetails() {
         <div className="lg:col-span-2">
 
           <h2 className="text-2xl sm:text-3xl lg:text-4xl font-serif text-stone-900 mb-2.5 sm:mb-4 tracking-tight">About this property</h2>
-          <p className="text-stone-600 text-sm sm:text-base md:text-base lg:text-lg leading-relaxed mb-6 sm:mb-8 lg:mb-12">{hotel.description}</p>
+          <FormattedDescription
+            text={hotel.description}
+            collapsible={true}
+            collapsedHeight={130}
+            expandLabel="See more details"
+            collapseLabel="Show less"
+            fadeGradientClass="from-transparent to-white"
+            buttonClassName="text-stone-900 font-semibold text-xs sm:text-sm underline decoration-stone-300 hover:decoration-stone-800"
+            className="text-stone-600 text-sm sm:text-base md:text-base lg:text-lg leading-relaxed mb-6 sm:mb-8 lg:mb-12"
+          />
 
           {/* Spaces Section */}
           <div className="mb-8 sm:mb-10 lg:mb-14">
@@ -1006,7 +1150,26 @@ export default function HotelDetails() {
                   </div>
                 </>
               ) : (
-                <h2 className="text-2xl sm:text-3xl lg:text-4xl font-serif text-stone-900 tracking-tight">Available Rooms</h2>
+                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2">
+                  <div>
+                    <h2 className="text-2xl sm:text-3xl lg:text-4xl font-serif text-stone-900 tracking-tight">
+                      {hotel.stayType === 'entire_place' ? 'Book Entire Space' : 'Available Rooms'}
+                    </h2>
+                    {hotel.stayType === 'entire_place' && (
+                      <p className="text-xs sm:text-sm text-stone-600 mt-1">
+                        This property is booked as a single exclusive space. You will have private access to the entire property.
+                      </p>
+                    )}
+                  </div>
+                  {hotel.stayType === 'entire_place' && hotel.entirePlaceDetails && (
+                    <div className="flex items-center gap-2 text-xs font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200/80 px-3.5 py-1.5 rounded-full shrink-0">
+                      <Building className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>
+                        {hotel.entirePlaceDetails.bedrooms || 2} Bedrooms · {hotel.entirePlaceDetails.bathrooms || 2} Bathrooms · Up to {hotel.entirePlaceDetails.maxGuests || 6} Guests
+                      </span>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
             
@@ -1096,7 +1259,16 @@ export default function HotelDetails() {
                           </div>
                         </div>
                         
-                        <p className="text-stone-500 text-xs sm:text-sm leading-relaxed mb-3 sm:mb-4 font-light line-clamp-2 sm:line-clamp-3">{room.description}</p>
+                        <FormattedDescription
+                          text={room.description}
+                          collapsible={true}
+                          collapsedHeight={64}
+                          expandLabel="See more details"
+                          collapseLabel="Show less"
+                          fadeGradientClass="from-transparent to-white"
+                          buttonClassName="text-stone-900 font-semibold text-xs"
+                          className="text-stone-500 text-xs sm:text-sm leading-relaxed mb-3 sm:mb-4 font-light"
+                        />
                         
                         <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-3 sm:mb-4">
                           {isSoldOut ? (
@@ -1157,11 +1329,13 @@ export default function HotelDetails() {
                                 <span className="text-xl sm:text-2xl font-serif font-bold text-stone-900 tracking-tight">
                                   <PriceDisplay amount={baseRoomPrice} currency={roomDisplayCurrency} />
                                 </span>
-                                <span className="text-stone-500 uppercase text-[9px] sm:text-[10px] font-bold">/ night</span>
+                                <span className="text-stone-500 uppercase text-[9px] sm:text-[10px] font-bold">
+                                  / night {hotel.stayType === 'entire_place' ? '(whole space)' : ''}
+                                </span>
                               </div>
                               {roomCurrencies(room).filter(c => c !== roomDisplayCurrency).map((code, cIdx) => (
                                 <div key={`${code}-${cIdx}`} className="text-[11px] sm:text-xs text-stone-400 mt-0.5 font-medium">
-                                  or <PriceDisplay amount={roomPrice(room, code) ?? 0} currency={code} /> / night
+                                  or <PriceDisplay amount={roomPrice(room, code) ?? 0} currency={code} /> / night {hotel.stayType === 'entire_place' ? '(whole space)' : ''}
                                 </div>
                               ))}
                             </div>
@@ -1172,7 +1346,7 @@ export default function HotelDetails() {
                           disabled={isSoldOut || !isBookable}
                           className="bg-stone-900 text-white px-5 sm:px-6 py-2 sm:py-2.5 rounded-full font-bold uppercase tracking-wider text-[11px] sm:text-xs hover:bg-emerald-700 active:scale-95 transition-all duration-300 disabled:bg-stone-300 disabled:hover:bg-stone-300 disabled:active:scale-100 disabled:cursor-not-allowed whitespace-nowrap shadow-2xs cursor-pointer"
                         >
-                          {isSoldOut ? 'Unavailable' : 'Reserve'}
+                          {isSoldOut ? 'Unavailable' : (hotel.stayType === 'entire_place' ? 'Book Entire Space' : 'Reserve')}
                         </button>
                       </div>
                     </div>
@@ -1268,7 +1442,16 @@ export default function HotelDetails() {
                           </div>
                         </div>
                         
-                        <p className="text-stone-500 text-xs sm:text-sm leading-relaxed mb-3 sm:mb-4 font-light">{room.description}</p>
+                        <FormattedDescription
+                          text={room.description}
+                          collapsible={true}
+                          collapsedHeight={64}
+                          expandLabel="See more details"
+                          collapseLabel="Show less"
+                          fadeGradientClass="from-transparent to-white"
+                          buttonClassName="text-stone-900 font-semibold text-xs"
+                          className="text-stone-500 text-xs sm:text-sm leading-relaxed mb-3 sm:mb-4 font-light"
+                        />
                         
                         {room.amenities && room.amenities.length > 0 && (
                           <div className="flex flex-wrap gap-1 sm:gap-1.5 mb-3 sm:mb-4">
@@ -1468,6 +1651,48 @@ export default function HotelDetails() {
                   </div>
                 </div>
               )}
+
+              {/* Conference Guidelines Detailed Notes */}
+              {activeSpaceTab === 'conferences' && hotel.conferenceGuidelines && (
+                <div className="mt-3 p-3 sm:p-3.5 bg-stone-50 border border-stone-200/80 rounded-xl">
+                  <div className="flex items-center gap-1.5 mb-1.5 text-stone-700">
+                    <Info className="w-3.5 h-3.5 text-stone-600 shrink-0" />
+                    <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-stone-500">Conference Guidelines &amp; Rules</span>
+                  </div>
+                  <FormattedDescription
+                    text={hotel.conferenceGuidelines}
+                    collapsible={true}
+                    collapsedHeight={75}
+                    expandLabel="See more details"
+                    collapseLabel="Show less"
+                    fadeGradientClass="from-transparent via-stone-50/60 to-stone-50"
+                    buttonClassName="text-stone-900 font-semibold text-xs"
+                    className="text-stone-700 text-xs sm:text-sm"
+                    paragraphClassName="text-stone-700 leading-relaxed mb-1.5 last:mb-0"
+                  />
+                </div>
+              )}
+
+              {/* Deposit & Payment Instructions */}
+              {hotel.depositInfo?.instructions && (
+                <div className="mt-3 p-3 sm:p-3.5 bg-amber-50/70 border border-amber-200/70 rounded-xl">
+                  <div className="flex items-center gap-1.5 mb-1.5 text-amber-900">
+                    <CreditCard className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                    <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-amber-800">Deposit &amp; Payment Instructions</span>
+                  </div>
+                  <FormattedDescription
+                    text={hotel.depositInfo.instructions}
+                    collapsible={true}
+                    collapsedHeight={75}
+                    expandLabel="See more details"
+                    collapseLabel="Show less"
+                    fadeGradientClass="from-transparent via-amber-50/60 to-amber-50"
+                    buttonClassName="text-amber-950 font-bold text-xs"
+                    className="text-amber-900 text-xs sm:text-sm"
+                    paragraphClassName="text-amber-900 leading-relaxed mb-1.5 last:mb-0"
+                  />
+                </div>
+              )}
             </div>
 
             <div className="pt-3 mt-3 border-t border-stone-100 text-[11px] sm:text-xs text-stone-500 flex items-start sm:items-center gap-2">
@@ -1508,9 +1733,22 @@ export default function HotelDetails() {
               </div>
 
               {hotel.locationNotes && (
-                <div className="p-3 bg-amber-50/80 border border-amber-200/70 rounded-xl">
-                  <h4 className="text-[9px] sm:text-[10px] font-bold text-amber-900 uppercase tracking-wider mb-0.5">Host Notes</h4>
-                  <p className="text-amber-800 text-[11px] sm:text-xs leading-relaxed">{hotel.locationNotes}</p>
+                <div className="p-3.5 sm:p-4 bg-amber-50/80 border border-amber-200/70 rounded-xl">
+                  <h4 className="text-[10px] sm:text-[11px] font-bold text-amber-900 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                    <Info className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                    <span>Host Notes &amp; Arrival Directions</span>
+                  </h4>
+                  <FormattedDescription
+                    text={hotel.locationNotes}
+                    collapsible={true}
+                    collapsedHeight={80}
+                    expandLabel="See more details"
+                    collapseLabel="Show less"
+                    fadeGradientClass="from-transparent via-amber-50/60 to-amber-50"
+                    buttonClassName="text-amber-950 font-bold text-xs"
+                    className="text-amber-900 text-xs sm:text-sm"
+                    paragraphClassName="text-amber-900 text-xs sm:text-sm leading-relaxed mb-1.5 last:mb-0"
+                  />
                 </div>
               )}
             </div>
@@ -1921,12 +2159,28 @@ export default function HotelDetails() {
                   disabled={saving}
                   className="shrink-0 bg-stone-900 text-white px-7 py-3.5 rounded-full font-semibold text-sm hover:bg-stone-800 transition disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  {saving ? 'Submitting…' : 'Request booking'}
+                  {saving ? (isOnline ? 'Submitting…' : 'Saving offline…') : !isOnline ? 'Save booking offline' : 'Request booking'}
                 </button>
               </div>
             }
           >
             <form id="booking-form" onSubmit={handleManualBook} className="space-y-5" noValidate>
+              {!isOnline && (
+                <div className="p-3.5 bg-amber-50 border border-amber-200/80 rounded-xl flex items-start gap-3 text-xs text-amber-900">
+                  <div className="w-6 h-6 rounded-lg bg-amber-100 flex items-center justify-center shrink-0 mt-0.5 text-amber-700">
+                    <HardDrive className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="space-y-0.5 min-w-0">
+                    <p className="font-bold flex items-center gap-1.5">
+                      <span>Offline Booking Mode (IndexedDB)</span>
+                      <span className="text-[10px] font-mono font-normal bg-amber-100 px-1.5 py-0.2 rounded text-amber-800">Auto-sync</span>
+                    </p>
+                    <p className="text-amber-800/90 text-[11px] leading-relaxed">
+                      You are currently offline. Your booking request will be saved securely to IndexedDB on this device and automatically synced to Firebase once your connection is restored.
+                    </p>
+                  </div>
+                </div>
+              )}
               {/* Hidden from sight and from screen readers, and never focusable.
                   Anything that fills it in is not a person. */}
               <div aria-hidden="true" className="absolute -left-[9999px] top-auto h-px w-px overflow-hidden">

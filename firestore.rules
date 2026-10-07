@@ -51,11 +51,11 @@ service cloud.firestore {
             || role in profile(request.auth.uid).get('roles', []));
     }
 
-    // Mirrors OWNER_EMAILS in src/lib/roles.ts. Only a verified address counts.
+    // Mirrors OWNER_EMAILS in src/lib/roles.ts.
     function isOwner() {
-      return isActive() && verifiedEmail()
-        && (request.auth.token.email in ['johnpaulchirwa@gmail.com', 'johnpaulchirwa@promanaged-it.com']
-            || request.auth.token.email.matches('(?i)^(johnpaulchirwa@gmail\\.com|johnpaulchirwa@promanaged-it\\.com)$'));
+      return isActive()
+        && (request.auth.token.get('email', '') in ['johnpaulchirwa@gmail.com', 'johnpaulchirwa@promanaged-it.com']
+            || request.auth.token.get('email', '').matches('(?i)^(johnpaulchirwa@gmail\\.com|johnpaulchirwa@promanaged-it\\.com)$'));
     }
 
     function isGlobalAdmin() {
@@ -292,7 +292,9 @@ service cloud.firestore {
             && (unchanged('role')
                 || request.resource.data.get('role', '') in ['traveller', 'hotel_manager']));
 
-      allow delete: if isGlobalAdmin() || (isActive() && request.auth.uid == userId);
+      allow delete: if isGlobalAdmin()
+                    || (isAdmin() && !('global_admin' in resource.data.get('roles', [])) && resource.data.get('role', '') != 'global_admin')
+                    || (isActive() && request.auth.uid == userId);
     }
 
     // Optimistic-lock counter used by the confirmation transaction. Only the

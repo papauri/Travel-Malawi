@@ -23,10 +23,11 @@ body {
 .scrollbar-slim {
   scrollbar-width: thin;
   scrollbar-color: #d6d3d1 transparent;
+  -webkit-overflow-scrolling: touch;
 }
 .scrollbar-slim::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 .scrollbar-slim::-webkit-scrollbar-track {
   background: transparent;

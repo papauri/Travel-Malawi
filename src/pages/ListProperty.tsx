@@ -23,7 +23,7 @@ import {
   Images, Loader2, LocateFixed, Mail, MapPin, MessageCircle, Phone, Plus, Send,
   Award, FileText, CheckCircle2, Wallet, X, DollarSign, Coins, Trash2, Sliders, ChevronDown, ChevronUp,
   RefreshCw, TrendingUp, HelpCircle, AlertTriangle, BookOpen,
-  User, UserCheck, Shield, Building, ConciergeBell, Wand2, BedDouble,
+  User, UserCheck, Shield, Building, ConciergeBell, Wand2, BedDouble, Sparkles, Home,
 } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -38,6 +38,7 @@ import LocationPicker from '../components/LocationPicker';
 import AIAssistantButton from '../components/AIAssistantButton';
 import PropertyDocumentImporter from '../components/PropertyDocumentImporter';
 import { useAIAssistant } from '../hooks/useAIAssistant';
+import { analyzeDescriptionLocal, DescriptionAnalysisResult } from '../lib/descriptionAnalyzer';
 import { DECORATIVE_IMAGE, getHotelImage, getDefaultImageForCategory, localImagesForName } from '../lib/images';
 import { db } from '../lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
@@ -142,15 +143,22 @@ function getDraftStorageKey(uid?: string | null): string {
   return uid ? `travel_malawi_listing_draft_${uid}` : 'travel_malawi_listing_draft_guest';
 }
 
-const STEPS = [
-  { title: 'The basics', blurb: 'What it is called, and where it is.' },
-  { title: 'The place', blurb: 'What a guest should know before booking.' },
-  { title: 'Photographs', blurb: 'The pictures that do the selling.' },
-  { title: 'Rooms & Rates', blurb: 'What guests will actually book.' },
-  { title: 'Management & Contact', blurb: 'Designate the property manager, contacts, and check-in hours.' },
-  { title: 'Plan & Pricing', blurb: 'Provisioning options.' },
-  { title: 'Check it over', blurb: 'One last look before it goes for review.' },
-];
+export function getSteps(stayType?: string) {
+  return [
+    { title: 'The basics', blurb: 'What it is called, where it is, and how it is booked.' },
+    { title: 'The place', blurb: 'What a guest should know before booking.' },
+    { title: 'Photographs', blurb: 'The pictures that do the selling.' },
+    {
+      title: stayType === 'entire_place' ? 'Whole Space & Rate' : 'Rooms & Rates',
+      blurb: stayType === 'entire_place' ? 'Whole house capacity, specifications, and nightly rate.' : 'What guests will actually book.',
+    },
+    { title: 'Management & Contact', blurb: 'Designate the property manager, contacts, and check-in hours.' },
+    { title: 'Plan & Pricing', blurb: 'Provisioning options.' },
+    { title: 'Check it over', blurb: 'One last look before it goes for review.' },
+  ];
+}
+
+const STEPS = getSteps();
 
 /** Every step that carries fields — used to find the first one still wrong. */
 const FIELD_STEPS = [0, 1, 2, 3, 4];
@@ -669,6 +677,7 @@ export default function ListProperty() {
     setDraft(current => ({ ...current, [key]: value }));
   }, []);
 
+  const steps = useMemo(() => getSteps(draft.stayType), [draft.stayType]);
   const stepErrors = useMemo(() => errorsForStep(draft, step), [draft, step]);
   const allErrors = useMemo(() => validateDraft(draft), [draft]);
   const visible = showErrors ? stepErrors : {};
@@ -680,7 +689,7 @@ export default function ListProperty() {
       return;
     }
     setShowErrors(false);
-    setStep(s => Math.min(STEPS.length - 1, s + 1));
+    setStep(s => Math.min(steps.length - 1, s + 1));
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -748,6 +757,66 @@ export default function ListProperty() {
   };
 
   // Optional AI Helper: Suggest relevant amenities
+  const [linkingDescription, setLinkingDescription] = useState(false);
+
+  const handleLinkDescription = async () => {
+    const desc = draft.description?.trim();
+    if (!desc) {
+      toast.error('Write or paste a description first to link amenities and category.');
+      return;
+    }
+    setLinkingDescription(true);
+    try {
+      let matchedCats: PropertyCategory[] = [];
+      let matchedAmens: string[] = [];
+
+      if (aiStatus.enabled && aiStatus.available) {
+        const res = await generateDetailed<DescriptionAnalysisResult>({
+          action: 'link_description_to_amenities_and_category',
+          entityType: 'property',
+          currentText: desc,
+          details: {
+            name: draft.name,
+            location: draft.location,
+          },
+        });
+        if (res?.data) {
+          matchedCats = res.data.categories || [];
+          matchedAmens = res.data.matchedAmenities || [];
+        }
+      }
+
+      if (matchedCats.length === 0 && matchedAmens.length === 0) {
+        const local = analyzeDescriptionLocal(desc, draft.name, draft.location);
+        matchedCats = local.categories;
+        matchedAmens = local.matchedAmenities;
+      }
+
+      if (matchedCats.length > 0 && !draft.category) {
+        set('category', matchedCats[0]);
+      }
+      if (matchedAmens.length > 0) {
+        const currentAmens = draft.amenities || [];
+        const combined = Array.from(new Set([...currentAmens, ...matchedAmens]));
+        set('amenities', combined);
+      }
+
+      toast.success(`Linked ${matchedAmens.length} amenities and category '${matchedCats[0] || draft.category}' from description!`);
+    } catch {
+      const local = analyzeDescriptionLocal(desc, draft.name, draft.location);
+      if (local.categories.length > 0 && !draft.category) {
+        set('category', local.categories[0]);
+      }
+      if (local.matchedAmenities.length > 0) {
+        const combined = Array.from(new Set([...(draft.amenities || []), ...local.matchedAmenities]));
+        set('amenities', combined);
+      }
+      toast.success(`Linked ${local.matchedAmenities.length} amenities from description!`);
+    } finally {
+      setLinkingDescription(false);
+    }
+  };
+
   const handleSuggestAmenities = async () => {
     setSuggestingAmenities(true);
     try {
@@ -1188,10 +1257,10 @@ export default function ListProperty() {
 
         <header className="mb-5 sm:mb-7 md:mb-8">
           <p className="mb-1.5 sm:mb-2 text-[0.65rem] sm:text-[0.7rem] font-bold uppercase tracking-[0.2em] text-emerald-700">
-            Step {step + 1} of {STEPS.length}
+            Step {step + 1} of {steps.length}
           </p>
-          <h1 className="font-serif text-xl sm:text-2xl md:text-3xl lg:text-4xl tracking-tight text-stone-900">{STEPS[step].title}</h1>
-          <p className="mt-1 sm:mt-1.5 text-xs sm:text-sm md:text-base text-stone-500">{STEPS[step].blurb}</p>
+          <h1 className="font-serif text-xl sm:text-2xl md:text-3xl lg:text-4xl tracking-tight text-stone-900">{steps[step].title}</h1>
+          <p className="mt-1 sm:mt-1.5 text-xs sm:text-sm md:text-base text-stone-500">{steps[step].blurb}</p>
         </header>
 
         {/* Mobile & Tablet Step Dropdown */}
@@ -1208,7 +1277,7 @@ export default function ListProperty() {
               }}
               className="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 text-xs font-semibold text-stone-800 appearance-none pr-8 shadow-2xs focus:ring-2 focus:ring-stone-900 focus:outline-none"
             >
-              {STEPS.map((s, index) => {
+              {steps.map((s, index) => {
                 const done = index < step && isStepComplete(draft, index);
                 const reachable = index <= step || FIELD_STEPS.slice(0, index).every(i => isStepComplete(draft, i));
                 return (
@@ -1225,7 +1294,7 @@ export default function ListProperty() {
         {/* Progress. Each completed step stays clickable so a host can go back
             and correct something without losing the rest. */}
         <ol className="mb-5 sm:mb-7 md:mb-8 grid grid-cols-7 gap-1.5 sm:gap-2">
-          {STEPS.map((s, index) => {
+          {steps.map((s, index) => {
             const done = index < step && isStepComplete(draft, index);
             const active = index === step;
             const reachable = index <= step || FIELD_STEPS.slice(0, index).every(i => isStepComplete(draft, i));
@@ -1517,6 +1586,79 @@ export default function ListProperty() {
                 <FieldError message={visible.name} />
               </div>
 
+              {/* Stay Type: Room-by-Room vs Whole House / Entire Place */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className={labelClass}>How is this stay booked by guests?</span>
+                  <span className="text-[11px] text-stone-500">Adapts pricing &amp; room setup</span>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    aria-pressed={draft.stayType !== 'entire_place'}
+                    onClick={() => set('stayType', 'rooms')}
+                    className={`relative rounded-2xl border p-4 text-left transition cursor-pointer ${
+                      draft.stayType !== 'entire_place'
+                        ? 'border-stone-900 bg-stone-900 text-white shadow-md'
+                        : 'border-stone-200 bg-stone-50/70 hover:bg-stone-100/90 text-stone-900'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <BedDouble className={`h-4 w-4 ${draft.stayType !== 'entire_place' ? 'text-amber-400' : 'text-stone-500'}`} />
+                        <span className="block text-sm font-bold">Room-by-Room Stay</span>
+                      </div>
+                      {draft.stayType !== 'entire_place' && (
+                        <Check className="h-4 w-4 text-white" />
+                      )}
+                    </div>
+                    <span className={`mt-1.5 block text-xs leading-relaxed ${draft.stayType !== 'entire_place' ? 'text-white/80' : 'text-stone-500'}`}>
+                      Guests book individual rooms, suites, chalets, or safari tents. Best for hotels, lodges, safari camps, and multi-unit B&amp;Bs.
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    aria-pressed={draft.stayType === 'entire_place'}
+                    onClick={() => {
+                      set('stayType', 'entire_place');
+                      if (!draft.entirePlaceDetails) {
+                        set('entirePlaceDetails', {
+                          propertyType: 'Cottage',
+                          bedrooms: 2,
+                          bathrooms: 2,
+                          beds: 3,
+                          maxGuests: 6,
+                          ratePerNightUsd: 120,
+                          ratePerNightMwk: 210000,
+                          hasPrivateKitchen: true,
+                          hasDedicatedHost: true,
+                        });
+                      }
+                    }}
+                    className={`relative rounded-2xl border p-4 text-left transition cursor-pointer ${
+                      draft.stayType === 'entire_place'
+                        ? 'border-stone-900 bg-stone-900 text-white shadow-md'
+                        : 'border-stone-200 bg-stone-50/70 hover:bg-stone-100/90 text-stone-900'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Home className={`h-4 w-4 ${draft.stayType === 'entire_place' ? 'text-emerald-400' : 'text-stone-500'}`} />
+                        <span className="block text-sm font-bold">Whole House / Entire Place</span>
+                      </div>
+                      {draft.stayType === 'entire_place' && (
+                        <Check className="h-4 w-4 text-white" />
+                      )}
+                    </div>
+                    <span className={`mt-1.5 block text-xs leading-relaxed ${draft.stayType === 'entire_place' ? 'text-white/80' : 'text-stone-500'}`}>
+                      Guests book the whole property exclusively (private villa, lakeside cottage, entire guest house). Rented as a single space, not per room.
+                    </span>
+                  </button>
+                </div>
+              </div>
+
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <span className={labelClass}>Which category fits best?</span>
@@ -1601,6 +1743,9 @@ export default function ListProperty() {
                   placeholder="Turn off the M5 at the mission, 400 m of dirt road, gate on the left."
                   className={fieldClass}
                 />
+                <p className="text-xs text-stone-400 mt-1">
+                  Arrival advice, landmarks, or road conditions. Formatting, line breaks, and dashes are preserved.
+                </p>
               </div>
 
               <div>
@@ -1677,10 +1822,28 @@ export default function ListProperty() {
                   placeholder="Ten chalets under the fig trees, right on the sand. Breakfast on the deck, boats to the island at nine, and the fire lit every evening."
                   className={fieldClass}
                 />
-                <div className="mt-2 flex items-center justify-between text-xs">
-                  <span className="text-stone-400">
-                    What is the view, the food, the walk to the water? Skip the sales talk.
-                  </span>
+                <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="text-stone-400">
+                      What is the view, the food, the walk to the water? Formatting is preserved.
+                    </span>
+                    {draft.description.trim().length >= 10 && (
+                      <button
+                        type="button"
+                        onClick={handleLinkDescription}
+                        disabled={linkingDescription}
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-700 hover:text-stone-900 bg-stone-100 hover:bg-stone-200 border border-stone-200/80 px-2.5 py-1 rounded-lg transition shadow-2xs cursor-pointer disabled:opacity-50"
+                        title="Automatically link matching common amenities and property category"
+                      >
+                        {linkingDescription ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-stone-600" />
+                        ) : (
+                          <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                        )}
+                        <span>Link to Amenities & Category</span>
+                      </button>
+                    )}
+                  </div>
                   <span className={draft.description.trim().length < DESCRIPTION_MIN ? 'text-stone-400' : 'text-emerald-600'}>
                     {draft.description.trim().length} / {DESCRIPTION_MAX}
                   </span>
@@ -1854,7 +2017,272 @@ export default function ListProperty() {
             </div>
           )}
 
-          {step === 3 && (
+          {step === 3 && draft.stayType === 'entire_place' && (
+            <div className="space-y-8">
+              <div className="rounded-2xl border border-stone-200 bg-stone-50 p-6 space-y-6">
+                <div>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <div className="inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-800 text-xs font-bold px-3 py-1 rounded-full mb-2">
+                        <Home className="w-3.5 h-3.5" />
+                        <span>Whole Space / Entire Property Setup</span>
+                      </div>
+                      <h3 className="text-lg font-serif font-bold text-stone-900">Entire Place Capacity &amp; Nightly Rate</h3>
+                      <p className="text-sm text-stone-600 mt-0.5">
+                        Guests book the whole place as a single exclusive reservation. Set the property specifications and whole-property rate.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 self-start sm:self-auto bg-stone-200/60 px-3 py-1.5 rounded-full text-xs font-semibold text-stone-700">
+                      <Coins className="w-3.5 h-3.5 text-stone-500" />
+                      <span>Benchmark: ~1,750 MK per USD</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Property Type / Style */}
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-stone-600 mb-2">
+                    Property Style / Type
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+                    {['Cottage', 'Villa', 'Whole Guest House', 'Entire B&B', 'Chalet', 'Holiday Home'].map((type) => {
+                      const selected = (draft.entirePlaceDetails?.propertyType || 'Cottage') === type;
+                      return (
+                        <button
+                          key={type}
+                          type="button"
+                          onClick={() => {
+                            set('entirePlaceDetails', {
+                              ...(draft.entirePlaceDetails || {}),
+                              propertyType: type,
+                            });
+                          }}
+                          className={`px-3 py-2.5 rounded-xl text-xs font-semibold border transition text-center cursor-pointer ${
+                            selected
+                              ? 'bg-stone-900 text-white border-stone-900 shadow-sm'
+                              : 'bg-white text-stone-700 border-stone-200 hover:border-stone-400'
+                          }`}
+                        >
+                          {type}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Capacity & Space Specs */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-white p-4 rounded-xl border border-stone-200">
+                  <div>
+                    <label className="block text-xs font-bold text-stone-600 mb-1">Bedrooms</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={20}
+                      value={draft.entirePlaceDetails?.bedrooms ?? 2}
+                      onChange={(e) => {
+                        set('entirePlaceDetails', {
+                          ...(draft.entirePlaceDetails || {}),
+                          bedrooms: Math.max(1, Number(e.target.value)),
+                        });
+                      }}
+                      className={fieldClass}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-stone-600 mb-1">Bathrooms</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={20}
+                      value={draft.entirePlaceDetails?.bathrooms ?? 2}
+                      onChange={(e) => {
+                        set('entirePlaceDetails', {
+                          ...(draft.entirePlaceDetails || {}),
+                          bathrooms: Math.max(1, Number(e.target.value)),
+                        });
+                      }}
+                      className={fieldClass}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-stone-600 mb-1">Total Beds</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={30}
+                      value={draft.entirePlaceDetails?.beds ?? 3}
+                      onChange={(e) => {
+                        set('entirePlaceDetails', {
+                          ...(draft.entirePlaceDetails || {}),
+                          beds: Math.max(1, Number(e.target.value)),
+                        });
+                      }}
+                      className={fieldClass}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-stone-600 mb-1">Max Guests</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={50}
+                      value={draft.entirePlaceDetails?.maxGuests ?? 6}
+                      onChange={(e) => {
+                        set('entirePlaceDetails', {
+                          ...(draft.entirePlaceDetails || {}),
+                          maxGuests: Math.max(1, Number(e.target.value)),
+                        });
+                      }}
+                      className={fieldClass}
+                    />
+                  </div>
+                </div>
+
+                {/* Nightly Rates for the Whole Property */}
+                <div className="bg-white p-5 rounded-xl border border-stone-200 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-bold text-stone-900">Whole Property Nightly Rate</h4>
+                    <span className="text-xs text-stone-500">Dual currency support</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-stone-700 mb-1">Rate in USD ($) / night</label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-3 text-stone-400 font-bold">$</span>
+                        <input
+                          type="number"
+                          min={0}
+                          value={draft.entirePlaceDetails?.ratePerNightUsd ?? 120}
+                          onChange={(e) => {
+                            const usd = Number(e.target.value);
+                            set('entirePlaceDetails', {
+                              ...(draft.entirePlaceDetails || {}),
+                              ratePerNightUsd: usd,
+                            });
+                          }}
+                          placeholder="120"
+                          className={`${fieldClass} pl-8`}
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const usd = draft.entirePlaceDetails?.ratePerNightUsd ?? 120;
+                          const mwk = convertUsdToMwk(usd);
+                          set('entirePlaceDetails', {
+                            ...(draft.entirePlaceDetails || {}),
+                            ratePerNightMwk: mwk,
+                          });
+                          toast.success(`Calculated MK rate: MK ${mwk.toLocaleString()}`);
+                        }}
+                        className="mt-1 text-[11px] text-emerald-700 font-semibold hover:underline cursor-pointer"
+                      >
+                        Auto-calculate MK from USD &rarr;
+                      </button>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-stone-700 mb-1">Rate in Malawi Kwacha (MK) / night</label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-3 text-stone-400 font-bold text-xs">MK</span>
+                        <input
+                          type="number"
+                          min={0}
+                          step={5000}
+                          value={draft.entirePlaceDetails?.ratePerNightMwk ?? 210000}
+                          onChange={(e) => {
+                            const mwk = Number(e.target.value);
+                            set('entirePlaceDetails', {
+                              ...(draft.entirePlaceDetails || {}),
+                              ratePerNightMwk: mwk,
+                            });
+                          }}
+                          placeholder="210000"
+                          className={`${fieldClass} pl-10`}
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const mwk = draft.entirePlaceDetails?.ratePerNightMwk ?? 210000;
+                          const usd = convertMwkToUsd(mwk);
+                          set('entirePlaceDetails', {
+                            ...(draft.entirePlaceDetails || {}),
+                            ratePerNightUsd: usd,
+                          });
+                          toast.success(`Calculated USD rate: $${usd}`);
+                        }}
+                        className="mt-1 text-[11px] text-blue-700 font-semibold hover:underline cursor-pointer"
+                      >
+                        Auto-calculate USD from MK &rarr;
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Exclusive Inclusions */}
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-stone-600 mb-2">
+                    Key Whole-Space Inclusions
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                    {[
+                      { key: 'hasPrivateKitchen', label: 'Fully Equipped Kitchen' },
+                      { key: 'hasDedicatedHost', label: 'Dedicated Caretaker / Cook' },
+                      { key: 'hasPrivatePool', label: 'Private Swimming Pool' },
+                      { key: 'hasLakeAccess', label: 'Direct Lake / Beach Access' },
+                      { key: 'hasGarden', label: 'Private Lawn / Garden' },
+                    ].map((inc) => {
+                      const checked = Boolean((draft.entirePlaceDetails as any)?.[inc.key]);
+                      return (
+                        <button
+                          key={inc.key}
+                          type="button"
+                          onClick={() => {
+                            set('entirePlaceDetails', {
+                              ...(draft.entirePlaceDetails || {}),
+                              [inc.key]: !checked,
+                            });
+                          }}
+                          className={`p-3 rounded-xl border text-left text-xs font-semibold flex items-center justify-between transition cursor-pointer ${
+                            checked
+                              ? 'bg-emerald-50 border-emerald-300 text-emerald-950 shadow-2xs'
+                              : 'bg-white border-stone-200 text-stone-700 hover:border-stone-300'
+                          }`}
+                        >
+                          <span>{inc.label}</span>
+                          <span className={`w-4 h-4 rounded flex items-center justify-center text-[10px] ${checked ? 'bg-emerald-600 text-white' : 'border border-stone-300'}`}>
+                            {checked ? '✓' : ''}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Whole House Description Note */}
+                <div>
+                  <label className="block text-xs font-bold text-stone-700 mb-1">
+                    Whole House Guest Notes &amp; Arrangement <span className="font-normal text-stone-400">(optional)</span>
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={draft.entirePlaceDetails?.wholeHouseDescription || ''}
+                    onChange={(e) => {
+                      set('entirePlaceDetails', {
+                        ...(draft.entirePlaceDetails || {}),
+                        wholeHouseDescription: e.target.value,
+                      });
+                    }}
+                    placeholder="e.g. Entire 3-bedroom lakeside villa with private cook. All bedrooms have en-suite bathrooms and lake views."
+                    className={fieldClass}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {step === 3 && draft.stayType !== 'entire_place' && (
             <div className="space-y-8">
               <div className="rounded-2xl border border-stone-200 bg-stone-50 p-6 space-y-6">
                 <div>
@@ -3096,50 +3524,110 @@ export default function ListProperty() {
 
                   {/* Room Types & Pricing Summary in Review */}
                   <div className="mt-6 border-t border-stone-100 pt-6">
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-stone-800">
-                        Configured Room Types & Rates ({(draft.rooms || []).length})
-                      </h4>
-                      <button
-                        type="button"
-                        onClick={() => setStep(3)}
-                        className="text-xs font-semibold text-stone-700 hover:text-stone-900 hover:underline"
-                      >
-                        Edit Rooms &rarr;
-                      </button>
-                    </div>
+                    {draft.stayType === 'entire_place' ? (
+                      <div>
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                            <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full">
+                              <Home className="w-3 h-3 text-emerald-700" /> Entire Place
+                            </span>
+                            <h4 className="text-xs font-bold uppercase tracking-wider text-stone-800">
+                              Whole Property Setup &amp; Nightly Rate
+                            </h4>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setStep(3)}
+                            className="text-xs font-semibold text-stone-700 hover:text-stone-900 hover:underline cursor-pointer"
+                          >
+                            Edit Whole Space &rarr;
+                          </button>
+                        </div>
 
-                    {(draft.rooms || []).length === 0 ? (
-                      <p className="text-xs text-amber-600 bg-amber-50 p-3 rounded-xl border border-amber-200">
-                        ⚠️ No room types added yet. Please add at least one room in Step 3 before publishing.
-                      </p>
-                    ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {(draft.rooms || []).map((room, rIdx) => (
-                          <div key={`draft-summary-room-${room.id || rIdx}-${rIdx}`} className="bg-stone-50 p-3.5 rounded-xl border border-stone-200 text-xs space-y-1.5">
-                            <div className="flex items-start justify-between gap-2">
-                              <span className="font-bold text-stone-900 text-sm">{room.name || `Room ${rIdx + 1}`}</span>
-                              <span className="text-[10px] font-semibold text-stone-500 bg-white px-2 py-0.5 rounded border border-stone-200">
-                                {room.quantity || 1} available
-                              </span>
-                            </div>
-                            <p className="text-stone-600 line-clamp-1">{room.description || 'No description provided'}</p>
-                            <div className="flex flex-wrap items-center gap-2 pt-1 font-semibold">
-                              {room.prices?.USD ? (
-                                <span className="text-emerald-800 bg-emerald-100/70 px-2 py-0.5 rounded">
-                                  ${room.prices.USD} USD / night
+                        <div className="bg-emerald-50/60 p-4 rounded-xl border border-emerald-200/80 space-y-2">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <span className="font-serif font-bold text-base text-stone-900">
+                              Entire {draft.entirePlaceDetails?.propertyType || 'Place'}
+                            </span>
+                            <div className="flex items-center gap-2">
+                              {draft.entirePlaceDetails?.ratePerNightUsd ? (
+                                <span className="text-emerald-900 font-bold bg-white px-2.5 py-1 rounded-lg border border-emerald-200 text-xs shadow-2xs">
+                                  ${draft.entirePlaceDetails.ratePerNightUsd} USD / night
                                 </span>
                               ) : null}
-                              {room.prices?.MWK ? (
-                                <span className="text-blue-800 bg-blue-100/70 px-2 py-0.5 rounded">
-                                  MK {Number(room.prices.MWK).toLocaleString()} / night
+                              {draft.entirePlaceDetails?.ratePerNightMwk ? (
+                                <span className="text-blue-900 font-bold bg-white px-2.5 py-1 rounded-lg border border-blue-200 text-xs shadow-2xs">
+                                  MK {Number(draft.entirePlaceDetails.ratePerNightMwk).toLocaleString()} / night
                                 </span>
                               ) : null}
-                              <span className="text-stone-400 font-normal">· Sleeps {room.maxGuests || 2}</span>
                             </div>
                           </div>
-                        ))}
+
+                          <div className="flex flex-wrap items-center gap-2 text-xs text-stone-700 pt-1">
+                            <span>{draft.entirePlaceDetails?.bedrooms || 2} Bedrooms</span>
+                            <span>·</span>
+                            <span>{draft.entirePlaceDetails?.bathrooms || 2} Bathrooms</span>
+                            <span>·</span>
+                            <span>{draft.entirePlaceDetails?.beds || 3} Beds</span>
+                            <span>·</span>
+                            <span>Up to {draft.entirePlaceDetails?.maxGuests || 6} Guests</span>
+                          </div>
+
+                          {draft.entirePlaceDetails?.wholeHouseDescription && (
+                            <p className="text-xs text-stone-600 pt-1 italic">
+                              &quot;{draft.entirePlaceDetails.wholeHouseDescription}&quot;
+                            </p>
+                          )}
+                        </div>
                       </div>
+                    ) : (
+                      <>
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-stone-800">
+                            Configured Room Types & Rates ({(draft.rooms || []).length})
+                          </h4>
+                          <button
+                            type="button"
+                            onClick={() => setStep(3)}
+                            className="text-xs font-semibold text-stone-700 hover:text-stone-900 hover:underline"
+                          >
+                            Edit Rooms &rarr;
+                          </button>
+                        </div>
+
+                        {(draft.rooms || []).length === 0 ? (
+                          <p className="text-xs text-amber-600 bg-amber-50 p-3 rounded-xl border border-amber-200">
+                            ⚠️ No room types added yet. Please add at least one room in Step 3 before publishing.
+                          </p>
+                        ) : (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {(draft.rooms || []).map((room, rIdx) => (
+                              <div key={`draft-summary-room-${room.id || rIdx}-${rIdx}`} className="bg-stone-50 p-3.5 rounded-xl border border-stone-200 text-xs space-y-1.5">
+                                <div className="flex items-start justify-between gap-2">
+                                  <span className="font-bold text-stone-900 text-sm">{room.name || `Room ${rIdx + 1}`}</span>
+                                  <span className="text-[10px] font-semibold text-stone-500 bg-white px-2 py-0.5 rounded border border-stone-200">
+                                    {room.quantity || 1} available
+                                  </span>
+                                </div>
+                                <p className="text-stone-600 line-clamp-1">{room.description || 'No description provided'}</p>
+                                <div className="flex flex-wrap items-center gap-2 pt-1 font-semibold">
+                                  {room.prices?.USD ? (
+                                    <span className="text-emerald-800 bg-emerald-100/70 px-2 py-0.5 rounded">
+                                      ${room.prices.USD} USD / night
+                                    </span>
+                                  ) : null}
+                                  {room.prices?.MWK ? (
+                                    <span className="text-blue-800 bg-blue-100/70 px-2 py-0.5 rounded">
+                                      MK {Number(room.prices.MWK).toLocaleString()} / night
+                                    </span>
+                                  ) : null}
+                                  <span className="text-stone-400 font-normal">· Sleeps {room.maxGuests || 2}</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
@@ -3245,7 +3733,7 @@ export default function ListProperty() {
             <ArrowLeft className="h-4 w-4" /> Back
           </button>
 
-          {step < STEPS.length - 1 ? (
+          {step < steps.length - 1 ? (
             <button
               type="button"
               onClick={goNext}

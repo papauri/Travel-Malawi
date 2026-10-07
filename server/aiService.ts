@@ -1,7 +1,7 @@
 import { AIProviderId, getEffectiveApiKey, loadAIConfig, saveAIConfig, markProviderValidity, getAvailableProviders, AISystemConfig } from './aiConfig';
 
 export interface GenerationRequest {
-  action: 'draft' | 'polish' | 'shorten' | 'highlights' | 'suggest_amenities' | 'suggest_rooms' | 'review_listing' | 'suggest_rate' | 'lookup_property' | 'scrape_reviews';
+  action: 'draft' | 'polish' | 'shorten' | 'highlights' | 'suggest_amenities' | 'suggest_rooms' | 'review_listing' | 'suggest_rate' | 'lookup_property' | 'scrape_reviews' | 'link_description_to_amenities_and_category';
   entityType: 'property' | 'room' | 'conference' | 'dining';
   currentText?: string;
   details?: {
@@ -200,6 +200,29 @@ Do not output any markdown code blocks, backticks, or explanatory text. Return s
 - "date": string (optional, e.g. "October 2023")
 
 Do not output any markdown code blocks, backticks, or explanatory text. Return strictly valid JSON array.`);
+  } else if (action === 'link_description_to_amenities_and_category') {
+    parts.push(`Analyze the following property description for an accommodation in Malawi, and extract all matching amenities and the single best fitting property category (or categories):`);
+    parts.push(`Property Name: ${entityName}`);
+    if (location) parts.push(`Location: ${location}`);
+    parts.push(`Description:\n"${currentText || ''}"`);
+    parts.push(`Category Guidance:
+You MUST pick one or more fitting categories ONLY from this official list:
+["Lake & Beach", "Safari & Wildlife", "Romantic Escape", "Family", "Adventure", "Luxury", "Bed & Breakfast", "Guest House", "Cottage & Chalet"]
+
+Amenity Guidance:
+You MUST match common amenities from this official list whenever mentioned or implied in the text:
+["Free WiFi", "Dedicated Workspace", "Breakfast included", "Swimming pool", "Restaurant", "Bar", "Air conditioning", "Hot water", "Backup power", "Secure parking", "Airport transfer", "Lake view", "Private beach", "Boat trips", "Spa", "Gym", "Conference room", "Laundry", "Room service", "Family rooms", "Pet friendly"]
+
+You may also include any unique custom amenities explicitly highlighted in the description as "customAmenities" (e.g. "Kayaks", "Solar hot water", "Snorkeling equipment", "Campfire pit").
+
+Return strictly a valid JSON object with:
+- "categories": string[] (array of matching categories from the official list, ordered by relevance)
+- "primaryCategory": string (the single best fitting category)
+- "matchedAmenities": string[] (array of matched amenities from the official list)
+- "customAmenities": string[] (optional additional specific perks mentioned)
+- "reasoning": string (1 brief sentence explaining the fit)
+
+Do not output markdown code blocks or explanations.`);
   }
 
   return parts.join('\n\n');
@@ -442,7 +465,11 @@ async function callGemini(
   userPrompt: string,
   temperature: number = 0.7,
   maxTokens: number = 750,
-  useSearch: boolean = false
+  useSearch: boolean = false,
+  options?: {
+    responseMimeType?: string;
+    thinkingBudget?: number;
+  }
 ): Promise<string> {
   const cleanModel = resolveModel('gemini', model);
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent`;
@@ -464,7 +491,12 @@ async function callGemini(
       generationConfig: {
         temperature,
         maxOutputTokens: maxTokens,
-        ...(cleanModel.includes('thinking') ? { thinkingConfig: { thinkingBudget: 100 } } : {}),
+        ...(options?.responseMimeType ? { responseMimeType: options.responseMimeType } : {}),
+        ...(options?.thinkingBudget !== undefined
+          ? { thinkingConfig: { thinkingBudget: options.thinkingBudget } }
+          : cleanModel.includes('thinking')
+          ? { thinkingConfig: { thinkingBudget: 100 } }
+          : {}),
       },
     }),
   });
@@ -552,10 +584,14 @@ async function callProvider(
   userPrompt: string,
   temperature: number = 0.7,
   maxTokens: number = 750,
-  useSearch: boolean = false
+  useSearch: boolean = false,
+  options?: {
+    responseMimeType?: string;
+    thinkingBudget?: number;
+  }
 ): Promise<string> {
   if (providerId === 'gemini') {
-    return callGemini(providerId, apiKey, resolveModel(providerId, model), systemPrompt, userPrompt, temperature, maxTokens, useSearch);
+    return callGemini(providerId, apiKey, resolveModel(providerId, model), systemPrompt, userPrompt, temperature, maxTokens, useSearch, options);
   }
   if (providerId === 'anthropic') {
     return callAnthropic(providerId, apiKey, resolveModel(providerId, model), systemPrompt, userPrompt, temperature, maxTokens);
@@ -715,8 +751,14 @@ async function executeWithProvider(
   const targetMaxTokens = (req.action === 'lookup_property' || req.action === 'scrape_reviews') ? 2500 : 750;
   const useSearch = req.action === 'scrape_reviews' || req.action === 'lookup_property';
 
+  const isJsonAction = req.action === 'suggest_amenities' || req.action === 'suggest_rooms' || req.action === 'scrape_reviews' || req.action === 'suggest_rate' || req.action === 'lookup_property' || req.action === 'link_description_to_amenities_and_category';
+  const genOptions = {
+    responseMimeType: isJsonAction ? 'application/json' : undefined,
+    thinkingBudget: isJsonAction ? 256 : (req.action === 'review_listing' ? 512 : undefined),
+  };
+
   // Execute request through the rate pacer queue
-  const generatedText = await callProvider(providerId, apiKey, model, SYSTEM_PROMPT, userPrompt, 0.7, targetMaxTokens, useSearch);
+  const generatedText = await callProvider(providerId, apiKey, model, SYSTEM_PROMPT, userPrompt, 0.7, targetMaxTokens, useSearch, genOptions);
 
   let structuredData: any = null;
   if (req.action === 'suggest_amenities' || req.action === 'suggest_rooms' || req.action === 'scrape_reviews') {
@@ -737,7 +779,7 @@ async function executeWithProvider(
         // Leave structuredData as null
       }
     }
-  } else if (req.action === 'suggest_rate' || req.action === 'lookup_property') {
+  } else if (req.action === 'suggest_rate' || req.action === 'lookup_property' || req.action === 'link_description_to_amenities_and_category') {
     try {
       const cleaned = generatedText
         .replace(/```json/gi, '')
@@ -1210,6 +1252,7 @@ You MUST ALWAYS know and enforce the exact distinction between who is permitted 
      * Add or remove amenities for their own properties.
      * Confirm or cancel guest bookings for their own properties.
    - STRICTLY FORBIDDEN & UNAUTHORIZED FOR PROPERTY MANAGERS:
+     * CANNOT change stay and accommodation type (e.g. converting a multi-room lodge into a whole-house rental, or vice versa), modify property categories, or alter the property legal owner entity (requires Administrator or Marketing privileges).
      * CANNOT view, inspect, or modify properties belonging to another manager or not in their assigned scope.
      * CANNOT approve or reject property listings for public display (requires Global Administrator).
      * CANNOT feature or unfeature properties on the homepage (requires Global Administrator).
@@ -1248,8 +1291,10 @@ You have comprehensive knowledge of and full access to every section of the Prop
    - Amenities list (e.g. Swimming Pool, Lakefront, Solar Power, Wi-Fi).
 2. MEDIA & PHOTOS (?tab=media):
    - Property cover photo, room photos, and gallery images.
-3. ROOMS & RATES (?tab=rooms):
-   - Room types, descriptions, guest capacities, inventory counts.
+3. ROOMS & RATES / WHOLE SPACE PRICING (?tab=rooms):
+   - Supports two distinct stay structures:
+     * Room-by-Room Stays (Multi-unit): Hotels, safari lodges, safari camps, and B&Bs with multiple individual rooms, chalets, suites, or tents. Each has individual descriptions, capacities, and rates.
+     * Whole House / Entire Place Stays: Private lake cottages, whole holiday houses, secluded villas, or entire B&B houses booked as an exclusive single reservation. The whole residence is rented with dedicated specs (e.g. number of bedrooms, bathrooms, beds, max guests, private kitchen) and a single whole-property nightly rate in USD and MWK.
    - Multi-currency pricing: US Dollars ($ USD) and Malawi Kwacha (MWK / MK).
    - Extra guest fees and date blockings for maintenance or private reservations.
 4. CONFERENCES & BANQUETING (?tab=conferences):
@@ -1772,7 +1817,7 @@ ${(req.history || []).slice(-4).map(h => `${h.role === 'user' ? 'User' : 'Assist
 USER MESSAGE:
 "${clip(req.message, MAX_MESSAGE_CHARS)}"`;
 
-    const rawGenerated = await callProvider(providerId, apiKey, model, chatSystemPrompt, chatUserPrompt, 0.5, 300);
+    const rawGenerated = await callProvider(providerId, apiKey, model, chatSystemPrompt, chatUserPrompt, 0.5, 300, false, { thinkingBudget: 0 });
 
     let newLearnedRule: string | null = null;
     const ruleMatch = rawGenerated.match(/```learned_rule\s*([\s\S]*?)\s*```/);
@@ -1954,7 +1999,12 @@ USER MESSAGE:
     const descSummary = p.description ? `    - About Property: ${untrusted('property_description', p.description, 180)}` : '';
     const locationNotesSummary = p.locationNotes ? `    - Arrival / Location Notes: ${untrusted('location_notes', p.locationNotes, 300)}` : '';
 
+    const stayTypeStr = p.stayType === 'entire_place'
+      ? `Whole House / Entire Place (${p.entirePlaceDetails?.propertyType || 'Whole Property'}, ${p.entirePlaceDetails?.bedrooms || 1} bed, ${p.entirePlaceDetails?.bathrooms || 1} bath, max ${p.entirePlaceDetails?.maxGuests || 2} guests, $${p.entirePlaceDetails?.ratePerNightUsd ?? '-'}/MWK ${p.entirePlaceDetails?.ratePerNightMwk?.toLocaleString() ?? '-'} per night)`
+      : `Room-by-Room Stay (Multi-unit)`;
+
     return `• Property: "${p.name}" (ID: ${p.id})
+    - Stay Structure: ${stayTypeStr}
     - Category: ${p.category || 'Lodge'} | Location: ${p.location || 'Malawi'} | Listing Status: ${p.status || 'active'} | Verification: ${p.verificationStatus || 'unverified'} | Availability: LIVE & AVAILABLE ON SITE${p.featured ? ' [🌟 Featured on Homepage]' : ''}
 ${ownerManagerSummary}
 ${contactSummary}
@@ -2069,7 +2119,7 @@ USER MESSAGE:
   const finalUserPrompt = userPrompt;
 
   const systemPrompt = `${OPERATIONS_SYSTEM_PROMPT}\n\n${UNTRUSTED_DATA_RULE}`;
-  const rawGenerated = await callProvider(providerId, apiKey, model, systemPrompt, finalUserPrompt, 0.4, 1200);
+  const rawGenerated = await callProvider(providerId, apiKey, model, systemPrompt, finalUserPrompt, 0.4, 1200, false, { thinkingBudget: 512 });
 
   // Parse out action proposal
   let actionProposal: ActionProposal | null = null;

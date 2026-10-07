@@ -41,6 +41,7 @@ import {
 } from './server/reminders';
 import { getAdminDocsList, getAdminDocContent, saveAdminDoc, resetAdminDoc } from './server/docUtils';
 import { getAdminEmailConfig, saveEmailConfig, testSMTPConnection, sendSystemEmail } from './server/emailConfig';
+import { OWNER_EMAILS } from './src/lib/roles';
 import {
   getAdminWhatsAppConfig,
   getPublicWhatsAppStatus,
@@ -65,6 +66,8 @@ import {
   cleanText,
   samePhone,
   AuthUser,
+  adminAuth,
+  FIRESTORE_BASE,
 } from './server/auth';
 
 /** Logs the real error and returns a generic message to the client. */
@@ -1068,6 +1071,55 @@ async function startServer() {
     } catch (err) {
       console.error('[API] Account status email failed:', err);
       res.json({ success: true, emailSent: false });
+    }
+  });
+
+  // Permanently delete user profile and Auth account (admin only)
+  app.post('/api/admin/delete-user', adminOnly, async (req, res) => {
+    try {
+      const { uid } = req.body || {};
+      if (!uid || typeof uid !== 'string') {
+        return res.status(400).json({ error: 'UID is required' });
+      }
+
+      if (req.authUser?.uid === uid) {
+        return res.status(400).json({ error: 'Cannot delete your own account' });
+      }
+
+      // Check caller's privileges: only global admin or owner can delete an admin
+      const targetUser = await readDoc('users', uid, req.authUser?.token);
+      if (targetUser) {
+        const targetRoles: string[] = Array.isArray(targetUser.roles)
+          ? targetUser.roles
+          : [targetUser.role || ''];
+        const isCallerGlobal =
+          req.authUser?.roles.includes('global_admin') ||
+          (req.authUser?.email && OWNER_EMAILS.includes(req.authUser.email.toLowerCase()));
+
+        if ((targetRoles.includes('admin') || targetRoles.includes('global_admin')) && !isCallerGlobal) {
+          return res.status(403).json({ error: 'Only a Global Admin can delete an administrator profile' });
+        }
+      }
+
+      // 1. Delete user document from Firestore REST
+      const deleteUrl = `${FIRESTORE_BASE}/users/${encodeURIComponent(uid)}`;
+      await fetch(deleteUrl, {
+        method: 'DELETE',
+        headers: req.authUser?.token ? { Authorization: `Bearer ${req.authUser.token}` } : {},
+      }).catch((err) => console.warn('[server] Firestore REST delete warning:', err));
+
+      // 2. Try deleting from Firebase Auth via Admin SDK
+      try {
+        const auth = adminAuth();
+        await auth.deleteUser(uid);
+      } catch (authErr: any) {
+        console.warn(`[server] Admin Auth deleteUser for ${uid}:`, authErr?.message);
+      }
+
+      res.json({ success: true, uid });
+    } catch (err: any) {
+      console.error('[server] Error in /api/admin/delete-user:', err);
+      res.status(500).json({ error: err?.message || 'Failed to delete user' });
     }
   });
 

@@ -28,6 +28,7 @@ import { updateBookingWithSlot, cancelBookingReminders } from '../lib/bookingWri
 import { useConfirmBooking } from '../hooks/useConfirmBooking';
 import PriceMismatchNotice from '../components/PriceMismatchNotice';
 import PriceDisplay from '../components/PriceDisplay';
+import OfflineBookingsQueue from '../components/OfflineBookingsQueue';
 
 type EnrichedBooking = Booking & { hotel?: Hotel; room?: RoomType };
 type Filter = 'upcoming' | 'past' | 'cancelled';
@@ -493,6 +494,9 @@ export default function MyBookings() {
             </div>
           )}
         </div>
+
+        {/* Offline Bookings Queue (IndexedDB) */}
+        <OfflineBookingsQueue className="mb-8" />
 
         {activeMainTab === 'guest' && broadcasts.filter(b => !hiddenBroadcastIds.includes(b.id!)).length > 0 && filter === 'upcoming' && (
           <div className="mb-10 space-y-4">

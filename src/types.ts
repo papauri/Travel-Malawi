@@ -156,10 +156,31 @@ export interface Promotion {
   isActive: boolean;
   createdAt?: number;
 }
+export type PropertyStayType = 'rooms' | 'entire_place';
+
+export interface EntirePlaceDetails {
+  propertyType?: string; // 'Villa' | 'Cottage' | 'Whole Guest House' | 'Entire B&B' | 'Lake House' | 'Chalet' | 'Private House'
+  bedrooms?: number;
+  bathrooms?: number;
+  beds?: number;
+  maxGuests?: number;
+  ratePerNightUsd?: number;
+  ratePerNightMwk?: number;
+  wholeHouseDescription?: string;
+  hasPrivateKitchen?: boolean;
+  hasPrivatePool?: boolean;
+  hasLakeAccess?: boolean;
+  hasGarden?: boolean;
+  hasDedicatedHost?: boolean;
+}
+
 export interface Hotel {
   id?: string;
   status?: 'pending' | 'approved' | 'rejected';
   verificationStatus?: 'unverified' | 'community_verified' | 'verified_partner';
+  /** 'rooms' for per-room listings, 'entire_place' for whole houses/cottages/villas */
+  stayType?: PropertyStayType;
+  entirePlaceDetails?: EntirePlaceDetails;
   infrastructure?: InfrastructureDetails;
   crew?: StayCrewMember[];
   promotions?: Promotion[];

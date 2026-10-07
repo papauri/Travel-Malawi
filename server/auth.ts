@@ -55,7 +55,7 @@ const config = loadClientConfig();
 export const PROJECT_ID = config.projectId;
 export const DATABASE_ID = config.firestoreDatabaseId || '(default)';
 
-function adminAuth() {
+export function adminAuth() {
   if (getApps().length === 0) {
     initializeApp({ projectId: PROJECT_ID });
   }
@@ -66,7 +66,7 @@ function adminAuth() {
 // Firestore REST helpers
 // ---------------------------------------------------------------------------
 
-const FIRESTORE_BASE = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/${encodeURIComponent(DATABASE_ID)}/documents`;
+export const FIRESTORE_BASE = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/${encodeURIComponent(DATABASE_ID)}/documents`;
 
 const SAFE_ID = /^[A-Za-z0-9_-]{1,128}$/;
 

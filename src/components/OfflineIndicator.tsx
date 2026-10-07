@@ -15,10 +15,13 @@ import {
   Palmtree
 } from 'lucide-react';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
+import { useOfflineBookings } from '../hooks/useOfflineBookings';
+import OfflineBookingsQueue from './OfflineBookingsQueue';
 import toast from 'react-hot-toast';
 
 export default function OfflineIndicator() {
   const { isOnline, isChecking, justReconnected, checkConnection } = useNetworkStatus();
+  const { pendingCount, isSyncing, syncNow } = useOfflineBookings();
   const [isDismissed, setIsDismissed] = useState(false);
   const [showGuideModal, setShowGuideModal] = useState(false);
 
@@ -64,8 +67,54 @@ export default function OfflineIndicator() {
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                 </p>
                 <p className="text-[11px] text-stone-300 truncate">
-                  Platform synchronized with live availability &amp; rates.
+                  {pendingCount > 0
+                    ? `Synchronizing ${pendingCount} offline booking request(s) with Firebase...`
+                    : 'Platform synchronized with live availability & rates.'}
                 </p>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Online with Pending Offline Bookings Banner */}
+          {isOnline && !justReconnected && pendingCount > 0 && !isDismissed && (
+            <motion.div
+              key="pending-sync-banner"
+              initial={{ opacity: 0, y: -20, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -16, scale: 0.96, transition: { duration: 0.2 } }}
+              transition={{ type: 'spring', stiffness: 350, damping: 28 }}
+              className="pointer-events-auto bg-stone-900/95 text-stone-100 border border-stone-800 shadow-xl rounded-2xl p-3 sm:px-4 sm:py-2.5 backdrop-blur-md max-w-md w-full flex items-center justify-between gap-3"
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-7 h-7 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center shrink-0 text-amber-400">
+                  <HardDrive className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-white truncate">
+                    {pendingCount} Offline Booking{pendingCount > 1 ? 's' : ''} Ready
+                  </p>
+                  <p className="text-[11px] text-stone-300 truncate">
+                    Stored in IndexedDB &bull; Ready to push to Firebase.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => syncNow()}
+                  disabled={isSyncing}
+                  className="px-2.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-stone-950 font-bold text-xs inline-flex items-center gap-1 transition cursor-pointer"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+                  <span>{isSyncing ? 'Syncing...' : 'Sync Now'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsDismissed(true)}
+                  className="p-1 rounded-lg text-stone-400 hover:text-white"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
               </div>
             </motion.div>
           )}
@@ -88,13 +137,24 @@ export default function OfflineIndicator() {
                     <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-amber-400 animate-pulse ring-2 ring-stone-900" />
                   </div>
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <p className="text-xs font-bold text-white tracking-wide">
                         Offline Mode Active
                       </p>
-                      <span className="hidden sm:inline-block text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-md bg-stone-800 text-amber-300 border border-stone-700">
-                        Cached Guides Ready
-                      </span>
+                      {pendingCount > 0 ? (
+                        <button
+                          type="button"
+                          onClick={() => setShowGuideModal(true)}
+                          className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-md bg-amber-500/25 text-amber-300 border border-amber-500/40 hover:bg-amber-500/35 transition cursor-pointer flex items-center gap-1"
+                        >
+                          <HardDrive className="w-2.5 h-2.5" />
+                          <span>{pendingCount} Queued {pendingCount === 1 ? 'Booking' : 'Bookings'}</span>
+                        </button>
+                      ) : (
+                        <span className="hidden sm:inline-block text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-md bg-stone-800 text-amber-300 border border-stone-700">
+                          Cached Guides Ready
+                        </span>
+                      )}
                     </div>
                     <p className="text-[11px] text-stone-300 truncate mt-0.5">
                       Previously viewed lodges, road guides &amp; vouchers remain accessible.
@@ -252,6 +312,18 @@ export default function OfflineIndicator() {
 
                 <div className="p-3 rounded-xl bg-stone-50 border border-stone-200/80 flex items-start gap-3">
                   <div className="p-2 rounded-lg bg-white border border-stone-200 text-stone-700 shrink-0">
+                    <HardDrive className="w-4 h-4 text-amber-600" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-stone-900">Offline Booking Requests (IndexedDB)</h4>
+                    <p className="text-[11px] text-stone-600 leading-relaxed mt-0.5">
+                      Reserve rooms while offline. Requests are safely queued in your device's IndexedDB and automatically pushed to Firebase once you reconnect.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-stone-50 border border-stone-200/80 flex items-start gap-3">
+                  <div className="p-2 rounded-lg bg-white border border-stone-200 text-stone-700 shrink-0">
                     <Clock className="w-4 h-4 text-amber-600" />
                   </div>
                   <div>
@@ -262,6 +334,9 @@ export default function OfflineIndicator() {
                   </div>
                 </div>
               </div>
+
+              {/* Offline Bookings Queue */}
+              <OfflineBookingsQueue className="mt-4" />
 
               <div className="mt-5 pt-4 border-t border-stone-100 flex items-center justify-between gap-3">
                 <button

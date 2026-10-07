@@ -11,7 +11,7 @@ import { doc, getDoc, collection, query, where, getDocs, addDoc, updateDoc, dele
 import { db } from '../lib/firebase';
 import { Hotel, RoomType, Booking, CurrencyCode, PriceMap, Restaurant, WeeklyHours } from '../types';
 import { useAuth } from '../contexts/AuthContext';
-import { Plus, CheckCircle2, XCircle, Clock, Save, Edit2, Trash2, Users, Calendar, Check, X, Building, BedDouble, Loader2, Download, TrendingUp, Percent, Wallet, UtensilsCrossed, Eye, ChevronLeft, ExternalLink, AlertTriangle, ShieldCheck, UserCheck, User, Mail, Phone } from 'lucide-react';
+import { Plus, CheckCircle2, XCircle, Clock, Save, Edit2, Trash2, Users, Calendar, Check, X, Building, BedDouble, Home, Loader2, Download, TrendingUp, Percent, Wallet, UtensilsCrossed, Eye, ChevronLeft, ExternalLink, AlertTriangle, ShieldCheck, UserCheck, User, Mail, Phone, Lock, UserCog, EyeOff } from 'lucide-react';
 import ImageUpload from '../components/ImageUpload';
 import GalleryUpload from '../components/GalleryUpload';
 import StayOSManager from '../components/StayOSManager';
@@ -23,7 +23,7 @@ import Pagination from '../components/Pagination';
 import BookingChat from '../components/BookingChat';
 import PropertyChat from '../components/PropertyChat';
 import { useChatModal } from '../contexts/ChatModalContext';
-import { MessageSquare, Megaphone, Presentation, Bell, ChevronDown, SlidersHorizontal } from 'lucide-react';
+import { MessageSquare, Megaphone, Presentation, Bell, ChevronDown, SlidersHorizontal, Sparkles } from 'lucide-react';
 import SmartImage from '../components/SmartImage';
 import ReminderTemplatesModal from '../components/ReminderTemplatesModal';
 import EditBookingModal from '../components/EditBookingModal';
@@ -45,10 +45,10 @@ import { addDays, formatDateStr, isValidDateStr, nightsBetween, nightsInRange, t
 import { isRoomAvailable } from '../lib/availability';
 import { formatMoney, computeBookingPricing } from '../lib/booking';
 import { CURRENCIES, CURRENCY_CODES, currenciesForRooms, roomCurrencies, roomPrice } from '../lib/currency';
-import { defaultWeek } from '../lib/hours';
+import { defaultWeek, allDayWeek, isWeekAllDay } from '../lib/hours';
 import { SPAM_REASON_LABELS } from '../lib/spam';
 import { isHotelManager, isAdmin, isMarketing } from '../lib/roles';
-import { PROPERTY_CATEGORIES, COMMON_AMENITIES } from '../lib/listing';
+import { PROPERTY_CATEGORIES, COMMON_AMENITIES, PropertyCategory } from '../lib/listing';
 import { emailProblem, phoneProblem } from '../lib/contact';
 import { validateProperty } from '../lib/listing';
 import { RoomErrors, firstError, hasErrors, validateRoom } from '../lib/validateRoom';
@@ -56,6 +56,9 @@ import FieldError from '../components/FieldError';
 import SectionCard from '../components/SectionCard';
 import PriceDisplay from '../components/PriceDisplay';
 import { getHotelDepositInfo } from '../lib/depositInfo';
+import { useAIAssistant } from '../hooks/useAIAssistant';
+import { analyzeDescriptionLocal, DescriptionAnalysisResult } from '../lib/descriptionAnalyzer';
+import LinkDescriptionModal from '../components/LinkDescriptionModal';
 
 
 
@@ -220,9 +223,22 @@ export default function ManageHotel() {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
 
+  // Certain critical property fields (Stay & Accommodation type, Categories, Owner/Holding entity)
+  // are protected so property managers cannot modify them; only Admins or Marketing roles can.
+  const isElevatedUser = Boolean(isAdmin(user) || isMarketing(user));
+
   // The tab lives in the query string, so a reload, a shared link and the
   // browser's back button all land where the manager expects.
   const [searchParams, setSearchParams] = useSearchParams();
+
+  // Troubleshooting / Impersonation preview mode: Allows Admins and Marketing to see and experience
+  // the property exactly as the manager sees it (greyed-out elevated fields, manager perspective).
+  const [viewAsManager, setViewAsManager] = useState<boolean>(() => {
+    return searchParams.get('previewAs') === 'manager';
+  });
+
+  // Effective permission for editing elevated fields (disabled when simulating manager view)
+  const canEditElevatedFields = isElevatedUser && !viewAsManager;
   const activeTab: Tab = isTab(searchParams.get('tab')) ? (searchParams.get('tab') as Tab) : 'details';
   const [pendingTab, setPendingTab] = useState<Tab | null>(null);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
@@ -249,6 +265,74 @@ export default function ManageHotel() {
   const [editingWhatsappBookingId, setEditingWhatsappBookingId] = useState<string | null>(null);
   const [tempWhatsappNumber, setTempWhatsappNumber] = useState<string>('');
   const [savingBookingWhatsapp, setSavingBookingWhatsapp] = useState(false);
+
+  // Auto-Link Description with AI states
+  const { status: aiStatus, generateDetailed } = useAIAssistant();
+  const [linkModalOpen, setLinkModalOpen] = useState(false);
+  const [linkModalLoading, setLinkModalLoading] = useState(false);
+  const [linkAnalysisResult, setLinkAnalysisResult] = useState<DescriptionAnalysisResult | null>(null);
+
+  const handleTriggerLinkAnalysis = async () => {
+    const desc = editHotelData.description?.trim();
+    if (!desc) {
+      toast.error('Please enter a property description first to link amenities and categories.');
+      return;
+    }
+
+    setLinkModalOpen(true);
+    setLinkModalLoading(true);
+
+    try {
+      if (aiStatus.enabled && aiStatus.available) {
+        const res = await generateDetailed<DescriptionAnalysisResult>({
+          action: 'link_description_to_amenities_and_category',
+          entityType: 'property',
+          currentText: desc,
+          details: {
+            name: editHotelData.name,
+            location: editHotelData.location,
+          },
+        });
+
+        if (res?.data && (res.data.categories?.length || res.data.matchedAmenities?.length)) {
+          setLinkAnalysisResult({
+            categories: res.data.categories || [],
+            primaryCategory: res.data.primaryCategory || (res.data.categories && res.data.categories[0]) || 'Guest House',
+            matchedAmenities: res.data.matchedAmenities || [],
+            customAmenities: res.data.customAmenities || [],
+            reasoning: res.data.reasoning || res.text || '',
+          });
+          setLinkModalLoading(false);
+          return;
+        }
+      }
+
+      // Local fallback
+      const localResult = analyzeDescriptionLocal(desc, editHotelData.name, editHotelData.location);
+      setLinkAnalysisResult(localResult);
+    } catch {
+      const localResult = analyzeDescriptionLocal(desc, editHotelData.name, editHotelData.location);
+      setLinkAnalysisResult(localResult);
+    } finally {
+      setLinkModalLoading(false);
+    }
+  };
+
+  const handleApplyLinkedData = (selectedCats: PropertyCategory[], selectedAmens: string[], customAmens: string[]) => {
+    const currentCats = editHotelData.categories || [];
+    const currentAmens = editHotelData.amenities || [];
+
+    const newCats = Array.from(new Set([...currentCats, ...selectedCats]));
+    const newAmens = Array.from(new Set([...currentAmens, ...selectedAmens, ...customAmens]));
+
+    setEditHotelData(prev => ({
+      ...prev,
+      categories: newCats,
+      amenities: newAmens,
+    }));
+
+    toast.success(`Linked ${selectedAmens.length + customAmens.length} amenities and ${selectedCats.length} category tags to your property!`);
+  };
 
   const handleSaveBookingWhatsapp = async (bookingId: string) => {
     if (!bookingId) return;
@@ -622,6 +706,17 @@ export default function ManageHotel() {
       // redundant `id` field inside the document and would have let a stale
       // `status` from page load overwrite an admin's decision.
       for (const field of HOTEL_READONLY_FIELDS) delete updateData[field];
+
+      // Non-admin / non-marketing managers are not permitted to alter stayType, entirePlaceDetails,
+      // categories, or owner legal entity details from this form.
+      if (!canEditElevatedFields) {
+        delete updateData.stayType;
+        delete updateData.entirePlaceDetails;
+        delete updateData.categories;
+        delete updateData.ownerName;
+        delete updateData.ownerEmail;
+        delete updateData.ownerPhone;
+      }
 
       // Strip out undefined values (Firestore rejects them) and anything the
       // manager did not change in this form.
@@ -1233,6 +1328,47 @@ export default function ManageHotel() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 shrink-0">
+          {/* Troubleshooting Mode: Admin / Marketing can view as manager */}
+          {isElevatedUser && (
+            <button
+              type="button"
+              onClick={() => {
+                const next = !viewAsManager;
+                setViewAsManager(next);
+                setSearchParams(prev => {
+                  const copy = new URLSearchParams(prev);
+                  if (next) {
+                    copy.set('previewAs', 'manager');
+                  } else {
+                    copy.delete('previewAs');
+                  }
+                  return copy;
+                }, { replace: true });
+                if (next) {
+                  toast('Switched to Manager View mode for troubleshooting.', {
+                    icon: '👁️',
+                  });
+                } else {
+                  toast.success('Exited Manager View mode. Elevated admin/marketing controls restored.');
+                }
+              }}
+              className={`inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-1 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-bold transition shadow-2xs cursor-pointer border ${
+                viewAsManager
+                  ? 'bg-amber-600 text-white border-amber-600 hover:bg-amber-700 ring-2 ring-amber-300'
+                  : 'bg-stone-900 text-white border-stone-900 hover:bg-stone-800'
+              }`}
+              title={viewAsManager ? 'Click to exit Manager View and return to Admin mode' : 'Simulate what the on-site property manager sees for troubleshooting'}
+            >
+              {viewAsManager ? <EyeOff className="w-3.5 h-3.5" /> : <UserCog className="w-3.5 h-3.5 text-amber-400" />}
+              <span>{viewAsManager ? 'Exit Manager View' : 'See as Manager'}</span>
+              <span className={`text-[9px] uppercase tracking-wider px-1.5 py-0.2 rounded-full font-bold ${
+                viewAsManager ? 'bg-amber-800 text-white' : 'bg-stone-800 text-amber-300'
+              }`}>
+                {viewAsManager ? 'Simulating' : 'Audit'}
+              </span>
+            </button>
+          )}
+
           {/* 1-Click Live Status Switch */}
           <button
             type="button"
@@ -1265,6 +1401,48 @@ export default function ManageHotel() {
           )}
         </div>
       </div>
+
+      {/* Simulation / Troubleshooting Banner when viewing as manager */}
+      {isElevatedUser && viewAsManager && (
+        <div className="mb-5 sm:mb-6 rounded-xl sm:rounded-2xl border-2 border-amber-400 bg-amber-50/90 p-4 sm:p-5 text-amber-950 shadow-sm animate-in fade-in duration-200">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-start sm:items-center gap-3">
+              <div className="p-2 rounded-xl bg-amber-200 text-amber-900 shrink-0 mt-0.5 sm:mt-0">
+                <UserCog className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm sm:text-base font-bold text-amber-950">
+                    Troubleshooting Mode: Viewing as Property Manager
+                  </h3>
+                  <span className="text-[10px] font-bold uppercase tracking-wider bg-amber-200 text-amber-900 px-2 py-0.5 rounded-full">
+                    Read-Only Protected
+                  </span>
+                </div>
+                <p className="text-xs text-amber-900/80 mt-0.5 leading-relaxed">
+                  You are previewing this property with exact manager permissions. Protected fields (Stay &amp; Accommodation type, Categories, Owner legal entity, and admin-only messaging switches) are greyed out and locked just as an assigned manager sees them.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setViewAsManager(false);
+                setSearchParams(prev => {
+                  const copy = new URLSearchParams(prev);
+                  copy.delete('previewAs');
+                  return copy;
+                }, { replace: true });
+                toast.success('Exited Manager View mode. Elevated controls restored.');
+              }}
+              className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-amber-900 text-white hover:bg-amber-800 text-xs font-bold transition shadow-2xs shrink-0 cursor-pointer self-start sm:self-auto"
+            >
+              <EyeOff className="w-3.5 h-3.5" />
+              <span>Exit &amp; Restore Admin View</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {hotel.status && hotel.status !== 'approved' && (
         <div className="mb-5 sm:mb-6 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl sm:rounded-2xl px-4 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm">
@@ -1350,7 +1528,7 @@ export default function ManageHotel() {
               { id: 'promotions' as Tab, label: 'Promotions', icon: Percent },
               { id: 'stayos' as Tab, label: 'Stay OS', icon: ShieldCheck },
               { id: 'broadcasts' as Tab, label: 'Broadcasts', icon: Megaphone },
-              { id: 'rooms' as Tab, label: 'Rooms & pricing', icon: BedDouble },
+              { id: 'rooms' as Tab, label: editHotelData.stayType === 'entire_place' ? 'Whole space & pricing' : 'Rooms & pricing', icon: editHotelData.stayType === 'entire_place' ? Home : BedDouble },
               { id: 'conferences' as Tab, label: 'Conferences', icon: Presentation },
               { id: 'restaurant' as Tab, label: 'Restaurant', icon: UtensilsCrossed },
               { id: 'bookings' as Tab, label: 'Bookings', icon: Calendar },
@@ -1463,7 +1641,7 @@ export default function ManageHotel() {
             { id: 'promotions' as Tab, label: 'Promotions', icon: Percent },
             { id: 'stayos' as Tab, label: 'Stay OS', icon: ShieldCheck },
             { id: 'broadcasts' as Tab, label: 'Broadcasts', icon: Megaphone },
-            { id: 'rooms' as Tab, label: 'Rooms & pricing', icon: BedDouble },
+            { id: 'rooms' as Tab, label: editHotelData.stayType === 'entire_place' ? 'Whole space & pricing' : 'Rooms & pricing', icon: editHotelData.stayType === 'entire_place' ? Home : BedDouble },
             { id: 'conferences' as Tab, label: 'Conferences', icon: Presentation },
             { id: 'restaurant' as Tab, label: 'Restaurant', icon: UtensilsCrossed },
             { id: 'bookings' as Tab, label: 'Bookings', icon: Calendar },
@@ -1532,22 +1710,228 @@ export default function ManageHotel() {
                 <input type="text" required value={editHotelData.name || ''} readOnly disabled className="w-full bg-stone-200 border border-stone-300 px-3 py-2 text-xs sm:text-sm rounded-lg sm:rounded-xl outline-none text-stone-500 cursor-not-allowed" />
                 <p className="text-[11px] sm:text-xs text-stone-400 mt-1">Property name cannot be changed after registration. Contact admin for assistance.</p>
               </div>
+
+              {/* Stay Type & Whole House Mode */}
+              <div className="md:col-span-2 p-4 rounded-xl sm:rounded-2xl border border-stone-200 bg-stone-50 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <label className="block text-xs font-bold text-stone-900 uppercase tracking-wider">Stay &amp; Accommodation Type</label>
+                      {!canEditElevatedFields && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-stone-500 bg-stone-200/80 px-2 py-0.5 rounded-md">
+                          <Lock className="w-3 h-3 text-stone-500" />
+                          <span>Admin &amp; Marketing Only</span>
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-stone-500 mt-0.5">
+                      Determine whether guests book individual rooms or the entire house/property.
+                      {!canEditElevatedFields && ' Locked for property managers — contact admin or marketing to alter stay classification.'}
+                    </p>
+                  </div>
+                  <span className="text-[11px] font-semibold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full shrink-0 self-start sm:self-auto">
+                    {editHotelData.stayType === 'entire_place' ? 'Whole Space Mode' : 'Per-Room Mode'}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <button
+                    type="button"
+                    disabled={!canEditElevatedFields}
+                    onClick={() => canEditElevatedFields && setEditHotelData({ ...editHotelData, stayType: 'rooms' })}
+                    title={!canEditElevatedFields ? 'Stay classification can only be modified by platform admin or marketing team' : undefined}
+                    className={`p-3 rounded-xl border text-left text-xs font-semibold flex items-center justify-between transition ${
+                      !canEditElevatedFields ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'
+                    } ${
+                      editHotelData.stayType !== 'entire_place'
+                        ? 'bg-stone-900 text-white border-stone-900 shadow-2xs'
+                        : 'bg-white border-stone-200 text-stone-700 hover:bg-stone-100'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <BedDouble className="w-4 h-4 shrink-0" />
+                      <span>Room-by-Room Stay (Multi-unit)</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      {!canEditElevatedFields && <Lock className="w-3.5 h-3.5 opacity-60" />}
+                      {editHotelData.stayType !== 'entire_place' && <Check className="w-4 h-4 text-white" />}
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={!canEditElevatedFields}
+                    onClick={() => {
+                      if (!canEditElevatedFields) return;
+                      setEditHotelData({
+                        ...editHotelData,
+                        stayType: 'entire_place',
+                        entirePlaceDetails: editHotelData.entirePlaceDetails || {
+                          propertyType: 'Cottage',
+                          bedrooms: 2,
+                          bathrooms: 2,
+                          beds: 3,
+                          maxGuests: 6,
+                          ratePerNightUsd: 120,
+                          ratePerNightMwk: 210000,
+                        },
+                      });
+                    }}
+                    title={!canEditElevatedFields ? 'Stay classification can only be modified by platform admin or marketing team' : undefined}
+                    className={`p-3 rounded-xl border text-left text-xs font-semibold flex items-center justify-between transition ${
+                      !canEditElevatedFields ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'
+                    } ${
+                      editHotelData.stayType === 'entire_place'
+                        ? 'bg-stone-900 text-white border-stone-900 shadow-2xs'
+                        : 'bg-white border-stone-200 text-stone-700 hover:bg-stone-100'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Home className="w-4 h-4 shrink-0 text-emerald-400" />
+                      <span>Whole House / Entire Place (Whole space)</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      {!canEditElevatedFields && <Lock className="w-3.5 h-3.5 opacity-60" />}
+                      {editHotelData.stayType === 'entire_place' && <Check className="w-4 h-4 text-white" />}
+                    </div>
+                  </button>
+                </div>
+
+                {editHotelData.stayType === 'entire_place' && (
+                  <div className="pt-3 border-t border-stone-200 grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-stone-600 mb-1">Bedrooms</label>
+                      <input
+                        type="number"
+                        min={1}
+                        disabled={!canEditElevatedFields}
+                        value={editHotelData.entirePlaceDetails?.bedrooms ?? 2}
+                        onChange={(e) => {
+                          if (!canEditElevatedFields) return;
+                          setEditHotelData({
+                            ...editHotelData,
+                            entirePlaceDetails: {
+                              ...(editHotelData.entirePlaceDetails || {}),
+                              bedrooms: Number(e.target.value),
+                            },
+                          });
+                        }}
+                        className={`w-full border border-stone-200 px-2.5 py-1.5 text-xs rounded-lg ${
+                          !canEditElevatedFields ? 'bg-stone-100 text-stone-500 cursor-not-allowed' : 'bg-white'
+                        }`}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-stone-600 mb-1">Bathrooms</label>
+                      <input
+                        type="number"
+                        min={1}
+                        disabled={!canEditElevatedFields}
+                        value={editHotelData.entirePlaceDetails?.bathrooms ?? 2}
+                        onChange={(e) => {
+                          if (!canEditElevatedFields) return;
+                          setEditHotelData({
+                            ...editHotelData,
+                            entirePlaceDetails: {
+                              ...(editHotelData.entirePlaceDetails || {}),
+                              bathrooms: Number(e.target.value),
+                            },
+                          });
+                        }}
+                        className={`w-full border border-stone-200 px-2.5 py-1.5 text-xs rounded-lg ${
+                          !canEditElevatedFields ? 'bg-stone-100 text-stone-500 cursor-not-allowed' : 'bg-white'
+                        }`}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-stone-600 mb-1">Total Beds</label>
+                      <input
+                        type="number"
+                        min={1}
+                        disabled={!canEditElevatedFields}
+                        value={editHotelData.entirePlaceDetails?.beds ?? 3}
+                        onChange={(e) => {
+                          if (!canEditElevatedFields) return;
+                          setEditHotelData({
+                            ...editHotelData,
+                            entirePlaceDetails: {
+                              ...(editHotelData.entirePlaceDetails || {}),
+                              beds: Number(e.target.value),
+                            },
+                          });
+                        }}
+                        className={`w-full border border-stone-200 px-2.5 py-1.5 text-xs rounded-lg ${
+                          !canEditElevatedFields ? 'bg-stone-100 text-stone-500 cursor-not-allowed' : 'bg-white'
+                        }`}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-stone-600 mb-1">Max Guests</label>
+                      <input
+                        type="number"
+                        min={1}
+                        disabled={!canEditElevatedFields}
+                        value={editHotelData.entirePlaceDetails?.maxGuests ?? 6}
+                        onChange={(e) => {
+                          if (!canEditElevatedFields) return;
+                          setEditHotelData({
+                            ...editHotelData,
+                            entirePlaceDetails: {
+                              ...(editHotelData.entirePlaceDetails || {}),
+                              maxGuests: Number(e.target.value),
+                            },
+                          });
+                        }}
+                        className={`w-full border border-stone-200 px-2.5 py-1.5 text-xs rounded-lg ${
+                          !canEditElevatedFields ? 'bg-stone-100 text-stone-500 cursor-not-allowed' : 'bg-white'
+                        }`}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
               <div className="md:col-span-2">
                 <div className="flex items-center justify-between mb-1 sm:mb-1.5">
                   <label className="block text-[11px] sm:text-xs font-bold text-stone-500 uppercase tracking-wider">Description</label>
-                  <AIAssistantButton
-                    value={editHotelData.description || ''}
-                    onChange={text => setEditHotelData({ ...editHotelData, description: text })}
-                    entityType="property"
-                    context={{
-                      name: editHotelData.name,
-                      location: editHotelData.location,
-                      amenities: editHotelData.amenities,
-                    }}
-                    fieldLabel="property description"
-                  />
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleTriggerLinkAnalysis}
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 border border-stone-200/80 px-2.5 py-1 rounded-lg transition shadow-2xs cursor-pointer"
+                      title="Analyze description to link common amenities & befitting category"
+                    >
+                      <Sparkles className="h-3.5 w-3.5 text-amber-600" />
+                      <span>Link to Amenities & Category</span>
+                    </button>
+                    <AIAssistantButton
+                      value={editHotelData.description || ''}
+                      onChange={text => setEditHotelData({ ...editHotelData, description: text })}
+                      entityType="property"
+                      context={{
+                        name: editHotelData.name,
+                        location: editHotelData.location,
+                        amenities: editHotelData.amenities,
+                      }}
+                      fieldLabel="property description"
+                    />
+                  </div>
                 </div>
-                <textarea required rows={4} value={editHotelData.description || ''} onChange={e => setEditHotelData({...editHotelData, description: e.target.value})} className="w-full bg-stone-50 border border-stone-200 px-3 py-2 text-xs sm:text-sm rounded-lg sm:rounded-xl outline-none focus:border-stone-900 transition" />
+                <textarea required rows={5} value={editHotelData.description || ''} onChange={e => setEditHotelData({...editHotelData, description: e.target.value})} className="w-full bg-stone-50 border border-stone-200 px-3 py-2 text-xs sm:text-sm rounded-lg sm:rounded-xl outline-none focus:border-stone-900 transition" />
+                <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-[11px] text-stone-400">
+                    Use bullet points (-) or paragraphs freely. Spaces and formatting are preserved for guests.
+                  </p>
+                  {editHotelData.description?.trim() && (
+                    <button
+                      type="button"
+                      onClick={handleTriggerLinkAnalysis}
+                      className="text-xs font-semibold text-stone-600 hover:text-stone-900 inline-flex items-center gap-1 transition cursor-pointer"
+                    >
+                      <Sparkles className="h-3 w-3 text-amber-600" />
+                      <span>Auto-detect amenities & category from text</span>
+                    </button>
+                  )}
+                </div>
                 <FieldError message={detailProblems.description} />
               </div>
     </div>
@@ -1583,6 +1967,9 @@ export default function ManageHotel() {
               <div>
                 <label className="block text-[11px] sm:text-xs font-bold text-stone-500 uppercase tracking-wider mb-1 sm:mb-1.5">Location Notes / Directions</label>
                 <textarea rows={2} value={editHotelData.locationNotes || ''} onChange={e => setEditHotelData({...editHotelData, locationNotes: e.target.value})} className="w-full bg-stone-50 border border-stone-200 px-3 py-2 text-xs sm:text-sm rounded-lg sm:rounded-xl outline-none focus:border-stone-900 transition" placeholder="Any extra directions or notes to help guests find the property (optional)." />
+                <p className="text-[11px] text-stone-400 mt-1">
+                  Helpful directions, landmarks, road conditions, or 4WD advice. Spaces, line breaks, and dashes are preserved for guests.
+                </p>
               </div>
     </div>
   </SectionCard>
@@ -1590,7 +1977,27 @@ export default function ManageHotel() {
   <SectionCard title="Property Category" description="Choose a category for your property.">
     <div className="space-y-3">
       <div>
-        <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Category Tags</label>
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider">Category Tags</label>
+            {!canEditElevatedFields && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-stone-500 bg-stone-200/80 px-2 py-0.5 rounded-md">
+                <Lock className="w-3 h-3 text-stone-500" />
+                <span>Admin &amp; Marketing Only</span>
+              </span>
+            )}
+          </div>
+          {editHotelData.description?.trim() && canEditElevatedFields && (
+            <button
+              type="button"
+              onClick={handleTriggerLinkAnalysis}
+              className="text-xs font-semibold text-stone-600 hover:text-stone-900 inline-flex items-center gap-1 cursor-pointer"
+            >
+              <Sparkles className="h-3.5 w-3.5 text-amber-600" />
+              <span>Auto-detect from description</span>
+            </button>
+          )}
+        </div>
         <div className="flex flex-wrap gap-1.5 sm:gap-2">
           {PROPERTY_CATEGORIES.map((category, catIdx) => {
             const selected = (editHotelData.categories ?? []).includes(category);
@@ -1598,25 +2005,37 @@ export default function ManageHotel() {
               <button
                 key={`mgmt-cat-${category}-${catIdx}`}
                 type="button"
+                disabled={!canEditElevatedFields}
                 aria-pressed={selected}
-                onClick={() => setEditHotelData({
-                  ...editHotelData,
-                  categories: selected
-                    ? (editHotelData.categories ?? []).filter(c => c !== category)
-                    : [...(editHotelData.categories ?? []), category],
-                })}
-                className={`rounded-full border px-2.5 sm:px-4 py-1 sm:py-1.5 text-xs sm:text-sm font-medium transition cursor-pointer ${
+                onClick={() => {
+                  if (!canEditElevatedFields) return;
+                  setEditHotelData({
+                    ...editHotelData,
+                    categories: selected
+                      ? (editHotelData.categories ?? []).filter(c => c !== category)
+                      : [...(editHotelData.categories ?? []), category],
+                  });
+                }}
+                title={!canEditElevatedFields ? 'Categories are moderated by Admin and Marketing' : undefined}
+                className={`rounded-full border px-2.5 sm:px-4 py-1 sm:py-1.5 text-xs sm:text-sm font-medium transition ${
+                  !canEditElevatedFields ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'
+                } ${
                   selected
                     ? 'border-stone-900 bg-stone-900 text-white shadow-2xs'
                     : 'border-stone-200 bg-stone-50/50 text-stone-600 hover:border-stone-400'
                 }`}
               >
-                {category}
+                <span className="inline-flex items-center gap-1">
+                  <span>{category}</span>
+                  {!canEditElevatedFields && selected && <Lock className="w-3 h-3 opacity-70" />}
+                </span>
               </button>
             );
           })}
         </div>
-        <p className="text-[11px] sm:text-xs text-stone-400 mt-1.5">Guests filter by this. Pick every one that genuinely fits.</p>
+        <p className="text-[11px] sm:text-xs text-stone-400 mt-1.5">
+          Guests filter by this. {!canEditElevatedFields ? 'Category tags are locked for property managers. Contact admin to add or update categories.' : 'Pick every one that genuinely fits.'}
+        </p>
         <FieldError message={detailProblems.category} />
       </div>
     </div>
@@ -1627,14 +2046,26 @@ export default function ManageHotel() {
       <div>
         <div className="flex items-center justify-between mb-2">
           <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider">Common Amenities</label>
-          <button
-            type="button"
-            onClick={() => setAmenitiesExpanded(!amenitiesExpanded)}
-            className="text-xs font-semibold text-stone-600 hover:text-stone-900 inline-flex items-center gap-1"
-          >
-            <span>{amenitiesExpanded ? 'Show fewer' : `Show all (${COMMON_AMENITIES.length})`}</span>
-            <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-150 ${amenitiesExpanded ? 'rotate-180' : ''}`} />
-          </button>
+          <div className="flex items-center gap-3">
+            {editHotelData.description?.trim() && (
+              <button
+                type="button"
+                onClick={handleTriggerLinkAnalysis}
+                className="text-xs font-semibold text-stone-600 hover:text-stone-900 inline-flex items-center gap-1 cursor-pointer"
+              >
+                <Sparkles className="h-3.5 w-3.5 text-amber-600" />
+                <span>Auto-detect from description</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setAmenitiesExpanded(!amenitiesExpanded)}
+              className="text-xs font-semibold text-stone-600 hover:text-stone-900 inline-flex items-center gap-1"
+            >
+              <span>{amenitiesExpanded ? 'Show fewer' : `Show all (${COMMON_AMENITIES.length})`}</span>
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-150 ${amenitiesExpanded ? 'rotate-180' : ''}`} />
+            </button>
+          </div>
         </div>
         
         <div className="flex flex-wrap gap-1.5 sm:gap-2 mb-3">
@@ -1772,12 +2203,21 @@ export default function ManageHotel() {
 
               {/* Property Owner / Holding Entity */}
               <div className="rounded-xl border border-stone-200 bg-white p-3.5 sm:p-4 md:p-5 space-y-3 sm:space-y-4">
-                <div className="flex items-center gap-2 sm:gap-2.5 text-stone-900 text-sm sm:text-base font-semibold">
-                  <Building className="w-4 h-4 sm:w-5 sm:h-5 text-stone-600 shrink-0" />
-                  <span>Property Owner / Legal Entity <span className="text-[11px] sm:text-xs text-stone-400 font-normal">(Optional)</span></span>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 sm:gap-2.5 text-stone-900 text-sm sm:text-base font-semibold">
+                    <Building className="w-4 h-4 sm:w-5 sm:h-5 text-stone-600 shrink-0" />
+                    <span>Property Owner / Legal Entity <span className="text-[11px] sm:text-xs text-stone-400 font-normal">(Optional)</span></span>
+                  </div>
+                  {!canEditElevatedFields && (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-stone-500 bg-stone-100 border border-stone-200/80 px-2 py-0.5 rounded-md self-start sm:self-auto">
+                      <Lock className="w-3 h-3 text-stone-500" />
+                      <span>Admin &amp; Marketing Only</span>
+                    </span>
+                  )}
                 </div>
                 <p className="text-[11px] sm:text-xs text-stone-500 leading-relaxed">
                   Entity, holding company, or individual holding title/operating lease separate from the local manager.
+                  {!canEditElevatedFields && ' Legal title and holding entity details are verified and managed by Platform Admins.'}
                 </p>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 pt-1 sm:pt-2">
@@ -1785,30 +2225,39 @@ export default function ManageHotel() {
                     <label className="block text-[11px] sm:text-xs font-bold text-stone-500 uppercase tracking-wider mb-1 sm:mb-1.5">Owner / Entity Name</label>
                     <input
                       type="text"
+                      disabled={!canEditElevatedFields}
                       value={editHotelData.ownerName ?? ''}
-                      onChange={e => setEditHotelData({ ...editHotelData, ownerName: e.target.value })}
-                      className="w-full bg-stone-50 border border-stone-200 px-3 py-2 text-xs sm:text-sm rounded-lg sm:rounded-xl outline-none focus:border-stone-900 transition"
-                      placeholder="e.g. Nyika Safaris Group"
+                      onChange={e => canEditElevatedFields && setEditHotelData({ ...editHotelData, ownerName: e.target.value })}
+                      className={`w-full border border-stone-200 px-3 py-2 text-xs sm:text-sm rounded-lg sm:rounded-xl outline-none transition ${
+                        !canEditElevatedFields ? 'bg-stone-100 text-stone-500 cursor-not-allowed' : 'bg-stone-50 focus:border-stone-900'
+                      }`}
+                      placeholder={canEditElevatedFields ? 'e.g. Nyika Safaris Group' : 'Not specified'}
                     />
                   </div>
                   <div>
                     <label className="block text-[11px] sm:text-xs font-bold text-stone-500 uppercase tracking-wider mb-1 sm:mb-1.5">Owner Email</label>
                     <input
                       type="email"
+                      disabled={!canEditElevatedFields}
                       value={editHotelData.ownerEmail ?? ''}
-                      onChange={e => setEditHotelData({ ...editHotelData, ownerEmail: e.target.value })}
-                      className="w-full bg-stone-50 border border-stone-200 px-3 py-2 text-xs sm:text-sm rounded-lg sm:rounded-xl outline-none focus:border-stone-900 transition"
-                      placeholder="owner@company.mw"
+                      onChange={e => canEditElevatedFields && setEditHotelData({ ...editHotelData, ownerEmail: e.target.value })}
+                      className={`w-full border border-stone-200 px-3 py-2 text-xs sm:text-sm rounded-lg sm:rounded-xl outline-none transition ${
+                        !canEditElevatedFields ? 'bg-stone-100 text-stone-500 cursor-not-allowed' : 'bg-stone-50 focus:border-stone-900'
+                      }`}
+                      placeholder={canEditElevatedFields ? 'owner@company.mw' : 'Not specified'}
                     />
                   </div>
                   <div>
                     <label className="block text-[11px] sm:text-xs font-bold text-stone-500 uppercase tracking-wider mb-1 sm:mb-1.5">Owner Phone</label>
                     <input
                       type="tel"
+                      disabled={!canEditElevatedFields}
                       value={editHotelData.ownerPhone ?? ''}
-                      onChange={e => setEditHotelData({ ...editHotelData, ownerPhone: e.target.value })}
-                      className="w-full bg-stone-50 border border-stone-200 px-3 py-2 text-xs sm:text-sm rounded-lg sm:rounded-xl outline-none focus:border-stone-900 transition"
-                      placeholder="+265 888 123 456"
+                      onChange={e => canEditElevatedFields && setEditHotelData({ ...editHotelData, ownerPhone: e.target.value })}
+                      className={`w-full border border-stone-200 px-3 py-2 text-xs sm:text-sm rounded-lg sm:rounded-xl outline-none transition ${
+                        !canEditElevatedFields ? 'bg-stone-100 text-stone-500 cursor-not-allowed' : 'bg-stone-50 focus:border-stone-900'
+                      }`}
+                      placeholder={canEditElevatedFields ? '+265 888 123 456' : 'Not specified'}
                     />
                   </div>
                 </div>
@@ -1948,7 +2397,7 @@ export default function ManageHotel() {
                         <strong>Premium Feature:</strong> Chat capabilities have been disabled for this listing by an administrator. Please contact support to upgrade or re-enable.
                       </div>
                     )}
-                    {isAdmin(user) && (
+                    {isAdmin(user) && !viewAsManager && (
                       <>
                         <label className="flex items-center gap-2.5 cursor-pointer mb-2 p-2.5 bg-red-50 border border-red-200 rounded-lg text-xs sm:text-sm">
                           <input 
@@ -2240,15 +2689,59 @@ export default function ManageHotel() {
   </SectionCard>
 
   <SectionCard title="Opening Hours" description="When guests can arrive and receive service." collapsible>
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="md:col-span-2">
-                <OpeningHoursEditor
-                  value={editHotelData.hours}
-                  onChange={hours => setEditHotelData({ ...editHotelData, hours })}
-                  label="Reception / property hours"
-                  hint="Shown to guests on your listing. Leave unset to publish no hours."
-                />
-              </div>
+    <div className="space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-stone-50 border border-stone-200/80 rounded-xl p-3 sm:p-3.5">
+        <div>
+          <div className="flex items-center gap-2">
+            <p className="text-xs font-semibold text-stone-900">24/7 Reception or All-Day Access</p>
+            {isWeekAllDay(editHotelData.hours) && (
+              <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
+                Active: All Day (24/7)
+              </span>
+            )}
+          </div>
+          <p className="text-[11px] text-stone-500 mt-0.5">For lodges, hotels, or cottages offering round-the-clock check-in and service.</p>
+        </div>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          {isWeekAllDay(editHotelData.hours) ? (
+            <button
+              type="button"
+              onClick={() => {
+                setEditHotelData(prev => ({
+                  ...prev,
+                  hours: defaultWeek('07:00', '22:00')
+                }));
+                toast.success('Reset property hours to standard daytime (07:00 – 22:00)');
+              }}
+              className="text-xs font-medium px-3 py-1.5 rounded-lg bg-white border border-stone-300 hover:bg-stone-50 text-stone-700 transition shadow-2xs cursor-pointer shrink-0"
+            >
+              Reset to Standard (7am – 10pm)
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setEditHotelData(prev => ({
+                  ...prev,
+                  hours: allDayWeek()
+                }));
+                toast.success('Set property hours to 24/7 (All Day)');
+              }}
+              className="text-xs font-medium px-3 py-1.5 rounded-lg bg-stone-900 hover:bg-stone-800 text-white transition shadow-2xs cursor-pointer shrink-0"
+            >
+              Set All Day (24/7)
+            </button>
+          )}
+        </div>
+      </div>
+
+      <OpeningHoursEditor
+        value={editHotelData.hours}
+        onChange={hours => setEditHotelData({ ...editHotelData, hours })}
+        label="Reception / property hours"
+        hint="Shown to guests on your listing. Leave unset to publish no hours."
+      />
     </div>
   </SectionCard>
             {/* Pinned: this form is long enough that the save button used to
@@ -2478,6 +2971,30 @@ export default function ManageHotel() {
 
       {activeTab === 'rooms' && (
         <div className="space-y-4 sm:space-y-6">
+          {editHotelData.stayType === 'entire_place' && (
+            <div className="p-4 rounded-xl sm:rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-950 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-emerald-100 text-emerald-700 shrink-0">
+                  <Home className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold">Entire Place / Whole Space Stay Active</h4>
+                  <p className="text-xs text-emerald-800/90 mt-0.5">
+                    This property is booked exclusively as a whole space ({editHotelData.entirePlaceDetails?.bedrooms || 2} Bedrooms · Up to {editHotelData.entirePlaceDetails?.maxGuests || 6} Guests).
+                    The entry below represents the whole-property inventory and nightly rate for guests.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => requestTab('details')}
+                className="text-xs font-semibold text-emerald-900 bg-white hover:bg-emerald-100/70 border border-emerald-300 px-3 py-1.5 rounded-lg shrink-0 transition"
+              >
+                {canEditElevatedFields ? 'Edit House Specs →' : 'View House Specs (Admin Managed) →'}
+              </button>
+            </div>
+          )}
+
           <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2.5 mb-2">
             <p className="text-xs sm:text-sm text-stone-500">Manage your room inventory, pricing, and availability.</p>
             {!editingRoomId && (
@@ -3844,6 +4361,15 @@ export default function ManageHotel() {
         booking={editModalBooking}
         onClose={() => setEditModalBooking(null)}
         onSave={updateBookingDetails}
+      />
+
+      <LinkDescriptionModal
+        isOpen={linkModalOpen}
+        onClose={() => setLinkModalOpen(false)}
+        analysis={linkAnalysisResult}
+        loading={linkModalLoading}
+        aiPowered={Boolean(aiStatus.enabled && aiStatus.available)}
+        onApply={handleApplyLinkedData}
       />
     </div>
   );

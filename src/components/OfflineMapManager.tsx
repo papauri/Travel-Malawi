@@ -20,6 +20,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { LatLng, distanceKm, estimateTravelTime, formatCoordinates, formatCoordinatesDMS, getCompassBearing, isValidLatLng } from '../lib/geo';
+import FormattedDescription from './FormattedDescription';
 import {
   PropertyOfflinePackage,
   downloadPropertyOfflineMap,
@@ -485,9 +486,17 @@ export default function OfflineMapManager({
                     <AlertTriangle className="w-3.5 h-3.5 text-amber-700" />
                     Host Access &amp; Road Advice
                   </h4>
-                  <p className="text-xs text-amber-900/90 leading-relaxed whitespace-pre-line">
-                    {property.locationNotes}
-                  </p>
+                  <FormattedDescription
+                    text={property.locationNotes}
+                    collapsible={true}
+                    collapsedHeight={80}
+                    expandLabel="See more details"
+                    collapseLabel="Show less"
+                    fadeGradientClass="from-transparent via-amber-50/60 to-amber-50"
+                    buttonClassName="text-amber-950 font-bold text-xs"
+                    className="text-amber-900 text-xs"
+                    paragraphClassName="text-xs text-amber-900/90 leading-relaxed mb-1.5 last:mb-0"
+                  />
                 </div>
               ) : (
                 <div className="p-3 bg-stone-50 border border-stone-200 rounded-xl text-xs text-stone-500">
