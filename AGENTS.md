@@ -98,8 +98,3 @@
   - Check-in and check-out dates must be properly sequenced (`checkOut > checkIn`).
   - Unit room inventory must prevent overbooking through calendar date-blocking.
 - **Guest Inquiries & Real-time Chat**: Messages must be routed directly between the authenticated guest and the assigned property manager.
-
----
-
-## 7. Git Workflow & Version Control
-- **Automatic Commits & Push**: Always stage, commit with a clear and descriptive commit message, and push directly to `origin main` whenever a task or feature implementation is completed.
