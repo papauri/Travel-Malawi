@@ -23,7 +23,8 @@ import Pagination from '../components/Pagination';
 import BookingChat from '../components/BookingChat';
 import PropertyChat from '../components/PropertyChat';
 import { useChatModal } from '../contexts/ChatModalContext';
-import { MessageSquare, Megaphone, Presentation, Bell, ChevronDown, SlidersHorizontal, Sparkles } from 'lucide-react';
+import { MessageSquare, Megaphone, Presentation, Bell, ChevronDown, SlidersHorizontal, Sparkles, Layers, Zap, ArrowUpRight } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import SmartImage from '../components/SmartImage';
 import ReminderTemplatesModal from '../components/ReminderTemplatesModal';
 import EditBookingModal from '../components/EditBookingModal';
@@ -67,6 +68,23 @@ type Tab = 'details' | 'media' | 'promotions' | 'rooms' | 'conferences' | 'resta
 const TABS: Tab[] = ['details', 'media', 'promotions', 'rooms', 'conferences', 'restaurant', 'bookings', 'inquiries', 'stayos', 'broadcasts', 'templates'];
 
 const isTab = (value: string | null): value is Tab => !!value && (TABS as string[]).includes(value);
+
+type WorkspaceHub = 'all' | 'front_desk' | 'inventory' | 'profile' | 'dining' | 'operations';
+
+interface WorkspaceHubConfig {
+  id: WorkspaceHub;
+  label: string;
+  tabIds: Tab[];
+}
+
+const WORKSPACE_HUBS: WorkspaceHubConfig[] = [
+  { id: 'all', label: 'All Tabs', tabIds: TABS },
+  { id: 'front_desk', label: '🛎️ Front Desk & Stays', tabIds: ['bookings', 'inquiries', 'broadcasts'] },
+  { id: 'inventory', label: '🏷️ Rates & Inventory', tabIds: ['rooms', 'promotions'] },
+  { id: 'profile', label: '🏨 Property Profile', tabIds: ['details', 'media'] },
+  { id: 'dining', label: '🍽️ Dining & Venues', tabIds: ['restaurant', 'conferences'] },
+  { id: 'operations', label: '⚙️ Operations & Comms', tabIds: ['stayos', 'templates'] },
+];
 
 /** Compares only what the details form can actually change. */
 function hotelFormSnapshot(data: Partial<Hotel>): string {
@@ -241,6 +259,7 @@ export default function ManageHotel() {
   const canEditElevatedFields = isElevatedUser && !viewAsManager;
   const activeTab: Tab = isTab(searchParams.get('tab')) ? (searchParams.get('tab') as Tab) : 'details';
   const [pendingTab, setPendingTab] = useState<Tab | null>(null);
+  const [selectedHub, setSelectedHub] = useState<WorkspaceHub>('all');
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -1517,12 +1536,141 @@ export default function ManageHotel() {
           )}
         </div>
       )}
+      {/* Front Desk Action Alert Banner */}
+      {(() => {
+        const urgentPendingBookings = bookings.filter(b => b.status === 'pending').length;
+        const urgentUnreadInquiries = inquiries.filter(i => 
+          i.lastSenderId !== user?.uid && 
+          i.updatedAt && 
+          (!i.managerLastOpenedAt || i.updatedAt > i.managerLastOpenedAt)
+        ).length;
+
+        if (urgentPendingBookings === 0 && urgentUnreadInquiries === 0) return null;
+
+        return (
+          <div className="mb-4 sm:mb-5 p-3.5 sm:p-4 rounded-2xl bg-amber-50 border border-amber-200/90 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-amber-200 text-amber-900 flex items-center justify-center shrink-0">
+                <Zap className="w-4 h-4 text-amber-900" />
+              </div>
+              <div>
+                <p className="text-xs sm:text-sm font-bold text-amber-950">
+                  Front Desk Attention Needed
+                </p>
+                <p className="text-[11px] sm:text-xs text-amber-800">
+                  {urgentPendingBookings > 0 ? `${urgentPendingBookings} booking request(s) waiting for confirmation. ` : ''}
+                  {urgentUnreadInquiries > 0 ? `${urgentUnreadInquiries} unread guest inquiry(ies).` : ''}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 self-start sm:self-auto">
+              {urgentPendingBookings > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedHub('front_desk');
+                    requestTab('bookings');
+                  }}
+                  className="px-3.5 py-1.5 rounded-xl bg-stone-900 text-white text-xs font-semibold hover:bg-stone-800 transition shadow-2xs cursor-pointer"
+                >
+                  View Bookings ({urgentPendingBookings})
+                </button>
+              )}
+              {urgentUnreadInquiries > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedHub('front_desk');
+                    requestTab('inquiries');
+                  }}
+                  className="px-3.5 py-1.5 rounded-xl bg-amber-400 text-stone-950 text-xs font-bold hover:bg-amber-300 transition shadow-2xs cursor-pointer"
+                >
+                  Reply to Chat ({urgentUnreadInquiries})
+                </button>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Global Bulk Room & Rate Editor Section */}
+      <AnimatePresence>
+        {showBulkEditor && hotel && (
+          <motion.div
+            initial={{ opacity: 0, y: -12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.2 }}
+            className="mb-6"
+          >
+            <BulkRoomEditor
+              hotels={[hotel]}
+              rooms={rooms}
+              initialHotelId={hotel.id}
+              isEmbedded={true}
+              onClose={() => setShowBulkEditor(false)}
+              onRoomsUpdated={(updated) => {
+                const map = new Map(updated.map(r => [r.id!, r]));
+                setRooms(prev => prev.map(r => (r.id && map.has(r.id) ? map.get(r.id)! : r)));
+              }}
+              onHotelsUpdated={(updatedHotels) => {
+                if (updatedHotels[0]) {
+                  setHotel(updatedHotels[0]);
+                }
+              }}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Dashboard Section Navigation */}
-      <div className="sticky top-[88px] sm:top-[100px] md:top-[100px] lg:top-[108px] z-30 bg-stone-50/95 backdrop-blur-md py-2 sm:py-2.5 mb-5 sm:mb-7 border-b border-stone-200/80">
+      <div className="sticky top-[88px] sm:top-[100px] md:top-[100px] lg:top-[108px] z-30 bg-stone-50/95 backdrop-blur-md py-2 sm:py-2.5 mb-5 sm:mb-7 border-b border-stone-200/80 space-y-2">
+        {/* Workspace Hub Quick Selector & Quick Bulk Action */}
+        <div className="flex items-center justify-between gap-2 overflow-x-auto pb-1 scrollbar-none">
+          <div className="flex items-center gap-1 p-1 bg-stone-200/70 rounded-xl border border-stone-200/80">
+            {WORKSPACE_HUBS.map(hub => {
+              const isSelected = selectedHub === hub.id;
+              return (
+                <button
+                  key={hub.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedHub(hub.id);
+                    if (hub.id !== 'all' && !hub.tabIds.includes(activeTab)) {
+                      requestTab(hub.tabIds[0]);
+                    }
+                  }}
+                  className={`px-2.5 sm:px-3 py-1 rounded-lg text-[11px] sm:text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
+                    isSelected
+                      ? 'bg-stone-900 text-white shadow-xs'
+                      : 'text-stone-600 hover:text-stone-950 hover:bg-stone-100/50'
+                  }`}
+                >
+                  {hub.label}
+                </button>
+              );
+            })}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setShowBulkEditor(prev => !prev)}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer shrink-0 shadow-2xs ${
+              showBulkEditor
+                ? 'bg-amber-400 text-stone-950 ring-2 ring-amber-300 font-bold'
+                : 'bg-white hover:bg-stone-100 text-stone-800 border border-stone-200'
+            }`}
+            title="Open Bulk Room Rates & Promotions Editor"
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5 text-amber-600" />
+            <span>{showBulkEditor ? 'Close Bulk Editor' : '⚡ Bulk Reprice'}</span>
+          </button>
+        </div>
+
         {/* Mobile / Tablet Collapsible Section Drawer (< lg) */}
         <div className="lg:hidden space-y-2">
           {(() => {
-            const tabsList = [
+            const allTabsList = [
               { id: 'details' as Tab, label: 'Property details', icon: Building },
               { id: 'media' as Tab, label: 'Media', icon: Eye },
               { id: 'promotions' as Tab, label: 'Promotions', icon: Percent },
@@ -1535,7 +1683,13 @@ export default function ManageHotel() {
               { id: 'inquiries' as Tab, label: 'Inquiries', icon: MessageSquare },
               { id: 'templates' as Tab, label: 'Email templates & automation', icon: Mail },
             ];
-            const currentTabObj = tabsList.find(t => t.id === activeTab) || tabsList[0];
+
+            const activeHubConfig = WORKSPACE_HUBS.find(h => h.id === selectedHub) || WORKSPACE_HUBS[0];
+            const visibleTabsList = selectedHub === 'all'
+              ? allTabsList
+              : allTabsList.filter(t => activeHubConfig.tabIds.includes(t.id));
+
+            const currentTabObj = allTabsList.find(t => t.id === activeTab) || allTabsList[0];
             const CurrentIcon = currentTabObj.icon;
             const currentPendingCount = activeTab === 'bookings' ? bookings.filter(b => b.status === 'pending').length : 0;
             const currentUnreadCount = activeTab === 'inquiries' ? inquiries.filter(i => 
@@ -1580,7 +1734,7 @@ export default function ManageHotel() {
 
                 {isMobileNavOpen && (
                   <div className="mt-2 p-2 bg-white rounded-xl sm:rounded-2xl border border-stone-200 shadow-md grid grid-cols-1 sm:grid-cols-2 gap-1.5 animate-in fade-in slide-in-from-top-2 duration-150">
-                    {tabsList.map(tab => {
+                    {visibleTabsList.map(tab => {
                       const Icon = tab.icon;
                       const pendingCount = tab.id === 'bookings' ? bookings.filter(b => b.status === 'pending').length : 0;
                       const unreadInquiryCount = tab.id === 'inquiries' ? inquiries.filter(i => 
@@ -1635,65 +1789,74 @@ export default function ManageHotel() {
 
         {/* Desktop Segmented Pills Navigation Bar (>= lg) */}
         <div className="hidden lg:flex flex-wrap items-center gap-1.5 sm:gap-2 p-1.5 sm:p-2 bg-stone-100/90 rounded-2xl border border-stone-200 shadow-2xs">
-          {([
-            { id: 'details' as Tab, label: 'Property details', icon: Building },
-            { id: 'media' as Tab, label: 'Media', icon: Eye },
-            { id: 'promotions' as Tab, label: 'Promotions', icon: Percent },
-            { id: 'stayos' as Tab, label: 'Stay OS', icon: ShieldCheck },
-            { id: 'broadcasts' as Tab, label: 'Broadcasts', icon: Megaphone },
-            { id: 'rooms' as Tab, label: editHotelData.stayType === 'entire_place' ? 'Whole space & pricing' : 'Rooms & pricing', icon: editHotelData.stayType === 'entire_place' ? Home : BedDouble },
-            { id: 'conferences' as Tab, label: 'Conferences', icon: Presentation },
-            { id: 'restaurant' as Tab, label: 'Restaurant', icon: UtensilsCrossed },
-            { id: 'bookings' as Tab, label: 'Bookings', icon: Calendar },
-            { id: 'inquiries' as Tab, label: 'Inquiries', icon: MessageSquare },
-            { id: 'templates' as Tab, label: 'Email templates & automation', icon: Mail },
-          ]).map(tab => {
-            const Icon = tab.icon;
-            const pendingCount = tab.id === 'bookings' ? bookings.filter(b => b.status === 'pending').length : 0;
-            const unreadInquiryCount = tab.id === 'inquiries' ? inquiries.filter(i => 
-              i.lastSenderId !== user?.uid && 
-              i.updatedAt && 
-              (!i.managerLastOpenedAt || i.updatedAt > i.managerLastOpenedAt)
-            ).length : 0;
-            const isActive = activeTab === tab.id;
-            
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => requestTab(tab.id)}
-                className={`flex items-center gap-2 px-3 sm:px-3.5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
-                  isActive
-                    ? 'bg-stone-900 text-white shadow-xs'
-                    : 'bg-white hover:bg-stone-50 text-stone-700 hover:text-stone-950 border border-stone-200/90 shadow-2xs'
-                }`}
-              >
-                <Icon className={`h-4 w-4 shrink-0 ${isActive ? 'text-white' : 'text-stone-500'}`} />
-                <span>{tab.label}</span>
-                {dirtyOn(tab.id) && (
-                  <span title="Unsaved changes" className="h-2 w-2 rounded-full bg-stone-300 shrink-0" />
-                )}
-                {tab.id === 'restaurant' && hotel.restaurant?.enabled && (
-                  <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full uppercase shrink-0 ${
-                    isActive ? 'bg-white/20 text-white' : 'bg-stone-100 text-stone-700'
-                  }`}>
-                    Live
-                  </span>
-                )}
-                {pendingCount > 0 && (
-                  <span className={`text-[11px] px-2 py-0.5 rounded-full shrink-0 font-bold ${isActive ? 'bg-white/20 text-white' : 'bg-stone-100 text-stone-700'}`}>
-                    {pendingCount}
-                  </span>
-                )}
-                {unreadInquiryCount > 0 && (
-                  <span className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full shadow-xs shrink-0 font-bold ${isActive ? 'bg-white/20 text-white' : 'bg-stone-100 text-stone-700'}`}>
-                    <Bell className="w-3 h-3 animate-bell-ring" />
-                    {unreadInquiryCount} new
-                  </span>
-                )}
-              </button>
-            );
-          })}
+          {(() => {
+            const allTabsList = [
+              { id: 'details' as Tab, label: 'Property details', icon: Building },
+              { id: 'media' as Tab, label: 'Media', icon: Eye },
+              { id: 'promotions' as Tab, label: 'Promotions', icon: Percent },
+              { id: 'stayos' as Tab, label: 'Stay OS', icon: ShieldCheck },
+              { id: 'broadcasts' as Tab, label: 'Broadcasts', icon: Megaphone },
+              { id: 'rooms' as Tab, label: editHotelData.stayType === 'entire_place' ? 'Whole space & pricing' : 'Rooms & pricing', icon: editHotelData.stayType === 'entire_place' ? Home : BedDouble },
+              { id: 'conferences' as Tab, label: 'Conferences', icon: Presentation },
+              { id: 'restaurant' as Tab, label: 'Restaurant', icon: UtensilsCrossed },
+              { id: 'bookings' as Tab, label: 'Bookings', icon: Calendar },
+              { id: 'inquiries' as Tab, label: 'Inquiries', icon: MessageSquare },
+              { id: 'templates' as Tab, label: 'Email templates & automation', icon: Mail },
+            ];
+
+            const activeHubConfig = WORKSPACE_HUBS.find(h => h.id === selectedHub) || WORKSPACE_HUBS[0];
+            const visibleTabsList = selectedHub === 'all'
+              ? allTabsList
+              : allTabsList.filter(t => activeHubConfig.tabIds.includes(t.id));
+
+            return visibleTabsList.map(tab => {
+              const Icon = tab.icon;
+              const pendingCount = tab.id === 'bookings' ? bookings.filter(b => b.status === 'pending').length : 0;
+              const unreadInquiryCount = tab.id === 'inquiries' ? inquiries.filter(i => 
+                i.lastSenderId !== user?.uid && 
+                i.updatedAt && 
+                (!i.managerLastOpenedAt || i.updatedAt > i.managerLastOpenedAt)
+              ).length : 0;
+              const isActive = activeTab === tab.id;
+              
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => requestTab(tab.id)}
+                  className={`flex items-center gap-2 px-3 sm:px-3.5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+                    isActive
+                      ? 'bg-stone-900 text-white shadow-xs'
+                      : 'bg-white hover:bg-stone-50 text-stone-700 hover:text-stone-950 border border-stone-200/90 shadow-2xs'
+                  }`}
+                >
+                  <Icon className={`h-4 w-4 shrink-0 ${isActive ? 'text-white' : 'text-stone-500'}`} />
+                  <span>{tab.label}</span>
+                  {dirtyOn(tab.id) && (
+                    <span title="Unsaved changes" className="h-2 w-2 rounded-full bg-stone-300 shrink-0" />
+                  )}
+                  {tab.id === 'restaurant' && hotel.restaurant?.enabled && (
+                    <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full uppercase shrink-0 ${
+                      isActive ? 'bg-white/20 text-white' : 'bg-stone-100 text-stone-700'
+                    }`}>
+                      Live
+                    </span>
+                  )}
+                  {pendingCount > 0 && (
+                    <span className={`text-[11px] px-2 py-0.5 rounded-full shrink-0 font-bold ${isActive ? 'bg-white/20 text-white' : 'bg-stone-100 text-stone-700'}`}>
+                      {pendingCount}
+                    </span>
+                  )}
+                  {unreadInquiryCount > 0 && (
+                    <span className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full shadow-xs shrink-0 font-bold ${isActive ? 'bg-white/20 text-white' : 'bg-stone-100 text-stone-700'}`}>
+                      <Bell className="w-3 h-3 animate-bell-ring" />
+                      {unreadInquiryCount} new
+                    </span>
+                  )}
+                </button>
+              );
+            });
+          })()}
         </div>
       </div>
 

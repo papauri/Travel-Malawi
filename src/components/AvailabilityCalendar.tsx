@@ -7,7 +7,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { RoomType } from '../types';
-import { ChevronLeft, ChevronRight, Lock } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Lock, Sun, Eye, Sparkles } from 'lucide-react';
+import { motion } from 'motion/react';
 import { BookingLike, buildOccupancyMap } from '../lib/availability';
 import { DateStr, toDateStr, todayStr, addDays, formatDateStr } from '../lib/dates';
 
@@ -67,6 +68,7 @@ export default function AvailabilityCalendar({
   const [viewMonth, setViewMonth] = useState(() => new Date().getMonth());
   const [bookedMap, setBookedMap] = useState<Record<DateStr, number>>({});
   const [loading, setLoading] = useState(true);
+  const [highContrastMode, setHighContrastMode] = useState(false);
 
   // Depend on the room's id rather than the object: a parent that rebuilds the
   // room on each render would otherwise re-run the query every render.
@@ -273,7 +275,14 @@ export default function AvailabilityCalendar({
     }
   }
 
-  const cellStyles: Record<Availability, string> = {
+  const cellStyles: Record<Availability, string> = highContrastMode ? {
+    available: 'bg-emerald-600 text-white font-bold hover:bg-emerald-700 cursor-pointer border-2 border-emerald-700 shadow-xs ring-1 ring-emerald-500/50',
+    limited:   'bg-amber-400 text-stone-950 font-bold hover:bg-amber-500 cursor-pointer border-2 border-amber-500 shadow-xs ring-1 ring-amber-400/50',
+    full:      'bg-rose-100 text-rose-950 font-bold border-2 border-rose-300 opacity-90',
+    blocked:   'bg-stone-950 text-white font-bold border-2 border-stone-800 shadow-xs',
+    past:      'bg-stone-100 text-stone-400 cursor-default border border-stone-200',
+    empty:     '',
+  } : {
     available: 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 cursor-pointer border border-emerald-200',
     limited:   'bg-amber-50 text-amber-800 hover:bg-amber-100 cursor-pointer border border-amber-200',
     full:      'bg-red-50 text-red-400 border border-red-100 opacity-70',
@@ -299,11 +308,18 @@ export default function AvailabilityCalendar({
   ];
 
   return (
-    <div className="bg-white rounded-2xl border border-stone-200 shadow-2xs overflow-hidden">
+    <div className={`bg-white rounded-2xl border transition-all ${highContrastMode ? 'border-stone-800 shadow-md ring-1 ring-stone-900/10' : 'border-stone-200 shadow-2xs'} overflow-hidden`}>
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between px-4 sm:px-6 md:px-8 py-4 sm:py-6 border-b border-stone-100 gap-4">
         <div className="flex-1">
-          <h3 className="text-xl font-serif text-stone-900">Availability</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="text-xl font-serif text-stone-900">Availability</h3>
+            {highContrastMode && (
+              <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-amber-400 text-stone-950">
+                Focus Mode
+              </span>
+            )}
+          </div>
           <div className="text-sm text-stone-500 mt-0.5 flex flex-col gap-1.5">
             <p>{isManagerMode ? 'Click a date to block or unblock it' : 'Select your travel dates'}</p>
             {(!isManagerMode && (checkIn || checkOut)) && (
@@ -334,27 +350,45 @@ export default function AvailabilityCalendar({
             )}
           </div>
         </div>
-        <div className="flex items-center justify-between md:justify-end gap-3 w-full md:w-auto mt-2 md:mt-0">
-          <button
-            type="button"
-            onClick={prevMonth}
-            disabled={isPrevDisabled}
-            className="p-2 rounded-full hover:bg-stone-100 transition disabled:opacity-30 disabled:cursor-not-allowed"
-            aria-label="Previous month"
-          >
-            <ChevronLeft className="h-5 w-5 text-stone-600" />
-          </button>
-          <span className="text-base font-semibold text-stone-900 w-36 text-center">
-            {MONTH_NAMES[viewMonth]} {viewYear}
-          </span>
-          <button
-            type="button"
-            onClick={nextMonth}
-            className="p-2 rounded-full hover:bg-stone-100 transition"
-            aria-label="Next month"
-          >
-            <ChevronRight className="h-5 w-5 text-stone-600" />
-          </button>
+        <div className="flex flex-wrap items-center justify-between md:justify-end gap-2.5 w-full md:w-auto mt-2 md:mt-0">
+          {isManagerMode && (
+            <button
+              type="button"
+              onClick={() => setHighContrastMode(prev => !prev)}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer border ${
+                highContrastMode
+                  ? 'bg-amber-400 text-stone-950 border-amber-400 shadow-xs font-bold'
+                  : 'bg-white hover:bg-stone-100 text-stone-700 border-stone-200'
+              }`}
+              title="Toggle High-Contrast Focus Mode for outdoor and sunlight visibility"
+            >
+              <Sun className="w-3.5 h-3.5" />
+              <span>{highContrastMode ? 'High-Contrast ON' : 'Focus Mode'}</span>
+            </button>
+          )}
+
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={prevMonth}
+              disabled={isPrevDisabled}
+              className="p-2 rounded-full hover:bg-stone-100 transition disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+              aria-label="Previous month"
+            >
+              <ChevronLeft className="h-5 w-5 text-stone-600" />
+            </button>
+            <span className="text-base font-semibold text-stone-900 w-36 text-center">
+              {MONTH_NAMES[viewMonth]} {viewYear}
+            </span>
+            <button
+              type="button"
+              onClick={nextMonth}
+              className="p-2 rounded-full hover:bg-stone-100 transition cursor-pointer"
+              aria-label="Next month"
+            >
+              <ChevronRight className="h-5 w-5 text-stone-600" />
+            </button>
+          </div>
         </div>
       </div>
 

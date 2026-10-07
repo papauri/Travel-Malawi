@@ -1999,8 +1999,8 @@ USER MESSAGE:
     const descSummary = p.description ? `    - About Property: ${untrusted('property_description', p.description, 180)}` : '';
     const locationNotesSummary = p.locationNotes ? `    - Arrival / Location Notes: ${untrusted('location_notes', p.locationNotes, 300)}` : '';
 
-    const stayTypeStr = p.stayType === 'entire_place'
-      ? `Whole House / Entire Place (${p.entirePlaceDetails?.propertyType || 'Whole Property'}, ${p.entirePlaceDetails?.bedrooms || 1} bed, ${p.entirePlaceDetails?.bathrooms || 1} bath, max ${p.entirePlaceDetails?.maxGuests || 2} guests, $${p.entirePlaceDetails?.ratePerNightUsd ?? '-'}/MWK ${p.entirePlaceDetails?.ratePerNightMwk?.toLocaleString() ?? '-'} per night)`
+    const stayTypeStr = (p as any).stayType === 'entire_place'
+      ? `Whole House / Entire Place (${(p as any).entirePlaceDetails?.propertyType || 'Whole Property'}, ${(p as any).entirePlaceDetails?.bedrooms || 1} bed, ${(p as any).entirePlaceDetails?.bathrooms || 1} bath, max ${(p as any).entirePlaceDetails?.maxGuests || 2} guests, $${(p as any).entirePlaceDetails?.ratePerNightUsd ?? '-'}/MWK ${(p as any).entirePlaceDetails?.ratePerNightMwk?.toLocaleString() ?? '-'} per night)`
       : `Room-by-Room Stay (Multi-unit)`;
 
     return `• Property: "${p.name}" (ID: ${p.id})
