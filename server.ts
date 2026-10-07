@@ -98,7 +98,7 @@ const lower = (v: unknown) => (typeof v === 'string' ? v.trim().toLowerCase() : 
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
   // Behind Cloud Run's front end: take the client address from the proxy hop.
   app.set('trust proxy', 1);
