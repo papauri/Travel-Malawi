@@ -168,7 +168,7 @@ export default function CompactHotelCard({
                       <span className="font-bold text-stone-900 text-xs tracking-tight">
                         {formatMoney(slashed.slashedPrice, activeCurrency)}
                       </span>
-                      <span className="text-[10px] text-stone-400">/ night{hotel.stayType === 'entire_place' ? ' (whole place)' : ''}</span>
+                      <span className="text-[10px] text-stone-400">/ night</span>
                     </div>
                   </div>
                 ) : (
@@ -177,7 +177,7 @@ export default function CompactHotelCard({
                     <span className="font-bold text-stone-900 text-xs sm:text-sm tracking-tight">
                       {formatMoney(minPrice, activeCurrency)}
                     </span>
-                    <span className="text-[10px] text-stone-400">/ night{hotel.stayType === 'entire_place' ? ' (whole place)' : ''}</span>
+                    <span className="text-[10px] text-stone-400">/ night</span>
                   </div>
                 );
               }
@@ -223,7 +223,7 @@ export default function CompactHotelCard({
                     </div>
                   );
                 })()}
-                <div className="text-[10px] md:text-xs text-stone-400 mt-0.5">per night{hotel.stayType === 'entire_place' ? ' (whole place)' : ''}</div>
+                <div className="text-[10px] md:text-xs text-stone-400 mt-0.5">per night</div>
               </div>
             ) : (
               <div>
@@ -236,7 +236,7 @@ export default function CompactHotelCard({
                     ({formatMoney(secondaryPriceFrom, secondaryCurrency)})
                   </div>
                 )}
-                <div className="text-[10px] md:text-xs text-stone-400 mt-0.5">per night{hotel.stayType === 'entire_place' ? ' (whole place)' : ''}</div>
+                <div className="text-[10px] md:text-xs text-stone-400 mt-0.5">per night</div>
               </div>
             );
           }

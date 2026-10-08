@@ -3815,16 +3815,8 @@ function HostIntro({
             Your guests.
           </h1>
           <p className="mt-3 sm:mt-5 md:mt-6 max-w-xl text-sm sm:text-base md:text-lg leading-relaxed text-white/75">
-            Put your stay in front of travellers looking for the real Malawi — whether you run a private lakeside cottage, a whole guest house, a safari camp, a boutique lodge, or a multi-room B&amp;B. Receive bookings without an agency taking a cut.
+            Put your stay in front of travellers looking for the real Malawi — from lakeside cottages and guest houses to safari camps and lodges. Direct bookings with zero commission.
           </p>
-
-          <div className="mt-4 flex flex-wrap gap-2 text-xs text-emerald-200/90 font-medium">
-            <span className="bg-white/10 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/15">🏡 Whole Guest Houses</span>
-            <span className="bg-white/10 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/15">🛖 Lakeside Cottages</span>
-            <span className="bg-white/10 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/15">🦁 Safari Camps &amp; Lodges</span>
-            <span className="bg-white/10 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/15">🏖️ Private Holiday Villas</span>
-            <span className="bg-white/10 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/15">☕ B&amp;Bs &amp; Boutique Hotels</span>
-          </div>
 
           <div className="mt-6 sm:mt-8 md:mt-10 flex flex-col gap-3 sm:gap-4 sm:flex-row sm:items-center">
             {user ? (

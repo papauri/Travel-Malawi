@@ -60,25 +60,25 @@ const NO_SEARCH: AppliedSearch = {
 };
 
 export const STAY_TYPE_OPTIONS = [
-  { id: 'All', label: 'All Stay Types', icon: '✨' },
-  { id: 'entire_place', label: 'Entire Place / Whole House', icon: '🏡' },
-  { id: 'whole_guest_house', label: 'Whole Guest House', icon: '🏠' },
-  { id: 'cottage_chalet', label: 'Lakeside Cottage & Chalet', icon: '🛖' },
-  { id: 'villa_holiday_home', label: 'Private Villa & Home', icon: '🏖️' },
-  { id: 'rooms', label: 'Rooms & Suites (Per-Room)', icon: '🛏️' },
-  { id: 'safari_lodge', label: 'Safari Camp & Lodge', icon: '🦁' },
-  { id: 'bnb_guesthouse', label: 'B&B & Guest House (Rooms)', icon: '☕' },
+  { id: 'All', label: 'All Stays' },
+  { id: 'entire_place', label: 'Entire Place' },
+  { id: 'whole_guest_house', label: 'Guest Houses' },
+  { id: 'cottage_chalet', label: 'Cottages & Chalets' },
+  { id: 'villa_holiday_home', label: 'Villas & Homes' },
+  { id: 'rooms', label: 'Rooms & Suites' },
+  { id: 'safari_lodge', label: 'Safari Camps & Lodges' },
+  { id: 'bnb_guesthouse', label: 'Bed & Breakfasts' },
 ] as const;
 
 export const STAY_TYPE_LABELS: Record<string, string> = {
-  All: 'All Stay Types',
-  entire_place: 'Entire Place / Whole House',
-  whole_guest_house: 'Whole Guest House',
-  cottage_chalet: 'Lakeside Cottage & Chalet',
-  villa_holiday_home: 'Private Villa & Home',
+  All: 'All Stays',
+  entire_place: 'Entire Place',
+  whole_guest_house: 'Guest House',
+  cottage_chalet: 'Cottage & Chalet',
+  villa_holiday_home: 'Villa & Home',
   rooms: 'Rooms & Suites',
   safari_lodge: 'Safari Camp & Lodge',
-  bnb_guesthouse: 'B&B & Guest House (Rooms)',
+  bnb_guesthouse: 'Bed & Breakfast',
 };
 
 export function matchesStayType(hotel: Hotel, stayType: string): boolean {
@@ -1138,7 +1138,7 @@ export default function Home() {
               Find your <span className="italic font-light text-amber-100/90">quiet escape.</span>
             </h1>
             <p className="mt-3 text-xs sm:text-sm md:text-base text-stone-300/85 font-light max-w-xl leading-relaxed mx-auto text-balance">
-              Lakeside cottages, safari camps, whole guest houses, boutique lodges, private holiday villas, B&amp;Bs, and hotels — booked direct across Malawi with zero middleman fees.
+              Cottages, lodges, guest houses, and safari camps booked direct across Malawi — zero commission.
             </p>
           </motion.div>
         </div>
@@ -1648,7 +1648,7 @@ export default function Home() {
             <p className="text-stone-500 text-sm">
               {hasSearch
                 ? `${filteredHotels.length} propert${filteredHotels.length === 1 ? 'y' : 'ies'} can take you.`
-                : 'Lakeside cottages, whole guest houses, safari camps, boutique lodges, B&Bs, and hotels — every one booked direct with its host.'}
+                : 'Cottages, guest houses, lodges, and camps — booked direct with the host.'}
             </p>
           </div>
 
@@ -1659,12 +1659,12 @@ export default function Home() {
               <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide py-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden w-full">
                 {activeStayType !== 'All' && (
                   <span className="text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 px-2.5 py-1 rounded-full flex items-center gap-1.5 shrink-0 shadow-2xs">
-                    <span>Stay: {STAY_TYPE_LABELS[activeStayType] || activeStayType}</span>
+                    <span>{STAY_TYPE_LABELS[activeStayType] || activeStayType}</span>
                     <button
                       type="button"
                       onClick={() => { setActiveStayType('All'); setCurrentPage(1); }}
                       className="hover:text-emerald-950 p-0.5 rounded-full hover:bg-emerald-100 transition cursor-pointer"
-                      title="Clear stay type filter"
+                      title="Clear stay filter"
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -1744,7 +1744,7 @@ export default function Home() {
                 >
                   {STAY_TYPE_OPTIONS.map((opt) => (
                     <option key={`stay-type-${opt.id}`} value={opt.id}>
-                      {opt.icon} {opt.label}
+                      {opt.label}
                     </option>
                   ))}
                 </select>
@@ -2426,7 +2426,7 @@ export default function Home() {
             <div>
               <div className="inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200/80 text-[10px] sm:text-xs font-semibold uppercase tracking-wider mb-2.5 sm:mb-3">
                 <Building2 className="w-3.5 h-3.5 text-emerald-700" />
-                <span>For Lodges, Cottages, Guest Houses, Safari Camps &amp; Stays</span>
+                <span>For Lodges, Cottages, Guest Houses &amp; Camps</span>
               </div>
               <h2 className="mb-3 sm:mb-4 font-serif text-2xl sm:text-3xl md:text-4xl lg:text-5xl leading-[1.15] sm:leading-[1.1] tracking-tight text-stone-900">
                 Your property. Your rates.
@@ -2434,7 +2434,7 @@ export default function Home() {
                 Your guests.
               </h2>
               <p className="mb-4 sm:mb-6 max-w-lg text-xs sm:text-sm md:text-base leading-relaxed text-stone-600">
-                Whether you operate a lakeside cottage, safari camp, whole guest house, private holiday villa, boutique B&amp;B, or hotel — travellers find you, message you, and book direct with 0% commission. No agency in the middle and nothing taken off your rate.
+                Whether you host a cottage, guest house, safari camp, or lodge — travellers book direct with 0% commission. No agency cuts.
               </p>
 
               {!user ? (
@@ -2456,7 +2456,7 @@ export default function Home() {
                     </Link>
                   </div>
                   <p className="text-[11px] sm:text-xs text-stone-500">
-                    Free to list · Lodges, cottages, guest houses &amp; stays approved within 24 hours
+                    Free to list · Listings approved within 24 hours
                   </p>
                 </div>
               ) : !isHost ? (
@@ -2514,7 +2514,7 @@ export default function Home() {
 
             <dl className="grid gap-2 sm:gap-2.5 md:gap-3 grid-cols-2">
               {[
-                { term: 'Every Stay Type Welcome', detail: 'Whole guest houses, lakeside cottages, safari camps, boutique lodges, holiday homes, B&Bs, and hotels.' },
+                { term: 'All Stay Types Welcome', detail: 'Cottages, whole houses, lodges, camps, and B&Bs.' },
                 { term: '0% Commission Ever', detail: 'You keep 100% of the nightly rate you set. Zero listing fees.' },
                 { term: 'Dual Currency Pricing', detail: 'Set simultaneous rates in MWK and USD. Guests pay you direct.' },
                 { term: 'Direct WhatsApp Alerts', detail: 'Instant inquiries and reservation confirmations reach you directly.' },

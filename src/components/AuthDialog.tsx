@@ -375,7 +375,7 @@ export default function AuthDialog({ open, intent, onClose, onAuthenticated }: P
                 <div>
                   <div className="text-xs font-bold tracking-tight">Property Owner</div>
                   <div className={`text-[10px] sm:text-[11px] leading-tight mt-0.5 ${hosting ? 'text-stone-300' : 'text-stone-500'}`}>
-                    Lodge, cottage, guest house, villa, or hotel host
+                    Lodge, cottage, or guest house host
                   </div>
                 </div>
               </button>

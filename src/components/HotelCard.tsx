@@ -271,7 +271,7 @@ export default function HotelCard({
                           amount={slashed.slashedPrice} 
                           currency={priceCurrency} 
                         />
-                        <span className="text-stone-500 text-xs font-medium"> / night{hotel.stayType === 'entire_place' ? ' (whole place)' : ''}</span>
+                        <span className="text-stone-500 text-xs font-medium"> / night</span>
 
                         {secondaryPriceFrom && secondaryCurrency && (() => {
                           const secSlashed = calculateSlashedPrice(secondaryPriceFrom, roomPromo, secondaryCurrency);
@@ -299,7 +299,7 @@ export default function HotelCard({
                             · (<PriceDisplay className="text-stone-500 font-medium" amount={secondaryPriceFrom} currency={secondaryCurrency} />)
                           </span>
                         )}
-                        <span className="text-stone-400 text-xs"> / night{hotel.stayType === 'entire_place' ? ' (whole place)' : ''}</span>
+                        <span className="text-stone-400 text-xs"> / night</span>
                       </div>
                       {confPromo && (
                         <div className="text-[10px] sm:text-[11px] text-stone-700 font-medium flex items-center gap-1.5">

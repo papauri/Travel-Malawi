@@ -48,7 +48,7 @@ export default function StayOwnerLeaflet() {
   const { title: customTitle, subtitle: customSubtitle, isCustomized, lastEditedBy, refreshDoc } = useDocContent(
     'stay-owner-leaflet',
     'Keep 100% of What You Earn. Welcome More Guests Directly.',
-    'Stop giving away 15% to 25% of your accommodation revenue to foreign booking platforms that delay overseas payments. Travel Malawi connects you straight to domestic and international travelers — whether you run a whole guest house, a private lakeside cottage, a safari camp, a boutique lodge, or a B&B — with instant Kwacha payouts to Airtel Money, TNM Mpamba, or your local bank account.'
+    'Stop giving away 15% to 25% of your revenue to foreign booking platforms. Travel Malawi connects you straight to guests with instant local payouts via Airtel Money, TNM Mpamba, or local bank transfer.'
   );
 
   const [copied, setCopied] = useState(false);
@@ -75,7 +75,7 @@ export default function StayOwnerLeaflet() {
   };
 
   const handleShareWhatsApp = () => {
-    const text = `Muli bwanji! Here is the Travel Malawi Host Partner Overview for lodges, cottages, guest houses, and stays: ${window.location.href}`;
+    const text = `Muli bwanji! Here is the Travel Malawi Host Partner Overview: ${window.location.href}`;
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
   };
 
