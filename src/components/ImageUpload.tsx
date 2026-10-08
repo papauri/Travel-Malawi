@@ -66,6 +66,19 @@ export default function ImageUpload({
   const handleDropFile = async (e: React.DragEvent) => {
     e.preventDefault();
     setIsDraggingFile(false);
+
+    // 1. Check if an existing photo URL was dragged and dropped (e.g. from Room Gallery)
+    const customUrl = e.dataTransfer.getData("application/x-travelmalawi-photo-url");
+    const textUrl = e.dataTransfer.getData("text/plain");
+    const candidateUrl = (customUrl || textUrl || "").trim();
+
+    if (candidateUrl && (candidateUrl.startsWith("http://") || candidateUrl.startsWith("https://") || candidateUrl.startsWith("/"))) {
+      onChange(candidateUrl);
+      setIsChanging(false);
+      toast.success("Set as Room Cover photo.");
+      return;
+    }
+
     const file = e.dataTransfer.files?.[0];
     if (!file) return;
 
@@ -167,7 +180,12 @@ export default function ImageUpload({
 
       {/* Existing Image Preview Card */}
       {value && !isChanging && (
-        <div className="relative rounded-xl overflow-hidden aspect-video bg-stone-100 border border-stone-200 shadow-xs group">
+        <div 
+          onDragOver={handleDragOverFile}
+          onDragLeave={handleDragLeaveFile}
+          onDrop={handleDropFile}
+          className="relative rounded-xl overflow-hidden aspect-video bg-stone-100 border border-stone-200 shadow-xs group"
+        >
           <SmartImage
             src={value}
             alt="Preview"
@@ -175,6 +193,15 @@ export default function ImageUpload({
           />
 
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30 opacity-0 group-hover:opacity-100 transition-opacity" />
+
+          {/* Active Drag Overlay when dragging a photo from gallery over an existing cover */}
+          {isDraggingFile && (
+            <div className="absolute inset-0 bg-stone-900/85 backdrop-blur-xs flex flex-col items-center justify-center text-white border-2 border-dashed border-amber-400 z-30 p-4 animate-in fade-in">
+              <Upload className="w-8 h-8 text-amber-400 mb-1.5 animate-bounce" />
+              <p className="text-xs font-bold">Drop to set as Cover Photo</p>
+              <p className="text-[10px] text-stone-300">Replaces current cover</p>
+            </div>
+          )}
 
           {/* Badge */}
           <div className="absolute top-2.5 left-2.5">
@@ -184,7 +211,7 @@ export default function ImageUpload({
           </div>
 
           {/* Action buttons on top-right */}
-          <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5">
+          <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 z-20">
             <button
               type="button"
               onClick={() => setIsChanging(true)}
@@ -207,90 +234,94 @@ export default function ImageUpload({
 
       {/* Upload / URL Input Interface (when empty or replacing) */}
       {(!value || isChanging) && (
-        <div className="mt-2">
-          {mode === "url" ? (
-            <div className="p-3 bg-stone-50 rounded-xl border border-stone-200 space-y-2">
-              <div className="flex gap-2">
-                <input
-                  type="url"
-                  value={value}
-                  onChange={(e) => {
-                    const { url } = resolveShareUrl(e.target.value);
-                    onChange(url);
-                  }}
-                  className="flex-1 rounded-lg border-stone-200 border bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-stone-900 focus:border-stone-900 outline-none transition"
-                  placeholder="Paste direct URL or Drive/OneDrive/Dropbox link..."
-                />
-                {value && (
-                  <button
-                    type="button"
-                    onClick={() => setIsChanging(false)}
-                    className="px-3 py-2 bg-stone-900 text-white text-xs font-semibold rounded-lg hover:bg-stone-800 transition"
-                  >
-                    Done
-                  </button>
+        mode === "url" ? (
+          <div className="p-3 bg-stone-50 rounded-xl border border-stone-200 space-y-2">
+            <div className="flex gap-2">
+              <input
+                type="url"
+                value={value}
+                onChange={(e) => {
+                  const { url } = resolveShareUrl(e.target.value);
+                  onChange(url);
+                }}
+                className="flex-1 rounded-lg border-stone-200 border bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-stone-900 focus:border-stone-900 outline-none transition"
+                placeholder="Paste direct URL or Drive/OneDrive/Dropbox link..."
+              />
+              {value && (
+                <button
+                  type="button"
+                  onClick={() => setIsChanging(false)}
+                  className="px-3 py-2 bg-stone-900 text-white text-xs font-semibold rounded-lg hover:bg-stone-800 transition"
+                >
+                  Done
+                </button>
+              )}
+            </div>
+
+            {shareNote && (
+              <p className="text-xs text-emerald-700 font-medium">{shareNote}</p>
+            )}
+
+            <p className="text-[11px] text-stone-500">
+              Direct links and share links from OneDrive, Google Drive and Dropbox are converted automatically.
+            </p>
+          </div>
+        ) : (
+          <div
+            className={`w-full aspect-video rounded-xl border-2 border-dashed ${
+              isDraggingFile
+                ? "border-amber-500 bg-amber-50/40 ring-2 ring-amber-300"
+                : "border-stone-300 bg-stone-50/50 hover:border-amber-500 hover:bg-amber-50/10"
+            } p-4 flex flex-col items-center justify-center text-center transition cursor-pointer group select-none`}
+            onClick={() => fileInputRef.current?.click()}
+            onDragOver={handleDragOverFile}
+            onDragLeave={handleDragLeaveFile}
+            onDrop={handleDropFile}
+          >
+            {isUploading ? (
+              <div className="flex flex-col items-center justify-center space-y-2 w-full py-2">
+                <Loader2 className="h-7 w-7 text-amber-600 animate-spin" />
+                <p className="text-xs text-stone-700 font-semibold">
+                  Uploading{progress > 0 ? ` — ${progress}%` : "…"}
+                </p>
+                {progress > 0 && (
+                  <div className="w-36 h-1.5 bg-stone-200 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-stone-900 transition-all"
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
                 )}
               </div>
-
-              {shareNote && (
-                <p className="text-xs text-emerald-700 font-medium">{shareNote}</p>
-              )}
-
-              <p className="text-[11px] text-stone-500">
-                Direct links and share links from OneDrive, Google Drive and Dropbox are converted automatically.
-              </p>
-            </div>
-          ) : (
-            <div
-              className={`w-full rounded-xl border-2 border-dashed ${
-                isDraggingFile
-                  ? "border-amber-500 bg-amber-50/30"
-                  : "border-stone-300 bg-stone-50/50 hover:border-amber-500 hover:bg-amber-50/10"
-              } p-6 flex flex-col items-center justify-center text-center transition cursor-pointer group`}
-              onClick={() => fileInputRef.current?.click()}
-              onDragOver={handleDragOverFile}
-              onDragLeave={handleDragLeaveFile}
-              onDrop={handleDropFile}
-            >
-              {isUploading ? (
-                <div className="flex flex-col items-center justify-center space-y-2 w-full py-2">
-                  <Loader2 className="h-7 w-7 text-amber-600 animate-spin" />
-                  <p className="text-xs text-stone-700 font-semibold">
-                    Uploading{progress > 0 ? ` — ${progress}%` : "…"}
-                  </p>
-                  {progress > 0 && (
-                    <div className="w-36 h-1.5 bg-stone-200 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-stone-900 transition-all"
-                        style={{ width: `${progress}%` }}
-                      />
-                    </div>
-                  )}
+            ) : isDraggingFile ? (
+              <div className="flex flex-col items-center justify-center animate-pulse">
+                <Upload className="w-8 h-8 text-amber-600 mb-1.5 animate-bounce" />
+                <p className="text-xs font-bold text-amber-900">Drop here to set as Room Cover</p>
+                <p className="text-[10px] text-amber-700">From gallery or file</p>
+              </div>
+            ) : (
+              <>
+                <div className="w-9 h-9 rounded-full bg-stone-200/70 group-hover:bg-amber-100 text-stone-500 group-hover:text-amber-800 flex items-center justify-center mb-1.5 transition-transform group-hover:scale-105">
+                  <ImageIcon className="h-4 w-4" />
                 </div>
-              ) : (
-                <>
-                  <div className="w-10 h-10 rounded-full bg-stone-200/70 group-hover:bg-amber-100 text-stone-500 group-hover:text-amber-800 flex items-center justify-center mb-2 transition-transform group-hover:scale-105">
-                    <ImageIcon className="h-5 w-5" />
-                  </div>
-                  <p className="text-xs font-bold text-stone-800 mb-0.5">
-                    {isDraggingFile ? "Drop image here" : "Click to select or drag photo here"}
-                  </p>
-                  <p className="text-[11px] text-stone-400">
-                    JPG, PNG, WebP, AVIF or GIF · up to {formatBytes(MAX_IMAGE_BYTES)}
-                  </p>
-                </>
-              )}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept={IMAGE_ACCEPT_ATTR}
-                className="hidden"
-                onChange={handleFileChange}
-                disabled={isUploading}
-              />
-            </div>
-          )}
-        </div>
+                <p className="text-xs font-bold text-stone-800 mb-0.5">
+                  Click or drag photo here
+                </p>
+                <p className="text-[10px] text-stone-400">
+                  Drop a photo from room gallery or browse device
+                </p>
+              </>
+            )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept={IMAGE_ACCEPT_ATTR}
+              className="hidden"
+              onChange={handleFileChange}
+              disabled={isUploading}
+            />
+          </div>
+        )
       )}
     </div>
   );

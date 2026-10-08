@@ -19,7 +19,7 @@ import { isValidDateStr } from './dates';
 
 export type RoomField =
   | 'name' | 'description' | 'currencies' | 'prices' | 'extraGuestFees'
-  | 'maxGuests' | 'baseGuests' | 'quantity' | 'packages' | 'blockedDates';
+  | 'maxGuests' | 'baseGuests' | 'quantity' | 'packages' | 'blockedDates' | 'photos';
 
 export type RoomErrors = Partial<Record<RoomField, string>>;
 
@@ -136,6 +136,15 @@ export function validateRoom(input: RoomInput): RoomErrors {
     : String(input.blockedDates ?? '').split(',').map(s => s.trim()).filter(Boolean);
   const invalidDate = blocked.find(d => !isValidDateStr(d));
   if (invalidDate) errors.blockedDates = `"${invalidDate}" is not a valid date. Use YYYY-MM-DD.`;
+
+  // Mandatory room photography logic: every room must have at least one photo
+  const hasPhotos = Boolean(
+    (typeof input.imageUrl === 'string' && input.imageUrl.trim().length > 0) ||
+    (Array.isArray(input.galleryUrls) && input.galleryUrls.some(u => typeof u === 'string' && u.trim().length > 0))
+  );
+  if (!hasPhotos) {
+    errors.photos = 'A photograph is mandatory for every room (cover photo or room gallery photo).';
+  }
 
   return errors;
 }

@@ -233,6 +233,13 @@ export interface Hotel {
     recentReviews: any[];
   };
   imageUrl: string;
+  /**
+   * Header hero presentation bento layout style:
+   * 'duo-3': 3 photos total (1 large left cover + 2 stacked right)
+   * 'bento-4': 4 photos total (1 large left cover + 3 right bento tiles)
+   * 'bento-5': 5 photos total (1 large left cover + 4 right bento 2x2 grid)
+   */
+  heroLayout?: 'duo-3' | 'bento-4' | 'bento-5';
   /** Reception / property trading hours. Absent means not published. */
   hours?: WeeklyHours;
   /** Check-in and check-out times, shown in the Policies card. */

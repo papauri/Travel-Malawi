@@ -139,7 +139,10 @@ export default function GalleryUpload({
 
   const handleDragStart = (e: React.DragEvent, idx: number) => {
     setDraggedIdx(idx);
-    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.effectAllowed = "copyMove";
+    const url = value[idx] || "";
+    e.dataTransfer.setData("text/plain", url);
+    e.dataTransfer.setData("application/x-travelmalawi-photo-url", url);
     setTimeout(() => {
       if (e.target instanceof HTMLElement) {
         e.target.classList.add("opacity-50");
