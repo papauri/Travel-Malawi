@@ -66,6 +66,22 @@ export function bookedUnitsForRange(
   return maxUnits;
 }
 
+/** Safely normalizes blockedDates whether stored as an array of date strings or a legacy comma-separated string. */
+export function normalizeBlockedDates(blockedDates: unknown): DateStr[] {
+  if (Array.isArray(blockedDates)) {
+    return blockedDates
+      .map(d => String(d || '').trim())
+      .filter((d): d is DateStr => /^\d{4}-\d{2}-\d{2}$/.test(d));
+  }
+  if (typeof blockedDates === 'string' && blockedDates.trim()) {
+    return blockedDates
+      .split(',')
+      .map(s => s.trim())
+      .filter((d): d is DateStr => /^\d{4}-\d{2}-\d{2}$/.test(d));
+  }
+  return [];
+}
+
 export function blockedUnitsForRange(
   room: RoomType,
   checkIn: DateStr,
@@ -73,9 +89,10 @@ export function blockedUnitsForRange(
 ): number {
   let maxBlocked = 0;
   const nights = nightsInRange(checkIn, checkOut);
+  const normalizedBlocked = normalizeBlockedDates(room.blockedDates);
   
-  if (room.blockedDates?.length) {
-    const fullyBlocked = new Set(room.blockedDates);
+  if (normalizedBlocked.length) {
+    const fullyBlocked = new Set(normalizedBlocked);
     if (nights.some(night => fullyBlocked.has(night))) {
       return room.quantity ?? 0; // The entire room type is blocked
     }
@@ -83,7 +100,7 @@ export function blockedUnitsForRange(
 
   if (room.blockedUnits) {
     for (const night of nights) {
-      const units = room.blockedUnits[night] ?? 0;
+      const units = Number(room.blockedUnits[night] ?? 0);
       if (units > maxBlocked) maxBlocked = units;
     }
   }
@@ -94,6 +111,7 @@ export function blockedUnitsForRange(
 /**
  * Whether `quantity` units of a room can still be sold for a range.
  * `quantity: 0` means the manager has taken the room type off sale entirely.
+ * Verifies every individual night in the range against active bookings and blocked units.
  */
 export function isRoomAvailable(
   room: RoomType,
@@ -105,10 +123,39 @@ export function isRoomAvailable(
   const inventory = room.quantity ?? 0;
   if (inventory <= 0) return false;
   
-  const booked = bookedUnitsForRange(bookings, room.id, checkIn, checkOut);
-  const blocked = blockedUnitsForRange(room, checkIn, checkOut);
-  
-  return (booked + blocked + quantity) <= inventory;
+  const nights = nightsInRange(checkIn, checkOut);
+  if (!nights.length) return false;
+
+  const normalizedBlocked = normalizeBlockedDates(room.blockedDates);
+  const fullyBlocked = new Set(normalizedBlocked);
+
+  // Compute daily booked counts across nights
+  const dailyBooked: Record<string, number> = {};
+  for (const booking of bookings) {
+    if (booking.roomTypeId !== room.id) continue;
+    if (!isActiveBooking(booking)) continue;
+    if (!rangesOverlap(booking.checkIn!, booking.checkOut!, checkIn, checkOut)) continue;
+    
+    let cursor = booking.checkIn!;
+    let guard = 0;
+    while (cursor < booking.checkOut! && guard++ < 1000) {
+      if (cursor >= checkIn && cursor < checkOut) {
+        dailyBooked[cursor] = (dailyBooked[cursor] ?? 0) + (booking.quantity ?? 1);
+      }
+      cursor = addDays(cursor, 1);
+    }
+  }
+
+  for (const night of nights) {
+    if (fullyBlocked.has(night)) return false;
+    const blocked = Number(room.blockedUnits?.[night] ?? 0);
+    const booked = dailyBooked[night] ?? 0;
+    if (booked + blocked + quantity > inventory) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 /** Units of a room type still sellable for a range; never negative. */
@@ -121,10 +168,41 @@ export function unitsRemaining(
   const inventory = room.quantity ?? 0;
   if (inventory <= 0) return 0;
   
-  const booked = bookedUnitsForRange(bookings, room.id, checkIn, checkOut);
-  const blocked = blockedUnitsForRange(room, checkIn, checkOut);
-  
-  return Math.max(0, inventory - booked - blocked);
+  const nights = nightsInRange(checkIn, checkOut);
+  if (!nights.length) return 0;
+
+  const normalizedBlocked = normalizeBlockedDates(room.blockedDates);
+  const fullyBlocked = new Set(normalizedBlocked);
+
+  // Compute daily booked counts across nights
+  const dailyBooked: Record<string, number> = {};
+  for (const booking of bookings) {
+    if (booking.roomTypeId !== room.id) continue;
+    if (!isActiveBooking(booking)) continue;
+    if (!rangesOverlap(booking.checkIn!, booking.checkOut!, checkIn, checkOut)) continue;
+    
+    let cursor = booking.checkIn!;
+    let guard = 0;
+    while (cursor < booking.checkOut! && guard++ < 1000) {
+      if (cursor >= checkIn && cursor < checkOut) {
+        dailyBooked[cursor] = (dailyBooked[cursor] ?? 0) + (booking.quantity ?? 1);
+      }
+      cursor = addDays(cursor, 1);
+    }
+  }
+
+  let minRemaining = inventory;
+  for (const night of nights) {
+    if (fullyBlocked.has(night)) return 0;
+    const blocked = Number(room.blockedUnits?.[night] ?? 0);
+    const booked = dailyBooked[night] ?? 0;
+    const remainingOnNight = Math.max(0, inventory - booked - blocked);
+    if (remainingOnNight < minRemaining) {
+      minRemaining = remainingOnNight;
+    }
+  }
+
+  return minRemaining;
 }
 
 /**

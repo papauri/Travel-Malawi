@@ -8,8 +8,9 @@
  */
 
 import { RoomType } from '../types';
-import { DateStr, daysUntil, isValidDateStr, nightsBetween, todayStr } from './dates';
+import { DateStr, daysUntil, isValidDateStr, nightsBetween, nightsInRange, todayStr } from './dates';
 import { EMAIL_PATTERN, phoneProblem } from './contact';
+import { normalizeBlockedDates } from './availability';
 
 export type BookingField =
   | 'guestName' | 'guestEmail' | 'guestPhone' | 'guestWhatsapp'
@@ -95,6 +96,17 @@ export function validateBooking(input: BookingInput, room: RoomType | null): Fie
       errors.push({ field: 'checkOut', message: 'Check-out must be after check-in.' });
     } else if (nights > MAX_NIGHTS) {
       errors.push({ field: 'checkOut', message: `Stays longer than ${MAX_NIGHTS} nights need to be arranged with the property.` });
+    } else if (room) {
+      const nightsList = nightsInRange(checkIn, checkOut);
+      const blockedDates = normalizeBlockedDates(room.blockedDates);
+      const blockedSet = new Set(blockedDates);
+      const blockedNight = nightsList.find(n => blockedSet.has(n));
+      if (blockedNight) {
+        errors.push({
+          field: 'checkIn',
+          message: `The date ${blockedNight} is blocked by the property. Greyed-out dates have no availability.`,
+        });
+      }
     }
   }
 

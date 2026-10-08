@@ -224,7 +224,6 @@ function RoomMediaEditor({ room, hotelId, onUpdate }: { room: RoomType, hotelId:
             value={imageUrl}
             onChange={(url) => {
               setImageUrl(url);
-              setIsDirty(true);
             }}
             folder={`hotels/${hotelId}/rooms`}
           />
@@ -237,7 +236,6 @@ function RoomMediaEditor({ room, hotelId, onUpdate }: { room: RoomType, hotelId:
             value={galleryUrls}
             onChange={(urls) => {
               setGalleryUrls(urls);
-              setIsDirty(true);
             }}
             folder={`hotels/${hotelId}/rooms`}
             showCoverBadge={false}
@@ -249,7 +247,6 @@ function RoomMediaEditor({ room, hotelId, onUpdate }: { room: RoomType, hotelId:
                 remaining.unshift(oldCover);
               }
               setGalleryUrls(remaining);
-              setIsDirty(true);
               toast.success("Promoted to Room Cover photo");
             }}
           />
@@ -2884,7 +2881,6 @@ export default function ManageHotel() {
             imageUrl: url,
             galleryUrls: remaining,
           });
-          setHotelDirty(true);
           toast.success("Promoted to Cover Photo (Hero Slot 1)");
         };
 
@@ -2902,7 +2898,6 @@ export default function ManageHotel() {
               galleryUrls: newOrder.slice(1),
             });
           }
-          setHotelDirty(true);
         };
 
         const handleMovePropertyPhoto = (fromIdx: number, toIdx: number) => {
@@ -3047,7 +3042,7 @@ export default function ManageHotel() {
 
                   {allPropertyPhotos.length === 0 ? (
                     <div className="border-2 border-dashed border-stone-300 rounded-2xl p-8 sm:p-12 text-center bg-stone-50/60 flex flex-col items-center justify-center">
-                      <ImageIcon className="h-10 w-10 text-stone-400 mb-2" />
+                      <Images className="h-10 w-10 text-stone-400 mb-2" />
                       <h4 className="text-sm font-bold text-stone-800">Your property has no photos yet</h4>
                       <p className="text-xs text-stone-500 max-w-sm mt-1 mb-4">
                         Add photos in the library below. Your top photos will immediately populate this live Hero Header collage.

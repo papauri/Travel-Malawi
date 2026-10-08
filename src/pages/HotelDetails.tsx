@@ -15,7 +15,7 @@ import { useChatModal } from '../contexts/ChatModalContext';
 import { useManagerPresence } from '../hooks/usePresence';
 import PhoneInput from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
-import { MapPin, Megaphone, Calendar, Users, Star, CheckCircle2, ChevronRight, ChevronDown, Compass, Info, Plus, Minus, ShieldCheck, AlertTriangle, UtensilsCrossed, Clock, BedDouble, MessageSquare, MessageCircle, Images, Mail, PhoneCall, Phone, Navigation, CreditCard, LogIn, LogOut, Share, Share2, Zap, Droplets, Map, Wifi, WifiOff, HardDrive, Monitor, Tag } from 'lucide-react';
+import { MapPin, Megaphone, Calendar, Users, Star, CheckCircle2, ChevronRight, ChevronDown, Compass, Info, Plus, Minus, ShieldCheck, AlertTriangle, UtensilsCrossed, Clock, BedDouble, MessageSquare, MessageCircle, Images, Mail, PhoneCall, Phone, Navigation, CreditCard, LogIn, LogOut, Share, Share2, Zap, Droplets, Map, Wifi, WifiOff, HardDrive, Monitor, Tag, Building, Lock } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
 import { saveOfflineBooking } from '../lib/offlineBookingsDB';
@@ -36,7 +36,7 @@ import { getHotelImage, getHotelImages, getRoomImage } from '../lib/images';
 import { addDays, formatDateStr, nightsBetween, todayStr } from '../lib/dates';
 import { formatTime, hasPublishedHours, isOpenAt, summariseHours } from '../lib/hours';
 import MenuTemplateView from '../components/MenuTemplates';
-import { BookingLike, isRoomAvailable, unitsRemaining } from '../lib/availability';
+import { BookingLike, isRoomAvailable, unitsRemaining, normalizeBlockedDates } from '../lib/availability';
 import { hasAnyContact, mailtoLink, telLink, whatsappLink } from '../lib/contact';
 import { mapEmbedUrl, mapLinkUrl, resolveHotelCoordinates, isValidLatLng } from '../lib/geo';
 import { getSingleCachedHotel, saveSingleCachedHotel } from '../lib/mapCache';
@@ -286,8 +286,24 @@ export default function HotelDetails() {
   /** The Menu tab only exists when the property has published a restaurant. */
   const restaurant = hotel?.restaurant?.enabled ? hotel.restaurant : null;
 
+  /**
+   * Rooms with both room-specific blocked dates and property-level blocked dates
+   * (e.g. whole house closures or property maintenance) folded in seamlessly.
+   */
+  const effectiveRooms = useMemo(() => {
+    const hotelBlocked = normalizeBlockedDates(hotel?.blockedDates);
+    return rooms.map(r => {
+      const roomBlocked = normalizeBlockedDates(r.blockedDates);
+      const combined = [...new Set([...roomBlocked, ...hotelBlocked])];
+      return {
+        ...r,
+        blockedDates: combined,
+      };
+    });
+  }, [rooms, hotel?.blockedDates]);
+
   /** Currencies this property sells in, across all its rooms. */
-  const offeredCurrencies = useMemo(() => currenciesForRooms(rooms), [rooms]);
+  const offeredCurrencies = useMemo(() => currenciesForRooms(effectiveRooms), [effectiveRooms]);
 
   // Fall back if the remembered choice is not one this property accepts.
   useEffect(() => {
@@ -305,7 +321,7 @@ export default function HotelDetails() {
   const roomAvailability = useMemo(() => {
     const hasDates = !!checkIn && !!checkOut && checkIn < checkOut;
     const map: Record<string, { available: boolean; remaining: number | null }> = {};
-    for (const room of rooms) {
+    for (const room of effectiveRooms) {
       if (!room.id) continue;
       map[room.id] = hasDates
         ? {
@@ -315,13 +331,13 @@ export default function HotelDetails() {
         : { available: (room.quantity ?? 0) > 0, remaining: null };
     }
     return map;
-  }, [rooms, bookings, checkIn, checkOut]);
+  }, [effectiveRooms, bookings, checkIn, checkOut]);
 
   const availableRoomNames = useMemo(() => {
-    return rooms
+    return effectiveRooms
       .filter(r => r.id && roomAvailability[r.id]?.available)
       .map(r => r.name);
-  }, [rooms, roomAvailability]);
+  }, [effectiveRooms, roomAvailability]);
 
   /** Combined rating across imported and guest-written reviews. */
   const ratingSummary = useMemo(() => {
@@ -366,7 +382,8 @@ export default function HotelDetails() {
    */
   async function checkRoomAvailability(room: RoomType, quantity: number): Promise<boolean> {
     const live = await loadRoomSlots(room.id!);
-    return isRoomAvailable(room, live, checkIn, checkOut, quantity);
+    const eff = effectiveRooms.find(r => r.id === room.id) ?? room;
+    return isRoomAvailable(eff, live, checkIn, checkOut, quantity);
   }
 
   /** The promotion for a room, ranked by its real value at the displayed price. */
@@ -559,7 +576,7 @@ export default function HotelDetails() {
         return;
       }
       if (!isAvailable) {
-        toast.error("Sorry, that room was just taken for these dates. Please try different dates.");
+        toast.error("Sorry, this accommodation has no availability for these dates (either fully booked or blocked by the property). Please choose different dates.");
         return;
       }
 
@@ -1235,11 +1252,11 @@ export default function HotelDetails() {
               );
             })()}
 
-            {rooms.length === 0 ? (
+            {effectiveRooms.length === 0 ? (
               <p className="text-stone-500 italic text-sm sm:text-base">No rooms available at the moment.</p>
             ) : (
               <div className="flex flex-col gap-4 sm:gap-5 md:gap-6 mb-8 sm:mb-10 pb-2">
-                {rooms.map((room, index) => {
+                {effectiveRooms.map((room, index) => {
                   const status = room.id ? roomAvailability[room.id] : undefined;
                   const roomDisplayCurrency = resolveCurrency(room, currency);
                   const isSoldOut = status ? !status.available : (room.quantity ?? 0) <= 0;
@@ -1380,7 +1397,7 @@ export default function HotelDetails() {
             {/* Availability Calendar */}
             <AvailabilityCalendar
               hotelId={id!}
-              rooms={rooms}
+              rooms={effectiveRooms}
               checkIn={checkIn}
               checkOut={checkOut}
               availableRoomNames={availableRoomNames}
@@ -2270,14 +2287,24 @@ export default function HotelDetails() {
               </div>
 
               <div className="mb-4">
-                  <label className={labelClass}>Stay Dates</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className={labelClass}>Stay Dates</label>
+                    <span className="text-[11px] text-stone-500 font-medium flex items-center gap-1">
+                      <Lock className="w-3 h-3 text-stone-400" />
+                      Greyed-out = No availability
+                    </span>
+                  </div>
+                  <p className="text-xs text-stone-500 mb-2 leading-relaxed">
+                    Select your check-in and check-out dates. Greyed-out dates cannot be selected because they are either fully booked or blocked by property management.
+                  </p>
                   <DatePicker
                     checkIn={checkIn}
                     checkOut={checkOut}
                     isDateBlocked={(dateStr) => {
                       if (!selectedRoom) return false;
                       const nextDayStr = addDays(dateStr, 1);
-                      return unitsRemaining(selectedRoom, bookings, dateStr, nextDayStr) === 0;
+                      const eff = effectiveRooms.find(r => r.id === selectedRoom.id) ?? selectedRoom;
+                      return unitsRemaining(eff, bookings, dateStr, nextDayStr) === 0;
                     }}
                     onSelect={(inDate, outDate) => {
                       setCheckIn(inDate);

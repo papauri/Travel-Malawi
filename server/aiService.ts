@@ -958,6 +958,15 @@ export interface OperationsAssistantRequest {
       status?: string;
       verificationStatus?: string;
       featured?: boolean;
+      stayType?: 'room_by_room' | 'entire_place';
+      entirePlaceDetails?: {
+        propertyType?: string;
+        bedrooms?: number;
+        bathrooms?: number;
+        maxGuests?: number;
+        ratePerNightUsd?: number;
+        ratePerNightMwk?: number;
+      };
       isOnline?: boolean;
       outOfOfficeMessage?: string;
       managerId?: string;

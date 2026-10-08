@@ -8,7 +8,8 @@ import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { RoomType } from '../types';
 import { ChevronLeft, ChevronRight, Lock } from 'lucide-react';
-import { BookingLike, buildOccupancyMap } from '../lib/availability';
+import toast from 'react-hot-toast';
+import { BookingLike, buildOccupancyMap, normalizeBlockedDates } from '../lib/availability';
 import { DateStr, toDateStr, todayStr, addDays, formatDateStr } from '../lib/dates';
 
 interface Props {
@@ -80,14 +81,13 @@ export default function AvailabilityCalendar({
 
   /**
    * Dates taken off sale by hand, with how much inventory each one removes.
-   * Previously only the selected room's blocked dates counted, so the
-   * property-wide calendar showed hand-blocked nights as bookable.
+   * Supports both array and legacy comma-separated string formats safely.
    */
   const blockedInventory = useMemo(() => {
     const totals: Record<DateStr, number> = {};
 
     if (selectedRoom) {
-      const dates = blockedDates ?? selectedRoom.blockedDates ?? [];
+      const dates = normalizeBlockedDates(blockedDates ?? selectedRoom.blockedDates);
       const qty = selectedRoom.quantity ?? 0;
       for (const d of dates) {
         totals[d] = (totals[d] ?? 0) + qty;
@@ -95,13 +95,13 @@ export default function AvailabilityCalendar({
       
       const units = blockedUnits ?? selectedRoom.blockedUnits ?? {};
       for (const [d, u] of Object.entries(units)) {
-        if (!totals[d] || totals[d] < qty) {
-          totals[d] = Math.max(totals[d] ?? 0, Number(u));
+        if (!totals[d as DateStr] || totals[d as DateStr] < qty) {
+          totals[d as DateStr] = Math.max(totals[d as DateStr] ?? 0, Number(u));
         }
       }
     } else {
       for (const r of rooms) {
-        const dates = r.blockedDates ?? [];
+        const dates = normalizeBlockedDates(r.blockedDates);
         const qty = r.quantity ?? 0;
         for (const d of dates) {
           totals[d] = (totals[d] ?? 0) + qty;
@@ -109,14 +109,14 @@ export default function AvailabilityCalendar({
         
         const units = r.blockedUnits ?? {};
         for (const [d, u] of Object.entries(units)) {
-          if (!dates.includes(d)) {
-            totals[d] = (totals[d] ?? 0) + Number(u);
+          if (!dates.includes(d as DateStr)) {
+            totals[d as DateStr] = (totals[d as DateStr] ?? 0) + Number(u);
           }
         }
       }
     }
 
-    return Object.entries(totals).map(([date, units]) => ({ date, units }));
+    return Object.entries(totals).map(([date, units]) => ({ date: date as DateStr, units }));
   }, [rooms, selectedRoom, blockedDates, blockedUnits]);
 
   const blockedSet = useMemo(() => {
@@ -231,6 +231,11 @@ export default function AvailabilityCalendar({
     const isSelectingCheckout = !isManagerMode && checkIn && !checkOut && day.dateStr > checkIn;
     
     if (!isManagerMode && !isSelectingCheckout && (avail === 'full' || avail === 'blocked')) {
+      if (avail === 'blocked') {
+        toast('This date is blocked by the property and has no availability.', { icon: '🔒' });
+      } else if (avail === 'full') {
+        toast('This date is fully booked with no remaining availability.', { icon: 'ℹ️' });
+      }
       return;
     }
 
@@ -262,6 +267,7 @@ export default function AvailabilityCalendar({
           if (valid) {
             onRangeSelect(checkIn, day.dateStr);
           } else {
+            toast.error('Selected stay dates cross blocked or fully booked nights. Greyed-out dates have no availability.');
             onRangeSelect(day.dateStr, '');
           }
         }
@@ -294,8 +300,8 @@ export default function AvailabilityCalendar({
   const legend: { avail: Availability; label: string }[] = [
     { avail: 'available', label: 'Available' },
     { avail: 'limited', label: 'Limited' },
-    { avail: 'full', label: 'Fully Booked' },
-    { avail: 'blocked', label: 'Blocked' },
+    { avail: 'full', label: 'Fully Booked (No availability)' },
+    { avail: 'blocked', label: 'Blocked by Host (No availability)' },
   ];
 
   return (
@@ -305,7 +311,13 @@ export default function AvailabilityCalendar({
         <div className="flex-1">
           <h3 className="text-xl font-serif text-stone-900">Availability</h3>
           <div className="text-sm text-stone-500 mt-0.5 flex flex-col gap-1.5">
-            <p>{isManagerMode ? 'Click a date to block or unblock it' : 'Select your travel dates'}</p>
+            <p className="font-medium text-stone-700">{isManagerMode ? 'Click a date to block or unblock it' : 'Select your travel dates'}</p>
+            {!isManagerMode && (
+              <p className="text-xs text-stone-500 flex items-center gap-1.5 font-normal">
+                <Lock className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                <span>Greyed-out and dark dates indicate <strong>no availability</strong> (already reserved or blocked by host).</span>
+              </p>
+            )}
             {(!isManagerMode && (checkIn || checkOut)) && (
               <div className="flex flex-col gap-2 mt-1">
                 <p className="font-semibold text-emerald-700 bg-emerald-50 self-start px-3 py-1 rounded-md border border-emerald-100/50">

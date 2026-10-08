@@ -222,6 +222,8 @@ export interface Hotel {
   conferencePaymentPolicy?: string;
   conferenceGuidelines?: string;
   galleryUrls?: string[];
+  /** Property-level blocked dates (e.g., full whole-house closure, maintenance, holidays) */
+  blockedDates?: string[];
   /** Legacy embedded reviews, scraped at import time. Guest-written reviews
    *  live in the `reviews` collection instead — see `Review`. */
   reviews?: { author: string; rating: number; text: string; source: string; date: string }[];
