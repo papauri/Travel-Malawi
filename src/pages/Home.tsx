@@ -59,6 +59,96 @@ const NO_SEARCH: AppliedSearch = {
   location: '', checkIn: '', checkOut: '', guests: '', coords: null, proximity: 50,
 };
 
+export const STAY_TYPE_OPTIONS = [
+  { id: 'All', label: 'All Stay Types', icon: '✨' },
+  { id: 'entire_place', label: 'Entire Place / Whole House', icon: '🏡' },
+  { id: 'whole_guest_house', label: 'Whole Guest House', icon: '🏠' },
+  { id: 'cottage_chalet', label: 'Lakeside Cottage & Chalet', icon: '🛖' },
+  { id: 'villa_holiday_home', label: 'Private Villa & Home', icon: '🏖️' },
+  { id: 'rooms', label: 'Rooms & Suites (Per-Room)', icon: '🛏️' },
+  { id: 'safari_lodge', label: 'Safari Camp & Lodge', icon: '🦁' },
+  { id: 'bnb_guesthouse', label: 'B&B & Guest House (Rooms)', icon: '☕' },
+] as const;
+
+export const STAY_TYPE_LABELS: Record<string, string> = {
+  All: 'All Stay Types',
+  entire_place: 'Entire Place / Whole House',
+  whole_guest_house: 'Whole Guest House',
+  cottage_chalet: 'Lakeside Cottage & Chalet',
+  villa_holiday_home: 'Private Villa & Home',
+  rooms: 'Rooms & Suites',
+  safari_lodge: 'Safari Camp & Lodge',
+  bnb_guesthouse: 'B&B & Guest House (Rooms)',
+};
+
+export function matchesStayType(hotel: Hotel, stayType: string): boolean {
+  if (!stayType || stayType === 'All') return true;
+
+  const isEntire = hotel.stayType === 'entire_place';
+  const entireStyle = (hotel.entirePlaceDetails?.propertyType || '').toLowerCase();
+  const nameLower = (hotel.name || '').toLowerCase();
+  const descLower = (hotel.description || '').toLowerCase();
+  const categories = hotel.categories || [];
+
+  switch (stayType) {
+    case 'entire_place':
+      return isEntire;
+
+    case 'whole_guest_house':
+      return (
+        isEntire && (
+          entireStyle.includes('guest house') || 
+          nameLower.includes('guest house') || 
+          categories.includes('Guest House')
+        )
+      );
+
+    case 'cottage_chalet':
+      return (
+        entireStyle.includes('cottage') || 
+        entireStyle.includes('chalet') || 
+        categories.includes('Cottage & Chalet') ||
+        nameLower.includes('cottage') || 
+        nameLower.includes('chalet')
+      );
+
+    case 'villa_holiday_home':
+      return (
+        isEntire && (
+          entireStyle.includes('villa') || 
+          entireStyle.includes('holiday home') || 
+          entireStyle.includes('house') ||
+          nameLower.includes('villa')
+        )
+      );
+
+    case 'rooms':
+      return !isEntire;
+
+    case 'safari_lodge':
+      return (
+        categories.includes('Safari & Wildlife') || 
+        nameLower.includes('safari') || 
+        nameLower.includes('camp') || 
+        descLower.includes('safari')
+      );
+
+    case 'bnb_guesthouse':
+      return (
+        !isEntire && (
+          categories.includes('Bed & Breakfast') || 
+          categories.includes('Guest House') ||
+          nameLower.includes('b&b') || 
+          nameLower.includes('guest house')
+        )
+      );
+
+    default:
+      return true;
+  }
+}
+
+
 /**
  * The rotating half of the headline.
  *
@@ -87,6 +177,7 @@ export default function Home() {
   const [bookingsLoaded, setBookingsLoaded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
+  const [activeStayType, setActiveStayType] = useState('All');
   const [activeCategory, setActiveCategory] = useState('All');
   const [activeAmenities, setActiveAmenities] = useState<string[]>([]);
   const [searchParams] = useSearchParams();
@@ -298,12 +389,20 @@ export default function Home() {
    * to point at the bare home page and filter nothing at all.
    */
   useEffect(() => {
+    let shouldScroll = false;
     const requested = searchParams.get('category');
     if (requested && (PROPERTY_CATEGORIES as readonly string[]).includes(requested)) {
       setActiveCategory(requested);
       setCurrentPage(1);
-      // The route's own scroll-to-top runs on arrival, so the `#search-results`
-      // fragment alone leaves the visitor at the top of the hero instead.
+      shouldScroll = true;
+    }
+    const requestedStay = searchParams.get('stayType');
+    if (requestedStay) {
+      setActiveStayType(requestedStay);
+      setCurrentPage(1);
+      shouldScroll = true;
+    }
+    if (shouldScroll) {
       const timer = setTimeout(
         () => document.getElementById('search-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
         250
@@ -648,6 +747,7 @@ export default function Home() {
     setSearchCheckIn('');
     setSearchCheckOut('');
     setSearchProximity(50);
+    setActiveStayType('All');
     setActiveCategory('All');
     setActiveAmenities([]);
     setSortKey('recommended');
@@ -666,15 +766,17 @@ export default function Home() {
     if (mapSearchText.trim()) count++;
     if (isPriceFiltered) count++;
     if (mapRadius !== 'any') count++;
+    if (activeStayType !== 'All') count++;
     if (activeCategory !== 'All') count++;
     return count;
-  }, [mapSearchText, isPriceFiltered, activeCategory, mapRadius]);
+  }, [mapSearchText, isPriceFiltered, activeStayType, activeCategory, mapRadius]);
 
   const clearMapFilters = () => {
     setMapSearchText('');
     setPriceRange([priceLimitMin, priceLimitMax]);
     setIncludeUnpricedRooms(true);
     setMapRadius('any');
+    setActiveStayType('All');
     setActiveCategory('All');
     setActiveAmenities([]);
   };
@@ -740,9 +842,13 @@ export default function Home() {
       ? approved
       : approved.filter(h => h.categories?.includes(activeCategory));
 
+    const byStayType = activeStayType === 'All'
+      ? byCategory
+      : byCategory.filter(h => matchesStayType(h, activeStayType));
+
     const guests = typeof appliedSearch.guests === 'number' ? appliedSearch.guests : undefined;
 
-    const matched = byCategory
+    const matched = byStayType
       .map(hotel => {
         const hotelRooms = roomsByHotel.get(hotel.id ?? '') ?? [];
         const matching = roomsMatching(hotelRooms, bookings, {
@@ -856,7 +962,7 @@ export default function Home() {
     }
     return sorted;
   }, [
-    hotels, roomsByHotel, bookings, ratingByHotel, activeCategory, 
+    hotels, roomsByHotel, bookings, ratingByHotel, activeCategory, activeStayType,
     appliedSearch, sortKey, currency, mapSearchText,
     showUserLocation, userLocation,
     isPriceFiltered, priceRange, priceLimitMax, includeUnpricedRooms
@@ -865,7 +971,7 @@ export default function Home() {
   // Any change to what the visitor is filtering on starts them back at page 1,
   // otherwise a narrower result set can leave them on an empty page.
   const filterSignature = JSON.stringify([
-    activeCategory, activeAmenities, appliedSearch, sortKey, mapSearchText,
+    activeCategory, activeStayType, activeAmenities, appliedSearch, sortKey, mapSearchText,
     mapRadius, priceRange, includeUnpricedRooms,
   ]);
   useEffect(() => {
@@ -1031,8 +1137,8 @@ export default function Home() {
             <h1 className="font-serif text-3xl sm:text-4xl md:text-5xl lg:text-5xl font-normal text-stone-100 tracking-tight leading-[1.18] text-balance">
               Find your <span className="italic font-light text-amber-100/90">quiet escape.</span>
             </h1>
-            <p className="mt-3 text-xs sm:text-sm md:text-base text-stone-300/85 font-light max-w-lg leading-relaxed mx-auto text-balance">
-              Handpicked hotels, resorts, boutique lodges, B&amp;Bs, cottages, guest houses, and safari camps across the Warm Heart of Africa.
+            <p className="mt-3 text-xs sm:text-sm md:text-base text-stone-300/85 font-light max-w-xl leading-relaxed mx-auto text-balance">
+              Lakeside cottages, safari camps, whole guest houses, boutique lodges, private holiday villas, B&amp;Bs, and hotels — booked direct across Malawi with zero middleman fees.
             </p>
           </motion.div>
         </div>
@@ -1542,15 +1648,41 @@ export default function Home() {
             <p className="text-stone-500 text-sm">
               {hasSearch
                 ? `${filteredHotels.length} propert${filteredHotels.length === 1 ? 'y' : 'ies'} can take you.`
-                : 'Independent hotels, resorts, lodges, B&Bs, cottages and guesthouses — every one booked direct with its host.'}
+                : 'Lakeside cottages, whole guest houses, safari camps, boutique lodges, B&Bs, and hotels — every one booked direct with its host.'}
             </p>
           </div>
 
           {/* Filter Toolbar */}
           <div className="mb-4 sm:mb-6 flex flex-col gap-2 sm:gap-2.5 bg-stone-50/90 sm:bg-stone-50 border border-stone-200/90 p-2 sm:p-2.5 md:p-3 rounded-2xl">
             {/* Active search filter tags - single line horizontal scroll */}
-            {(hasSearch || isPriceFiltered) && (
+            {(hasSearch || isPriceFiltered || activeStayType !== 'All' || activeCategory !== 'All' || activeAmenities.length > 0) && (
               <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide py-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden w-full">
+                {activeStayType !== 'All' && (
+                  <span className="text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 px-2.5 py-1 rounded-full flex items-center gap-1.5 shrink-0 shadow-2xs">
+                    <span>Stay: {STAY_TYPE_LABELS[activeStayType] || activeStayType}</span>
+                    <button
+                      type="button"
+                      onClick={() => { setActiveStayType('All'); setCurrentPage(1); }}
+                      className="hover:text-emerald-950 p-0.5 rounded-full hover:bg-emerald-100 transition cursor-pointer"
+                      title="Clear stay type filter"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                )}
+                {activeCategory !== 'All' && (
+                  <span className="text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 px-2.5 py-1 rounded-full flex items-center gap-1.5 shrink-0 shadow-2xs">
+                    <span>Category: {activeCategory}</span>
+                    <button
+                      type="button"
+                      onClick={() => { setActiveCategory('All'); setCurrentPage(1); }}
+                      className="hover:text-emerald-950 p-0.5 rounded-full hover:bg-emerald-100 transition cursor-pointer"
+                      title="Clear category filter"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                )}
                 {appliedSearch.coords && (
                   <span className="text-[11px] font-semibold bg-white border border-stone-200/90 text-stone-700 px-2.5 py-1 rounded-full shrink-0 shadow-2xs">
                     Within {appliedSearch.proximity} km
@@ -1598,15 +1730,39 @@ export default function Home() {
 
             {/* Filter Controls Responsive Grid */}
             <div className="grid grid-cols-2 min-[440px]:grid-cols-3 md:grid-cols-6 lg:flex lg:flex-wrap lg:items-center lg:justify-end gap-1.5 sm:gap-2 w-full">
+              {/* Stay Type / Sort of Stay Dropdown */}
+              <div className="relative w-full lg:w-auto">
+                <select
+                  value={activeStayType}
+                  onChange={e => { setActiveStayType(e.target.value); setCurrentPage(1); }}
+                  className={`w-full lg:w-auto h-8 sm:h-8.5 border rounded-full px-2.5 sm:px-3 text-[11px] sm:text-xs font-semibold outline-none transition shadow-2xs truncate cursor-pointer text-center ${
+                    activeStayType !== 'All'
+                      ? 'bg-emerald-50 text-emerald-800 border-emerald-300 font-bold'
+                      : 'bg-white border-stone-200 text-stone-700 focus:border-stone-900'
+                  }`}
+                  title="Filter by stay type (Whole house, cottage, or rooms)"
+                >
+                  {STAY_TYPE_OPTIONS.map((opt) => (
+                    <option key={`stay-type-${opt.id}`} value={opt.id}>
+                      {opt.icon} {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               {/* Category Dropdown */}
               <div className="relative w-full lg:w-auto">
                 <select
                   value={activeCategory}
-                  onChange={e => setActiveCategory(e.target.value)}
-                  className="w-full lg:w-auto h-8 sm:h-8.5 bg-white border border-stone-200 rounded-full px-2.5 sm:px-3 text-[11px] sm:text-xs font-semibold text-stone-700 outline-none focus:border-stone-900 transition shadow-2xs truncate cursor-pointer text-center"
+                  onChange={e => { setActiveCategory(e.target.value); setCurrentPage(1); }}
+                  className={`w-full lg:w-auto h-8 sm:h-8.5 border rounded-full px-2.5 sm:px-3 text-[11px] sm:text-xs font-semibold outline-none transition shadow-2xs truncate cursor-pointer text-center ${
+                    activeCategory !== 'All'
+                      ? 'bg-emerald-50 text-emerald-800 border-emerald-300 font-bold'
+                      : 'bg-white border-stone-200 text-stone-700 focus:border-stone-900'
+                  }`}
                 >
                   {(['All', ...PROPERTY_CATEGORIES] as string[]).map((category, cIdx) => (
-                    <option key={`cat-${category}-${cIdx}`} value={category}>{category === 'All' ? 'All Types' : category}</option>
+                    <option key={`cat-${category}-${cIdx}`} value={category}>{category === 'All' ? 'All Experiences' : category}</option>
                   ))}
                 </select>
               </div>
@@ -2270,7 +2426,7 @@ export default function Home() {
             <div>
               <div className="inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200/80 text-[10px] sm:text-xs font-semibold uppercase tracking-wider mb-2.5 sm:mb-3">
                 <Building2 className="w-3.5 h-3.5 text-emerald-700" />
-                <span>For Resorts, Hotels, Lodges &amp; Stays</span>
+                <span>For Lodges, Cottages, Guest Houses, Safari Camps &amp; Stays</span>
               </div>
               <h2 className="mb-3 sm:mb-4 font-serif text-2xl sm:text-3xl md:text-4xl lg:text-5xl leading-[1.15] sm:leading-[1.1] tracking-tight text-stone-900">
                 Your property. Your rates.
@@ -2278,7 +2434,7 @@ export default function Home() {
                 Your guests.
               </h2>
               <p className="mb-4 sm:mb-6 max-w-lg text-xs sm:text-sm md:text-base leading-relaxed text-stone-600">
-                Whether you operate a lakeside resort, city business hotel, safari camp, or holiday cottage — travellers find you, message you, and book direct with 0% commission. No agency in the middle and nothing taken off your rate.
+                Whether you operate a lakeside cottage, safari camp, whole guest house, private holiday villa, boutique B&amp;B, or hotel — travellers find you, message you, and book direct with 0% commission. No agency in the middle and nothing taken off your rate.
               </p>
 
               {!user ? (
@@ -2300,7 +2456,7 @@ export default function Home() {
                     </Link>
                   </div>
                   <p className="text-[11px] sm:text-xs text-stone-500">
-                    Free to list · Resorts, hotels, lodges &amp; stays approved within 24 hours
+                    Free to list · Lodges, cottages, guest houses &amp; stays approved within 24 hours
                   </p>
                 </div>
               ) : !isHost ? (
@@ -2350,7 +2506,7 @@ export default function Home() {
                     </Link>
                   </div>
                   <p className="text-[11px] sm:text-xs text-stone-500">
-                    Manage your rooms, rates, blocked dates &amp; WhatsApp inquiries
+                    Manage your whole space, rooms, rates, blocked dates &amp; WhatsApp inquiries
                   </p>
                 </div>
               )}
@@ -2358,7 +2514,7 @@ export default function Home() {
 
             <dl className="grid gap-2 sm:gap-2.5 md:gap-3 grid-cols-2">
               {[
-                { term: 'Hotels & Resorts Welcome', detail: 'Premier lakeside resorts, safari camps, city hotels & cottages.' },
+                { term: 'Every Stay Type Welcome', detail: 'Whole guest houses, lakeside cottages, safari camps, boutique lodges, holiday homes, B&Bs, and hotels.' },
                 { term: '0% Commission Ever', detail: 'You keep 100% of the nightly rate you set. Zero listing fees.' },
                 { term: 'Dual Currency Pricing', detail: 'Set simultaneous rates in MWK and USD. Guests pay you direct.' },
                 { term: 'Direct WhatsApp Alerts', detail: 'Instant inquiries and reservation confirmations reach you directly.' },

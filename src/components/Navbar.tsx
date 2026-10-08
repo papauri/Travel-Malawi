@@ -150,6 +150,7 @@ export default function Navbar() {
                   ) : (
                     <Link
                       to="/list-your-property"
+                      title="List your cottage, lodge, whole guest house, safari camp, or hotel"
                       className="inline-flex items-center gap-1.5 px-2.5 xl:px-3.5 py-1 xl:py-1.5 rounded-full border border-stone-200 hover:border-stone-300 bg-stone-50/80 hover:bg-stone-100 text-stone-700 hover:text-stone-900 text-xs font-medium transition shadow-2xs whitespace-nowrap"
                     >
                       <Building2 className="w-3.5 h-3.5 text-stone-500 shrink-0" />
@@ -360,6 +361,7 @@ export default function Navbar() {
                 <div className="hidden sm:flex items-center">
                   <Link
                     to="/list-your-property"
+                    title="List your cottage, lodge, whole guest house, safari camp, or hotel"
                     className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full border border-stone-200 hover:border-stone-300 bg-stone-50 hover:bg-stone-100 text-stone-700 hover:text-stone-900 text-xs font-medium transition shadow-2xs whitespace-nowrap"
                   >
                     <Building2 className="w-3.5 h-3.5 text-stone-500 shrink-0" />

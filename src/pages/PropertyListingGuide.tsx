@@ -13,7 +13,7 @@ export default function PropertyListingGuide() {
   const { title: customTitle, subtitle: customSubtitle, isCustomized, lastEditedBy, refreshDoc } = useDocContent(
     'property-listing-guide',
     'The Science of High-Converting Hospitality Listings',
-    'A concise operational framework for naming rooms, showcasing local amenities, providing foolproof road directions, and setting prices that turn casual browsers into confirmed stays.'
+    'A concise operational framework for naming rooms and spaces, showcasing local amenities, providing foolproof road directions, and setting prices that turn casual browsers into confirmed stays across lodges, cottages, guest houses, and safari camps.'
   );
 
   const [copiedLink, setCopiedLink] = useState(false);

@@ -11,7 +11,7 @@ export default function MarketingDeck() {
   const { title: customTitle, subtitle: customSubtitle, isCustomized, lastEditedBy, refreshDoc } = useDocContent(
     'marketing-presentation',
     'The Sovereign Direct Booking Rail for Malawi',
-    'Eliminating middleman extraction, unlocking domestic liquidity, and returning pricing sovereignty to independent Malawian lodges and safari camps.'
+    'Eliminating middleman extraction, unlocking domestic liquidity, and returning pricing sovereignty to independent Malawian lodges, lakeside cottages, whole guest houses, and safari camps.'
   );
 
   const [copiedLink, setCopiedLink] = useState(false);

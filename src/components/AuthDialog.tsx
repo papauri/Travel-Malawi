@@ -375,7 +375,7 @@ export default function AuthDialog({ open, intent, onClose, onAuthenticated }: P
                 <div>
                   <div className="text-xs font-bold tracking-tight">Property Owner</div>
                   <div className={`text-[10px] sm:text-[11px] leading-tight mt-0.5 ${hosting ? 'text-stone-300' : 'text-stone-500'}`}>
-                    Lodge, B&amp;B, or stay host
+                    Lodge, cottage, guest house, villa, or hotel host
                   </div>
                 </div>
               </button>
@@ -398,7 +398,7 @@ export default function AuthDialog({ open, intent, onClose, onAuthenticated }: P
                     </li>
                     <li className="flex items-center gap-1.5 font-medium text-stone-900">
                       <Check className="h-3 w-3 text-stone-800 shrink-0" />
-                      <span><strong>Host Dashboard</strong>: Manage rooms &amp; pricing</span>
+                      <span><strong>Host Dashboard</strong>: Manage whole space, rooms &amp; pricing</span>
                     </li>
                     <li className="flex items-center gap-1.5 text-stone-700">
                       <Check className="h-3 w-3 text-stone-800 shrink-0" />

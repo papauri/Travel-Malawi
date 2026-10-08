@@ -13,7 +13,7 @@ export default function HostStarterPack() {
   const { title: customTitle, subtitle: customSubtitle, isCustomized, lastEditedBy, refreshDoc } = useDocContent(
     'host-onboarding-pack',
     'Host Acquisition & Onboarding Starter Pack',
-    'A practical, minimal operational guide for independent lodges, boutique hotels, lakeside cottages, and safari camps across Malawi. Built to eliminate 15%–25% commission leakage and turn casual browsers into direct bookings.'
+    'A practical operational guide for independent lodges, lakeside cottages, whole guest houses, safari camps, boutique hotels, and B&Bs across Malawi. Built to eliminate 15%–25% commission leakage and turn casual browsers into direct bookings.'
   );
 
   const [copiedLink, setCopiedLink] = useState(false);

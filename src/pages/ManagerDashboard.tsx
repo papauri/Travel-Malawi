@@ -381,7 +381,7 @@ export default function ManagerDashboard() {
           <p className="text-stone-500 mt-0.5 sm:mt-1 text-xs sm:text-sm">
             {totalPending > 0
               ? `${totalPending} booking request${totalPending === 1 ? '' : 's'} waiting for your reply.`
-              : 'Overview of your properties, rooms, and booking requests.'}
+              : 'Overview of your properties, whole houses, cottages, rooms, and booking requests.'}
           </p>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3 w-full sm:w-auto">
@@ -497,7 +497,7 @@ export default function ManagerDashboard() {
               <BedDouble className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
           </div>
-          <p className="text-stone-500 text-[10px] sm:text-xs font-medium mb-0.5 truncate">Total Rooms</p>
+          <p className="text-stone-500 text-[10px] sm:text-xs font-medium mb-0.5 truncate">Total Rooms / Units</p>
           <p className="text-sm sm:text-lg lg:text-xl font-bold">{rooms.length}</p>
         </button>
       </div>

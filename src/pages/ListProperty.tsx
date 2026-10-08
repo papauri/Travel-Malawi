@@ -3807,7 +3807,7 @@ function HostIntro({
 
         <div className="relative mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8 py-10 sm:py-16 md:py-20 lg:py-28">
           <p className="mb-3 sm:mb-4 md:mb-6 text-[0.65rem] sm:text-[0.7rem] font-bold uppercase tracking-[0.24em] text-emerald-200/70">
-            For Malawian hosts
+            For Malawian Property Owners &amp; Hosts
           </p>
           <h1 className="max-w-3xl font-serif text-3xl sm:text-4xl md:text-5xl lg:text-6xl leading-[1.1] sm:leading-[1.05] tracking-tight">
             Your property. Your rates.
@@ -3815,9 +3815,16 @@ function HostIntro({
             Your guests.
           </h1>
           <p className="mt-3 sm:mt-5 md:mt-6 max-w-xl text-sm sm:text-base md:text-lg leading-relaxed text-white/75">
-            Put your property in front of travellers looking for the real Malawi — and let them book it
-            without an agency taking a cut.
+            Put your stay in front of travellers looking for the real Malawi — whether you run a private lakeside cottage, a whole guest house, a safari camp, a boutique lodge, or a multi-room B&amp;B. Receive bookings without an agency taking a cut.
           </p>
+
+          <div className="mt-4 flex flex-wrap gap-2 text-xs text-emerald-200/90 font-medium">
+            <span className="bg-white/10 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/15">🏡 Whole Guest Houses</span>
+            <span className="bg-white/10 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/15">🛖 Lakeside Cottages</span>
+            <span className="bg-white/10 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/15">🦁 Safari Camps &amp; Lodges</span>
+            <span className="bg-white/10 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/15">🏖️ Private Holiday Villas</span>
+            <span className="bg-white/10 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/15">☕ B&amp;Bs &amp; Boutique Hotels</span>
+          </div>
 
           <div className="mt-6 sm:mt-8 md:mt-10 flex flex-col gap-3 sm:gap-4 sm:flex-row sm:items-center">
             {user ? (
@@ -3877,7 +3884,7 @@ function HostIntro({
               { icon: Building2, title: 'The basics', body: 'Name, category and where in Malawi to find you.' },
               { icon: MessageCircle, title: 'The place', body: 'What the stay is actually like, and what is included.' },
               { icon: Images, title: 'Photographs', body: 'One main shot, then as many more as you have.' },
-              { icon: ChevronRight, title: 'Rooms and rates', body: 'Add a room type, set the price, open for bookings.' },
+              { icon: ChevronRight, title: 'Rooms or whole space', body: 'Add individual room types or configure your entire house or cottage.' },
             ].map((item, index) => (
               <li key={`step-card-${item.title}-${index}`} className="rounded-xl sm:rounded-2xl md:rounded-3xl border border-stone-200 bg-white p-4 sm:p-5 md:p-6">
                 <span className="mb-3 sm:mb-4 block text-xs font-bold uppercase tracking-[0.2em] text-stone-400">

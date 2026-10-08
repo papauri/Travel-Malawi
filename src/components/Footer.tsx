@@ -30,17 +30,18 @@ export default function Footer() {
             <span className="text-lg sm:text-xl font-serif font-bold tracking-tight">Travel Malawi</span>
           </Link>
           <p className="text-stone-400 text-xs sm:text-sm leading-relaxed max-w-sm lg:max-w-none">
-            Discover the warm heart of Africa. Explore independent hotels, resorts, lodges, B&amp;Bs, cottages, guest houses, and safari camps across Malawi for your perfect getaway.
+            Discover the Warm Heart of Africa. Connect directly with independent lakeside cottages, whole guest houses, safari camps, boutique lodges, B&amp;Bs, and hotels across Malawi.
           </p>
         </div>
         
         <div>
-          <h4 className="text-white font-serif font-semibold text-sm sm:text-base mb-2.5 sm:mb-4">Explore</h4>
+          <h4 className="text-white font-serif font-semibold text-sm sm:text-base mb-2.5 sm:mb-4">Explore Stays</h4>
           <ul className="space-y-2 sm:space-y-3 text-xs sm:text-sm">
-            <li><Link to="/?category=Lakefront" className="hover:text-white transition inline-block py-0.5">Lake Malawi</Link></li>
-            <li><Link to="/?category=Safari Lodge" className="hover:text-white transition inline-block py-0.5">Safari &amp; Wildlife</Link></li>
-            <li><Link to="/?category=Boutique Hotel" className="hover:text-white transition inline-block py-0.5">Romantic Escapes</Link></li>
-            <li><Link to="/?category=Eco Camp" className="hover:text-white transition inline-block py-0.5">Family Adventures</Link></li>
+            <li><Link to="/?category=Lake%20%26%20Beach" className="hover:text-white transition inline-block py-0.5">Lake Malawi Stays</Link></li>
+            <li><Link to="/?category=Safari%20%26%20Wildlife" className="hover:text-white transition inline-block py-0.5">Safari Camps &amp; Game Lodges</Link></li>
+            <li><Link to="/?stayType=entire_place" className="hover:text-white transition inline-block py-0.5">Whole Guest Houses &amp; Villas</Link></li>
+            <li><Link to="/?stayType=cottage_chalet" className="hover:text-white transition inline-block py-0.5">Lakeside Cottages &amp; Chalets</Link></li>
+            <li><Link to="/?category=Bed%20%26%20Breakfast" className="hover:text-white transition inline-block py-0.5">B&amp;Bs &amp; Guest House Rooms</Link></li>
           </ul>
         </div>
         

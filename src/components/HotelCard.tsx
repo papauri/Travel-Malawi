@@ -2,7 +2,7 @@ import { getActivePromotion, calculateSlashedPrice, getSaleTypeBadge } from '../
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronLeft, ChevronRight, Star, Heart, Scale, Tag, Briefcase } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Star, Heart, Scale, Tag, Briefcase, Home } from 'lucide-react';
 import PromotionIcon from './PromotionIcon';
 import { Hotel } from '../types';
 import SmartImage from './SmartImage';
@@ -208,7 +208,13 @@ export default function HotelCard({
           <p className="text-[0.65rem] font-bold tracking-[0.18em] text-stone-500 uppercase truncate flex-1 min-w-0">
             {formatLocationName(hotel.location, hotel.name)}
           </p>
-          <div className="flex items-center gap-1.5 shrink-0">
+          <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
+            {hotel.stayType === 'entire_place' && (
+              <span className="inline-flex items-center gap-1 text-[0.65rem] font-bold uppercase tracking-wider text-emerald-800 bg-emerald-100/90 px-1.5 py-0.5 rounded">
+                <Home className="h-2.5 w-2.5" />
+                <span>{hotel.entirePlaceDetails?.propertyType || 'Whole Place'}</span>
+              </span>
+            )}
             {hotel.featured && (
               <span className="inline-flex items-center gap-1 text-[0.65rem] font-bold uppercase tracking-[0.1em] text-stone-500">
                 <Star className="h-2.5 w-2.5 fill-stone-400 text-stone-400" /> Featured
@@ -265,7 +271,7 @@ export default function HotelCard({
                           amount={slashed.slashedPrice} 
                           currency={priceCurrency} 
                         />
-                        <span className="text-stone-500 text-xs font-medium"> / night</span>
+                        <span className="text-stone-500 text-xs font-medium"> / night{hotel.stayType === 'entire_place' ? ' (whole place)' : ''}</span>
 
                         {secondaryPriceFrom && secondaryCurrency && (() => {
                           const secSlashed = calculateSlashedPrice(secondaryPriceFrom, roomPromo, secondaryCurrency);
@@ -293,7 +299,7 @@ export default function HotelCard({
                             · (<PriceDisplay className="text-stone-500 font-medium" amount={secondaryPriceFrom} currency={secondaryCurrency} />)
                           </span>
                         )}
-                        <span className="text-stone-400 text-xs"> / night</span>
+                        <span className="text-stone-400 text-xs"> / night{hotel.stayType === 'entire_place' ? ' (whole place)' : ''}</span>
                       </div>
                       {confPromo && (
                         <div className="text-[10px] sm:text-[11px] text-stone-700 font-medium flex items-center gap-1.5">

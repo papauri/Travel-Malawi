@@ -1,7 +1,7 @@
 import React from 'react';
 import { Hotel, CurrencyCode } from '../types';
 import { Link } from 'react-router-dom';
-import { Star, MapPin, Heart } from 'lucide-react';
+import { Star, MapPin, Heart, Home } from 'lucide-react';
 import PromotionIcon from './PromotionIcon';
 import { formatMoney } from '../lib/currency';
 import { useAuth } from '../contexts/AuthContext';
@@ -116,6 +116,12 @@ export default function CompactHotelCard({
 
             {/* Amenities & Tags */}
             <div className="flex items-center gap-1.5 overflow-hidden flex-wrap">
+              {hotel.stayType === 'entire_place' && (
+                <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100/90 px-2 py-0.5 rounded-md whitespace-nowrap flex items-center gap-1">
+                  <Home className="w-2.5 h-2.5" />
+                  <span>{hotel.entirePlaceDetails?.propertyType || 'Whole Place'}</span>
+                </span>
+              )}
               {hotel.categories && hotel.categories[0] && (
                 <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md whitespace-nowrap">
                   {hotel.categories[0]}
@@ -162,7 +168,7 @@ export default function CompactHotelCard({
                       <span className="font-bold text-stone-900 text-xs tracking-tight">
                         {formatMoney(slashed.slashedPrice, activeCurrency)}
                       </span>
-                      <span className="text-[10px] text-stone-400">/ night</span>
+                      <span className="text-[10px] text-stone-400">/ night{hotel.stayType === 'entire_place' ? ' (whole place)' : ''}</span>
                     </div>
                   </div>
                 ) : (
@@ -171,7 +177,7 @@ export default function CompactHotelCard({
                     <span className="font-bold text-stone-900 text-xs sm:text-sm tracking-tight">
                       {formatMoney(minPrice, activeCurrency)}
                     </span>
-                    <span className="text-[10px] text-stone-400">/ night</span>
+                    <span className="text-[10px] text-stone-400">/ night{hotel.stayType === 'entire_place' ? ' (whole place)' : ''}</span>
                   </div>
                 );
               }
@@ -217,7 +223,7 @@ export default function CompactHotelCard({
                     </div>
                   );
                 })()}
-                <div className="text-[10px] md:text-xs text-stone-400 mt-0.5">per night</div>
+                <div className="text-[10px] md:text-xs text-stone-400 mt-0.5">per night{hotel.stayType === 'entire_place' ? ' (whole place)' : ''}</div>
               </div>
             ) : (
               <div>
@@ -230,7 +236,7 @@ export default function CompactHotelCard({
                     ({formatMoney(secondaryPriceFrom, secondaryCurrency)})
                   </div>
                 )}
-                <div className="text-[10px] md:text-xs text-stone-400 mt-0.5">per night</div>
+                <div className="text-[10px] md:text-xs text-stone-400 mt-0.5">per night{hotel.stayType === 'entire_place' ? ' (whole place)' : ''}</div>
               </div>
             );
           }
