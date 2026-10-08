@@ -709,9 +709,11 @@ export default function HotelDetails() {
 
   // Falls back to bundled photography when the record has no usable images.
   const hotelImages = getHotelImages(hotel);
-  const isFivePhotoHero = hotelImages.length >= 5;
-  // Dynamic header collage: 5 photos if >=5 available, otherwise up to 3 photos
-  const galleryImages = isFivePhotoHero ? hotelImages.slice(1, 5) : hotelImages.slice(1, 3);
+  // Respect property-configured hero bento layout ('duo-3', 'bento-4', 'bento-5')
+  // Default to 'bento-5' if >= 5 photos, or 'duo-3' if fewer photos.
+  const activeHeroLayout: 'duo-3' | 'bento-4' | 'bento-5' = hotel.heroLayout || (hotelImages.length >= 5 ? 'bento-5' : 'duo-3');
+  const maxHeroSupporting = activeHeroLayout === 'duo-3' ? 2 : activeHeroLayout === 'bento-4' ? 3 : 4;
+  const galleryImages = hotelImages.slice(1, 1 + maxHeroSupporting);
   const hasGallery = galleryImages.length > 0;
 
   return (
@@ -961,14 +963,21 @@ export default function HotelDetails() {
           {/* Supporting photographs, only when they exist */}
           {galleryImages.map((url, index) => {
             const isLast = index === galleryImages.length - 1;
-            const remainingCount = hotelImages.length - (isFivePhotoHero ? 5 : 3);
+            const remainingCount = hotelImages.length - (galleryImages.length + 1);
+
+            let gridSpanClass = 'md:col-span-1 md:row-span-1';
+            if (activeHeroLayout === 'duo-3') {
+              gridSpanClass = 'md:col-span-2 md:row-span-1';
+            } else if (activeHeroLayout === 'bento-4') {
+              gridSpanClass = index === 0 ? 'md:col-span-2 md:row-span-1' : 'md:col-span-1 md:row-span-1';
+            } else {
+              gridSpanClass = 'md:col-span-1 md:row-span-1';
+            }
 
             return (
               <div
                 key={`${url}-${index}`}
-                className={`relative rounded-none overflow-hidden hidden md:block group cursor-pointer ${
-                  isFivePhotoHero ? 'md:col-span-1 md:row-span-1' : 'md:col-span-2 md:row-span-1'
-                }`}
+                className={`relative rounded-none overflow-hidden hidden md:block group cursor-pointer ${gridSpanClass}`}
                 onClick={() => setShowHotelGallery(true)}
               >
                 <SmartImage

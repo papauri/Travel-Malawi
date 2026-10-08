@@ -165,9 +165,15 @@ function RoomMediaEditor({
   hotel?: Hotel | Partial<Hotel>;
   onUpdate: (room: RoomType) => void;
 }) {
-  const [imageUrl, setImageUrl] = useState(room.imageUrl || (room.galleryUrls && room.galleryUrls.length > 0 ? room.galleryUrls[0] : ''));
+  const [imageUrl, setImageUrl] = useState(room.imageUrl || '');
   const [galleryUrls, setGalleryUrls] = useState<string[]>(room.galleryUrls || []);
   const [saving, setSaving] = useState(false);
+
+  // Sync state when room prop updates externally or after parent state update
+  useEffect(() => {
+    setImageUrl(room.imageUrl || '');
+    setGalleryUrls(room.galleryUrls || []);
+  }, [room.imageUrl, room.galleryUrls, room.id]);
 
   const hotelCover = hotel ? getHotelImage(hotel) : '';
   const hasHotelCover = Boolean(hotelCover && hotelCover !== '/placeholder.svg' && !hotelCover.includes('data:image/svg'));
@@ -176,15 +182,32 @@ function RoomMediaEditor({
   const totalPhotos = (imageUrl ? 1 : 0) + galleryUrls.length;
 
   const handleSave = async () => {
+    if (!room.id) {
+      toast.error('Cannot save: Room ID is missing.');
+      return;
+    }
+
+    // Mandatory rule: room must have at least one photograph
+    if (!imageUrl && (!galleryUrls || galleryUrls.length === 0)) {
+      toast.error('A photograph is mandatory for every room (cover photo or room gallery photo).');
+      return;
+    }
+
     setSaving(true);
     try {
-      await updateDoc(doc(db, 'room_types', room.id!), { imageUrl, galleryUrls });
+      await updateDoc(doc(db, 'room_types', room.id), { 
+        imageUrl, 
+        galleryUrls,
+        hotelId: room.hotelId || hotelId,
+      });
       onUpdate({ ...room, imageUrl, galleryUrls });
       toast.success(`${room.name} media saved.`);
-    } catch (e) {
-      toast.error('Failed to save room media.');
+    } catch (e: any) {
+      console.error('Failed to save room media:', e);
+      toast.error(e?.message || 'Failed to save room media.');
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   };
 
   return (
@@ -202,14 +225,14 @@ function RoomMediaEditor({
               }`}>
                 {totalPhotos} {totalPhotos === 1 ? 'photo' : 'photos'}
               </span>
-              {!room.imageUrl && imageUrl && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/70">
-                  Cover populated from gallery
-                </span>
-              )}
               {!imageUrl && hasHotelCover && (
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200/60">
                   Inheriting property photo
+                </span>
+              )}
+              {totalPhotos === 0 && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                  Photo Mandatory
                 </span>
               )}
               {isDirty && (
@@ -239,14 +262,27 @@ function RoomMediaEditor({
       </div>
 
       {/* Streamlined media grid: column 1 = Cover photo, column 2 = Attached gallery card */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 sm:gap-4 items-start">
-        <div className="lg:col-span-5 space-y-2">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 sm:gap-4 items-stretch">
+        <div className="lg:col-span-5 flex flex-col justify-start space-y-2">
           <ImageUpload
             label="Room Cover Photo"
-            hint="Primary thumbnail in room list & booking picker."
+            hint="Primary thumbnail in room list & booking picker. Drag photo from gallery here."
             tooltip="Guest View: This image appears as the primary thumbnail for this room type in the booking list on your property page."
             value={imageUrl}
             onChange={(url) => {
+              if (!url) {
+                setImageUrl('');
+                return;
+              }
+              // If the photo was dragged or set from the room gallery, swap or promote cleanly
+              if (galleryUrls.includes(url)) {
+                const oldCover = imageUrl;
+                const remaining = galleryUrls.filter(u => u !== url);
+                if (oldCover && oldCover !== url && !remaining.includes(oldCover)) {
+                  remaining.unshift(oldCover);
+                }
+                setGalleryUrls(remaining);
+              }
               setImageUrl(url);
             }}
             folder={`hotels/${hotelId}/rooms`}
@@ -265,7 +301,10 @@ function RoomMediaEditor({
                 <button
                   type="button"
                   onClick={() => {
-                    setImageUrl(galleryUrls[0]);
+                    const chosen = galleryUrls[0];
+                    const remaining = galleryUrls.slice(1);
+                    setImageUrl(chosen);
+                    setGalleryUrls(remaining);
                     toast.success("Set 1st gallery photo as Room Cover");
                   }}
                   className="px-2 py-0.5 bg-amber-800 hover:bg-amber-900 text-white text-[10px] font-bold rounded-md shadow-2xs transition shrink-0 cursor-pointer"
@@ -287,10 +326,10 @@ function RoomMediaEditor({
             </div>
           )}
         </div>
-        <div className="lg:col-span-7 bg-stone-50/40 rounded-xl p-3 sm:p-3.5 border border-stone-200/70 space-y-2">
+        <div className="lg:col-span-7 bg-stone-50/40 rounded-xl p-3 sm:p-3.5 border border-stone-200/70 flex flex-col justify-start space-y-2">
           <GalleryUpload
             label="Room Gallery"
-            hint="Bathroom, balcony view, and amenities. Click ★ to set as cover."
+            hint="Bathroom, balcony view, and amenities. Drag cards to reorder or drop onto Cover."
             tooltip="Guest View: These photos form the image carousel when a guest clicks to view more details about this specific room type."
             value={galleryUrls}
             onChange={(urls) => {
@@ -2997,7 +3036,8 @@ export default function ManageHotel() {
           toast.success("Photo removed from property media");
         };
 
-        const isFiveHero = allPropertyPhotos.length >= 5;
+        const activeHeroLayout: 'duo-3' | 'bento-4' | 'bento-5' = editHotelData.heroLayout || (allPropertyPhotos.length >= 5 ? 'bento-5' : 'duo-3');
+        const maxHeroSupportingSlots = activeHeroLayout === 'duo-3' ? 2 : activeHeroLayout === 'bento-4' ? 3 : 4;
 
         return (
           <div className="space-y-6">
@@ -3114,10 +3154,62 @@ export default function ManageHotel() {
                         This is the exact header collage travelers see at the top of your property page. Slot 1 is your primary Cover Photo and Search Thumbnail.
                       </p>
                     </div>
-                    <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
-                      <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-stone-100 text-stone-700">
-                        {allPropertyPhotos.length >= 5 ? '5-Photo Luxury Collage' : allPropertyPhotos.length >= 2 ? '3-Photo Collage' : allPropertyPhotos.length === 1 ? 'Single Hero Shot' : 'No Photos Uploaded'}
-                      </span>
+
+                    {/* Bento Layout Switcher */}
+                    <div className="flex items-center gap-2 flex-wrap self-start sm:self-auto shrink-0">
+                      <div className="inline-flex items-center bg-stone-100 p-1 rounded-xl border border-stone-200/80">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditHotelData(prev => ({ ...prev, heroLayout: 'duo-3' }));
+                            setHotelDirty(true);
+                            toast.success("Switched to 3-Photo Bento (1 large cover + 2 stacked)");
+                          }}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer ${
+                            activeHeroLayout === 'duo-3'
+                              ? "bg-white text-stone-900 shadow-xs"
+                              : "text-stone-600 hover:text-stone-900"
+                          }`}
+                          title="Hero with 3 photos: 1 large left cover + 2 stacked right photos"
+                        >
+                          <LayoutGrid className="w-3.5 h-3.5" />
+                          <span>3 Photos (Duo)</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditHotelData(prev => ({ ...prev, heroLayout: 'bento-4' }));
+                            setHotelDirty(true);
+                            toast.success("Switched to 4-Photo Bento (1 large cover + 3 bento tiles)");
+                          }}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer ${
+                            activeHeroLayout === 'bento-4'
+                              ? "bg-white text-stone-900 shadow-xs"
+                              : "text-stone-600 hover:text-stone-900"
+                          }`}
+                          title="Hero with 4 photos: 1 large left cover + 3 right bento tiles"
+                        >
+                          <LayoutGrid className="w-3.5 h-3.5" />
+                          <span>4 Photos (Bento)</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditHotelData(prev => ({ ...prev, heroLayout: 'bento-5' }));
+                            setHotelDirty(true);
+                            toast.success("Switched to 5-Photo Bento (1 large cover + 4 right 2x2 grid)");
+                          }}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer ${
+                            activeHeroLayout === 'bento-5'
+                              ? "bg-white text-stone-900 shadow-xs"
+                              : "text-stone-600 hover:text-stone-900"
+                          }`}
+                          title="Hero with 5 photos: 1 large left cover + 4 right tiles in 2x2 grid"
+                        >
+                          <LayoutGrid className="w-3.5 h-3.5" />
+                          <span>5 Photos (2x2 Grid)</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
 
@@ -3186,119 +3278,81 @@ export default function ManageHotel() {
 
                       {/* SUPPORTING SLOTS */}
                       {allPropertyPhotos.length > 1 && (
-                        isFiveHero ? (
-                          /* 4-supporting grid (Slots 2, 3, 4, 5) */
-                          allPropertyPhotos.slice(1, 5).map((url, sIdx) => {
-                            const actualIdx = sIdx + 1;
-                            return (
-                              <div key={`hero-slot-${actualIdx}`} className="relative rounded-xl overflow-hidden group bg-stone-950 md:col-span-1 md:row-span-1">
-                                <SmartImage src={url} alt={`Hero Slot ${actualIdx + 1}`} className="w-full h-full object-cover" />
-                                <div className="absolute inset-0 bg-stone-950/20 group-hover:bg-transparent transition pointer-events-none" />
+                        allPropertyPhotos.slice(1, 1 + maxHeroSupportingSlots).map((url, sIdx) => {
+                          const actualIdx = sIdx + 1;
+                          let slotSpanClass = 'md:col-span-1 md:row-span-1';
+                          let slotLabel = `Slot #${actualIdx + 1}`;
+                          if (activeHeroLayout === 'duo-3') {
+                            slotSpanClass = 'md:col-span-2 md:row-span-1';
+                            slotLabel = actualIdx === 1 ? 'Slot #2 (Top-Right)' : 'Slot #3 (Bottom-Right)';
+                          } else if (activeHeroLayout === 'bento-4') {
+                            if (sIdx === 0) {
+                              slotSpanClass = 'md:col-span-2 md:row-span-1';
+                              slotLabel = 'Slot #2 (Top-Right Wide)';
+                            } else if (sIdx === 1) {
+                              slotSpanClass = 'md:col-span-1 md:row-span-1';
+                              slotLabel = 'Slot #3 (Bottom-Left)';
+                            } else {
+                              slotSpanClass = 'md:col-span-1 md:row-span-1';
+                              slotLabel = 'Slot #4 (Bottom-Right)';
+                            }
+                          } else {
+                            slotSpanClass = 'md:col-span-1 md:row-span-1';
+                            slotLabel = `Slot #${actualIdx + 1}`;
+                          }
 
-                                {/* Slot Badge */}
-                                <div className="absolute top-2 left-2 z-10 pointer-events-none">
-                                  <span className="px-2 py-0.5 rounded-md bg-stone-900/80 text-white text-[10px] font-mono backdrop-blur-xs">
-                                    Slot #{actualIdx + 1}
-                                  </span>
-                                </div>
+                          return (
+                            <div key={`hero-slot-${actualIdx}`} className={`relative rounded-xl overflow-hidden group bg-stone-950 ${slotSpanClass}`}>
+                              <SmartImage src={url} alt={`Hero Slot ${actualIdx + 1}`} className="w-full h-full object-cover" />
+                              <div className="absolute inset-0 bg-stone-950/20 group-hover:bg-transparent transition pointer-events-none" />
 
-                                {/* Actions */}
-                                <div className="absolute top-2 right-2 z-10 flex items-center gap-1 opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleSetPropertyCover(url)}
-                                    className="p-1.5 bg-stone-900/85 hover:bg-amber-600 text-amber-300 hover:text-white rounded-lg transition backdrop-blur-xs cursor-pointer shadow-xs"
-                                    title="Promote to Cover Photo (Slot 1)"
-                                  >
-                                    <Star className="w-3.5 h-3.5 fill-current" />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleMovePropertyPhoto(actualIdx, actualIdx - 1)}
-                                    className="p-1.5 bg-stone-900/85 hover:bg-stone-900 text-white rounded-lg transition backdrop-blur-xs cursor-pointer shadow-xs"
-                                    title="Move backward"
-                                  >
-                                    <ChevronLeft className="w-3.5 h-3.5" />
-                                  </button>
-                                  {actualIdx < allPropertyPhotos.length - 1 && (
-                                    <button
-                                      type="button"
-                                      onClick={() => handleMovePropertyPhoto(actualIdx, actualIdx + 1)}
-                                      className="p-1.5 bg-stone-900/85 hover:bg-stone-900 text-white rounded-lg transition backdrop-blur-xs cursor-pointer shadow-xs"
-                                      title="Move forward"
-                                    >
-                                      <ChevronRight className="w-3.5 h-3.5" />
-                                    </button>
-                                  )}
-                                  <button
-                                    type="button"
-                                    onClick={() => handleRemovePropertyPhoto(actualIdx)}
-                                    className="p-1.5 bg-stone-900/85 hover:bg-red-600 text-white rounded-lg transition backdrop-blur-xs cursor-pointer shadow-xs"
-                                    title="Remove"
-                                  >
-                                    <X className="w-3.5 h-3.5" />
-                                  </button>
-                                </div>
+                              {/* Slot Badge */}
+                              <div className="absolute top-2 left-2 z-10 pointer-events-none">
+                                <span className="px-2 py-0.5 rounded-md bg-stone-900/80 text-white text-[10px] font-mono backdrop-blur-xs">
+                                  {slotLabel}
+                                </span>
                               </div>
-                            );
-                          })
-                        ) : (
-                          /* 2-supporting stacked grid (Slot 2 and Slot 3) */
-                          allPropertyPhotos.slice(1, 3).map((url, sIdx) => {
-                            const actualIdx = sIdx + 1;
-                            return (
-                              <div key={`hero-slot-${actualIdx}`} className="relative rounded-xl overflow-hidden group bg-stone-950 md:col-span-2 md:row-span-1">
-                                <SmartImage src={url} alt={`Hero Slot ${actualIdx + 1}`} className="w-full h-full object-cover" />
-                                <div className="absolute inset-0 bg-stone-950/20 group-hover:bg-transparent transition pointer-events-none" />
 
-                                {/* Slot Badge */}
-                                <div className="absolute top-2 left-2 z-10 pointer-events-none">
-                                  <span className="px-2 py-0.5 rounded-md bg-stone-900/80 text-white text-[10px] font-mono backdrop-blur-xs">
-                                    {actualIdx === 1 ? 'Slot #2 (Top-Right)' : 'Slot #3 (Bottom-Right)'}
-                                  </span>
-                                </div>
-
-                                {/* Actions */}
-                                <div className="absolute top-2 right-2 z-10 flex items-center gap-1 opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                              {/* Actions */}
+                              <div className="absolute top-2 right-2 z-10 flex items-center gap-1 opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button
+                                  type="button"
+                                  onClick={() => handleSetPropertyCover(url)}
+                                  className="p-1.5 bg-stone-900/85 hover:bg-amber-600 text-amber-300 hover:text-white rounded-lg transition backdrop-blur-xs cursor-pointer shadow-xs"
+                                  title="Promote to Cover Photo (Slot 1)"
+                                >
+                                  <Star className="w-3.5 h-3.5 fill-current" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleMovePropertyPhoto(actualIdx, actualIdx - 1)}
+                                  className="p-1.5 bg-stone-900/85 hover:bg-stone-900 text-white rounded-lg transition backdrop-blur-xs cursor-pointer shadow-xs"
+                                  title="Move backward"
+                                >
+                                  <ChevronLeft className="w-3.5 h-3.5" />
+                                </button>
+                                {actualIdx < allPropertyPhotos.length - 1 && (
                                   <button
                                     type="button"
-                                    onClick={() => handleSetPropertyCover(url)}
-                                    className="p-1.5 bg-stone-900/85 hover:bg-amber-600 text-amber-300 hover:text-white rounded-lg transition backdrop-blur-xs cursor-pointer shadow-xs"
-                                    title="Promote to Cover Photo (Slot 1)"
-                                  >
-                                    <Star className="w-3.5 h-3.5 fill-current" />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleMovePropertyPhoto(actualIdx, actualIdx - 1)}
+                                    onClick={() => handleMovePropertyPhoto(actualIdx, actualIdx + 1)}
                                     className="p-1.5 bg-stone-900/85 hover:bg-stone-900 text-white rounded-lg transition backdrop-blur-xs cursor-pointer shadow-xs"
-                                    title="Move backward"
+                                    title="Move forward"
                                   >
-                                    <ChevronLeft className="w-3.5 h-3.5" />
+                                    <ChevronRight className="w-3.5 h-3.5" />
                                   </button>
-                                  {actualIdx < allPropertyPhotos.length - 1 && (
-                                    <button
-                                      type="button"
-                                      onClick={() => handleMovePropertyPhoto(actualIdx, actualIdx + 1)}
-                                      className="p-1.5 bg-stone-900/85 hover:bg-stone-900 text-white rounded-lg transition backdrop-blur-xs cursor-pointer shadow-xs"
-                                      title="Move forward"
-                                    >
-                                      <ChevronRight className="w-3.5 h-3.5" />
-                                    </button>
-                                  )}
-                                  <button
-                                    type="button"
-                                    onClick={() => handleRemovePropertyPhoto(actualIdx)}
-                                    className="p-1.5 bg-stone-900/85 hover:bg-red-600 text-white rounded-lg transition backdrop-blur-xs cursor-pointer shadow-xs"
-                                    title="Remove"
-                                  >
-                                    <X className="w-3.5 h-3.5" />
-                                  </button>
-                                </div>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemovePropertyPhoto(actualIdx)}
+                                  className="p-1.5 bg-stone-900/85 hover:bg-red-600 text-white rounded-lg transition backdrop-blur-xs cursor-pointer shadow-xs"
+                                  title="Remove"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
                               </div>
-                            );
-                          })
-                        )
+                            </div>
+                          );
+                        })
                       )}
                     </div>
                   )}
@@ -3492,17 +3546,69 @@ export default function ManageHotel() {
 
                   {/* 2. Listing Header Hero Collage Preview */}
                   <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-xs font-bold text-stone-700 uppercase tracking-wider flex items-center gap-1.5">
-                        <Layers className="w-3.5 h-3.5 text-stone-500" />
-                        <span>Header Hero Presentation</span>
-                      </span>
-                      <span className="text-xs text-stone-400">{allPropertyPhotos.length} photos</span>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-3 gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-stone-700 uppercase tracking-wider flex items-center gap-1.5">
+                          <Layers className="w-3.5 h-3.5 text-stone-500" />
+                          <span>Header Hero Presentation</span>
+                        </span>
+                        <span className="text-xs text-stone-400">({allPropertyPhotos.length} photos)</span>
+                      </div>
+                      
+                      {/* Bento grid small tab switcher */}
+                      <div className="inline-flex items-center bg-stone-100 p-1 rounded-xl border border-stone-200 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditHotelData(prev => ({ ...prev, heroLayout: 'duo-3' }));
+                            setHotelDirty(true);
+                            toast.success("Switched to 3-Photo Bento (Duo)");
+                          }}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition cursor-pointer ${
+                            activeHeroLayout === 'duo-3' ? "bg-white text-stone-900 shadow-xs" : "text-stone-600 hover:text-stone-900"
+                          }`}
+                          title="Show 3 photos in Hero (1 large cover + 2 stacked)"
+                        >
+                          <LayoutGrid className="w-3 h-3" />
+                          <span>3 Photos</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditHotelData(prev => ({ ...prev, heroLayout: 'bento-4' }));
+                            setHotelDirty(true);
+                            toast.success("Switched to 4-Photo Bento");
+                          }}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition cursor-pointer ${
+                            activeHeroLayout === 'bento-4' ? "bg-white text-stone-900 shadow-xs" : "text-stone-600 hover:text-stone-900"
+                          }`}
+                          title="Show 4 photos in Hero (1 large cover + 3 bento tiles)"
+                        >
+                          <LayoutGrid className="w-3 h-3" />
+                          <span>4 Photos</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditHotelData(prev => ({ ...prev, heroLayout: 'bento-5' }));
+                            setHotelDirty(true);
+                            toast.success("Switched to 5-Photo Bento (2x2 Grid)");
+                          }}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition cursor-pointer ${
+                            activeHeroLayout === 'bento-5' ? "bg-white text-stone-900 shadow-xs" : "text-stone-600 hover:text-stone-900"
+                          }`}
+                          title="Show 5 photos in Hero (1 large cover + 4 right 2x2 grid)"
+                        >
+                          <LayoutGrid className="w-3 h-3" />
+                          <span>5 Photos</span>
+                        </button>
+                      </div>
                     </div>
+
                     {allPropertyPhotos.length === 0 ? (
                       <p className="text-xs text-stone-400 italic">No property photos uploaded yet.</p>
                     ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-4 gap-1 aspect-[16/10] sm:aspect-[16/8] md:aspect-[16/6] rounded-2xl overflow-hidden bg-stone-900 border border-stone-800">
+                      <div className="grid grid-cols-1 md:grid-cols-4 md:grid-rows-2 gap-1 aspect-[16/10] sm:aspect-[16/8] md:aspect-[16/6] rounded-2xl overflow-hidden bg-stone-900 border border-stone-800">
                         {/* Main Cover */}
                         <div className={`relative overflow-hidden ${allPropertyPhotos.length > 1 ? 'md:col-span-2 md:row-span-2' : 'md:col-span-4 md:row-span-2'}`}>
                           <SmartImage src={allPropertyPhotos[0]} alt="Hero Cover" className="w-full h-full object-cover" />
@@ -3515,26 +3621,32 @@ export default function ManageHotel() {
 
                         {/* Supporting */}
                         {allPropertyPhotos.length > 1 && (
-                          isFiveHero ? (
-                            allPropertyPhotos.slice(1, 5).map((url, idx) => (
-                              <div key={`prev-grid-5-${idx}`} className="relative overflow-hidden md:col-span-1 md:row-span-1">
+                          allPropertyPhotos.slice(1, 1 + maxHeroSupportingSlots).map((url, idx) => {
+                            let previewSpanClass = 'md:col-span-1 md:row-span-1';
+                            if (activeHeroLayout === 'duo-3') {
+                              previewSpanClass = 'md:col-span-2 md:row-span-1';
+                            } else if (activeHeroLayout === 'bento-4') {
+                              previewSpanClass = idx === 0 ? 'md:col-span-2 md:row-span-1' : 'md:col-span-1 md:row-span-1';
+                            } else {
+                              previewSpanClass = 'md:col-span-1 md:row-span-1';
+                            }
+
+                            const isLastSlot = idx === Math.min(allPropertyPhotos.length - 2, maxHeroSupportingSlots - 1);
+                            const remainingPhotos = allPropertyPhotos.length - (1 + maxHeroSupportingSlots);
+
+                            return (
+                              <div key={`prev-grid-${activeHeroLayout}-${idx}`} className={`relative overflow-hidden ${previewSpanClass}`}>
                                 <SmartImage src={url} alt={`Hero ${idx + 2}`} className="w-full h-full object-cover" />
-                                {idx === 3 && allPropertyPhotos.length > 5 && (
-                                  <div className="absolute inset-0 bg-stone-950/45 flex items-center justify-center">
-                                    <span className="text-white text-xs font-bold px-2 py-1 rounded bg-black/50">
-                                      +{allPropertyPhotos.length - 5} more
+                                {isLastSlot && remainingPhotos > 0 && (
+                                  <div className="absolute inset-0 bg-stone-950/50 flex items-center justify-center">
+                                    <span className="text-white text-xs font-bold px-2 py-1 rounded bg-black/60 backdrop-blur-xs">
+                                      +{remainingPhotos} more
                                     </span>
                                   </div>
                                 )}
                               </div>
-                            ))
-                          ) : (
-                            allPropertyPhotos.slice(1, 3).map((url, idx) => (
-                              <div key={`prev-grid-3-${idx}`} className="relative overflow-hidden md:col-span-2 md:row-span-1">
-                                <SmartImage src={url} alt={`Hero ${idx + 2}`} className="w-full h-full object-cover" />
-                              </div>
-                            ))
-                          )
+                            );
+                          })
                         )}
                       </div>
                     )}
@@ -3547,32 +3659,31 @@ export default function ManageHotel() {
                       <div className="space-y-4">
                         {rooms.map((room, rIdx) => {
                           const hasCover = Boolean(room.imageUrl);
-                          const galCount = room.galleryUrls?.length || 0;
                           const roomImages = [room.imageUrl, ...(room.galleryUrls || [])].filter(Boolean) as string[];
 
                           return (
                             <div key={`room-preview-${room.id || rIdx}-${rIdx}`} className="p-4 bg-stone-50 rounded-xl border border-stone-200/80">
                               <div className="flex items-center justify-between mb-2">
                                 <p className="text-sm font-bold text-stone-800">{room.name}</p>
-                                <span className="text-[11px] text-stone-500">
-                                  {roomImages.length} photos
+                                <span className={`text-[11px] font-semibold ${roomImages.length === 0 ? 'text-amber-700' : 'text-stone-500'}`}>
+                                  {roomImages.length === 0 ? '0 photos (Photo Mandatory)' : `${roomImages.length} photos`}
                                 </span>
                               </div>
                               {roomImages.length === 0 ? (
-                                <div className="flex items-center gap-3 p-3 bg-stone-100/60 rounded-xl border border-stone-200/80">
-                                  <div className="w-24 sm:w-28 aspect-video rounded-lg overflow-hidden border border-stone-200 shrink-0">
+                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                                  <div className="relative aspect-video rounded-xl overflow-hidden border border-amber-300 bg-stone-100 group">
                                     <SmartImage 
                                       src={getRoomImage(room, hotel || editHotelData)} 
                                       fallbacks={getHotelImages(hotel || editHotelData)}
                                       alt={room.name} 
                                       className="w-full h-full object-cover" 
                                     />
-                                  </div>
-                                  <div>
-                                    <p className="text-xs font-semibold text-stone-700">Displaying property photography</p>
-                                    <p className="text-[11px] text-stone-500">
-                                      Travelers see this photo until dedicated room photography is uploaded.
-                                    </p>
+                                    <span className="absolute top-2 left-2 bg-amber-600 text-white text-[10px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider shadow-sm">
+                                      Property Fallback
+                                    </span>
+                                    <div className="absolute inset-x-0 bottom-0 bg-stone-900/80 backdrop-blur-xs p-1.5 text-center">
+                                      <p className="text-[10px] text-amber-200 font-semibold leading-tight">No room photo uploaded</p>
+                                    </div>
                                   </div>
                                 </div>
                               ) : (
@@ -3767,6 +3878,72 @@ export default function ManageHotel() {
                     <FieldError message={roomErrors.description} />
                   </div>
                 </div>
+                </SectionCard>
+
+                <SectionCard title="Room Photography (Mandatory)">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs text-stone-500">
+                        At least one photograph is mandatory for every room type (cover photo or gallery photo) before it can be listed and booked.
+                      </p>
+                      <span className="text-[11px] font-bold text-amber-800 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-full">
+                        Required
+                      </span>
+                    </div>
+                    <FieldError message={roomErrors.photos} />
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                      <div>
+                        <ImageUpload
+                          label="Room Cover Photo"
+                          hint="Primary photo displayed on room listings. You can also drag a photo from the gallery onto this card."
+                          tooltip="Primary thumbnail for this room type in guest search and room accommodation lists."
+                          value={editRoomData.imageUrl || ''}
+                          onChange={(url) => {
+                            setEditRoomData(prev => ({ ...prev, imageUrl: url }));
+                            if (roomErrors.photos) {
+                              setRoomErrors(prev => ({ ...prev, photos: undefined }));
+                            }
+                          }}
+                          folder={`hotels/${id}/rooms`}
+                          aspectRatio="16:9"
+                        />
+                      </div>
+
+                      <div>
+                        <GalleryUpload
+                          label="Room Gallery"
+                          hint="Additional views (bathroom, balcony, desk, view). Click star or drag photo onto cover to switch."
+                          tooltip="Image carousel for guests viewing more details about this room type."
+                          value={editRoomData.galleryUrls || []}
+                          onChange={(urls) => {
+                            setEditRoomData(prev => ({ ...prev, galleryUrls: urls }));
+                            if (roomErrors.photos && urls.length > 0) {
+                              setRoomErrors(prev => ({ ...prev, photos: undefined }));
+                            }
+                          }}
+                          folder={`hotels/${id}/rooms/gallery`}
+                          showCoverBadge={true}
+                          onSetCover={(url) => {
+                            const prevCover = editRoomData.imageUrl;
+                            const nextGallery = (editRoomData.galleryUrls || []).filter(u => u !== url);
+                            if (prevCover && !nextGallery.includes(prevCover)) {
+                              nextGallery.unshift(prevCover);
+                            }
+                            setEditRoomData(prev => ({
+                              ...prev,
+                              imageUrl: url,
+                              galleryUrls: nextGallery,
+                            }));
+                            if (roomErrors.photos) {
+                              setRoomErrors(prev => ({ ...prev, photos: undefined }));
+                            }
+                            toast.success('Set as room cover photo');
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </SectionCard>
 
                 <SectionCard title="Room Amenities">

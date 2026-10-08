@@ -51,20 +51,33 @@ export default function ImageUpload({
   })();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const dragCounter = useRef(0);
   const [isDraggingFile, setIsDraggingFile] = useState(false);
+
+  const handleDragEnterFile = (e: React.DragEvent) => {
+    e.preventDefault();
+    dragCounter.current += 1;
+    setIsDraggingFile(true);
+  };
 
   const handleDragOverFile = (e: React.DragEvent) => {
     e.preventDefault();
-    setIsDraggingFile(true);
+    e.dataTransfer.dropEffect = "copy";
+    if (!isDraggingFile) setIsDraggingFile(true);
   };
 
   const handleDragLeaveFile = (e: React.DragEvent) => {
     e.preventDefault();
-    setIsDraggingFile(false);
+    dragCounter.current -= 1;
+    if (dragCounter.current <= 0) {
+      dragCounter.current = 0;
+      setIsDraggingFile(false);
+    }
   };
 
   const handleDropFile = async (e: React.DragEvent) => {
     e.preventDefault();
+    dragCounter.current = 0;
     setIsDraggingFile(false);
 
     // 1. Check if an existing photo URL was dragged and dropped (e.g. from Room Gallery)
@@ -72,7 +85,7 @@ export default function ImageUpload({
     const textUrl = e.dataTransfer.getData("text/plain");
     const candidateUrl = (customUrl || textUrl || "").trim();
 
-    if (candidateUrl && (candidateUrl.startsWith("http://") || candidateUrl.startsWith("https://") || candidateUrl.startsWith("/"))) {
+    if (candidateUrl && (candidateUrl.startsWith("http://") || candidateUrl.startsWith("https://") || candidateUrl.startsWith("/") || candidateUrl.startsWith("data:"))) {
       onChange(candidateUrl);
       setIsChanging(false);
       toast.success("Set as Room Cover photo.");
@@ -181,6 +194,7 @@ export default function ImageUpload({
       {/* Existing Image Preview Card */}
       {value && !isChanging && (
         <div 
+          onDragEnter={handleDragEnterFile}
           onDragOver={handleDragOverFile}
           onDragLeave={handleDragLeaveFile}
           onDrop={handleDropFile}
@@ -189,14 +203,14 @@ export default function ImageUpload({
           <SmartImage
             src={value}
             alt="Preview"
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover pointer-events-none"
           />
 
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30 opacity-0 group-hover:opacity-100 transition-opacity" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
 
           {/* Active Drag Overlay when dragging a photo from gallery over an existing cover */}
           {isDraggingFile && (
-            <div className="absolute inset-0 bg-stone-900/85 backdrop-blur-xs flex flex-col items-center justify-center text-white border-2 border-dashed border-amber-400 z-30 p-4 animate-in fade-in">
+            <div className="absolute inset-0 bg-stone-900/85 backdrop-blur-xs flex flex-col items-center justify-center text-white border-2 border-dashed border-amber-400 z-30 p-4 animate-in fade-in pointer-events-none">
               <Upload className="w-8 h-8 text-amber-400 mb-1.5 animate-bounce" />
               <p className="text-xs font-bold">Drop to set as Cover Photo</p>
               <p className="text-[10px] text-stone-300">Replaces current cover</p>
@@ -204,7 +218,7 @@ export default function ImageUpload({
           )}
 
           {/* Badge */}
-          <div className="absolute top-2.5 left-2.5">
+          <div className="absolute top-2.5 left-2.5 pointer-events-none">
             <span className="px-2.5 py-1 bg-stone-900/80 backdrop-blur-xs text-white text-[11px] font-semibold rounded-md shadow-xs">
               Cover Active
             </span>
@@ -235,7 +249,15 @@ export default function ImageUpload({
       {/* Upload / URL Input Interface (when empty or replacing) */}
       {(!value || isChanging) && (
         mode === "url" ? (
-          <div className="p-3 bg-stone-50 rounded-xl border border-stone-200 space-y-2">
+          <div 
+            onDragEnter={handleDragEnterFile}
+            onDragOver={handleDragOverFile}
+            onDragLeave={handleDragLeaveFile}
+            onDrop={handleDropFile}
+            className={`p-3 bg-stone-50 rounded-xl border transition ${
+              isDraggingFile ? 'border-amber-500 bg-amber-50/40 ring-2 ring-amber-300' : 'border-stone-200'
+            } space-y-2`}
+          >
             <div className="flex gap-2">
               <input
                 type="url"
@@ -274,12 +296,13 @@ export default function ImageUpload({
                 : "border-stone-300 bg-stone-50/50 hover:border-amber-500 hover:bg-amber-50/10"
             } p-4 flex flex-col items-center justify-center text-center transition cursor-pointer group select-none`}
             onClick={() => fileInputRef.current?.click()}
+            onDragEnter={handleDragEnterFile}
             onDragOver={handleDragOverFile}
             onDragLeave={handleDragLeaveFile}
             onDrop={handleDropFile}
           >
             {isUploading ? (
-              <div className="flex flex-col items-center justify-center space-y-2 w-full py-2">
+              <div className="flex flex-col items-center justify-center space-y-2 w-full py-2 pointer-events-none">
                 <Loader2 className="h-7 w-7 text-amber-600 animate-spin" />
                 <p className="text-xs text-stone-700 font-semibold">
                   Uploading{progress > 0 ? ` — ${progress}%` : "…"}
@@ -294,13 +317,13 @@ export default function ImageUpload({
                 )}
               </div>
             ) : isDraggingFile ? (
-              <div className="flex flex-col items-center justify-center animate-pulse">
+              <div className="flex flex-col items-center justify-center animate-pulse pointer-events-none">
                 <Upload className="w-8 h-8 text-amber-600 mb-1.5 animate-bounce" />
                 <p className="text-xs font-bold text-amber-900">Drop here to set as Room Cover</p>
                 <p className="text-[10px] text-amber-700">From gallery or file</p>
               </div>
             ) : (
-              <>
+              <div className="pointer-events-none flex flex-col items-center">
                 <div className="w-9 h-9 rounded-full bg-stone-200/70 group-hover:bg-amber-100 text-stone-500 group-hover:text-amber-800 flex items-center justify-center mb-1.5 transition-transform group-hover:scale-105">
                   <ImageIcon className="h-4 w-4" />
                 </div>
@@ -310,7 +333,7 @@ export default function ImageUpload({
                 <p className="text-[10px] text-stone-400">
                   Drop a photo from room gallery or browse device
                 </p>
-              </>
+              </div>
             )}
             <input
               ref={fileInputRef}

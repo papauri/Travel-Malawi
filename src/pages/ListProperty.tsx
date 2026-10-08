@@ -3083,25 +3083,37 @@ export default function ListProperty() {
                     </div>
 
                     {/* Room Photos */}
-                    <div className="pt-4 border-t border-stone-100">
+                    <div className="pt-4 border-t border-stone-100 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold uppercase tracking-wider text-stone-700">
+                          Room Photography <span className="text-red-500">* (Mandatory)</span>
+                        </span>
+                        <span className="text-[11px] font-semibold text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md">
+                          At least 1 photo required
+                        </span>
+                      </div>
                       <ImageUpload
                         label="Room Cover Photo"
-                        hint="Make it a well-lit, wide shot of the bed and room."
+                        hint="Make it a well-lit, wide shot of the bed and room. Drag photo from gallery here."
                         tooltip="Guest View: This image appears as the primary thumbnail for this room type in the booking list on your property page."
                         value={room.imageUrl || ''}
                         onChange={url => {
                           const updated = [...(draft.rooms || [])];
+                          if (url && (updated[idx].galleryUrls || []).includes(url)) {
+                            const prevCover = updated[idx].imageUrl;
+                            const remaining = (updated[idx].galleryUrls || []).filter(u => u !== url);
+                            if (prevCover && !remaining.includes(prevCover)) remaining.unshift(prevCover);
+                            updated[idx].galleryUrls = remaining;
+                          }
                           updated[idx].imageUrl = url;
                           set('rooms', updated);
                         }}
                         folder={`hotels/${draft.id}/rooms`}
                       />
-                    </div>
-                    
-                    <div className="pt-4 border-t border-stone-100">
+
                       <GalleryUpload
                         label="Room Gallery"
-                        hint="Add photos of the en-suite bathroom, the view from this room, and specific room amenities."
+                        hint="Add photos of the en-suite bathroom, view, and room amenities. Click star or drag onto Cover."
                         tooltip="Guest View: These photos form the image carousel when a guest clicks to view more details about this specific room type."
                         value={room.galleryUrls || []}
                         onChange={urls => {
@@ -3110,6 +3122,17 @@ export default function ListProperty() {
                           set('rooms', updated);
                         }}
                         folder={`hotels/${draft.id}/rooms`}
+                        showCoverBadge={true}
+                        onSetCover={url => {
+                          const updated = [...(draft.rooms || [])];
+                          const prevCover = updated[idx].imageUrl;
+                          const remaining = (updated[idx].galleryUrls || []).filter(u => u !== url);
+                          if (prevCover && !remaining.includes(prevCover)) remaining.unshift(prevCover);
+                          updated[idx].imageUrl = url;
+                          updated[idx].galleryUrls = remaining;
+                          set('rooms', updated);
+                          toast.success('Promoted to room cover photo');
+                        }}
                       />
                     </div>
                   </div>
