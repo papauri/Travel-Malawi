@@ -154,10 +154,23 @@ const HOTEL_READONLY_FIELDS = [
 ] as const;
 
 
-function RoomMediaEditor({ room, hotelId, onUpdate }: { room: RoomType, hotelId: string, onUpdate: (room: RoomType) => void }) {
-  const [imageUrl, setImageUrl] = useState(room.imageUrl || '');
+function RoomMediaEditor({ 
+  room, 
+  hotelId, 
+  hotel,
+  onUpdate 
+}: { 
+  room: RoomType; 
+  hotelId: string; 
+  hotel?: Hotel | Partial<Hotel>;
+  onUpdate: (room: RoomType) => void;
+}) {
+  const [imageUrl, setImageUrl] = useState(room.imageUrl || (room.galleryUrls && room.galleryUrls.length > 0 ? room.galleryUrls[0] : ''));
   const [galleryUrls, setGalleryUrls] = useState<string[]>(room.galleryUrls || []);
   const [saving, setSaving] = useState(false);
+
+  const hotelCover = hotel ? getHotelImage(hotel) : '';
+  const hasHotelCover = Boolean(hotelCover && hotelCover !== '/placeholder.svg' && !hotelCover.includes('data:image/svg'));
 
   const isDirty = imageUrl !== (room.imageUrl || '') || JSON.stringify(galleryUrls) !== JSON.stringify(room.galleryUrls || []);
   const totalPhotos = (imageUrl ? 1 : 0) + galleryUrls.length;
@@ -175,27 +188,37 @@ function RoomMediaEditor({ room, hotelId, onUpdate }: { room: RoomType, hotelId:
   };
 
   return (
-    <div className="bg-white border border-stone-200/90 rounded-2xl p-5 sm:p-6 shadow-xs relative transition-all">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 pb-4 border-b border-stone-100 gap-3">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-800 flex items-center justify-center shrink-0">
-            <BedDouble className="w-5 h-5" />
+    <div className="bg-white border border-stone-200/90 rounded-2xl p-4 sm:p-5 shadow-2xs relative transition-all">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 pb-3 border-b border-stone-100 gap-2.5">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-800 flex items-center justify-center shrink-0">
+            <BedDouble className="w-4 h-4" />
           </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="text-base sm:text-lg font-bold text-stone-900">{room.name}</h3>
-              <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+              <h3 className="text-sm sm:text-base font-bold text-stone-900">{room.name}</h3>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-semibold ${
                 totalPhotos > 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-100 text-stone-600'
               }`}>
                 {totalPhotos} {totalPhotos === 1 ? 'photo' : 'photos'}
               </span>
+              {!room.imageUrl && imageUrl && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/70">
+                  Cover populated from gallery
+                </span>
+              )}
+              {!imageUrl && hasHotelCover && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200/60">
+                  Inheriting property photo
+                </span>
+              )}
               {isDirty && (
-                <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-800 animate-pulse">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800 animate-pulse">
                   Unsaved changes
                 </span>
               )}
             </div>
-            <p className="text-xs text-stone-500 mt-0.5">High-quality photos for this specific room type.</p>
+            <p className="text-[11px] sm:text-xs text-stone-500 mt-0.5">Photography for this room unit shown to guests.</p>
           </div>
         </div>
 
@@ -204,7 +227,7 @@ function RoomMediaEditor({ room, hotelId, onUpdate }: { room: RoomType, hotelId:
           type="button"
           onClick={handleSave}
           disabled={!isDirty || saving}
-          className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition self-start sm:self-auto cursor-pointer ${
+          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition self-start sm:self-auto cursor-pointer ${
             isDirty
               ? 'bg-stone-900 hover:bg-stone-800 text-white shadow-xs'
               : 'bg-stone-100 text-stone-400 cursor-not-allowed'
@@ -215,11 +238,12 @@ function RoomMediaEditor({ room, hotelId, onUpdate }: { room: RoomType, hotelId:
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        <div className="lg:col-span-5 xl:col-span-4 bg-stone-50/60 p-4 rounded-xl border border-stone-200/80">
+      {/* Streamlined media grid: column 1 = Cover photo, column 2 = Attached gallery card */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 sm:gap-4 items-start">
+        <div className="lg:col-span-5 space-y-2">
           <ImageUpload
             label="Room Cover Photo"
-            hint="Wide shot of bed and room layout."
+            hint="Primary thumbnail in room list & booking picker."
             tooltip="Guest View: This image appears as the primary thumbnail for this room type in the booking list on your property page."
             value={imageUrl}
             onChange={(url) => {
@@ -227,11 +251,46 @@ function RoomMediaEditor({ room, hotelId, onUpdate }: { room: RoomType, hotelId:
             }}
             folder={`hotels/${hotelId}/rooms`}
           />
+
+          {/* Quick promote banner if cover is unset */}
+          {!imageUrl && (galleryUrls.length > 0 || hasHotelCover) && (
+            <div className="p-2.5 bg-amber-50/80 border border-amber-200/70 rounded-xl flex items-center justify-between gap-2 text-xs">
+              <div className="flex items-center gap-1.5 min-w-0 text-amber-900">
+                <Sparkles className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                <span className="truncate text-[11px] font-medium">
+                  {galleryUrls.length > 0 ? "1st gallery photo available" : "Property photo available"}
+                </span>
+              </div>
+              {galleryUrls.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setImageUrl(galleryUrls[0]);
+                    toast.success("Set 1st gallery photo as Room Cover");
+                  }}
+                  className="px-2 py-0.5 bg-amber-800 hover:bg-amber-900 text-white text-[10px] font-bold rounded-md shadow-2xs transition shrink-0 cursor-pointer"
+                >
+                  Set as Cover
+                </button>
+              ) : hasHotelCover ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setImageUrl(hotelCover);
+                    toast.success("Set property photo as Room Cover");
+                  }}
+                  className="px-2 py-0.5 bg-stone-900 hover:bg-stone-800 text-white text-[10px] font-bold rounded-md shadow-2xs transition shrink-0 cursor-pointer"
+                >
+                  Set as Cover
+                </button>
+              ) : null}
+            </div>
+          )}
         </div>
-        <div className="lg:col-span-7 xl:col-span-8 bg-stone-50/60 p-4 rounded-xl border border-stone-200/80">
+        <div className="lg:col-span-7 bg-stone-50/40 rounded-xl p-3 sm:p-3.5 border border-stone-200/70 space-y-2">
           <GalleryUpload
             label="Room Gallery"
-            hint="En-suite bathroom, balcony view, and specific amenities. Click ★ to promote any photo to Room Cover."
+            hint="Bathroom, balcony view, and amenities. Click ★ to set as cover."
             tooltip="Guest View: These photos form the image carousel when a guest clicks to view more details about this specific room type."
             value={galleryUrls}
             onChange={(urls) => {
@@ -239,6 +298,7 @@ function RoomMediaEditor({ room, hotelId, onUpdate }: { room: RoomType, hotelId:
             }}
             folder={`hotels/${hotelId}/rooms`}
             showCoverBadge={false}
+            compact={true}
             onSetCover={(url) => {
               const oldCover = imageUrl;
               setImageUrl(url);
@@ -424,10 +484,37 @@ export default function ManageHotel() {
   const [bookingFilter, setBookingFilter] = useState<'all' | 'pending' | 'confirmed' | 'cancelled'>('all');
   const [currentBookingPage, setCurrentBookingPage] = useState(1);
   const bookingsPerPage = 5;
+  const [currentInquiryPage, setCurrentInquiryPage] = useState(1);
+  const inquiriesPerPage = 8;
+  const [currentRoomPage, setCurrentRoomPage] = useState(1);
+  const roomsPerPage = 5;
+  const [openRoomMenuId, setOpenRoomMenuId] = useState<string | null>(null);
+  const [openBookingMenuId, setOpenBookingMenuId] = useState<string | null>(null);
+  const [roomToDelete, setRoomToDelete] = useState<RoomType | null>(null);
+  const [isDeletingRoom, setIsDeletingRoom] = useState(false);
   const { openInquiryChat, openBookingChat } = useChatModal();
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [savingRestaurant, setSavingRestaurant] = useState(false);
   const [togglingStatus, setTogglingStatus] = useState(false);
+
+  const handleDeleteRoom = async () => {
+    if (!roomToDelete?.id || isDeletingRoom) return;
+    setIsDeletingRoom(true);
+    try {
+      await deleteDoc(doc(db, 'room_types', roomToDelete.id));
+      setRooms(prev => prev.filter(r => r.id !== roomToDelete.id));
+      if (editingRoomId === roomToDelete.id) {
+        setEditingRoomId(null);
+      }
+      toast.success(`"${roomToDelete.name}" deleted.`);
+      setRoomToDelete(null);
+    } catch (err: any) {
+      console.error('Failed to delete room:', err);
+      toast.error('Failed to delete room.');
+    } finally {
+      setIsDeletingRoom(false);
+    }
+  };
 
   const deleteInquiryChat = async (chatId: string) => {
     if (!chatId || deletingInquiry || !user) return;
@@ -1373,7 +1460,7 @@ export default function ManageHotel() {
             </a>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 shrink-0">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 shrink-0 self-start md:self-auto">
           {/* Troubleshooting Mode: Admin / Marketing can view as manager */}
           {isElevatedUser && (
             <button
@@ -1398,7 +1485,7 @@ export default function ManageHotel() {
                   toast.success('Exited Manager View mode. Elevated admin/marketing controls restored.');
                 }
               }}
-              className={`inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-1 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-bold transition shadow-2xs cursor-pointer border ${
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition shadow-2xs cursor-pointer border ${
                 viewAsManager
                   ? 'bg-amber-600 text-white border-amber-600 hover:bg-amber-700 ring-2 ring-amber-300'
                   : 'bg-stone-900 text-white border-stone-900 hover:bg-stone-800'
@@ -1406,12 +1493,7 @@ export default function ManageHotel() {
               title={viewAsManager ? 'Click to exit Manager View and return to Admin mode' : 'Simulate what the on-site property manager sees for troubleshooting'}
             >
               {viewAsManager ? <EyeOff className="w-3.5 h-3.5" /> : <UserCog className="w-3.5 h-3.5 text-amber-400" />}
-              <span>{viewAsManager ? 'Exit Manager View' : 'See as Manager'}</span>
-              <span className={`text-[9px] uppercase tracking-wider px-1.5 py-0.2 rounded-full font-bold ${
-                viewAsManager ? 'bg-amber-800 text-white' : 'bg-stone-800 text-amber-300'
-              }`}>
-                {viewAsManager ? 'Simulating' : 'Audit'}
-              </span>
+              <span>{viewAsManager ? 'Exit Simulation' : 'Audit as Manager'}</span>
             </button>
           )}
 
@@ -1420,7 +1502,7 @@ export default function ManageHotel() {
             type="button"
             onClick={handleToggleOnlineStatus}
             disabled={togglingStatus}
-            className={`inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-1 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-bold uppercase tracking-wider border transition shadow-2xs ${
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider border transition shadow-2xs cursor-pointer ${
               hotel.isOnline !== false
                 ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
                 : 'bg-stone-100 text-stone-700 border-stone-300 hover:bg-stone-200'
@@ -1428,21 +1510,20 @@ export default function ManageHotel() {
             title="Toggle whether guests see you as Online or Away"
           >
             <span className={`h-2 w-2 rounded-full ${hotel.isOnline !== false ? 'bg-emerald-500 animate-pulse' : 'bg-stone-400'}`} />
-            <span>{hotel.isOnline !== false ? 'Online' : 'Offline (Away)'}</span>
-            <span className="text-[9px] font-semibold text-stone-500 bg-white/80 px-1 py-0.2 rounded-full ml-0.5">Toggle</span>
+            <span>{hotel.isOnline !== false ? 'Online' : 'Offline'}</span>
           </button>
 
           {hotel.status === 'pending' ? (
-            <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-800 px-3 py-1 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-bold uppercase tracking-wider">
-              <Clock className="h-3 w-3" /> Awaiting approval
+            <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-800 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider">
+              <Clock className="h-3.5 w-3.5" /> Pending
             </span>
           ) : hotel.status === 'rejected' ? (
-            <span className="inline-flex items-center gap-1 bg-red-100 text-red-700 px-3 py-1 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-bold uppercase tracking-wider">
-              <XCircle className="h-3 w-3" /> Not published
+            <span className="inline-flex items-center gap-1 bg-red-100 text-red-700 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider">
+              <XCircle className="h-3.5 w-3.5" /> Not published
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 px-3 py-1 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-bold uppercase tracking-wider">
-              <CheckCircle2 className="h-3 w-3" /> Live
+            <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider">
+              <CheckCircle2 className="h-3.5 w-3.5" /> Live
             </span>
           )}
         </div>
@@ -3359,6 +3440,7 @@ export default function ManageHotel() {
                           key={`room-media-${room.id || rIdx}-${rIdx}`} 
                           room={room} 
                           hotelId={id!} 
+                          hotel={hotel || editHotelData}
                           onUpdate={(updated) => setRooms(rooms.map(r => r.id === updated.id ? updated : r))} 
                         />
                       ))}
@@ -3477,7 +3559,22 @@ export default function ManageHotel() {
                                 </span>
                               </div>
                               {roomImages.length === 0 ? (
-                                <p className="text-xs text-stone-400 italic">No photos uploaded for this room.</p>
+                                <div className="flex items-center gap-3 p-3 bg-stone-100/60 rounded-xl border border-stone-200/80">
+                                  <div className="w-24 sm:w-28 aspect-video rounded-lg overflow-hidden border border-stone-200 shrink-0">
+                                    <SmartImage 
+                                      src={getRoomImage(room, hotel || editHotelData)} 
+                                      fallbacks={getHotelImages(hotel || editHotelData)}
+                                      alt={room.name} 
+                                      className="w-full h-full object-cover" 
+                                    />
+                                  </div>
+                                  <div>
+                                    <p className="text-xs font-semibold text-stone-700">Displaying property photography</p>
+                                    <p className="text-[11px] text-stone-500">
+                                      Travelers see this photo until dedicated room photography is uploaded.
+                                    </p>
+                                  </div>
+                                </div>
                               ) : (
                                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                                   {roomImages.map((url, idx) => (
@@ -3579,8 +3676,17 @@ export default function ManageHotel() {
             </div>
           )}
 
-          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2.5 mb-2">
-            <p className="text-xs sm:text-sm text-stone-500">Manage your room inventory, pricing, and availability.</p>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-stone-200 mb-4 sm:mb-6">
+            <div>
+              <h2 className="text-xl sm:text-2xl font-serif font-bold text-stone-900 tracking-tight">
+                {editHotelData.stayType === 'entire_place' ? 'Whole Space & Rates' : 'Rooms & Pricing'}
+              </h2>
+              <p className="text-stone-500 text-xs sm:text-sm mt-0.5">
+                {editHotelData.stayType === 'entire_place'
+                  ? 'Manage whole-property inventory, nightly tariffs, inclusions, and availability blocks.'
+                  : 'Manage room units, nightly rates, amenities, and availability blocks.'}
+              </p>
+            </div>
             {!editingRoomId && (
               <div className="flex flex-wrap items-center gap-2">
                 {rooms.length > 0 && (
@@ -4117,63 +4223,151 @@ export default function ManageHotel() {
             </div>
           )}
 
-          {!editingRoomId && rooms.map((room, rIdx) => (
-            <div key={`mgmt-room-card-${room.id || 'room'}-${rIdx}`} onClick={() => startEditRoom(room)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') startEditRoom(room); }} className={`group cursor-pointer bg-white border p-3 sm:p-4 md:p-5 rounded-xl sm:rounded-2xl flex flex-col sm:flex-row gap-3 sm:gap-4 md:gap-5 items-stretch sm:items-center shadow-2xs hover:border-stone-400 hover:shadow-sm transition ${room.quantity === 0 ? 'border-red-200 bg-red-50/30' : 'border-stone-200'}`}>
-              <div className="w-full sm:w-36 md:w-44 h-28 sm:h-32 md:h-36 bg-stone-100 rounded-lg sm:rounded-xl overflow-hidden shrink-0">
-                <SmartImage src={getRoomImage(room, null)} alt={room.name} className="w-full h-full object-cover" />
-              </div>
-              <div className="flex-1 min-w-0 w-full flex flex-col justify-center">
-                <div className="flex flex-col sm:flex-row justify-between sm:items-start gap-1 sm:gap-2 mb-1.5">
-                  <h4 className="text-base sm:text-lg font-serif font-bold text-stone-900 line-clamp-1 pr-0 sm:pr-2">{room.name}</h4>
-                  <div className="flex sm:flex-col gap-2 sm:gap-0 text-left sm:text-right items-baseline sm:items-end">
-                    {roomCurrencies(room).map((code, i) => (
-                      <div
-                        key={`room-curr-disp-${code}-${i}`}
-                        className={i === 0
-                          ? 'text-base sm:text-lg font-serif font-bold text-stone-900 whitespace-nowrap'
-                          : 'text-xs text-stone-500 font-medium whitespace-nowrap'}
+          {!editingRoomId && (
+            <>
+              <div className="space-y-3 sm:space-y-4">
+                {rooms
+                  .slice((currentRoomPage - 1) * roomsPerPage, currentRoomPage * roomsPerPage)
+                  .map((room, rIdx) => {
+                    const isMenuOpen = openRoomMenuId === room.id;
+                    return (
+                      <div 
+                        key={`mgmt-room-card-${room.id || 'room'}-${rIdx}`} 
+                        className={`bg-white border p-3 sm:p-4 md:p-5 rounded-xl sm:rounded-2xl flex flex-col sm:flex-row gap-3 sm:gap-4 md:gap-5 items-stretch sm:items-center shadow-2xs hover:shadow-xs transition ${
+                          room.quantity === 0 ? 'border-red-200 bg-red-50/20' : 'border-stone-200'
+                        }`}
                       >
-                        <PriceDisplay amount={roomPrice(room, code) ?? 0} currency={code} />
+                        <div 
+                          onClick={() => startEditRoom(room)}
+                          className="w-full sm:w-36 md:w-44 h-28 sm:h-32 md:h-36 bg-stone-100 rounded-lg sm:rounded-xl overflow-hidden shrink-0 cursor-pointer"
+                        >
+                          <SmartImage 
+                            src={getRoomImage(room, hotel || editHotelData)} 
+                            fallbacks={getHotelImages(hotel || editHotelData)}
+                            alt={room.name} 
+                            className="w-full h-full object-cover hover:scale-105 transition duration-300" 
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0 w-full flex flex-col justify-center">
+                          <div className="flex flex-col sm:flex-row justify-between sm:items-start gap-1 sm:gap-2 mb-1.5">
+                            <h4 
+                              onClick={() => startEditRoom(room)}
+                              className="text-base sm:text-lg font-serif font-bold text-stone-900 line-clamp-1 pr-0 sm:pr-2 cursor-pointer hover:text-emerald-700 transition"
+                            >
+                              {room.name}
+                            </h4>
+                            <div className="flex sm:flex-col gap-2 sm:gap-0 text-left sm:text-right items-baseline sm:items-end">
+                              {roomCurrencies(room).map((code, i) => (
+                                <div
+                                  key={`room-curr-disp-${code}-${i}`}
+                                  className={i === 0
+                                    ? 'text-base sm:text-lg font-serif font-bold text-stone-900 whitespace-nowrap'
+                                    : 'text-xs text-stone-500 font-medium whitespace-nowrap'}
+                                >
+                                  <PriceDisplay amount={roomPrice(room, code) ?? 0} currency={code} />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                          <p className="text-stone-500 text-xs sm:text-sm mb-2.5 line-clamp-2">{room.description}</p>
+                          <div className="flex flex-wrap items-center gap-2 text-xs font-medium">
+                            <span className="flex items-center gap-1 text-stone-600"><Users className="h-3.5 w-3.5" /> {room.maxGuests} Guests</span>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] sm:text-xs uppercase tracking-wider font-semibold ${room.quantity > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                              {room.quantity > 0 ? `${room.quantity} Available` : 'Blocked'}
+                            </span>
+                          
+                            {room.packages && room.packages.length > 0 && room.packages.map((pkg, pIdx) => (
+                              <span key={`room-view-pkg-${pkg.id || 'pkg'}-${pIdx}`} className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full text-[10px] sm:text-xs">{pkg.name}</span>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Room Card Actions */}
+                        <div className="flex sm:flex-row items-center gap-2 border-t sm:border-t-0 sm:border-l border-stone-100 pt-2.5 sm:pt-0 sm:pl-3 md:pl-4 shrink-0 mt-1 sm:mt-0 justify-end">
+                          <button 
+                            type="button"
+                            onClick={() => startEditRoom(room)}
+                            className="flex items-center justify-center gap-1.5 px-3 sm:px-3.5 py-1.5 sm:py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-lg transition text-xs font-semibold cursor-pointer shadow-2xs"
+                          >
+                            <Edit2 className="h-3.5 w-3.5" /> 
+                            <span>Edit Room</span>
+                          </button>
+
+                          {/* Actions Dropdown */}
+                          <div className="relative inline-block text-left">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenRoomMenuId(isMenuOpen ? null : room.id || `room-${rIdx}`);
+                              }}
+                              className="inline-flex items-center justify-center gap-1 px-2.5 py-1.5 sm:py-2 rounded-lg border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 text-xs font-medium shadow-2xs transition cursor-pointer"
+                              aria-label="Room actions"
+                            >
+                              <span>Actions</span>
+                              <ChevronDown className={`w-3.5 h-3.5 text-stone-400 transition-transform ${isMenuOpen ? 'rotate-180' : ''}`} />
+                            </button>
+
+                            {isMenuOpen && (
+                              <>
+                                <div 
+                                  className="fixed inset-0 z-30" 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOpenRoomMenuId(null);
+                                  }} 
+                                />
+                                <div className="absolute right-0 mt-1.5 w-52 bg-white rounded-xl shadow-lg border border-stone-200 py-1.5 z-40 text-xs animate-in fade-in-50 zoom-in-95">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setOpenRoomMenuId(null);
+                                      startEditRoom(room);
+                                      setTimeout(() => {
+                                        const el = document.getElementById('room-calendar-section');
+                                        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                      }, 100);
+                                    }}
+                                    className="w-full text-left px-3.5 py-2 hover:bg-stone-50 flex items-center gap-2 text-stone-700 transition cursor-pointer"
+                                  >
+                                    <Calendar className="w-3.5 h-3.5 text-stone-400" />
+                                    <span>Calendar &amp; Blocks</span>
+                                  </button>
+                                  <div className="my-1 border-t border-stone-100" />
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setOpenRoomMenuId(null);
+                                      setRoomToDelete(room);
+                                    }}
+                                    className="w-full text-left px-3.5 py-2 hover:bg-red-50 text-red-600 flex items-center gap-2 transition cursor-pointer"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                                    <span>Delete Room</span>
+                                  </button>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                </div>
-                <p className="text-stone-500 text-xs sm:text-sm mb-2.5 line-clamp-2">{room.description}</p>
-                <div className="flex flex-wrap items-center gap-2 text-xs font-medium">
-                  <span className="flex items-center gap-1 text-stone-600"><Users className="h-3.5 w-3.5" /> {room.maxGuests} Guests</span>
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] sm:text-xs uppercase tracking-wider font-semibold ${room.quantity > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
-                    {room.quantity > 0 ? `${room.quantity} Available` : 'Blocked'}
-                  </span>
-                
-                  {room.packages && room.packages.length > 0 && room.packages.map((pkg, pIdx) => (
-                    <span key={`room-view-pkg-${pkg.id || 'pkg'}-${pIdx}`} className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full text-[10px] sm:text-xs">{pkg.name}</span>
-                  ))}
-                </div>
+                    );
+                  })}
               </div>
-              <div className="flex sm:flex-col w-full sm:w-28 md:w-36 gap-1.5 border-t sm:border-t-0 sm:border-l border-stone-100 pt-2.5 sm:pt-0 sm:pl-3 md:pl-4 shrink-0 mt-1 sm:mt-0 justify-center">
-                <button 
-                  type="button"
-                  tabIndex={-1}
-                  className="flex-1 sm:w-full flex items-center justify-center gap-1.5 px-3 py-1.5 sm:py-2 bg-stone-100 group-hover:bg-stone-200 text-stone-700 rounded-lg transition text-xs font-semibold cursor-pointer"
-                >
-                  <Edit2 className="h-3.5 w-3.5" /> Edit
-                </button>
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    startEditRoom(room);
-                    setTimeout(() => {
-                      const el = document.getElementById('room-calendar-section');
-                      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    }, 100);
-                  }}
-                  className="flex-1 sm:w-full flex items-center justify-center px-3 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold uppercase tracking-wider transition bg-stone-50 text-stone-700 hover:bg-stone-200 cursor-pointer"
-                >
-                  Blocks
-                </button>
-              </div>
-            </div>
-          ))}
+
+              {rooms.length > roomsPerPage && (
+                <div className="pt-2">
+                  <Pagination
+                    currentPage={currentRoomPage}
+                    totalPages={Math.ceil(rooms.length / roomsPerPage)}
+                    onPageChange={setCurrentRoomPage}
+                  />
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
 
@@ -4295,226 +4489,298 @@ export default function ManageHotel() {
             </div>
           ) : (
             <ul className="space-y-3 sm:space-y-4 p-3 sm:p-4 md:p-6">
-              {visibleBookings.slice((currentBookingPage - 1) * bookingsPerPage, currentBookingPage * bookingsPerPage).map((booking, bIdx) => (
+              {visibleBookings.slice((currentBookingPage - 1) * bookingsPerPage, currentBookingPage * bookingsPerPage).map((booking, bIdx) => {
+                const isMenuOpen = openBookingMenuId === booking.id;
+                return (
                 <li key={`mgmt-booking-${booking.id}`} className="p-3.5 sm:p-5 md:p-6 bg-white border border-stone-200 rounded-xl sm:rounded-2xl shadow-2xs hover:shadow-xs transition">
-                  <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-3 sm:gap-4 mb-3">
-                    <div className="w-full">
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-1 sm:flex-wrap w-full">
-                        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 pb-3 border-b border-stone-100">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                        <span className="font-bold text-stone-900 text-base sm:text-lg flex items-center gap-1.5">
+                          {booking.guestName}
+                        </span>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-wider ${
+                          booking.status === 'confirmed' ? 'bg-emerald-100 text-emerald-700' :
+                          booking.status === 'rejected' ? 'bg-red-100 text-red-700' :
+                          booking.status === 'cancelled' ? 'bg-stone-200 text-stone-600' :
+                          'bg-amber-100 text-amber-700'
+                        }`}>
+                          {booking.status}
+                        </span>
+                        
+                        {booking.status === 'confirmed' && booking.arrivalPin && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-bold tracking-wider bg-indigo-100 text-indigo-700 border border-indigo-200 flex items-center gap-1">
+                            PIN: {booking.arrivalPin}
+                          </span>
+                        )}
+                      </div>
 
-                          <span className="font-bold text-stone-900 text-base sm:text-lg flex items-center gap-1.5">
-                            {booking.guestName}
-                            <button
-                              type="button"
-                              onClick={() => setEditModalBooking(booking)}
-                              className="text-stone-400 hover:text-stone-900 p-1 hover:bg-stone-100 rounded-full transition cursor-pointer"
-                              title="Edit Booking"
-                            >
-                              <Edit2 className="w-3.5 h-3.5" />
-                            </button>
-                          </span>
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-wider ${
-                            booking.status === 'confirmed' ? 'bg-emerald-100 text-emerald-700' :
-                            booking.status === 'rejected' ? 'bg-red-100 text-red-700' :
-                            booking.status === 'cancelled' ? 'bg-stone-200 text-stone-600' :
-                            'bg-amber-100 text-amber-700'
-                          }`}>
-                            {booking.status}
-                          </span>
-                          
-                          {booking.status === 'confirmed' && booking.arrivalPin && (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-bold tracking-wider bg-indigo-100 text-indigo-700 border border-indigo-200 flex items-center gap-1">
-                              PIN: {booking.arrivalPin}
-                            </span>
-                          )}
-                          
-                        </div>
-                        {booking.status !== 'cancelled' && booking.status !== 'rejected' && (
-                            <div className="sm:ml-auto flex items-center gap-1.5 sm:gap-2 flex-wrap w-full sm:w-auto mt-1 sm:mt-0">
-                              <button
-                                type="button"
-                                onClick={() => setReminderModalBooking(booking)}
-                                className="text-xs font-semibold text-emerald-800 border-2 border-emerald-300 bg-emerald-50 px-2.5 sm:px-3 py-1 rounded-lg hover:bg-emerald-100 hover:border-emerald-600 transition inline-flex items-center gap-1 cursor-pointer shadow-2xs"
-                                title="Open ready-to-go email & WhatsApp reminder templates"
-                              >
-                                <Mail className="w-3.5 h-3.5 text-emerald-600" />
-                                Reminders
-                              </button>
-                              {hotel?.adminChatEnabled !== false && (
-                                <button
-                                  type="button"
-                                  onClick={() => openBookingChat(booking)}
-                                  className="text-xs font-semibold text-stone-900 border border-stone-200 bg-white px-2.5 sm:px-3 py-1 rounded-lg hover:border-stone-900 transition inline-flex items-center gap-1 cursor-pointer"
-                                >
-                                  <MessageSquare className="w-3.5 h-3.5" /> Message Guest
-                                </button>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 mb-2 flex-wrap">
-                          {booking.reference && (
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        {booking.reference && (
                           <span className="text-xs font-mono font-semibold text-stone-400">{booking.reference}</span>
                         )}
-                        {/* Accepted, but the spam checks found something. The
-                            property decides; this only says why to look. */}
                         {booking.flagged && (
                           <span
                             title={(booking.flagReasons ?? []).join(', ')}
                             className="inline-flex items-center gap-1 bg-amber-100 text-amber-800 text-[0.65rem] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider"
                           >
-                            <AlertTriangle className="h-3 w-3" /> Check this one
+                            <AlertTriangle className="h-3 w-3" /> Flagged for review
                           </span>
                         )}
                       </div>
-                      {(booking.guestEmail || booking.guestPhone || booking.guestWhatsapp || true) && (
-                        <div className="text-sm text-stone-500 mb-2 flex gap-4 flex-wrap items-center">
-                          {booking.guestEmail && <span>✉️ {booking.guestEmail}</span>}
-                          {booking.guestPhone && <span>📞 {booking.guestPhone}</span>}
-                          
-                          {/* Manager WhatsApp controls */}
-                          {
-                            editingWhatsappBookingId === booking.id ? (
-                              <div className="inline-flex items-center gap-1.5 bg-emerald-50 p-1 rounded-lg border border-emerald-300">
-                                <MessageSquare className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-                                <input
-                                  type="tel"
-                                  value={tempWhatsappNumber}
-                                  onChange={e => setTempWhatsappNumber(e.target.value)}
-                                  placeholder="+265 999 123 456"
-                                  className="text-xs bg-white border border-emerald-300 px-2 py-0.5 rounded text-stone-900 focus:outline-none w-36 font-mono"
-                                  autoFocus
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => handleSaveBookingWhatsapp(booking.id!)}
-                                  disabled={savingBookingWhatsapp}
-                                  className="text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-2 py-0.5 rounded cursor-pointer"
-                                >
-                                  {savingBookingWhatsapp ? '...' : 'Save'}
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setEditingWhatsappBookingId(null)}
-                                  className="text-xs text-stone-500 hover:text-stone-800 px-1 cursor-pointer"
-                                >
-                                  Cancel
-                                </button>
-                              </div>
-                            ) : (
-                              <div className="inline-flex items-center gap-1.5">
-                                {booking.guestWhatsapp ? (
-                                  <>
-                                    <a
-                                      href={`https://wa.me/${booking.guestWhatsapp.replace(/[^0-9]/g, '')}`}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                      className="text-emerald-700 hover:underline inline-flex items-center gap-1 text-xs font-semibold"
-                                      title="Open guest WhatsApp chat"
-                                    >
-                                      <MessageSquare className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                                      {booking.guestWhatsapp}
-                                    </a>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setEditingWhatsappBookingId(booking.id!);
-                                        setTempWhatsappNumber(booking.guestWhatsapp || '');
-                                      }}
-                                      className="text-[11px] text-stone-400 hover:text-stone-700 underline cursor-pointer"
-                                      title="Edit guest WhatsApp number"
-                                    >
-                                      Edit
-                                    </button>
-                                  </>
-                                ) : (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setEditingWhatsappBookingId(booking.id!);
-                                      setTempWhatsappNumber(booking.guestPhone || '+265');
-                                    }}
-                                    className="text-xs text-emerald-700 hover:text-emerald-800 font-semibold inline-flex items-center gap-1 cursor-pointer hover:underline"
-                                    title="Add WhatsApp number for this guest"
-                                  >
-                                    <MessageSquare className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                                    + Add WhatsApp
-                                  </button>
-                                )}
-                              </div>
-                            )
-                          }
+                    </div>
+
+                    {/* Top Right: Price & Unified Action Controls */}
+                    <div className="flex flex-wrap items-center gap-2 shrink-0 self-start sm:self-auto">
+                      {canSeeFinancials && (
+                        <div className="mr-1">
+                          <PriceDisplay className="text-base sm:text-lg font-bold text-stone-900" amount={booking.total ?? 0} currency={booking.currency} />
                         </div>
                       )}
-                      <p className="text-stone-500 font-medium mb-1">{rooms.find(r => r.id === booking.roomTypeId)?.name || 'Unknown Room'}</p>
-                      <div className="text-sm text-stone-500 flex items-center gap-2 flex-wrap">
-                        <Calendar className="h-4 w-4" />
-                        {formatDateStr(booking.checkIn)} — {formatDateStr(booking.checkOut)}
-                        <span className="text-stone-400">
-                          &middot; {nightsBetween(booking.checkIn, booking.checkOut)} night{nightsBetween(booking.checkIn, booking.checkOut) === 1 ? '' : 's'} &middot; {booking.guests} guest{booking.guests === 1 ? '' : 's'}
-                        </span>
-                      </div>
-                    </div>
-                    
-                    <div className="text-right flex flex-col items-end">
-                      {canSeeFinancials && (
-                        <PriceDisplay className="text-xl text-stone-900 mb-2" amount={booking.total ?? 0} currency={booking.currency} />
+
+                      {/* Primary Quick Actions for Pending Bookings */}
+                      {booking.status === 'pending' && (
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setConfirmModalBooking(booking.id!)}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold shadow-2xs transition cursor-pointer"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                            <span>Confirm</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => updateBookingStatus(booking.id!, 'rejected')}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 text-xs font-semibold transition cursor-pointer"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                            <span>Decline</span>
+                          </button>
+                        </div>
                       )}
-                      <div className="flex gap-2">
-                        <button onClick={() => setBookingToDelete(booking.id!)} className="text-stone-400 hover:text-red-500 transition p-2">
-                          <Trash2 className="h-5 w-5" />
+
+                      {/* Primary Quick Action for Confirmed Bookings */}
+                      {booking.status === 'confirmed' && hotel?.adminChatEnabled !== false && (
+                        <button
+                          type="button"
+                          onClick={() => openBookingChat(booking)}
+                          className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-stone-200 bg-white hover:bg-stone-50 text-stone-800 text-xs font-semibold transition cursor-pointer shadow-2xs"
+                        >
+                          <MessageSquare className="w-3.5 h-3.5 text-stone-600" />
+                          <span>Message</span>
                         </button>
+                      )}
+
+                      {/* Unified Booking Actions Dropdown */}
+                      <div className="relative inline-block text-left">
+                        <button
+                          type="button"
+                          onClick={() => setOpenBookingMenuId(isMenuOpen ? null : booking.id!)}
+                          className="inline-flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 text-xs font-medium shadow-2xs transition cursor-pointer"
+                          aria-label="Booking actions"
+                        >
+                          <span>Actions</span>
+                          <ChevronDown className={`w-3.5 h-3.5 text-stone-400 transition-transform ${isMenuOpen ? 'rotate-180' : ''}`} />
+                        </button>
+
+                        {isMenuOpen && (
+                          <>
+                            <div 
+                              className="fixed inset-0 z-30" 
+                              onClick={() => setOpenBookingMenuId(null)} 
+                            />
+                            <div className="absolute right-0 mt-1.5 w-52 bg-white rounded-xl shadow-lg border border-stone-200 py-1.5 z-40 text-xs animate-in fade-in-50 zoom-in-95">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setOpenBookingMenuId(null);
+                                  setEditModalBooking(booking);
+                                }}
+                                className="w-full text-left px-3.5 py-2 hover:bg-stone-50 flex items-center gap-2 text-stone-700 transition cursor-pointer"
+                              >
+                                <Edit2 className="w-3.5 h-3.5 text-stone-400" />
+                                <span>Edit Booking Details</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setOpenBookingMenuId(null);
+                                  setReminderModalBooking(booking);
+                                }}
+                                className="w-full text-left px-3.5 py-2 hover:bg-stone-50 flex items-center gap-2 text-stone-700 transition cursor-pointer"
+                              >
+                                <Mail className="w-3.5 h-3.5 text-emerald-600" />
+                                <span>Send Reminders &amp; Templates</span>
+                              </button>
+
+                              {hotel?.adminChatEnabled !== false && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setOpenBookingMenuId(null);
+                                    openBookingChat(booking);
+                                  }}
+                                  className="w-full text-left px-3.5 py-2 hover:bg-stone-50 flex items-center gap-2 text-stone-700 transition cursor-pointer"
+                                >
+                                  <MessageSquare className="w-3.5 h-3.5 text-stone-400" />
+                                  <span>Open In-App Chat</span>
+                                </button>
+                              )}
+
+                              {booking.guestWhatsapp && (
+                                <a
+                                  href={`https://wa.me/${booking.guestWhatsapp.replace(/[^0-9]/g, '')}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  onClick={() => setOpenBookingMenuId(null)}
+                                  className="w-full text-left px-3.5 py-2 hover:bg-stone-50 flex items-center gap-2 text-emerald-700 transition cursor-pointer"
+                                >
+                                  <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
+                                  <span>Open WhatsApp Chat</span>
+                                </a>
+                              )}
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setOpenBookingMenuId(null);
+                                  if (showRemindersFor === booking.id) {
+                                    setShowRemindersFor(null);
+                                  } else {
+                                    setShowRemindersFor(booking.id!);
+                                    fetchReminders(booking.id!);
+                                  }
+                                }}
+                                className="w-full text-left px-3.5 py-2 hover:bg-stone-50 flex items-center gap-2 text-stone-700 transition cursor-pointer"
+                              >
+                                <Clock className="w-3.5 h-3.5 text-stone-400" />
+                                <span>{showRemindersFor === booking.id ? 'Hide Reminder Log' : 'View Reminder Log'}</span>
+                              </button>
+
+                              {booking.status === 'confirmed' && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setOpenBookingMenuId(null);
+                                    updateBookingStatus(booking.id!, 'cancelled');
+                                  }}
+                                  className="w-full text-left px-3.5 py-2 hover:bg-stone-50 flex items-center gap-2 text-amber-700 transition cursor-pointer"
+                                >
+                                  <X className="w-3.5 h-3.5 text-amber-600" />
+                                  <span>Cancel Booking</span>
+                                </button>
+                              )}
+
+                              <div className="my-1 border-t border-stone-100" />
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setOpenBookingMenuId(null);
+                                  setBookingToDelete(booking.id!);
+                                }}
+                                className="w-full text-left px-3.5 py-2 hover:bg-red-50 text-red-600 flex items-center gap-2 transition cursor-pointer"
+                              >
+                                <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                                <span>Delete Record</span>
+                              </button>
+                            </div>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
-                  
-                  {booking.flagged && (booking.flagReasons ?? []).length > 0 && (
-                    <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-900">
-                      <span className="font-semibold block mb-1">Why this was flagged</span>
-                      <ul className="list-disc list-inside space-y-0.5">
-                        {(booking.flagReasons ?? []).map((reason, rIdx) => (
-                          <li key={`${reason}-${rIdx}`}>{SPAM_REASON_LABELS[reason] ?? reason}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
 
-                  {booking.specialRequests && (
-                    <div className="mb-4 bg-stone-100 rounded-xl p-4 text-sm text-stone-600">
-                      <span className="font-semibold block mb-1">Special Requests:</span>
-                      {booking.specialRequests}
+                  {/* Booking Details Body */}
+                  <div className="pt-3">
+                    <p className="text-stone-900 font-semibold text-sm mb-1">{rooms.find(r => r.id === booking.roomTypeId)?.name || 'Standard Accommodation'}</p>
+                    <div className="text-xs sm:text-sm text-stone-500 flex items-center gap-2 flex-wrap mb-2.5">
+                      <Calendar className="h-3.5 w-3.5 text-stone-400" />
+                      <span>{formatDateStr(booking.checkIn)} — {formatDateStr(booking.checkOut)}</span>
+                      <span className="text-stone-400">
+                        &middot; {nightsBetween(booking.checkIn, booking.checkOut)} night{nightsBetween(booking.checkIn, booking.checkOut) === 1 ? '' : 's'} &middot; {booking.guests} guest{booking.guests === 1 ? '' : 's'}
+                      </span>
                     </div>
-                  )}
 
-                  {booking.status === 'pending' && (
-                    <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3 pt-2">
-                      <button
-                        onClick={() => setConfirmModalBooking(booking.id!)}
-                        className="bg-stone-900 text-white px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-stone-800 transition flex items-center justify-center gap-2 min-h-[44px]"
-                      >
-                        <Check className="h-4 w-4" /> Confirm Booking
-                      </button>
-                      <button
-                        onClick={() => updateBookingStatus(booking.id!, 'rejected')}
-                        className="bg-red-50 text-red-600 px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-red-100 transition flex items-center justify-center gap-2 min-h-[44px]"
-                      >
-                        <X className="h-4 w-4" /> Decline
-                      </button>
+                    {/* Guest Contact Info */}
+                    <div className="text-xs text-stone-600 flex gap-x-4 gap-y-1.5 flex-wrap items-center">
+                      {booking.guestEmail && <span className="flex items-center gap-1 text-stone-600"><Mail className="w-3 h-3 text-stone-400" /> {booking.guestEmail}</span>}
+                      {booking.guestPhone && <span className="flex items-center gap-1 text-stone-600"><Phone className="w-3 h-3 text-stone-400" /> {booking.guestPhone}</span>}
+                      
+                      {/* WhatsApp Controls */}
+                      {editingWhatsappBookingId === booking.id ? (
+                        <div className="inline-flex items-center gap-1.5 bg-emerald-50 p-1 rounded-lg border border-emerald-300">
+                          <MessageSquare className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                          <input
+                            type="tel"
+                            value={tempWhatsappNumber}
+                            onChange={e => setTempWhatsappNumber(e.target.value)}
+                            placeholder="+265 999 123 456"
+                            className="text-xs bg-white border border-emerald-300 px-2 py-0.5 rounded text-stone-900 focus:outline-none w-36 font-mono"
+                            autoFocus
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleSaveBookingWhatsapp(booking.id!)}
+                            disabled={savingBookingWhatsapp}
+                            className="text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-2 py-0.5 rounded cursor-pointer"
+                          >
+                            {savingBookingWhatsapp ? '...' : 'Save'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingWhatsappBookingId(null)}
+                            className="text-xs text-stone-500 hover:text-stone-800 px-1 cursor-pointer"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="inline-flex items-center gap-1.5">
+                          {booking.guestWhatsapp ? (
+                            <>
+                              <a
+                                href={`https://wa.me/${booking.guestWhatsapp.replace(/[^0-9]/g, '')}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-emerald-700 hover:underline inline-flex items-center gap-1 text-xs font-semibold"
+                                title="Open guest WhatsApp chat"
+                              >
+                                <MessageSquare className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                {booking.guestWhatsapp}
+                              </a>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingWhatsappBookingId(booking.id!);
+                                  setTempWhatsappNumber(booking.guestWhatsapp || '');
+                                }}
+                                className="text-[11px] text-stone-400 hover:text-stone-700 underline cursor-pointer"
+                                title="Edit guest WhatsApp number"
+                              >
+                                Edit
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingWhatsappBookingId(booking.id!);
+                                setTempWhatsappNumber(booking.guestPhone || '+265');
+                              }}
+                              className="text-xs text-emerald-700 hover:text-emerald-800 font-semibold inline-flex items-center gap-1 cursor-pointer hover:underline"
+                              title="Add WhatsApp number for this guest"
+                            >
+                              <MessageSquare className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                              + Add WhatsApp
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
-                  )}
-
-                  {/* A confirmed booking previously had no route back short of
-                      deleting the record outright. */}
-                  {booking.status === 'confirmed' && (
-                    <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3 pt-2">
-                      <button
-                        onClick={() => updateBookingStatus(booking.id!, 'cancelled')}
-                        className="bg-stone-100 text-stone-600 px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-red-50 hover:text-red-600 transition flex items-center justify-center gap-2 min-h-[44px]"
-                      >
-                        <X className="h-4 w-4" /> Cancel this booking
-                      </button>
-                    </div>
-                  )}
+                  </div>
 
                   {/* Reminders Section */}
                   <div className="mt-3 border-t border-stone-100 pt-3">
@@ -4615,7 +4881,8 @@ export default function ManageHotel() {
                     )}
                   </div>
                 </li>
-              ))}
+              );
+            })}
             </ul>
           )}
           {visibleBookings.length > bookingsPerPage && (
@@ -4678,103 +4945,118 @@ export default function ManageHotel() {
                 </p>
               </div>
             ) : (
-              <div className="divide-y divide-stone-100">
-                {inquiries.map((inquiry, inqIdx) => {
-                  const guestInitial = (inquiry.guestName || 'Guest').charAt(0).toUpperCase();
-                  const updatedDate = inquiry.updatedAt ? new Date(inquiry.updatedAt) : new Date();
-                  const isEnded = inquiry.status === 'ended';
-                  const isGuestTyping = Boolean(inquiry.guestTyping && (Date.now() - (inquiry.guestTypingAt || 0) < 5000));
-                  const isGuestInChat = Boolean(inquiry.guestInChat);
-                  const isUnread = inquiry.lastSenderId !== user?.uid && 
-                                   inquiry.updatedAt && 
-                                   (!inquiry.managerLastOpenedAt || inquiry.updatedAt > inquiry.managerLastOpenedAt);
+              <div className="space-y-4">
+                <div className="divide-y divide-stone-100">
+                  {inquiries
+                    .slice((currentInquiryPage - 1) * inquiriesPerPage, currentInquiryPage * inquiriesPerPage)
+                    .map((inquiry, inqIdx) => {
+                    const guestInitial = (inquiry.guestName || 'Guest').charAt(0).toUpperCase();
+                    const updatedDate = inquiry.updatedAt ? new Date(inquiry.updatedAt) : new Date();
+                    const isEnded = inquiry.status === 'ended';
+                    const isGuestTyping = Boolean(inquiry.guestTyping && (Date.now() - (inquiry.guestTypingAt || 0) < 5000));
+                    const isGuestInChat = Boolean(inquiry.guestInChat);
+                    const isUnread = inquiry.lastSenderId !== user?.uid && 
+                                     inquiry.updatedAt && 
+                                     (!inquiry.managerLastOpenedAt || inquiry.updatedAt > inquiry.managerLastOpenedAt);
 
-                  return (
-                    <div key={`inquiry-row-${inquiry.id || 'inq'}-${inqIdx}`} className="py-3 sm:py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 group hover:bg-stone-50/60 -mx-3 sm:-mx-4 px-3 sm:px-4 transition rounded-xl sm:rounded-2xl">
-                      <div className="flex items-start gap-3">
-                        <div className="relative">
-                          <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-stone-900 text-white font-bold text-sm sm:text-base flex items-center justify-center shrink-0 shadow-2xs">
-                            {guestInitial}
+                    return (
+                      <div key={`inquiry-row-${inquiry.id || 'inq'}-${inqIdx}`} className="py-3 sm:py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 group hover:bg-stone-50/60 -mx-3 sm:-mx-4 px-3 sm:px-4 transition rounded-xl sm:rounded-2xl">
+                        <div className="flex items-start gap-3">
+                          <div className="relative">
+                            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-stone-900 text-white font-bold text-sm sm:text-base flex items-center justify-center shrink-0 shadow-2xs">
+                              {guestInitial}
+                            </div>
+                            {/* Live Presence indicator dot on guest avatar */}
+                            <span 
+                              className={`absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full ring-2 ring-white ${
+                                isGuestInChat ? 'bg-emerald-400 animate-pulse' : 'bg-stone-300'
+                              }`}
+                            />
                           </div>
-                          {/* Live Presence indicator dot on guest avatar */}
-                          <span 
-                            className={`absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full ring-2 ring-white ${
-                              isGuestInChat ? 'bg-emerald-400 animate-pulse' : 'bg-stone-300'
-                            }`}
-                          />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h4 className="font-bold text-stone-900 flex items-center gap-2">
-                              {inquiry.guestName || 'Guest'}
-                              {isUnread && (
-                                <span className="w-2 h-2 rounded-full bg-blue-600" title="New message"></span>
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h4 className="font-bold text-stone-900 flex items-center gap-2">
+                                {inquiry.guestName || 'Guest'}
+                                {isUnread && (
+                                  <span className="w-2 h-2 rounded-full bg-blue-600" title="New message"></span>
+                                )}
+                              </h4>
+                              <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                                Inquiry
+                              </span>
+
+                              {isGuestTyping ? (
+                                <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600 bg-emerald-100/90 border border-emerald-300 px-2 py-0.5 rounded-full flex items-center gap-1 animate-pulse">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+                                  Typing...
+                                </span>
+                              ) : isGuestInChat ? (
+                                <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                  <Eye className="w-3 h-3 text-emerald-600 animate-pulse" />
+                                  In Chat Now
+                                </span>
+                              ) : isEnded ? (
+                                <span className="text-[10px] font-semibold uppercase tracking-wider text-stone-500 bg-stone-100 border border-stone-200 px-2 py-0.5 rounded-full">
+                                  Ended
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600 bg-emerald-50/80 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                  Active
+                                </span>
                               )}
-                            </h4>
-                            <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-                              Inquiry
-                            </span>
-
-                            {isGuestTyping ? (
-                              <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600 bg-emerald-100/90 border border-emerald-300 px-2 py-0.5 rounded-full flex items-center gap-1 animate-pulse">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
-                                Typing...
-                              </span>
-                            ) : isGuestInChat ? (
-                              <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1">
-                                <Eye className="w-3 h-3 text-emerald-600 animate-pulse" />
-                                In Chat Now
-                              </span>
-                            ) : isEnded ? (
-                              <span className="text-[10px] font-semibold uppercase tracking-wider text-stone-500 bg-stone-100 border border-stone-200 px-2 py-0.5 rounded-full">
-                                Ended
-                              </span>
-                            ) : (
-                              <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600 bg-emerald-50/80 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                Active
-                              </span>
+                            </div>
+                            {inquiry.lastMessage && (
+                              <p className="text-sm text-stone-600 mt-1 line-clamp-1 italic">
+                                "{inquiry.lastMessage}"
+                              </p>
                             )}
-                          </div>
-                          {inquiry.lastMessage && (
-                            <p className="text-sm text-stone-600 mt-1 line-clamp-1 italic">
-                              "{inquiry.lastMessage}"
-                            </p>
-                          )}
-                          <div className="flex items-center gap-2 mt-1 text-xs text-stone-400">
-                            <span>
-                              Last activity: {updatedDate.toLocaleDateString()} at {updatedDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                            {inquiry.guestLastOpenedAt && (
-                              <span className="text-stone-400">
-                                • Opened by guest: {new Date(inquiry.guestLastOpenedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            <div className="flex items-center gap-2 mt-1 text-xs text-stone-400">
+                              <span>
+                                Last activity: {updatedDate.toLocaleDateString()} at {updatedDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                               </span>
-                            )}
+                              {inquiry.guestLastOpenedAt && (
+                                <span className="text-stone-400">
+                                  • Opened by guest: {new Date(inquiry.guestLastOpenedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-2 self-end sm:self-center">
-                        {hotel?.adminChatEnabled !== false && (
+                        <div className="flex items-center gap-2 self-end sm:self-center">
+                          {hotel?.adminChatEnabled !== false && (
+                            <button
+                              type="button"
+                              onClick={() => openInquiryChat(hotel, inquiry.guestId, inquiry.guestName)}
+                              className="flex items-center gap-2 px-4 py-2.5 bg-stone-900 text-white hover:bg-stone-800 rounded-xl transition font-semibold text-xs shadow-sm cursor-pointer"
+                            >
+                              <MessageSquare className="w-4 h-4" /> Open Chat
+                            </button>
+                          )}
                           <button
                             type="button"
-                            onClick={() => openInquiryChat(hotel, inquiry.guestId, inquiry.guestName)}
-                            className="flex items-center gap-2 px-4 py-2.5 bg-stone-900 text-white hover:bg-stone-800 rounded-xl transition font-semibold text-xs shadow-sm cursor-pointer"
+                            onClick={() => setInquiryToDelete(inquiry.id)}
+                            className="p-2.5 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition border border-stone-200 hover:border-red-200 shadow-2xs"
+                            title="Delete Chat History"
                           >
-                            <MessageSquare className="w-4 h-4" /> Open Chat
+                            <Trash2 className="w-4 h-4" />
                           </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => setInquiryToDelete(inquiry.id)}
-                          className="p-2.5 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition border border-stone-200 hover:border-red-200 shadow-2xs"
-                          title="Delete Chat History"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
+
+                {inquiries.length > inquiriesPerPage && (
+                  <div className="pt-2">
+                    <Pagination
+                      currentPage={currentInquiryPage}
+                      totalPages={Math.ceil(inquiries.length / inquiriesPerPage)}
+                      onPageChange={setCurrentInquiryPage}
+                      className="flex items-center justify-center gap-1.5"
+                    />
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -4917,6 +5199,16 @@ export default function ManageHotel() {
           if (inquiryToDelete) deleteInquiryChat(inquiryToDelete);
         }}
         onCancel={() => setInquiryToDelete(null)}
+      />
+      <ConfirmDialog
+        isOpen={!!roomToDelete}
+        title="Delete Room Type"
+        message={`Are you sure you want to permanently delete "${roomToDelete?.name}"? All associated availability settings will be removed.`}
+        confirmText="Delete Room"
+        cancelText="Cancel"
+        isDestructive={true}
+        onConfirm={handleDeleteRoom}
+        onCancel={() => setRoomToDelete(null)}
       />
 
       {reminderModalBooking && hotel && (

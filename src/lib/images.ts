@@ -169,7 +169,7 @@ export function getDefaultImageForCategory(category?: string): string {
  * placeholder.
  */
 export function getRoomImage(room: { imageUrl?: string; galleryUrls?: unknown },
-  hotel?: { name?: string; imageUrl?: string; galleryUrls?: unknown } | null
+  hotel?: { name?: string; imageUrl?: string; galleryUrls?: unknown; category?: string } | null
 ): string {
   const direct = normalizeImageUrl(room?.imageUrl);
   if (direct) return direct;
@@ -178,6 +178,17 @@ export function getRoomImage(room: { imageUrl?: string; galleryUrls?: unknown },
     const galDirect = normalizeImageUrl(room.galleryUrls[0] as string);
     if (galDirect) return galDirect;
   }
+
+  // Fall back to the parent hotel's photography before placeholder
+  if (hotel) {
+    const hotelImg = getHotelImage(hotel);
+    if (hotelImg && hotelImg !== PLACEHOLDER_IMAGE) return hotelImg;
+    
+    if (hotel.category) {
+      const catImg = getDefaultImageForCategory(hotel.category);
+      if (catImg) return catImg;
+    }
+  }
   
-  return PLACEHOLDER_IMAGE;
+  return DECORATIVE_IMAGE || PLACEHOLDER_IMAGE;
 }

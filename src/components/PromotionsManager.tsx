@@ -8,6 +8,7 @@ import toast from 'react-hot-toast';
 import { SALE_TYPE_OPTIONS, PROMOTION_TARGET_OPTIONS, getSaleTypeLabel, getSaleTypeBadge, calculateSlashedPrice, malawiToday, validatePromotion, mergePromotions, MAX_PROMO_DISCOUNT_PERCENT } from '../lib/promotions';
 import PriceDisplay from './PriceDisplay';
 import PromotionIcon from './PromotionIcon';
+import Pagination from './Pagination';
 
 interface PromotionsManagerProps {
   hotel: Hotel;
@@ -21,6 +22,8 @@ export default function PromotionsManager({ hotel, rooms, onUpdate }: Promotions
   const baselineRef = useRef<Promotion[]>(hotel.promotions || []);
   const [saving, setSaving] = useState(false);
   const [roomsList, setRoomsList] = useState<RoomType[]>(rooms || hotel.rooms || []);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 3;
 
   useEffect(() => {
     if (rooms && rooms.length > 0) {
@@ -129,7 +132,9 @@ export default function PromotionsManager({ hotel, rooms, onUpdate }: Promotions
           </div>
         ) : (
           <div className="space-y-6">
-            {promotions.map((promo, pIdx) => {
+            {promotions
+              .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+              .map((promo, pIdx) => {
               const sampleOriginalRate = 120000;
               const previewSlashed = calculateSlashedPrice(sampleOriginalRate, promo, 'MWK');
 
@@ -369,6 +374,16 @@ export default function PromotionsManager({ hotel, rooms, onUpdate }: Promotions
               );
             })}
             
+            {promotions.length > itemsPerPage && (
+              <div className="pt-2">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={Math.ceil(promotions.length / itemsPerPage)}
+                  onPageChange={setCurrentPage}
+                />
+              </div>
+            )}
+
             <div className="pt-4 flex justify-end">
               <button 
                 onClick={savePromotions}

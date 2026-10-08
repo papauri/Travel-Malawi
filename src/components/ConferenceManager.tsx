@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { collection, query, where, getDocs, doc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { ConferenceRoom } from '../types';
-import { Plus, X, Upload, Save, Trash2, Edit2, Users, Layout } from 'lucide-react';
+import { Plus, X, Upload, Save, Trash2, Edit2, Users, Layout, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import RoomGallery from './RoomGallery';
 import ImageUpload from './ImageUpload';
 import GalleryUpload from './GalleryUpload';
 import AIAssistantButton from './AIAssistantButton';
+import Pagination from './Pagination';
 
 interface Props {
   hotelId: string;
@@ -17,6 +18,9 @@ export default function ConferenceManager({ hotelId }: Props) {
   const [rooms, setRooms] = useState<ConferenceRoom[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingRoom, setEditingRoom] = useState<ConferenceRoom | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const roomsPerPage = 4;
 
   useEffect(() => {
     async function fetchRooms() {
@@ -234,42 +238,111 @@ export default function ConferenceManager({ hotelId }: Props) {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-6">
-          {rooms.map((room, rIdx) => (
-            <div key={`${room.id || 'room'}-${rIdx}`} className="bg-white rounded-2xl border border-stone-200 shadow-sm flex flex-col md:flex-row md:items-start gap-5 p-5 group transition hover:shadow-md">
-              <div className="w-full h-48 md:w-64 md:h-48 object-cover rounded-xl overflow-hidden bg-stone-100 shrink-0 relative">
-                <RoomGallery images={Array.from(new Set([room.imageUrl, ...(room.galleryUrls || [])]))} altPrefix={room.name} />
-              </div>
-              <div className="flex-1 flex flex-col justify-between min-w-0 py-1">
-                <div>
-                  <div className="flex items-start justify-between gap-4 mb-2">
-                    <h3 className="text-xl font-serif text-stone-900 truncate">{room.name}</h3>
-                    <div className="flex items-center gap-2 text-stone-600 bg-stone-50 px-3 py-1.5 rounded-full text-xs font-semibold border border-stone-200 shrink-0">
-                      <Users className="w-3.5 h-3.5" /> {room.capacity} seats
+        <>
+          <div className="grid grid-cols-1 gap-6">
+            {rooms
+              .slice((currentPage - 1) * roomsPerPage, currentPage * roomsPerPage)
+              .map((room, rIdx) => {
+                const isMenuOpen = openMenuId === (room.id || `conf-${rIdx}`);
+                return (
+                  <div key={`${room.id || 'room'}-${rIdx}`} className="bg-white rounded-2xl border border-stone-200 shadow-2xs flex flex-col md:flex-row md:items-start gap-5 p-5 group transition hover:shadow-xs">
+                    <div className="w-full h-48 md:w-64 md:h-48 object-cover rounded-xl overflow-hidden bg-stone-100 shrink-0 relative">
+                      <RoomGallery images={Array.from(new Set([room.imageUrl, ...(room.galleryUrls || [])]))} altPrefix={room.name} />
+                    </div>
+                    <div className="flex-1 flex flex-col justify-between min-w-0 py-1 w-full">
+                      <div>
+                        <div className="flex items-start justify-between gap-4 mb-2">
+                          <h3 className="text-xl font-serif font-bold text-stone-900 truncate">{room.name}</h3>
+                          <div className="flex items-center gap-1.5 text-stone-600 bg-stone-50 px-3 py-1 rounded-full text-xs font-semibold border border-stone-200 shrink-0">
+                            <Users className="w-3.5 h-3.5 text-stone-500" /> {room.capacity} seats
+                          </div>
+                        </div>
+                        <p className="text-stone-500 text-sm line-clamp-2 leading-relaxed mb-4">{room.description}</p>
+                        
+                        {room.amenities && room.amenities.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 mb-4">
+                            {room.amenities.slice(0, 5).map((a, aIdx) => (
+                              <span key={`${a}-${aIdx}`} className="bg-stone-100 text-stone-600 px-2.5 py-1 rounded-md text-[10px] uppercase font-bold tracking-wider">{a}</span>
+                            ))}
+                            {room.amenities.length > 5 && (
+                              <span className="text-[10px] text-stone-400 font-bold px-1 py-1">+{room.amenities.length - 5} more</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="flex items-center justify-end gap-2 pt-3 border-t border-stone-100 mt-2">
+                        <button 
+                          type="button"
+                          onClick={() => setEditingRoom(room)} 
+                          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-stone-900 hover:bg-stone-800 text-white rounded-lg transition text-xs font-semibold cursor-pointer shadow-2xs"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" /> 
+                          <span>Edit Space</span>
+                        </button>
+
+                        <div className="relative inline-block text-left">
+                          <button
+                            type="button"
+                            onClick={() => setOpenMenuId(isMenuOpen ? null : (room.id || `conf-${rIdx}`))}
+                            className="inline-flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 text-xs font-medium shadow-2xs transition cursor-pointer"
+                            aria-label="Space actions"
+                          >
+                            <span>Actions</span>
+                            <ChevronDown className={`w-3.5 h-3.5 text-stone-400 transition-transform ${isMenuOpen ? 'rotate-180' : ''}`} />
+                          </button>
+
+                          {isMenuOpen && (
+                            <>
+                              <div 
+                                className="fixed inset-0 z-30" 
+                                onClick={() => setOpenMenuId(null)} 
+                              />
+                              <div className="absolute right-0 mt-1.5 w-44 bg-white rounded-xl shadow-lg border border-stone-200 py-1.5 z-40 text-xs animate-in fade-in-50 zoom-in-95">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setOpenMenuId(null);
+                                    setEditingRoom(room);
+                                  }}
+                                  className="w-full text-left px-3.5 py-2 hover:bg-stone-50 flex items-center gap-2 text-stone-700 transition cursor-pointer"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5 text-stone-400" />
+                                  <span>Edit Details</span>
+                                </button>
+                                <div className="my-1 border-t border-stone-100" />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setOpenMenuId(null);
+                                    handleDelete(room.id!);
+                                  }}
+                                  className="w-full text-left px-3.5 py-2 hover:bg-red-50 text-red-600 flex items-center gap-2 transition cursor-pointer"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                                  <span>Delete Space</span>
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  <p className="text-stone-500 text-sm line-clamp-2 leading-relaxed mb-4">{room.description}</p>
-                  
-                  {room.amenities && room.amenities.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mb-4">
-                      {room.amenities.slice(0, 5).map((a, aIdx) => (
-                        <span key={`${a}-${aIdx}`} className="bg-stone-100 text-stone-600 px-2.5 py-1 rounded-md text-[10px] uppercase font-bold tracking-wider">{a}</span>
-                      ))}
-                      {room.amenities.length > 5 && (
-                        <span className="text-[10px] text-stone-400 font-bold px-1 py-1">+{room.amenities.length - 5} more</span>
-                      )}
-                    </div>
-                  )}
-                </div>
-                
-                <div className="flex items-center justify-end gap-2 pt-4 border-t border-stone-100 mt-2">
-                  <button onClick={() => setEditingRoom(room)} className="p-2 text-stone-400 hover:text-stone-900 hover:bg-stone-100 rounded-full transition"><Edit2 className="w-4 h-4" /></button>
-                  <button onClick={() => handleDelete(room.id!)} className="p-2 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-full transition"><Trash2 className="w-4 h-4" /></button>
-                </div>
-              </div>
+                );
+              })}
+          </div>
+
+          {rooms.length > roomsPerPage && (
+            <div className="pt-2">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={Math.ceil(rooms.length / roomsPerPage)}
+                onPageChange={setCurrentPage}
+              />
             </div>
-          ))}
-        </div>
+          )}
+        </>
       )}
     </div>
   );

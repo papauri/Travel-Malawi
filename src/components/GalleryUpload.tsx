@@ -16,6 +16,7 @@ interface Props {
   tooltip?: string;
   showCoverBadge?: boolean;
   onSetCover?: (url: string, index: number) => void;
+  compact?: boolean;
 }
 
 export default function GalleryUpload({
@@ -27,6 +28,7 @@ export default function GalleryUpload({
   tooltip,
   showCoverBadge = false,
   onSetCover,
+  compact = false,
 }: Props) {
   const [mode, setMode] = useState<"url" | "upload">("upload");
   const [urlInput, setUrlInput] = useState("");
@@ -183,43 +185,43 @@ export default function GalleryUpload({
       )}
 
       {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3.5">
+      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 ${compact ? 'mb-2' : 'mb-3.5'}`}>
         <div>
-          <div className="flex items-center gap-2">
-            <label className="block text-sm font-bold text-stone-800 tracking-wide">{label}</label>
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <label className={`block ${compact ? 'text-xs' : 'text-sm'} font-bold text-stone-800 tracking-wide`}>{label}</label>
             {tooltip && <Tooltip text={tooltip} />}
-            <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-stone-100 text-stone-600 border border-stone-200">
+            <span className="px-1.5 py-0.2 rounded-full text-[10px] sm:text-[11px] font-semibold bg-stone-100 text-stone-600 border border-stone-200">
               {value.length} {value.length === 1 ? 'photo' : 'photos'}
             </span>
           </div>
-          {hint && <div className="text-xs text-stone-500 mt-1 leading-relaxed">{hint}</div>}
+          {hint && <div className={`text-stone-500 leading-relaxed ${compact ? 'text-[11px] mt-0.5' : 'text-xs mt-1'}`}>{hint}</div>}
         </div>
 
         {/* Compact, non-wide mode toggle buttons */}
-        <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
-          <div className="inline-flex items-center bg-stone-100/90 p-1 rounded-lg border border-stone-200">
+        <div className="flex items-center gap-1.5 self-start sm:self-auto shrink-0">
+          <div className="inline-flex items-center bg-stone-100/90 p-0.5 sm:p-1 rounded-lg border border-stone-200">
             <button
               type="button"
               onClick={() => setMode("upload")}
-              className={`px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1.5 transition ${
+              className={`px-2.5 py-1 rounded-md text-[11px] sm:text-xs font-semibold flex items-center gap-1 transition ${
                 mode === "upload"
                   ? "bg-white text-stone-900 shadow-xs"
                   : "text-stone-600 hover:text-stone-900"
               }`}
             >
-              <Upload className="h-3.5 w-3.5" />
+              <Upload className="h-3 w-3" />
               <span>Upload</span>
             </button>
             <button
               type="button"
               onClick={() => setMode("url")}
-              className={`px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1.5 transition ${
+              className={`px-2.5 py-1 rounded-md text-[11px] sm:text-xs font-semibold flex items-center gap-1 transition ${
                 mode === "url"
                   ? "bg-white text-stone-900 shadow-xs"
                   : "text-stone-600 hover:text-stone-900"
               }`}
             >
-              <LinkIcon className="h-3.5 w-3.5" />
+              <LinkIcon className="h-3 w-3" />
               <span>Web Link</span>
             </button>
           </div>
@@ -263,29 +265,54 @@ export default function GalleryUpload({
 
       {/* Gallery Grid */}
       {value.length === 0 ? (
-        /* Empty State */
-        <div
-          onClick={() => fileInputRef.current?.click()}
-          className="border-2 border-dashed border-stone-300 hover:border-stone-400 hover:bg-stone-50/50 rounded-2xl p-8 flex flex-col items-center justify-center text-center transition cursor-pointer group"
-        >
-          <div className="w-12 h-12 rounded-full bg-stone-100 flex items-center justify-center text-stone-400 group-hover:text-stone-700 group-hover:scale-105 transition-all mb-3">
-            <ImageIcon className="h-6 w-6" />
-          </div>
-          <p className="text-sm font-semibold text-stone-800 mb-1">No photos added yet</p>
-          <p className="text-xs text-stone-500 mb-4 max-w-sm">
-            Drag &amp; drop photos here, or click to browse from your device. High-res photos increase bookings.
-          </p>
-          <button
-            type="button"
-            className="px-4 py-2 bg-stone-900 text-white text-xs font-semibold rounded-lg shadow-xs hover:bg-stone-800 transition inline-flex items-center gap-1.5 pointer-events-none"
+        compact ? (
+          /* Compact Empty State */
+          <div
+            onClick={() => fileInputRef.current?.click()}
+            className="border border-dashed border-stone-200 hover:border-amber-400 hover:bg-amber-50/20 rounded-xl p-3 flex items-center justify-between gap-2.5 transition cursor-pointer group bg-stone-50/30"
           >
-            <Upload className="h-3.5 w-3.5" />
-            <span>Select Photos</span>
-          </button>
-        </div>
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-lg bg-stone-100 flex items-center justify-center text-stone-400 group-hover:text-amber-700 transition shrink-0">
+                <ImageIcon className="h-4 w-4" />
+              </div>
+              <div className="text-left min-w-0">
+                <p className="text-xs font-semibold text-stone-800 truncate">No gallery photos yet</p>
+                <p className="text-[10px] text-stone-500 truncate">Click to upload extra room angles or views</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="px-2.5 py-1 bg-stone-900 text-white text-[11px] font-semibold rounded-lg shadow-2xs hover:bg-stone-800 transition inline-flex items-center gap-1 pointer-events-none shrink-0"
+            >
+              <Upload className="h-3 w-3" />
+              <span>Add Photos</span>
+            </button>
+          </div>
+        ) : (
+          /* Standard Empty State */
+          <div
+            onClick={() => fileInputRef.current?.click()}
+            className="border-2 border-dashed border-stone-300 hover:border-stone-400 hover:bg-stone-50/50 rounded-2xl p-6 sm:p-8 flex flex-col items-center justify-center text-center transition cursor-pointer group"
+          >
+            <div className="w-10 h-10 rounded-full bg-stone-100 flex items-center justify-center text-stone-400 group-hover:text-stone-700 group-hover:scale-105 transition-all mb-2.5">
+              <ImageIcon className="h-5 w-5" />
+            </div>
+            <p className="text-sm font-semibold text-stone-800 mb-0.5">No photos added yet</p>
+            <p className="text-xs text-stone-500 mb-3 max-w-sm">
+              Drag &amp; drop photos here, or click to browse from your device.
+            </p>
+            <button
+              type="button"
+              className="px-4 py-2 bg-stone-900 text-white text-xs font-semibold rounded-lg shadow-xs hover:bg-stone-800 transition inline-flex items-center gap-1.5 pointer-events-none"
+            >
+              <Upload className="h-3.5 w-3.5" />
+              <span>Select Photos</span>
+            </button>
+          </div>
+        )
       ) : (
         /* Populated Grid with Integrated Upload Tile */
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5">
+        <div className={compact ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 max-h-60 overflow-y-auto pr-1" : "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5"}>
           {value.map((url, idx) => (
             <div
               key={`gallery-${idx}`}
@@ -293,7 +320,7 @@ export default function GalleryUpload({
               onDragStart={(e) => handleDragStart(e, idx)}
               onDragEnd={handleDragEnd}
               onDragOver={(e) => handleDragOver(e, idx)}
-              className="relative aspect-video rounded-xl overflow-hidden group cursor-move bg-stone-100 border border-stone-200 hover:border-stone-300 hover:shadow-md transition-all select-none"
+              className={`relative aspect-video ${compact ? 'rounded-lg' : 'rounded-xl'} overflow-hidden group cursor-move bg-stone-100 border border-stone-200 hover:border-stone-300 hover:shadow-xs transition-all select-none`}
             >
               <SmartImage
                 src={url}
@@ -397,14 +424,14 @@ export default function GalleryUpload({
           {/* Integrated "Add Photos" Tile inside the Grid */}
           <div
             onClick={() => fileInputRef.current?.click()}
-            className="relative aspect-video rounded-xl border-2 border-dashed border-stone-300 hover:border-amber-500 hover:bg-amber-50/20 transition-all flex flex-col items-center justify-center p-3 text-center cursor-pointer group bg-stone-50/60"
+            className={`relative aspect-video ${compact ? 'rounded-lg p-2' : 'rounded-xl p-3'} border-2 border-dashed border-stone-300 hover:border-amber-500 hover:bg-amber-50/20 transition-all flex flex-col items-center justify-center text-center cursor-pointer group bg-stone-50/60`}
             title="Click to add more photos"
           >
-            <div className="w-8 h-8 rounded-full bg-stone-200/80 group-hover:bg-amber-100 text-stone-600 group-hover:text-amber-800 flex items-center justify-center mb-1.5 transition-transform group-hover:scale-105">
-              <Plus className="w-4 h-4" />
+            <div className={`${compact ? 'w-6 h-6 mb-1' : 'w-8 h-8 mb-1.5'} rounded-full bg-stone-200/80 group-hover:bg-amber-100 text-stone-600 group-hover:text-amber-800 flex items-center justify-center transition-transform group-hover:scale-105`}>
+              <Plus className={compact ? "w-3 h-3" : "w-4 h-4"} />
             </div>
-            <p className="text-xs font-bold text-stone-700 group-hover:text-amber-900">Add Photos</p>
-            <p className="text-[10px] text-stone-400 group-hover:text-stone-500">Drop or browse</p>
+            <p className={`${compact ? 'text-[11px]' : 'text-xs'} font-bold text-stone-700 group-hover:text-amber-900`}>Add Photos</p>
+            <p className="text-[10px] text-stone-400 group-hover:text-stone-500">{compact ? 'Browse' : 'Drop or browse'}</p>
           </div>
         </div>
       )}

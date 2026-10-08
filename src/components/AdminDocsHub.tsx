@@ -3,6 +3,7 @@ import { Download, Copy, Check, Printer, RefreshCw, Edit3, MessageSquare } from 
 import toast from 'react-hot-toast';
 import { AdminDocMeta, markdownToReadableText } from '../lib/docUtils';
 import DocEditorModal from './DocEditorModal';
+import Pagination from './Pagination';
 
 interface AdminDocResponse {
   doc: AdminDocMeta;
@@ -23,6 +24,8 @@ export default function AdminDocsHub() {
   const [surveys, setSurveys] = useState<any[]>([]);
   const [loadingSurveys, setLoadingSurveys] = useState<boolean>(false);
   const [editorDocId, setEditorDocId] = useState<string | null>(null);
+  const [surveyPage, setSurveyPage] = useState<number>(1);
+  const surveysPerPage = 8;
 
   // Check URL parameters for pre-selected docId or edit intent
   useEffect(() => {
@@ -195,17 +198,26 @@ export default function AdminDocsHub() {
   return (
     <div className="text-stone-700 font-sans">
       {/* Header */}
-      <header className="border-b border-stone-200 pb-6 mb-8">
-        <p className="text-sm text-stone-500">Admin &middot; Documentation</p>
-        <h2 className="mt-2 text-3xl font-semibold text-stone-900">Outreach &amp; Strategy Library</h2>
-        <p className="mt-2 text-stone-500 text-[15px] leading-relaxed">
+      <header className="border-b border-stone-200 pb-4 mb-6">
+        <h2 className="text-xl sm:text-2xl font-serif font-bold text-stone-900 tracking-tight">Outreach &amp; Strategy Library</h2>
+        <p className="mt-1 text-xs sm:text-sm text-stone-500">
           Partner surveys, host leaflets, and operational guides. Download as text, HTML, or print to PDF.
         </p>
-        <div className="mt-5 flex flex-wrap gap-2">
-          <button onClick={() => setActiveSection('library')} className={tabBtn(activeSection === 'library')}>
+        <div className="mt-4 flex items-center gap-1.5 p-1 bg-stone-100 rounded-xl w-fit">
+          <button 
+            onClick={() => setActiveSection('library')} 
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+              activeSection === 'library' ? 'bg-stone-900 text-white shadow-2xs' : 'text-stone-600 hover:text-stone-900'
+            }`}
+          >
             Documents
           </button>
-          <button onClick={() => setActiveSection('surveys')} className={tabBtn(activeSection === 'surveys')}>
+          <button 
+            onClick={() => setActiveSection('surveys')} 
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+              activeSection === 'surveys' ? 'bg-stone-900 text-white shadow-2xs' : 'text-stone-600 hover:text-stone-900'
+            }`}
+          >
             Survey responses ({surveys.length})
           </button>
         </div>
@@ -234,62 +246,78 @@ export default function AdminDocsHub() {
               with prospective lodge managers over WhatsApp to collect their operational feedback.
             </div>
           ) : (
-            <ul className="mt-6 border-b border-stone-200 max-h-[calc(100vh-20rem)] overflow-y-auto scrollbar-slim overscroll-contain pr-2">
-              {surveys.map((survey, sIdx) => {
-                const phoneClean = (survey.contactPhone || '').replace(/[^0-9+]/g, '');
-                const waUrl = phoneClean ? `https://wa.me/${phoneClean.replace(/^\+/, '')}` : null;
-                return (
-                  <li key={survey.id || sIdx} className="border-t border-stone-200 py-5">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <p className="text-sm text-stone-500">
-                          {surveyTypeLabel(survey.type)} &middot; {new Date(survey.submittedAt || Date.now()).toLocaleDateString()}
-                          {survey.sourceDoc && <> &middot; via {survey.sourceDoc}</>}
-                        </p>
-                        <h4 className="mt-1 text-base font-semibold text-stone-900">
-                          {survey.propName}
-                          {survey.propLoc && <span className="font-normal text-stone-500"> ({survey.propLoc})</span>}
-                        </h4>
-                        <p className="mt-1 text-sm text-stone-700">
-                          {survey.contactName || 'Manager'}
-                          {survey.contactPhone && <> &middot; {survey.contactPhone}</>}
-                          {survey.contactEmail && <> &middot; {survey.contactEmail}</>}
-                        </p>
+            <div className="mt-6 space-y-4">
+              <ul className="border-b border-stone-200 divide-y divide-stone-200">
+                {surveys.slice((surveyPage - 1) * surveysPerPage, surveyPage * surveysPerPage).map((survey, sIdx) => {
+                  const phoneClean = (survey.contactPhone || '').replace(/[^0-9+]/g, '');
+                  const waUrl = phoneClean ? `https://wa.me/${phoneClean.replace(/^\+/, '')}` : null;
+                  return (
+                    <li key={survey.id || sIdx} className="py-5">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm text-stone-500">
+                            {surveyTypeLabel(survey.type)} &middot; {new Date(survey.submittedAt || Date.now()).toLocaleDateString()}
+                            {survey.sourceDoc && <> &middot; via {survey.sourceDoc}</>}
+                          </p>
+                          <h4 className="mt-1 text-base font-semibold text-stone-900">
+                            {survey.propName}
+                            {survey.propLoc && <span className="font-normal text-stone-500"> ({survey.propLoc})</span>}
+                          </h4>
+                          <p className="mt-1 text-sm text-stone-700">
+                            {survey.contactName || 'Manager'}
+                            {survey.contactPhone && <> &middot; {survey.contactPhone}</>}
+                            {survey.contactEmail && <> &middot; {survey.contactEmail}</>}
+                          </p>
+                        </div>
+                        {waUrl && (
+                          <a href={waUrl} target="_blank" rel="noreferrer" className={secondaryBtn}>
+                            <MessageSquare size={16} className="text-stone-500" />
+                            <span>WhatsApp</span>
+                          </a>
+                        )}
                       </div>
-                      {waUrl && (
-                        <a href={waUrl} target="_blank" rel="noreferrer" className={secondaryBtn}>
-                          <MessageSquare size={16} className="text-stone-500" />
-                          <span>WhatsApp</span>
-                        </a>
+
+                      <dl className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+                        <div>
+                          <dt className="text-stone-500">Pilot interest</dt>
+                          <dd className="text-stone-900">
+                            {survey.pilotInterest === 'yes' ? 'Ready for Pilot (0% Tier)' : survey.pilotInterest === 'briefing' ? 'Requested Briefing Call' : 'Keep Informed'}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-stone-500">Channels used</dt>
+                          <dd className="text-stone-900">{Array.isArray(survey.channels) ? survey.channels.join(', ') : 'Not specified'}</dd>
+                        </div>
+                        <div>
+                          <dt className="text-stone-500">Key features wanted</dt>
+                          <dd className="text-stone-900">{Array.isArray(survey.features) ? survey.features.join(', ') : 'Direct payouts'}</dd>
+                        </div>
+                      </dl>
+
+                      {survey.notes && (
+                        <p className="mt-3 bg-stone-50 border-l-2 border-stone-300 px-4 py-3 text-sm text-stone-700">
+                          <span className="font-medium text-stone-900">Host notes: </span>{survey.notes}
+                        </p>
                       )}
-                    </div>
+                    </li>
+                  );
+                })}
+              </ul>
 
-                    <dl className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
-                      <div>
-                        <dt className="text-stone-500">Pilot interest</dt>
-                        <dd className="text-stone-900">
-                          {survey.pilotInterest === 'yes' ? 'Ready for Pilot (0% Tier)' : survey.pilotInterest === 'briefing' ? 'Requested Briefing Call' : 'Keep Informed'}
-                        </dd>
-                      </div>
-                      <div>
-                        <dt className="text-stone-500">Channels used</dt>
-                        <dd className="text-stone-900">{Array.isArray(survey.channels) ? survey.channels.join(', ') : 'Not specified'}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-stone-500">Key features wanted</dt>
-                        <dd className="text-stone-900">{Array.isArray(survey.features) ? survey.features.join(', ') : 'Direct payouts'}</dd>
-                      </div>
-                    </dl>
-
-                    {survey.notes && (
-                      <p className="mt-3 bg-stone-50 border-l-2 border-stone-300 px-4 py-3 text-sm text-stone-700">
-                        <span className="font-medium text-stone-900">Host notes: </span>{survey.notes}
-                      </p>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-stone-500 pt-2">
+                <div>
+                  Showing <span className="font-semibold text-stone-900 font-mono">{(surveyPage - 1) * surveysPerPage + 1}</span>–<span className="font-semibold text-stone-900 font-mono">{Math.min(surveyPage * surveysPerPage, surveys.length)}</span> of <span className="font-semibold text-stone-900 font-mono">{surveys.length}</span> responses
+                </div>
+                {surveys.length > surveysPerPage && (
+                  <Pagination
+                    currentPage={surveyPage}
+                    totalPages={Math.ceil(surveys.length / surveysPerPage)}
+                    onPageChange={setSurveyPage}
+                    className="flex items-center gap-1.5 my-0"
+                  />
+                )}
+              </div>
+            </div>
           )}
         </section>
       )}

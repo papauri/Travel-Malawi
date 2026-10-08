@@ -38,6 +38,8 @@ export default function ManagerDashboard() {
   const [togglingHotelId, setTogglingHotelId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [sortBy, setSortBy] = useState<SortOption>('default');
+  const [sortMenuOpen, setSortMenuOpen] = useState(false);
+  const [openCardMenuId, setOpenCardMenuId] = useState<string | null>(null);
   const [showBulkEditor, setShowBulkEditor] = useState(false);
   const [bulkEditorHotelId, setBulkEditorHotelId] = useState<string | undefined>(undefined);
   const itemsPerPage = 6;
@@ -520,21 +522,10 @@ export default function ManagerDashboard() {
       {/* Sort Dropdown */}
       {hotels.length > 0 && (
         <div className="flex justify-end mb-5">
-          <div className="relative shrink-0 w-full sm:w-48">
-            <label htmlFor="host-sort-filter" className="sr-only">Sort properties</label>
+          <div className="relative shrink-0 w-full sm:w-48 text-left">
             <button
               type="button"
-              onClick={() => {
-                const el = document.getElementById('sort-dropdown-menu');
-                if (el) el.classList.toggle('hidden');
-              }}
-              onBlur={(e) => {
-                // Delay hiding slightly to allow click to register
-                setTimeout(() => {
-                  const el = document.getElementById('sort-dropdown-menu');
-                  if (el) el.classList.add('hidden');
-                }, 150);
-              }}
+              onClick={() => setSortMenuOpen(!sortMenuOpen)}
               className="w-full flex items-center justify-between bg-white border border-stone-200 rounded-xl px-3 py-2 text-xs font-semibold text-stone-700 shadow-2xs hover:bg-stone-50 transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-stone-900"
             >
               <span>
@@ -543,34 +534,35 @@ export default function ManagerDashboard() {
                 {sortBy === 'rooms' && 'Sort: Most Rooms'}
                 {sortBy === 'name' && 'Sort: Name (A-Z)'}
               </span>
-              <ChevronDown className="w-3.5 h-3.5 text-stone-400" />
+              <ChevronDown className={`w-3.5 h-3.5 text-stone-400 transition-transform ${sortMenuOpen ? 'rotate-180' : ''}`} />
             </button>
-            <div 
-              id="sort-dropdown-menu"
-              className="hidden absolute top-full left-0 right-0 mt-1.5 p-1.5 bg-white border border-stone-200 rounded-xl shadow-lg z-20 flex flex-col gap-0.5 animate-in fade-in slide-in-from-top-2 duration-150"
-            >
-              {[
-                { value: 'default', label: 'Default' },
-                { value: 'pending', label: 'Most Pending' },
-                { value: 'rooms', label: 'Most Rooms' },
-                { value: 'name', label: 'Name (A-Z)' },
-              ].map(opt => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => {
-                    setSortBy(opt.value as SortOption);
-                    const el = document.getElementById('sort-dropdown-menu');
-                    if (el) el.classList.add('hidden');
-                  }}
-                  className={`w-full text-left px-2.5 py-2 text-xs font-semibold rounded-lg transition ${
-                    sortBy === opt.value ? 'bg-stone-100 text-stone-900' : 'text-stone-600 hover:bg-stone-50'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
+            {sortMenuOpen && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setSortMenuOpen(false)} />
+                <div className="absolute top-full left-0 right-0 mt-1.5 p-1 bg-white border border-stone-200 rounded-xl shadow-lg z-20 flex flex-col gap-0.5 animate-in fade-in slide-in-from-top-2 duration-150">
+                  {[
+                    { value: 'default', label: 'Default' },
+                    { value: 'pending', label: 'Most Pending' },
+                    { value: 'rooms', label: 'Most Rooms' },
+                    { value: 'name', label: 'Name (A-Z)' },
+                  ].map(opt => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => {
+                        setSortBy(opt.value as SortOption);
+                        setSortMenuOpen(false);
+                      }}
+                      className={`w-full text-left px-2.5 py-1.5 text-xs font-medium rounded-lg transition cursor-pointer ${
+                        sortBy === opt.value ? 'bg-stone-100 text-stone-900 font-semibold' : 'text-stone-600 hover:bg-stone-50'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -684,59 +676,104 @@ export default function ManagerDashboard() {
                   )}
 
                   {/* Quick Action Button Group */}
-                  <div className="mt-auto pt-2.5 border-t border-stone-100 space-y-1.5">
-                    <div className="grid grid-cols-2 gap-1.5">
+                  <div className="mt-auto pt-2.5 border-t border-stone-100 flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 flex-1 min-w-0">
                       <Link
                         to={`/dashboard/hotel/${hotel.id}`}
-                        className="bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold py-1.5 px-2.5 rounded-lg flex items-center justify-center gap-1 transition"
+                        className="bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold py-1.5 px-3 rounded-lg flex items-center justify-center gap-1 transition shadow-2xs flex-1 truncate"
                       >
                         <span>Manage</span>
-                        <ChevronRight className="w-3 h-3" />
+                        <ChevronRight className="w-3 h-3 shrink-0" />
                       </Link>
                       <Link
                         to={`/dashboard/hotel/${hotel.id}?tab=bookings`}
-                        className="bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-semibold py-1.5 px-2.5 rounded-lg flex items-center justify-center gap-1 transition"
+                        className="bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-semibold py-1.5 px-2.5 rounded-lg flex items-center justify-center gap-1.5 transition shrink-0"
+                        title="View Bookings"
                       >
                         <span>Bookings</span>
                         {pendingCount > 0 && (
-                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                          <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
                         )}
                       </Link>
                     </div>
 
-                    <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-2 text-[11px] text-stone-500 pt-0.5 px-1">
-                      <Link
-                        to={`/dashboard/hotel/${hotel.id}?tab=rooms`}
-                        className="hover:text-stone-900 font-medium shrink-0"
+                    <div className="relative shrink-0 text-left">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setOpenCardMenuId(openCardMenuId === hotel.id ? null : hotel.id!);
+                        }}
+                        className="px-2 py-1.5 rounded-lg border border-stone-200 hover:bg-stone-50 text-stone-600 transition cursor-pointer flex items-center gap-1 text-xs font-medium shadow-2xs"
+                        aria-label="More actions"
                       >
-                        Edit Rooms &amp; Rates →
-                      </Link>
+                        <span>Actions</span>
+                        <ChevronDown className={`w-3.5 h-3.5 text-stone-400 transition-transform ${openCardMenuId === hotel.id ? 'rotate-180' : ''}`} />
+                      </button>
 
-                      <div className="flex flex-wrap items-center gap-2.5">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            handleOpenBulkEditor(hotel.id);
-                          }}
-                          className="hover:text-amber-700 text-stone-600 flex items-center gap-1 font-semibold cursor-pointer"
-                          title="Open Bulk Rate Editor for this hotel"
-                        >
-                          <SlidersHorizontal className="w-3 h-3 text-amber-600" />
-                          <span>Bulk Rates</span>
-                        </button>
+                      {openCardMenuId === hotel.id && (
+                        <>
+                          <div
+                            className="fixed inset-0 z-30"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenCardMenuId(null);
+                            }}
+                          />
+                          <div className="absolute right-0 bottom-full mb-1.5 w-48 bg-white rounded-xl shadow-lg border border-stone-200 py-1 z-40 text-left animate-in fade-in zoom-in-95 duration-150">
+                            <Link
+                              to={`/dashboard/hotel/${hotel.id}?tab=rooms`}
+                              onClick={() => setOpenCardMenuId(null)}
+                              className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center gap-2 transition"
+                            >
+                              <BedDouble className="w-3.5 h-3.5 text-stone-400" />
+                              <span>Rooms &amp; Rates</span>
+                            </Link>
 
-                        <Link
-                          to={`/hotel/${hotel.id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="hover:text-emerald-700 flex items-center gap-0.5 font-medium"
-                        >
-                          <span>Preview</span>
-                          <ExternalLink className="w-2.5 h-2.5" />
-                        </Link>
-                      </div>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setOpenCardMenuId(null);
+                                handleOpenBulkEditor(hotel.id);
+                              }}
+                              className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center gap-2 transition cursor-pointer"
+                            >
+                              <SlidersHorizontal className="w-3.5 h-3.5 text-stone-400" />
+                              <span>Bulk Rate Editor</span>
+                            </button>
+
+                            <a
+                              href={`/hotel/${hotel.id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={() => setOpenCardMenuId(null)}
+                              className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center gap-2 transition"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5 text-stone-400" />
+                              <span>Preview Listing</span>
+                            </a>
+
+                            <div className="my-1 border-t border-stone-100" />
+
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                handleToggleHotelOnline(e, hotel);
+                                setOpenCardMenuId(null);
+                              }}
+                              className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center justify-between transition cursor-pointer"
+                            >
+                              <span className="flex items-center gap-2">
+                                <span className={`w-2 h-2 rounded-full ${hotel.isOnline !== false ? 'bg-emerald-500' : 'bg-stone-400'}`} />
+                                <span>{hotel.isOnline !== false ? 'Set Offline (Away)' : 'Set Online'}</span>
+                              </span>
+                            </button>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>

@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Power, CheckCircle2, AlertTriangle, Key, ExternalLink, 
-  RefreshCw, Play, Loader2, Eye, EyeOff, Cpu, ShieldAlert, Check,
-  Sparkles, Globe, ChevronDown, ChevronUp
+  RefreshCw, Play, Loader2, Eye, EyeOff, Check,
+  Sparkles, Globe, Search, ArrowRight, ShieldCheck,
+  SlidersHorizontal, TableProperties, ChevronRight, X
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -36,17 +37,45 @@ interface AdminConfigData {
   updatedAt?: number;
 }
 
+interface LiveModelItem {
+  id: string;
+  name: string;
+  displayName: string;
+  description: string;
+  isLatest: boolean;
+  isSweetSpot: boolean;
+}
+
+interface LiveModelsResult {
+  provider: string;
+  providerName: string;
+  success: boolean;
+  models: LiveModelItem[];
+  latestRecommendation: string;
+  source: 'live_api' | 'catalog';
+  error?: string;
+  latencyMs?: number;
+}
+
 export default function AdminAISettings() {
   const [config, setConfig] = useState<AdminConfigData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // New keys / model edits
+  // Selected provider in detail view
+  const [selectedProviderId, setSelectedProviderId] = useState<string>('gemini');
+  // View mode: 'focused' (tabbed detail) or 'matrix' (all-in-one table)
+  const [viewMode, setViewMode] = useState<'focused' | 'matrix'>('focused');
+
+  // Input states for keys and custom models
   const [keyInputs, setKeyInputs] = useState<Record<string, string>>({});
   const [modelInputs, setModelInputs] = useState<Record<string, string>>({});
   const [showKey, setShowKey] = useState<Record<string, boolean>>({});
 
-  // Testing state
+  // Filter query for live models
+  const [modelSearchQuery, setModelSearchQuery] = useState('');
+
+  // Testing connection state
   const [testingProvider, setTestingProvider] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<{
     provider: string;
@@ -56,24 +85,8 @@ export default function AdminAISettings() {
     error?: string;
   } | null>(null);
 
-  // Universal Live models lookup state for ALL providers
-  const [liveModelsMap, setLiveModelsMap] = useState<Record<string, {
-    provider: string;
-    providerName: string;
-    success: boolean;
-    models: Array<{
-      id: string;
-      name: string;
-      displayName: string;
-      description: string;
-      isLatest: boolean;
-      isSweetSpot: boolean;
-    }>;
-    latestRecommendation: string;
-    source: 'live_api' | 'catalog';
-    error?: string;
-    latencyMs?: number;
-  }>>({});
+  // Live models lookup state
+  const [liveModelsMap, setLiveModelsMap] = useState<Record<string, LiveModelsResult>>({});
   const [fetchingProviderModels, setFetchingProviderModels] = useState<Record<string, boolean>>({});
   const [showLiveModelsFor, setShowLiveModelsFor] = useState<Record<string, boolean>>({});
   const [fetchingAllProviders, setFetchingAllProviders] = useState(false);
@@ -82,14 +95,19 @@ export default function AdminAISettings() {
     try {
       const res = await fetch('/api/admin/ai-config');
       if (res.ok) {
-        const data = await res.json();
+        const data: AdminConfigData = await res.json();
         setConfig(data);
         // Pre-fill model inputs
         const models: Record<string, string> = {};
-        Object.entries(data.providers).forEach(([pid, p]: [string, any]) => {
+        Object.entries(data.providers).forEach(([pid, p]) => {
           models[pid] = p.model || p.defaultModel;
         });
         setModelInputs(models);
+
+        // Keep selected provider valid
+        if (data.activeProvider && (!selectedProviderId || !data.providers[selectedProviderId])) {
+          setSelectedProviderId(data.activeProvider);
+        }
       }
     } catch (err) {
       console.error('Failed to load AI config:', err);
@@ -116,7 +134,7 @@ export default function AdminAISettings() {
       if (res.ok) {
         const data = await res.json();
         setConfig(data.config);
-        toast.success(newEnabled ? 'AI Assistant activated platform-wide' : 'AI Kill Switch activated: all AI features suppressed');
+        toast.success(newEnabled ? 'Ulendo AI activated platform-wide' : 'AI Kill Switch activated: all AI features suppressed');
       } else {
         toast.error('Failed to update AI status');
       }
@@ -131,7 +149,7 @@ export default function AdminAISettings() {
     setSaving(true);
     const newEnabled = !currentEnabled;
     try {
-      const updates: any = {
+      const updates = {
         [providerId]: {
           enabled: newEnabled,
         },
@@ -147,9 +165,9 @@ export default function AdminAISettings() {
         setConfig(data.config);
         const name = data.config.providers[providerId]?.name || providerId;
         if (newEnabled) {
-          toast.success(`${name} API enabled`);
+          toast.success(`${name} enabled`);
         } else {
-          toast.success(`${name} API completely disabled and suppressed`);
+          toast.success(`${name} disabled`);
         }
       } else {
         toast.error('Failed to update provider status');
@@ -188,7 +206,7 @@ export default function AdminAISettings() {
         if (pendingKey) {
           setKeyInputs(prev => ({ ...prev, [providerId]: '' }));
         }
-        toast.success(`Active AI provider set to ${data.config.providers[providerId]?.name || providerId}`);
+        toast.success(`Active provider set to ${data.config.providers[providerId]?.name || providerId}`);
       } else {
         toast.error('Failed to set active provider');
       }
@@ -230,7 +248,7 @@ export default function AdminAISettings() {
         if (overrideModel) {
           setModelInputs(prev => ({ ...prev, [providerId]: overrideModel }));
         }
-        toast.success(`Active model updated to ${newModel || 'default'}`);
+        toast.success(`Saved settings for ${data.config.providers[providerId]?.name || providerId}`);
       } else {
         toast.error('Failed to save provider settings');
       }
@@ -250,18 +268,18 @@ export default function AdminAISettings() {
         ? `/api/admin/live-models?provider=${encodeURIComponent(providerId)}&apiKey=${encodeURIComponent(pendingKey)}`
         : `/api/admin/live-models?provider=${encodeURIComponent(providerId)}`;
       const res = await fetch(url);
-      const data = await res.json();
+      const data: LiveModelsResult = await res.json();
       setLiveModelsMap(prev => ({
         ...prev,
         [providerId]: data,
       }));
       if (data.success && Array.isArray(data.models)) {
-        toast.success(`Queried ${data.providerName || providerId} API: ${data.models.length} active models`);
+        toast.success(`Found ${data.models.length} live models for ${data.providerName || providerId}`);
       } else if (data.error) {
         toast.error(data.error);
       }
-    } catch (err: any) {
-      toast.error(`Error contacting ${providerId} API`);
+    } catch {
+      toast.error(`Error connecting to ${providerId} API`);
     } finally {
       setFetchingProviderModels(prev => ({ ...prev, [providerId]: false }));
     }
@@ -288,18 +306,16 @@ export default function AdminAISettings() {
           openMap[k] = true;
         });
         setShowLiveModelsFor(openMap);
-        toast.success('Queried all AI providers! Active models refreshed.');
+        toast.success('Live model catalogs refreshed for all providers');
       } else {
         toast.error(data.error || 'Failed to query providers');
       }
-    } catch (err: any) {
-      toast.error('Failed to query all AI providers');
+    } catch {
+      toast.error('Failed to query provider APIs');
     } finally {
       setFetchingAllProviders(false);
     }
   };
-
-  const handleFetchLiveGeminiModels = () => handleFetchLiveModelsForProvider('gemini');
 
   const handleRunTest = async (providerId: string) => {
     setTestingProvider(providerId);
@@ -330,7 +346,7 @@ export default function AdminAISettings() {
           }
         }
       } else {
-        toast.error(`Test failed: ${data.error || 'Connection error'}`);
+        toast.error(`Connection failed: ${data.error || 'Unknown error'}`);
       }
     } catch (err: any) {
       setTestResult({
@@ -338,28 +354,40 @@ export default function AdminAISettings() {
         success: false,
         error: err?.message || 'Network error executing test',
       });
-      toast.error('Network error during AI test');
+      toast.error('Network error during connection test');
     } finally {
       setTestingProvider(null);
     }
   };
 
+  // Filtered live models for currently inspected provider
+  const filteredLiveModels = useMemo(() => {
+    const list = liveModelsMap[selectedProviderId]?.models || [];
+    if (!modelSearchQuery.trim()) return list;
+    const q = modelSearchQuery.toLowerCase();
+    return list.filter(m => 
+      m.id.toLowerCase().includes(q) || 
+      (m.name && m.name.toLowerCase().includes(q)) ||
+      (m.description && m.description.toLowerCase().includes(q))
+    );
+  }, [liveModelsMap, selectedProviderId, modelSearchQuery]);
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20 text-stone-400 space-x-3">
-        <Loader2 className="w-6 h-6 animate-spin text-stone-600" />
-        <span className="text-sm font-medium">Loading AI configuration...</span>
+      <div className="flex items-center justify-center py-24 text-stone-500 gap-3">
+        <Loader2 className="w-5 h-5 animate-spin text-stone-700" />
+        <span className="text-sm">Loading AI configuration...</span>
       </div>
     );
   }
 
   if (!config) {
     return (
-      <div className="p-8 bg-stone-50 border border-stone-200 rounded-2xl text-center">
-        <p className="text-stone-600">Failed to connect to AI administration service.</p>
+      <div className="p-8 bg-stone-50 border border-stone-200 rounded-xl text-center">
+        <p className="text-stone-600 text-sm">Failed to connect to the AI administration service.</p>
         <button
           onClick={fetchConfig}
-          className="mt-4 px-4 py-2 bg-stone-900 text-white text-xs font-semibold rounded-xl"
+          className="mt-4 px-4 py-2 bg-stone-900 text-white text-xs font-semibold rounded-lg hover:bg-stone-800 transition"
         >
           Retry
         </button>
@@ -367,638 +395,711 @@ export default function AdminAISettings() {
     );
   }
 
-  const activeProviderData = config.providers[config.activeProvider];
+  const activeProvider = config.providers[config.activeProvider];
+  const selectedProvider = config.providers[selectedProviderId] || activeProvider || Object.values(config.providers)[0];
+  const configuredCount = Object.values(config.providers).filter(p => p.isConfigured).length;
+  const totalCount = Object.keys(config.providers).length;
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-300 max-w-5xl">
-      {/* Title & Introduction */}
-      <div>
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-3xl font-serif font-bold text-stone-900">AI Services & Provider Keys</h2>
-            <p className="text-stone-500 text-sm mt-1">
-              Configure multi-provider AI backends for manager onboarding and descriptions, with global kill switch control.
-            </p>
-          </div>
-          <button
-            onClick={fetchConfig}
-            className="p-2 text-stone-500 hover:text-stone-900 hover:bg-stone-100 rounded-xl transition"
-            title="Refresh status"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
-      {/* 1. MASTER KILL SWITCH CARD */}
-      <div className={`p-6 md:p-8 rounded-2xl border transition-all ${
-        config.enabled 
-          ? 'bg-stone-900 text-white border-stone-900 shadow-sm' 
-          : 'bg-red-950/10 border-red-200 text-stone-900'
-      }`}>
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="flex items-center gap-3">
-              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
-                config.enabled 
-                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' 
-                  : 'bg-red-500/20 text-red-700 border border-red-500/30'
-              }`}>
-                <span className={`w-2 h-2 rounded-full ${config.enabled ? 'bg-emerald-400 animate-pulse' : 'bg-red-500'}`} />
-                {config.enabled ? 'AI System Operational' : 'Global Kill Switch Active'}
-              </span>
-              {config.enabled && activeProviderData && (
-                <span className="text-xs text-stone-400">
-                  Routing requests to <span className="text-white font-medium">{activeProviderData.name}</span>
-                </span>
-              )}
-            </div>
-            <h3 className={`text-xl font-serif font-bold ${config.enabled ? 'text-white' : 'text-stone-900'}`}>
-              Platform-Wide AI Kill Switch
-            </h3>
-            <p className={`text-xs md:text-sm max-w-2xl leading-relaxed ${config.enabled ? 'text-stone-300' : 'text-stone-600'}`}>
-              {config.enabled 
-                ? 'AI assistance is active. Managers can use subtle drafting tools during property and room onboarding.'
-                : 'All AI features, writing assistance buttons, and server generation endpoints are completely suppressed and hidden across the entire application.'}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3 shrink-0">
-            <button
-              onClick={handleToggleKillSwitch}
-              disabled={saving}
-              className={`flex items-center gap-2.5 px-6 py-3.5 rounded-xl font-bold text-sm transition shadow-sm ${
-                config.enabled 
-                  ? 'bg-red-600 hover:bg-red-500 text-white' 
-                  : 'bg-emerald-600 hover:bg-emerald-500 text-white'
-              }`}
-            >
-              <Power className="w-4 h-4" />
-              <span>{config.enabled ? 'Trigger Kill Switch (Deactivate All AI)' : 'Re-enable AI Platform'}</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* 2. ACTIVE PROVIDER SELECTION */}
-      <div className="bg-white border border-stone-200 rounded-2xl p-6 md:p-8 shadow-2xs space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h3 className="font-serif font-bold text-xl text-stone-900">Active AI Engine</h3>
-            <p className="text-stone-500 text-xs md:text-sm mt-1">
-              Choose which provider powers listing generation, vision OCR, concierge assistance, and reminders.
-            </p>
-          </div>
-          <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2 text-emerald-800 text-xs flex items-center gap-2 shrink-0">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span>Active engine preference is permanently saved and will never auto-switch.</span>
-          </div>
+    <div className="space-y-6 max-w-5xl">
+      {/* 1. Header & Quick Actions */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-stone-200">
+        <div>
+          <h2 className="text-2xl font-serif font-bold text-stone-900 tracking-tight">AI Services & Provider Keys</h2>
+          <p className="text-stone-500 text-xs sm:text-sm mt-0.5">
+            Configure multi-provider backends for Ulendo hospitality intelligence, listing generation, and vision OCR.
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {Object.entries(config.providers).map(([pid, p], pIdx) => {
-            const isActive = config.activeProvider === pid;
-            const isEnabled = p.enabled !== false;
-            return (
-              <div
-                key={`active-prov-card-${pid}-${pIdx}`}
-                onClick={() => {
-                  if (!isEnabled) {
-                    toast('Enabling ' + p.name + ' and setting as active AI engine...', { icon: '⚡' });
-                  }
-                  handleSelectActiveProvider(pid);
-                }}
-                className={`relative p-5 rounded-2xl border cursor-pointer transition-all ${
-                  isActive
-                    ? 'border-stone-900 bg-stone-50/80 ring-2 ring-stone-900 shadow-sm'
-                    : !isEnabled
-                    ? 'border-stone-200 bg-stone-100/50 hover:border-stone-300 opacity-60'
-                    : 'border-stone-200 bg-white hover:border-stone-400 hover:bg-stone-50/50'
-                }`}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-1.5">
-                      <h4 className="font-bold text-sm text-stone-900">{p.name}</h4>
-                      {!isEnabled && (
-                        <span className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-stone-200 text-stone-600">
-                          Disabled
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[11px] font-mono text-stone-500">{p.model}</p>
-                  </div>
-                  {isActive ? (
-                    <span className="w-5 h-5 rounded-full bg-stone-900 text-white flex items-center justify-center shrink-0">
-                      <Check className="w-3 h-3" />
-                    </span>
-                  ) : (
-                    <span className="w-5 h-5 rounded-full border border-stone-300 shrink-0" />
-                  )}
-                </div>
-
-                <div className="mt-4 pt-3 border-t border-stone-100 flex items-center justify-between text-xs">
-                  {p.isConfigured ? (
-                    <span className={`inline-flex items-center gap-1 font-medium ${isEnabled ? 'text-emerald-600' : 'text-stone-400'}`}>
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>{p.source === 'environment' ? 'Env Variable' : 'Key configured'}</span>
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 text-stone-400">
-                      <AlertTriangle className="w-3.5 h-3.5" />
-                      <span>No Key</span>
-                    </span>
-                  )}
-
-                  <a
-                    href={p.website}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={e => e.stopPropagation()}
-                    className="text-stone-400 hover:text-stone-700 inline-flex items-center gap-1 text-[11px]"
-                  >
-                    <span>Portal</span>
-                    <ExternalLink className="w-2.5 h-2.5" />
-                  </a>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* 3. API KEYS & MODEL CONFIGURATION */}
-      <div className="bg-white border border-stone-200 rounded-2xl p-6 md:p-8 shadow-2xs space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-          <div>
-            <h3 className="font-serif font-bold text-xl text-stone-900">Provider Credentials &amp; Models</h3>
-            <p className="text-stone-500 text-xs md:text-sm mt-1">
-              Store API keys securely on the server. Query live model catalogs across all supported AI providers in real-time.
-            </p>
-          </div>
-
+        <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
           <button
             type="button"
             onClick={handleFetchAllLiveModels}
             disabled={fetchingAllProviders}
-            className="inline-flex items-center justify-center gap-2 px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300/80 rounded-xl text-xs font-bold transition cursor-pointer disabled:opacity-50 shrink-0 shadow-2xs"
-            title="Query active models across all 6 API providers simultaneously"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-stone-700 bg-white border border-stone-200 rounded-lg hover:bg-stone-50 hover:border-stone-300 transition disabled:opacity-50"
+            title="Query active models across all providers simultaneously"
           >
             {fetchingAllProviders ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-700" />
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-stone-600" />
             ) : (
-              <Globe className="w-3.5 h-3.5 text-amber-700" />
+              <Globe className="w-3.5 h-3.5 text-stone-500" />
             )}
-            <span>{fetchingAllProviders ? 'Querying All APIs...' : 'Query All Provider APIs'}</span>
+            <span>{fetchingAllProviders ? 'Querying APIs...' : 'Query All Catalogs'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={fetchConfig}
+            className="p-1.5 text-stone-500 hover:text-stone-900 bg-white border border-stone-200 rounded-lg hover:bg-stone-50 transition"
+            title="Refresh status"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
           </button>
         </div>
+      </div>
 
-        <div className="space-y-6 divide-y divide-stone-100">
-          {Object.entries(config.providers).map(([pid, p], pIdx) => {
-            const isEditingKey = showKey[pid];
-            const hasInputValue = !!keyInputs[pid];
-            const isTesting = testingProvider === pid;
-            const isEnabled = p.enabled !== false;
+      {/* 2. Global Execution Control & System Status */}
+      <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-2xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className={`w-2 h-2 rounded-full ${config.enabled ? 'bg-emerald-500' : 'bg-stone-400'}`} />
+              <h3 className="font-semibold text-stone-900 text-sm">
+                {config.enabled ? 'Ulendo AI Engine Operational' : 'Global Kill Switch Active (All AI Suppressed)'}
+              </h3>
+            </div>
+            <div className="flex flex-wrap items-center gap-x-2 text-xs text-stone-500">
+              <span>Active Provider: <strong className="text-stone-800 font-medium">{activeProvider?.name || config.activeProvider}</strong></span>
+              <span aria-hidden="true" className="text-stone-300">·</span>
+              <span className="font-mono text-stone-600">{activeProvider?.model}</span>
+              <span aria-hidden="true" className="text-stone-300">·</span>
+              <span className="tabular-nums">{configuredCount} of {totalCount} providers configured</span>
+            </div>
+            <p className="text-xs text-stone-500 pt-0.5 max-w-2xl">
+              {config.enabled
+                ? 'Ulendo AI is active across manager onboarding, listing generation, vision OCR, and guest inquiry tools.'
+                : 'All AI features, writing assistance buttons, and server endpoints are suppressed platform-wide.'}
+            </p>
+          </div>
 
-            return (
-              <div key={`prov-config-row-${pid}-${pIdx}`} className={`pt-6 first:pt-0 space-y-4 ${!isEnabled ? 'opacity-75' : ''}`}>
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div className="flex flex-wrap items-center gap-2.5">
-                    <span className="font-bold text-stone-900 text-sm">{p.name}</span>
-                    <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-stone-100 text-stone-600 border border-stone-200">
-                      ID: {pid}
+          <div className="flex items-center gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-stone-100">
+            <button
+              type="button"
+              onClick={handleToggleKillSwitch}
+              disabled={saving}
+              className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition cursor-pointer shadow-2xs ${
+                config.enabled
+                  ? 'bg-stone-100 text-stone-700 hover:bg-stone-200 border border-stone-300'
+                  : 'bg-emerald-700 hover:bg-emerald-800 text-white'
+              }`}
+            >
+              <Power className="w-3.5 h-3.5" />
+              <span>{config.enabled ? 'Trigger Kill Switch (Suppress AI)' : 'Re-enable AI Platform'}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* 3. Provider Workspace: Tabs & View Switcher */}
+      <div className="space-y-4">
+        {/* Navigation & View Toggle */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          {/* Provider selector tabs */}
+          <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+            {Object.entries(config.providers).map(([pid, p]) => {
+              const isActive = config.activeProvider === pid;
+              const isSelected = selectedProviderId === pid;
+              const isEnabled = p.enabled !== false;
+
+              return (
+                <button
+                  key={`provider-tab-${pid}`}
+                  type="button"
+                  onClick={() => {
+                    setSelectedProviderId(pid);
+                    setViewMode('focused');
+                  }}
+                  className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition border ${
+                    isSelected && viewMode === 'focused'
+                      ? 'bg-stone-900 text-white border-stone-900 shadow-2xs'
+                      : 'bg-white hover:bg-stone-100 text-stone-700 border-stone-200'
+                  }`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${
+                    !isEnabled ? 'bg-stone-300' : p.isConfigured ? 'bg-emerald-500' : 'bg-amber-400'
+                  }`} />
+                  <span>{p.name}</span>
+                  {isActive && (
+                    <span className={`text-[10px] font-semibold px-1.5 py-0.2 rounded ${
+                      isSelected && viewMode === 'focused' ? 'bg-stone-800 text-stone-200' : 'bg-stone-100 text-stone-700'
+                    }`}>
+                      Active
                     </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
 
-                    {/* Enable / Disable Status Button */}
+          {/* Mode toggle: Focused vs Overview Table */}
+          <div className="flex items-center gap-1 self-end sm:self-auto shrink-0 bg-stone-100 p-0.5 rounded-lg border border-stone-200 text-xs">
+            <button
+              type="button"
+              onClick={() => setViewMode('focused')}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-md font-medium transition ${
+                viewMode === 'focused' ? 'bg-white text-stone-900 shadow-2xs' : 'text-stone-600 hover:text-stone-900'
+              }`}
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+              <span>Detail</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('matrix')}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-md font-medium transition ${
+                viewMode === 'matrix' ? 'bg-white text-stone-900 shadow-2xs' : 'text-stone-600 hover:text-stone-900'
+              }`}
+            >
+              <TableProperties className="w-3.5 h-3.5" />
+              <span>Matrix</span>
+            </button>
+          </div>
+        </div>
+
+        {/* 4. Focused Provider Configuration Pane */}
+        {viewMode === 'focused' && selectedProvider && (
+          <div className="bg-white border border-stone-200 rounded-xl p-5 md:p-6 shadow-2xs space-y-6 animate-in fade-in duration-150">
+            {/* Top Bar for Selected Provider */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-stone-100">
+              <div>
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <h3 className="font-serif font-bold text-lg text-stone-900">{selectedProvider.name}</h3>
+                  <a
+                    href={selectedProvider.website}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-stone-400 hover:text-stone-700 inline-flex items-center gap-1 text-xs"
+                    title={`Open ${selectedProvider.name} developer portal`}
+                  >
+                    <span>Developer Portal</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-stone-500 mt-1">
+                  <span>Provider ID: <code className="font-mono text-stone-700">{selectedProviderId}</code></span>
+                  <span aria-hidden="true" className="text-stone-300">·</span>
+                  <span>{selectedProvider.source === 'environment' ? 'Configured via Environment' : selectedProvider.isConfigured ? 'Manual key configured' : 'No API key set'}</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Active Provider Button */}
+                {config.activeProvider === selectedProviderId ? (
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-stone-100 text-stone-800 border border-stone-200">
+                    <Check className="w-3.5 h-3.5 text-stone-800" />
+                    <span>Current Active Engine</span>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => handleSelectActiveProvider(selectedProviderId)}
+                    disabled={saving}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-stone-900 hover:bg-stone-800 text-white transition shadow-2xs cursor-pointer"
+                  >
+                    <ArrowRight className="w-3.5 h-3.5" />
+                    <span>Set as Active Engine</span>
+                  </button>
+                )}
+
+                {/* Enable/Disable Toggle */}
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={() => handleToggleProviderEnabled(selectedProviderId, selectedProvider.enabled !== false)}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition border cursor-pointer ${
+                    selectedProvider.enabled !== false
+                      ? 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
+                      : 'bg-stone-100 text-stone-500 border-stone-200 hover:bg-stone-200'
+                  }`}
+                >
+                  <Power className="w-3 h-3" />
+                  <span>{selectedProvider.enabled !== false ? 'Enabled' : 'Disabled'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Notice if provider is disabled */}
+            {selectedProvider.enabled === false && (
+              <div className="p-3 bg-stone-50 border border-stone-200 rounded-lg text-xs text-stone-600 flex items-center justify-between gap-3">
+                <span>
+                  <strong>Provider Disabled:</strong> {selectedProvider.name} is excluded from active routing, vision OCR, and fallback chains.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleToggleProviderEnabled(selectedProviderId, false)}
+                  className="text-xs font-semibold text-stone-900 hover:underline shrink-0"
+                >
+                  Enable Provider
+                </button>
+              </div>
+            )}
+
+            {/* Credentials & Model Form */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {/* API Key */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs">
+                  <label className="font-semibold text-stone-700">
+                    API Key {selectedProvider.maskedKey && <span className="font-mono text-stone-400 font-normal">({selectedProvider.maskedKey})</span>}
+                  </label>
+                  {selectedProvider.isConfigured && (
+                    <span className="text-[11px] text-stone-500">
+                      {selectedProvider.source === 'environment' ? 'System Environment' : 'Database Stored'}
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <input
+                      type={showKey[selectedProviderId] ? 'text' : 'password'}
+                      value={keyInputs[selectedProviderId] || ''}
+                      onChange={e => setKeyInputs(prev => ({ ...prev, [selectedProviderId]: e.target.value }))}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' && keyInputs[selectedProviderId]?.trim()) {
+                          handleSaveProvider(selectedProviderId);
+                        }
+                      }}
+                      placeholder={
+                        selectedProvider.isConfigured
+                          ? (selectedProvider.source === 'environment' ? 'Loaded from system environment' : 'Enter new key to update...')
+                          : selectedProviderId === 'gemini'
+                          ? 'Starts with AIzaSy...'
+                          : 'Starts with sk-...'
+                      }
+                      className="w-full bg-stone-50 border border-stone-200 rounded-lg pl-3 pr-9 py-2 text-xs font-mono text-stone-900 placeholder-stone-400 focus:bg-white focus:border-stone-900 outline-none transition"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowKey(prev => ({ ...prev, [selectedProviderId]: !prev[selectedProviderId] }))}
+                      className="absolute right-2.5 top-2.5 text-stone-400 hover:text-stone-700"
+                      tabIndex={-1}
+                    >
+                      {showKey[selectedProviderId] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+
+                  {keyInputs[selectedProviderId]?.trim() && (
                     <button
                       type="button"
                       disabled={saving}
-                      onClick={() => handleToggleProviderEnabled(pid, isEnabled)}
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold transition border cursor-pointer ${
-                        isEnabled
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100'
-                          : 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100'
-                      }`}
-                      title={isEnabled ? 'Click to completely disable this AI API' : 'Click to enable this AI API'}
+                      onClick={() => handleSaveProvider(selectedProviderId)}
+                      className="px-3.5 py-2 bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold rounded-lg transition shrink-0"
                     >
-                      <Power className="w-2.5 h-2.5" />
-                      <span>{isEnabled ? 'API Enabled' : 'API Disabled'}</span>
+                      Save Key
                     </button>
+                  )}
+                </div>
+              </div>
 
-                    {isEnabled && (
-                      p.isConfigured ? (
-                        p.isValid === false ? (
-                          <span className="text-[11px] text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full font-semibold flex items-center gap-1">
-                            <AlertTriangle className="w-3 h-3 text-red-600" />
-                            <span>Invalid Key</span>
+              {/* Model Identifier */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs">
+                  <label className="font-semibold text-stone-700">
+                    Model Identifier <span className="font-normal text-stone-400">(Default: {selectedProvider.defaultModel})</span>
+                  </label>
+                  {selectedProvider.model !== selectedProvider.defaultModel && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setModelInputs(prev => ({ ...prev, [selectedProviderId]: selectedProvider.defaultModel }));
+                        handleSaveProvider(selectedProviderId, selectedProvider.defaultModel);
+                      }}
+                      className="text-[11px] text-stone-500 hover:text-stone-900 underline"
+                    >
+                      Reset default
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={modelInputs[selectedProviderId] ?? selectedProvider.model}
+                    onChange={e => setModelInputs(prev => ({ ...prev, [selectedProviderId]: e.target.value }))}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        handleSaveProvider(selectedProviderId);
+                      }
+                    }}
+                    className="w-full bg-stone-50 border border-stone-200 rounded-lg px-3 py-2 text-xs font-mono text-stone-900 focus:bg-white focus:border-stone-900 outline-none transition"
+                  />
+                  <button
+                    type="button"
+                    disabled={saving || (modelInputs[selectedProviderId] === undefined || modelInputs[selectedProviderId] === selectedProvider.model)}
+                    onClick={() => handleSaveProvider(selectedProviderId)}
+                    className="px-3.5 py-2 bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold rounded-lg transition disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
+                  >
+                    Save Model
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Recommended Models */}
+            {selectedProvider.recommendedModels && selectedProvider.recommendedModels.length > 0 && (
+              <div className="space-y-2 pt-2 border-t border-stone-100">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-stone-700">Recommended Models</span>
+                  <button
+                    type="button"
+                    onClick={() => handleFetchLiveModelsForProvider(selectedProviderId)}
+                    disabled={fetchingProviderModels[selectedProviderId]}
+                    className="text-xs font-medium text-stone-600 hover:text-stone-900 inline-flex items-center gap-1 transition disabled:opacity-50"
+                  >
+                    {fetchingProviderModels[selectedProviderId] ? (
+                      <Loader2 className="w-3 h-3 animate-spin text-stone-700" />
+                    ) : (
+                      <Sparkles className="w-3 h-3 text-stone-500" />
+                    )}
+                    <span>Browse Live Model Catalog</span>
+                  </button>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {selectedProvider.recommendedModels.map((m, mIdx) => {
+                    const isCurrent = (modelInputs[selectedProviderId] ?? selectedProvider.model) === m.id;
+                    return (
+                      <button
+                        key={`rec-model-${selectedProviderId}-${m.id}-${mIdx}`}
+                        type="button"
+                        onClick={() => {
+                          setModelInputs(prev => ({ ...prev, [selectedProviderId]: m.id }));
+                          handleSaveProvider(selectedProviderId, m.id);
+                        }}
+                        className={`text-xs px-3 py-1.5 rounded-lg border transition text-left cursor-pointer flex items-center gap-2 ${
+                          isCurrent
+                            ? 'bg-stone-900 text-white border-stone-900 font-medium shadow-2xs'
+                            : 'bg-stone-50 hover:bg-stone-100 text-stone-700 border-stone-200'
+                        }`}
+                        title={m.description}
+                      >
+                        <span className="font-mono text-[11px]">{m.name}</span>
+                        {m.isSweetSpot && (
+                          <span className={`text-[10px] px-1 py-0.2 rounded font-medium ${
+                            isCurrent ? 'bg-stone-800 text-stone-200' : 'bg-amber-100 text-amber-900'
+                          }`}>
+                            Sweet Spot
                           </span>
-                        ) : p.isValid === true ? (
-                          <span className="text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full font-semibold flex items-center gap-1">
-                            <Check className="w-3 h-3 text-emerald-600" />
-                            <span>Verified & Ready</span>
-                          </span>
-                        ) : (
-                          <span className="text-[11px] text-stone-600 bg-stone-100 border border-stone-200 px-2 py-0.5 rounded-full font-medium">
-                            Configured
-                          </span>
-                        )
-                      ) : (
-                        <span className="text-[11px] text-stone-400 bg-stone-50 border border-stone-200 px-2 py-0.5 rounded-full font-medium">
-                          No Key
-                        </span>
-                      )
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Live Model Catalog Explorer */}
+            {showLiveModelsFor[selectedProviderId] && (
+              <div className="pt-4 border-t border-stone-200 space-y-3 bg-stone-50/60 p-4 rounded-xl border">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-stone-900">
+                      Live Models: {selectedProvider.name}
+                    </span>
+                    {liveModelsMap[selectedProviderId]?.source && (
+                      <span className="text-[11px] text-stone-500">
+                        ({liveModelsMap[selectedProviderId].source === 'live_api' ? 'Live API' : 'Verified Catalog'}
+                        {liveModelsMap[selectedProviderId].latencyMs ? ` · ${liveModelsMap[selectedProviderId].latencyMs}ms` : ''})
+                      </span>
                     )}
                   </div>
 
                   <div className="flex items-center gap-2">
-                    {p.isConfigured && (
-                      <button
-                        type="button"
-                        disabled={isTesting}
-                        onClick={() => handleRunTest(pid)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 rounded-xl transition border border-stone-200 disabled:opacity-50 cursor-pointer"
-                      >
-                        {isTesting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
-                        <span>Test Connection</span>
-                      </button>
-                    )}
-                    <a
-                      href={p.website}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-stone-500 hover:text-stone-800 inline-flex items-center gap-1 px-2.5 py-1.5"
-                    >
-                      <span>Get Key</span>
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
-                  </div>
-                </div>
-
-                {!isEnabled && (
-                  <div className="text-[11px] text-stone-600 bg-stone-100/90 border border-dashed border-stone-300 rounded-xl p-3 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                      <AlertTriangle className="w-4 h-4 text-stone-400 shrink-0" />
-                      <span>
-                        <strong>API Completely Disabled:</strong> {p.name} is silenced and suppressed from chat, listing generation, vision OCR, and fallback chains.
-                      </span>
+                    <div className="relative">
+                      <Search className="w-3.5 h-3.5 absolute left-2.5 top-2 text-stone-400" />
+                      <input
+                        type="text"
+                        value={modelSearchQuery}
+                        onChange={e => setModelSearchQuery(e.target.value)}
+                        placeholder="Filter models..."
+                        className="pl-8 pr-2.5 py-1 text-xs bg-white border border-stone-200 rounded-lg w-44 outline-none focus:border-stone-900"
+                      />
                     </div>
                     <button
                       type="button"
-                      disabled={saving}
-                      onClick={() => handleToggleProviderEnabled(pid, false)}
-                      className="px-3 py-1 bg-stone-900 hover:bg-stone-800 text-white rounded-lg text-xs font-semibold shrink-0 cursor-pointer"
+                      onClick={() => setShowLiveModelsFor(prev => ({ ...prev, [selectedProviderId]: false }))}
+                      className="p-1 text-stone-400 hover:text-stone-700"
+                      title="Close live model catalog"
                     >
-                      Enable {p.name}
+                      <X className="w-4 h-4" />
                     </button>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* API Key Field */}
-                  <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <label className="block text-xs font-semibold text-stone-600">
-                        API Key {p.maskedKey && <span className="text-stone-400 font-normal font-mono">({p.maskedKey})</span>}
-                      </label>
-                      {p.isConfigured && (
-                        <span className="text-[10px] text-emerald-600 font-medium">
-                          {p.source === 'environment' ? 'Active via Environment' : 'Key Saved'}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex gap-2">
-                      <div className="relative flex-1">
-                        <input
-                          type={isEditingKey ? 'text' : 'password'}
-                          value={keyInputs[pid] || ''}
-                          onChange={e => setKeyInputs(prev => ({ ...prev, [pid]: e.target.value }))}
-                          onKeyDown={e => {
-                            if (e.key === 'Enter' && keyInputs[pid]?.trim()) {
-                              handleSaveProvider(pid);
-                            }
-                          }}
-                          placeholder={
-                            p.isConfigured 
-                              ? (p.source === 'environment' ? 'Configured in system environment' : 'Enter new key to update...')
-                              : pid === 'gemini'
-                              ? 'Enter Gemini API key (starts with AIzaSy...)'
-                              : 'Enter API key (e.g. sk-...)'
-                          }
-                          className="w-full bg-stone-50 border border-stone-200 rounded-xl pl-3.5 pr-10 py-2 text-xs font-mono outline-none focus:border-stone-900 transition"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowKey(prev => ({ ...prev, [pid]: !prev[pid] }))}
-                          className="absolute right-3 top-2.5 text-stone-400 hover:text-stone-600 cursor-pointer"
-                        >
-                          {isEditingKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                        </button>
-                      </div>
-                      {hasInputValue && (
-                        <button
-                          type="button"
-                          disabled={saving}
-                          onClick={() => handleSaveProvider(pid)}
-                          className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl transition cursor-pointer flex items-center gap-1.5 shrink-0 shadow-sm"
-                        >
-                          <Check className="w-3.5 h-3.5" />
-                          <span>Save Key</span>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Model Selection Field */}
-                  <div>
-                    <label className="block text-xs font-semibold text-stone-600 mb-1.5">
-                      Model Identifier <span className="text-stone-400 font-normal">(Default: {p.defaultModel})</span>
-                    </label>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={modelInputs[pid] ?? p.model}
-                        onChange={e => setModelInputs(prev => ({ ...prev, [pid]: e.target.value }))}
-                        className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2 text-xs font-mono outline-none focus:border-stone-900 transition"
-                      />
-                      <button
-                        type="button"
-                        disabled={saving || (modelInputs[pid] === undefined || modelInputs[pid] === p.model)}
-                        onClick={() => handleSaveProvider(pid)}
-                        className="px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold rounded-xl transition disabled:opacity-30 disabled:cursor-not-allowed shrink-0 cursor-pointer"
-                      >
-                        Save Model
-                      </button>
-                    </div>
                   </div>
                 </div>
 
-                {/* Recommended Models & Sweet Spots */}
-                {p.recommendedModels && p.recommendedModels.length > 0 && (
-                  <div className="bg-stone-50/80 p-3 rounded-xl border border-stone-200/60 space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] uppercase font-bold tracking-wider text-stone-400">
-                        Recommended Models &amp; Sweet Spots:
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleFetchLiveModelsForProvider(pid)}
-                        disabled={fetchingProviderModels[pid]}
-                        className="text-[10px] font-semibold text-amber-800 hover:text-amber-950 flex items-center gap-1 cursor-pointer transition disabled:opacity-50"
-                        title={`Query live models directly from ${p.name} API`}
-                      >
-                        {fetchingProviderModels[pid] ? (
-                          <Loader2 className="w-3 h-3 animate-spin text-amber-700" />
-                        ) : (
-                          <Globe className="w-3 h-3 text-amber-700" />
-                        )}
-                        <span>Check Live {p.name} Models</span>
-                      </button>
-                    </div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {p.recommendedModels.map((m, mIdx) => {
-                        const isCurrent = (modelInputs[pid] ?? p.model) === m.id;
-                        return (
-                          <button
-                            key={`rec-model-${pid}-${m.id}-${mIdx}`}
-                            type="button"
-                            onClick={() => {
-                              setModelInputs(prev => ({ ...prev, [pid]: m.id }));
-                              handleSaveProvider(pid, m.id);
-                            }}
-                            className={`text-[11px] px-2.5 py-1 rounded-lg border transition cursor-pointer flex items-center gap-1.5 ${
-                              isCurrent
-                                ? 'bg-stone-900 text-white border-stone-900 font-semibold shadow-2xs'
-                                : 'bg-white hover:bg-stone-100 text-stone-700 border-stone-200'
-                            }`}
-                            title={m.description}
-                          >
-                            <span>{m.name}</span>
-                            {m.isSweetSpot && (
-                              <span className={`text-[9px] px-1.5 py-0.2 rounded font-bold uppercase tracking-wider ${
-                                isCurrent ? 'bg-amber-400 text-stone-950' : 'bg-amber-100 text-amber-900'
-                              }`}>
-                                Sweet Spot
+                {fetchingProviderModels[selectedProviderId] ? (
+                  <div className="flex items-center gap-2 py-4 text-xs text-stone-500 justify-center">
+                    <Loader2 className="w-4 h-4 animate-spin text-stone-600" />
+                    <span>Querying {selectedProvider.name} model endpoints...</span>
+                  </div>
+                ) : filteredLiveModels.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-60 overflow-y-auto pr-1">
+                    {filteredLiveModels.map(lm => {
+                      const isSelected = (modelInputs[selectedProviderId] ?? selectedProvider.model) === lm.id;
+                      return (
+                        <div
+                          key={`live-m-${selectedProviderId}-${lm.id}`}
+                          className={`p-2.5 rounded-lg border text-left flex flex-col justify-between gap-1.5 transition ${
+                            isSelected
+                              ? 'bg-stone-900 text-white border-stone-900'
+                              : 'bg-white border-stone-200 hover:border-stone-300'
+                          }`}
+                        >
+                          <div>
+                            <div className="flex items-center justify-between gap-1">
+                              <span className={`text-xs font-mono font-medium truncate ${isSelected ? 'text-white' : 'text-stone-900'}`}>
+                                {lm.id}
                               </span>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    {/* Live Provider API Models Results Section */}
-                    {showLiveModelsFor[pid] && (
-                      <div className="mt-3 pt-3 border-t border-stone-200/70 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="flex items-center gap-1.5 text-xs font-bold text-stone-800">
-                              <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-                              <span>Live {p.name} Models</span>
+                              <div className="flex items-center gap-1 shrink-0">
+                                {lm.isLatest && (
+                                  <span className={`text-[9px] px-1 py-0.2 rounded font-medium ${
+                                    isSelected ? 'bg-stone-800 text-stone-200' : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                                  }`}>
+                                    Latest
+                                  </span>
+                                )}
+                                {lm.isSweetSpot && (
+                                  <span className={`text-[9px] px-1 py-0.2 rounded font-medium ${
+                                    isSelected ? 'bg-stone-800 text-stone-200' : 'bg-amber-50 text-amber-900 border border-amber-200'
+                                  }`}>
+                                    Sweet Spot
+                                  </span>
+                                )}
+                              </div>
                             </div>
-                            {liveModelsMap[pid]?.source === 'live_api' && (
-                              <span className="text-[9px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded uppercase">
-                                Live API
-                              </span>
-                            )}
-                            {liveModelsMap[pid]?.source === 'catalog' && (
-                              <span className="text-[9px] bg-stone-200/80 text-stone-700 font-medium px-1.5 py-0.2 rounded">
-                                Verified Catalog
-                              </span>
-                            )}
-                            {liveModelsMap[pid]?.latencyMs !== undefined && liveModelsMap[pid]?.latencyMs! > 0 && (
-                              <span className="text-[9px] text-stone-400 font-mono">
-                                {liveModelsMap[pid]?.latencyMs}ms
-                              </span>
+                            {lm.description && (
+                              <p className={`text-[11px] line-clamp-1 mt-0.5 ${isSelected ? 'text-stone-300' : 'text-stone-500'}`}>
+                                {lm.description}
+                              </p>
                             )}
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => setShowLiveModelsFor(prev => ({ ...prev, [pid]: false }))}
-                            className="text-[10px] text-stone-400 hover:text-stone-600 cursor-pointer"
-                          >
-                            Hide
-                          </button>
+
+                          <div className="pt-1 flex items-center justify-end">
+                            {isSelected ? (
+                              <span className="text-[11px] text-emerald-300 flex items-center gap-1 font-medium">
+                                <Check className="w-3 h-3" /> Selected
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setModelInputs(prev => ({ ...prev, [selectedProviderId]: lm.id }));
+                                  handleSaveProvider(selectedProviderId, lm.id);
+                                }}
+                                className="text-[11px] font-medium text-stone-700 hover:text-stone-900 bg-stone-100 hover:bg-stone-200 px-2 py-0.5 rounded transition cursor-pointer"
+                              >
+                                Use Model
+                              </button>
+                            )}
+                          </div>
                         </div>
-
-                        {fetchingProviderModels[pid] && (
-                          <div className="flex items-center gap-2 py-2 text-xs text-stone-500">
-                            <Loader2 className="w-3.5 h-3.5 animate-spin text-stone-700" />
-                            <span>Connecting to {p.name} API in real-time...</span>
-                          </div>
-                        )}
-
-                        {liveModelsMap[pid]?.error && (
-                          <div className="text-[11px] text-amber-800 bg-amber-50 p-2.5 rounded-lg border border-amber-200 flex items-start gap-2">
-                            <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
-                            <div className="space-y-0.5">
-                              <div className="font-semibold">{liveModelsMap[pid]?.error}</div>
-                              {liveModelsMap[pid]?.source === 'catalog' && (
-                                <div className="text-[10px] text-amber-700/80">
-                                  Displaying current verified model options below:
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        )}
-
-                        {liveModelsMap[pid]?.models && liveModelsMap[pid].models.length > 0 && (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-56 overflow-y-auto pr-1">
-                            {liveModelsMap[pid].models.map((lm) => {
-                              const isSelected = (modelInputs[pid] ?? p.model) === lm.id;
-                              return (
-                                <div
-                                  key={`${pid}-${lm.id}`}
-                                  className={`p-2 rounded-lg border text-left flex flex-col justify-between gap-1 transition ${
-                                    isSelected 
-                                      ? 'bg-amber-50/80 border-amber-300 ring-1 ring-amber-400' 
-                                      : 'bg-white border-stone-200 hover:border-stone-300'
-                                  }`}
-                                >
-                                  <div>
-                                    <div className="flex items-center justify-between gap-1">
-                                      <span className="text-xs font-mono font-bold text-stone-900 truncate">
-                                        {lm.id}
-                                      </span>
-                                      {lm.isLatest && (
-                                        <span className="text-[9px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded uppercase shrink-0">
-                                          Latest
-                                        </span>
-                                      )}
-                                      {lm.isSweetSpot && !lm.isLatest && (
-                                        <span className="text-[9px] bg-amber-100 text-amber-900 font-bold px-1.5 py-0.2 rounded uppercase shrink-0">
-                                          Sweet Spot
-                                        </span>
-                                      )}
-                                    </div>
-                                    <p className="text-[10px] text-stone-500 line-clamp-2 mt-0.5">
-                                      {lm.description || lm.name}
-                                    </p>
-                                  </div>
-                                  <div className="pt-1 flex items-center justify-between">
-                                    {isSelected ? (
-                                      <span className="text-[10px] font-bold text-emerald-700 flex items-center gap-1">
-                                        <Check className="w-3 h-3" /> Active Model
-                                      </span>
-                                    ) : (
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setModelInputs(prev => ({ ...prev, [pid]: lm.id }));
-                                          handleSaveProvider(pid, lm.id);
-                                        }}
-                                        className="text-[10px] font-semibold text-stone-700 hover:text-stone-950 bg-stone-100 hover:bg-stone-200 px-2 py-0.5 rounded cursor-pointer transition"
-                                      >
-                                        Use This Model
-                                      </button>
-                                    )}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    )}
+                      );
+                    })}
                   </div>
-                )}
-
-                {/* Rate Limit Strategy Notice */}
-                {p.rateLimitNotice && (
-                  <div className="text-[11px] text-stone-500 bg-stone-50 border border-stone-200/80 rounded-xl p-2.5 flex items-center gap-2">
-                    <span className="font-bold text-stone-700 uppercase text-[10px] tracking-wider shrink-0 bg-stone-200/80 px-1.5 py-0.5 rounded">
-                      Rate Strategy
-                    </span>
-                    <span>{p.rateLimitNotice}</span>
-                  </div>
-                )}
-
-                {/* Authentication Failure Notice */}
-                {p.isValid === false && p.validationError && (
-                  <div className="text-[11px] text-red-700 bg-red-50 border border-red-200 rounded-xl p-2.5 flex items-start gap-2 animate-in fade-in">
-                    <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
-                    <div>
-                      <span className="font-bold">Authentication Error: </span>
-                      <span>{p.validationError}</span>
-                      <p className="text-[10px] text-red-600 mt-0.5">
-                        Please update your API key above or select a different provider. AI features will remain safely suppressed until a valid key is provided.
-                      </p>
-                    </div>
-                  </div>
+                ) : (
+                  <p className="text-xs text-stone-500 py-3 text-center">
+                    No models matched the search query.
+                  </p>
                 )}
               </div>
-            );
-          })}
-        </div>
+            )}
+
+            {/* Test Connection Button & Status */}
+            <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-stone-100">
+              <div className="text-xs text-stone-500">
+                {selectedProvider.rateLimitNotice ? (
+                  <span><strong>Rate Strategy:</strong> {selectedProvider.rateLimitNotice}</span>
+                ) : (
+                  <span>Verified for Travel Malawi operations and listing drafting.</span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  disabled={testingProvider === selectedProviderId || !selectedProvider.isConfigured}
+                  onClick={() => handleRunTest(selectedProviderId)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-stone-800 bg-stone-100 hover:bg-stone-200 rounded-lg transition border border-stone-200 disabled:opacity-40 cursor-pointer"
+                  title={!selectedProvider.isConfigured ? 'Add an API key first to test connection' : 'Test inference connection'}
+                >
+                  {testingProvider === selectedProviderId ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Play className="w-3.5 h-3.5 text-stone-700" />
+                  )}
+                  <span>Test Connection</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 5. Matrix Overview Mode (All Providers Table) */}
+        {viewMode === 'matrix' && (
+          <div className="bg-white border border-stone-200 rounded-xl overflow-hidden shadow-2xs">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-stone-50 text-stone-500 uppercase tracking-wider text-[10px] font-semibold border-b border-stone-200">
+                  <tr>
+                    <th className="py-3 px-4">Provider</th>
+                    <th className="py-3 px-4">Status</th>
+                    <th className="py-3 px-4">Key Configuration</th>
+                    <th className="py-3 px-4">Active Model</th>
+                    <th className="py-3 px-4 text-center">Engine Role</th>
+                    <th className="py-3 px-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-stone-100 text-stone-700">
+                  {Object.entries(config.providers).map(([pid, p]) => {
+                    const isActive = config.activeProvider === pid;
+                    const isEnabled = p.enabled !== false;
+
+                    return (
+                      <tr key={`matrix-row-${pid}`} className="hover:bg-stone-50/70 transition">
+                        <td className="py-3 px-4">
+                          <div className="font-semibold text-stone-900">{p.name}</div>
+                          <div className="text-[11px] font-mono text-stone-400">{pid}</div>
+                        </td>
+
+                        <td className="py-3 px-4">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleProviderEnabled(pid, isEnabled)}
+                            className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium transition cursor-pointer ${
+                              isEnabled ? 'text-emerald-700 bg-emerald-50' : 'text-stone-500 bg-stone-100'
+                            }`}
+                          >
+                            <span className={`w-1.5 h-1.5 rounded-full ${isEnabled ? 'bg-emerald-500' : 'bg-stone-400'}`} />
+                            <span>{isEnabled ? 'Enabled' : 'Disabled'}</span>
+                          </button>
+                        </td>
+
+                        <td className="py-3 px-4">
+                          {p.isConfigured ? (
+                            <div className="space-y-0.5">
+                              <div className="font-mono text-stone-800">{p.maskedKey || 'Configured'}</div>
+                              <div className="text-[10px] text-stone-400">
+                                {p.source === 'environment' ? 'Environment variable' : 'Manual key'}
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-stone-400">No key provided</span>
+                          )}
+                        </td>
+
+                        <td className="py-3 px-4 font-mono text-stone-800">
+                          {p.model}
+                        </td>
+
+                        <td className="py-3 px-4 text-center">
+                          {isActive ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-stone-900 text-white">
+                              <Check className="w-3 h-3" /> Active
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleSelectActiveProvider(pid)}
+                              className="text-stone-600 hover:text-stone-900 text-[11px] font-medium underline cursor-pointer"
+                            >
+                              Set Active
+                            </button>
+                          )}
+                        </td>
+
+                        <td className="py-3 px-4 text-right space-x-2">
+                          {p.isConfigured && (
+                            <button
+                              type="button"
+                              disabled={testingProvider === pid}
+                              onClick={() => handleRunTest(pid)}
+                              className="px-2.5 py-1 text-[11px] font-medium text-stone-700 bg-stone-100 hover:bg-stone-200 rounded transition"
+                            >
+                              {testingProvider === pid ? 'Testing...' : 'Test'}
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedProviderId(pid);
+                              setViewMode('focused');
+                            }}
+                            className="px-2.5 py-1 text-[11px] font-medium text-stone-900 bg-stone-100 hover:bg-stone-200 rounded transition"
+                          >
+                            Configure
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* 4. LIVE TEST RESULT PANEL */}
+      {/* 6. Test Diagnostic Result Panel */}
       {testResult && (
-        <div className={`p-6 rounded-2xl border transition-all ${
-          testResult.success 
-            ? 'bg-emerald-50/70 border-emerald-200 text-emerald-950' 
-            : 'bg-red-50/70 border-red-200 text-red-950'
+        <div className={`p-4 rounded-xl border transition-all text-xs ${
+          testResult.success
+            ? 'bg-stone-50 border-stone-300 text-stone-800'
+            : 'bg-red-50/60 border-red-200 text-red-900'
         }`}>
-          <div className="flex items-start justify-between">
+          <div className="flex items-start justify-between gap-4">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 {testResult.success ? (
-                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                 ) : (
-                  <AlertTriangle className="w-5 h-5 text-red-600 shrink-0" />
+                  <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
                 )}
-                <h4 className="font-bold text-sm">
-                  {testResult.success ? 'Provider Connected Successfully' : 'Provider Connection Failed'}
-                </h4>
+                <span className="font-semibold text-sm">
+                  {testResult.success ? 'Connection Successful' : 'Connection Test Failed'}
+                </span>
                 {testResult.latencyMs !== undefined && (
-                  <span className="text-xs font-mono bg-white/80 px-2 py-0.5 rounded-full border border-stone-200/50">
-                    {testResult.latencyMs}ms
-                  </span>
+                  <span className="font-mono text-stone-500 tabular-nums">({testResult.latencyMs}ms)</span>
                 )}
               </div>
-              <p className="text-xs opacity-80">
-                Tested provider: <span className="font-semibold uppercase">{testResult.provider}</span>
+              <p className="text-stone-500">
+                Provider: <strong className="text-stone-800">{config.providers[testResult.provider]?.name || testResult.provider}</strong>
               </p>
             </div>
+
             <button
               type="button"
               onClick={() => setTestResult(null)}
-              className="text-xs opacity-60 hover:opacity-100 font-medium px-2 py-1"
+              className="text-stone-400 hover:text-stone-700 p-1"
+              title="Dismiss result"
             >
-              Dismiss
+              <X className="w-4 h-4" />
             </button>
           </div>
 
-          <div className="mt-4 pt-3 border-t border-black/5 text-xs">
+          <div className="mt-3 pt-2 border-t border-stone-200/60">
             {testResult.success ? (
-              <div>
-                <span className="font-semibold block mb-1">Generated Sample:</span>
-                <p className="italic bg-white/80 p-3 rounded-xl border border-emerald-100 font-serif leading-relaxed">
-                  "{testResult.sample}"
-                </p>
-              </div>
+              <p className="font-serif italic text-stone-700 bg-white p-3 rounded-lg border border-stone-200 leading-relaxed">
+                "{testResult.sample}"
+              </p>
             ) : (
-              <div>
-                <span className="font-semibold block mb-1">Error Details:</span>
-                <p className="font-mono bg-white/80 p-3 rounded-xl border border-red-100 text-red-700">
-                  {testResult.error}
-                </p>
+              <div className="font-mono text-red-700 bg-white p-3 rounded-lg border border-red-200 leading-relaxed">
+                {testResult.error}
               </div>
             )}
           </div>
         </div>
       )}
 
-      {/* 5. PRACTICAL COST & SECURITY NOTICE */}
-      <div className="bg-stone-50 border border-stone-200 rounded-2xl p-6 text-xs text-stone-600 space-y-2">
-        <h4 className="font-semibold text-stone-900 text-sm">Design & Cost Optimization Architecture</h4>
-        <p className="leading-relaxed">
-          • <strong>Standard Cost-Effective Models:</strong> By default, this system connects to lightweight models (DeepSeek-V3, GPT-4o-mini, Mistral Small, Gemini 3.8 Flash). These models cost fractions of a cent per generation, avoiding wasteful token expenses while delivering vivid, authentic hospitality copy.
-        </p>
-        <p className="leading-relaxed">
-          • <strong>Zero Browser Key Exposure:</strong> All keys are stored server-side in persistent system configuration and handled through Node proxy endpoints. No API secret is ever bundled or transmitted to guest or manager browsers.
-        </p>
-        <p className="leading-relaxed">
-          • <strong>Subtle Manager Integration:</strong> The writing assistant displays only minimal, dignified controls. When the global kill switch is active, all AI UI elements and server endpoints are completely suppressed.
-        </p>
+      {/* 7. Architecture & Compliance Notes */}
+      <div className="pt-4 border-t border-stone-200 grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-stone-500">
+        <div>
+          <h4 className="font-semibold text-stone-800 mb-1">Server-Side Proxy Security</h4>
+          <p className="leading-relaxed">
+            API keys are saved in local server storage and never exposed to guest or manager browsers. Requests are securely proxied via server routes.
+          </p>
+        </div>
+        <div>
+          <h4 className="font-semibold text-stone-800 mb-1">Cost-Optimized Defaults</h4>
+          <p className="leading-relaxed">
+            Default configurations connect to lightweight production models (Gemini 3.8 Flash, GPT-4o Mini, Mistral Small) for low token footprints.
+          </p>
+        </div>
+        <div>
+          <h4 className="font-semibold text-stone-800 mb-1">Global Kill Switch Guarantee</h4>
+          <p className="leading-relaxed">
+            Toggling the master switch instantly suppresses all AI endpoints, assistant buttons, and prompt generators platform-wide.
+          </p>
+        </div>
       </div>
     </div>
   );
