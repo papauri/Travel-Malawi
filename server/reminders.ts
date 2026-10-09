@@ -394,7 +394,13 @@ export async function generateAutoReminders(booking: AutoReminderInput): Promise
 
   // 3. Arrival PIN (default 24h before 09:00 on check-in day).
   const hoursBefore = rules['arrival_24h_pin']?.timingHours ?? 24;
-  queue('arrival_24h_pin', 'check_in_24h', new Date(malawiTime(booking.checkIn, '09:00').getTime() - hoursBefore * 60 * 60 * 1000));
+  let arrivalPinTime = new Date(malawiTime(booking.checkIn, '09:00').getTime() - hoursBefore * 60 * 60 * 1000);
+  // If the booking is same-day or next-day and 24h before has already passed,
+  // but check-in has not concluded, dispatch the essential PIN within 2 minutes of confirmation.
+  if (arrivalPinTime <= now && malawiTime(booking.checkIn, '23:59') >= now) {
+    arrivalPinTime = new Date(now.getTime() + 2 * 60 * 1000);
+  }
+  queue('arrival_24h_pin', 'check_in_24h', arrivalPinTime);
 
   // 4. Check-in morning guide.
   queue('check_in_welcome', 'check_in_welcome', malawiTime(booking.checkIn, '08:00'), false);

@@ -437,16 +437,34 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
               checkIn: liveBooking.checkIn,
               checkOut: liveBooking.checkOut,
               roomName: room?.name,
-              totalPrice: liveBooking.total ? `${liveBooking.total} ${liveBooking.currency || 'MWK'}` : undefined,
+              arrivalPin: liveBooking.arrivalPin,
+              totalPrice: liveBooking.total ? `${liveBooking.currency || 'MWK'} ${Number(liveBooking.total).toLocaleString()}` : undefined,
               automationSettings: hotel?.emailAutomationSettings,
               wifiName: hotel?.infrastructure?.wifiSSID,
               wifiPassword: hotel?.infrastructure?.wifiPassword,
-              managerPhone: hotel?.contactPhone || hotel?.managerPhone,
+              managerPhone: hotel?.contactPhone || hotel?.contactWhatsapp || hotel?.managerPhone,
               managerEmail: hotel?.contactEmail || hotel?.managerEmail,
             }),
           });
         } catch {
           // non-blocking
+        }
+
+        // Also dispatch confirmation email notification to guest
+        if (liveBooking.guestEmail) {
+          const hotelName = hotel?.name || 'the property';
+          const pin = liveBooking.arrivalPin || (written as any).arrivalPin || 'Generated on voucher';
+          fetch('/api/notify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: liveBooking.guestEmail,
+              bookingId: liveBooking.id,
+              hotelId: liveBooking.hotelId,
+              subject: `Booking Confirmed: ${hotelName} (Ref: #${liveBooking.reference || liveBooking.id.slice(0, 8)})`,
+              message: `Dear ${liveBooking.guestName},\n\nGreat news! Your booking at ${hotelName} has been confirmed and your digital voucher is now ready.\n\nDates: ${liveBooking.checkIn} to ${liveBooking.checkOut}\nRoom: ${room?.name || 'Selected Room'}\nBooking Reference: #${liveBooking.reference || liveBooking.id.slice(0, 8)}\nArrival / Security Gate PIN: ${pin}\n\nYou can access your digital voucher and express arrival pass anytime from your Travel Malawi account: /my-bookings.\n\nWe look forward to hosting you!`,
+            }),
+          }).catch(console.error);
         }
 
       toast.success('Booking confirmed & Digital Voucher issued!');

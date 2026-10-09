@@ -42,6 +42,7 @@ import {
 import { getAdminDocsList, getAdminDocContent, saveAdminDoc, resetAdminDoc } from './server/docUtils';
 import { getAdminEmailConfig, saveEmailConfig, testSMTPConnection, sendSystemEmail } from './server/emailConfig';
 import { OWNER_EMAILS } from './src/lib/roles';
+import { getHotelDepositInfo, formatDepositSnippet } from './src/lib/depositInfo';
 import {
   getAdminWhatsAppConfig,
   getPublicWhatsAppStatus,
@@ -98,7 +99,8 @@ const lower = (v: unknown) => (typeof v === 'string' ? v.trim().toLowerCase() : 
 
 async function startServer() {
   const app = express();
-  const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+  const isProduction = process.env.NODE_ENV === 'production';
+  const PORT = isProduction && process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
   // Behind Cloud Run's front end: take the client address from the proxy hop.
   app.set('trust proxy', 1);
@@ -752,7 +754,22 @@ async function startServer() {
         return res.status(400).json({ error: 'Booking dates are missing.' });
       }
 
-      // Contact details and dates come from the stored booking, not the request.
+      // Format deposit instructions from hotel payment rails if available
+      let depositInstructions = body.depositInstructions;
+      if (!depositInstructions && hotel) {
+        const depInfo = getHotelDepositInfo(hotel as any);
+        if (depInfo.airtelMoneyNumber || depInfo.mpambaNumber || depInfo.bankName || depInfo.instructions) {
+          depositInstructions = formatDepositSnippet('general', depInfo, {
+            guestName: booking.guestName,
+            dates: `${booking.checkIn} to ${booking.checkOut}`,
+            totalAmount: typeof booking.total === 'number' ? booking.total : undefined,
+            currency: booking.currency || 'MWK',
+            reference: booking.reference || body.reference,
+          });
+        }
+      }
+
+      // Contact details and dates come from the stored booking, supplemented by hotel metadata
       const reminders = await generateAutoReminders({
         ...body,
         id: booking.id,
@@ -765,6 +782,15 @@ async function startServer() {
         guestWhatsapp: booking.guestWhatsapp || booking.guestPhone || '',
         checkIn: booking.checkIn,
         checkOut: booking.checkOut,
+        roomName: body.roomName || booking.roomName,
+        arrivalPin: booking.arrivalPin || body.arrivalPin,
+        totalPrice: booking.total ? `${booking.currency || 'MWK'} ${Number(booking.total).toLocaleString()}` : body.totalPrice,
+        depositInstructions: depositInstructions || body.depositInstructions,
+        wifiName: hotel?.infrastructure?.wifiSSID || body.wifiName,
+        wifiPassword: hotel?.infrastructure?.wifiPassword || body.wifiPassword,
+        managerPhone: hotel?.contactPhone || hotel?.contactWhatsapp || hotel?.managerPhone || body.managerPhone,
+        managerEmail: hotel?.contactEmail || hotel?.managerEmail || body.managerEmail,
+        automationSettings: hotel?.emailAutomationSettings || body.automationSettings,
       });
       res.json({ success: true, reminders });
     } catch (err) {
@@ -929,7 +955,7 @@ async function startServer() {
       });
       if (!result.success) {
         console.error('[API] Reminder email failed:', result.error);
-        return res.status(400).json({ error: 'The email could not be sent. Check the SMTP settings.' });
+        return res.status(400).json({ error: result.error || 'The email could not be sent. Check the SMTP settings.' });
       }
       res.json({ success: true, reminder: result.reminder });
     } catch (err) {
@@ -958,7 +984,7 @@ async function startServer() {
       });
       if (!result.success) {
         console.error('[API] Test template email failed:', result.error);
-        return res.status(400).json({ error: 'The test email could not be sent. Check the SMTP settings.' });
+        return res.status(400).json({ error: result.error || 'The test email could not be sent. Check the SMTP settings.' });
       }
       res.json({ success: true });
     } catch (err) {
@@ -994,8 +1020,9 @@ async function startServer() {
   // Test SMTP connection and optional test email
   app.post('/api/admin/email-test', adminOnly, async (req, res) => {
     try {
-      const { testEmail, config } = req.body || {};
-      const result = await testSMTPConnection(testEmail, config);
+      const { testEmail, recipient, config } = req.body || {};
+      const targetEmail = (testEmail || recipient || '').trim();
+      const result = await testSMTPConnection(targetEmail || undefined, config);
       res.json(result);
     } catch (err: any) {
       // Admin-only diagnostic: the SMTP server's reply helps fix the settings.

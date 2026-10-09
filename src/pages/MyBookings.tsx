@@ -199,13 +199,60 @@ export default function MyBookings() {
   const handleConfirmHostBooking = async (booking: EnrichedBooking) => {
     if (!booking.id) return;
     const { hotel, room, ...plain } = booking;
+    const newPin = booking.arrivalPin || Math.floor(1000 + Math.random() * 9000).toString();
     await confirmFlow.confirm(plain as Booking, {
       room: room ?? null,
       hotel: hotel ?? null,
-      extraPatch: { updatedAt: Date.now() },
-      onConfirmed: async () => {
-        setHostBookings(prev => prev.map(b => (b.id === booking.id ? { ...b, status: 'confirmed' } : b)));
-        toast.success(`Booking ${booking.reference || ''} confirmed.`);
+      extraPatch: { updatedAt: Date.now(), voucherIssued: true, arrivalPin: newPin },
+      onConfirmed: async (written) => {
+        setHostBookings(prev => prev.map(b => (b.id === booking.id ? { ...b, ...written, status: 'confirmed', voucherIssued: true, arrivalPin: newPin } : b)));
+        toast.success(`Booking ${booking.reference || ''} confirmed! Digital voucher issued.`);
+        
+        // Trigger automated reminder sequences
+        try {
+          await fetch('/api/reminders/auto-generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id: booking.id,
+              bookingId: booking.id,
+              reference: booking.reference,
+              hotelId: booking.hotelId,
+              hotelName: hotel?.name,
+              guestName: booking.guestName,
+              guestEmail: booking.guestEmail,
+              guestPhone: booking.guestPhone,
+              guestWhatsapp: booking.guestWhatsapp,
+              checkIn: booking.checkIn,
+              checkOut: booking.checkOut,
+              roomName: room?.name,
+              arrivalPin: newPin,
+              totalPrice: booking.total ? `${booking.currency || 'MWK'} ${Number(booking.total).toLocaleString()}` : undefined,
+              automationSettings: hotel?.emailAutomationSettings,
+              wifiName: hotel?.infrastructure?.wifiSSID,
+              wifiPassword: hotel?.infrastructure?.wifiPassword,
+              managerPhone: hotel?.contactPhone || hotel?.contactWhatsapp || hotel?.managerPhone,
+              managerEmail: hotel?.contactEmail || hotel?.managerEmail,
+            }),
+          });
+        } catch { /* non-blocking */ }
+
+        // Send confirmation email notice to guest
+        if (booking.guestEmail) {
+          const hotelName = hotel?.name || 'the property';
+          fetch('/api/notify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: booking.guestEmail,
+              bookingId: booking.id,
+              hotelId: booking.hotelId,
+              subject: `Booking Confirmed: ${hotelName} (Ref: #${booking.reference})`,
+              message: `Dear ${booking.guestName},\n\nGreat news! Your booking at ${hotelName} has been confirmed and your digital voucher is now available.\n\nDates: ${booking.checkIn} to ${booking.checkOut}\nRoom: ${room?.name || 'Reserved Room'}\nBooking Reference: #${booking.reference}\nArrival / Security Gate PIN: ${newPin}\n\nYou can access your digital voucher and arrival pass anytime from your Travel Malawi account: /my-bookings.\n\nWe look forward to hosting you!`,
+            }),
+          }).catch(console.error);
+        }
+
         await logSystemEvent('action', `Manager confirmed booking ${booking.reference}`, {
           bookingId: booking.id,
           reference: booking.reference,

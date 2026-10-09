@@ -164,7 +164,10 @@ export async function confirmBooking(booking: Booking, options: ConfirmOptions =
     if (!check.ok) throw new PriceMismatchError(check);
   }
 
+  const newPin = (options.extraPatch?.arrivalPin as string) || booking.arrivalPin || Math.floor(1000 + Math.random() * 9000).toString();
   const patch: Record<string, unknown> = {
+    voucherIssued: true,
+    arrivalPin: newPin,
     ...(options.extraPatch ?? {}),
     status: 'confirmed',
     confirmedAt: Date.now(),

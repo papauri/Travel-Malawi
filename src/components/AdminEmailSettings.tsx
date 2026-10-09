@@ -105,6 +105,7 @@ export default function AdminEmailSettings() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          testEmail: testRecipient.trim(),
           recipient: testRecipient.trim(),
           config: form,
         }),

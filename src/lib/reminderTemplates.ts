@@ -213,6 +213,7 @@ export function fillTemplate(
   templateText: string,
   vars: ReminderVariables
 ): string {
+  const stayDates = vars.checkIn && vars.checkOut ? `${vars.checkIn} to ${vars.checkOut}` : 'your stay';
   return templateText
     .replace(/{guestName}/g, vars.guestName || 'Guest')
     .replace(/{hotelName}/g, vars.hotelName || 'our property')
@@ -220,9 +221,12 @@ export function fillTemplate(
     .replace(/{roomName}/g, vars.roomName || 'Reserved Room')
     .replace(/{checkIn}/g, vars.checkIn || 'your check-in date')
     .replace(/{checkOut}/g, vars.checkOut || 'your check-out date')
+    .replace(/{dates}/g, stayDates)
     .replace(/{bookingRef}/g, vars.bookingRef || 'N/A')
+    .replace(/{reference}/g, vars.bookingRef || 'N/A')
     .replace(/{arrivalPin}/g, vars.arrivalPin || 'Available at desk')
     .replace(/{totalPrice}/g, vars.totalPrice || 'Contact property')
+    .replace(/{total}/g, vars.totalPrice || 'Contact property')
     .replace(/{depositAmount}/g, vars.depositAmount || '50% deposit')
     .replace(/{depositInstructions}/g, vars.depositInstructions || 'Bank transfer (Standard Bank / National Bank of Malawi) or Mobile Money (Airtel Money / Mpamba). Please contact reception for account details.')
     .replace(/{wifiName}/g, vars.wifiName || `${vars.hotelName} Guest WiFi`)
@@ -274,6 +278,19 @@ export function formatReminderEmailHtml(
         <!-- Body content -->
         <div style="padding: 28px; font-size: 14px; color: #292524;">
           ${paragraphs}
+
+          <!-- Digital Voucher Access Card -->
+          <div style="margin-top: 24px; padding: 18px 20px; background: #fdfbf7; border: 1px solid #fed7aa; border-radius: 12px; text-align: center;">
+            <p style="margin: 0 0 6px; font-size: 13px; font-weight: 700; color: #9a3412;">
+              🎟️ Digital Stay Voucher &amp; Arrival Pass
+            </p>
+            <p style="margin: 0 0 14px; font-size: 12px; color: #78716c; line-height: 1.4;">
+              Access your verified booking voucher, gate directions, Wi-Fi details, and express check-in QR code.
+            </p>
+            <a href="/my-bookings" style="display: inline-block; padding: 10px 20px; background: #1c1917; color: #ffffff; text-decoration: none; font-size: 12px; font-weight: 700; border-radius: 9999px; letter-spacing: 0.02em;">
+              Open Digital Voucher →
+            </a>
+          </div>
         </div>
 
         <!-- Footer -->
