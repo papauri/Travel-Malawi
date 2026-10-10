@@ -3162,7 +3162,6 @@ export default function ManageHotel() {
                           type="button"
                           onClick={() => {
                             setEditHotelData(prev => ({ ...prev, heroLayout: 'duo-3' }));
-                            setHotelDirty(true);
                             toast.success("Switched to 3-Photo Bento (1 large cover + 2 stacked)");
                           }}
                           className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer ${
@@ -3179,7 +3178,6 @@ export default function ManageHotel() {
                           type="button"
                           onClick={() => {
                             setEditHotelData(prev => ({ ...prev, heroLayout: 'bento-4' }));
-                            setHotelDirty(true);
                             toast.success("Switched to 4-Photo Bento (1 large cover + 3 bento tiles)");
                           }}
                           className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer ${
@@ -3196,7 +3194,6 @@ export default function ManageHotel() {
                           type="button"
                           onClick={() => {
                             setEditHotelData(prev => ({ ...prev, heroLayout: 'bento-5' }));
-                            setHotelDirty(true);
                             toast.success("Switched to 5-Photo Bento (1 large cover + 4 right 2x2 grid)");
                           }}
                           className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer ${
@@ -3561,7 +3558,6 @@ export default function ManageHotel() {
                           type="button"
                           onClick={() => {
                             setEditHotelData(prev => ({ ...prev, heroLayout: 'duo-3' }));
-                            setHotelDirty(true);
                             toast.success("Switched to 3-Photo Bento (Duo)");
                           }}
                           className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition cursor-pointer ${
@@ -3576,7 +3572,6 @@ export default function ManageHotel() {
                           type="button"
                           onClick={() => {
                             setEditHotelData(prev => ({ ...prev, heroLayout: 'bento-4' }));
-                            setHotelDirty(true);
                             toast.success("Switched to 4-Photo Bento");
                           }}
                           className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition cursor-pointer ${
@@ -3591,7 +3586,6 @@ export default function ManageHotel() {
                           type="button"
                           onClick={() => {
                             setEditHotelData(prev => ({ ...prev, heroLayout: 'bento-5' }));
-                            setHotelDirty(true);
                             toast.success("Switched to 5-Photo Bento (2x2 Grid)");
                           }}
                           className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition cursor-pointer ${
@@ -3906,7 +3900,6 @@ export default function ManageHotel() {
                             }
                           }}
                           folder={`hotels/${id}/rooms`}
-                          aspectRatio="16:9"
                         />
                       </div>
 

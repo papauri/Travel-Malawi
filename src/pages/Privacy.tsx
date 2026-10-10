@@ -41,7 +41,10 @@ export default function Privacy() {
               <h2 className="text-xl font-bold text-stone-900 mt-8 mb-4">4. Payment Information</h2>
               <p>Because we do not process payments online, we never ask for, collect, or store your credit card details or banking information.</p>
               
-              <p className="pt-8 text-sm text-stone-400">Last updated: August 2026</p>
+              <h2 className="text-xl font-bold text-stone-900 mt-8 mb-4">5. Contact &amp; Data Inquiries</h2>
+              <p>For any questions regarding our privacy practices, data protection, or account deletion requests, please contact our support desk directly at <a href="mailto:info@ulendomalawi.com" className="text-stone-900 font-semibold underline">info@ulendomalawi.com</a>.</p>
+              
+              <p className="pt-8 text-sm text-stone-400">Last updated: October 2026 &middot; Ulendo Travel Malawi (ulendomalawi.com)</p>
             </>
           )}
         </div>

@@ -82,7 +82,7 @@ export default function ReminderTemplatesModal({
     const wifiName = hotel.infrastructure?.wifiSSID || `${hotel.name} Guest WiFi`;
     const wifiPassword = hotel.infrastructure?.wifiPassword || 'Available at reception desk';
     const managerPhone = hotel.contactPhone || hotel.contactWhatsapp || hotel.managerPhone || '+265 999 000 000';
-    const managerEmail = hotel.contactEmail || hotel.managerEmail || 'reservations@travelmalawi.com';
+    const managerEmail = hotel.contactEmail || hotel.managerEmail || 'info@ulendomalawi.com';
 
     return {
       guestName: booking.guestName,

@@ -28,17 +28,34 @@ export interface SMTPEmailConfig {
 const DATA_DIR = path.join(process.cwd(), 'data');
 const EMAIL_CONFIG_FILE = path.join(DATA_DIR, 'email_config.json');
 
-// By default, leave configs blank as requested by the user
-export const DEFAULT_EMAIL_CONFIG: SMTPEmailConfig = {
-  smtpHost: '',
-  smtpPort: '',
-  smtpSecure: false,
-  smtpUser: '',
-  smtpPass: '',
-  fromName: '',
-  fromEmail: '',
-  replyTo: '',
-};
+// Standard platform defaults aligned with the ulendomalawi.com domain
+export const DEFAULT_PLATFORM_EMAIL = 'info@ulendomalawi.com';
+export const DEFAULT_PLATFORM_SENDER_NAME = 'Ulendo Malawi';
+export const DEFAULT_PLATFORM_DOMAIN = 'ulendomalawi.com';
+
+export function getEnvEmailDefaults(): SMTPEmailConfig {
+  const envHost = process.env.SMTP_HOST || "";
+  const envPort = process.env.SMTP_PORT || "";
+  const envSecure = process.env.SMTP_SECURE === "true" || (parseInt(envPort, 10) === 465);
+  const envUser = process.env.SMTP_USER || DEFAULT_PLATFORM_EMAIL;
+  const envPass = process.env.SMTP_PASS || "";
+  const envFromName = process.env.SMTP_FROM_NAME || DEFAULT_PLATFORM_SENDER_NAME;
+  const envFromEmail = process.env.SMTP_FROM_EMAIL || DEFAULT_PLATFORM_EMAIL;
+  const envReplyTo = process.env.SMTP_REPLY_TO || DEFAULT_PLATFORM_EMAIL;
+
+  return {
+    smtpHost: envHost,
+    smtpPort: envPort,
+    smtpSecure: envSecure,
+    smtpUser: envUser,
+    smtpPass: envPass,
+    fromName: envFromName,
+    fromEmail: envFromEmail,
+    replyTo: envReplyTo,
+  };
+}
+
+export const DEFAULT_EMAIL_CONFIG: SMTPEmailConfig = getEnvEmailDefaults();
 
 export function loadEmailConfig(): SMTPEmailConfig {
   try {
@@ -56,7 +73,7 @@ export function loadEmailConfig(): SMTPEmailConfig {
   } catch (err) {
     console.error('[EmailConfig] Failed to read email_config.json:', err);
   }
-  return { ...DEFAULT_EMAIL_CONFIG };
+  return getEnvEmailDefaults();
 }
 
 export function saveEmailConfig(config: Partial<SMTPEmailConfig>): SMTPEmailConfig {
@@ -173,34 +190,34 @@ export async function testSMTPConnection(
 
     // 2. If a test recipient email was provided, send a formatted test email
     if (testEmail && testEmail.trim()) {
-      const fromDisplay = activeConfig.fromName 
-        ? `"${activeConfig.fromName}" <${activeConfig.fromEmail || activeConfig.smtpUser}>`
-        : activeConfig.fromEmail || activeConfig.smtpUser;
+      const resolvedSenderName = activeConfig.fromName?.trim() || DEFAULT_PLATFORM_SENDER_NAME;
+      const resolvedSenderEmail = activeConfig.fromEmail?.trim() || activeConfig.smtpUser?.trim() || DEFAULT_PLATFORM_EMAIL;
+      const fromDisplay = `"${resolvedSenderName}" <${resolvedSenderEmail}>`;
 
       await transporter.sendMail({
         from: fromDisplay,
         to: testEmail.trim(),
-        replyTo: activeConfig.replyTo || activeConfig.fromEmail || activeConfig.smtpUser,
-        subject: 'Travel Malawi — SMTP Configuration Verified Successfully',
-        text: `Hello!\n\nThis is a test email from your Travel Malawi Admin Portal.\n\nYour SMTP settings (${activeConfig.smtpHost}:${activeConfig.smtpPort}) are working properly.\nManager reminder templates and guest emails are now ready to send.\n\nSent at: ${new Date().toLocaleString()}`,
+        replyTo: activeConfig.replyTo?.trim() || resolvedSenderEmail || DEFAULT_PLATFORM_EMAIL,
+        subject: 'Ulendo Malawi — SMTP Configuration Verified Successfully',
+        text: `Hello!\n\nThis is a test email from your Ulendo Travel Malawi Admin Portal.\n\nYour SMTP settings (${activeConfig.smtpHost}:${activeConfig.smtpPort}) are working properly for domain ${DEFAULT_PLATFORM_DOMAIN}.\nManager reminder templates and guest emails are now ready to send via ${resolvedSenderEmail}.\n\nSent at: ${new Date().toLocaleString()}`,
         html: `
           <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 580px; margin: 0 auto; padding: 28px 24px; border: 1px solid #e7e5e4; border-radius: 16px; background: #ffffff; color: #1c1917;">
             <div style="text-align: center; margin-bottom: 24px;">
               <span style="display: inline-block; padding: 6px 14px; background: #ecfdf5; color: #047857; font-size: 12px; font-weight: 700; border-radius: 9999px; text-transform: uppercase; letter-spacing: 0.05em;">
                 SMTP Operational
               </span>
-              <h2 style="margin: 14px 0 6px; font-size: 22px; font-weight: 800; color: #1c1917;">Travel Malawi Email Engine</h2>
-              <p style="margin: 0; font-size: 14px; color: #78716c;">Connection & Authentication Test</p>
+              <h2 style="margin: 14px 0 6px; font-size: 22px; font-weight: 800; color: #1c1917;">Ulendo Travel Malawi Email Engine</h2>
+              <p style="margin: 0; font-size: 14px; color: #78716c;">Domain: ${escapeHtml(DEFAULT_PLATFORM_DOMAIN)} · Connection &amp; Authentication Test</p>
             </div>
             
             <div style="background: #fafaf9; border-radius: 12px; padding: 18px 20px; margin-bottom: 20px; border: 1px solid #f5f5f4;">
               <p style="margin: 0 0 10px; font-size: 14px; line-height: 1.5; color: #44403c;">
-                <strong>Congratulations!</strong> Your outgoing SMTP server has been verified and authenticated successfully.
+                <strong>Congratulations!</strong> Your outgoing SMTP server has been verified and authenticated successfully for <strong>${escapeHtml(DEFAULT_PLATFORM_DOMAIN)}</strong>.
               </p>
               <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #57534e; line-height: 1.6;">
                 <li><strong>SMTP Host:</strong> ${escapeHtml(activeConfig.smtpHost)}</li>
                 <li><strong>Port / Security:</strong> ${escapeHtml(activeConfig.smtpPort)} (${activeConfig.smtpSecure || activeConfig.smtpPort === 465 ? 'SSL/TLS' : 'STARTTLS'})</li>
-                <li><strong>Sender:</strong> ${escapeHtml(activeConfig.fromName || 'Travel Malawi')} &lt;${escapeHtml(activeConfig.fromEmail || activeConfig.smtpUser)}&gt;</li>
+                <li><strong>Sender:</strong> ${escapeHtml(resolvedSenderName)} &lt;${escapeHtml(resolvedSenderEmail)}&gt;</li>
                 <li><strong>Recipient Test:</strong> ${escapeHtml(testEmail.trim())}</li>
               </ul>
             </div>
@@ -210,7 +227,7 @@ export async function testSMTPConnection(
             </p>
 
             <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #f5f5f4; text-align: center; font-size: 11px; color: #a8a29e;">
-              Travel Malawi · Super Admin Settings · Automated Verification Notice
+              Ulendo Travel Malawi · <a href="https://${DEFAULT_PLATFORM_DOMAIN}" style="color: #78716c; text-decoration: none;">${DEFAULT_PLATFORM_DOMAIN}</a> · <a href="mailto:${DEFAULT_PLATFORM_EMAIL}" style="color: #78716c; text-decoration: none;">${DEFAULT_PLATFORM_EMAIL}</a>
             </div>
           </div>
         `,
@@ -264,14 +281,14 @@ export async function sendSystemEmail(options: {
 
   try {
     const transporter = createTransporter(config);
-    const fromDisplay = config.fromName 
-      ? `"${config.fromName}" <${config.fromEmail || config.smtpUser}>`
-      : config.fromEmail || config.smtpUser;
+    const resolvedSenderName = config.fromName?.trim() || DEFAULT_PLATFORM_SENDER_NAME;
+    const resolvedSenderEmail = config.fromEmail?.trim() || config.smtpUser?.trim() || DEFAULT_PLATFORM_EMAIL;
+    const fromDisplay = `"${resolvedSenderName}" <${resolvedSenderEmail}>`;
 
     const info = await transporter.sendMail({
       from: fromDisplay,
       to: options.to,
-      replyTo: options.replyTo || config.replyTo || config.fromEmail || config.smtpUser,
+      replyTo: options.replyTo || config.replyTo?.trim() || resolvedSenderEmail || DEFAULT_PLATFORM_EMAIL,
       subject: options.subject,
       text: options.text || options.html.replace(/<[^>]*>?/gm, ''),
       html: options.html,

@@ -2157,7 +2157,7 @@ export default function AdminDashboard() {
                       type="url"
                       value={contentSettings.platformDomain || ''}
                       onChange={e => setContentSettings({...contentSettings, platformDomain: e.target.value})}
-                      placeholder="https://travel-malawi-10840607522.us-west1.run.app"
+                      placeholder="https://ulendomalawi.com"
                       className="w-full bg-stone-50 border border-stone-200 px-4 py-3 rounded-xl focus:outline-none focus:border-stone-900"
                     />
                     <p className="text-xs text-stone-400 mt-1">This domain updates dynamically across all system documents, emails, and scripts.</p>
@@ -2174,10 +2174,10 @@ export default function AdminDashboard() {
                       type="email"
                       value={contentSettings.contactEmail || ''}
                       onChange={e => setContentSettings({...contentSettings, contactEmail: e.target.value})}
-                      placeholder="bookings@travelmalawi.com"
+                      placeholder="info@ulendomalawi.com"
                       className="w-full bg-stone-50 border border-stone-200 px-4 py-3 rounded-xl focus:outline-none focus:border-stone-900"
                     />
-                    <p className="text-xs text-stone-400 mt-1">Leave blank to hide from footer.</p>
+                    <p className="text-xs text-stone-400 mt-1">Leave blank to use platform default (info@ulendomalawi.com).</p>
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Contact Phone</label>
@@ -2324,7 +2324,8 @@ export default function AdminDashboard() {
               </button>
             </div>
 
-            {settingsSubTab === 'whatsapp' ? <AdminWhatsAppSettings /> : <AdminEmailSettings />}
+            {settingsSubTab === 'whatsapp' && <AdminWhatsAppSettings />}
+            {settingsSubTab === 'email' && <AdminEmailSettings />}
           </div>
         )}
 

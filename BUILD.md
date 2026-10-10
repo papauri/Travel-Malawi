@@ -26,8 +26,8 @@ cp .env.example .env
 
 | Variable | Where it is used | Required |
 | --- | --- | --- |
-| `VITE_CLOUDINARY_CLOUD_NAME` | Browser image uploads | Yes |
-| `VITE_CLOUDINARY_UPLOAD_PRESET` | Browser image uploads | Yes |
+| `VITE_CLOUDINARY_CLOUD_NAME` | Browser image uploads (optional; defaults to built-in server storage) | No |
+| `VITE_CLOUDINARY_UPLOAD_PRESET` | Browser image uploads (optional; defaults to built-in server storage) | No |
 | `GEMINI_API_KEY` | Server, Ulendo concierge (primary) | Recommended |
 | `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `DEEPSEEK_API_KEY`, `MISTRAL_API_KEY`, `GROQ_API_KEY` | Server, fallback AI providers | Optional |
 | `GOOGLE_APPLICATION_CREDENTIALS` | Path to a Firebase service-account JSON for admin scripts | Only for `scripts/` |

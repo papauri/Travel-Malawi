@@ -1041,18 +1041,24 @@ async function startServer() {
 
       const result = await sendSystemEmail({
         to: cleanEmail,
-        subject: 'Security Alert: Password Reset Requested — Travel Malawi',
-        text: `Hello,\n\nA password reset request was initiated for your Travel Malawi account (${cleanEmail}).\n\nIf you requested this change, please check your inbox (including Spam/Junk folder) for the reset verification link.\n\nIf you did not make this request, your account remains secure and no action is required.`,
+        subject: 'Security Alert: Password Reset Requested — Ulendo Malawi',
+        text: `Hello,\n\nA password reset request was initiated for your Ulendo Travel Malawi account (${cleanEmail}).\n\nIf you requested this change, please check your inbox for the reset verification link.\n\nIf you did not make this request or have questions, contact us at info@ulendomalawi.com.`,
         html: `
-          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 560px; margin: 0 auto; padding: 28px 24px; border: 1px solid #e7e5e4; background: #ffffff; color: #1c1917;">
-            <h2 style="margin: 0 0 6px; font-size: 20px; font-weight: 600; color: #1c1917;">Password reset requested</h2>
-            <p style="margin: 0 0 16px; font-size: 13px; color: #78716c;">Travel Malawi account security</p>
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 560px; margin: 0 auto; padding: 28px 24px; border: 1px solid #e7e5e4; border-radius: 12px; background: #ffffff; color: #1c1917;">
+            <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #78716c; margin-bottom: 6px;">
+              Ulendo Travel Malawi
+            </div>
+            <h2 style="margin: 0 0 6px; font-size: 20px; font-weight: 700; color: #1c1917;">Password reset requested</h2>
+            <p style="margin: 0 0 16px; font-size: 13px; color: #78716c;">Account Security · ulendomalawi.com</p>
             <p style="margin: 0 0 10px; font-size: 14px; line-height: 1.5; color: #44403c;">
               A password reset request was initiated for <strong>${escapeHtml(cleanEmail)}</strong>.
             </p>
             <p style="margin: 0; font-size: 13px; color: #57534e; line-height: 1.6;">
-              Check your inbox for the reset link. If you did not request this, you can ignore this message.
+              Check your inbox for the reset link. If you did not request this, you can safely ignore this message.
             </p>
+            <div style="margin-top: 24px; padding-top: 14px; border-top: 1px solid #f5f5f4; font-size: 11px; color: #a8a29e; text-align: center;">
+              Ulendo Travel Malawi · <a href="https://ulendomalawi.com" style="color: #78716c; text-decoration: none;">ulendomalawi.com</a> · <a href="mailto:info@ulendomalawi.com" style="color: #78716c; text-decoration: none;">info@ulendomalawi.com</a>
+            </div>
           </div>
         `,
       });
@@ -1076,20 +1082,26 @@ async function startServer() {
       const result = await sendSystemEmail({
         to,
         subject: isRevoked
-          ? 'Account Access Suspended — Travel Malawi'
-          : 'Account Access Restored — Travel Malawi',
+          ? 'Account Access Suspended — Ulendo Malawi'
+          : 'Account Access Restored — Ulendo Malawi',
         text: isRevoked
-          ? `Hello ${displayName},\n\nYour account access on Travel Malawi has been suspended by an administrator. Please reach out to support if you believe this was in error.`
-          : `Hello ${displayName},\n\nYour account access on Travel Malawi has been restored. You may now sign in again.`,
+          ? `Hello ${displayName},\n\nYour account access on Ulendo Travel Malawi has been suspended by an administrator. Please reach out to info@ulendomalawi.com if you believe this was in error.`
+          : `Hello ${displayName},\n\nYour account access on Ulendo Travel Malawi has been restored. You may now sign in again at https://ulendomalawi.com.`,
         html: `
-          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 560px; margin: 0 auto; padding: 28px 24px; border: 1px solid #e7e5e4; background: #ffffff; color: #1c1917;">
-            <h2 style="margin: 0 0 16px; font-size: 20px; font-weight: 600; color: #1c1917;">${isRevoked ? 'Account access suspended' : 'Account access restored'}</h2>
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 560px; margin: 0 auto; padding: 28px 24px; border: 1px solid #e7e5e4; border-radius: 12px; background: #ffffff; color: #1c1917;">
+            <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #78716c; margin-bottom: 6px;">
+              Ulendo Travel Malawi
+            </div>
+            <h2 style="margin: 0 0 16px; font-size: 20px; font-weight: 700; color: #1c1917;">${isRevoked ? 'Account access suspended' : 'Account access restored'}</h2>
             <p style="font-size: 14px; line-height: 1.6; color: #44403c;">
               Hello ${escapeHtml(displayName)},<br/><br/>
               ${isRevoked
-                ? 'Your account access to the Travel Malawi platform has been suspended by an administrator.'
-                : 'Your account access to the Travel Malawi platform has been restored.'}
+                ? 'Your account access to the Ulendo Travel Malawi platform has been suspended by an administrator. For assistance, contact support at <a href="mailto:info@ulendomalawi.com">info@ulendomalawi.com</a>.'
+                : 'Your account access to the Ulendo Travel Malawi platform has been restored. You may now sign in again at <a href="https://ulendomalawi.com">ulendomalawi.com</a>.'}
             </p>
+            <div style="margin-top: 24px; padding-top: 14px; border-top: 1px solid #f5f5f4; font-size: 11px; color: #a8a29e; text-align: center;">
+              Ulendo Travel Malawi · <a href="https://ulendomalawi.com" style="color: #78716c; text-decoration: none;">ulendomalawi.com</a> · <a href="mailto:info@ulendomalawi.com" style="color: #78716c; text-decoration: none;">info@ulendomalawi.com</a>
+            </div>
           </div>
         `
       });

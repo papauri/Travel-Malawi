@@ -444,7 +444,7 @@ export default function ConceptValidationSurvey() {
 
         {/* Footer */}
         <footer className="border-t border-stone-200 mt-12 pt-6 text-sm text-stone-500">
-          Travel Malawi &middot; Direct Booking &middot; Lilongwe &middot; Blantyre &middot; Mangochi &middot; partners@travelmalawi.mw
+          Ulendo Travel Malawi &middot; Direct Booking &middot; Lilongwe &middot; Blantyre &middot; Mangochi &middot; info@ulendomalawi.com
         </footer>
       </div>
     </div>

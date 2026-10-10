@@ -41,7 +41,10 @@ export default function Terms() {
               <h2 className="text-xl font-bold text-stone-900 mt-8 mb-4">4. Liability</h2>
               <p>We are not responsible for the accuracy of property listings, the quality of your stay, or any injuries, damages, or losses incurred during your trip. You agree to hold us harmless from any claims arising from your use of the properties listed here.</p>
               
-              <p className="pt-8 text-sm text-stone-400">Last updated: August 2026</p>
+              <h2 className="text-xl font-bold text-stone-900 mt-8 mb-4">5. Inquiries &amp; Customer Support</h2>
+              <p>For inquiries regarding platform terms, host agreements, or operational questions, contact us at <a href="mailto:info@ulendomalawi.com" className="text-stone-900 font-semibold underline">info@ulendomalawi.com</a>.</p>
+              
+              <p className="pt-8 text-sm text-stone-400">Last updated: October 2026 &middot; Ulendo Travel Malawi (ulendomalawi.com)</p>
             </>
           )}
         </div>

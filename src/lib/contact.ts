@@ -12,6 +12,10 @@
 import { normalisePhone } from './spam';
 
 // Deliberately permissive: the aim is to catch a typo, not to adjudicate the
+// Platform domain and email defaults
+export const DEFAULT_PLATFORM_EMAIL = 'info@ulendomalawi.com';
+export const DEFAULT_PLATFORM_DOMAIN = 'ulendomalawi.com';
+
 // RFC. Anything stricter starts rejecting real addresses.
 export const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i;
 

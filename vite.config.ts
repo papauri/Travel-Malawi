@@ -27,7 +27,7 @@ export default defineConfig(() => {
         },
         workbox: {
           navigateFallbackDenylist: [/^\/api/],
-          maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+          maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
           globIgnores: ['**/server.cjs', '**/server.cjs.map', '**/host_app_*.png'],
           globPatterns: ['**/*.{js,css,html,ico,svg,webmanifest}'],
           runtimeCaching: [

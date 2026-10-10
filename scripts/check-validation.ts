@@ -37,6 +37,7 @@ console.log('\n— Rooms —');
 const room = {
   name: 'Lake-facing chalet',
   description: 'Right on the sand.',
+  imageUrl: 'https://images.unsplash.com/chalet.jpg',
   currencies: ['USD' as const],
   prices: { USD: 120 },
   maxGuests: 4,

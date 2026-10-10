@@ -132,7 +132,7 @@ export default function AdminEmailSettings() {
     }
   };
 
-  const applyPreset = (preset: 'gmail' | 'sendgrid' | 'mailgun' | 'office365' | 'clear') => {
+  const applyPreset = (preset: 'namecheap' | 'gmail' | 'sendgrid' | 'mailgun' | 'office365' | 'clear') => {
     if (preset === 'clear') {
       setForm({
         smtpHost: '',
@@ -151,13 +151,27 @@ export default function AdminEmailSettings() {
       return;
     }
 
-    if (preset === 'gmail') {
+    if (preset === 'namecheap') {
+      setForm(prev => ({
+        ...prev,
+        smtpHost: 'mail.privateemail.com',
+        smtpPort: 465,
+        smtpSecure: true,
+        smtpUser: prev.smtpUser || 'info@ulendomalawi.com',
+        fromName: prev.fromName || 'Ulendo Malawi',
+        fromEmail: prev.fromEmail || 'info@ulendomalawi.com',
+        replyTo: prev.replyTo || 'info@ulendomalawi.com',
+      }));
+      toast.success('Applied Namecheap Private Email preset (mail.privateemail.com:465)');
+    } else if (preset === 'gmail') {
       setForm(prev => ({
         ...prev,
         smtpHost: 'smtp.gmail.com',
         smtpPort: 587,
         smtpSecure: false,
-        fromName: prev.fromName || 'Travel Malawi',
+        fromName: prev.fromName || 'Ulendo Malawi',
+        fromEmail: prev.fromEmail || 'info@ulendomalawi.com',
+        replyTo: prev.replyTo || 'info@ulendomalawi.com',
       }));
       toast.success('Applied Gmail / Google Workspace preset');
     } else if (preset === 'sendgrid') {
@@ -167,7 +181,9 @@ export default function AdminEmailSettings() {
         smtpPort: 587,
         smtpSecure: false,
         smtpUser: prev.smtpUser || 'apikey',
-        fromName: prev.fromName || 'Travel Malawi',
+        fromName: prev.fromName || 'Ulendo Malawi',
+        fromEmail: prev.fromEmail || 'info@ulendomalawi.com',
+        replyTo: prev.replyTo || 'info@ulendomalawi.com',
       }));
       toast.success('Applied SendGrid preset');
     } else if (preset === 'mailgun') {
@@ -176,7 +192,9 @@ export default function AdminEmailSettings() {
         smtpHost: 'smtp.mailgun.org',
         smtpPort: 587,
         smtpSecure: false,
-        fromName: prev.fromName || 'Travel Malawi',
+        fromName: prev.fromName || 'Ulendo Malawi',
+        fromEmail: prev.fromEmail || 'info@ulendomalawi.com',
+        replyTo: prev.replyTo || 'info@ulendomalawi.com',
       }));
       toast.success('Applied Mailgun preset');
     } else if (preset === 'office365') {
@@ -185,7 +203,9 @@ export default function AdminEmailSettings() {
         smtpHost: 'smtp.office365.com',
         smtpPort: 587,
         smtpSecure: false,
-        fromName: prev.fromName || 'Travel Malawi',
+        fromName: prev.fromName || 'Ulendo Malawi',
+        fromEmail: prev.fromEmail || 'info@ulendomalawi.com',
+        replyTo: prev.replyTo || 'info@ulendomalawi.com',
       }));
       toast.success('Applied Microsoft 365 preset');
     }
@@ -273,10 +293,18 @@ export default function AdminEmailSettings() {
               <span className="text-xs text-stone-400 font-medium mr-1">Presets:</span>
               <button
                 type="button"
+                onClick={() => applyPreset('namecheap')}
+                className="px-2.5 py-1 text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-lg transition"
+                title="Namecheap Private Email for info@ulendomalawi.com (mail.privateemail.com:465)"
+              >
+                Namecheap (@ulendomalawi.com)
+              </button>
+              <button
+                type="button"
                 onClick={() => applyPreset('gmail')}
                 className="px-2.5 py-1 text-xs font-medium bg-stone-50 hover:bg-stone-100 text-stone-700 border border-stone-200 rounded-lg transition"
               >
-                Gmail
+                Gmail / Workspace
               </button>
               <button
                 type="button"
@@ -360,7 +388,7 @@ export default function AdminEmailSettings() {
                   type="text"
                   value={form.smtpUser}
                   onChange={e => setForm({ ...form, smtpUser: e.target.value })}
-                  placeholder="e.g. info@travelmalawi.com"
+                  placeholder="e.g. info@ulendomalawi.com"
                   className="w-full bg-stone-50 border border-stone-200 px-3 py-2 rounded-lg text-xs font-mono focus:bg-white focus:border-stone-900 outline-none transition"
                 />
               </div>
@@ -381,7 +409,7 @@ export default function AdminEmailSettings() {
                     type={showPassword ? 'text' : 'password'}
                     value={form.smtpPass}
                     onChange={e => setForm({ ...form, smtpPass: e.target.value })}
-                    placeholder={form.hasPassword ? '•••••••• (leave blank to keep current)' : 'Enter password or app key'}
+                    placeholder={form.hasPassword ? '•••••••• (leave blank to keep current)' : 'Enter password or mailbox key'}
                     className="w-full bg-stone-50 border border-stone-200 px-3 pr-9 py-2 rounded-lg text-xs font-mono focus:bg-white focus:border-stone-900 outline-none transition"
                   />
                   <button
@@ -410,7 +438,7 @@ export default function AdminEmailSettings() {
                     type="text"
                     value={form.fromName}
                     onChange={e => setForm({ ...form, fromName: e.target.value })}
-                    placeholder="e.g. Travel Malawi"
+                    placeholder="e.g. Ulendo Malawi"
                     className="w-full bg-stone-50 border border-stone-200 px-3 py-2 rounded-lg text-xs focus:bg-white focus:border-stone-900 outline-none transition"
                   />
                 </div>
@@ -423,7 +451,7 @@ export default function AdminEmailSettings() {
                     type="email"
                     value={form.fromEmail}
                     onChange={e => setForm({ ...form, fromEmail: e.target.value })}
-                    placeholder="e.g. reservations@travelmalawi.com"
+                    placeholder="e.g. info@ulendomalawi.com"
                     className="w-full bg-stone-50 border border-stone-200 px-3 py-2 rounded-lg text-xs focus:bg-white focus:border-stone-900 outline-none transition"
                   />
                 </div>
@@ -436,7 +464,7 @@ export default function AdminEmailSettings() {
                     type="email"
                     value={form.replyTo || ''}
                     onChange={e => setForm({ ...form, replyTo: e.target.value })}
-                    placeholder="e.g. concierge@travelmalawi.com"
+                    placeholder="e.g. info@ulendomalawi.com"
                     className="w-full bg-stone-50 border border-stone-200 px-3 py-2 rounded-lg text-xs focus:bg-white focus:border-stone-900 outline-none transition"
                   />
                 </div>

@@ -276,7 +276,7 @@ export async function testWhatsAppConnection(
           type: 'text',
           text: {
             preview_url: false,
-            body: `*Travel Malawi* 🇲🇼\nWhatsApp Cloud API connection test successful!\nTimestamp: ${new Date().toLocaleTimeString()} UTC.`,
+            body: `*Ulendo Travel Malawi* 🇲🇼\nWhatsApp Cloud API connection test successful!\nDomain: ulendomalawi.com · Email: info@ulendomalawi.com\nTimestamp: ${new Date().toLocaleTimeString()} UTC.`,
           },
         }),
       });

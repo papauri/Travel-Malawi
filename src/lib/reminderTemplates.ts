@@ -232,7 +232,7 @@ export function fillTemplate(
     .replace(/{wifiName}/g, vars.wifiName || `${vars.hotelName} Guest WiFi`)
     .replace(/{wifiPassword}/g, vars.wifiPassword || 'Provided at check-in')
     .replace(/{managerPhone}/g, vars.managerPhone || '+265 999 000 000')
-    .replace(/{managerEmail}/g, vars.managerEmail || 'reservations@travelmalawi.com');
+    .replace(/{managerEmail}/g, vars.managerEmail || 'info@ulendomalawi.com');
 }
 
 export function formatReminderEmailHtml(
@@ -267,7 +267,7 @@ export function formatReminderEmailHtml(
         <!-- Header banner -->
         <div style="background: #1c1917; padding: 24px 28px; color: #ffffff;">
           <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #a8a29e; margin-bottom: 4px;">
-            Travel Malawi · Guest Reservation
+            Ulendo Travel Malawi · Guest Reservation
           </div>
           <h1 style="margin: 0; font-size: 20px; font-weight: 800; color: #ffffff;">${hotelName}</h1>
           <div style="margin-top: 6px; font-size: 12px; color: #d6d3d1;">
@@ -287,7 +287,7 @@ export function formatReminderEmailHtml(
             <p style="margin: 0 0 14px; font-size: 12px; color: #78716c; line-height: 1.4;">
               Access your verified booking voucher, gate directions, Wi-Fi details, and express check-in QR code.
             </p>
-            <a href="/my-bookings" style="display: inline-block; padding: 10px 20px; background: #1c1917; color: #ffffff; text-decoration: none; font-size: 12px; font-weight: 700; border-radius: 9999px; letter-spacing: 0.02em;">
+            <a href="https://ulendomalawi.com/my-bookings" style="display: inline-block; padding: 10px 20px; background: #1c1917; color: #ffffff; text-decoration: none; font-size: 12px; font-weight: 700; border-radius: 9999px; letter-spacing: 0.02em;">
               Open Digital Voucher →
             </a>
           </div>
@@ -295,9 +295,12 @@ export function formatReminderEmailHtml(
 
         <!-- Footer -->
         <div style="background: #f5f5f4; padding: 20px 28px; border-top: 1px solid #e7e5e4; text-align: center; font-size: 12px; color: #78716c;">
-          <p style="margin: 0 0 6px; font-weight: 600; color: #44403c;">${hotelName} · Powered by Travel Malawi</p>
-          <p style="margin: 0; font-size: 11px; color: #a8a29e;">
+          <p style="margin: 0 0 6px; font-weight: 600; color: #44403c;">${hotelName} · Powered by Ulendo Travel Malawi</p>
+          <p style="margin: 0 0 6px; font-size: 11px; color: #a8a29e;">
             This email was sent directly by property management regarding your confirmed booking.
+          </p>
+          <p style="margin: 0; font-size: 11px; color: #78716c;">
+            Support: <a href="mailto:info@ulendomalawi.com" style="color: #78716c; text-decoration: underline;">info@ulendomalawi.com</a> · <a href="https://ulendomalawi.com" style="color: #78716c; text-decoration: underline;">ulendomalawi.com</a>
           </p>
         </div>
 

@@ -75,12 +75,16 @@ export default function Footer() {
         <div>
           <h4 className="text-white font-serif font-semibold text-sm sm:text-base mb-2.5 sm:mb-4">Contact</h4>
           <ul className="space-y-2 sm:space-y-3 text-xs sm:text-sm">
-            {settings.contactEmail && (
-              <li className="flex items-center gap-2.5">
-                <Mail className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-stone-500 shrink-0" />
-                <span className="truncate">{settings.contactEmail}</span>
-              </li>
-            )}
+            <li className="flex items-center gap-2.5">
+              <Mail className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-stone-500 shrink-0" />
+              <a
+                href={`mailto:${settings.contactEmail?.trim() || 'info@ulendomalawi.com'}`}
+                className="truncate hover:text-white transition"
+                title="Send enquiry or support email"
+              >
+                {settings.contactEmail?.trim() || 'info@ulendomalawi.com'}
+              </a>
+            </li>
             {settings.contactPhone && (
               <li className="flex items-center gap-2.5">
                 <Phone className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-stone-500 shrink-0" />

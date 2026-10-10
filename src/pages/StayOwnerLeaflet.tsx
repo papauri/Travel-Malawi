@@ -187,7 +187,7 @@ export default function StayOwnerLeaflet() {
           </div>
           <div className="mt-5 print:hidden">
             <a
-              href="mailto:partners@travelmalawi.mw?subject=Founding%20Host%20Pilot&body=Hello%20Travel%20Malawi%20team,%20we%20would%20like%20to%20register%20our%20stay%20in%20the%20Founding%20Host%20Pilot."
+              href="mailto:info@ulendomalawi.com?subject=Founding%20Host%20Pilot&body=Hello%20Ulendo%20Malawi%20team,%20we%20would%20like%20to%20register%20our%20stay%20in%20the%20Founding%20Host%20Pilot."
               className={primaryBtn}
             >
               Contact the host team
@@ -197,7 +197,7 @@ export default function StayOwnerLeaflet() {
 
         {/* Footer */}
         <footer className="border-t border-stone-200 mt-12 pt-6 text-sm text-stone-500">
-          Travel Malawi &middot; Direct Hospitality Platform &middot; Lilongwe, Malawi &middot; partners@travelmalawi.mw
+          Ulendo Travel Malawi &middot; Direct Hospitality Platform &middot; Lilongwe, Malawi &middot; info@ulendomalawi.com
         </footer>
       </div>
     </div>
