@@ -313,7 +313,8 @@ export default function PromotionsManager({ hotel, rooms, onUpdate }: Promotions
                         type="date" 
                         value={promo.startDate || ''} 
                         onChange={e => updatePromo(promo.id, { startDate: e.target.value })}
-                        className="w-full bg-stone-50 border border-stone-200 p-2.5 rounded-xl text-sm font-medium outline-none focus:border-stone-400"
+                        onClick={e => { try { (e.target as HTMLInputElement).showPicker?.(); } catch {} }}
+                        className="w-full bg-stone-50 border border-stone-200 p-2.5 rounded-xl text-sm font-medium outline-none focus:border-stone-400 cursor-pointer"
                       />
                     </div>
 
@@ -326,7 +327,8 @@ export default function PromotionsManager({ hotel, rooms, onUpdate }: Promotions
                         value={promo.endDate || ''} 
                         min={promo.startDate || undefined}
                         onChange={e => updatePromo(promo.id, { endDate: e.target.value })}
-                        className="w-full bg-stone-50 border border-stone-200 p-2.5 rounded-xl text-sm font-medium outline-none focus:border-stone-400"
+                        onClick={e => { try { (e.target as HTMLInputElement).showPicker?.(); } catch {} }}
+                        className="w-full bg-stone-50 border border-stone-200 p-2.5 rounded-xl text-sm font-medium outline-none focus:border-stone-400 cursor-pointer"
                       />
                     </div>
 

@@ -36,17 +36,18 @@ export default function ManagerDashboard() {
   const [activating, setActivating] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [togglingHotelId, setTogglingHotelId] = useState<string | null>(null);
+  type DashboardTab = 'all' | 'live' | 'needs_attention' | 'bulk_editor';
+  const [activeTab, setActiveTab] = useState<DashboardTab>('all');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [sortBy, setSortBy] = useState<SortOption>('default');
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const [openCardMenuId, setOpenCardMenuId] = useState<string | null>(null);
-  const [showBulkEditor, setShowBulkEditor] = useState(false);
   const [bulkEditorHotelId, setBulkEditorHotelId] = useState<string | undefined>(undefined);
   const itemsPerPage = 6;
 
   const handleOpenBulkEditor = (hotelId?: string) => {
     setBulkEditorHotelId(hotelId);
-    setShowBulkEditor(true);
+    setActiveTab('bulk_editor');
     // Smooth scroll into bulk editor
     window.scrollTo({ top: 120, behavior: 'smooth' });
   };
@@ -390,15 +391,15 @@ export default function ManagerDashboard() {
           {rooms.length > 0 && (
             <button
               type="button"
-              onClick={() => handleOpenBulkEditor()}
+              onClick={() => setActiveTab(activeTab === 'bulk_editor' ? 'all' : 'bulk_editor')}
               className={`inline-flex items-center justify-center gap-1.5 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl sm:rounded-full text-xs sm:text-sm font-semibold transition cursor-pointer shadow-2xs ${
-                showBulkEditor
-                  ? 'bg-stone-900 text-white hover:bg-stone-800 ring-2 ring-stone-900/50'
+                activeTab === 'bulk_editor'
+                  ? 'bg-stone-900 text-white hover:bg-stone-800 ring-2 ring-stone-900/30'
                   : 'bg-white hover:bg-stone-100 text-stone-800 border border-stone-200'
               }`}
             >
               <SlidersHorizontal className="h-4 w-4" />
-              <span>{showBulkEditor ? 'Close Bulk Editor' : 'Bulk Room & Rates Editor'}</span>
+              <span>{activeTab === 'bulk_editor' ? 'View Properties' : 'Bulk Room & Rates Editor'}</span>
             </button>
           )}
 
@@ -411,113 +412,131 @@ export default function ManagerDashboard() {
         </div>
       </div>
 
-      {/* Overview Stats Bar (2 cols on mobile, 4 on tablet & desktop) */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-2.5 md:gap-3 lg:gap-3.5 mb-4 sm:mb-6">
+      {/* Minimal Underline-Based Dashboard Navigation Tabs */}
+      <div className="border-b border-stone-200/90 mb-6 flex items-center gap-6 sm:gap-8 overflow-x-auto scrollbar-none" role="tablist" aria-label="Dashboard views">
+        {/* Tab 1: All Properties */}
         <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'all'}
           onClick={() => {
+            setActiveTab('all');
             setStatusFilter('all');
             setCurrentPage(1);
           }}
-          className={`p-2.5 sm:p-3.5 lg:p-4 rounded-xl sm:rounded-2xl border text-left transition focus:outline-none focus:ring-2 focus:ring-stone-900 cursor-pointer ${
-            statusFilter === 'all'
-              ? 'bg-stone-900 text-white border-stone-900 shadow-sm'
-              : 'bg-white text-stone-900 border-stone-200 shadow-2xs hover:border-stone-300'
+          className={`pb-3 text-xs sm:text-sm font-medium transition whitespace-nowrap cursor-pointer border-b-2 -mb-px flex items-center gap-2 ${
+            activeTab === 'all'
+              ? 'border-stone-900 text-stone-900 font-semibold'
+              : 'border-transparent text-stone-500 hover:text-stone-800 hover:border-stone-300'
           }`}
         >
-          <div className={`w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 rounded-lg flex items-center justify-center mb-1.5 ${
-            statusFilter === 'all' ? 'bg-white/20 text-white' : 'bg-stone-100 text-stone-600'
+          <Building2 className={`w-4 h-4 ${activeTab === 'all' ? 'text-stone-900' : 'text-stone-400'}`} />
+          <span>All Properties</span>
+          <span className={`text-[11px] font-mono ml-0.5 px-1.5 py-0.2 rounded-md ${
+            activeTab === 'all' ? 'bg-stone-100 text-stone-900 font-semibold' : 'text-stone-400'
           }`}>
-            <Building2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-          </div>
-          <p className={`text-[10px] sm:text-xs font-medium mb-0.5 truncate ${statusFilter === 'all' ? 'text-stone-300' : 'text-stone-500'}`}>
-            Properties
-          </p>
-          <p className="text-sm sm:text-lg lg:text-xl font-bold">{hotels.length}</p>
+            {hotels.length}
+          </span>
         </button>
 
-        <button
-          onClick={() => {
-            setStatusFilter(statusFilter === 'live' ? 'all' : 'live');
-            setCurrentPage(1);
-          }}
-          className={`p-2.5 sm:p-3.5 lg:p-4 rounded-xl sm:rounded-2xl border text-left transition focus:outline-none focus:ring-2 focus:ring-stone-900 cursor-pointer ${
-            statusFilter === 'live'
-              ? 'bg-stone-900 text-white border-stone-900 shadow-sm'
-              : 'bg-white text-stone-900 border-stone-200 shadow-2xs hover:border-stone-300'
-          }`}
-        >
-          <div className={`w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 rounded-lg flex items-center justify-center mb-1.5 ${
-            statusFilter === 'live' ? 'bg-white/20 text-white' : 'bg-stone-100 text-stone-600'
-          }`}>
-            <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-          </div>
-          <p className={`text-[10px] sm:text-xs font-medium mb-0.5 truncate ${statusFilter === 'live' ? 'text-stone-300' : 'text-stone-500'}`}>
-            Live &amp; Online
-          </p>
-          <p className="text-sm sm:text-lg lg:text-xl font-bold">{liveCount}</p>
-        </button>
-
-        <button
-          onClick={() => {
-            setStatusFilter(statusFilter === 'needs_attention' ? 'all' : 'needs_attention');
-            setCurrentPage(1);
-          }}
-          className={`p-2.5 sm:p-3.5 lg:p-4 rounded-xl sm:rounded-2xl border text-left transition focus:outline-none focus:ring-2 focus:ring-stone-900 cursor-pointer ${
-            statusFilter === 'needs_attention'
-              ? 'bg-stone-900 text-white border-stone-900 shadow-sm'
-              : 'bg-white text-stone-900 border-stone-200 shadow-2xs hover:border-stone-300'
-          }`}
-        >
-          <div className={`w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 rounded-lg flex items-center justify-center mb-1.5 ${
-            statusFilter === 'needs_attention' ? 'bg-white/20 text-white' : 'bg-stone-100 text-stone-600'
-          }`}>
-            <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-          </div>
-          <p className={`text-[10px] sm:text-xs font-medium mb-0.5 truncate ${statusFilter === 'needs_attention' ? 'text-stone-300' : 'text-stone-500'}`}>
-            Needs Attention
-          </p>
-          <div className="flex items-baseline gap-1.5">
-            <p className="text-sm sm:text-lg lg:text-xl font-bold">{needsAttentionCount}</p>
-            {totalPending > 0 && (
-              <span className={`text-[9px] sm:text-[10px] font-bold px-1.5 py-0.2 rounded-full ${
-                statusFilter === 'needs_attention' ? 'bg-stone-700 text-stone-100' : 'bg-stone-100 text-stone-700'
-              }`}>
-                {totalPending} req
-              </span>
-            )}
-          </div>
-        </button>
-
+        {/* Tab 2: Live & Online */}
         <button
           type="button"
-          onClick={() => handleOpenBulkEditor()}
-          className="p-2.5 sm:p-3.5 lg:p-4 rounded-xl sm:rounded-2xl border border-stone-200 shadow-2xs bg-white text-stone-900 hover:border-stone-400 hover:shadow-xs transition text-left cursor-pointer group"
-          title="Click to open Bulk Room & Rates Editor"
+          role="tab"
+          aria-selected={activeTab === 'live'}
+          onClick={() => {
+            setActiveTab('live');
+            setStatusFilter('live');
+            setCurrentPage(1);
+          }}
+          className={`pb-3 text-xs sm:text-sm font-medium transition whitespace-nowrap cursor-pointer border-b-2 -mb-px flex items-center gap-2 ${
+            activeTab === 'live'
+              ? 'border-stone-900 text-stone-900 font-semibold'
+              : 'border-transparent text-stone-500 hover:text-stone-800 hover:border-stone-300'
+          }`}
         >
-          <div className="flex items-center justify-between mb-1.5">
-            <div className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 rounded-lg bg-stone-100 text-stone-600 flex items-center justify-center">
-              <BedDouble className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-            </div>
-          </div>
-          <p className="text-stone-500 text-[10px] sm:text-xs font-medium mb-0.5 truncate">Total Rooms / Units</p>
-          <p className="text-sm sm:text-lg lg:text-xl font-bold">{rooms.length}</p>
+          <CheckCircle2 className={`w-4 h-4 ${activeTab === 'live' ? 'text-emerald-700' : 'text-stone-400'}`} />
+          <span>Live &amp; Online</span>
+          <span className={`text-[11px] font-mono ml-0.5 px-1.5 py-0.2 rounded-md ${
+            activeTab === 'live' ? 'bg-stone-100 text-stone-900 font-semibold' : 'text-stone-400'
+          }`}>
+            {liveCount}
+          </span>
+        </button>
+
+        {/* Tab 3: Needs Attention */}
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'needs_attention'}
+          onClick={() => {
+            setActiveTab('needs_attention');
+            setStatusFilter('needs_attention');
+            setCurrentPage(1);
+          }}
+          className={`pb-3 text-xs sm:text-sm font-medium transition whitespace-nowrap cursor-pointer border-b-2 -mb-px flex items-center gap-2 ${
+            activeTab === 'needs_attention'
+              ? 'border-stone-900 text-stone-900 font-semibold'
+              : 'border-transparent text-stone-500 hover:text-stone-800 hover:border-stone-300'
+          }`}
+        >
+          <Clock className={`w-4 h-4 ${activeTab === 'needs_attention' ? 'text-stone-900' : 'text-stone-400'}`} />
+          <span>Needs Attention</span>
+          <span className={`text-[11px] font-mono ml-0.5 px-1.5 py-0.2 rounded-md ${
+            activeTab === 'needs_attention' ? 'bg-stone-100 text-stone-900 font-semibold' : 'text-stone-400'
+          }`}>
+            {needsAttentionCount}
+          </span>
+          {totalPending > 0 && (
+            <span className="text-[10px] font-medium text-stone-600 bg-stone-100 px-1.5 py-0.2 rounded-md">
+              {totalPending} req
+            </span>
+          )}
+        </button>
+
+        {/* Tab 4: Room Inventory & Bulk Rates */}
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'bulk_editor'}
+          onClick={() => {
+            handleOpenBulkEditor();
+          }}
+          className={`pb-3 text-xs sm:text-sm font-medium transition whitespace-nowrap cursor-pointer border-b-2 -mb-px flex items-center gap-2 ${
+            activeTab === 'bulk_editor'
+              ? 'border-stone-900 text-stone-900 font-semibold'
+              : 'border-transparent text-stone-500 hover:text-stone-800 hover:border-stone-300'
+          }`}
+          title="Open Bulk Room & Rates Editor"
+        >
+          <BedDouble className={`w-4 h-4 ${activeTab === 'bulk_editor' ? 'text-stone-900' : 'text-stone-400'}`} />
+          <span>Rooms &amp; Rates</span>
+          <span className={`text-[11px] font-mono ml-0.5 px-1.5 py-0.2 rounded-md ${
+            activeTab === 'bulk_editor' ? 'bg-stone-100 text-stone-900 font-semibold' : 'text-stone-400'
+          }`}>
+            {rooms.length}
+          </span>
         </button>
       </div>
 
-      {/* Optional Bulk Room & Rate Editor Section */}
-      {showBulkEditor && (
-        <div className="mb-7 transition-all">
+      {/* Tab Content 1: Bulk Room & Rate Editor Section */}
+      {activeTab === 'bulk_editor' ? (
+        <div className="mb-7 transition-all animate-in fade-in duration-150">
           <BulkRoomEditor
             hotels={hotels}
             rooms={rooms}
             initialHotelId={bulkEditorHotelId}
             isEmbedded={true}
-            onClose={() => setShowBulkEditor(false)}
+            onClose={() => {
+              setActiveTab('all');
+              setStatusFilter('all');
+            }}
             onRoomsUpdated={handleRoomsUpdated}
             onHotelsUpdated={handleHotelsUpdated}
           />
         </div>
-      )}
+      ) : (
+        <>
 
       {/* Sort Dropdown */}
       {hotels.length > 0 && (
@@ -603,25 +622,28 @@ export default function ManagerDashboard() {
             return (
               <div
                 key={`mgr-hotel-${hotel.id}`}
-                className="group bg-white rounded-2xl shadow-2xs border border-stone-200 overflow-hidden flex flex-col hover:border-stone-300 hover:shadow-sm transition duration-200"
+                className="group bg-white rounded-2xl shadow-2xs border border-stone-200/90 overflow-hidden flex flex-col hover:border-stone-300 hover:shadow-xs transition duration-200"
               >
                 {/* Card Media Header */}
                 <div className="w-full aspect-[16/10] sm:aspect-auto sm:h-36 md:h-44 bg-stone-100 relative shrink-0 overflow-hidden">
                   <SmartImage
                     src={getHotelImage(hotel)}
                     alt={hotel.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition duration-500 ease-out"
+                    className="w-full h-full object-cover group-hover:scale-102 transition duration-500 ease-out"
                   />
 
                   {/* Status Badge */}
-                  <span className={`absolute top-2 left-2 z-10 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold uppercase tracking-wider shadow-2xs ${
-                    hotel.status === 'pending' ? 'bg-amber-100 text-amber-800' :
-                    hotel.status === 'rejected' ? 'bg-red-100 text-red-700' :
-                    'bg-emerald-100 text-emerald-700'
-                  }`}>
-                    {hotel.status === 'pending' ? <><Clock className="h-2.5 w-2.5" /> Pending</>
-                      : hotel.status === 'rejected' ? <><XCircle className="h-2.5 w-2.5" /> Unpublished</>
-                      : <><CheckCircle2 className="h-2.5 w-2.5" /> Live</>}
+                  <span className="absolute top-2.5 left-2.5 z-10 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium bg-white/95 backdrop-blur-xs text-stone-800 border border-stone-200/90 shadow-2xs">
+                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                      hotel.status === 'pending' ? 'bg-amber-500' :
+                      hotel.status === 'rejected' ? 'bg-stone-400' :
+                      'bg-emerald-600'
+                    }`} />
+                    <span>
+                      {hotel.status === 'pending' ? 'Pending review' :
+                       hotel.status === 'rejected' ? 'Unpublished' :
+                       'Live'}
+                    </span>
                   </span>
 
                   {/* Online/Offline Toggle */}
@@ -629,14 +651,14 @@ export default function ManagerDashboard() {
                     type="button"
                     onClick={(e) => handleToggleHotelOnline(e, hotel)}
                     disabled={togglingHotelId === hotel.id}
-                    className={`absolute top-2 right-2 z-10 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold uppercase tracking-wider shadow-2xs backdrop-blur-md transition cursor-pointer ${
+                    className={`absolute top-2.5 right-2.5 z-10 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium transition cursor-pointer select-none shadow-2xs border ${
                       hotel.isOnline !== false
-                        ? 'bg-emerald-950/80 text-emerald-300 hover:bg-emerald-900 border border-emerald-500/40'
-                        : 'bg-stone-900/80 text-stone-300 hover:bg-stone-800 border border-stone-700/60'
+                        ? 'bg-white/95 hover:bg-white text-stone-800 border-stone-200/90'
+                        : 'bg-white/90 hover:bg-white text-stone-500 border-stone-200/70'
                     }`}
                     title="Click to toggle Host Online/Offline Status"
                   >
-                    <span className={`h-1.5 w-1.5 rounded-full ${hotel.isOnline !== false ? 'bg-emerald-400 animate-pulse' : 'bg-stone-400'}`} />
+                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${hotel.isOnline !== false ? 'bg-emerald-600' : 'bg-stone-300'}`} />
                     <span>{hotel.isOnline !== false ? 'Online' : 'Offline'}</span>
                   </button>
                 </div>
@@ -791,6 +813,8 @@ export default function ManagerDashboard() {
             onPageChange={setCurrentPage}
           />
         </div>
+      )}
+        </>
       )}
     </div>
   );

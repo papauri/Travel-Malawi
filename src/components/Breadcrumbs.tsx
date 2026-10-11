@@ -51,8 +51,11 @@ export function useBreadcrumbLabel(label: string | undefined): void {
 }
 
 /** The trail for a path. Empty means there is nothing worth showing. */
-function trailFor(pathname: string, label: string): Crumb[] {
+function trailFor(rawPathname: string, label: string): Crumb[] {
   const home: Crumb = { label: 'Home', to: '/' };
+
+  // Normalize: remove query params, hashes, trailing slashes, and lowercase
+  const pathname = (rawPathname.split('?')[0].split('#')[0].replace(/\/+$/, '') || '/').toLowerCase();
 
   if (pathname === '/' || pathname === '') return [];
 
@@ -83,28 +86,31 @@ function trailFor(pathname: string, label: string): Crumb[] {
   if (pathname === '/terms') return [home, { label: 'Terms of Service' }];
   if (pathname === '/refunds') return [home, { label: 'Refunds & Cancellations' }];
   if (pathname === '/concept-validation' || pathname === '/concept-survey' || pathname === '/survey') {
-    return [home, { label: 'Partner Documents', to: '/list-your-property' }, { label: 'Concept Validation Survey' }];
+    return [home, { label: 'Host Hub', to: '/list-your-property' }, { label: 'Concept Validation Survey' }];
   }
   if (pathname === '/stay-owner-leaflet' || pathname === '/leaflet' || pathname === '/host-leaflet') {
-    return [home, { label: 'Partner Documents', to: '/list-your-property' }, { label: 'Stay Owner Leaflet' }];
+    return [home, { label: 'Host Hub', to: '/list-your-property' }, { label: 'Stay Owner Leaflet' }];
   }
   if (pathname === '/host-guide' || pathname === '/starter-pack' || pathname === '/host-starter-pack') {
-    return [home, { label: 'Partner Documents', to: '/list-your-property' }, { label: 'Host Starter Pack & Guide' }];
+    return [home, { label: 'Host Hub', to: '/list-your-property' }, { label: 'Host Starter Pack & Guide' }];
   }
   if (pathname === '/marketing' || pathname === '/marketing-deck') {
-    return [home, { label: 'Partner Documents', to: '/list-your-property' }, { label: 'Commercial Strategy Deck' }];
+    return [home, { label: 'Host Hub', to: '/list-your-property' }, { label: 'Commercial Strategy Deck' }];
   }
   if (pathname === '/operations-guide') {
-    return [home, { label: 'Partner Documents', to: '/list-your-property' }, { label: 'Operations Playbook' }];
+    return [home, { label: 'Host Hub', to: '/list-your-property' }, { label: 'Operations Playbook' }];
   }
   if (pathname === '/listing-guide') {
-    return [home, { label: 'Partner Documents', to: '/list-your-property' }, { label: 'Property Listing Guide' }];
+    return [home, { label: 'Host Hub', to: '/list-your-property' }, { label: 'Property Listing Guide' }];
+  }
+  if (pathname === '/how-it-works' || pathname === '/hosting' || pathname === '/how-hosting-works') {
+    return [home, { label: 'Host Hub', to: '/list-your-property' }, { label: 'How Hosting Works' }];
   }
   if (pathname === '/uat' || pathname === '/uat-guide' || pathname === '/platform-guide' || pathname === '/uat-manual') {
     return [home, { label: 'Platform & QA' }, { label: 'Platform Guide & UAT Manual' }];
   }
 
-  return [home, { label: 'Not found' }];
+  return [home, { label: label || 'Page' }];
 }
 
 export default function Breadcrumbs() {

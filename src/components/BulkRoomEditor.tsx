@@ -478,28 +478,28 @@ export default function BulkRoomEditor({
   return (
     <div className={`bg-white rounded-2xl border border-stone-200 shadow-2xs overflow-hidden ${isEmbedded ? '' : 'max-w-5xl mx-auto'}`}>
       {/* Header Banner */}
-      <div className="bg-stone-900 text-white p-4 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="bg-stone-50 border-b border-stone-200/90 p-4 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <div className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center text-amber-300">
+          <div className="flex items-center gap-2.5 mb-1.5">
+            <div className="w-8 h-8 rounded-xl bg-white border border-stone-200 shadow-2xs flex items-center justify-center text-stone-700">
               <SlidersHorizontal className="w-4 h-4" />
             </div>
-            <h2 className="text-lg sm:text-xl font-serif font-bold text-white flex items-center gap-2">
+            <h2 className="text-lg sm:text-xl font-serif font-bold text-stone-900 flex items-center gap-2">
               <span>Bulk Room &amp; Rates Editor</span>
-              <span className="text-[10px] font-sans font-bold bg-amber-400 text-stone-950 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                Manager Tool
+              <span className="text-[10px] font-sans font-semibold bg-stone-200/80 text-stone-700 px-2 py-0.5 rounded-md uppercase tracking-wider border border-stone-300/50">
+                Rates &amp; Inventory
               </span>
             </h2>
           </div>
-          <p className="text-xs sm:text-sm text-stone-300 max-w-2xl leading-relaxed">
-            Quickly adjust base rates or launch promotional slashed prices across multiple rooms simultaneously with custom percentages or amounts.
+          <p className="text-xs sm:text-sm text-stone-600 max-w-2xl leading-relaxed">
+            Quickly adjust base rates or launch promotional slashed prices across multiple rooms simultaneously with standardized Malawian Kwacha and USD rounding.
           </p>
         </div>
 
         {onClose && (
           <button
             onClick={onClose}
-            className="self-end sm:self-center p-2 rounded-xl bg-white/10 hover:bg-white/20 text-stone-300 hover:text-white transition cursor-pointer"
+            className="self-end sm:self-center p-2 rounded-xl bg-white hover:bg-stone-100 text-stone-500 hover:text-stone-900 border border-stone-200 transition cursor-pointer shadow-2xs"
             title="Close Bulk Editor"
           >
             <X className="w-5 h-5" />
@@ -507,53 +507,67 @@ export default function BulkRoomEditor({
         )}
       </div>
 
-      {/* Target Mode Segmented Navigation */}
-      <div className="p-4 sm:p-6 border-b border-stone-200 bg-stone-50/80">
+      {/* Minimal Underline-Based Navigation Tabs */}
+      <div className="border-b border-stone-200/90 bg-white px-4 sm:px-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-1 p-1 bg-stone-100 rounded-lg w-full sm:w-auto border border-stone-200">
+          <div className="flex items-center gap-6 sm:gap-8 overflow-x-auto scrollbar-none" role="tablist" aria-label="Editor modes">
             <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'rates'}
               onClick={() => setActiveTab('rates')}
-              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-1.5 rounded-md text-xs sm:text-sm font-medium transition cursor-pointer ${
+              className={`pb-3 pt-3.5 text-xs sm:text-sm font-medium transition whitespace-nowrap cursor-pointer border-b-2 -mb-px flex items-center gap-2 ${
                 activeTab === 'rates'
-                  ? 'bg-white text-stone-900 shadow-xs'
-                  : 'text-stone-500 hover:text-stone-900'
+                  ? 'border-stone-900 text-stone-900 font-semibold'
+                  : 'border-transparent text-stone-500 hover:text-stone-800 hover:border-stone-300'
               }`}
             >
               <DollarSign className="w-4 h-4" />
               <span>Base Rates</span>
             </button>
             <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'promotions'}
               onClick={() => setActiveTab('promotions')}
-              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-1.5 rounded-md text-xs sm:text-sm font-medium transition cursor-pointer ${
+              className={`pb-3 pt-3.5 text-xs sm:text-sm font-medium transition whitespace-nowrap cursor-pointer border-b-2 -mb-px flex items-center gap-2 ${
                 activeTab === 'promotions'
-                  ? 'bg-white text-stone-900 shadow-xs'
-                  : 'text-stone-500 hover:text-stone-900'
+                  ? 'border-stone-900 text-stone-900 font-semibold'
+                  : 'border-transparent text-stone-500 hover:text-stone-800 hover:border-stone-300'
               }`}
             >
               <Percent className="w-4 h-4" />
               <span>New Campaign</span>
             </button>
             <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'active_promotions'}
               onClick={() => setActiveTab('active_promotions')}
-              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-1.5 rounded-md text-xs sm:text-sm font-medium transition cursor-pointer ${
+              className={`pb-3 pt-3.5 text-xs sm:text-sm font-medium transition whitespace-nowrap cursor-pointer border-b-2 -mb-px flex items-center gap-2 ${
                 activeTab === 'active_promotions'
-                  ? 'bg-white text-stone-900 shadow-xs'
-                  : 'text-stone-500 hover:text-stone-900'
+                  ? 'border-stone-900 text-stone-900 font-semibold'
+                  : 'border-transparent text-stone-500 hover:text-stone-800 hover:border-stone-300'
               }`}
             >
               <Tag className="w-4 h-4" />
-              <span>Active Campaigns ({allPromotions.length})</span>
+              <span>Active Campaigns</span>
+              <span className={`text-[11px] font-mono px-1.5 py-0.2 rounded-md ${
+                activeTab === 'active_promotions' ? 'bg-stone-100 text-stone-900 font-semibold' : 'text-stone-400'
+              }`}>
+                {allPromotions.length}
+              </span>
             </button>
           </div>
 
-          <div className="text-xs text-stone-500 flex items-center gap-1.5">
+          <div className="hidden sm:flex text-xs text-stone-400 items-center gap-1.5 pb-2">
             <Info className="w-3.5 h-3.5 text-stone-400 shrink-0" />
             <span>
               {activeTab === 'rates'
-                ? 'Updates the standard published nightly rate in your inventory.'
+                ? 'Updates standard published nightly inventory rates.'
                 : activeTab === 'promotions'
-                ? 'Creates a promotional discount with original strikethrough price and sale badge.'
-                : 'Monitor, pause, extend, or remove running promotional campaigns across your lodges.'}
+                ? 'Creates promotional discounts with strikethrough prices.'
+                : 'Monitor, pause, extend, or remove running promotional campaigns.'}
             </span>
           </div>
         </div>
@@ -630,7 +644,7 @@ export default function BulkRoomEditor({
                 } else if (isExpired) {
                   statusBadge = { text: 'Expired', className: 'bg-rose-50 text-rose-700 border-rose-200' };
                 } else if (isScheduled) {
-                  statusBadge = { text: `Scheduled (${promo.startDate})`, className: 'bg-amber-50 text-amber-700 border-amber-200' };
+                  statusBadge = { text: `Scheduled (${promo.startDate})`, className: 'bg-stone-100 text-stone-700 border-stone-200' };
                 }
 
                 const targetCount = promo.targetRoomIds ? promo.targetRoomIds.length : (hotel.rooms?.length || 'All');
@@ -1147,8 +1161,8 @@ export default function BulkRoomEditor({
                   <Sparkles className="w-4 h-4 text-stone-500" />
                   <span>Configure Promotional Slash Campaign</span>
                 </h4>
-                <span className="text-xs text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full font-semibold">
-                  Displayed with Strikethrough &amp; Badges
+                <span className="text-xs text-stone-700 bg-stone-100 border border-stone-200 px-2.5 py-0.5 rounded-md font-medium">
+                  Strikethrough Price &amp; Sale Tag
                 </span>
               </div>
 
@@ -1338,7 +1352,8 @@ export default function BulkRoomEditor({
                     type="date"
                     value={promoStartDate}
                     onChange={(e) => setPromoStartDate(e.target.value)}
-                    className="w-full bg-white border border-stone-200 rounded-xl px-3 py-1.5 text-xs text-stone-800 focus:ring-2 focus:ring-stone-900 focus:outline-none"
+                    onClick={(e) => { try { (e.target as HTMLInputElement).showPicker?.(); } catch {} }}
+                    className="w-full bg-white border border-stone-200 rounded-xl px-3 py-1.5 text-xs text-stone-800 focus:ring-2 focus:ring-stone-900 focus:outline-none cursor-pointer"
                   />
                 </div>
                 <div>
@@ -1349,7 +1364,8 @@ export default function BulkRoomEditor({
                     type="date"
                     value={promoEndDate}
                     onChange={(e) => setPromoEndDate(e.target.value)}
-                    className="w-full bg-white border border-stone-200 rounded-xl px-3 py-1.5 text-xs text-stone-800 focus:ring-2 focus:ring-stone-900 focus:outline-none"
+                    onClick={(e) => { try { (e.target as HTMLInputElement).showPicker?.(); } catch {} }}
+                    className="w-full bg-white border border-stone-200 rounded-xl px-3 py-1.5 text-xs text-stone-800 focus:ring-2 focus:ring-stone-900 focus:outline-none cursor-pointer"
                   />
                 </div>
               </div>
@@ -1398,7 +1414,7 @@ export default function BulkRoomEditor({
                                   {formatMoney(slashed.slashedPrice, 'MWK')}
                                 </span>
                               </div>
-                              <div className="text-[10px] font-bold text-amber-800 bg-amber-100/70 px-1.5 py-0.2 rounded-full inline-block mt-0.5">
+                              <div className="text-[10px] font-semibold text-stone-700 bg-stone-100 border border-stone-200 px-1.5 py-0.5 rounded-md inline-block mt-0.5">
                                 {slashed.badgeText}
                               </div>
                             </div>

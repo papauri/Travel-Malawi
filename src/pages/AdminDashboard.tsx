@@ -41,13 +41,28 @@ export default function AdminDashboard() {
   const { user, loading: authLoading, resetPassword } = useAuth();
   const confirmFlow = useConfirmBooking();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   
   const urlTab = searchParams.get('tab') as Tab | null;
   const validTabs: Tab[] = ['overview', 'analytics', 'properties', 'reviews', 'users', 'bookings', 'destinations', 'content', 'ai', 'logs', 'docs', 'settings'];
   const initialTab = urlTab && validTabs.includes(urlTab) ? urlTab : 'overview';
   
-  const [activeTab, setActiveTab] = useState<Tab>(initialTab);
+  const [activeTab, setActiveTabState] = useState<Tab>(initialTab);
+
+  const setActiveTab = (tab: Tab) => {
+    setActiveTabState(tab);
+    setSearchParams(tab === 'overview' ? {} : { tab }, { replace: true });
+  };
+
+  useEffect(() => {
+    const currentTab = searchParams.get('tab') as Tab | null;
+    if (currentTab && validTabs.includes(currentTab) && currentTab !== activeTab) {
+      setActiveTabState(currentTab);
+    } else if (!currentTab && activeTab !== 'overview') {
+      setActiveTabState('overview');
+    }
+  }, [searchParams]);
+
   const [settingsSubTab, setSettingsSubTab] = useState<'email' | 'whatsapp'>('whatsapp');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
@@ -2297,30 +2312,34 @@ export default function AdminDashboard() {
         {/* ===================== SETTINGS & CHANNELS CONFIGURATION TAB ===================== */}
         {activeTab === 'settings' && (
           <div className="space-y-6">
-            <div className="flex items-center gap-1.5 p-1 bg-stone-100 rounded-xl w-fit flex-wrap">
+            <div className="flex items-center gap-6 sm:gap-8 border-b border-stone-200/90 pb-0 w-full" role="tablist">
               <button
                 type="button"
+                role="tab"
+                aria-selected={settingsSubTab === 'whatsapp'}
                 onClick={() => setSettingsSubTab('whatsapp')}
-                className={`px-3.5 sm:px-4 py-2 rounded-lg text-xs font-semibold transition flex items-center gap-2 cursor-pointer ${
+                className={`pb-3 text-xs sm:text-sm font-medium border-b-2 -mb-px transition flex items-center gap-2 cursor-pointer ${
                   settingsSubTab === 'whatsapp'
-                    ? 'bg-stone-900 text-white shadow-2xs'
-                    : 'text-stone-600 hover:text-stone-900'
+                    ? 'border-stone-900 text-stone-900 font-semibold'
+                    : 'border-transparent text-stone-500 hover:text-stone-800 hover:border-stone-300'
                 }`}
               >
                 <MessageSquare className="w-3.5 h-3.5" />
-                WhatsApp Messaging
+                <span>WhatsApp Messaging</span>
               </button>
               <button
                 type="button"
+                role="tab"
+                aria-selected={settingsSubTab === 'email'}
                 onClick={() => setSettingsSubTab('email')}
-                className={`px-3.5 sm:px-4 py-2 rounded-lg text-xs font-semibold transition flex items-center gap-2 cursor-pointer ${
+                className={`pb-3 text-xs sm:text-sm font-medium border-b-2 -mb-px transition flex items-center gap-2 cursor-pointer ${
                   settingsSubTab === 'email'
-                    ? 'bg-stone-900 text-white shadow-2xs'
-                    : 'text-stone-600 hover:text-stone-900'
+                    ? 'border-stone-900 text-stone-900 font-semibold'
+                    : 'border-transparent text-stone-500 hover:text-stone-800 hover:border-stone-300'
                 }`}
               >
                 <Mail className="w-3.5 h-3.5" />
-                Email &amp; SMTP
+                <span>Email &amp; SMTP</span>
               </button>
             </div>
 

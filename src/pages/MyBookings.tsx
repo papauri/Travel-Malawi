@@ -7,7 +7,7 @@ import {
 import { db } from '../lib/firebase';
 import { Booking, Hotel, RoomType, Broadcast } from '../types';
 import {
-  Calendar, MapPin, ExternalLink, Clock, CheckCircle2, XCircle, Ban, Star, Copy, ShieldCheck, Users, MessageCircle, Phone, Info, Map as MapIcon, MessageSquare, Megaphone, X, Check, Building2, Mail, Edit2, Filter as FilterIcon
+  Calendar, MapPin, ExternalLink, Clock, CheckCircle2, XCircle, Ban, Star, Copy, ShieldCheck, Users, MessageCircle, Phone, Info, Map as MapIcon, MessageSquare, Megaphone, X, Check, Building2, Mail, Edit2, Filter as FilterIcon, ChevronDown
 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -591,21 +591,24 @@ export default function MyBookings() {
           </div>
         )}
 
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-6 sm:mb-8">
-          <div className="grid grid-cols-3 sm:flex gap-1.5 sm:gap-2 p-1 bg-stone-100/90 rounded-2xl border border-stone-200 w-full sm:w-auto">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-6 border-b border-stone-200/90 pb-0">
+          <div className="flex items-center overflow-x-auto scrollbar-none gap-6 sm:gap-8" role="tablist">
             {activeTabs.map((tab, tIdx) => (
               <button
                 key={`${tab.key}-${tIdx}`}
+                type="button"
+                role="tab"
+                aria-selected={filter === tab.key}
                 onClick={() => { setFilter(tab.key); setCurrentPage(1); }}
-                className={`px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold rounded-xl whitespace-nowrap transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                className={`pb-3 text-xs sm:text-sm font-medium border-b-2 -mb-px transition flex items-center gap-2 whitespace-nowrap cursor-pointer ${
                   filter === tab.key
-                    ? 'bg-stone-900 text-white shadow-xs'
-                    : 'text-stone-600 hover:text-stone-950 hover:bg-stone-200/60'
+                    ? 'border-stone-900 text-stone-900 font-semibold'
+                    : 'border-transparent text-stone-500 hover:text-stone-800 hover:border-stone-300'
                 }`}
               >
                 <span>{tab.label}</span>
-                <span className={`text-[10px] sm:text-xs px-1.5 py-0.2 rounded-full font-bold ${
-                  filter === tab.key ? 'bg-white/20 text-white' : 'bg-stone-200/80 text-stone-700'
+                <span className={`text-[11px] font-mono px-1.5 py-0.2 rounded-md ${
+                  filter === tab.key ? 'bg-stone-100 text-stone-900 font-semibold' : 'text-stone-400'
                 }`}>
                   {tab.count}
                 </span>
@@ -614,18 +617,18 @@ export default function MyBookings() {
           </div>
 
           {activeMainTab === 'host' && managerHotels.length > 1 && (
-            <div className="flex items-center gap-2">
-              <FilterIcon className="w-4 h-4 text-stone-400" />
+            <div className="relative inline-flex items-center">
               <select
                 value={propertyFilter}
                 onChange={e => setPropertyFilter(e.target.value)}
-                className="bg-white border border-stone-200 text-stone-700 text-sm font-medium rounded-xl px-4 py-2 hover:border-stone-300 focus:outline-none focus:ring-2 focus:ring-stone-200 transition appearance-none cursor-pointer pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M7%2010L12%2015L17%2010%22%20stroke%3D%22%2378716C%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_8px_center] bg-[length:16px_16px]"
+                className="h-8 pl-3 pr-7.5 bg-white hover:bg-stone-50 border border-stone-200 hover:border-stone-300 text-stone-700 text-xs font-medium rounded-lg focus:outline-none transition appearance-none cursor-pointer"
               >
                 <option value="all">All properties</option>
                 {managerHotels.map(h => (
                   <option key={h.id} value={h.id}>{h.name}</option>
                 ))}
               </select>
+              <ChevronDown className="w-3.5 h-3.5 text-stone-400 pointer-events-none absolute right-2.5" />
             </div>
           )}
         </div>

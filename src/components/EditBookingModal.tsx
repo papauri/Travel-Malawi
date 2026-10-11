@@ -101,7 +101,8 @@ export default function EditBookingModal({ booking, isOpen, onClose, onSave }: P
               type="date"
               value={checkIn}
               onChange={e => setCheckIn(e.target.value)}
-              className={fieldClass}
+              onClick={e => { try { (e.target as HTMLInputElement).showPicker?.(); } catch {} }}
+              className={`${fieldClass} cursor-pointer`}
             />
           </div>
           <div>
@@ -110,7 +111,8 @@ export default function EditBookingModal({ booking, isOpen, onClose, onSave }: P
               type="date"
               value={checkOut}
               onChange={e => setCheckOut(e.target.value)}
-              className={fieldClass}
+              onClick={e => { try { (e.target as HTMLInputElement).showPicker?.(); } catch {} }}
+              className={`${fieldClass} cursor-pointer`}
             />
           </div>
         </div>

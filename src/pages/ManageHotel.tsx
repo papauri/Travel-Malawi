@@ -1541,28 +1541,31 @@ export default function ManageHotel() {
             type="button"
             onClick={handleToggleOnlineStatus}
             disabled={togglingStatus}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider border transition shadow-2xs cursor-pointer ${
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition shadow-2xs cursor-pointer select-none ${
               hotel.isOnline !== false
-                ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
-                : 'bg-stone-100 text-stone-700 border-stone-300 hover:bg-stone-200'
+                ? 'bg-white hover:bg-stone-50 text-stone-800 border-stone-200/90'
+                : 'bg-stone-100 hover:bg-stone-200 text-stone-600 border-stone-200'
             }`}
             title="Toggle whether guests see you as Online or Away"
           >
-            <span className={`h-2 w-2 rounded-full ${hotel.isOnline !== false ? 'bg-emerald-500 animate-pulse' : 'bg-stone-400'}`} />
+            <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${hotel.isOnline !== false ? 'bg-emerald-600' : 'bg-stone-400'}`} />
             <span>{hotel.isOnline !== false ? 'Online' : 'Offline'}</span>
           </button>
 
           {hotel.status === 'pending' ? (
-            <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-800 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider">
-              <Clock className="h-3.5 w-3.5" /> Pending
+            <span className="inline-flex items-center gap-1.5 bg-white border border-stone-200/90 text-stone-800 px-2.5 py-1.5 rounded-lg text-xs font-medium shadow-2xs">
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
+              <span>Pending review</span>
             </span>
           ) : hotel.status === 'rejected' ? (
-            <span className="inline-flex items-center gap-1 bg-red-100 text-red-700 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider">
-              <XCircle className="h-3.5 w-3.5" /> Not published
+            <span className="inline-flex items-center gap-1.5 bg-white border border-stone-200/90 text-stone-600 px-2.5 py-1.5 rounded-lg text-xs font-medium shadow-2xs">
+              <span className="h-1.5 w-1.5 rounded-full bg-stone-400 shrink-0" />
+              <span>Unpublished</span>
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider">
-              <CheckCircle2 className="h-3.5 w-3.5" /> Live
+            <span className="inline-flex items-center gap-1.5 bg-white border border-stone-200/90 text-stone-800 px-2.5 py-1.5 rounded-lg text-xs font-medium shadow-2xs">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-600 shrink-0" />
+              <span>Live</span>
             </span>
           )}
         </div>
@@ -1799,8 +1802,8 @@ export default function ManageHotel() {
           })()}
         </div>
 
-        {/* Tablet & Desktop Segmented Pills Navigation Bar (>= md) */}
-        <div className="hidden md:flex items-center overflow-x-auto scrollbar-none lg:flex-wrap gap-1.5 sm:gap-2 p-1.5 sm:p-2 bg-stone-100/90 rounded-2xl border border-stone-200 shadow-2xs">
+        {/* Tablet & Desktop Underline-Based Navigation Bar (>= md) */}
+        <div className="hidden md:flex items-center overflow-x-auto scrollbar-none gap-6 lg:gap-7 border-b border-stone-200/90 pb-0 mb-6">
           {([
             { id: 'details' as Tab, label: 'Property details', icon: Building },
             { id: 'media' as Tab, label: 'Media', icon: Eye },
@@ -1827,33 +1830,33 @@ export default function ManageHotel() {
               <button
                 key={tab.id}
                 type="button"
+                role="tab"
+                aria-selected={isActive}
                 onClick={() => requestTab(tab.id)}
-                className={`flex items-center shrink-0 whitespace-nowrap gap-2 px-3 sm:px-3.5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+                className={`flex items-center shrink-0 whitespace-nowrap gap-2 pb-3 pt-1 text-xs sm:text-sm font-medium border-b-2 -mb-px transition-colors cursor-pointer ${
                   isActive
-                    ? 'bg-stone-900 text-white shadow-xs'
-                    : 'bg-white hover:bg-stone-50 text-stone-700 hover:text-stone-950 border border-stone-200/90 shadow-2xs'
+                    ? 'border-stone-900 text-stone-900 font-semibold'
+                    : 'border-transparent text-stone-500 hover:text-stone-800 hover:border-stone-300'
                 }`}
               >
-                <Icon className={`h-4 w-4 shrink-0 ${isActive ? 'text-white' : 'text-stone-500'}`} />
+                <Icon className={`h-4 w-4 shrink-0 ${isActive ? 'text-stone-900' : 'text-stone-400'}`} />
                 <span>{tab.label}</span>
                 {dirtyOn(tab.id) && (
-                  <span title="Unsaved changes" className="h-2 w-2 rounded-full bg-stone-300 shrink-0" />
+                  <span title="Unsaved changes" className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
                 )}
                 {tab.id === 'restaurant' && hotel.restaurant?.enabled && (
-                  <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full uppercase shrink-0 ${
-                    isActive ? 'bg-white/20 text-white' : 'bg-stone-100 text-stone-700'
-                  }`}>
+                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-md bg-stone-100 text-stone-700 shrink-0">
                     Live
                   </span>
                 )}
                 {pendingCount > 0 && (
-                  <span className={`text-[11px] px-2 py-0.5 rounded-full shrink-0 font-bold ${isActive ? 'bg-white/20 text-white' : 'bg-stone-100 text-stone-700'}`}>
+                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-md bg-amber-100 text-amber-900 shrink-0 font-semibold">
                     {pendingCount}
                   </span>
                 )}
                 {unreadInquiryCount > 0 && (
-                  <span className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full shadow-xs shrink-0 font-bold ${isActive ? 'bg-white/20 text-white' : 'bg-stone-100 text-stone-700'}`}>
-                    <Bell className="w-3 h-3 animate-bell-ring" />
+                  <span className="inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.2 rounded-md bg-stone-100 text-stone-900 shrink-0 font-semibold">
+                    <Bell className="w-3 h-3 text-stone-700 animate-bell-ring" />
                     {unreadInquiryCount} new
                   </span>
                 )}
@@ -5086,13 +5089,13 @@ export default function ManageHotel() {
             <button
               onClick={handleToggleOnlineStatus}
               disabled={togglingStatus}
-              className={`px-4 py-2 sm:px-5 sm:py-2.5 rounded-lg sm:rounded-xl font-semibold text-xs uppercase tracking-wider transition cursor-pointer shrink-0 ${
+              className={`px-3.5 py-2 rounded-lg font-medium text-xs transition cursor-pointer shrink-0 border ${
                 hotel.isOnline !== false
-                  ? 'bg-stone-100 hover:bg-stone-200 text-stone-800 border border-stone-300'
-                  : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs'
+                  ? 'bg-white hover:bg-stone-50 text-stone-800 border-stone-200/90 shadow-2xs'
+                  : 'bg-stone-900 hover:bg-stone-800 text-white border-stone-900 shadow-2xs'
               }`}
             >
-              {hotel.isOnline !== false ? 'Go Offline / Set Away' : 'Turn Online Now'}
+              {hotel.isOnline !== false ? 'Set status to Away' : 'Set status to Online'}
             </button>
           </div>
 

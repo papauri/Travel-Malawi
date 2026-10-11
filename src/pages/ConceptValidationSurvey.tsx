@@ -194,7 +194,7 @@ export default function ConceptValidationSurvey() {
               </p>
             )}
 
-            <div className="mt-6 bg-stone-50 border-l-2 border-stone-300 px-4 py-3">
+            <div className="mt-6 bg-stone-50/80 border border-stone-200/90 rounded-xl p-4">
               <h3 className="text-base font-semibold text-stone-900">What happens next</h3>
               <ul className="mt-2 list-disc pl-5 space-y-1 text-[15px] leading-relaxed text-stone-700">
                 <li>Our team will review your pain points and room requirements.</li>

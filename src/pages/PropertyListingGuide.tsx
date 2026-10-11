@@ -247,7 +247,7 @@ export default function PropertyListingGuide() {
             </p>
 
             {submitted ? (
-              <div className="mt-6 bg-stone-50 border-l-2 border-stone-300 px-4 py-3">
+              <div className="mt-6 bg-stone-50/80 border border-stone-200/90 rounded-xl p-4">
                 <p className="font-medium text-stone-900">Listing request logged</p>
                 <p className="text-stone-700">
                   Reference: <span className="font-mono">{submissionId}</span>. Our merchandising team will reach out on WhatsApp at <strong className="font-semibold">{formData.contactPhone}</strong> with your listing preview draft.

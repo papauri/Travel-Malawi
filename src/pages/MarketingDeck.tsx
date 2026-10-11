@@ -185,7 +185,7 @@ export default function MarketingDeck() {
               </p>
             </li>
           </ul>
-          <div className="mt-6 bg-stone-50 border-l-2 border-stone-300 px-4 py-3 text-[15px] leading-relaxed text-stone-700">
+          <div className="mt-6 bg-stone-50/80 border border-stone-200/90 rounded-xl p-4 text-[15px] leading-relaxed text-stone-700">
             <strong className="font-semibold text-stone-900">The Cold Math: </strong>
             A 10-room lodge charging MK 90,000/night with 50% occupancy surrenders <strong className="font-semibold text-stone-900">MK 8,100,000 to MK 13,500,000 every single year</strong> in commission fees to overseas corporations that provide zero customer service in Malawi. Travel Malawi keeps 100% of that revenue in the lodge owner&apos;s hands.
           </div>
@@ -243,7 +243,7 @@ export default function MarketingDeck() {
           <p className="mt-2 text-[15px] leading-relaxed text-stone-700">
             Asking a lodge manager to drop their existing channels triggers loss aversion. Instead, we say:
           </p>
-          <blockquote className="mt-4 bg-stone-50 border-l-2 border-stone-300 px-4 py-3 text-[15px] leading-relaxed text-stone-700">
+          <blockquote className="mt-4 bg-stone-50/80 border border-stone-200/90 rounded-xl p-4 text-[15px] leading-relaxed text-stone-700">
             &ldquo;Keep your international OTA listing active for whatever foreign travelers it catches. But list your rooms on Travel Malawi to capture your domestic and regional weekend guests at 0% commission. Why give away 20% to Amsterdam when a guest is driving from Area 43?&rdquo;
           </blockquote>
         </section>
@@ -256,7 +256,7 @@ export default function MarketingDeck() {
           </p>
 
           {submitted ? (
-            <div className="mt-6 bg-stone-50 border-l-2 border-stone-300 px-4 py-3">
+            <div className="mt-6 bg-stone-50/80 border border-stone-200/90 rounded-xl p-4">
               <h3 className="text-base font-semibold text-stone-900">
                 Zikomo! We Have Received Your Partnership Request
               </h3>

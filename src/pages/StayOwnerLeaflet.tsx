@@ -179,7 +179,7 @@ export default function StayOwnerLeaflet() {
         {/* Founding offer */}
         <section className="border-t border-stone-200 mt-10">
           <h2 className="text-xl font-semibold text-stone-900 mt-10">Founding Host Cohort</h2>
-          <div className="mt-4 bg-stone-50 border-l-2 border-stone-300 px-4 py-3">
+          <div className="mt-4 bg-stone-50/80 border border-stone-200/90 rounded-xl p-4">
             <h3 className="text-base font-semibold text-stone-900">0% Commission For Your First 90 Days</h3>
             <p className="mt-1 text-[15px] leading-relaxed text-stone-700">
               We are accepting 10 founding stays per district (Cape Maclear, Mangochi, Lilongwe, Blantyre, Liwonde, Nyika). Keep 100% of room earnings with free setup.

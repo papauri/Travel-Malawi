@@ -1077,20 +1077,20 @@ export default function HotelDetails() {
 
           <div className="mt-6 flex flex-wrap items-center gap-3">
             {hotel.stayType === 'entire_place' && (
-              <div className="inline-flex items-center gap-1.5 bg-emerald-800 text-white px-3.5 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider shadow-2xs">
-                <Building className="h-3.5 w-3.5 text-emerald-300" />
-                <span>Entire Place · Whole Space</span>
+              <div className="inline-flex items-center gap-1.5 bg-stone-100 text-stone-800 border border-stone-200/80 px-3 py-1 rounded-md text-xs font-medium">
+                <Building className="h-3.5 w-3.5 text-stone-600" />
+                <span>Entire Place &middot; Whole Space</span>
               </div>
             )}
 
             {ratingSummary && (
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-1.5 bg-stone-900 text-white px-4 py-2 rounded-full">
-                  <Star className="h-4 w-4 fill-current" />
-                  <span className="font-semibold">{ratingSummary.average.toFixed(1)}</span>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 bg-stone-100 border border-stone-200/80 text-stone-900 px-3 py-1 rounded-md">
+                  <Star className="h-3.5 w-3.5 fill-amber-500 text-amber-500" />
+                  <span className="font-semibold text-xs sm:text-sm">{ratingSummary.average.toFixed(1)}</span>
                 </div>
-                <span className="text-stone-500 text-sm">
-                  {ratingSummary.count} review{ratingSummary.count === 1 ? '' : 's'}
+                <span className="text-stone-500 text-xs sm:text-sm">
+                  ({ratingSummary.count} review{ratingSummary.count === 1 ? '' : 's'})
                 </span>
               </div>
             )}
@@ -1229,21 +1229,21 @@ export default function HotelDetails() {
               const saleLabel = getSaleTypeLabel(leadPromo.saleType, leadPromo.saleTypeCustomLabel);
 
               return (
-                <div className="mb-6 bg-stone-900 text-white rounded-2xl p-4 sm:p-5 shadow-xs flex items-start sm:items-center justify-between gap-4 flex-wrap border border-stone-800">
+                <div className="mb-6 bg-stone-50 text-stone-900 rounded-xl p-3.5 sm:p-4.5 border border-stone-200/90 shadow-2xs flex items-start sm:items-center justify-between gap-3 sm:gap-4 flex-wrap">
                   <div className="flex items-start gap-3 min-w-0">
-                    <div className="p-2.5 bg-stone-800 rounded-xl shrink-0 border border-stone-700">
-                      <PromotionIcon saleType={leadPromo.saleType} className="w-5 h-5 text-white" />
+                    <div className="p-2 bg-stone-100 rounded-lg shrink-0 border border-stone-200">
+                      <PromotionIcon saleType={leadPromo.saleType} className="w-4 h-4 text-stone-700" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2 flex-wrap mb-1">
-                        <span className="bg-white text-stone-900 text-[10px] sm:text-xs font-bold uppercase px-2.5 py-0.5 rounded-full tracking-wider shadow-2xs">
+                        <span className="bg-stone-200/80 text-stone-900 text-xs font-semibold px-2 py-0.5 rounded border border-stone-300/80">
                           {saleLabel}
                         </span>
-                        <span className="text-xs sm:text-sm font-semibold text-stone-200">
+                        <span className="text-xs sm:text-sm font-semibold text-stone-900">
                           Up to {leadPromo.discountPercentage}% Price Slash Active
                         </span>
                       </div>
-                      <p className="text-xs sm:text-sm text-stone-300">
+                      <p className="text-xs sm:text-sm text-stone-600">
                         {leadPromo.appliesTo === 'conferences_only'
                           ? 'Discounted rates are active on meeting halls and conference facilities. Rates slashed automatically.'
                           : leadPromo.appliesTo === 'rooms_only'
@@ -1253,7 +1253,7 @@ export default function HotelDetails() {
                     </div>
                   </div>
                   {leadPromo.endDate && (
-                    <div className="text-right shrink-0 text-xs text-stone-400 font-medium">
+                    <div className="text-right shrink-0 text-xs text-stone-500 font-medium">
                       Valid until {leadPromo.endDate}
                     </div>
                   )}
@@ -1293,9 +1293,9 @@ export default function HotelDetails() {
                     <div className="w-full flex flex-col flex-1 sm:py-2 min-w-0">
                       <div className="flex-1">
                         {roomSlashed.hasDiscount && (
-                          <div className="inline-flex items-center gap-1.5 bg-stone-900 text-white px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider shadow-2xs mb-2">
-                            <PromotionIcon saleType={roomSlashed.saleType} className="w-3 h-3 text-white" />
-                            <span>{roomSlashed.saleTypeLabel} · {roomSlashed.discountPercentage}% OFF</span>
+                          <div className="inline-flex items-center gap-1.5 bg-stone-100 text-stone-800 border border-stone-200 px-2 py-0.5 rounded text-[11px] font-medium mb-2">
+                            <PromotionIcon saleType={roomSlashed.saleType} className="w-3 h-3 text-stone-600" />
+                            <span>{roomSlashed.saleTypeLabel} &middot; {roomSlashed.discountPercentage}% OFF</span>
                           </div>
                         )}
                         <div className="flex flex-wrap items-start justify-between gap-2.5 mb-2 sm:mb-2.5">
@@ -1391,7 +1391,7 @@ export default function HotelDetails() {
                         <button
                           onClick={() => initiateBooking(room)}
                           disabled={isSoldOut || !isBookable}
-                          className="bg-stone-900 text-white px-5 sm:px-6 py-2 sm:py-2.5 rounded-full font-bold uppercase tracking-wider text-[11px] sm:text-xs hover:bg-emerald-700 active:scale-95 transition-all duration-300 disabled:bg-stone-300 disabled:hover:bg-stone-300 disabled:active:scale-100 disabled:cursor-not-allowed whitespace-nowrap shadow-2xs cursor-pointer"
+                          className="bg-stone-900 hover:bg-stone-800 text-white px-4 sm:px-5 py-2 rounded-lg text-xs font-medium transition disabled:bg-stone-200 disabled:text-stone-400 disabled:cursor-not-allowed whitespace-nowrap shadow-2xs cursor-pointer"
                         >
                           {isSoldOut ? 'Unavailable' : (hotel.stayType === 'entire_place' ? 'Book Entire Space' : 'Reserve')}
                         </button>
@@ -2027,26 +2027,26 @@ export default function HotelDetails() {
         {/* Sticky Sidebar / Highlights */}
         <div className="md:col-span-5 lg:col-span-4 md:sticky md:top-24 lg:top-36 flex flex-col gap-4 sm:gap-5 lg:gap-6 md:max-h-[calc(100vh-7rem)] lg:max-h-[calc(100vh-9rem)] md:overflow-y-auto pb-4 sm:pb-6 lg:pb-8 pr-0 md:pr-1 lg:pr-2 pt-0 md:pt-1 lg:pt-2">
           {/* Quick Navigation Card */}
-          <div className="hidden md:block bg-stone-900 text-white border border-stone-800 rounded-2xl p-4 sm:p-5 shadow-lg">
-            <h3 className="text-sm font-serif font-bold mb-2.5 flex items-center gap-2">
-              <Navigation className="h-4 w-4 text-emerald-400" /> Quick Navigation
+          <div className="hidden md:block bg-white text-stone-800 border border-stone-200/90 rounded-2xl p-4 sm:p-5 shadow-xs">
+            <h3 className="text-sm font-serif font-bold text-stone-900 mb-2.5 flex items-center gap-2">
+              <Navigation className="h-4 w-4 text-stone-600" /> Quick Navigation
             </h3>
-            <div className="flex flex-col gap-1.5">
-              <a href="#rooms-section" className="text-xs text-stone-300 hover:text-white hover:bg-stone-800 px-3 py-2 rounded-lg transition-colors flex items-center gap-2">
-                <BedDouble className="w-3.5 h-3.5" /> Accommodations & Spaces
+            <div className="flex flex-col gap-1">
+              <a href="#rooms-section" className="text-xs font-medium text-stone-600 hover:text-stone-900 hover:bg-stone-50 px-2.5 py-1.5 rounded-md transition-colors flex items-center gap-2">
+                <BedDouble className="w-3.5 h-3.5 text-stone-400" /> Accommodations & Spaces
               </a>
               {hotel.restaurant && hotel.restaurant.enabled !== false && (
-                <a href="#restaurant-menu" className="text-xs text-stone-300 hover:text-white hover:bg-stone-800 px-3 py-2 rounded-lg transition-colors flex items-center gap-2">
-                  <UtensilsCrossed className="w-3.5 h-3.5" /> Dining & Menu
+                <a href="#restaurant-menu" className="text-xs font-medium text-stone-600 hover:text-stone-900 hover:bg-stone-50 px-2.5 py-1.5 rounded-md transition-colors flex items-center gap-2">
+                  <UtensilsCrossed className="w-3.5 h-3.5 text-stone-400" /> Dining & Menu
                 </a>
               )}
               {activeSpaceTab === 'rooms' && (
-                <a href="#reviews" className="text-xs text-stone-300 hover:text-white hover:bg-stone-800 px-3 py-2 rounded-lg transition-colors flex items-center gap-2">
-                  <Star className="w-3.5 h-3.5" /> Guest Reviews
+                <a href="#reviews" className="text-xs font-medium text-stone-600 hover:text-stone-900 hover:bg-stone-50 px-2.5 py-1.5 rounded-md transition-colors flex items-center gap-2">
+                  <Star className="w-3.5 h-3.5 text-stone-400" /> Guest Reviews
                 </a>
               )}
-              <a href="#directions" className="text-xs text-stone-300 hover:text-white hover:bg-stone-800 px-3 py-2 rounded-lg transition-colors flex items-center gap-2">
-                <MapPin className="w-3.5 h-3.5" /> Location & Directions
+              <a href="#directions" className="text-xs font-medium text-stone-600 hover:text-stone-900 hover:bg-stone-50 px-2.5 py-1.5 rounded-md transition-colors flex items-center gap-2">
+                <MapPin className="w-3.5 h-3.5 text-stone-400" /> Location & Directions
               </a>
             </div>
           </div>

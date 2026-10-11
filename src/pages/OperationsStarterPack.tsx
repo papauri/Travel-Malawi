@@ -168,7 +168,7 @@ export default function OperationsStarterPack() {
             <p className="mt-3 text-stone-700">
               Lodge owners and general managers in Malawi are chronically busy with generator fuel, seasonal lake road repairs, and kitchen supplies. <strong className="font-semibold text-stone-900">Any request that feels like administrative work will be postponed indefinitely.</strong>
             </p>
-            <div className="mt-4 bg-stone-50 border-l-2 border-stone-300 px-4 py-3 text-stone-700">
+            <div className="mt-4 bg-stone-50/80 border border-stone-200/90 rounded-xl p-4 text-stone-700">
               <p className="font-semibold text-stone-900">
                 The field mandate: never ask a host to &ldquo;sign up,&rdquo; &ldquo;fill out a form,&rdquo; or &ldquo;learn a system.&rdquo;
               </p>
@@ -184,7 +184,7 @@ export default function OperationsStarterPack() {
             <div className="mt-4 space-y-6">
               <div>
                 <h3 className="text-base font-semibold text-stone-900">Touch 1 (day 1): the sincere compliment + provocative question</h3>
-                <p className="mt-2 bg-stone-50 border-l-2 border-stone-300 px-4 py-3 text-stone-700">
+                <p className="mt-2 bg-stone-50/80 border border-stone-200/90 rounded-xl p-4 text-stone-700">
                   &ldquo;Muli bwanji [Manager Name]! We&apos;ve been admiring the stunning lakefront cottages at [Property Name]. Quick question: on your weekend bookings from Lilongwe and Blantyre, are you still paying foreign booking websites 18% to 22% in commission?&rdquo;
                 </p>
                 <p className="mt-2 text-sm text-stone-500">
@@ -194,7 +194,7 @@ export default function OperationsStarterPack() {
 
               <div>
                 <h3 className="text-base font-semibold text-stone-900">Touch 2 (day 2): the zero-inertia value demo</h3>
-                <p className="mt-2 bg-stone-50 border-l-2 border-stone-300 px-4 py-3 text-stone-700">
+                <p className="mt-2 bg-stone-50/80 border border-stone-200/90 rounded-xl p-4 text-stone-700">
                   &ldquo;We put together a private preview of what [Property Name] looks like on Travel Malawi with direct Airtel Money/Mpamba settlement and 0% commission. Guests chat directly to your WhatsApp line. Would you like us to activate this for your lodge?&rdquo;
                 </p>
                 <p className="mt-2 text-sm text-stone-500">
@@ -204,7 +204,7 @@ export default function OperationsStarterPack() {
 
               <div>
                 <h3 className="text-base font-semibold text-stone-900">Touch 3 (day 3): the founding host scarcity close</h3>
-                <p className="mt-2 bg-stone-50 border-l-2 border-stone-300 px-4 py-3 text-stone-700">
+                <p className="mt-2 bg-stone-50/80 border border-stone-200/90 rounded-xl p-4 text-stone-700">
                   &ldquo;Takulandirani [Manager Name] — we are locking our inaugural Founding Host Cohort for [Region] at 10 flagship properties this Friday (0% commission forever + free verified profiling). We have 2 slots remaining in your zone and wanted to offer you first right of refusal before opening to others.&rdquo;
                 </p>
                 <p className="mt-2 text-sm text-stone-500">
@@ -260,7 +260,7 @@ export default function OperationsStarterPack() {
             </p>
 
             {submitted ? (
-              <div className="mt-6 bg-stone-50 border-l-2 border-stone-300 px-4 py-3">
+              <div className="mt-6 bg-stone-50/80 border border-stone-200/90 rounded-xl p-4">
                 <p className="font-medium text-stone-900">Field lead logged</p>
                 <p className="text-stone-700">
                   Reference: <span className="font-mono">{submissionId}</span>. The record is now visible in the Admin Hub for immediate onboarding dispatch.

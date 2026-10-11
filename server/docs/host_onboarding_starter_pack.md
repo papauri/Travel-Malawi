@@ -1,53 +1,69 @@
-# Host Onboarding Starter Pack
-*How to set up a clear, trustworthy listing for an independent property in Malawi*
+# Host Starter Pack & Field Guide
+*A short, practical guide for independent lodges, whole lakeside cottages, private villas, B&Bs, and safari camps across Malawi.*
+*0% Commission · Direct WhatsApp Bookings · 3-Minute Read*
 
-## 1. Why presentation matters
+---
 
-Travellers are not only choosing a room. They want somewhere comfortable, clean and easy to reach.
+## Takulandirani! Welcome to Direct Hosting in Malawi
 
-Most people decide within a few seconds whether a listing looks trustworthy. If photos are unclear or information is missing, they go back to WhatsApp or book elsewhere.
+Whether you host an **entire lakeside cottage** in Cape Maclear, a **private family holiday villa** in Mangochi, a **mountain cabin** in Mulanje, an exclusive **safari camp** in Liwonde, or a **boutique guest room** in Lilongwe Area 10 — travelers come to you for **peace of mind, comfort, and an honest Malawian welcome**.
 
-The steps below take about eight minutes and cover what travellers look for first.
+Stays on Travel Malawi can be booked as **Whole Houses / Entire Places** (exclusive private kitchen, lawn, beach frontage, caretaker) or **Room-by-Room** (individual suites, chalets, or B&Bs). Both models enjoy 0% commission with direct payouts straight to your Airtel Money, TNM Mpamba, or Bank account.
 
-## 2. Four photos that matter most
+* **Quick Links:**
+  * [List Your Property on Travel Malawi](/list-your-property)
+  * [How Hosting Works Visual Playbook](/how-hosting-works)
+  * [Host Dashboard & Rates](/dashboard)
+  * [Direct Concierge WhatsApp](https://api.whatsapp.com/send?phone=265999000000)
+  * [Browse Verified Stays in Malawi](/)
 
-You do not need a professional photographer. A recent smartphone with a clean lens, used in natural morning or late-afternoon light, is enough.
+---
 
-### Photo 1: The bed
+## 1. Four Photos That Win the Stay (With Picture Angles)
 
-* **What to show:** A freshly made bed, smooth linen and natural light from a window.
-* **Why:** Guests want to know they will sleep well, without noise, dust or discomfort.
+You do not need an expensive photography crew. Any smartphone taken in morning natural light with a wiped clean lens works best. Follow these four precise camera framing angles:
 
-### Photo 2: The view
+1. **The Clean Bed (Sleep Shot) — 45° Eye-Level:** Smooth crisp linens, fluffed pillows, side window morning light vector. Dissolves guest worry: *"Will I sleep comfortably and wake up rested?"*
+2. **The Horizon View (Aspiration Shot) — Eye-Level Veranda 16:9:** Horizon line on upper 1/3, foreground veranda rail with coffee cup on lower 1/3, Lake Malawi waters or Mulanje peaks in middle. This is the photo guests share on WhatsApp.
+3. **The Bathroom (Hygiene Shot) — Straight 90° Elevation:** Spotless shower, clean mirror, dry floor, folded white towel on rail. *Tip: Stand 15° off-axis so your phone doesn't reflect in the mirror.*
+4. **Sunset Dining / Fire Pit (Connection Shot) — 30° Seated Dusk:** Deck seating, evening sunset drink, boma fire pit glowing at dusk, or fresh chambo plate. Captures the evening relaxation after driving down the M5.
 
-* **What to show:** The view from the patio, balcony or veranda: Lake Malawi, Mount Mulanje, or the river at Liwonde.
-* **Why:** This is the photo guests share with the people they are travelling with.
+---
 
-### Photo 3: The bathroom
+## 2. Fair Dual Pricing, Whole-House Rates & Anchoring
 
-* **What to show:** A clean shower, mirror and dry floor, with a folded towel.
-* **Why:** Cleanliness is one of the biggest concerns for travellers in rural areas. A clean bathroom photo builds trust.
+Travelers in Malawi include domestic residents from Lilongwe and Blantyre booking whole weekend retreats, as well as international NGO consultants and overseas tourists. Provide clean numbers in both currencies:
 
-### Photo 4: Dining or the fire pit
+* **Malawian Kwacha (MWK):** Always round to the nearest **MK 1,000**:
+  * *Whole 3-Bed Cottage:* MK 280,000 / night
+  * *Master Lake Chalet:* MK 120,000 / night
+  * *Standard Garden Room:* MK 65,000 / night
+* **US Dollars (USD):** Round to whole dollars or the nearest **$5**:
+  * *Whole 3-Bed Cottage:* $180 / night
+  * *Master Lake Chalet:* $80 / night
+  * *Standard Garden Room:* $45 / night
+* **The Premium Anchor Rule:** List your best offering first (e.g. *Whole 4-Bedroom Cottage at MK 320,000 / $210*). When guests see that benchmark first, your standard *2-Bedroom Annex at MK 140,000 / $90* reads as an irresistible value.
 
-* **What to show:** A meal such as fresh chambo, a drink on the deck at sunset, or the evening fire.
-* **Why:** It shows guests where they will relax at the end of the day.
+---
 
-## 3. Pricing in Kwacha and US dollars
+## 3. Direct WhatsApp Guest Templates
 
-### List your highest-priced room first
+Keep your communications sharp and welcoming:
 
-Show your top room first, for example *Lake Suite* at MK 165,000 / $110. When guests then see a *Garden Cottage* at MK 75,000 / $50, it reads as good value by comparison.
+### Template 1: Instant Reservation & Deposit
+> *"Muli bwanji [Guest Name]! Thank you for choosing [Property Name]. We have provisionally held your [Whole Cottage / Room Type] for [Check-in Date] to [Check-out Date]. Total: MK [Amount]. To confirm your dates, please send your 50% deposit via Airtel Money/Mpamba to [Phone Number] or National Bank of Malawi [Account Details]. Once sent, we will send your confirmation voucher immediately!"*
 
-### Rounding rules
+### Template 2: Road Directions & Gate Pin
+> *"Muli bwanji [Guest Name]! We look forward to welcoming you today at [Property Name]. Coming down the Lakeshore Road, take the turn-off at [Landmark]. Follow our marked signs for 3 km. Gate GPS pin: [Google Maps Link]. Our resident manager [Name] is ready on WhatsApp at [Phone Number] if you need any directions along the road!"*
 
-* **MWK:** Round to the nearest 1,000 (for example MK 85,000 or MK 120,000). Avoid uneven amounts such as MK 84,350.
-* **USD:** Use whole dollars or round to the nearest $5 (for example $60, $75, $90, $120).
+---
 
-## 4. Three steps to get listed on WhatsApp
+## 4. Get Listed in 8 Minutes
 
-1. **Send photos.** Send the four photos above (bed, view, bathroom, dining) to the Travel Malawi operations team on WhatsApp.
-2. **Send your rates.** Send your room names and nightly rates in MWK or USD.
-3. **Share your location.** Share a location pin taken at your vehicle gate.
+1. **Send your 4 photos:** Bed, view, bathroom, and sunset dining/fire pit.
+2. **Send property name & rates:** Whole house rate or room rates in MWK or USD, plus any inclusions.
+3. **Share your location pin:** A WhatsApp pin taken at your vehicle gate.
 
-**Result:** Our team builds your listing page, creates your QR code, and connects guest enquiries to your phone, usually within about eight minutes.
+**Result:** Our concierge team verifies your details, builds your verified listing page, and routes guest inquiries directly to your WhatsApp phone — with 0% commission and 100% payout retention.
+
+* **Ready to list?** [Submit your property online now](/list-your-property) or message our team on WhatsApp at `+265 999 000 000`.

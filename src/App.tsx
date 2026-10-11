@@ -30,6 +30,7 @@ import PropertyListingGuide from './pages/PropertyListingGuide';
 import PlatformGuideUat from './pages/PlatformGuideUat';
 import ConceptValidationSurvey from './pages/ConceptValidationSurvey';
 import StayOwnerLeaflet from './pages/StayOwnerLeaflet';
+import HowHostingWorks from './pages/HowHostingWorks';
 import GlobalNotificationManager from './components/GlobalNotificationManager';
 import PageLoader from './components/PageLoader';
 import OfflineIndicator from './components/OfflineIndicator';
@@ -203,6 +204,9 @@ const router = createBrowserRouter([
       { path: "stay-owner-leaflet", element: <StayOwnerLeaflet /> },
       { path: "leaflet", element: <StayOwnerLeaflet /> },
       { path: "host-leaflet", element: <StayOwnerLeaflet /> },
+      { path: "how-it-works", element: <HowHostingWorks /> },
+      { path: "hosting", element: <HowHostingWorks /> },
+      { path: "how-hosting-works", element: <HowHostingWorks /> },
       { path: "admin/hotel/:id", element: <ManageHotel /> },
       { path: "*", element: <NotFound /> }
     ]

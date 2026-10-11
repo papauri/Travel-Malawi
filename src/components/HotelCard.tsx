@@ -101,12 +101,12 @@ export default function HotelCard({
             e.stopPropagation();
             if (hotel.id) toggleSave(hotel.id);
           }}
-          className="absolute top-2.5 right-2.5 sm:top-3 sm:right-3 md:top-4 md:right-4 z-20 p-1.5 sm:p-2 hover:scale-110 transition-transform duration-200"
+          className="absolute top-2.5 right-2.5 sm:top-3 sm:right-3 z-20 w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-lg bg-white/95 hover:bg-white border border-stone-200/90 text-stone-600 hover:text-stone-900 shadow-2xs transition cursor-pointer"
           aria-label={isSaved ? 'Remove from wishlist' : 'Save to wishlist'}
         >
           <Heart 
-            className={`w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 drop-shadow-md ${isSaved ? 'fill-emerald-500 text-emerald-500' : 'fill-black/30 text-white'}`} 
-            strokeWidth={isSaved ? 0 : 2}
+            className={`w-3.5 h-3.5 sm:w-4 sm:h-4 transition-colors ${isSaved ? 'fill-rose-500 text-rose-500' : 'text-stone-600'}`} 
+            strokeWidth={isSaved ? 0 : 1.75}
           />
         </button>
 
@@ -116,24 +116,24 @@ export default function HotelCard({
             e.stopPropagation();
             if (hotel.id) toggleHotel({ hotel, priceFrom, priceCurrency, rating });
           }}
-          className={`absolute top-2.5 left-2.5 sm:top-3 sm:left-3 md:top-4 md:left-4 z-20 flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 md:px-3 py-1 sm:py-1.5 rounded-full backdrop-blur-sm transition-all duration-200 shadow-md ${
+          className={`absolute top-2.5 left-2.5 sm:top-3 sm:left-3 z-20 flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition cursor-pointer select-none border ${
             isComparing 
-              ? 'bg-emerald-500 text-white' 
-              : 'bg-black/30 text-white hover:bg-black/50'
+              ? 'bg-stone-900 text-white border-stone-900 shadow-xs' 
+              : 'bg-white/95 hover:bg-white text-stone-700 hover:text-stone-900 border-stone-200/90 shadow-2xs'
           }`}
           title={isComparing ? 'Remove from comparison' : 'Compare Property'}
         >
-          <Scale className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4" />
-          <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider hidden sm:inline">{isComparing ? 'Comparing' : 'Compare'}</span>
+          <Scale className={`w-3.5 h-3.5 ${isComparing ? 'text-stone-300' : 'text-stone-500'}`} />
+          <span className="hidden sm:inline">{isComparing ? 'Comparing' : 'Compare'}</span>
         </button>
 
         {(() => {
           const promo = getActivePromotion(hotel, searchParams?.checkIn, 'all');
           if (!promo) return null;
           return (
-            <div className="absolute top-2.5 right-11 sm:top-3 sm:right-13 md:top-4 md:right-15 z-20 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-stone-900/95 hover:bg-stone-900 text-white backdrop-blur-md shadow-md border border-stone-700/80 transition-transform">
-              <PromotionIcon saleType={promo.saleType} className="w-3 h-3 text-stone-200" />
-              <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider whitespace-nowrap">
+            <div className="absolute top-2.5 right-11 sm:top-3 sm:right-13 z-20 flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-white/95 text-stone-800 border border-stone-200/90 shadow-2xs">
+              <PromotionIcon saleType={promo.saleType} className="w-3 h-3 text-stone-600" />
+              <span className="text-[11px] font-medium whitespace-nowrap">
                 {getSaleTypeBadge(promo.saleType, promo.saleTypeCustomLabel, promo.discountPercentage)}
               </span>
             </div>
@@ -172,29 +172,29 @@ export default function HotelCard({
         {/* Carousel Controls */}
         {allImages.length > 1 && (
           <>
-            <div className="absolute inset-0 flex items-center justify-between p-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            <div className="absolute inset-0 flex items-center justify-between p-2.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
               <button 
                 onClick={handlePrevImage}
                 aria-label="Previous image"
-                className="bg-white/90 hover:bg-white text-stone-900 p-2 rounded-full shadow-sm backdrop-blur-sm transition z-10"
+                className="bg-white/95 hover:bg-white text-stone-700 hover:text-stone-900 p-1.5 rounded-lg border border-stone-200/80 shadow-2xs transition pointer-events-auto cursor-pointer"
               >
-                <ChevronLeft className="w-4 h-4" />
+                <ChevronLeft className="w-3.5 h-3.5" />
               </button>
               <button 
                 onClick={handleNextImage}
                 aria-label="Next image"
-                className="bg-white/90 hover:bg-white text-stone-900 p-2 rounded-full shadow-sm backdrop-blur-sm transition z-10"
+                className="bg-white/95 hover:bg-white text-stone-700 hover:text-stone-900 p-1.5 rounded-lg border border-stone-200/80 shadow-2xs transition pointer-events-auto cursor-pointer"
               >
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className="w-3.5 h-3.5" />
               </button>
             </div>
             
             {/* Dots */}
-            <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1.5 z-10">
+            <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5 z-10">
               {allImages.map((image, i) => (
                 <div 
                   key={`${image}-${i}`} 
-                  className={`h-1 transition-all ${i === currentImageIdx ? 'w-6 bg-white' : 'w-2 bg-white/50'}`}
+                  className={`h-1 rounded-full transition-all ${i === currentImageIdx ? 'w-5 bg-white' : 'w-1.5 bg-white/60'}`}
                 />
               ))}
             </div>
@@ -210,24 +210,24 @@ export default function HotelCard({
           </p>
           <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
             {hotel.stayType === 'entire_place' && (
-              <span className="inline-flex items-center gap-1 text-[0.65rem] font-bold uppercase tracking-wider text-emerald-800 bg-emerald-100/90 px-1.5 py-0.5 rounded">
-                <Home className="h-2.5 w-2.5" />
+              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-stone-700 bg-stone-100 px-1.5 py-0.5 rounded border border-stone-200/70">
+                <Home className="h-3 w-3 text-stone-500" />
                 <span>{hotel.entirePlaceDetails?.propertyType || 'Whole Place'}</span>
               </span>
             )}
             {hotel.featured && (
-              <span className="inline-flex items-center gap-1 text-[0.65rem] font-bold uppercase tracking-[0.1em] text-stone-500">
-                <Star className="h-2.5 w-2.5 fill-stone-400 text-stone-400" /> Featured
+              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-stone-500">
+                <Star className="h-3 w-3 fill-amber-400/80 text-amber-500/80" /> Featured
               </span>
             )}
             {hotel.categories && hotel.categories.length > 0 && (
-              <span className="text-[0.65rem] font-semibold tracking-wider text-emerald-600 uppercase">
+              <span className="text-[11px] font-medium text-stone-500">
                 {hotel.categories[0]}
               </span>
             )}
           </div>
         </div>
-        <h3 className="font-serif text-sm sm:text-base md:text-lg font-bold text-stone-900 leading-snug line-clamp-2 group-hover:text-emerald-700 transition-colors duration-300">
+        <h3 className="font-serif text-sm sm:text-base md:text-lg font-bold text-stone-900 leading-snug line-clamp-2 group-hover:text-stone-700 transition-colors duration-200">
           <MaskedPlaceName 
             name={hotel.name} 
             fallback={index === 0 ? '[Your Lodge Name]' : '[Partner Stay]'} 
@@ -245,14 +245,14 @@ export default function HotelCard({
                 <div className="text-xs sm:text-sm text-stone-600 flex-1 min-w-0">
                   {slashed.hasDiscount ? (
                     <div className="flex flex-col gap-1">
-                      {/* Sale Type Pill + Slashed Amount */}
+                      {/* Sale Type Tag + Slashed Amount */}
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="inline-flex items-center gap-1 bg-stone-900 text-white px-2 py-0.5 rounded text-[10px] sm:text-[11px] font-bold uppercase tracking-wider shadow-2xs">
-                          <PromotionIcon saleType={slashed.saleType} className="w-3 h-3 text-white" />
+                        <span className="inline-flex items-center gap-1 bg-stone-100 text-stone-800 border border-stone-200/90 px-1.5 py-0.5 rounded text-[11px] font-medium">
+                          <PromotionIcon saleType={slashed.saleType} className="w-3 h-3 text-stone-600" />
                           <span>{slashed.saleTypeLabel}</span>
                         </span>
-                        <span className="bg-stone-100 text-stone-800 border border-stone-300 px-1.5 py-0.5 rounded text-[10px] sm:text-[11px] font-semibold tracking-tight">
-                          Slashed by <PriceDisplay amount={slashed.slashedAmount} currency={priceCurrency} /> ({slashed.discountPercentage}% OFF)
+                        <span className="text-stone-600 text-[11px] font-normal">
+                          &minus;{slashed.discountPercentage}% OFF
                         </span>
                       </div>
 

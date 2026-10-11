@@ -1222,6 +1222,12 @@ export default function ListProperty() {
               <ArrowLeft className="h-4 w-4" /> Back to your dashboard
             </button>
             <Link
+              to="/how-it-works"
+              className="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold text-stone-700 bg-white hover:bg-stone-50 border border-stone-200 px-3 py-1.5 rounded-full transition shadow-2xs"
+            >
+              <span>How Hosting Works</span>
+            </Link>
+            <Link
               to="/host-guide"
               target="_blank"
               className="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 px-3 py-1.5 rounded-full transition"
@@ -1444,7 +1450,7 @@ export default function ListProperty() {
                         Property Already Registered on Travel Malawi
                       </p>
                       <p className="mt-0.5 text-amber-800 leading-relaxed">
-                        &quot;<strong>{existingMatch.hotel?.name}</strong>&quot; in {existingMatch.hotel?.location} already exists in our directory (Status: <span className="font-semibold uppercase">{existingMatch.hotel?.status || 'pending'}</span>).
+                        "{existingMatch.hotel?.name}" in {existingMatch.hotel?.location} already exists in our directory (Status: <span className="font-semibold uppercase">{existingMatch.hotel?.status || 'pending'}</span>).
                         If you are the owner or authorized manager of this property, please sign in with your registered account or contact support.
                       </p>
                     </div>
@@ -1497,7 +1503,7 @@ export default function ListProperty() {
                         )}
                         {aiPropertySuggestion.checkInTime && aiPropertySuggestion.checkOutTime && (
                           <span className="inline-flex items-center gap-1 text-stone-600 bg-white px-2.5 py-1 rounded-full border border-stone-200 font-medium">
-                            <Clock className="w-3 h-3 text-stone-500" />
+                            <Clock className="w-3.5 h-3.5 text-stone-500" />
                             Hours: In {aiPropertySuggestion.checkInTime} / Out {aiPropertySuggestion.checkOutTime}
                           </span>
                         )}
@@ -1506,7 +1512,7 @@ export default function ListProperty() {
 
                     {aiPropertySuggestion.summary && (
                       <p className="text-xs text-stone-700 leading-relaxed italic bg-white/90 p-3 rounded-xl border border-stone-200/80 shadow-2xs">
-                        &quot;{aiPropertySuggestion.summary}&quot;
+                        "{aiPropertySuggestion.summary}"
                       </p>
                     )}
 
@@ -1535,7 +1541,7 @@ export default function ListProperty() {
                         <div className="flex items-center justify-between text-[11px] font-bold text-stone-600 uppercase tracking-wider">
                           <span className="flex items-center gap-1.5">
                             <BedDouble className="w-3.5 h-3.5 text-emerald-600" />
-                            Auto-Configured Room Types &amp; Pricing
+                            Auto-Configured Room Types & Pricing
                           </span>
                           <span className="text-emerald-700 font-medium lowercase">ready to populate</span>
                         </div>
@@ -1559,7 +1565,7 @@ export default function ListProperty() {
                         className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-5 py-2.5 rounded-xl text-xs shadow-md transition active:scale-95 cursor-pointer"
                       >
                         <ConciergeBell className="w-3.5 h-3.5 text-amber-300" />
-                        <span>Auto-Fill All Listing Fields &amp; Categorize</span>
+                        <span>Auto-Fill All Listing Fields & Categorize</span>
                       </button>
                       <button
                         type="button"
@@ -1567,7 +1573,7 @@ export default function ListProperty() {
                         className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 bg-white hover:bg-stone-100 text-stone-700 border border-stone-200 font-medium px-4 py-2.5 rounded-xl text-xs shadow-2xs transition active:scale-95 cursor-pointer"
                       >
                         <CheckCircle2 className="w-3.5 h-3.5 text-stone-500" />
-                        <span>Apply Basics Only (Name &amp; Location)</span>
+                        <span>Apply Basics Only (Name & Location)</span>
                       </button>
                       <button
                         type="button"
@@ -1590,7 +1596,7 @@ export default function ListProperty() {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <span className={labelClass}>How is this stay booked by guests?</span>
-                  <span className="text-[11px] text-stone-500">Adapts pricing &amp; room setup</span>
+                  <span className="text-[11px] text-stone-500">Adapts pricing & room setup</span>
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -1598,23 +1604,23 @@ export default function ListProperty() {
                     type="button"
                     aria-pressed={draft.stayType !== 'entire_place'}
                     onClick={() => set('stayType', 'rooms')}
-                    className={`relative rounded-2xl border p-4 text-left transition cursor-pointer ${
+                    className={`relative rounded-xl border p-4 text-left transition cursor-pointer ${
                       draft.stayType !== 'entire_place'
-                        ? 'border-stone-900 bg-stone-900 text-white shadow-md'
-                        : 'border-stone-200 bg-stone-50/70 hover:bg-stone-100/90 text-stone-900'
+                        ? 'border-stone-900 bg-white ring-1 ring-stone-900 text-stone-900 shadow-xs'
+                        : 'border-stone-200 bg-stone-50/70 hover:bg-stone-100/90 text-stone-700'
                     }`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <BedDouble className={`h-4 w-4 ${draft.stayType !== 'entire_place' ? 'text-amber-400' : 'text-stone-500'}`} />
-                        <span className="block text-sm font-bold">Room-by-Room Stay</span>
+                        <BedDouble className={`h-4 w-4 ${draft.stayType !== 'entire_place' ? 'text-stone-900' : 'text-stone-500'}`} />
+                        <span className="block text-sm font-semibold">Room-by-Room Stay</span>
                       </div>
                       {draft.stayType !== 'entire_place' && (
-                        <Check className="h-4 w-4 text-white" />
+                        <Check className="h-4 w-4 text-stone-900" />
                       )}
                     </div>
-                    <span className={`mt-1.5 block text-xs leading-relaxed ${draft.stayType !== 'entire_place' ? 'text-white/80' : 'text-stone-500'}`}>
-                      Guests book individual rooms, suites, chalets, or safari tents. Best for hotels, lodges, safari camps, and multi-unit B&amp;Bs.
+                    <span className="mt-1.5 block text-xs leading-relaxed text-stone-500">
+                      Guests book individual rooms, suites, chalets, or safari tents. Best for hotels, lodges, safari camps, and multi-unit B&Bs.
                     </span>
                   </button>
 
@@ -1637,22 +1643,22 @@ export default function ListProperty() {
                         });
                       }
                     }}
-                    className={`relative rounded-2xl border p-4 text-left transition cursor-pointer ${
+                    className={`relative rounded-xl border p-4 text-left transition cursor-pointer ${
                       draft.stayType === 'entire_place'
-                        ? 'border-stone-900 bg-stone-900 text-white shadow-md'
-                        : 'border-stone-200 bg-stone-50/70 hover:bg-stone-100/90 text-stone-900'
+                        ? 'border-stone-900 bg-white ring-1 ring-stone-900 text-stone-900 shadow-xs'
+                        : 'border-stone-200 bg-stone-50/70 hover:bg-stone-100/90 text-stone-700'
                     }`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Home className={`h-4 w-4 ${draft.stayType === 'entire_place' ? 'text-emerald-400' : 'text-stone-500'}`} />
-                        <span className="block text-sm font-bold">Whole House / Entire Place</span>
+                        <Home className={`h-4 w-4 ${draft.stayType === 'entire_place' ? 'text-stone-900' : 'text-stone-500'}`} />
+                        <span className="block text-sm font-semibold">Whole House / Entire Place</span>
                       </div>
                       {draft.stayType === 'entire_place' && (
-                        <Check className="h-4 w-4 text-white" />
+                        <Check className="h-4 w-4 text-stone-900" />
                       )}
                     </div>
-                    <span className={`mt-1.5 block text-xs leading-relaxed ${draft.stayType === 'entire_place' ? 'text-white/80' : 'text-stone-500'}`}>
+                    <span className="mt-1.5 block text-xs leading-relaxed text-stone-500">
                       Guests book the whole property exclusively (private villa, lakeside cottage, entire guest house). Rented as a single space, not per room.
                     </span>
                   </button>
@@ -1711,7 +1717,7 @@ export default function ListProperty() {
                   })}
                 </div>
                 <p className="mt-2 text-xs text-stone-500 leading-relaxed">
-                  Whether you run a Bed &amp; Breakfast, lakeside lodge, safari camp, boutique cottage, or urban guest house, pick the category that best matches your stay. Guests filter by this on the home page.
+                  Whether you run a Bed & Breakfast, lakeside lodge, safari camp, boutique cottage, or urban guest house, pick the category that best matches your stay. Guests filter by this on the home page.
                 </p>
                 <FieldError message={visible.category} />
               </div>
@@ -2027,7 +2033,7 @@ export default function ListProperty() {
                         <Home className="w-3.5 h-3.5" />
                         <span>Whole Space / Entire Property Setup</span>
                       </div>
-                      <h3 className="text-lg font-serif font-bold text-stone-900">Entire Place Capacity &amp; Nightly Rate</h3>
+                      <h3 className="text-lg font-serif font-bold text-stone-900">Entire Place Capacity & Nightly Rate</h3>
                       <p className="text-sm text-stone-600 mt-0.5">
                         Guests book the whole place as a single exclusive reservation. Set the property specifications and whole-property rate.
                       </p>
@@ -2177,7 +2183,7 @@ export default function ListProperty() {
                         }}
                         className="mt-1 text-[11px] text-emerald-700 font-semibold hover:underline cursor-pointer"
                       >
-                        Auto-calculate MK from USD &rarr;
+                        Auto-calculate MK from USD →
                       </button>
                     </div>
 
@@ -2214,7 +2220,7 @@ export default function ListProperty() {
                         }}
                         className="mt-1 text-[11px] text-blue-700 font-semibold hover:underline cursor-pointer"
                       >
-                        Auto-calculate USD from MK &rarr;
+                        Auto-calculate USD from MK →
                       </button>
                     </div>
                   </div>
@@ -2263,7 +2269,7 @@ export default function ListProperty() {
                 {/* Whole House Description Note */}
                 <div>
                   <label className="block text-xs font-bold text-stone-700 mb-1">
-                    Whole House Guest Notes &amp; Arrangement <span className="font-normal text-stone-400">(optional)</span>
+                    Whole House Guest Notes & Arrangement <span className="font-normal text-stone-400">(optional)</span>
                   </label>
                   <textarea
                     rows={2}
@@ -3227,7 +3233,7 @@ export default function ListProperty() {
                   <div>
                     <h3 className="font-semibold text-stone-900">Property Ownership & Operating Entity <span className="text-xs text-stone-400 font-normal">(Optional)</span></h3>
                     <p className="text-xs text-stone-500 mt-0.5">
-                      If the B&amp;B, cottage, lodge, or property is owned by an entity, family, or individual separate from the on-site manager.
+                      If the B&B, cottage, lodge, or property is owned by an entity, family, or individual separate from the on-site manager.
                     </p>
                   </div>
                 </div>
@@ -3555,7 +3561,7 @@ export default function ListProperty() {
                               <Home className="w-3 h-3 text-emerald-700" /> Entire Place
                             </span>
                             <h4 className="text-xs font-bold uppercase tracking-wider text-stone-800">
-                              Whole Property Setup &amp; Nightly Rate
+                              Whole Property Setup & Nightly Rate
                             </h4>
                           </div>
                           <button
@@ -3563,7 +3569,7 @@ export default function ListProperty() {
                             onClick={() => setStep(3)}
                             className="text-xs font-semibold text-stone-700 hover:text-stone-900 hover:underline cursor-pointer"
                           >
-                            Edit Whole Space &rarr;
+                            Edit Whole Space →
                           </button>
                         </div>
 
@@ -3598,7 +3604,7 @@ export default function ListProperty() {
 
                           {draft.entirePlaceDetails?.wholeHouseDescription && (
                             <p className="text-xs text-stone-600 pt-1 italic">
-                              &quot;{draft.entirePlaceDetails.wholeHouseDescription}&quot;
+                              "{draft.entirePlaceDetails.wholeHouseDescription}"
                             </p>
                           )}
                         </div>
@@ -3614,7 +3620,7 @@ export default function ListProperty() {
                             onClick={() => setStep(3)}
                             className="text-xs font-semibold text-stone-700 hover:text-stone-900 hover:underline"
                           >
-                            Edit Rooms &rarr;
+                            Edit Rooms →
                           </button>
                         </div>
 
@@ -3712,7 +3718,7 @@ export default function ListProperty() {
                           className="text-xs font-semibold text-stone-800 hover:underline inline-flex items-center gap-1"
                         >
                           <span>Edit description or amenities</span>
-                          <span>&rarr;</span>
+                          <span>→</span>
                         </button>
                       </div>
                     </div>
@@ -3830,7 +3836,7 @@ function HostIntro({
 
         <div className="relative mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8 py-10 sm:py-16 md:py-20 lg:py-28">
           <p className="mb-3 sm:mb-4 md:mb-6 text-[0.65rem] sm:text-[0.7rem] font-bold uppercase tracking-[0.24em] text-emerald-200/70">
-            For Malawian Property Owners &amp; Hosts
+            For Malawian Property Owners & Hosts
           </p>
           <h1 className="max-w-3xl font-serif text-3xl sm:text-4xl md:text-5xl lg:text-6xl leading-[1.1] sm:leading-[1.05] tracking-tight">
             Your property. Your rates.
@@ -3871,7 +3877,7 @@ function HostIntro({
               to="/host-guide"
               className="inline-flex items-center gap-2 text-xs sm:text-sm text-emerald-300 hover:text-emerald-200 transition underline underline-offset-4"
             >
-              <BookOpen className="w-4 h-4" /> Read our Host Onboarding Starter Pack &amp; Guide
+              <BookOpen className="w-4 h-4" /> Read our Host Onboarding Starter Pack & Guide
             </Link>
           </div>
         </div>

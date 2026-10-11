@@ -25,36 +25,36 @@ export default function CompareWidget() {
             initial={{ y: 100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 100, opacity: 0 }}
-            className="fixed bottom-6 md:bottom-6 left-4 md:left-1/2 md:-translate-x-1/2 z-[70] flex items-center gap-2 sm:gap-4 bg-stone-900 text-white p-2 pl-3 sm:px-6 sm:py-3 rounded-full shadow-2xl border border-stone-700 w-auto max-w-[calc(100%-5rem)] md:max-w-none overflow-x-auto scrollbar-hide"
+            className="fixed bottom-6 md:bottom-6 left-4 md:left-1/2 md:-translate-x-1/2 z-[70] flex items-center gap-2 sm:gap-4 bg-stone-900 text-white p-2 pl-3 sm:px-5 sm:py-2.5 rounded-xl shadow-xl border border-stone-800 w-auto max-w-[calc(100%-5rem)] md:max-w-none overflow-x-auto scrollbar-hide"
           >
             <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-              <Scale className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400 shrink-0" />
-              <span className="font-serif italic text-sm text-emerald-100 hidden sm:inline mr-1">Compare</span><span className="font-medium text-sm sm:text-base whitespace-nowrap hidden sm:inline text-stone-300">{selectedHotels.length} selected</span>
-              
+              <Scale className="w-4 h-4 text-stone-300 shrink-0" />
+              <span className="font-serif italic text-sm text-stone-200 hidden sm:inline mr-1">Compare</span>
+              <span className="font-medium text-xs sm:text-sm whitespace-nowrap hidden sm:inline text-stone-400">{selectedHotels.length} selected</span>
             </div>
             
-            <div className="flex -space-x-3 mr-1 sm:mr-2 shrink-0">
+            <div className="flex -space-x-2 mr-1 sm:mr-2 shrink-0">
               {selectedHotels.map((item, idx) => (
-                <div key={`comp-${item.hotel.id || 'hotel'}-${idx}`} className="w-6 h-6 sm:w-8 sm:h-8 rounded-full border-2 border-stone-900 overflow-hidden bg-stone-800">
+                <div key={`comp-${item.hotel.id || 'hotel'}-${idx}`} className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg border border-stone-800 overflow-hidden bg-stone-800 shadow-2xs">
                   <img src={getHotelImages(item.hotel)[0]} alt={item.hotel.name} className="w-full h-full object-cover" />
                 </div>
               ))}
             </div>
 
-            <div className="flex items-center gap-1 sm:gap-2 border-l border-stone-700 pl-2 sm:pl-4 shrink-0">
+            <div className="flex items-center gap-1 sm:gap-2 border-l border-stone-800 pl-2 sm:pl-3 shrink-0">
               <button
                 onClick={() => setIsCompareModalOpen(true)}
                 disabled={selectedHotels.length < 2}
-                className="bg-emerald-500 hover:bg-emerald-600 disabled:bg-stone-700 disabled:text-stone-400 text-white px-3 sm:px-4 py-1 sm:py-1.5 rounded-full text-[11px] sm:text-sm font-bold transition whitespace-nowrap"
+                className="bg-white hover:bg-stone-100 disabled:bg-stone-800 disabled:text-stone-500 text-stone-900 px-3 py-1 rounded-lg text-xs font-semibold transition whitespace-nowrap cursor-pointer disabled:cursor-not-allowed shadow-2xs"
               >
                 Compare
               </button>
               <button
                 onClick={clearSelection}
-                className="p-1.5 sm:p-1.5 bg-stone-800 hover:bg-stone-700 rounded-full transition text-stone-300 hover:text-white shrink-0"
+                className="p-1 text-stone-400 hover:text-white hover:bg-stone-800 rounded-md transition shrink-0 cursor-pointer"
                 title="Clear selection"
               >
-                <X className="w-4 h-4" />
+                <X className="w-3.5 h-3.5" />
               </button>
             </div>
           </motion.div>

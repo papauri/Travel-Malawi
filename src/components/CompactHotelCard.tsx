@@ -73,12 +73,13 @@ export default function CompactHotelCard({
                 e.stopPropagation();
                 if (hotel.id) toggleSave(hotel.id);
               }}
-              className="absolute top-1.5 right-1.5 p-1.5 rounded-full bg-stone-900/40 hover:bg-stone-900/60 backdrop-blur-sm transition-transform active:scale-90 z-10 cursor-pointer"
+              className="absolute top-1.5 right-1.5 p-1 rounded-md bg-white/95 hover:bg-white border border-stone-200/90 shadow-2xs transition z-10 cursor-pointer"
             >
               <Heart
                 className={`w-3.5 h-3.5 transition-colors ${
-                  isSaved ? 'fill-rose-500 text-rose-500' : 'text-white'
+                  isSaved ? 'fill-rose-500 text-rose-500' : 'text-stone-600'
                 }`}
+                strokeWidth={isSaved ? 0 : 1.75}
               />
             </button>
           )}
@@ -90,20 +91,20 @@ export default function CompactHotelCard({
             <div className="flex items-start justify-between gap-2 mb-1">
               <div className="flex flex-col min-w-0">
                 {hotel.featured && (
-                  <span className="inline-flex items-center gap-1 text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-stone-500 mb-1">
-                    <Star className="w-2.5 h-2.5 fill-stone-400 text-stone-400" /> Featured
+                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-stone-500 mb-0.5">
+                    <Star className="w-3 h-3 fill-amber-400/80 text-amber-500/80" /> Featured
                   </span>
                 )}
-                <h3 className="font-serif font-bold text-stone-900 text-sm sm:text-base md:text-lg leading-snug line-clamp-2 group-hover:text-emerald-800 transition-colors">
+                <h3 className="font-serif font-bold text-stone-900 text-sm sm:text-base md:text-lg leading-snug line-clamp-2 group-hover:text-stone-700 transition-colors">
                   <MaskedPlaceName name={hotel.name} fallback="[Your Lodge Name]" />
                 </h3>
               </div>
               
               {/* Rating badge */}
               {rating !== undefined && rating > 0 && (
-                <div className="flex items-center gap-1 bg-stone-100/90 border border-stone-200/60 px-1.5 py-0.5 rounded-md shrink-0">
+                <div className="flex items-center gap-1 bg-stone-100 border border-stone-200/70 px-1.5 py-0.5 rounded text-stone-800 shrink-0">
                   <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
-                  <span className="text-[11px] sm:text-xs font-bold text-stone-800">{rating.toFixed(1)}</span>
+                  <span className="text-xs font-semibold">{rating.toFixed(1)}</span>
                 </div>
               )}
             </div>
@@ -117,23 +118,23 @@ export default function CompactHotelCard({
             {/* Amenities & Tags */}
             <div className="flex items-center gap-1.5 overflow-hidden flex-wrap">
               {hotel.stayType === 'entire_place' && (
-                <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100/90 px-2 py-0.5 rounded-md whitespace-nowrap flex items-center gap-1">
-                  <Home className="w-2.5 h-2.5" />
+                <span className="text-[11px] font-medium text-stone-700 bg-stone-100 px-1.5 py-0.5 rounded border border-stone-200/70 whitespace-nowrap flex items-center gap-1">
+                  <Home className="w-2.5 h-2.5 text-stone-500" />
                   <span>{hotel.entirePlaceDetails?.propertyType || 'Whole Place'}</span>
                 </span>
               )}
               {hotel.categories && hotel.categories[0] && (
-                <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md whitespace-nowrap">
+                <span className="text-[11px] font-medium text-stone-500 bg-stone-50 border border-stone-200/60 px-1.5 py-0.5 rounded whitespace-nowrap">
                   {hotel.categories[0]}
                 </span>
               )}
               {hotel.amenities?.slice(0, 3).map((amenity, i) => (
-                <span key={i} className="text-[10px] text-stone-500 bg-stone-100 px-2 py-0.5 rounded-md whitespace-nowrap hidden sm:inline-block">
+                <span key={i} className="text-[11px] text-stone-500 bg-stone-100 px-1.5 py-0.5 rounded whitespace-nowrap hidden sm:inline-block">
                   {amenity}
                 </span>
               ))}
               {hotel.amenities && hotel.amenities.length > 3 && (
-                <span className="text-[10px] text-stone-400 hidden md:inline-block">
+                <span className="text-[11px] text-stone-400 hidden md:inline-block">
                   +{hotel.amenities.length - 3}
                 </span>
               )}
@@ -150,12 +151,12 @@ export default function CompactHotelCard({
                 return slashed.hasDiscount ? (
                   <div className="flex flex-col gap-0.5">
                     <div className="flex items-center gap-1 flex-wrap">
-                      <span className="inline-flex items-center gap-1 bg-stone-900 text-white px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider">
-                        <PromotionIcon saleType={slashed.saleType} className="w-2.5 h-2.5 text-white" />
+                      <span className="inline-flex items-center gap-1 bg-stone-100 text-stone-800 border border-stone-200/90 px-1.5 py-0.5 rounded text-[11px] font-medium">
+                        <PromotionIcon saleType={slashed.saleType} className="w-2.5 h-2.5 text-stone-600" />
                         <span>{slashed.saleTypeLabel}</span>
                       </span>
-                      <span className="text-stone-700 text-[10px] font-semibold">
-                        -{slashed.discountPercentage}% OFF
+                      <span className="text-stone-600 text-[11px] font-normal">
+                        &minus;{slashed.discountPercentage}% OFF
                       </span>
                     </div>
                     <div className="flex items-baseline gap-1">
