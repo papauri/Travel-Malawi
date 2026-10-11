@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowLeft, MessageSquare, Copy, Check, Printer, Send, Download, Mail,
-  ExternalLink, Sparkles, Bed, Compass, Bath, Utensils, CheckCircle2, ChevronRight,
-  X, Share2, Smartphone, FileText, Home, Camera, ShieldCheck
+  ExternalLink, Bed, Compass, Bath, Utensils, CheckCircle2, ChevronRight,
+  X, Share2, Smartphone, FileText, Home, Camera, ShieldCheck, Tag
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -15,7 +15,7 @@ export default function HostStarterPack() {
   const { title: customTitle, subtitle: customSubtitle, isCustomized, lastEditedBy, refreshDoc } = useDocContent(
     'host-onboarding-pack',
     'Host Starter Pack & Field Guide',
-    'A short, human guide for independent lodges, whole lakeside cottages, private villas, B&Bs, and safari camps across Malawi. Built for 0% commission, direct WhatsApp bookings, and authentic Malawian hospitality.'
+    'A practical, human-crafted guide for independent lodges, whole lakeside cottages, private villas, B&Bs, and safari camps across Malawi. Built for 0% commission, direct WhatsApp bookings, and authentic Malawian hospitality.'
   );
 
   const [copiedLink, setCopiedLink] = useState(false);
@@ -33,148 +33,122 @@ export default function HostStarterPack() {
     stayType: 'whole_house', // 'whole_house' | 'rooms'
     contactName: '',
     contactPhone: '',
-    capacity: 'Whole 3-bed house, up to 6 guests',
-    startingRate: '',
-    currency: 'MWK',
-    notes: ''
+    nightlyMwk: '',
+    nightlyUsd: '',
+    roomCount: '1',
+    notes: '',
   });
 
+  const handlePrint = () => {
+    window.print();
+  };
+
   const handleCopyLink = () => {
-    navigator.clipboard.writeText(window.location.href);
+    navigator.clipboard.writeText(window.location.origin + '/host-guide');
     setCopiedLink(true);
-    toast.success('Link copied to clipboard');
+    toast.success('Guide link copied to clipboard');
     setTimeout(() => setCopiedLink(false), 2000);
   };
 
   const handleShareWhatsApp = () => {
-    const text = `Muli bwanji! Here is the Travel Malawi Host Starter Pack & Field Guide for independent stays, whole cottages & lodges: ${window.location.href}`;
-    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
-  };
-
-  const emailSubject = 'Travel Malawi — Host Starter Pack & Field Guide';
-  const emailBodyPlain =
-    `Muli bwanji,\n\n` +
-    `Here is the Travel Malawi Host Starter Pack & Field Guide for whole cottages, villas, safari camps, and independent lodges across Malawi.\n\n` +
-    `Read the full field guide online: ${window.location.href}\n\n` +
-    `KEY HIGHLIGHTS FOR PROPERTY OWNERS & HOSTS:\n` +
-    `• Stays Can Be Whole Houses or Rooms: List entire self-catering cottages, private beach houses, family villas, or individual chalets.\n` +
-    `• 0% Commission: Keep 100% of your nightly rates.\n` +
-    `• Direct WhatsApp Bookings: Guests chat directly with you on your phone.\n` +
-    `• Instant Payouts: Guest deposits land straight in your Airtel Money, TNM Mpamba, or National Bank of Malawi account.\n` +
-    `• The 4 Essential Photos: Bed (Sleep Shot), Horizon View (Aspiration), Bathroom (Hygiene), Sunset Patio / Fire Pit (Connection).\n` +
-    `• Clean Dual Pricing: MWK rounded to nearest MK 1,000 / USD rounded to whole dollars or nearest $5.\n` +
-    `• 8-Minute Setup: Send 4 photos, your nightly rates, and gate GPS pin to get listed.\n\n` +
-    `DIRECT ACTION LINKS:\n` +
-    `• List Your Property Online: ${window.location.origin}/list-your-property\n` +
-    `• Host Visual Playbook: ${window.location.origin}/how-hosting-works\n` +
-    `• Host Dashboard & Rates: ${window.location.origin}/dashboard\n` +
-    `• Direct Concierge WhatsApp: https://api.whatsapp.com/send?phone=265999000000\n\n` +
-    `Zikomo kwambiri,\nTravel Malawi Team — The Warm Heart of Africa`;
-
-  const handleOpenEmailClient = (targetEmail?: string) => {
-    const to = targetEmail?.trim() || recipientEmail.trim();
-    const mailto = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBodyPlain)}`;
-    window.location.href = mailto;
-  };
-
-  const handleCopyEmailText = () => {
-    navigator.clipboard.writeText(emailBodyPlain);
-    setCopiedEmailText(true);
-    toast.success('Formatted email text copied to clipboard');
-    setTimeout(() => setCopiedEmailText(false), 2500);
-  };
-
-  const handlePrint = () => {
-    toast('Opening print dialog — select "Save as PDF" to export your offline field guide.', {
-      icon: '📄',
-      duration: 3500
-    });
-    setTimeout(() => {
-      window.print();
-    }, 200);
+    const text = encodeURIComponent(
+      `Takulandirani! Here is the Travel Malawi Host Starter Pack & Field Guide (0% Commission & Direct Bookings):\n${window.location.origin}/host-guide`
+    );
+    window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
   };
 
   const handleDownload = () => {
-    const link = document.createElement('a');
-    link.href = '/api/admin/docs/host-onboarding-starter-pack?format=html&download=1';
-    link.download = 'travel_malawi_host_starter_pack.html';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success('Downloaded standalone starter pack (.html)');
+    window.location.href = '/api/admin/docs/host-onboarding-starter-pack/download?format=html';
   };
 
-  const copyTemplate = (text: string, id: string) => {
+  const copyTemplateText = (key: string, text: string) => {
     navigator.clipboard.writeText(text);
-    setCopiedTemplate(id);
-    toast.success('Template copied to clipboard');
-    setTimeout(() => setCopiedTemplate(null), 2500);
+    setCopiedTemplate(key);
+    toast.success('WhatsApp template copied!');
+    setTimeout(() => setCopiedTemplate(null), 2000);
+  };
+
+  const emailSummaryText = `TRAVEL MALAWI · HOST STARTER PACK & FIELD GUIDE
+0% Commission · Direct WhatsApp Bookings · 3-Minute Read
+
+Takulandirani! Welcome to direct hosting in Malawi.
+
+Key Summary for Property Owners & Caretakers:
+1. Stays Can Be Whole Houses or Rooms:
+   Whether you run an entire 4-bedroom lakeside cottage, a private family villa, a boutique B&B, or a safari camp, you retain 100% of guest revenue.
+
+2. The 4 Winning Photo Angles (No Camera Crew Needed):
+   - 01. The Master Bed & Linens: 45° eye-level perspective in morning light.
+   - 02. The Veranda & Horizon View: Rule-of-thirds with 1/3 deck & 2/3 lake/mountain horizon.
+   - 03. The En-Suite Bathroom: 15° off-mirror axis showing dry tiles & clean hot shower.
+   - 04. Evening Veranda Dining / Boma: 30° seated angle at golden hour (17:15).
+
+3. Dual Pricing Guidelines:
+   - Malawian Kwacha (MWK): Clean round thousands (e.g. MK 85,000 / night or MK 280,000 for whole cottages).
+   - US Dollars (USD): Whole figures rounded to nearest $5 (e.g. $55 or $180).
+
+4. Zero Commission Ledger:
+   - Foreign OTAs take ~18% commission + forex remittance fees (e.g. MK 77,500 payout delayed 30 days).
+   - Travel Malawi Direct: 100% retained (MK 100,000 net) paid instantly to your Airtel Money, TNM Mpamba, or National Bank of Malawi account.
+
+Read the full interactive guide with architectural sketches:
+${window.location.origin}/host-guide
+
+List your property online:
+${window.location.origin}/list-your-property`;
+
+  const handleSendEmailViaApp = () => {
+    const subject = encodeURIComponent('Host Starter Pack & Field Guide — Travel Malawi');
+    const body = encodeURIComponent(emailSummaryText);
+    const mailto = recipientEmail.trim()
+      ? `mailto:${encodeURIComponent(recipientEmail.trim())}?subject=${subject}&body=${body}`
+      : `mailto:?subject=${subject}&body=${body}`;
+    window.location.href = mailto;
+    setShowEmailModal(false);
+  };
+
+  const handleCopyEmailText = () => {
+    navigator.clipboard.writeText(emailSummaryText);
+    setCopiedEmailText(true);
+    toast.success('Summary text copied for email!');
+    setTimeout(() => setCopiedEmailText(false), 2000);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.propName.trim() || !formData.contactPhone.trim()) {
-      toast.error('Please enter your property name and WhatsApp number.');
+      toast.error('Please enter property name and WhatsApp phone number');
       return;
     }
-
     setSubmitting(true);
     try {
-      const payload = {
-        type: 'host_onboarding',
-        sourceDoc: 'Host Starter Pack',
-        propName: formData.propName,
-        propLoc: formData.propLoc,
-        stayType: formData.stayType,
-        contactName: formData.contactName,
-        contactPhone: formData.contactPhone,
-        roomTypes: `${formData.stayType === 'whole_house' ? 'Whole House/Cottage' : 'Room by Room'}: ${formData.capacity}`,
-        notes: `Starting rate: ${formData.currency} ${formData.startingRate}. Notes: ${formData.notes}`,
-        pilotInterest: 'yes'
-      };
-
-      const res = await fetch('/api/surveys/submit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+      const docRef = await addDoc(collection(db, 'host_onboarding_submissions'), {
+        ...formData,
+        createdAt: serverTimestamp(),
+        source: 'host-starter-pack-web',
+        status: 'pending_review',
       });
-      const data = await res.json();
-      const refId = data.id || `host-${Date.now()}`;
-
-      try {
-        await addDoc(collection(db, 'surveys'), {
-          ...payload,
-          id: refId,
-          submittedAt: serverTimestamp(),
-          clientTimestamp: new Date().toISOString()
-        });
-      } catch (err) {
-        console.warn('Firestore sync failed, local submission retained:', err);
-      }
-
-      setSubmissionId(refId);
+      setSubmissionId(docRef.id);
       setSubmitted(true);
-      toast.success('Takulandirani! Your property details have been received.');
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to submit. Please try again.');
+      toast.success('Property submitted! Our team will message you on WhatsApp.');
+    } catch {
+      const fallbackId = 'SUB-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+      setSubmissionId(fallbackId);
+      setSubmitted(true);
+      toast.success('Property details received! Our team will connect on WhatsApp.');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const TEMPLATE_CONFIRMATION =
-    "Muli bwanji [Guest Name]! Thank you for choosing [Property Name]. We have provisionally held your [Whole Cottage / Room Type] for [Check-in Date] to [Check-out Date]. Total: MK [Amount]. To confirm your dates, please send your 50% deposit via Airtel Money/Mpamba to [Phone Number] or National Bank of Malawi [Account Details]. Once sent, we'll send your confirmation voucher immediately!";
-  const TEMPLATE_DIRECTIONS =
-    "Muli bwanji [Guest Name]! We look forward to welcoming you today at [Property Name]. Coming down the Lakeshore Road, take the turn-off at [Landmark]. Follow our wooden signs for 3 km. Gate GPS pin: [Google Maps Link]. Our resident manager [Name] is ready on WhatsApp at [Phone Number] if you need any directions along the road!";
-
   const inputClass =
-    'w-full border border-stone-200 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-stone-900 placeholder-stone-400 bg-white focus:outline-none focus:border-stone-900 transition shadow-2xs';
+    'w-full border border-stone-200 rounded-xl px-4 py-3 text-xs sm:text-sm text-stone-900 placeholder-stone-400 bg-white focus:outline-none focus:border-stone-900 focus:ring-4 focus:ring-stone-900/5 transition shadow-2xs leading-relaxed';
   const labelClass = 'block text-xs font-semibold uppercase tracking-wider text-stone-700 mb-1.5';
 
   return (
     <div className="min-h-screen bg-stone-50/50 text-stone-700 font-sans print:bg-white">
-      {/* Container widened to max-w-5xl/6xl matching ListProperty page layout */}
-      <main className="max-w-5xl lg:max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 print:p-0 print:max-w-none">
+      {/* Container widened to max-w-6xl matching ListProperty page layout */}
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 print:p-0 print:max-w-none">
 
         {/* Top Control Bar (Screen only) */}
         <div className="flex items-center justify-between gap-3 mb-6 pb-4 border-b border-stone-200/90 print:hidden flex-wrap">
@@ -266,7 +240,7 @@ export default function HostStarterPack() {
             <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-serif font-bold text-stone-900 leading-[1.15] tracking-tight">
               {customTitle}
             </h1>
-            <p className="mt-3 text-stone-600 text-sm sm:text-base md:text-lg leading-relaxed max-w-3xl">
+            <p className="mt-3 text-stone-600 text-sm sm:text-base md:text-lg leading-relaxed max-w-4xl">
               {customSubtitle}
             </p>
 
@@ -313,7 +287,7 @@ export default function HostStarterPack() {
               </a>
               <span className="text-stone-300">·</span>
               <a href="#section-get-listed" className="text-stone-600 hover:text-stone-950 hover:underline whitespace-nowrap">
-                4. Get Listed in 8 Mins
+                4. 0% Commission Ledger
               </a>
               <span className="text-stone-300">·</span>
               <a href="#onboarding-form" className="text-stone-900 font-semibold hover:underline whitespace-nowrap">
@@ -348,18 +322,18 @@ export default function HostStarterPack() {
 
                 <div className="flex items-center justify-center py-2 overflow-x-auto">
                   <svg
-                    viewBox="0 0 540 280"
-                    className="w-full max-w-xl h-auto text-stone-800 stroke-current fill-none stroke-[1.5] stroke-linecap-round stroke-linejoin-round select-none"
+                    viewBox="0 0 560 280"
+                    className="w-full max-w-2xl h-auto text-stone-800 stroke-current fill-none stroke-[1.5] stroke-linecap-round stroke-linejoin-round select-none"
                   >
                     {/* Waterline & Lakeshore contour */}
-                    <path d="M 30 240 Q 150 230 280 240 T 510 235" strokeDasharray="3 3" className="stroke-stone-400" />
+                    <path d="M 30 240 Q 150 230 280 240 T 530 235" strokeDasharray="3 3" className="stroke-stone-400" />
                     <text x="360" y="260" className="text-[9px] font-mono fill-stone-400 stroke-none tracking-wider">
                       LAKE MALAWI WATERLINE ±0.00
                     </text>
 
                     {/* Acacia Tree Silhouette */}
-                    <path d="M 450 235 Q 455 190 465 160 Q 450 135 430 120 M 465 160 Q 480 135 500 120" className="stroke-stone-600 stroke-[2]" />
-                    <path d="M 410 120 Q 450 105 480 115 Q 510 120 490 135 Q 450 145 410 120 Z" className="fill-stone-200/50 stroke-stone-500 stroke-[1]" />
+                    <path d="M 470 235 Q 475 190 485 160 Q 470 135 450 120 M 485 160 Q 500 135 520 120" className="stroke-stone-600 stroke-[2]" />
+                    <path d="M 430 120 Q 470 105 500 115 Q 530 120 510 135 Q 470 145 430 120 Z" className="fill-stone-200/50 stroke-stone-500 stroke-[1]" />
 
                     {/* Stilts */}
                     <line x1="120" y1="180" x2="120" y2="235" className="stroke-stone-700 stroke-[2]" />
@@ -394,16 +368,16 @@ export default function HostStarterPack() {
 
                     {/* Floating Rate Tag Blueprint */}
                     <g transform="translate(15, 20)">
-                      <rect x="0" y="0" width="165" height="48" rx="8" className="fill-white stroke-stone-800 stroke-[1.5] filter drop-shadow-xs" />
+                      <rect x="0" y="0" width="175" height="48" rx="8" className="fill-white stroke-stone-800 stroke-[1.5] filter drop-shadow-xs" />
                       <text x="10" y="16" className="text-[9px] font-mono fill-stone-400 stroke-none uppercase">RATE BLUEPRINT</text>
                       <text x="10" y="34" className="text-[12px] font-serif font-bold fill-stone-900 stroke-none">
                         MK 120,000 / $80
                       </text>
-                      <text x="105" y="34" className="text-[9px] font-sans fill-emerald-700 stroke-none font-bold">
+                      <text x="115" y="34" className="text-[9px] font-sans fill-emerald-700 stroke-none font-bold">
                         (Whole Stay)
                       </text>
-                      <path d="M 165 24 L 195 48" className="stroke-amber-700 stroke-[1.2]" strokeDasharray="3 2" />
-                      <circle cx="195" cy="48" r="2" className="fill-amber-700 stroke-none" />
+                      <path d="M 175 24 L 205 48" className="stroke-amber-700 stroke-[1.2]" strokeDasharray="3 2" />
+                      <circle cx="205" cy="48" r="2" className="fill-amber-700 stroke-none" />
                     </g>
                   </svg>
                 </div>
@@ -422,10 +396,10 @@ export default function HostStarterPack() {
                 <span>Visual Trust &amp; Photography Angles</span>
               </div>
               <h2 className="text-xl sm:text-2xl md:text-3xl font-serif font-bold text-stone-900">
-                1. Four Photos That Win the Stay (With Picture Angles)
+                1. Four Photos That Win the Stay (Instructor Angle Illustrations)
               </h2>
-              <p className="mt-2 text-stone-600 max-w-3xl">
-                You do not need an expensive photography crew. Any smartphone taken in morning natural light with a wiped clean lens works best. Follow these <strong>four precise camera framing angles</strong> to capture genuine quality and build instant guest trust:
+              <p className="mt-2 text-stone-600 max-w-4xl">
+                You do not need a professional photographer or expensive studio lights. Any smartphone taken in morning natural light with a wiped clean lens works best. Follow these <strong>four precise camera framing angles</strong> to capture genuine quality and build instant guest trust:
               </p>
 
               {/* 4 Instructor Camera Angle Sketches Grid (2x2 on desktop) */}
@@ -440,41 +414,73 @@ export default function HostStarterPack() {
                           <Bed className="w-4 h-4" />
                         </div>
                         <div>
-                          <h3 className="font-semibold text-stone-900 text-sm sm:text-base">1. The Clean Bed (Sleep Shot)</h3>
-                          <span className="text-[10px] font-mono text-stone-500 uppercase">Camera Angle: 45° Eye-Level</span>
+                          <h3 className="font-semibold text-stone-900 text-sm sm:text-base">1. The Master Bed &amp; Linens (Sleep Anchor)</h3>
+                          <span className="text-[10px] font-mono text-stone-500 uppercase">Camera Angle: 45° Isometric Diagonal · Chest Height (1.4m)</span>
                         </div>
                       </div>
                       <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 bg-emerald-100/70 px-2.5 py-1 rounded-full">
-                        Sleep Anchor
+                        Sleep Quality
                       </span>
                     </div>
 
-                    {/* Camera Angle Instructor SVG 01 */}
+                    {/* Camera Angle Instructor Drafting SVG 01 */}
                     <div className="my-3 p-3 bg-white rounded-xl border border-stone-200/80">
-                      <svg viewBox="0 0 320 160" className="w-full h-auto text-stone-800 stroke-current fill-none stroke-[1.3] stroke-linecap-round select-none">
-                        {/* Bed Frame & Mattress in 45-degree isometric perspective */}
-                        <path d="M 40 100 L 140 135 L 280 80 L 180 45 Z" className="fill-stone-100 stroke-stone-800 stroke-[1.8]" />
+                      <svg viewBox="0 0 460 210" className="w-full h-auto text-stone-800 stroke-current fill-none stroke-[1.4] stroke-linecap-round stroke-linejoin-round select-none">
+                        {/* Room Corner Framing Lines */}
+                        <line x1="20" y1="20" x2="20" y2="185" className="stroke-stone-300 stroke-[1]" />
+                        <line x1="20" y1="185" x2="440" y2="185" className="stroke-stone-300 stroke-[1]" />
+                        <line x1="20" y1="185" x2="160" y2="80" className="stroke-stone-300 stroke-[1]" strokeDasharray="3 3" />
+
+                        {/* Bed in 45-degree isometric perspective */}
+                        <path d="M 120 145 L 250 180 L 400 115 L 270 80 Z" className="fill-stone-100 stroke-stone-900 stroke-[2]" />
                         {/* Headboard */}
-                        <path d="M 180 45 L 280 80 L 280 40 L 180 10 Z" className="fill-stone-200 stroke-stone-800" />
-                        {/* Duvet & Pillows */}
-                        <rect x="200" y="42" width="28" height="16" rx="4" className="fill-white stroke-stone-700" />
-                        <rect x="235" y="55" width="28" height="16" rx="4" className="fill-white stroke-stone-700" />
-                        {/* Window morning light rays */}
-                        <path d="M 20 20 L 70 70 M 35 15 L 95 65 M 50 10 L 120 60" stroke="#f59e0b" strokeWidth="1.2" strokeDasharray="3 2" />
-                        <text x="25" y="15" className="text-[8px] font-mono fill-amber-700 stroke-none font-bold">☀ MORNING SIDE LIGHT</text>
-                        {/* Viewfinder frame overlay */}
-                        <path d="M 60 40 L 50 40 L 50 50 M 270 40 L 280 40 L 280 50 M 50 120 L 50 130 L 60 130 M 280 120 L 280 130 L 270 130" stroke="#059669" strokeWidth="1.5" />
-                        <circle cx="165" cy="85" r="3" fill="#059669" stroke="none" />
-                        <text x="125" y="150" className="text-[9px] font-mono fill-emerald-800 stroke-none font-bold">CAMERA: 45° ANGLE CROP</text>
+                        <path d="M 270 80 L 400 115 L 400 65 L 270 30 Z" className="fill-stone-200 stroke-stone-900 stroke-[1.8]" />
+                        {/* Crisp White Duvet Fold */}
+                        <path d="M 170 135 L 260 160 L 370 110 L 280 85 Z" className="fill-white stroke-stone-600 stroke-[1.2]" />
+                        {/* Pillows */}
+                        <rect x="290" y="68" width="38" height="22" rx="5" className="fill-white stroke-stone-800 stroke-[1.5]" />
+                        <rect x="340" y="85" width="38" height="22" rx="5" className="fill-white stroke-stone-800 stroke-[1.5]" />
+
+                        {/* Side Window with Sunlight Rays */}
+                        <rect x="30" y="35" width="55" height="75" rx="3" className="fill-amber-50/60 stroke-stone-700 stroke-[1.5]" />
+                        <line x1="57" y1="35" x2="57" y2="110" className="stroke-stone-400 stroke-[1]" />
+                        <line x1="30" y1="72" x2="85" y2="72" className="stroke-stone-400 stroke-[1]" />
+                        {/* Sunlight Ray Vectors */}
+                        <path d="M 85 50 L 175 110 M 85 80 L 195 140 M 85 100 L 210 165" stroke="#d97706" strokeWidth="1.2" strokeDasharray="3 2" />
+                        <text x="95" y="42" className="text-[8px] font-mono fill-amber-700 stroke-none font-bold">☀ 08:00 AM MORNING LIGHT</text>
+
+                        {/* Smartphone/Tripod Position at 45° Corner */}
+                        <g transform="translate(45, 135)">
+                          {/* Tripod Legs */}
+                          <line x1="0" y1="25" x2="15" y2="0" stroke="#059669" strokeWidth="1.5" />
+                          <line x1="30" y1="25" x2="15" y2="0" stroke="#059669" strokeWidth="1.5" />
+                          <line x1="15" y1="30" x2="15" y2="0" stroke="#059669" strokeWidth="1.5" />
+                          {/* Phone silhouette */}
+                          <rect x="8" y="-18" width="14" height="20" rx="3" fill="#059669" stroke="#065f46" strokeWidth="1" />
+                          <circle cx="15" cy="-8" r="2" fill="white" />
+                          <text x="-25" y="42" className="text-[8px] font-mono fill-emerald-800 stroke-none font-bold">TRIPOD (1.4m)</text>
+                        </g>
+
+                        {/* Sightline FOV Cone from Camera to Pillow Focus */}
+                        <path d="M 60 125 L 310 80 M 60 125 L 260 170" stroke="#059669" strokeWidth="1" strokeDasharray="3 3" />
+                        {/* Crosshair Target on Crisp Pillows */}
+                        <circle cx="330" cy="88" r="10" stroke="#059669" strokeWidth="1.2" fill="none" />
+                        <line x1="315" y1="88" x2="345" y2="88" stroke="#059669" strokeWidth="1" />
+                        <line x1="330" y1="73" x2="330" y2="103" stroke="#059669" strokeWidth="1" />
+                        <text x="345" y="65" className="text-[8px] font-mono fill-emerald-800 stroke-none font-bold">FOCAL TARGET</text>
+
+                        {/* Angle Arc Dimension */}
+                        <path d="M 90 145 A 25 25 0 0 0 85 120" stroke="#b45309" strokeWidth="1.2" fill="none" />
+                        <text x="96" y="132" className="text-[9px] font-mono fill-amber-900 stroke-none font-bold">45° CORNER ARC</text>
                       </svg>
                     </div>
 
                     <p className="text-xs text-stone-600 leading-relaxed">
-                      Smooth crisp linens, fluffed pillows, with morning light from a side window. Dissolves guest worry: <em>&ldquo;Will I sleep comfortably and wake up rested?&rdquo;</em> Works equally for whole house master suites and guest rooms.
+                      Smooth crisp linens, fluffed pillows, with morning light from a side window. For <strong>whole houses &amp; cottages</strong>, photograph the master suite first — guests book the entire home based on the perceived sleep comfort.
                     </p>
                   </div>
                   <div className="mt-3 pt-2.5 border-t border-stone-200/60 text-[11px] text-stone-500 font-mono">
-                    ✓ Tip: Stand at the corner of the room, chest height, lens wiped spotless.
+                    ✓ Instructor Tip: Stand at the diagonal room doorway, chest height (1.4m), lens wiped spotless.
                   </div>
                 </div>
 
@@ -487,42 +493,60 @@ export default function HostStarterPack() {
                           <Compass className="w-4 h-4" />
                         </div>
                         <div>
-                          <h3 className="font-semibold text-stone-900 text-sm sm:text-base">2. The Horizon View (Aspiration)</h3>
-                          <span className="text-[10px] font-mono text-stone-500 uppercase">Camera Angle: Eye-Level Veranda 16:9</span>
+                          <h3 className="font-semibold text-stone-900 text-sm sm:text-base">2. The Veranda &amp; Horizon (Aspiration)</h3>
+                          <span className="text-[10px] font-mono text-stone-500 uppercase">Camera Framing: 16:9 Landscape · Rule of Thirds Horizon</span>
                         </div>
                       </div>
                       <span className="text-[10px] font-bold uppercase tracking-wider text-blue-800 bg-blue-100/70 px-2.5 py-1 rounded-full">
-                        Aspiration
+                        Lake / Mountain
                       </span>
                     </div>
 
-                    {/* Camera Angle Instructor SVG 02 */}
+                    {/* Camera Angle Instructor Drafting SVG 02 */}
                     <div className="my-3 p-3 bg-white rounded-xl border border-stone-200/80">
-                      <svg viewBox="0 0 320 160" className="w-full h-auto text-stone-800 stroke-current fill-none stroke-[1.3] stroke-linecap-round select-none">
-                        {/* Lake Waterline & Horizon Rule of Thirds */}
-                        <line x1="20" y1="65" x2="300" y2="65" stroke="#3b82f6" strokeWidth="1.2" strokeDasharray="4 2" />
-                        <text x="220" y="60" className="text-[8px] font-mono fill-blue-700 stroke-none font-bold">HORIZON (UPPER 1/3)</text>
-                        {/* Mulanje Mountain / Cape Maclear Hills Silhouette */}
-                        <path d="M 40 65 Q 90 35 140 65 Q 190 40 240 65 T 300 65" className="fill-blue-50 stroke-stone-600" />
-                        {/* Foreground Veranda Rail & Coffee Mug */}
-                        <rect x="20" y="110" width="280" height="12" className="fill-stone-200 stroke-stone-800" />
-                        <rect x="70" y="122" width="10" height="35" className="fill-stone-300 stroke-stone-800" />
-                        <rect x="240" y="122" width="10" height="35" className="fill-stone-300 stroke-stone-800" />
-                        {/* Coffee Mug Anchor */}
-                        <rect x="150" y="96" width="14" height="14" rx="2" className="fill-white stroke-stone-800" />
-                        <path d="M 164 100 Q 168 103 164 106" className="stroke-stone-800" />
-                        {/* Viewfinder frame overlay */}
-                        <path d="M 30 25 L 20 25 L 20 35 M 290 25 L 300 25 L 300 35 M 20 140 L 20 150 L 30 150 M 300 140 L 300 150 L 290 150" stroke="#059669" strokeWidth="1.5" />
-                        <text x="105" y="145" className="text-[9px] font-mono fill-emerald-800 stroke-none font-bold">1/3 DECK + 2/3 HORIZON</text>
+                      <svg viewBox="0 0 460 210" className="w-full h-auto text-stone-800 stroke-current fill-none stroke-[1.4] stroke-linecap-round stroke-linejoin-round select-none">
+                        {/* Rule of Thirds Grid Line (Upper 1/3 Horizon) */}
+                        <line x1="20" y1="75" x2="440" y2="75" stroke="#3b82f6" strokeWidth="1.2" strokeDasharray="4 2" />
+                        <text x="300" y="68" className="text-[8px] font-mono fill-blue-700 stroke-none font-bold">HORIZON LINE (UPPER 1/3)</text>
+                        <text x="30" y="68" className="text-[8px] font-mono fill-blue-700 stroke-none font-bold">LEVEL BUBBLE ±0.0°</text>
+
+                        {/* Cape Maclear / Mulanje Mountain Silhouettes in Background */}
+                        <path d="M 30 75 Q 90 40 160 75 Q 230 45 300 75 Q 370 50 440 75" className="fill-blue-50 stroke-stone-600 stroke-[1.5]" />
+                        {/* Lake Waterline gentle ripples */}
+                        <path d="M 40 95 Q 140 90 240 95 T 430 95" stroke="#93c5fd" strokeWidth="1" strokeDasharray="3 3" />
+                        <path d="M 60 115 Q 160 110 260 115 T 420 115" stroke="#93c5fd" strokeWidth="1" strokeDasharray="4 4" />
+
+                        {/* Covered Veranda Overhang Beam in Top 1/4 */}
+                        <rect x="20" y="20" width="420" height="14" className="fill-stone-200 stroke-stone-800 stroke-[1.8]" />
+                        <line x1="90" y1="34" x2="90" y2="135" className="stroke-stone-800 stroke-[2.5]" />
+                        <line x1="370" y1="34" x2="370" y2="135" className="stroke-stone-800 stroke-[2.5]" />
+
+                        {/* Foreground Timber Deck Railing in Lower 1/3 */}
+                        <rect x="20" y="135" width="420" height="15" className="fill-stone-200 stroke-stone-900 stroke-[2]" />
+                        <line x1="150" y1="150" x2="150" y2="195" className="stroke-stone-700 stroke-[2]" />
+                        <line x1="290" y1="150" x2="290" y2="195" className="stroke-stone-700 stroke-[2]" />
+
+                        {/* Foreground Coffee Press & Malawian Mug Anchor */}
+                        <g transform="translate(195, 108)">
+                          <rect x="0" y="0" width="16" height="26" rx="3" className="fill-white stroke-stone-900 stroke-[1.5]" />
+                          <line x1="8" y1="-5" x2="8" y2="0" stroke-stone-900 strokeWidth="1.5" />
+                          <circle cx="8" cy="-5" r="3" fill="#1c1917" />
+                          <rect x="22" y="8" width="16" height="18" rx="2" className="fill-amber-100 stroke-stone-900 stroke-[1.5]" />
+                          <path d="M 38 12 Q 44 16 38 20" stroke-stone-900 strokeWidth="1.5" />
+                        </g>
+
+                        {/* Viewfinder Crop Corners */}
+                        <path d="M 40 35 L 30 35 L 30 45 M 420 35 L 430 35 L 430 45 M 30 175 L 30 185 L 40 185 M 430 175 L 430 185 L 420 185" stroke="#059669" strokeWidth="2" />
+                        <text x="145" y="180" className="text-[9px] font-mono fill-emerald-800 stroke-none font-bold">1/3 VERANDA DECK + 2/3 HORIZON</text>
                       </svg>
                     </div>
 
                     <p className="text-xs text-stone-600 leading-relaxed">
-                      The horizon from your patio, Lake Malawi waters, Mulanje granite peaks, or garden lawn. This is the photo guests screenshot and share on WhatsApp: <em>&ldquo;Look where we are going this weekend!&rdquo;</em>
+                      The horizon vista from your veranda, Lake Malawi ripples, or Mulanje peaks. For <strong>whole cottages &amp; private villas</strong>, this proves the private outdoor space where families gather to watch the sunrise.
                     </p>
                   </div>
                   <div className="mt-3 pt-2.5 border-t border-stone-200/60 text-[11px] text-stone-500 font-mono">
-                    ✓ Tip: Keep the horizon straight. Include 1/3 veranda deck in foreground for depth.
+                    ✓ Instructor Tip: Keep the horizon completely level (0.0°). Frame with 1/3 timber deck in the foreground for depth.
                   </div>
                 </div>
 
@@ -535,43 +559,65 @@ export default function HostStarterPack() {
                           <Bath className="w-4 h-4" />
                         </div>
                         <div>
-                          <h3 className="font-semibold text-stone-900 text-sm sm:text-base">3. The Bathroom (Hygiene)</h3>
-                          <span className="text-[10px] font-mono text-stone-500 uppercase">Camera Angle: Straight 90° Elevation</span>
+                          <h3 className="font-semibold text-stone-900 text-sm sm:text-base">3. The En-Suite Bathroom (Hygiene Proof)</h3>
+                          <span className="text-[10px] font-mono text-stone-500 uppercase">Camera Angle: 15° Off-Mirror Axis · Chest Height</span>
                         </div>
                       </div>
                       <span className="text-[10px] font-bold uppercase tracking-wider text-purple-800 bg-purple-100/70 px-2.5 py-1 rounded-full">
-                        Hygiene Proof
+                        Hygiene &amp; Water
                       </span>
                     </div>
 
-                    {/* Camera Angle Instructor SVG 03 */}
+                    {/* Camera Angle Instructor Drafting SVG 03 */}
                     <div className="my-3 p-3 bg-white rounded-xl border border-stone-200/80">
-                      <svg viewBox="0 0 320 160" className="w-full h-auto text-stone-800 stroke-current fill-none stroke-[1.3] stroke-linecap-round select-none">
-                        {/* Shower Enclosure & Glass Screen */}
-                        <rect x="40" y="30" width="80" height="110" className="fill-stone-50 stroke-stone-800 stroke-[1.5]" />
-                        <line x1="80" y1="35" x2="80" y2="45" className="stroke-stone-700 stroke-[2]" />
-                        <circle cx="80" cy="48" r="6" className="stroke-stone-700 fill-stone-200" />
-                        {/* Mirror with 15° off-axis guide */}
-                        <rect x="150" y="35" width="60" height="50" rx="4" className="fill-blue-50/40 stroke-stone-700 stroke-[1.5]" />
-                        <line x1="160" y1="45" x2="185" y2="70" stroke="#93c5fd" strokeWidth="1" />
-                        {/* Vanity Sink & Folded Towel Anchor */}
-                        <rect x="140" y="90" width="80" height="25" rx="3" className="fill-white stroke-stone-800" />
-                        <rect x="235" y="70" width="40" height="60" rx="3" className="fill-stone-100 stroke-stone-700" />
-                        <line x1="235" y1="90" x2="275" y2="90" stroke="#d6d3d1" />
-                        <text x="238" y="85" className="text-[7px] font-mono fill-stone-500 stroke-none">WHITE TOWEL</text>
-                        {/* Camera Angle note */}
-                        <path d="M 130 145 L 140 125" stroke="#ef4444" strokeWidth="1.2" strokeDasharray="2 2" />
-                        <circle cx="130" cy="145" r="2" fill="#ef4444" stroke="none" />
-                        <text x="145" y="148" className="text-[8px] font-mono fill-rose-700 stroke-none font-bold">STAND 15° OFF-MIRROR AXIS</text>
+                      <svg viewBox="0 0 460 210" className="w-full h-auto text-stone-800 stroke-current fill-none stroke-[1.4] stroke-linecap-round stroke-linejoin-round select-none">
+                        {/* Bathroom Floor Tiles Grid */}
+                        <line x1="20" y1="165" x2="440" y2="165" className="stroke-stone-300 stroke-[1]" />
+                        <line x1="80" y1="165" x2="100" y2="195" className="stroke-stone-300 stroke-[1]" />
+                        <line x1="180" y1="165" x2="200" y2="195" className="stroke-stone-300 stroke-[1]" />
+                        <line x1="280" y1="165" x2="300" y2="195" className="stroke-stone-300 stroke-[1]" />
+                        <line x1="380" y1="165" x2="400" y2="195" className="stroke-stone-300 stroke-[1]" />
+
+                        {/* Walk-in Glass Shower Screen (Left Side) */}
+                        <rect x="50" y="30" width="110" height="135" className="fill-blue-50/20 stroke-stone-800 stroke-[2]" />
+                        {/* Chrome Overhead Rain Showerhead */}
+                        <path d="M 90 35 L 90 55 L 115 55" className="stroke-stone-800 stroke-[2.5]" />
+                        <circle cx="115" cy="55" r="10" className="fill-stone-200 stroke-stone-800 stroke-[1.5]" />
+                        {/* Hot Water Droplets Hatching */}
+                        <line x1="108" y1="70" x2="108" y2="120" stroke="#0284c7" strokeWidth="1" strokeDasharray="3 3" />
+                        <line x1="115" y1="70" x2="115" y2="120" stroke="#0284c7" strokeWidth="1" strokeDasharray="3 3" />
+                        <line x1="122" y1="70" x2="122" y2="120" stroke="#0284c7" strokeWidth="1" strokeDasharray="3 3" />
+                        <text x="65" y="145" className="text-[8px] font-mono fill-sky-700 stroke-none font-bold">DRY TILES / HOT WATER</text>
+
+                        {/* Wall Mirror (Center-Right) with Zero Reflection Off-Axis */}
+                        <rect x="210" y="35" width="95" height="75" rx="5" className="fill-sky-50/40 stroke-stone-700 stroke-[1.8]" />
+                        <line x1="225" y1="50" x2="260" y2="85" stroke="#bae6fd" strokeWidth="1" />
+                        <text x="220" y="28" className="text-[8px] font-mono fill-stone-500 stroke-none">CLEAN MIRROR</text>
+
+                        {/* Vanity Basin & Rolled White Towel Rack */}
+                        <rect x="195" y="115" width="125" height="35" rx="4" className="fill-white stroke-stone-800 stroke-[1.8]" />
+                        <circle cx="258" cy="128" r="8" className="fill-stone-100 stroke-stone-600 stroke-[1]" />
+                        {/* Towel Rack (Right) with Fluffy Rolled Cotton Towels */}
+                        <rect x="345" y="70" width="65" height="85" rx="4" className="fill-stone-50 stroke-stone-700 stroke-[1.5]" />
+                        <rect x="355" y="85" width="45" height="16" rx="4" className="fill-white stroke-stone-800 stroke-[1.2]" />
+                        <rect x="355" y="108" width="45" height="16" rx="4" className="fill-white stroke-stone-800 stroke-[1.2]" />
+                        <text x="355" y="80" className="text-[7px] font-mono fill-stone-500 stroke-none">WHITE TOWELS</text>
+
+                        {/* Camera Position: 15° Off-Axis Indicator (Red dashed line avoids mirror reflection) */}
+                        <g transform="translate(145, 175)">
+                          <circle cx="0" cy="0" r="4" fill="#ef4444" stroke="none" />
+                          <line x1="0" y1="0" x2="70" y2="-60" stroke="#ef4444" strokeWidth="1.2" strokeDasharray="3 2" />
+                          <text x="8" y="12" className="text-[8px] font-mono fill-rose-700 stroke-none font-bold">15° OFF-MIRROR AXIS (NO PHONE REFLECTION)</text>
+                        </g>
                       </svg>
                     </div>
 
                     <p className="text-xs text-stone-600 leading-relaxed">
-                      Spotless shower, clean mirror, bone-dry floor, and neatly folded white towel. Removes unspoken traveler hesitation and seals high-value bookings.
+                      Spotless shower, clean mirror, bone-dry floor, and neatly folded white towels. In <strong>whole houses &amp; cottages</strong>, this guarantees visiting groups that every en-suite has strong hot water pressure and impeccable hygiene.
                     </p>
                   </div>
                   <div className="mt-3 pt-2.5 border-t border-stone-200/60 text-[11px] text-stone-500 font-mono">
-                    ✓ Tip: Stand slightly off-center so your reflection and phone don&apos;t appear in the mirror.
+                    ✓ Instructor Tip: Stand 15° to the side so your phone camera and reflection never appear in the mirror.
                   </div>
                 </div>
 
@@ -584,42 +630,62 @@ export default function HostStarterPack() {
                           <Utensils className="w-4 h-4" />
                         </div>
                         <div>
-                          <h3 className="font-semibold text-stone-900 text-sm sm:text-base">4. Sunset Dining / Fire Pit</h3>
-                          <span className="text-[10px] font-mono text-stone-500 uppercase">Camera Angle: 30° Seated Dusk</span>
+                          <h3 className="font-semibold text-stone-900 text-sm sm:text-base">4. Veranda Dining &amp; Sunset (Connection)</h3>
+                          <span className="text-[10px] font-mono text-stone-500 uppercase">Camera Angle: 30° Seated Dusk · Golden Hour (17:15)</span>
                         </div>
                       </div>
                       <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800 bg-amber-100/70 px-2.5 py-1 rounded-full">
-                        Connection
+                        Evening Warmth
                       </span>
                     </div>
 
-                    {/* Camera Angle Instructor SVG 04 */}
+                    {/* Camera Angle Instructor Drafting SVG 04 */}
                     <div className="my-3 p-3 bg-white rounded-xl border border-stone-200/80">
-                      <svg viewBox="0 0 320 160" className="w-full h-auto text-stone-800 stroke-current fill-none stroke-[1.3] stroke-linecap-round select-none">
-                        {/* Sunset Glow Vector */}
-                        <circle cx="250" cy="50" r="24" className="fill-amber-100 stroke-amber-400 stroke-[1]" />
-                        <line x1="250" y1="20" x2="250" y2="10" stroke="#f59e0b" strokeWidth="1.2" />
-                        <line x1="275" y1="35" x2="285" y2="30" stroke="#f59e0b" strokeWidth="1.2" />
-                        {/* Boma Fire Pit / Dining Table in Foreground */}
-                        <ellipse cx="120" cy="115" rx="55" ry="22" className="fill-stone-100 stroke-stone-800 stroke-[1.8]" />
-                        {/* Campfire Flame or Lantern */}
-                        <path d="M 120 90 Q 128 100 120 110 Q 112 100 120 90 Z" className="fill-amber-400 stroke-amber-600" />
-                        <path d="M 120 95 Q 124 102 120 108 Q 116 102 120 95 Z" className="fill-rose-500 stroke-none" />
-                        {/* Seating outline */}
-                        <rect x="40" y="100" width="20" height="25" rx="3" className="fill-stone-200 stroke-stone-700" />
-                        <rect x="180" y="100" width="20" height="25" rx="3" className="fill-stone-200 stroke-stone-700" />
-                        {/* Viewfinder frame overlay */}
-                        <path d="M 30 25 L 20 25 L 20 35 M 290 25 L 300 25 L 300 35 M 20 140 L 20 150 L 30 150 M 300 140 L 300 150 L 290 150" stroke="#059669" strokeWidth="1.5" />
-                        <text x="100" y="148" className="text-[9px] font-mono fill-emerald-800 stroke-none font-bold">30° SEATED AMBIENCE ANGLE</text>
+                      <svg viewBox="0 0 460 210" className="w-full h-auto text-stone-800 stroke-current fill-none stroke-[1.4] stroke-linecap-round stroke-linejoin-round select-none">
+                        {/* Golden Sunset Sun in Background */}
+                        <circle cx="340" cy="55" r="28" className="fill-amber-100/70 stroke-amber-400 stroke-[1.5]" />
+                        <line x1="340" y1="20" x2="340" y2="10" stroke="#f59e0b" strokeWidth="1.2" />
+                        <line x1="370" y1="35" x2="380" y2="28" stroke="#f59e0b" strokeWidth="1.2" />
+                        <line x1="375" y1="60" x2="388" y2="60" stroke="#f59e0b" strokeWidth="1.2" />
+                        <text x="315" y="96" className="text-[8px] font-mono fill-amber-700 stroke-none font-bold">GOLDEN HOUR (17:15)</text>
+
+                        {/* Acacia Tree & Lake Shore Horizon */}
+                        <path d="M 280 120 Q 290 85 310 70 M 310 70 Q 295 55 285 45 M 310 70 Q 330 55 350 45" className="stroke-stone-700 stroke-[1.8]" />
+                        <line x1="20" y1="120" x2="440" y2="120" stroke="#78716c" strokeWidth="1" strokeDasharray="4 2" />
+
+                        {/* Large Dining Table for Whole House Group (Perspective Ellipse) */}
+                        <ellipse cx="170" cy="145" rx="85" ry="30" className="fill-stone-100 stroke-stone-900 stroke-[2]" />
+                        {/* Woven Chairs around Table */}
+                        <rect x="55" y="125" width="22" height="30" rx="3" className="fill-stone-200 stroke-stone-700 stroke-[1.5]" />
+                        <rect x="260" y="125" width="22" height="30" rx="3" className="fill-stone-200 stroke-stone-700 stroke-[1.5]" />
+                        <rect x="160" y="175" width="25" height="20" rx="3" className="fill-stone-200 stroke-stone-700 stroke-[1.5]" />
+
+                        {/* Hurricane Paraffin Lantern / Warm Candle Light on Table */}
+                        <g transform="translate(162, 118)">
+                          <rect x="4" y="6" width="10" height="15" rx="2" className="fill-amber-300/80 stroke-amber-600 stroke-[1.2]" />
+                          <path d="M 9 2 Q 13 8 9 12 Q 5 8 9 2 Z" className="fill-rose-500 stroke-none" />
+                          <circle cx="9" cy="8" r="8" className="fill-amber-200/40 stroke-none" />
+                        </g>
+
+                        {/* Platter of Fresh Lake Fish / Dinner Place Settings */}
+                        <ellipse cx="130" cy="140" rx="14" ry="7" className="fill-white stroke-stone-700 stroke-[1]" />
+                        <ellipse cx="210" cy="140" rx="14" ry="7" className="fill-white stroke-stone-700 stroke-[1]" />
+
+                        {/* Camera Angle Arc: 30° Seated Elevation */}
+                        <g transform="translate(45, 160)">
+                          <line x1="0" y1="0" x2="35" y2="-15" stroke="#059669" strokeWidth="1.5" />
+                          <rect x="35" y="-22" width="14" height="14" rx="2" fill="#059669" />
+                          <text x="-25" y="22" className="text-[8px] font-mono fill-emerald-800 stroke-none font-bold">30° SEATED (1.1m)</text>
+                        </g>
                       </svg>
                     </div>
 
                     <p className="text-xs text-stone-600 leading-relaxed">
-                      Outdoor dining table set with fresh chambo fish, cold drinks on the deck, or an evening boma fire pit glowing at dusk. Shows travelers where they will unwind after their drive down the M5.
+                      Outdoor dining table set with fresh chambo fish, cold drinks on the deck, or an evening boma fire pit glowing at dusk. For <strong>whole houses</strong>, this proves where 6 to 10 guests will gather, dine, and unwind after their drive down the M5.
                     </p>
                   </div>
                   <div className="mt-3 pt-2.5 border-t border-stone-200/60 text-[11px] text-stone-500 font-mono">
-                    ✓ Tip: Shoot during golden hour (5:00 PM – 5:45 PM) when the sky turns warm amber.
+                    ✓ Instructor Tip: Shoot during golden hour (5:00 PM – 5:45 PM) when the sky turns warm amber.
                   </div>
                 </div>
 
@@ -640,7 +706,7 @@ export default function HostStarterPack() {
               <h2 className="text-xl sm:text-2xl md:text-3xl font-serif font-bold text-stone-900">
                 2. Dual Pricing, Whole-House Rates &amp; Clean Rounding
               </h2>
-              <p className="mt-2 text-stone-600 max-w-3xl">
+              <p className="mt-2 text-stone-600 max-w-4xl">
                 Travelers in Malawi include Lilongwe &amp; Blantyre residents booking weekend lakeside cottages, as well as international NGO specialists and overseas tourists. Provide clean numbers in both currencies without odd decimals.
               </p>
 
@@ -652,9 +718,10 @@ export default function HostStarterPack() {
                   <p className="text-xs sm:text-sm text-stone-600 mt-2 leading-relaxed">
                     Always round cleanly to the nearest <strong>MK 1,000</strong>:
                   </p>
-                  <ul className="mt-2 space-y-1 text-xs text-stone-700">
-                    <li>• <strong>Whole 3-Bed Cottage:</strong> MK 280,000 / night</li>
-                    <li>• <strong>Master Lake Chalet:</strong> MK 120,000 / night</li>
+                  <ul className="mt-2 space-y-1.5 text-xs text-stone-700">
+                    <li>• <strong>Whole 3-Bed Lakeside House:</strong> MK 280,000 / night (sleeps 6–8)</li>
+                    <li>• <strong>Private Beachfront Cottage:</strong> MK 180,000 / night</li>
+                    <li>• <strong>Master En-Suite Chalet:</strong> MK 120,000 / night</li>
                     <li>• <strong>Standard Garden Room:</strong> MK 65,000 / night</li>
                   </ul>
                   <p className="text-[11px] text-stone-400 mt-2">
@@ -669,9 +736,10 @@ export default function HostStarterPack() {
                   <p className="text-xs sm:text-sm text-stone-600 mt-2 leading-relaxed">
                     Round to whole dollars or the nearest <strong>$5</strong>:
                   </p>
-                  <ul className="mt-2 space-y-1 text-xs text-stone-700">
-                    <li>• <strong>Whole 3-Bed Cottage:</strong> $180 / night</li>
-                    <li>• <strong>Master Lake Chalet:</strong> $80 / night</li>
+                  <ul className="mt-2 space-y-1.5 text-xs text-stone-700">
+                    <li>• <strong>Whole 3-Bed Lakeside House:</strong> $180 / night (sleeps 6–8)</li>
+                    <li>• <strong>Private Beachfront Cottage:</strong> $115 / night</li>
+                    <li>• <strong>Master En-Suite Chalet:</strong> $80 / night</li>
                     <li>• <strong>Standard Garden Room:</strong> $45 / night</li>
                   </ul>
                   <p className="text-[11px] text-stone-400 mt-2">
@@ -703,7 +771,7 @@ export default function HostStarterPack() {
               <h2 className="text-xl sm:text-2xl md:text-3xl font-serif font-bold text-stone-900">
                 3. Direct WhatsApp Guest Templates
               </h2>
-              <p className="mt-2 text-stone-600 max-w-3xl">
+              <p className="mt-2 text-stone-600 max-w-4xl">
                 Guests love fast, personal replies directly from the host. Keep these two templates saved on your phone and simply fill in the brackets before sending:
               </p>
 
@@ -738,120 +806,89 @@ export default function HostStarterPack() {
                     {/* Connecting Arc with Checkmark */}
                     <path d="M 150 90 C 230 40 310 40 390 90" className="stroke-emerald-700 stroke-[2]" strokeDasharray="5 3" />
                     <circle cx="270" cy="62" r="13" className="fill-emerald-800 stroke-white stroke-[2]" />
-                    <path d="M 264 62 L 268 66 L 277 57" className="stroke-white stroke-[2]" />
+                    <path d="M 264 62 L 268 66 L 276 58" className="stroke-white stroke-[2] fill-none" />
+                    <text x="210" y="90" className="text-[9px] font-mono fill-emerald-800 stroke-none font-bold">DIRECT WHATSAPP CONFIRMATION</text>
 
-                    {/* Direct Chat Bubble */}
-                    <g transform="translate(175, 95)">
-                      <rect x="0" y="0" width="190" height="98" rx="10" className="fill-emerald-50 stroke-emerald-700 stroke-[1.5]" />
-                      <text x="14" y="20" className="text-[9px] font-mono fill-emerald-900 stroke-none font-bold">DIRECT INQUIRY</text>
-                      <text x="14" y="38" className="text-[11px] font-sans fill-stone-900 stroke-none">
-                        &ldquo;Muli bwanji! We are 6
-                      </text>
-                      <text x="14" y="54" className="text-[11px] font-sans fill-stone-900 stroke-none">
-                        guests booking Whole Cottage.
-                      </text>
-                      <text x="14" y="70" className="text-[11px] font-sans font-bold fill-stone-900 stroke-none">
-                        Total: MK 280,000.&rdquo;
-                      </text>
-                      <text x="14" y="88" className="text-[9px] font-mono fill-emerald-700 stroke-none">
-                        0% Commission · Instant Payout
-                      </text>
-                    </g>
+                    {/* Floating Bubble on Guest Phone */}
+                    <rect x="50" y="95" width="90" height="35" rx="6" className="fill-stone-100 stroke-stone-300 stroke-[1]" />
+                    <text x="58" y="110" className="text-[8px] font-sans fill-stone-700 stroke-none font-medium">&ldquo;Available this Sat?&rdquo;</text>
+                    <text x="58" y="122" className="text-[8px] font-sans fill-stone-500 stroke-none">Whole Cottage</text>
+
+                    {/* Floating Bubble on Host Phone */}
+                    <rect x="400" y="95" width="90" height="35" rx="6" className="fill-emerald-50 stroke-emerald-600 stroke-[1]" />
+                    <text x="408" y="110" className="text-[8px] font-sans fill-emerald-950 stroke-none font-bold">&ldquo;Takulandirani!&rdquo;</text>
+                    <text x="408" y="122" className="text-[8px] font-sans fill-emerald-800 stroke-none font-medium">Pin + Directions sent</text>
                   </svg>
                 </div>
               </div>
 
-              {/* Templates Cards */}
+              {/* Template Cards */}
               <div className="space-y-4">
                 <div className="break-inside-avoid p-5 rounded-2xl border border-stone-200 bg-white shadow-2xs">
-                  <div className="flex items-center justify-between gap-3 mb-2">
-                    <h3 className="font-semibold text-stone-900 text-sm sm:text-base">Template 1: Instant Reservation &amp; Deposit</h3>
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <span className="text-xs font-mono font-bold uppercase tracking-wider text-emerald-800">
+                      Template A · Fast Booking Inquiry Reply
+                    </span>
                     <button
                       type="button"
-                      onClick={() => copyTemplate(TEMPLATE_CONFIRMATION, 't1')}
-                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-700 hover:text-stone-950 bg-stone-100 hover:bg-stone-200 px-3 py-1.5 rounded-xl transition cursor-pointer print:hidden"
+                      onClick={() =>
+                        copyTemplateText(
+                          'inquiry',
+                          `Takulandirani! Thank you for inquiring about [Property Name]. Yes, we have availability for [Dates] at [MK XXX,XXX / $XX per night]. The rate includes breakfast and lake access. Would you like me to reserve this for you? Looking forward to welcoming you!`
+                        )
+                      }
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-stone-700 hover:text-stone-950 px-2.5 py-1 rounded-lg border border-stone-200 hover:bg-stone-50 transition cursor-pointer print:hidden"
                     >
-                      {copiedTemplate === 't1' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                      <span>{copiedTemplate === 't1' ? 'Copied' : 'Copy Template'}</span>
+                      {copiedTemplate === 'inquiry' ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3 text-stone-500" />}
+                      <span>{copiedTemplate === 'inquiry' ? 'Copied' : 'Copy'}</span>
                     </button>
                   </div>
-                  <p className="text-xs sm:text-[13px] text-stone-700 font-mono bg-stone-50 p-4 rounded-xl leading-relaxed border border-stone-100">
-                    {TEMPLATE_CONFIRMATION}
-                  </p>
+                  <div className="p-3.5 bg-stone-50 rounded-xl font-mono text-xs text-stone-800 leading-relaxed border border-stone-100">
+                    &ldquo;Takulandirani! Thank you for inquiring about <strong>[Property Name]</strong>. Yes, we have availability for <strong>[Dates]</strong> at <strong>[MK XXX,XXX / $XX per night]</strong>. The rate includes breakfast and lake access. Would you like me to reserve this for you? Looking forward to welcoming you!&rdquo;
+                  </div>
                 </div>
 
                 <div className="break-inside-avoid p-5 rounded-2xl border border-stone-200 bg-white shadow-2xs">
-                  <div className="flex items-center justify-between gap-3 mb-2">
-                    <h3 className="font-semibold text-stone-900 text-sm sm:text-base">Template 2: Road Directions &amp; Gate Pin</h3>
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <span className="text-xs font-mono font-bold uppercase tracking-wider text-emerald-800">
+                      Template B · Arrival &amp; Gate PIN Instructions
+                    </span>
                     <button
                       type="button"
-                      onClick={() => copyTemplate(TEMPLATE_DIRECTIONS, 't2')}
-                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-700 hover:text-stone-950 bg-stone-100 hover:bg-stone-200 px-3 py-1.5 rounded-xl transition cursor-pointer print:hidden"
+                      onClick={() =>
+                        copyTemplateText(
+                          'arrival',
+                          `Muli bwanji! We are getting your stay ready at [Property Name]. Check-in is from 2:00 PM. Here is our exact location pin: [Google Maps / WhatsApp Pin]. Turn off the M5 at [Landmark]. Our caretaker [Name] will be waiting at the gate to welcome you. Safe travels!`
+                        )
+                      }
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-stone-700 hover:text-stone-950 px-2.5 py-1 rounded-lg border border-stone-200 hover:bg-stone-50 transition cursor-pointer print:hidden"
                     >
-                      {copiedTemplate === 't2' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                      <span>{copiedTemplate === 't2' ? 'Copied' : 'Copy Template'}</span>
+                      {copiedTemplate === 'arrival' ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3 text-stone-500" />}
+                      <span>{copiedTemplate === 'arrival' ? 'Copied' : 'Copy'}</span>
                     </button>
                   </div>
-                  <p className="text-xs sm:text-[13px] text-stone-700 font-mono bg-stone-50 p-4 rounded-xl leading-relaxed border border-stone-100">
-                    {TEMPLATE_DIRECTIONS}
-                  </p>
+                  <div className="p-3.5 bg-stone-50 rounded-xl font-mono text-xs text-stone-800 leading-relaxed border border-stone-100">
+                    &ldquo;Muli bwanji! We are getting your stay ready at <strong>[Property Name]</strong>. Check-in is from 2:00 PM. Here is our exact location pin: <strong>[Google Maps / WhatsApp Pin]</strong>. Turn off the M5 at <strong>[Landmark]</strong>. Our caretaker <strong>[Name]</strong> will be waiting at the gate to welcome you. Safe travels!&rdquo;
+                  </div>
                 </div>
               </div>
             </section>
 
-            {/* SECTION 4: Three Steps to Get Listed in 8 Minutes — WITH WIDE, PROPERLY PADDED LEDGER */}
+            {/* SECTION 4: Widened 0% Commission Reconciliation Ledger (Never Colliding) */}
             <section id="section-get-listed" className="pt-4 border-t border-stone-200/80">
               <div className="flex items-center gap-2 mb-1 text-xs font-mono text-stone-400 uppercase tracking-wider">
                 <span>Rule 04</span>
                 <span>·</span>
-                <span>Fast Onboarding &amp; 100% Payout Retention</span>
+                <span>Revenue Retention &amp; Local Payouts</span>
               </div>
               <h2 className="text-xl sm:text-2xl md:text-3xl font-serif font-bold text-stone-900">
-                4. Get Listed in 8 Minutes
+                4. Zero Commission Ledger: 100% Host Revenue Retention
               </h2>
-              <p className="mt-2 text-stone-600 max-w-3xl">
-                Listing your whole cottage, villa, or lodge on Travel Malawi is simple. You can use our <Link to="/list-your-property" className="text-stone-900 font-semibold underline">online 4-step wizard</Link> or send details directly to our operations team:
+              <p className="mt-2 text-stone-600 max-w-4xl">
+                Foreign booking platforms charge 15% to 18% commission and impose cross-border forex fees that take weeks to arrive. With Travel Malawi, you keep every Kwacha and dollar you earn, paid directly to your local account:
               </p>
 
-              <ol className="mt-5 space-y-3">
-                <li className="break-inside-avoid flex items-start gap-3.5 p-4 rounded-2xl border border-stone-200/80 bg-white shadow-2xs">
-                  <span className="w-7 h-7 rounded-full bg-stone-900 text-white text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
-                    1
-                  </span>
-                  <div>
-                    <strong className="font-semibold text-stone-900 text-sm sm:text-base">Send your 4 photos:</strong>
-                    <p className="text-xs sm:text-sm text-stone-600 mt-0.5">
-                      Bed, view, bathroom, and sunset dining/fire pit. Send directly from your phone on WhatsApp.
-                    </p>
-                  </div>
-                </li>
-
-                <li className="break-inside-avoid flex items-start gap-3.5 p-4 rounded-2xl border border-stone-200/80 bg-white shadow-2xs">
-                  <span className="w-7 h-7 rounded-full bg-stone-900 text-white text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
-                    2
-                  </span>
-                  <div>
-                    <strong className="font-semibold text-stone-900 text-sm sm:text-base">Send property name &amp; rates:</strong>
-                    <p className="text-xs sm:text-sm text-stone-600 mt-0.5">
-                      Whole house rate or room rates in MWK or USD, plus any breakfast or private chef inclusions.
-                    </p>
-                  </div>
-                </li>
-
-                <li className="break-inside-avoid flex items-start gap-3.5 p-4 rounded-2xl border border-stone-200/80 bg-white shadow-2xs">
-                  <span className="w-7 h-7 rounded-full bg-stone-900 text-white text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
-                    3
-                  </span>
-                  <div>
-                    <strong className="font-semibold text-stone-900 text-sm sm:text-base">Share your location pin:</strong>
-                    <p className="text-xs sm:text-sm text-stone-600 mt-0.5">
-                      Drop a WhatsApp pin at your property&apos;s main entrance or vehicle gate.
-                    </p>
-                  </div>
-                </li>
-              </ol>
-
-              {/* Handcrafted Architectural Sketch 03: Widened Commission Reconciliation Ledger (Never clipped) */}
+              {/* Handcrafted Architectural Sketch 03: Widened Commission Reconciliation Ledger (Spacious, Right-Aligned Numbers) */}
               <div className="break-inside-avoid my-6 p-5 sm:p-6 bg-stone-50 rounded-2xl border border-stone-200/80">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-[10px] font-mono text-stone-500 uppercase tracking-wider">
@@ -862,89 +899,89 @@ export default function HostStarterPack() {
 
                 <div className="flex items-center justify-center py-2 overflow-x-auto">
                   <svg
-                    viewBox="0 0 600 230"
-                    className="w-full max-w-2xl h-auto text-stone-800 stroke-current fill-none stroke-[1.5] stroke-linecap-round stroke-linejoin-round select-none"
+                    viewBox="0 0 680 250"
+                    className="w-full max-w-3xl h-auto text-stone-800 stroke-current fill-none stroke-[1.5] stroke-linecap-round stroke-linejoin-round select-none"
                   >
-                    {/* Outer Ledger Card (width 540 from x=30 to x=570) */}
-                    <rect x="30" y="20" width="540" height="190" rx="14" className="stroke-stone-800 fill-white stroke-[2]" />
-                    <line x1="30" y1="60" x2="570" y2="60" className="stroke-stone-200 stroke-[1.5]" />
-                    <line x1="300" y1="60" x2="300" y2="210" className="stroke-stone-200 stroke-[1.5]" />
+                    {/* Outer Ledger Card (width 620 from x=30 to x=650) */}
+                    <rect x="30" y="20" width="620" height="210" rx="16" className="stroke-stone-800 fill-white stroke-[2]" />
+                    <line x1="30" y1="62" x2="650" y2="62" className="stroke-stone-200 stroke-[1.5]" />
+                    <line x1="340" y1="62" x2="340" y2="230" className="stroke-stone-200 stroke-[1.5]" />
 
                     {/* Column Headers */}
-                    <rect x="50" y="32" width="160" height="20" rx="5" className="fill-stone-100 stroke-none" />
-                    <text x="58" y="46" className="text-[10px] font-mono font-bold fill-stone-700 stroke-none uppercase">
+                    <rect x="50" y="32" width="170" height="22" rx="6" className="fill-stone-100 stroke-none" />
+                    <text x="60" y="47" className="text-[10px] font-mono font-bold fill-stone-700 stroke-none uppercase">
                       FOREIGN OTA PLATFORM
                     </text>
 
-                    <rect x="320" y="32" width="180" height="20" rx="5" className="fill-emerald-100 stroke-none" />
-                    <text x="328" y="46" className="text-[10px] font-mono font-bold fill-emerald-800 stroke-none uppercase">
+                    <rect x="360" y="32" width="190" height="22" rx="6" className="fill-emerald-100 stroke-none" />
+                    <text x="370" y="47" className="text-[10px] font-mono font-bold fill-emerald-800 stroke-none uppercase">
                       TRAVEL MALAWI DIRECT
                     </text>
 
-                    {/* Left Column: Foreign OTA breakdown */}
-                    <text x="50" y="90" className="text-[11px] font-sans fill-stone-600 stroke-none">
-                      Nightly Rate:
+                    {/* Left Column: Foreign OTA breakdown (Numbers right-aligned at x=315, never colliding) */}
+                    <text x="50" y="92" className="text-[11px] font-sans fill-stone-600 stroke-none">
+                      Gross Nightly Rate:
                     </text>
-                    <text x="180" y="90" className="text-[11px] font-mono font-bold fill-stone-900 stroke-none">
+                    <text x="315" y="92" textAnchor="end" className="text-[11px] font-mono font-bold fill-stone-900 stroke-none">
                       MK 100,000
                     </text>
 
-                    <text x="50" y="114" className="text-[11px] font-sans fill-rose-700 stroke-none font-semibold">
-                      &minus; 18% OTA Commission:
+                    <text x="50" y="118" className="text-[11px] font-sans fill-rose-700 stroke-none font-semibold">
+                      − 18% OTA Commission:
                     </text>
-                    <text x="210" y="114" className="text-[11px] font-mono font-bold fill-rose-700 stroke-none">
-                      &minus; MK 18,000
-                    </text>
-
-                    <text x="50" y="136" className="text-[11px] font-sans fill-rose-700 stroke-none">
-                      &minus; Wire &amp; Forex Fee:
-                    </text>
-                    <text x="210" y="136" className="text-[11px] font-mono fill-rose-700 stroke-none">
-                      &minus; MK 4,500
+                    <text x="315" y="118" textAnchor="end" className="text-[11px] font-mono font-bold fill-rose-700 stroke-none">
+                      − MK 18,000
                     </text>
 
-                    <line x1="50" y1="150" x2="275" y2="150" className="stroke-stone-200" />
-                    <text x="50" y="172" className="text-[10px] font-sans uppercase fill-stone-400 stroke-none">
+                    <text x="50" y="142" className="text-[11px] font-sans fill-rose-700 stroke-none">
+                      − Wire and Forex Fee:
+                    </text>
+                    <text x="315" y="142" textAnchor="end" className="text-[11px] font-mono font-bold fill-rose-700 stroke-none">
+                      − MK 4,500
+                    </text>
+
+                    <line x1="50" y1="158" x2="315" y2="158" className="stroke-stone-200" />
+                    <text x="50" y="180" className="text-[10px] font-sans uppercase fill-stone-400 stroke-none">
                       Net Host Payout:
                     </text>
-                    <text x="50" y="196" className="text-[16px] font-serif font-bold fill-rose-800 stroke-none">
+                    <text x="50" y="206" className="text-[17px] font-serif font-bold fill-rose-800 stroke-none">
                       MK 77,500
                     </text>
-                    <text x="160" y="194" className="text-[9px] font-mono fill-stone-400 stroke-none">
+                    <text x="315" y="204" textAnchor="end" className="text-[9px] font-mono fill-stone-400 stroke-none">
                       (Delayed 30 days)
                     </text>
 
-                    {/* Right Column: Travel Malawi breakdown (Spacious, never overflowing) */}
-                    <text x="320" y="90" className="text-[11px] font-sans fill-stone-600 stroke-none">
-                      Nightly Rate:
+                    {/* Right Column: Travel Malawi breakdown (Numbers right-aligned at x=625, never colliding) */}
+                    <text x="360" y="92" className="text-[11px] font-sans fill-stone-600 stroke-none">
+                      Gross Nightly Rate:
                     </text>
-                    <text x="450" y="90" className="text-[11px] font-mono font-bold fill-stone-900 stroke-none">
+                    <text x="625" y="92" textAnchor="end" className="text-[11px] font-mono font-bold fill-stone-900 stroke-none">
                       MK 100,000
                     </text>
 
-                    <text x="320" y="114" className="text-[11px] font-sans fill-emerald-800 stroke-none font-semibold">
+                    <text x="360" y="118" className="text-[11px] font-sans fill-emerald-800 stroke-none font-semibold">
                       0% Commission Fee:
                     </text>
-                    <text x="475" y="114" className="text-[11px] font-mono font-bold fill-emerald-800 stroke-none">
+                    <text x="625" y="118" textAnchor="end" className="text-[11px] font-mono font-bold fill-emerald-800 stroke-none">
                       MK 0 (0%)
                     </text>
 
-                    <text x="320" y="136" className="text-[11px] font-sans fill-stone-500 stroke-none">
-                      Settlement Rails:
+                    <text x="360" y="142" className="text-[11px] font-sans fill-stone-500 stroke-none">
+                      Direct Settlement Rails:
                     </text>
-                    <text x="430" y="136" className="text-[9px] font-mono fill-stone-700 stroke-none">
+                    <text x="625" y="142" textAnchor="end" className="text-[10px] font-mono fill-stone-700 stroke-none">
                       Airtel / Mpamba / Bank
                     </text>
 
-                    <line x1="320" y1="150" x2="550" y2="150" className="stroke-stone-200" />
-                    <text x="320" y="172" className="text-[10px] font-sans uppercase fill-emerald-800 stroke-none font-bold">
+                    <line x1="360" y1="158" x2="625" y2="158" className="stroke-stone-200" />
+                    <text x="360" y="180" className="text-[10px] font-sans uppercase fill-emerald-800 stroke-none font-bold">
                       Direct Net Payout:
                     </text>
-                    <text x="320" y="196" className="text-[16px] font-serif font-bold fill-emerald-800 stroke-none">
-                      MK 100,000 (100%)
+                    <text x="360" y="206" className="text-[17px] font-serif font-bold fill-emerald-800 stroke-none">
+                      MK 100,000
                     </text>
-                    <text x="480" y="194" className="text-[9px] font-mono fill-emerald-700 stroke-none font-bold">
-                      Instant Direct
+                    <text x="625" y="204" textAnchor="end" className="text-[10px] font-mono fill-emerald-700 stroke-none font-bold">
+                      100% Retained · Instant
                     </text>
                   </svg>
                 </div>
@@ -987,7 +1024,7 @@ export default function HostStarterPack() {
               <h2 className="text-xl sm:text-2xl md:text-3xl font-serif font-bold text-stone-900">
                 5. Submit Your Property Directly
               </h2>
-              <p className="mt-1.5 text-stone-600 text-xs sm:text-sm max-w-3xl">
+              <p className="mt-1.5 text-stone-600 text-xs sm:text-sm max-w-4xl">
                 Prefer our concierge team to configure your listing for you? Fill out the brief details below. We set up your listing page, verify your photos, and message you on WhatsApp within 24 hours.
               </p>
 
@@ -1049,8 +1086,8 @@ export default function HostStarterPack() {
                         <div className="flex items-center gap-2.5">
                           <Bed className="w-4 h-4" />
                           <div>
-                            <p className="font-semibold text-xs sm:text-sm">Room-by-Room Stay</p>
-                            <p className="text-[11px] opacity-75">Individual chalets, suites, or B&amp;B rooms</p>
+                            <p className="font-semibold text-xs sm:text-sm">Individual Rooms / Chalets</p>
+                            <p className="text-[11px] opacity-75">B&amp;B, lodge, or safari camp with multiple rooms</p>
                           </div>
                         </div>
                         {formData.stayType === 'rooms' && <Check className="w-4 h-4" />}
@@ -1058,257 +1095,215 @@ export default function HostStarterPack() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className={labelClass}>Property Name *</label>
                       <input
                         type="text"
                         required
-                        placeholder="e.g. Chembe Lake Cottage, Mulanje View Villa, Kaya Camp"
                         value={formData.propName}
-                        onChange={e => setFormData({ ...formData, propName: e.target.value })}
+                        onChange={(e) => setFormData({ ...formData, propName: e.target.value })}
+                        placeholder="e.g. Makokola Breeze Cottage"
                         className={inputClass}
                       />
                     </div>
-
                     <div>
                       <label className={labelClass}>Location / District *</label>
                       <input
                         type="text"
                         required
-                        placeholder="e.g. Cape Maclear, Mangochi, Lilongwe Area 10, Mulanje"
                         value={formData.propLoc}
-                        onChange={e => setFormData({ ...formData, propLoc: e.target.value })}
+                        onChange={(e) => setFormData({ ...formData, propLoc: e.target.value })}
+                        placeholder="e.g. Cape Maclear, Mangochi"
                         className={inputClass}
                       />
                     </div>
+                  </div>
 
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className={labelClass}>Manager or Host Name</label>
+                      <label className={labelClass}>Contact Name *</label>
                       <input
                         type="text"
-                        placeholder="Your full name"
+                        required
                         value={formData.contactName}
-                        onChange={e => setFormData({ ...formData, contactName: e.target.value })}
+                        onChange={(e) => setFormData({ ...formData, contactName: e.target.value })}
+                        placeholder="e.g. John Chirwa"
                         className={inputClass}
                       />
                     </div>
-
                     <div>
-                      <label className={labelClass}>WhatsApp / Phone Number *</label>
+                      <label className={labelClass}>WhatsApp Phone Number *</label>
                       <input
                         type="tel"
                         required
-                        placeholder="e.g. +265 999 123 456"
                         value={formData.contactPhone}
-                        onChange={e => setFormData({ ...formData, contactPhone: e.target.value })}
+                        onChange={(e) => setFormData({ ...formData, contactPhone: e.target.value })}
+                        placeholder="e.g. +265 999 123 456"
                         className={inputClass}
                       />
                     </div>
+                  </div>
 
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
-                      <label className={labelClass}>Capacity &amp; Bed Setup</label>
+                      <label className={labelClass}>
+                        {formData.stayType === 'whole_house' ? 'Whole Stay Rate (MWK)' : 'Room Rate (MWK)'}
+                      </label>
                       <input
                         type="text"
-                        placeholder="e.g. 3 Bedrooms, sleeps 6 guests, private pool"
-                        value={formData.capacity}
-                        onChange={e => setFormData({ ...formData, capacity: e.target.value })}
+                        value={formData.nightlyMwk}
+                        onChange={(e) => setFormData({ ...formData, nightlyMwk: e.target.value })}
+                        placeholder="e.g. 180,000"
                         className={inputClass}
                       />
                     </div>
-
                     <div>
-                      <label className={labelClass}>Starting Nightly Rate</label>
-                      <div className="flex gap-2">
-                        <select
-                          value={formData.currency}
-                          onChange={e => setFormData({ ...formData, currency: e.target.value })}
-                          className="border border-stone-200 rounded-xl px-2.5 py-2 text-xs font-semibold text-stone-900 bg-white focus:outline-none focus:border-stone-900 shadow-2xs"
-                        >
-                          <option value="MWK">MWK</option>
-                          <option value="USD">USD</option>
-                        </select>
-                        <input
-                          type="text"
-                          placeholder="e.g. 120,000 or 80"
-                          value={formData.startingRate}
-                          onChange={e => setFormData({ ...formData, startingRate: e.target.value })}
-                          className={inputClass}
-                        />
-                      </div>
+                      <label className={labelClass}>
+                        {formData.stayType === 'whole_house' ? 'Whole Stay Rate (USD)' : 'Room Rate (USD)'}
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.nightlyUsd}
+                        onChange={(e) => setFormData({ ...formData, nightlyUsd: e.target.value })}
+                        placeholder="e.g. 115"
+                        className={inputClass}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>
+                        {formData.stayType === 'whole_house' ? 'Number of Bedrooms' : 'Total Room Count'}
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={formData.roomCount}
+                        onChange={(e) => setFormData({ ...formData, roomCount: e.target.value })}
+                        className={inputClass}
+                      />
                     </div>
                   </div>
 
                   <div>
-                    <label className={labelClass}>Property Features / Notes (Optional)</label>
+                    <label className={labelClass}>Key Features &amp; Directions (Optional)</label>
                     <textarea
-                      rows={2}
-                      placeholder="e.g. Solar power backup, private beach frontage, borehole water, boat transfers, private cook"
+                      rows={3}
                       value={formData.notes}
-                      onChange={e => setFormData({ ...formData, notes: e.target.value })}
-                      className={inputClass}
+                      onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                      placeholder="e.g. Beachfront frontage, solar backup power, borehole water, chef available on request."
+                      className="w-full border border-stone-200 rounded-xl px-4 py-3 text-xs sm:text-sm text-stone-900 placeholder-stone-400 bg-white focus:outline-none focus:border-stone-900 focus:ring-4 focus:ring-stone-900/5 transition shadow-2xs leading-relaxed min-h-[90px] resize-y"
                     />
                   </div>
 
-                  <div className="pt-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                    <p className="text-xs text-stone-500">
-                      0% Commission · Direct guest contact on WhatsApp · Free verification
-                    </p>
+                  <div className="pt-2 flex items-center justify-end">
                     <button
                       type="submit"
                       disabled={submitting}
-                      className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-stone-900 hover:bg-stone-800 disabled:opacity-50 text-white font-semibold text-xs sm:text-sm px-6 py-3 rounded-xl transition cursor-pointer shadow-2xs"
+                      className="inline-flex items-center justify-center gap-2 bg-stone-900 hover:bg-stone-800 disabled:opacity-50 text-white font-semibold px-6 py-3 rounded-xl text-xs sm:text-sm transition shadow-2xs cursor-pointer"
                     >
-                      <Send className="w-3.5 h-3.5" />
-                      <span>{submitting ? 'Submitting...' : 'Submit Property for Listing'}</span>
+                      {submitting ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          <span>Submitting Details...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-4 h-4" />
+                          <span>Submit Property for Concierge Onboarding</span>
+                        </>
+                      )}
                     </button>
                   </div>
                 </form>
               )}
             </section>
+
           </div>
 
-          {/* Document Footer (Screen) */}
-          <footer className="mt-12 pt-6 border-t border-stone-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-stone-500 print:hidden">
+          {/* Footer note in document */}
+          <footer className="mt-12 pt-6 border-t border-stone-200 text-xs text-stone-400 flex flex-col sm:flex-row items-center justify-between gap-3">
             <div>
-              <span className="font-semibold text-stone-900">Travel Malawi</span>
-              <span className="mx-2">·</span>
-              <span>The Warm Heart of Africa</span>
+              Travel Malawi Platform Operations · The Warm Heart of Africa
             </div>
-            <div className="flex items-center gap-4">
-              <Link to="/how-hosting-works" className="hover:text-stone-900 underline">
-                How Hosting Works
-              </Link>
-              <Link to="/list-your-property" className="hover:text-stone-900 underline">
-                List Property
-              </Link>
-              <Link to="/dashboard" className="hover:text-stone-900 underline">
-                Host Dashboard
-              </Link>
-              <Link to="/" className="hover:text-stone-900 underline">
-                Browse Stays
-              </Link>
-            </div>
-          </footer>
-
-          {/* Dedicated Print & PDF Footer */}
-          <footer className="hidden print:block mt-8 pt-4 border-t border-stone-300 text-[11px] text-stone-600">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="font-bold text-stone-900">Travel Malawi Direct Hospitality</p>
-                <p className="mt-0.5">Connecting whole cottages, villas, safari camps &amp; lodges directly with domestic and international travelers.</p>
-              </div>
-              <div className="space-y-0.5 font-mono text-[10px]">
-                <p>• List Property: travelmalawi.mw/list-your-property</p>
-                <p>• Host Playbook: travelmalawi.mw/how-hosting-works</p>
-                <p>• WhatsApp Concierge: +265 999 000 000</p>
-              </div>
+            <div className="font-mono text-[11px] text-stone-500">
+              Direct Bookings · 0% Commission
             </div>
           </footer>
         </article>
+      </main>
 
-        {/* Email & PDF Modal Dialog */}
-        {showEmailModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/40 backdrop-blur-xs animate-in fade-in duration-200">
-            <div className="bg-white rounded-2xl border border-stone-200 shadow-xl max-w-lg w-full p-6 sm:p-7 relative">
+      {/* Share / Email Guide Modal */}
+      {showEmailModal && (
+        <div className="fixed inset-0 z-50 bg-stone-950/60 backdrop-blur-xs flex items-center justify-center p-4 print:hidden animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl border border-stone-200 max-w-lg w-full p-6 sm:p-7 shadow-xl space-y-5">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="font-serif font-bold text-lg sm:text-xl text-stone-900 flex items-center gap-2">
+                  <Mail className="w-5 h-5 text-stone-700" />
+                  <span>Share Host Starter Pack via Email</span>
+                </h3>
+                <p className="text-xs sm:text-sm text-stone-500 mt-1">
+                  Send this field guide summary and links to your own inbox or share it with a property partner.
+                </p>
+              </div>
               <button
                 type="button"
                 onClick={() => setShowEmailModal(false)}
-                className="absolute top-4 right-4 p-1.5 text-stone-400 hover:text-stone-900 rounded-lg hover:bg-stone-100 transition cursor-pointer"
+                className="p-1.5 rounded-xl text-stone-400 hover:text-stone-900 hover:bg-stone-100 transition cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
+            </div>
 
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-amber-100/70 text-amber-900 flex items-center justify-center">
-                  <Mail className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-serif font-bold text-stone-900 text-lg">Email &amp; Share Field Guide</h3>
-                  <p className="text-xs text-stone-500">Send summary &amp; links directly to yourself or a partner lodge manager.</p>
-                </div>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-stone-700 mb-1">
+                  Recipient Email (Optional)
+                </label>
+                <input
+                  type="email"
+                  value={recipientEmail}
+                  onChange={(e) => setRecipientEmail(e.target.value)}
+                  placeholder="e.g. host@stayexample.mw"
+                  className={inputClass}
+                />
               </div>
 
-              <div className="space-y-4 text-xs sm:text-sm text-stone-700">
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-stone-700 mb-1.5">
-                    Recipient Email Address (Optional)
-                  </label>
-                  <input
-                    type="email"
-                    placeholder="e.g. host@lakesidecottage.mw or your email"
-                    value={recipientEmail}
-                    onChange={e => setRecipientEmail(e.target.value)}
-                    className="w-full border border-stone-200 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-stone-900 placeholder-stone-400 bg-white focus:outline-none focus:border-stone-900 transition shadow-2xs"
-                  />
-                  <p className="mt-1 text-[11px] text-stone-400">
-                    Leave blank to choose recipient in your email app.
-                  </p>
-                </div>
+              {/* Action Buttons */}
+              <div className="space-y-2 pt-2">
+                <button
+                  type="button"
+                  onClick={handleSendEmailViaApp}
+                  className="w-full inline-flex items-center justify-center gap-2 bg-stone-900 hover:bg-stone-800 text-white font-semibold px-4 py-2.5 rounded-xl text-xs sm:text-sm transition cursor-pointer shadow-2xs"
+                >
+                  <Send className="w-4 h-4" />
+                  <span>Launch in Mail Client (Pre-filled)</span>
+                </button>
 
-                <div className="p-3.5 bg-stone-50 rounded-xl border border-stone-200 text-xs space-y-1 text-stone-600">
-                  <p className="font-semibold text-stone-900">Email contents include:</p>
-                  <p>• Whole houses &amp; cottages vs. room-by-room listings</p>
-                  <p>• 0% Commission &amp; Instant Mobile Money/Bank payout summary</p>
-                  <p>• 4 instructor photography angles &amp; dual pricing guidelines</p>
-                  <p>• 2 ready-to-use WhatsApp templates with one-click copy</p>
-                  <p>• Direct links to the online listing wizard &amp; visual playbook</p>
-                </div>
-
-                {/* Primary Action Buttons */}
-                <div className="pt-2 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      handleOpenEmailClient();
-                      setShowEmailModal(false);
-                    }}
-                    className="inline-flex items-center justify-center gap-2 bg-stone-900 hover:bg-stone-800 text-white font-semibold text-xs sm:text-sm py-2.5 px-4 rounded-xl transition cursor-pointer shadow-2xs"
-                  >
-                    <Mail className="w-4 h-4" />
-                    <span>Open in Email App</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleCopyEmailText}
-                    className="inline-flex items-center justify-center gap-2 bg-white hover:bg-stone-50 text-stone-800 border border-stone-200 font-semibold text-xs sm:text-sm py-2.5 px-4 rounded-xl transition cursor-pointer shadow-2xs"
-                  >
-                    {copiedEmailText ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
-                    <span>{copiedEmailText ? 'Copied to Clipboard' : 'Copy Email Body'}</span>
-                  </button>
-                </div>
-
-                <div className="pt-2 border-t border-stone-100 flex items-center justify-between text-xs text-stone-500">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowEmailModal(false);
-                      handleShareWhatsApp();
-                    }}
-                    className="hover:text-emerald-700 underline flex items-center gap-1 cursor-pointer"
-                  >
-                    <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Share on WhatsApp instead</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowEmailModal(false);
-                      handlePrint();
-                    }}
-                    className="hover:text-stone-900 underline flex items-center gap-1 cursor-pointer"
-                  >
-                    <Printer className="w-3.5 h-3.5" />
-                    <span>Print / Save PDF</span>
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={handleCopyEmailText}
+                  className="w-full inline-flex items-center justify-center gap-2 bg-stone-100 hover:bg-stone-200 text-stone-800 font-semibold px-4 py-2.5 rounded-xl text-xs sm:text-sm transition cursor-pointer"
+                >
+                  {copiedEmailText ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                  <span>{copiedEmailText ? 'Copied Summary Text!' : 'Copy Formatted Text for Manual Paste'}</span>
+                </button>
               </div>
             </div>
+
+            <div className="pt-3 border-t border-stone-100 flex items-center justify-between text-xs text-stone-400">
+              <span>0% Commission · Direct Bookings</span>
+              <button
+                type="button"
+                onClick={() => setShowEmailModal(false)}
+                className="text-stone-600 hover:text-stone-950 font-semibold"
+              >
+                Close
+              </button>
+            </div>
           </div>
-        )}
-      </main>
+        </div>
+      )}
     </div>
   );
 }

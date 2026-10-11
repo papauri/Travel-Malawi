@@ -807,20 +807,20 @@ function SketchIllustration({ type }: { type: 'cottage' | 'discovery' | 'whatsap
           </text>
 
           <text x="80" y="160" className="text-[11px] font-sans fill-red-700 stroke-none">
-            &minus; 18% OTA Commission:
+            − 18% OTA Commission:
           </text>
-          <text x="190" y="160" className="text-[11px] font-mono fill-red-700 stroke-none">
-            &minus; MK 18,000
+          <text x="200" y="160" className="text-[11px] font-mono fill-red-700 stroke-none">
+            − MK 18,000
           </text>
 
           <text x="80" y="185" className="text-[11px] font-sans fill-red-700 stroke-none">
-            &minus; Foreign Payout Fee:
+            − Foreign Payout Fee:
           </text>
-          <text x="190" y="185" className="text-[11px] font-mono fill-red-700 stroke-none">
-            &minus; MK 4,500
+          <text x="200" y="185" className="text-[11px] font-mono fill-red-700 stroke-none">
+            − MK 4,500
           </text>
 
-          <line x1="80" y1="205" x2="240" y2="205" className="stroke-stone-300 stroke-[1]" />
+          <line x1="80" y1="205" x2="250" y2="205" className="stroke-stone-300 stroke-[1]" />
           <text x="80" y="228" className="text-[10px] font-sans uppercase fill-stone-400 stroke-none">
             Host Net Payout:
           </text>
@@ -838,14 +838,14 @@ function SketchIllustration({ type }: { type: 'cottage' | 'discovery' | 'whatsap
           <text x="280" y="135" className="text-[11px] font-sans fill-stone-600 stroke-none">
             Gross Nightly Rate:
           </text>
-          <text x="390" y="135" className="text-[11px] font-mono font-bold fill-stone-900 stroke-none">
+          <text x="400" y="135" className="text-[11px] font-mono font-bold fill-stone-900 stroke-none">
             MK 100,000
           </text>
 
           <text x="280" y="160" className="text-[11px] font-sans fill-emerald-800 stroke-none">
-            &minus; Host Commission:
+            − Host Commission:
           </text>
-          <text x="390" y="160" className="text-[11px] font-mono font-bold fill-emerald-800 stroke-none">
+          <text x="400" y="160" className="text-[11px] font-mono font-bold fill-emerald-800 stroke-none">
             MK 0 (0%)
           </text>
 

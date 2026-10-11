@@ -413,7 +413,7 @@ export default function ManagerDashboard() {
       </div>
 
       {/* Minimal Underline-Based Dashboard Navigation Tabs */}
-      <div className="border-b border-stone-200/90 mb-6 flex items-center gap-6 sm:gap-8 overflow-x-auto scrollbar-none" role="tablist" aria-label="Dashboard views">
+      <div className="border-b border-stone-200/90 mb-6 flex flex-wrap items-center gap-x-6 sm:gap-x-8 gap-y-2" role="tablist" aria-label="Dashboard views">
         {/* Tab 1: All Properties */}
         <button
           type="button"

@@ -9,7 +9,7 @@ import { validateRoom, firstError } from '../lib/validateRoom';
 import { addDays } from '../lib/dates';
 import { saveUpdatedRooms, saveSingleCachedHotel } from '../lib/mapCache';
 import {
-  SlidersHorizontal, Percent, DollarSign, Tag, Sparkles, Check,
+  SlidersHorizontal, Percent, DollarSign, Tag, Check,
   RotateCcw, TrendingDown, TrendingUp, Calendar, Zap, AlertCircle,
   ArrowRight, ChevronDown, Building2, BedDouble, Search, X, Info,
   Save, Loader2, CheckCircle2, Sliders, Layers, Play, Pause, Trash2, Clock
@@ -1158,7 +1158,7 @@ export default function BulkRoomEditor({
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h4 className="font-serif font-bold text-stone-900 text-sm sm:text-base flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-stone-500" />
+                  <Tag className="w-4 h-4 text-stone-500" />
                   <span>Configure Promotional Slash Campaign</span>
                 </h4>
                 <span className="text-xs text-stone-700 bg-stone-100 border border-stone-200 px-2.5 py-0.5 rounded-md font-medium">
