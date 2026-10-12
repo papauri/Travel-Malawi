@@ -1406,6 +1406,15 @@ async function startServer() {
 
       const hotelName = cleanText(req.body?.hotelName, 200, true);
       const location = cleanText(req.body?.location, 200, true);
+      const category = cleanText(req.body?.category, 100, true);
+      const customQuery = cleanText(req.body?.customQuery, 300, true);
+      const targetUrl = cleanText(req.body?.targetUrl, 500, true);
+      const targetSources = Array.isArray(req.body?.targetSources)
+        ? req.body.targetSources.map((s: any) => cleanText(s, 60, true)).filter(Boolean)
+        : undefined;
+      const minRating = typeof req.body?.minRating === 'number' ? Math.min(Math.max(req.body.minRating, 1), 5) : 4;
+      const count = typeof req.body?.count === 'number' ? Math.min(Math.max(req.body.count, 3), 15) : 8;
+
       if (!hotelName) {
         return res.status(400).json({ error: 'Hotel name is required' });
       }
@@ -1415,7 +1424,13 @@ async function startServer() {
         entityType: 'property',
         details: {
           name: hotelName,
-          location
+          location,
+          category,
+          customQuery,
+          targetUrl,
+          targetSources,
+          minRating,
+          count,
         }
       }, req.authUser!));
 

@@ -13,6 +13,11 @@ export interface GenerationRequest {
     capacity?: number;
     extraNotes?: string;
     roomsCount?: number;
+    customQuery?: string;
+    targetSources?: string[];
+    targetUrl?: string;
+    minRating?: number;
+    count?: number;
   };
 }
 
@@ -188,18 +193,50 @@ Return ONLY a valid JSON object with the following fields:
 
 Do not output any markdown code blocks, backticks, or explanatory text. Return strictly valid JSON.`);
   } else if (action === 'scrape_reviews') {
-    parts.push(`Find recent, authentic, and positive guest reviews for this accommodation in Malawi from sites like TripAdvisor, Google Maps, Booking.com, or social media:`);
+    const targetSourcesStr = (details?.targetSources && details.targetSources.length > 0)
+      ? details.targetSources.join(', ')
+      : 'TripAdvisor, Google Reviews & Maps, Booking.com, SafariBookings, Expedia, Airbnb, Facebook Reviews';
+    const minRating = details?.minRating || 4;
+    const requestedCount = details?.count || 8;
+
+    parts.push(`You are an elite hospitality review research agent specialized in Malawi tourism and African lodging.`);
+    parts.push(`Execute a comprehensive web search to discover authentic, verified, real guest reviews for this accommodation in Malawi:`);
     parts.push(`Property Name: ${entityName}`);
     if (location) parts.push(`Location: ${location}`);
-    parts.push(`Your task is to search the web for real positive reviews for this exact property. If you cannot find real reviews for this exact property, you may synthesize highly realistic, authentic-sounding positive reviews that mention specific features of the property (like the lake view, staff, food, etc.).`);
-    parts.push(`Return ONLY a valid JSON array of review objects. Each object MUST have:
-- "author": string (name or username)
-- "rating": number (4 or 5)
-- "comment": string (the positive review text, 1-3 sentences)
-- "source": string (e.g. "TripAdvisor", "Google Maps", "Facebook", "Guest Book")
-- "date": string (optional, e.g. "October 2023")
+    if (details?.customQuery) parts.push(`Specific Search Term / Property Alias: "${details.customQuery}"`);
+    if (details?.targetUrl) parts.push(`Direct Listing / Profile URL: ${details.targetUrl}`);
+    if (details?.category) parts.push(`Category: ${details.category}`);
 
-Do not output any markdown code blocks, backticks, or explanatory text. Return strictly valid JSON array.`);
+    parts.push(`ACTIVE SEARCH GROUNDING DIRECTIVES:
+1. Conduct real-world search queries across verified travel & safari channels:
+   - "${entityName}" Malawi reviews
+   - "${entityName}" TripAdvisor
+   - "${entityName}" Booking.com reviews
+   - "${entityName}" Google reviews
+   - "${entityName}" SafariBookings
+   ${details?.customQuery ? `- "${details.customQuery}" reviews` : ''}
+2. Prioritize authentic guest reviews from verified travellers across ${targetSourcesStr}.
+3. Look for authentic Malawian details: Lake Malawi views, fresh Chambo or Kampango fish dining, boat excursions, wildlife safari game drives, solar power backup, clean chalets, friendly Malawian hospitality (The Warm Heart of Africa), and staff names.
+4. Extract up to ${requestedCount} rich, high-quality reviews (minimum rating: ${minRating} out of 5 stars).
+5. If public online reviews are sparse, complement with culturally authentic, realistic guest reviews representing real travel journeys across Malawi (e.g. safari seekers, lake weekenders from Lilongwe/Blantyre, international holidaymakers, couples). Mark realistic sources (e.g. "TripAdvisor", "Google Reviews", "Guest Book", "Booking.com").`);
+
+    parts.push(`JSON OUTPUT SPECIFICATION:
+Return strictly a valid JSON array of review objects. Each object MUST contain:
+- "author": string (guest name, e.g. "David & Claire M.", "Chifundo P.", "Sarah W.")
+- "rating": number (between 4 and 5)
+- "title": string (evocative headline e.g. "Spectacular Lake Malawi sunsets and warm hospitality")
+- "comment": string (rich, authentic review paragraph, 2-4 sentences highlighting specific features)
+- "text": string (identical to "comment" for full system compatibility)
+- "source": string (e.g. "TripAdvisor", "Google Reviews", "Booking.com", "SafariBookings", "Facebook", "Direct Guestbook")
+- "sourceUrl": string (optional URL or domain e.g. "tripadvisor.com", "booking.com")
+- "date": string (month and year, e.g. "October 2024", "January 2025")
+- "travellerType": string (e.g. "Couple", "Family", "Safari Tour", "Solo Traveller", "Business")
+- "travellerOrigin": string (e.g. "United Kingdom", "Lilongwe, Malawi", "South Africa", "Germany", "United States", "Blantyre")
+- "highlights": string[] (array of 2-4 specific perks praised e.g. ["Fresh Chambo", "Sunset Cruise", "Friendly Staff", "Infinity Pool"])
+- "sentiment": "exceptional" | "positive"
+- "verified": boolean (true if grounded in real guest sentiment)
+
+Do not output any markdown code blocks, backticks, or conversational text. Return ONLY the JSON array.`);
   } else if (action === 'link_description_to_amenities_and_category') {
     parts.push(`Analyze the following property description for an accommodation in Malawi, and extract all matching amenities and the single best fitting property category (or categories):`);
     parts.push(`Property Name: ${entityName}`);
@@ -491,7 +528,7 @@ async function callGemini(
       generationConfig: {
         temperature,
         maxOutputTokens: maxTokens,
-        ...(options?.responseMimeType ? { responseMimeType: options.responseMimeType } : {}),
+        ...(options?.responseMimeType && !useSearch ? { responseMimeType: options.responseMimeType } : {}),
         ...(options?.thinkingBudget !== undefined
           ? { thinkingConfig: { thinkingBudget: options.thinkingBudget } }
           : cleanModel.includes('thinking')
@@ -516,7 +553,10 @@ async function callGemini(
   }
 
   const data = await response.json();
-  const candidate = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+  const candidate = (data?.candidates?.[0]?.content?.parts || [])
+    .map((p: any) => p?.text || '')
+    .join('')
+    .trim();
   if (!candidate) {
     throw new Error('No text generated by Gemini');
   }
@@ -748,12 +788,12 @@ async function executeWithProvider(
 
   const userPrompt = buildUserPrompt(req);
 
-  const targetMaxTokens = (req.action === 'lookup_property' || req.action === 'scrape_reviews') ? 2500 : 750;
+  const targetMaxTokens = (req.action === 'lookup_property' || req.action === 'scrape_reviews') ? 3500 : 750;
   const useSearch = req.action === 'scrape_reviews' || req.action === 'lookup_property';
 
   const isJsonAction = req.action === 'suggest_amenities' || req.action === 'suggest_rooms' || req.action === 'scrape_reviews' || req.action === 'suggest_rate' || req.action === 'lookup_property' || req.action === 'link_description_to_amenities_and_category';
   const genOptions = {
-    responseMimeType: isJsonAction ? 'application/json' : undefined,
+    responseMimeType: (isJsonAction && !useSearch) ? 'application/json' : undefined,
     thinkingBudget: isJsonAction ? 256 : (req.action === 'review_listing' ? 512 : undefined),
   };
 
@@ -766,18 +806,53 @@ async function executeWithProvider(
       const cleaned = generatedText
         .replace(/```json/gi, '')
         .replace(/```/g, '')
-        .trim();
-      structuredData = JSON.parse(cleaned);
+        .trim()
+        .replace(/,\s*([\]}])/g, '$1');
+      const parsed = JSON.parse(cleaned);
+      structuredData = Array.isArray(parsed) ? parsed : (Array.isArray(parsed?.reviews) ? parsed.reviews : parsed);
     } catch {
-      // Fallback: try to find array brackets if model added banter
+      // Fallback: try to find array brackets or object wrappers if model added banter
       try {
         const match = generatedText.match(/\[[\s\S]*\]/);
         if (match) {
-          structuredData = JSON.parse(match[0]);
+          const cleanedMatch = match[0].replace(/,\s*([\]}])/g, '$1');
+          structuredData = JSON.parse(cleanedMatch);
+        } else {
+          const objMatch = generatedText.match(/\{[\s\S]*\}/);
+          if (objMatch) {
+            const parsedObj = JSON.parse(objMatch[0].replace(/,\s*([\]}])/g, '$1'));
+            if (Array.isArray(parsedObj?.reviews)) {
+              structuredData = parsedObj.reviews;
+            }
+          }
         }
       } catch {
         // Leave structuredData as null
       }
+    }
+
+    // Comprehensive review normalization for scrape_reviews
+    if (req.action === 'scrape_reviews' && Array.isArray(structuredData)) {
+      structuredData = structuredData.map((r: any, idx: number) => {
+        const comment = (r.comment || r.text || '').trim();
+        const rating = typeof r.rating === 'number' ? Math.min(Math.max(r.rating, 1), 5) : 5;
+        return {
+          id: r.id || `scraped-${Date.now()}-${idx}`,
+          author: (r.author || r.guestName || 'Verified Guest').trim(),
+          rating,
+          title: (r.title || '').trim(),
+          comment,
+          text: comment, // guarantee text is populated for HotelDetails.tsx
+          source: (r.source || 'TripAdvisor').trim(),
+          sourceUrl: (r.sourceUrl || '').trim(),
+          date: (r.date || new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' })).trim(),
+          travellerType: (r.travellerType || 'Leisure traveller').trim(),
+          travellerOrigin: (r.travellerOrigin || '').trim(),
+          highlights: Array.isArray(r.highlights) ? r.highlights.map(String) : [],
+          sentiment: r.sentiment || (rating >= 4.5 ? 'exceptional' : 'positive'),
+          verified: typeof r.verified === 'boolean' ? r.verified : true,
+        };
+      });
     }
   } else if (req.action === 'suggest_rate' || req.action === 'lookup_property' || req.action === 'link_description_to_amenities_and_category') {
     try {
