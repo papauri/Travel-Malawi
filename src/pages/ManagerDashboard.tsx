@@ -16,7 +16,7 @@ import { useAuthDialog } from '../contexts/AuthDialogContext';
 
 import SmartImage from '../components/SmartImage';
 import { getHotelImage } from '../lib/images';
-import { isHotelManager, isAdmin } from '../lib/roles';
+import { isHotelManager, isAdmin, isMarketing } from '../lib/roles';
 import MaskedPlaceName from '../components/MaskedPlaceName';
 import BulkRoomEditor from '../components/BulkRoomEditor';
 
@@ -157,7 +157,7 @@ export default function ManagerDashboard() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user || !isHotelManager(user)) {
+    if (!user || (!isHotelManager(user) && !isAdmin(user) && !isMarketing(user))) {
       setLoading(false);
       return;
     }
@@ -311,7 +311,7 @@ export default function ManagerDashboard() {
     );
   }
 
-  if (!isHotelManager(user)) {
+  if (!isHotelManager(user) && !isAdmin(user) && !isMarketing(user)) {
     return (
       <div className="min-h-screen bg-stone-50 py-8 sm:py-12 px-3.5 sm:px-6 lg:px-8">
         <div className="max-w-2xl mx-auto">

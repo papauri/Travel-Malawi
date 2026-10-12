@@ -9,7 +9,7 @@ import {
   Shield, ShieldCheck, Building2, CheckCircle, CheckCircle2, XCircle, Clock, MapPin, 
   MapPinOff, Users, Edit2, Edit3, Key, Trash2, Star, ExternalLink, 
   MessageSquare, MessageSquareOff, LayoutDashboard, CalendarRange, FileText, 
-  Search, Activity, Cpu, Target, Download, ChevronDown, MoreHorizontal, Check
+  Search, Activity, Cpu, Target, Download, ChevronDown, MoreHorizontal, Check, X
 } from 'lucide-react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import Pagination from '../components/Pagination';
@@ -26,7 +26,7 @@ import AdminWhatsAppSettings from '../components/AdminWhatsAppSettings';
 import AdminLogs from '../components/AdminLogs';
 import { logSystemEvent } from '../lib/logger';
 import { getHotelImage } from '../lib/images';
-import { isAdmin, isGlobalAdmin, isMarketing, isHotelManager, userRoles, toRoleFields } from '../lib/roles';
+import { isAdmin, isGlobalAdmin, isMarketing, isHotelManager, userRoles, toRoleFields, isOwnerEmail } from '../lib/roles';
 import { formatMoney } from '../lib/booking';
 import { updateBookingWithSlot, deleteBookingWithSlot, cancelBookingReminders } from '../lib/bookingWrites';
 import { useConfirmBooking } from '../hooks/useConfirmBooking';
@@ -139,6 +139,14 @@ export default function AdminDashboard() {
   const [quickResetEmail, setQuickResetEmail] = useState('');
   const [sendingQuickReset, setSendingQuickReset] = useState(false);
   const [showQuickResetModal, setShowQuickResetModal] = useState(false);
+
+  // Property Manager & Owner Assignment State
+  const [hotelToAssignManager, setHotelToAssignManager] = useState<Hotel | null>(null);
+  const [assignManagerSelectedUid, setAssignManagerSelectedUid] = useState<string>('');
+  const [assignManagerCustomEmail, setAssignManagerCustomEmail] = useState<string>('');
+  const [assignManagerCustomName, setAssignManagerCustomName] = useState<string>('');
+  const [assignManagerOwnerEmail, setAssignManagerOwnerEmail] = useState<string>('');
+  const [isAssigningManager, setIsAssigningManager] = useState(false);
   
   const itemsPerPage = 10;
 
@@ -366,9 +374,77 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleSaveManagerAssignment = async () => {
+    if (!hotelToAssignManager) return;
+    setIsAssigningManager(true);
+    try {
+      const selectedUser = users.find(u => u.uid === assignManagerSelectedUid);
+      let managerId = '';
+      let managerName = '';
+      let managerEmail = '';
+
+      if (assignManagerSelectedUid === 'unassigned') {
+        managerId = '';
+        managerName = '';
+        managerEmail = '';
+      } else if (selectedUser) {
+        managerId = selectedUser.uid;
+        managerName = selectedUser.displayName || selectedUser.email?.split('@')[0] || 'Property Manager';
+        managerEmail = selectedUser.email || '';
+      } else {
+        managerId = hotelToAssignManager.managerId || '';
+        managerName = assignManagerCustomName.trim() || hotelToAssignManager.managerName || '';
+        managerEmail = assignManagerCustomEmail.trim() || hotelToAssignManager.managerEmail || '';
+      }
+
+      const ownerEmail = assignManagerOwnerEmail.trim();
+
+      const patch: Partial<Hotel> = {
+        managerId,
+        managerName,
+        managerEmail,
+        ownerEmail: ownerEmail || (hotelToAssignManager.ownerEmail ?? ''),
+      };
+
+      await updateDoc(doc(db, 'hotels', hotelToAssignManager.id!), patch);
+
+      setHotels(prev => prev.map(h => h.id === hotelToAssignManager.id ? { ...h, ...patch } : h));
+      toast.success(`Manager assignment updated for ${hotelToAssignManager.name}`);
+      setHotelToAssignManager(null);
+
+      await logSystemEvent('action', `Admin updated property manager: "${hotelToAssignManager.name}" -> ${managerName || managerEmail || 'Unassigned'}`, {
+        hotelId: hotelToAssignManager.id,
+        managerId,
+        managerEmail,
+        managerName,
+        ownerEmail,
+      }, user, 'property');
+    } catch (err: any) {
+      console.error('Failed to assign manager:', err);
+      toast.error(err?.message || 'Failed to update manager assignment.');
+    } finally {
+      setIsAssigningManager(false);
+    }
+  };
+
   const handleToggleUserRole = async (targetUser: User, role: Role) => {
-    if (targetUser.uid === user?.uid && role === 'admin') {
-      toast.error('Cannot remove your own admin access here.');
+    if (targetUser.uid === user?.uid && (role === 'admin' || role === 'global_admin')) {
+      toast.error('Cannot modify your own administrative access here.');
+      return;
+    }
+
+    if (isMarketing(user) && !isAdmin(user) && role !== 'hotel_manager') {
+      toast.error('Marketing team members may only toggle host permissions.');
+      return;
+    }
+
+    if (!isGlobalAdmin(user) && role === 'global_admin') {
+      toast.error('Only Global Admins can grant or remove Global Admin access.');
+      return;
+    }
+
+    if (!isGlobalAdmin(user) && (userRoles(targetUser).includes('global_admin') || isOwnerEmail(targetUser.email))) {
+      toast.error('Cannot modify permissions for a Global Admin account.');
       return;
     }
     
@@ -684,7 +760,7 @@ export default function AdminDashboard() {
       { id: 'analytics' as Tab, label: 'Analytics', icon: TrendingUp },
       { id: 'properties' as Tab, label: 'Properties', icon: Building2 },
       { id: 'reviews' as Tab, label: 'Review Scraper', icon: Star },
-      { id: 'users' as Tab, label: 'Users', icon: Users, visible: isGlobalAdmin(user) || isMarketing(user) },
+      { id: 'users' as Tab, label: 'Users', icon: Users, visible: isAdmin(user) || isMarketing(user) },
       { id: 'bookings' as Tab, label: 'All Bookings', icon: CalendarRange },
       { id: 'destinations' as Tab, label: 'Destinations', icon: Navigation },
       { id: 'content' as Tab, label: 'Content & Legal', icon: FileText },
@@ -1406,19 +1482,36 @@ export default function AdminDashboard() {
                             </a>
                           );
                         })()}
-                        <p className="flex items-center gap-1.5 truncate">
-                          <Users className="h-3.5 w-3.5 text-stone-400 shrink-0" />
-                          <span className="truncate">
-                            <strong className="text-stone-700 font-medium">Manager:</strong>{' '}
-                            {hotel.managerName ? (
-                              <span>{hotel.managerName}</span>
-                            ) : (
-                              (hotel.managerId && users.find(u => u.uid === hotel.managerId)?.email) ||
-                              hotel.managerEmail ||
-                              <span className="text-stone-400 italic">Self-managed</span>
-                            )}
-                          </span>
-                        </p>
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="flex items-center gap-1.5 truncate">
+                            <Users className="h-3.5 w-3.5 text-stone-400 shrink-0" />
+                            <span className="truncate">
+                              <strong className="text-stone-700 font-medium">Manager:</strong>{' '}
+                              {hotel.managerName ? (
+                                <span>{hotel.managerName}</span>
+                              ) : (
+                                (hotel.managerId && users.find(u => u.uid === hotel.managerId)?.email) ||
+                                hotel.managerEmail ||
+                                <span className="text-stone-400 italic">Self-managed</span>
+                              )}
+                            </span>
+                          </p>
+                          {isAdmin(user) && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setHotelToAssignManager(hotel);
+                                setAssignManagerSelectedUid(hotel.managerId || '');
+                                setAssignManagerCustomEmail(hotel.managerEmail || '');
+                                setAssignManagerCustomName(hotel.managerName || '');
+                                setAssignManagerOwnerEmail(hotel.ownerEmail || '');
+                              }}
+                              className="text-[11px] font-semibold text-stone-600 hover:text-stone-900 underline shrink-0 cursor-pointer"
+                            >
+                              Assign / Change
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                     
@@ -1471,6 +1564,29 @@ export default function AdminDashboard() {
                               onClick={() => setOpenHotelMenuId(null)} 
                             />
                             <div className="absolute right-0 bottom-full mb-1.5 sm:bottom-auto sm:top-full sm:mt-1.5 w-52 bg-white rounded-xl shadow-lg border border-stone-200 py-1.5 z-40 text-left animate-in fade-in zoom-in-95 duration-150">
+                              <div className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-stone-400">
+                                Management &amp; Delegation
+                              </div>
+
+                              {isAdmin(user) && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setHotelToAssignManager(hotel);
+                                    setAssignManagerSelectedUid(hotel.managerId || '');
+                                    setAssignManagerCustomEmail(hotel.managerEmail || '');
+                                    setAssignManagerCustomName(hotel.managerName || '');
+                                    setAssignManagerOwnerEmail(hotel.ownerEmail || '');
+                                    setOpenHotelMenuId(null);
+                                  }}
+                                  className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center gap-2 transition cursor-pointer"
+                                >
+                                  <Users className="w-3.5 h-3.5 text-stone-400" />
+                                  <span>Assign / Change Manager</span>
+                                </button>
+                              )}
+
+                              <div className="my-1 border-t border-stone-100" />
                               <div className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-stone-400">
                                 Listing Visibility
                               </div>
@@ -1735,87 +1851,117 @@ export default function AdminDashboard() {
                                       }}
                                       className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center justify-between transition cursor-pointer"
                                     >
-                                      <span>Hotel Manager</span>
+                                      <span>Host / Property Manager</span>
                                       {rolesList.includes('hotel_manager') && (
                                         <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                                       )}
                                     </button>
 
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        handleToggleUserRole(u, 'admin');
-                                        setOpenUserMenuId(null);
-                                      }}
-                                      className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center justify-between transition cursor-pointer"
-                                    >
-                                      <span>Administrator</span>
-                                      {rolesList.includes('admin') && (
-                                        <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                                      )}
-                                    </button>
+                                    {isAdmin(user) && (
+                                      <>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            handleToggleUserRole(u, 'marketing');
+                                            setOpenUserMenuId(null);
+                                          }}
+                                          className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center justify-between transition cursor-pointer"
+                                        >
+                                          <span>Marketing</span>
+                                          {rolesList.includes('marketing') && (
+                                            <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                          )}
+                                        </button>
 
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        handleToggleUserRole(u, 'marketing');
-                                        setOpenUserMenuId(null);
-                                      }}
-                                      className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center justify-between transition cursor-pointer"
-                                    >
-                                      <span>Marketing</span>
-                                      {rolesList.includes('marketing') && (
-                                        <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                                      )}
-                                    </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            handleToggleUserRole(u, 'admin');
+                                            setOpenUserMenuId(null);
+                                          }}
+                                          className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center justify-between transition cursor-pointer"
+                                        >
+                                          <span>Administrator</span>
+                                          {rolesList.includes('admin') && (
+                                            <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                          )}
+                                        </button>
+                                      </>
+                                    )}
 
-                                    <div className="my-1 border-t border-stone-100" />
-                                    <div className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-stone-400">
-                                      Account
-                                    </div>
-
-                                    {u.email && (
+                                    {isGlobalAdmin(user) && (
                                       <button
                                         type="button"
                                         onClick={() => {
-                                          setResetEmailTarget(u.email!);
+                                          handleToggleUserRole(u, 'global_admin');
                                           setOpenUserMenuId(null);
                                         }}
-                                        className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center gap-2 transition cursor-pointer"
+                                        className="w-full px-3 py-1.5 text-xs text-stone-900 font-semibold hover:bg-stone-50 flex items-center justify-between transition cursor-pointer"
                                       >
-                                        <Key className="w-3.5 h-3.5 text-stone-400" />
-                                        <span>Reset Password</span>
+                                        <span>Global Admin</span>
+                                        {rolesList.includes('global_admin') && (
+                                          <Check className="w-3.5 h-3.5 text-stone-950 shrink-0" />
+                                        )}
                                       </button>
                                     )}
 
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        handleToggleUserSuspension(u);
-                                        setOpenUserMenuId(null);
-                                      }}
-                                      className={`w-full px-3 py-1.5 text-xs flex items-center gap-2 transition cursor-pointer ${
-                                        (u.status === 'suspended' || u.accessRevoked) 
-                                          ? 'text-emerald-700 hover:bg-emerald-50' 
-                                          : 'text-amber-800 hover:bg-amber-50'
-                                      }`}
-                                    >
-                                      <Shield className="w-3.5 h-3.5 text-stone-400" />
-                                      <span>{(u.status === 'suspended' || u.accessRevoked) ? 'Restore Access' : 'Revoke Access'}</span>
-                                    </button>
+                                    {isAdmin(user) && (
+                                      <>
+                                        <div className="my-1 border-t border-stone-100" />
+                                        <div className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-stone-400">
+                                          Account
+                                        </div>
 
-                                    <div className="my-1 border-t border-stone-100" />
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        handleDeleteUser(u);
-                                        setOpenUserMenuId(null);
-                                      }}
-                                      className="w-full px-3 py-1.5 text-xs text-rose-700 hover:bg-rose-50 flex items-center gap-2 transition cursor-pointer"
-                                    >
-                                      <Trash2 className="w-3.5 h-3.5 text-rose-500" />
-                                      <span>Delete Profile</span>
-                                    </button>
+                                        {u.email && (
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setResetEmailTarget(u.email!);
+                                              setOpenUserMenuId(null);
+                                            }}
+                                            className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center gap-2 transition cursor-pointer"
+                                          >
+                                            <Key className="w-3.5 h-3.5 text-stone-400" />
+                                            <span>Reset Password</span>
+                                          </button>
+                                        )}
+
+                                        {(!rolesList.includes('global_admin') || isGlobalAdmin(user)) && (
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              handleToggleUserSuspension(u);
+                                              setOpenUserMenuId(null);
+                                            }}
+                                            className={`w-full px-3 py-1.5 text-xs flex items-center gap-2 transition cursor-pointer ${
+                                              (u.status === 'suspended' || u.accessRevoked) 
+                                                ? 'text-emerald-700 hover:bg-emerald-50' 
+                                                : 'text-amber-800 hover:bg-amber-50'
+                                            }`}
+                                          >
+                                            <Shield className="w-3.5 h-3.5 text-stone-400" />
+                                            <span>{(u.status === 'suspended' || u.accessRevoked) ? 'Restore Access' : 'Revoke Access'}</span>
+                                          </button>
+                                        )}
+
+                                        {(isGlobalAdmin(user) || (!rolesList.includes('admin') && !rolesList.includes('global_admin'))) && (
+                                          <>
+                                            <div className="my-1 border-t border-stone-100" />
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                handleDeleteUser(u);
+                                                setOpenUserMenuId(null);
+                                              }}
+                                              className="w-full px-3 py-1.5 text-xs text-rose-700 hover:bg-rose-50 flex items-center gap-2 transition cursor-pointer"
+                                            >
+                                              <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                                              <span>Delete Profile</span>
+                                            </button>
+                                          </>
+                                        )}
+                                      </>
+                                    )}
                                   </div>
                                 </>
                               )}
@@ -2413,6 +2559,130 @@ export default function AdminDashboard() {
           }}
           onCancel={() => setResetEmailTarget(null)}
         />
+
+        {/* Assign / Reassign Manager Modal */}
+        {hotelToAssignManager && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs animate-in fade-in duration-150">
+            <div className="bg-white rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-xl border border-stone-200 space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-stone-100">
+                <div>
+                  <h3 className="text-base sm:text-lg font-serif font-bold text-stone-900">
+                    Assign Property Manager
+                  </h3>
+                  <p className="text-xs text-stone-500 mt-0.5">
+                    {hotelToAssignManager.name}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setHotelToAssignManager(null)}
+                  className="p-1 rounded-lg text-stone-400 hover:text-stone-600 hover:bg-stone-100 transition cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-3.5 text-xs">
+                <div>
+                  <label className="block text-stone-700 font-semibold mb-1">
+                    Select Registered Host / User
+                  </label>
+                  <select
+                    value={assignManagerSelectedUid}
+                    onChange={(e) => {
+                      const uid = e.target.value;
+                      setAssignManagerSelectedUid(uid);
+                      const matched = users.find(u => u.uid === uid);
+                      if (matched) {
+                        setAssignManagerCustomEmail(matched.email || '');
+                        setAssignManagerCustomName(matched.displayName || matched.email?.split('@')[0] || '');
+                      }
+                    }}
+                    className="w-full border border-stone-200 bg-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-stone-900 cursor-pointer"
+                  >
+                    <option value="">-- Choose registered user or enter details below --</option>
+                    <option value="unassigned">⚠️ Unassigned (Managed by platform admins only)</option>
+                    <optgroup label="Registered Hosts &amp; Managers">
+                      {users.filter(u => userRoles(u).includes('hotel_manager')).map(u => (
+                        <option key={`mgr-${u.uid}`} value={u.uid}>
+                          {u.displayName || 'Unnamed'} ({u.email})
+                        </option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="Other Registered Accounts">
+                      {users.filter(u => !userRoles(u).includes('hotel_manager')).map(u => (
+                        <option key={`usr-${u.uid}`} value={u.uid}>
+                          {u.displayName || 'User'} ({u.email}) [{userRoles(u).join(', ')}]
+                        </option>
+                      ))}
+                    </optgroup>
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  <div>
+                    <label className="block text-stone-600 font-medium mb-1">
+                      Manager Display Name
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Kondwani Phiri"
+                      value={assignManagerCustomName}
+                      onChange={(e) => setAssignManagerCustomName(e.target.value)}
+                      className="w-full border border-stone-200 bg-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-stone-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-stone-600 font-medium mb-1">
+                      Manager Direct Email
+                    </label>
+                    <input
+                      type="email"
+                      placeholder="manager@lodge.mw"
+                      value={assignManagerCustomEmail}
+                      onChange={(e) => setAssignManagerCustomEmail(e.target.value)}
+                      className="w-full border border-stone-200 bg-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-stone-900"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-stone-600 font-medium mb-1">
+                    Property Owner / Holding Entity Email (Optional)
+                  </label>
+                  <input
+                    type="email"
+                    placeholder="owner@company.mw"
+                    value={assignManagerOwnerEmail}
+                    onChange={(e) => setAssignManagerOwnerEmail(e.target.value)}
+                    className="w-full border border-stone-200 bg-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-stone-900"
+                  />
+                  <p className="text-[11px] text-stone-400 mt-1">
+                    If the property owner is separate from the day-to-day manager, they will also have management access.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-stone-100">
+                <button
+                  type="button"
+                  onClick={() => setHotelToAssignManager(null)}
+                  className="px-3 py-1.5 text-xs text-stone-600 hover:text-stone-900 font-medium transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={isAssigningManager}
+                  onClick={handleSaveManagerAssignment}
+                  className="bg-stone-900 text-white hover:bg-stone-800 disabled:opacity-50 px-4 py-2 rounded-xl text-xs font-semibold shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+                >
+                  {isAssigningManager ? 'Saving...' : 'Save Assignment'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
       </div>
     </div>

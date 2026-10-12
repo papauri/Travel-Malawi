@@ -425,7 +425,7 @@ export default function InteractiveMap({
       attributionControl: false,
       scrollWheelZoom: false,
       
-      dragging: interactive && !L.Browser.mobile,
+      dragging: interactive,
       touchZoom: interactive,
       doubleClickZoom: interactive,
     });
@@ -985,16 +985,12 @@ export default function InteractiveMap({
     }
   }, [center, markerPosition, zoom, lodges, interactive, onMarkerChange, origin]);
 
-  // Update mobile dragging dynamically based on fullscreen
+  // Ensure map dragging and touch interaction is always enabled on mobile and desktop
   useEffect(() => {
-    if (mapInstanceRef.current && L.Browser.mobile && interactive) {
-      if (isFullscreen) {
-        mapInstanceRef.current.dragging.enable();
-      } else {
-        mapInstanceRef.current.dragging.disable();
-      }
+    if (mapInstanceRef.current && interactive) {
+      mapInstanceRef.current.dragging.enable();
     }
-  }, [isFullscreen, interactive]);
+  }, [interactive]);
   // Invalidate map size on resize / fullscreen
   const toggleFullscreen = () => {
     setIsFullscreen(prev => !prev);

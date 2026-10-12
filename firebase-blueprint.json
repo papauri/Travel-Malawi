@@ -1,0 +1,102 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Registered account profile with multi-role permissions (traveller, hotel_manager, admin, marketing, global_admin)",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "format": "email", "maxLength": 128 },
+        "displayName": { "type": "string", "maxLength": 128 },
+        "role": { "type": "string", "enum": ["traveller", "hotel_manager", "admin", "marketing", "global_admin"] },
+        "roles": { "type": "array" },
+        "status": { "type": "string", "enum": ["active", "suspended", "deactivated"] },
+        "accessRevoked": { "type": "boolean" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["uid", "role", "createdAt"]
+    },
+    "Hotel": {
+      "title": "Hotel",
+      "description": "Lodge, boutique hotel, cottage, B&B, or safari camp property listing in Malawi",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "maxLength": 200 },
+        "description": { "type": "string", "maxLength": 5000 },
+        "location": { "type": "string", "maxLength": 200 },
+        "managerId": { "type": "string", "maxLength": 128 },
+        "managerEmail": { "type": "string", "format": "email", "maxLength": 128 },
+        "ownerEmail": { "type": "string", "format": "email", "maxLength": 128 },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "featured": { "type": "boolean" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["name", "status", "createdAt"]
+    },
+    "RoomType": {
+      "title": "RoomType",
+      "description": "Room category, cottage unit, or entire private villa inventory with pricing in MWK and USD",
+      "type": "object",
+      "properties": {
+        "hotelId": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 150 },
+        "price": { "type": "number" },
+        "priceMWK": { "type": "number" },
+        "quantity": { "type": "number" },
+        "maxGuests": { "type": "number" }
+      },
+      "required": ["hotelId", "name"]
+    },
+    "Booking": {
+      "title": "Booking",
+      "description": "Direct stay reservation between tourist/guest and property host/manager",
+      "type": "object",
+      "properties": {
+        "hotelId": { "type": "string", "maxLength": 128 },
+        "roomTypeId": { "type": "string", "maxLength": 128 },
+        "guestId": { "type": "string", "maxLength": 128 },
+        "guestName": { "type": "string", "maxLength": 100 },
+        "guestEmail": { "type": "string", "format": "email", "maxLength": 100 },
+        "checkIn": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+        "checkOut": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+        "status": { "type": "string", "enum": ["pending", "confirmed", "rejected", "cancelled", "completed", "checked_in", "checked_out", "no_show"] },
+        "total": { "type": "number" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["hotelId", "roomTypeId", "guestName", "guestEmail", "checkIn", "checkOut", "status", "total", "createdAt"]
+    },
+    "HotelChat": {
+      "title": "HotelChat",
+      "description": "Inquiry messaging channel between prospective guest and lodge manager",
+      "type": "object",
+      "properties": {
+        "hotelId": { "type": "string", "maxLength": 128 },
+        "guestId": { "type": "string", "maxLength": 128 },
+        "managerId": { "type": "string", "maxLength": 128 }
+      },
+      "required": ["hotelId", "guestId"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User account profiles and permission sets"
+    },
+    "/hotels/{hotelId}": {
+      "schema": { "$ref": "#/entities/Hotel" },
+      "description": "Verified property listings across Malawi"
+    },
+    "/room_types/{roomId}": {
+      "schema": { "$ref": "#/entities/RoomType" },
+      "description": "Available room types, pricing, and quantities for properties"
+    },
+    "/bookings/{bookingId}": {
+      "schema": { "$ref": "#/entities/Booking" },
+      "description": "Guest reservations private to guest, assigned property manager, and admins"
+    },
+    "/hotel_chats/{chatId}": {
+      "schema": { "$ref": "#/entities/HotelChat" },
+      "description": "Real-time inquiry chat channels between guests and lodge managers"
+    }
+  }
+}

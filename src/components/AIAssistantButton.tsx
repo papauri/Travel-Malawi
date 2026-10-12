@@ -90,11 +90,11 @@ export default function AIAssistantButton({
       <button
         type="button"
         onClick={handleOpen}
-        className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-stone-600 hover:text-stone-900 bg-stone-100/90 hover:bg-stone-200/90 rounded-lg transition border border-stone-200/80 shadow-2xs ${className}`}
+        className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-stone-700 hover:text-stone-900 bg-stone-100 hover:bg-stone-200 rounded-lg transition border border-stone-200 shadow-2xs cursor-pointer ${className}`}
         title="Assist with writing description"
       >
-        <PenLine className="w-3.5 h-3.5 text-stone-500" />
-        <span>{hasExistingText ? 'Refine with Assistant' : 'Draft with Assistant'}</span>
+        <PenLine className="w-3.5 h-3.5 text-stone-600 stroke-[1.5]" />
+        <span>{hasExistingText ? 'Refine description' : 'Draft description'}</span>
       </button>
 
       {isOpen && typeof document !== 'undefined' && createPortal(

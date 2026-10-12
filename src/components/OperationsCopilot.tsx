@@ -1424,7 +1424,7 @@ export default function OperationsCopilot() {
         {!isOpen && (
           <WalkthroughTooltip
             id="walkthrough-concierge-trigger"
-            icon="🛎️"
+            icon={<ConciergeBell className="w-3.5 h-3.5 text-stone-300" />}
             title="Ulendo Concierge"
             description="Tap anytime for live room audits, revenue metrics & instant operations help."
             arrowPosition="bottom-right"

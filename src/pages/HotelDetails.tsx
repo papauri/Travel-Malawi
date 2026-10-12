@@ -39,7 +39,7 @@ import MenuTemplateView from '../components/MenuTemplates';
 import { BookingLike, isRoomAvailable, unitsRemaining, normalizeBlockedDates } from '../lib/availability';
 import { hasAnyContact, mailtoLink, telLink, whatsappLink } from '../lib/contact';
 import { mapEmbedUrl, mapLinkUrl, resolveHotelCoordinates, isValidLatLng } from '../lib/geo';
-import { getSingleCachedHotel, saveSingleCachedHotel } from '../lib/mapCache';
+import { getSingleCachedHotel, saveSingleCachedHotel, getCachedRooms } from '../lib/mapCache';
 import DatePicker from '../components/DatePicker';
 import { computeBookingPricing, formatMoney, makeBookingReference } from '../lib/booking';
 import { isTraveller, isAdmin, isHotelManager } from '../lib/roles';
@@ -162,10 +162,18 @@ export default function HotelDetails() {
         const fetchedHotel = { id: docSnap.id, ...docSnap.data() } as Hotel;
         setHotel(fetchedHotel);
         saveSingleCachedHotel(fetchedHotel);
+      } else {
+        const cached = getSingleCachedHotel(id);
+        if (cached) setHotel(cached);
       }
       setLoading(false);
     }, (error) => {
       console.error("Error subscribing to hotel details:", error);
+      const cached = getSingleCachedHotel(id);
+      if (cached) {
+        setHotel(cached);
+        toast('Viewing cached offline details', { icon: '📡' });
+      }
       setLoading(false);
     });
 
@@ -179,6 +187,10 @@ export default function HotelDetails() {
         setConferenceRooms(confDocs.docs.map(d => ({ id: d.id, ...d.data() } as ConferenceRoom)));
       } catch (error) {
         console.error("Error fetching rooms:", error);
+        const cachedRooms = getCachedRooms().filter(r => r.hotelId === id);
+        if (cachedRooms.length > 0) {
+          setRooms(cachedRooms);
+        }
       }
     }
     fetchRooms();
@@ -1051,27 +1063,6 @@ export default function HotelDetails() {
                     : 'The listing is awaiting review by our team. Check back shortly.'}
                 </p>
               </div>
-            </div>
-          )}
-
-          {offeredCurrencies.length > 1 && (
-            <div className="mt-6 flex items-center gap-2">
-              <span className="text-xs font-semibold text-stone-400 uppercase tracking-wider mr-1">Prices in</span>
-              {offeredCurrencies.map((code, cIdx) => (
-                <button
-                  key={`${code}-${cIdx}`}
-                  type="button"
-                  onClick={() => chooseCurrency(code)}
-                  aria-pressed={currency === code}
-                  className={`px-3.5 py-1.5 rounded-full text-sm font-semibold border transition ${
-                    currency === code
-                      ? 'border-stone-900 bg-stone-900 text-white'
-                      : 'border-stone-200 text-stone-600 hover:border-stone-400'
-                  }`}
-                >
-                  {code}
-                </button>
-              ))}
             </div>
           )}
 

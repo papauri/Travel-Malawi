@@ -20,7 +20,7 @@ export const SELF_ASSIGNABLE_ROLES: Role[] = ['traveller', 'hotel_manager'];
 
 export const ROLE_LABELS: Record<Role, string> = {
   traveller: 'Traveller',
-  hotel_manager: 'Property Manager',
+  hotel_manager: 'Host / Property Manager',
   admin: 'Administrator',
   marketing: 'Marketing',
   global_admin: 'Global Admin',

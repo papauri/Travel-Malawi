@@ -24,7 +24,7 @@ import Pagination from '../components/Pagination';
 import BookingChat from '../components/BookingChat';
 import PropertyChat from '../components/PropertyChat';
 import { useChatModal } from '../contexts/ChatModalContext';
-import { MessageSquare, Megaphone, Presentation, Bell, ChevronDown, SlidersHorizontal, Wand2, Star, Images, Upload, GripVertical, ChevronRight, Layers, LayoutGrid } from 'lucide-react';
+import { MessageSquare, Megaphone, Presentation, Bell, ChevronDown, SlidersHorizontal, Image as ImageIcon, Star, Images, Upload, GripVertical, ChevronRight, Layers, LayoutGrid } from 'lucide-react';
 import SmartImage from '../components/SmartImage';
 import ReminderTemplatesModal from '../components/ReminderTemplatesModal';
 import EditBookingModal from '../components/EditBookingModal';
@@ -214,7 +214,7 @@ function RoomMediaEditor({
     <div className="bg-white border border-stone-200/90 rounded-2xl p-4 sm:p-5 shadow-2xs relative transition-all">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 pb-3 border-b border-stone-100 gap-2.5">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-800 flex items-center justify-center shrink-0">
+          <div className="w-9 h-9 rounded-xl bg-stone-100 text-stone-700 flex items-center justify-center shrink-0">
             <BedDouble className="w-4 h-4" />
           </div>
           <div>
@@ -290,10 +290,10 @@ function RoomMediaEditor({
 
           {/* Quick promote banner if cover is unset */}
           {!imageUrl && (galleryUrls.length > 0 || hasHotelCover) && (
-            <div className="p-2.5 bg-amber-50/80 border border-amber-200/70 rounded-xl flex items-center justify-between gap-2 text-xs">
-              <div className="flex items-center gap-1.5 min-w-0 text-amber-900">
-                <Wand2 className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                <span className="truncate text-[11px] font-medium">
+            <div className="p-2.5 bg-stone-50 border border-stone-200 rounded-xl flex items-center justify-between gap-2 text-xs">
+              <div className="flex items-center gap-2 min-w-0 text-stone-700">
+                <ImageIcon className="w-3.5 h-3.5 text-stone-500 shrink-0" />
+                <span className="truncate text-xs font-medium">
                   {galleryUrls.length > 0 ? "1st gallery photo available" : "Property photo available"}
                 </span>
               </div>
@@ -307,7 +307,7 @@ function RoomMediaEditor({
                     setGalleryUrls(remaining);
                     toast.success("Set 1st gallery photo as Room Cover");
                   }}
-                  className="px-2 py-0.5 bg-amber-800 hover:bg-amber-900 text-white text-[10px] font-bold rounded-md shadow-2xs transition shrink-0 cursor-pointer"
+                  className="px-2.5 py-1 bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold rounded-lg shadow-2xs transition shrink-0 cursor-pointer"
                 >
                   Set as Cover
                 </button>
@@ -318,7 +318,7 @@ function RoomMediaEditor({
                     setImageUrl(hotelCover);
                     toast.success("Set property photo as Room Cover");
                   }}
-                  className="px-2 py-0.5 bg-stone-900 hover:bg-stone-800 text-white text-[10px] font-bold rounded-md shadow-2xs transition shrink-0 cursor-pointer"
+                  className="px-2.5 py-1 bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold rounded-lg shadow-2xs transition shrink-0 cursor-pointer"
                 >
                   Set as Cover
                 </button>
@@ -397,62 +397,8 @@ export default function ManageHotel() {
   const confirmFlow = useConfirmBooking();
   const [editModalBooking, setEditModalBooking] = useState<Booking | null>(null);
   const [bookingToDelete, setBookingToDelete] = useState<string | null>(null);
-  // Desktop navigation tab horizontal scroll controls & state
+  // Desktop navigation container ref
   const desktopNavRef = useRef<HTMLDivElement>(null);
-  const [canScrollNavLeft, setCanScrollNavLeft] = useState(false);
-  const [canScrollNavRight, setCanScrollNavRight] = useState(false);
-
-  const checkNavScroll = () => {
-    const el = desktopNavRef.current;
-    if (!el) return;
-    setCanScrollNavLeft(el.scrollLeft > 4);
-    setCanScrollNavRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
-  };
-
-  useEffect(() => {
-    const el = desktopNavRef.current;
-    if (!el) return;
-    checkNavScroll();
-
-    const handleScroll = () => checkNavScroll();
-    const handleResize = () => checkNavScroll();
-    el.addEventListener('scroll', handleScroll, { passive: true });
-    window.addEventListener('resize', handleResize);
-
-    // Smooth horizontal scrolling when vertical mouse wheel is scrolled over the tabs
-    const handleWheel = (e: WheelEvent) => {
-      if (e.deltaY !== 0 && Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
-        el.scrollLeft += e.deltaY;
-        e.preventDefault();
-      }
-    };
-    el.addEventListener('wheel', handleWheel, { passive: false });
-
-    return () => {
-      el.removeEventListener('scroll', handleScroll);
-      window.removeEventListener('resize', handleResize);
-      el.removeEventListener('wheel', handleWheel);
-    };
-  }, []);
-
-  // Auto-scroll active tab into view whenever it changes
-  useEffect(() => {
-    if (desktopNavRef.current) {
-      const activeEl = desktopNavRef.current.querySelector(`[data-tab-id="${activeTab}"]`);
-      if (activeEl) {
-        activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-      }
-      setTimeout(checkNavScroll, 350);
-    }
-  }, [activeTab]);
-
-  const scrollTabs = (direction: 'left' | 'right') => {
-    if (desktopNavRef.current) {
-      const offset = direction === 'left' ? -260 : 260;
-      desktopNavRef.current.scrollBy({ left: offset, behavior: 'smooth' });
-      setTimeout(checkNavScroll, 300);
-    }
-  };
 
   // Reminder states
   const [bookingReminders, setBookingReminders] = useState<Record<string, any[]>>({});
@@ -555,6 +501,14 @@ export default function ManageHotel() {
 
   // Data states
   const [hotel, setHotel] = useState<Hotel | null>(null);
+  const isPropertyOwner = Boolean(
+    user && (
+      (hotel?.ownerEmail && user.email && hotel.ownerEmail.toLowerCase() === user.email.toLowerCase()) ||
+      (hotel as any)?.ownerId === user?.uid ||
+      (hotel as any)?.createdBy === user?.uid
+    )
+  );
+  const canEditOwnerDetails = canEditElevatedFields || isPropertyOwner;
   const [rooms, setRooms] = useState<RoomType[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [inquiries, setInquiries] = useState<any[]>([]);
@@ -935,15 +889,16 @@ export default function ManageHotel() {
       // `status` from page load overwrite an admin's decision.
       for (const field of HOTEL_READONLY_FIELDS) delete updateData[field];
 
-      // Non-admin / non-marketing managers are not permitted to alter stayType, entirePlaceDetails,
-      // categories, or owner legal entity details from this form.
+      // Non-admin / non-marketing managers are not permitted to alter stayType or categories.
+      // Property owners and admins can update owner legal contact details. Entire place specs are always editable by hosts.
       if (!canEditElevatedFields) {
         delete updateData.stayType;
-        delete updateData.entirePlaceDetails;
         delete updateData.categories;
-        delete updateData.ownerName;
-        delete updateData.ownerEmail;
-        delete updateData.ownerPhone;
+        if (!canEditOwnerDetails) {
+          delete updateData.ownerName;
+          delete updateData.ownerEmail;
+          delete updateData.ownerPhone;
+        }
       }
 
       // Strip out undefined values (Firestore rejects them) and anything the
@@ -1006,7 +961,7 @@ export default function ManageHotel() {
   const roomDirty = editingRoomId !== null;
 
   const dirtyOn = (tab: Tab) =>
-    tab === 'details' ? hotelDirty : tab === 'rooms' ? roomDirty : tab === 'restaurant' ? restaurantDirty : false;
+    (tab === 'details' || tab === 'media') ? hotelDirty : tab === 'rooms' ? roomDirty : tab === 'restaurant' ? restaurantDirty : false;
 
   const goToTab = (tab: Tab) => {
     setSearchParams(tab === 'details' ? {} : { tab }, { replace: false });
@@ -1743,20 +1698,20 @@ export default function ManageHotel() {
         </div>
       )}
       {/* Dashboard Section Navigation */}
-      <div className="sticky top-[88px] sm:top-[100px] md:top-[100px] lg:top-[108px] z-30 bg-stone-50/95 backdrop-blur-md py-2 sm:py-2.5 mb-5 sm:mb-7 border-b border-stone-200/80">
+      <div className="relative md:sticky md:top-[100px] lg:top-[108px] z-30 bg-stone-50/95 backdrop-blur-md py-2 sm:py-2.5 mb-5 sm:mb-7 border-b border-stone-200/80">
         {(() => {
           const tabsList = [
-            { id: 'details' as Tab, label: 'Property details', icon: Building },
+            { id: 'details' as Tab, label: 'Details', icon: Building },
             { id: 'media' as Tab, label: 'Media', icon: Eye },
             { id: 'promotions' as Tab, label: 'Promotions', icon: Percent },
             { id: 'stayos' as Tab, label: 'Stay OS', icon: ShieldCheck },
             { id: 'broadcasts' as Tab, label: 'Broadcasts', icon: Megaphone },
-            { id: 'rooms' as Tab, label: editHotelData.stayType === 'entire_place' ? 'Whole space & pricing' : 'Rooms & pricing', icon: editHotelData.stayType === 'entire_place' ? Home : BedDouble },
+            { id: 'rooms' as Tab, label: editHotelData.stayType === 'entire_place' ? 'Whole space' : 'Rooms & pricing', icon: editHotelData.stayType === 'entire_place' ? Home : BedDouble },
             { id: 'conferences' as Tab, label: 'Conferences', icon: Presentation },
             { id: 'restaurant' as Tab, label: 'Restaurant', icon: UtensilsCrossed },
             { id: 'bookings' as Tab, label: 'Bookings', icon: Calendar },
             { id: 'inquiries' as Tab, label: 'Inquiries', icon: MessageSquare },
-            { id: 'templates' as Tab, label: 'Email templates & automation', icon: Mail },
+            { id: 'templates' as Tab, label: 'Automation', icon: Mail },
           ];
           const currentTabObj = tabsList.find(t => t.id === activeTab) || tabsList[0];
           const CurrentIcon = currentTabObj.icon;
@@ -1769,113 +1724,49 @@ export default function ManageHotel() {
 
           return (
             <>
-              {/* Mobile Section Drawer (< md) */}
+              {/* Mobile Section Navigation (< md): Foldable accordion allowing full-page scrolling without obstruction */}
               <div className="md:hidden space-y-2">
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsMobileNavOpen(!isMobileNavOpen)}
-                    className="flex-1 w-full flex items-center justify-between bg-white border border-stone-200 rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-stone-900 shadow-2xs hover:bg-stone-50 transition cursor-pointer"
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <CurrentIcon className="w-4 h-4 text-stone-500 shrink-0" />
-                      <span className="truncate">{currentTabObj.label}</span>
-                      {(currentPendingCount > 0 || currentUnreadCount > 0 || dirtyOn(activeTab)) && (
-                        <div className="flex items-center gap-1 shrink-0 ml-1">
-                          {dirtyOn(activeTab) && (
-                            <span title="Unsaved changes" className="h-2 w-2 rounded-full bg-stone-300 shrink-0" />
-                          )}
-                          {currentPendingCount > 0 && (
-                            <span className="bg-stone-700 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
-                              {currentPendingCount}
-                            </span>
-                          )}
-                          {currentUnreadCount > 0 && (
-                            <span className="bg-stone-700 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
-                              {currentUnreadCount}
-                            </span>
-                          )}
-                        </div>
+                {/* Active Section Header Indicator — Tapping toggles open/closed state */}
+                <button
+                  type="button"
+                  onClick={() => setIsMobileNavOpen(!isMobileNavOpen)}
+                  aria-expanded={isMobileNavOpen}
+                  aria-label="Toggle section navigation menu"
+                  className="w-full flex items-center justify-between px-3.5 py-2.5 bg-white border border-stone-200/90 rounded-xl text-xs shadow-2xs hover:bg-stone-50 transition cursor-pointer select-none"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="w-6 h-6 rounded-lg bg-stone-100 flex items-center justify-center shrink-0 text-stone-800">
+                      <CurrentIcon className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="font-bold text-stone-900 truncate">{currentTabObj.label}</span>
+                      {dirtyOn(activeTab) && (
+                        <span title="Unsaved changes" className="h-2 w-2 rounded-full bg-amber-500 shrink-0" />
+                      )}
+                      {currentPendingCount > 0 && (
+                        <span className="bg-amber-100 text-amber-900 text-[10px] px-1.5 py-0.2 rounded-md font-bold">
+                          {currentPendingCount} pending
+                        </span>
+                      )}
+                      {currentUnreadCount > 0 && (
+                        <span className="bg-stone-900 text-white text-[10px] px-1.5 py-0.2 rounded-md font-bold">
+                          {currentUnreadCount} new
+                        </span>
                       )}
                     </div>
-                    <ChevronDown className={`w-4 h-4 text-stone-400 shrink-0 transition-transform duration-200 ${isMobileNavOpen ? 'rotate-180' : ''}`} />
-                  </button>
-                </div>
-
-                {isMobileNavOpen && (
-                  <div className="mt-2 p-2 bg-white rounded-xl sm:rounded-2xl border border-stone-200 shadow-md grid grid-cols-1 sm:grid-cols-2 gap-1.5 animate-in fade-in slide-in-from-top-2 duration-150">
-                    {tabsList.map(tab => {
-                      const Icon = tab.icon;
-                      const pendingCount = tab.id === 'bookings' ? bookings.filter(b => b.status === 'pending').length : 0;
-                      const unreadInquiryCount = tab.id === 'inquiries' ? inquiries.filter(i => 
-                        i.lastSenderId !== user?.uid && 
-                        i.updatedAt && 
-                        (!i.managerLastOpenedAt || i.updatedAt > i.managerLastOpenedAt)
-                      ).length : 0;
-                      const isActive = activeTab === tab.id;
-
-                      return (
-                        <button
-                          key={tab.id}
-                          type="button"
-                          onClick={() => {
-                            requestTab(tab.id);
-                            setIsMobileNavOpen(false);
-                          }}
-                          className={`flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition cursor-pointer text-left ${
-                            isActive
-                              ? 'bg-stone-900 text-white'
-                              : 'bg-stone-50 hover:bg-stone-100 text-stone-700'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-stone-500'}`} />
-                            <span className="truncate">{tab.label}</span>
-                          </div>
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            {dirtyOn(tab.id) && (
-                              <span title="Unsaved changes" className="h-2 w-2 rounded-full bg-stone-300" />
-                            )}
-                            {pendingCount > 0 && (
-                              <span className="bg-stone-700 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
-                                {pendingCount}
-                              </span>
-                            )}
-                            {unreadInquiryCount > 0 && (
-                              <span className="bg-stone-700 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
-                                {unreadInquiryCount}
-                              </span>
-                            )}
-                          </div>
-                        </button>
-                      );
-                    })}
                   </div>
-                )}
-              </div>
+                  <div className="flex items-center gap-1.5 text-stone-500 shrink-0">
+                    <span className="text-[11px] font-semibold text-stone-600">
+                      {isMobileNavOpen ? 'Close Menu' : 'Switch Section'}
+                    </span>
+                    <ChevronDown className={`w-4 h-4 text-stone-400 transition-transform duration-200 ${isMobileNavOpen ? 'rotate-180' : ''}`} />
+                  </div>
+                </button>
 
-              {/* Tablet & Desktop Underline-Based Navigation Bar (>= md) with Arrow Navigation */}
-              <div className="hidden md:block relative">
-                <div className="relative flex items-center">
-                  {/* Left Scroll Arrow Button with Gradient Fade */}
-                  {canScrollNavLeft && (
-                    <div className="absolute left-0 top-0 bottom-0 z-10 flex items-center pr-3 bg-gradient-to-r from-stone-50 via-stone-50 to-transparent">
-                      <button
-                        type="button"
-                        onClick={() => scrollTabs('left')}
-                        className="h-7 w-7 rounded-full bg-white border border-stone-200 shadow-xs hover:bg-stone-100 flex items-center justify-center text-stone-700 hover:text-stone-950 transition cursor-pointer"
-                        title="Scroll left"
-                        aria-label="Scroll left tabs"
-                      >
-                        <ChevronLeft className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Scrollable Tabs Container */}
+                {/* 11 Section Buttons: Foldable grid that smoothly appears when unfolded */}
+                {isMobileNavOpen && (
                   <div
-                    ref={desktopNavRef}
-                    className="flex-1 flex items-center overflow-x-auto scroll-smooth gap-4 lg:gap-5 xl:gap-6 border-b border-stone-200/90 pb-0 no-scrollbar [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                    className="p-1.5 bg-white border border-stone-200/90 rounded-2xl shadow-md grid grid-cols-2 sm:grid-cols-3 gap-1.5 animate-in fade-in duration-150"
                     role="tablist"
                     aria-label="Property management sections"
                   >
@@ -1888,61 +1779,115 @@ export default function ManageHotel() {
                         (!i.managerLastOpenedAt || i.updatedAt > i.managerLastOpenedAt)
                       ).length : 0;
                       const isActive = activeTab === tab.id;
-                      
+
                       return (
                         <button
                           key={tab.id}
-                          data-tab-id={tab.id}
                           type="button"
                           role="tab"
                           aria-selected={isActive}
-                          onClick={() => requestTab(tab.id)}
-                          className={`flex items-center shrink-0 whitespace-nowrap gap-2 pb-3 pt-1 text-xs sm:text-sm font-medium border-b-2 -mb-px transition-colors cursor-pointer ${
+                          onClick={() => {
+                            requestTab(tab.id);
+                            setIsMobileNavOpen(false);
+                          }}
+                          className={`flex items-center justify-between gap-1 px-2.5 py-2 rounded-xl text-xs font-semibold transition cursor-pointer text-left min-h-[42px] select-none ${
                             isActive
-                              ? 'border-stone-900 text-stone-900 font-semibold'
-                              : 'border-transparent text-stone-500 hover:text-stone-800 hover:border-stone-300'
+                              ? 'bg-stone-900 text-white shadow-xs ring-1 ring-stone-900'
+                              : 'bg-stone-50 hover:bg-stone-100 text-stone-700 border border-stone-200/60'
                           }`}
                         >
-                          <Icon className={`h-4 w-4 shrink-0 ${isActive ? 'text-stone-900' : 'text-stone-400'}`} />
-                          <span>{tab.label}</span>
-                          {dirtyOn(tab.id) && (
-                            <span title="Unsaved changes" className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
-                          )}
-                          {tab.id === 'restaurant' && hotel.restaurant?.enabled && (
-                            <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-md bg-stone-100 text-stone-700 shrink-0">
-                              Live
-                            </span>
-                          )}
-                          {pendingCount > 0 && (
-                            <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-md bg-amber-100 text-amber-900 shrink-0 font-semibold">
-                              {pendingCount}
-                            </span>
-                          )}
-                          {unreadInquiryCount > 0 && (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.2 rounded-md bg-stone-100 text-stone-900 shrink-0 font-semibold">
-                              <Bell className="w-3 h-3 text-stone-700 animate-bell-ring" />
-                              {unreadInquiryCount} new
-                            </span>
-                          )}
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-white' : 'text-stone-500'}`} />
+                            <span className="truncate">{tab.label}</span>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            {dirtyOn(tab.id) && (
+                              <span title="Unsaved changes" className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+                            )}
+                            {pendingCount > 0 && (
+                              <span className={`text-[10px] px-1 py-0.2 rounded-full font-bold ${
+                                isActive ? 'bg-amber-400 text-stone-950' : 'bg-amber-100 text-amber-900'
+                              }`}>
+                                {pendingCount}
+                              </span>
+                            )}
+                            {unreadInquiryCount > 0 && (
+                              <span className={`text-[10px] px-1 py-0.2 rounded-full font-bold ${
+                                isActive ? 'bg-white/20 text-white' : 'bg-stone-900 text-white'
+                              }`}>
+                                {unreadInquiryCount}
+                              </span>
+                            )}
+                          </div>
                         </button>
                       );
                     })}
                   </div>
+                )}
+              </div>
 
-                  {/* Right Scroll Arrow Button with Gradient Fade */}
-                  {canScrollNavRight && (
-                    <div className="absolute right-0 top-0 bottom-0 z-10 flex items-center pl-3 bg-gradient-to-l from-stone-50 via-stone-50 to-transparent">
+              {/* Tablet & Desktop Navigation Bar (>= md): Wrapped & fully visible within container */}
+              <div className="hidden md:block">
+                <div
+                  ref={desktopNavRef}
+                  className="w-full flex flex-wrap items-center gap-1.5 lg:gap-2 p-1.5 bg-white border border-stone-200/90 rounded-2xl shadow-2xs"
+                  role="tablist"
+                  aria-label="Property management sections"
+                >
+                  {tabsList.map(tab => {
+                    const Icon = tab.icon;
+                    const pendingCount = tab.id === 'bookings' ? bookings.filter(b => b.status === 'pending').length : 0;
+                    const unreadInquiryCount = tab.id === 'inquiries' ? inquiries.filter(i => 
+                      i.lastSenderId !== user?.uid && 
+                      i.updatedAt && 
+                      (!i.managerLastOpenedAt || i.updatedAt > i.managerLastOpenedAt)
+                    ).length : 0;
+                    const isActive = activeTab === tab.id;
+                    
+                    return (
                       <button
+                        key={tab.id}
+                        data-tab-id={tab.id}
                         type="button"
-                        onClick={() => scrollTabs('right')}
-                        className="h-7 w-7 rounded-full bg-white border border-stone-200 shadow-xs hover:bg-stone-100 flex items-center justify-center text-stone-700 hover:text-stone-950 transition cursor-pointer"
-                        title="Scroll right to see all menu items"
-                        aria-label="Scroll right tabs"
+                        role="tab"
+                        aria-selected={isActive}
+                        onClick={() => requestTab(tab.id)}
+                        className={`flex items-center shrink-0 whitespace-nowrap gap-1.5 lg:gap-2 px-2.5 py-1.5 lg:px-3 lg:py-2 rounded-xl text-xs sm:text-sm font-medium transition cursor-pointer select-none ${
+                          isActive
+                            ? 'bg-stone-900 text-white font-semibold shadow-xs ring-1 ring-stone-900'
+                            : 'bg-stone-50/90 text-stone-600 hover:text-stone-950 hover:bg-stone-100 border border-transparent hover:border-stone-200/80'
+                        }`}
                       >
-                        <ChevronRight className="w-3.5 h-3.5" />
+                        <Icon className={`h-3.5 w-3.5 lg:h-4 lg:w-4 shrink-0 ${isActive ? 'text-white' : 'text-stone-500'}`} />
+                        <span>{tab.label}</span>
+                        {dirtyOn(tab.id) && (
+                          <span title="Unsaved changes" className={`h-2 w-2 rounded-full shrink-0 ${isActive ? 'bg-amber-400' : 'bg-amber-500'}`} />
+                        )}
+                        {tab.id === 'restaurant' && hotel.restaurant?.enabled && (
+                          <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded-md shrink-0 font-medium ${
+                            isActive ? 'bg-white/20 text-emerald-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200/80'
+                          }`}>
+                            Live
+                          </span>
+                        )}
+                        {pendingCount > 0 && (
+                          <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded-md shrink-0 font-bold ${
+                            isActive ? 'bg-amber-400 text-stone-950' : 'bg-amber-100 text-amber-900 border border-amber-200'
+                          }`}>
+                            {pendingCount}
+                          </span>
+                        )}
+                        {unreadInquiryCount > 0 && (
+                          <span className={`inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded-md shrink-0 font-bold ${
+                            isActive ? 'bg-white/20 text-white' : 'bg-stone-900 text-white'
+                          }`}>
+                            <Bell className="w-3 h-3 text-current animate-bell-ring" />
+                            {unreadInquiryCount} new
+                          </span>
+                        )}
                       </button>
-                    </div>
-                  )}
+                    );
+                  })}
                 </div>
               </div>
             </>
@@ -2057,10 +2002,8 @@ export default function ManageHotel() {
                       <input
                         type="number"
                         min={1}
-                        disabled={!canEditElevatedFields}
                         value={editHotelData.entirePlaceDetails?.bedrooms ?? 2}
                         onChange={(e) => {
-                          if (!canEditElevatedFields) return;
                           setEditHotelData({
                             ...editHotelData,
                             entirePlaceDetails: {
@@ -2069,9 +2012,7 @@ export default function ManageHotel() {
                             },
                           });
                         }}
-                        className={`w-full border border-stone-200 px-2.5 py-1.5 text-xs rounded-lg ${
-                          !canEditElevatedFields ? 'bg-stone-100 text-stone-500 cursor-not-allowed' : 'bg-white'
-                        }`}
+                        className="w-full border border-stone-200 px-2.5 py-1.5 text-xs rounded-lg bg-white"
                       />
                     </div>
                     <div>
@@ -2079,10 +2020,8 @@ export default function ManageHotel() {
                       <input
                         type="number"
                         min={1}
-                        disabled={!canEditElevatedFields}
                         value={editHotelData.entirePlaceDetails?.bathrooms ?? 2}
                         onChange={(e) => {
-                          if (!canEditElevatedFields) return;
                           setEditHotelData({
                             ...editHotelData,
                             entirePlaceDetails: {
@@ -2091,9 +2030,7 @@ export default function ManageHotel() {
                             },
                           });
                         }}
-                        className={`w-full border border-stone-200 px-2.5 py-1.5 text-xs rounded-lg ${
-                          !canEditElevatedFields ? 'bg-stone-100 text-stone-500 cursor-not-allowed' : 'bg-white'
-                        }`}
+                        className="w-full border border-stone-200 px-2.5 py-1.5 text-xs rounded-lg bg-white"
                       />
                     </div>
                     <div>
@@ -2101,10 +2038,8 @@ export default function ManageHotel() {
                       <input
                         type="number"
                         min={1}
-                        disabled={!canEditElevatedFields}
                         value={editHotelData.entirePlaceDetails?.beds ?? 3}
                         onChange={(e) => {
-                          if (!canEditElevatedFields) return;
                           setEditHotelData({
                             ...editHotelData,
                             entirePlaceDetails: {
@@ -2113,9 +2048,7 @@ export default function ManageHotel() {
                             },
                           });
                         }}
-                        className={`w-full border border-stone-200 px-2.5 py-1.5 text-xs rounded-lg ${
-                          !canEditElevatedFields ? 'bg-stone-100 text-stone-500 cursor-not-allowed' : 'bg-white'
-                        }`}
+                        className="w-full border border-stone-200 px-2.5 py-1.5 text-xs rounded-lg bg-white"
                       />
                     </div>
                     <div>
@@ -2123,10 +2056,8 @@ export default function ManageHotel() {
                       <input
                         type="number"
                         min={1}
-                        disabled={!canEditElevatedFields}
                         value={editHotelData.entirePlaceDetails?.maxGuests ?? 6}
                         onChange={(e) => {
-                          if (!canEditElevatedFields) return;
                           setEditHotelData({
                             ...editHotelData,
                             entirePlaceDetails: {
@@ -2135,9 +2066,7 @@ export default function ManageHotel() {
                             },
                           });
                         }}
-                        className={`w-full border border-stone-200 px-2.5 py-1.5 text-xs rounded-lg ${
-                          !canEditElevatedFields ? 'bg-stone-100 text-stone-500 cursor-not-allowed' : 'bg-white'
-                        }`}
+                        className="w-full border border-stone-200 px-2.5 py-1.5 text-xs rounded-lg bg-white"
                       />
                     </div>
                   </div>
@@ -2150,10 +2079,10 @@ export default function ManageHotel() {
                     <button
                       type="button"
                       onClick={handleTriggerLinkAnalysis}
-                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 border border-stone-200/80 px-2.5 py-1 rounded-lg transition shadow-2xs cursor-pointer"
+                      className="inline-flex items-center gap-1.5 text-xs font-medium text-stone-700 hover:text-stone-900 bg-stone-100 hover:bg-stone-200 border border-stone-200 px-2.5 py-1 rounded-lg transition shadow-2xs cursor-pointer"
                       title="Analyze description to link common amenities & befitting category"
                     >
-                      <Wand2 className="h-3.5 w-3.5 text-amber-600" />
+                      <SlidersHorizontal className="h-3.5 w-3.5 text-stone-600 stroke-[1.5]" />
                       <span>Link to Amenities & Category</span>
                     </button>
                     <AIAssistantButton
@@ -2178,9 +2107,9 @@ export default function ManageHotel() {
                     <button
                       type="button"
                       onClick={handleTriggerLinkAnalysis}
-                      className="text-xs font-semibold text-stone-600 hover:text-stone-900 inline-flex items-center gap-1 transition cursor-pointer"
+                      className="text-xs font-medium text-stone-600 hover:text-stone-900 inline-flex items-center gap-1 transition cursor-pointer"
                     >
-                      <Wand2 className="h-3 w-3 text-amber-600" />
+                      <SlidersHorizontal className="h-3 w-3 text-stone-600 stroke-[1.5]" />
                       <span>Auto-detect amenities & category from text</span>
                     </button>
                   )}
@@ -2244,9 +2173,9 @@ export default function ManageHotel() {
             <button
               type="button"
               onClick={handleTriggerLinkAnalysis}
-              className="text-xs font-semibold text-stone-600 hover:text-stone-900 inline-flex items-center gap-1 cursor-pointer"
+              className="text-xs font-medium text-stone-600 hover:text-stone-900 inline-flex items-center gap-1 cursor-pointer"
             >
-              <Wand2 className="h-3.5 w-3.5 text-amber-600" />
+              <SlidersHorizontal className="h-3.5 w-3.5 text-stone-500" />
               <span>Auto-detect from description</span>
             </button>
           )}
@@ -2304,9 +2233,9 @@ export default function ManageHotel() {
               <button
                 type="button"
                 onClick={handleTriggerLinkAnalysis}
-                className="text-xs font-semibold text-stone-600 hover:text-stone-900 inline-flex items-center gap-1 cursor-pointer"
+                className="text-xs font-medium text-stone-600 hover:text-stone-900 inline-flex items-center gap-1 cursor-pointer"
               >
-                <Wand2 className="h-3.5 w-3.5 text-amber-600" />
+                <SlidersHorizontal className="h-3.5 w-3.5 text-stone-500" />
                 <span>Auto-detect from description</span>
               </button>
             )}
@@ -2470,7 +2399,7 @@ export default function ManageHotel() {
                 </div>
                 <p className="text-[11px] sm:text-xs text-stone-500 leading-relaxed">
                   Entity, holding company, or individual holding title/operating lease separate from the local manager.
-                  {!canEditElevatedFields && ' Legal title and holding entity details are verified and managed by Platform Admins.'}
+                  {!canEditOwnerDetails && ' Legal title and holding entity details are managed by Platform Admins or verified property owners.'}
                 </p>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 pt-1 sm:pt-2">
@@ -2478,39 +2407,39 @@ export default function ManageHotel() {
                     <label className="block text-[11px] sm:text-xs font-bold text-stone-500 uppercase tracking-wider mb-1 sm:mb-1.5">Owner / Entity Name</label>
                     <input
                       type="text"
-                      disabled={!canEditElevatedFields}
+                      disabled={!canEditOwnerDetails}
                       value={editHotelData.ownerName ?? ''}
-                      onChange={e => canEditElevatedFields && setEditHotelData({ ...editHotelData, ownerName: e.target.value })}
+                      onChange={e => canEditOwnerDetails && setEditHotelData({ ...editHotelData, ownerName: e.target.value })}
                       className={`w-full border border-stone-200 px-3 py-2 text-xs sm:text-sm rounded-lg sm:rounded-xl outline-none transition ${
-                        !canEditElevatedFields ? 'bg-stone-100 text-stone-500 cursor-not-allowed' : 'bg-stone-50 focus:border-stone-900'
+                        !canEditOwnerDetails ? 'bg-stone-100 text-stone-500 cursor-not-allowed' : 'bg-stone-50 focus:border-stone-900'
                       }`}
-                      placeholder={canEditElevatedFields ? 'e.g. Nyika Safaris Group' : 'Not specified'}
+                      placeholder={canEditOwnerDetails ? 'e.g. Nyika Safaris Group' : 'Not specified'}
                     />
                   </div>
                   <div>
                     <label className="block text-[11px] sm:text-xs font-bold text-stone-500 uppercase tracking-wider mb-1 sm:mb-1.5">Owner Email</label>
                     <input
                       type="email"
-                      disabled={!canEditElevatedFields}
+                      disabled={!canEditOwnerDetails}
                       value={editHotelData.ownerEmail ?? ''}
-                      onChange={e => canEditElevatedFields && setEditHotelData({ ...editHotelData, ownerEmail: e.target.value })}
+                      onChange={e => canEditOwnerDetails && setEditHotelData({ ...editHotelData, ownerEmail: e.target.value })}
                       className={`w-full border border-stone-200 px-3 py-2 text-xs sm:text-sm rounded-lg sm:rounded-xl outline-none transition ${
-                        !canEditElevatedFields ? 'bg-stone-100 text-stone-500 cursor-not-allowed' : 'bg-stone-50 focus:border-stone-900'
+                        !canEditOwnerDetails ? 'bg-stone-100 text-stone-500 cursor-not-allowed' : 'bg-stone-50 focus:border-stone-900'
                       }`}
-                      placeholder={canEditElevatedFields ? 'owner@company.mw' : 'Not specified'}
+                      placeholder={canEditOwnerDetails ? 'owner@company.mw' : 'Not specified'}
                     />
                   </div>
                   <div>
                     <label className="block text-[11px] sm:text-xs font-bold text-stone-500 uppercase tracking-wider mb-1 sm:mb-1.5">Owner Phone</label>
                     <input
                       type="tel"
-                      disabled={!canEditElevatedFields}
+                      disabled={!canEditOwnerDetails}
                       value={editHotelData.ownerPhone ?? ''}
-                      onChange={e => canEditElevatedFields && setEditHotelData({ ...editHotelData, ownerPhone: e.target.value })}
+                      onChange={e => canEditOwnerDetails && setEditHotelData({ ...editHotelData, ownerPhone: e.target.value })}
                       className={`w-full border border-stone-200 px-3 py-2 text-xs sm:text-sm rounded-lg sm:rounded-xl outline-none transition ${
-                        !canEditElevatedFields ? 'bg-stone-100 text-stone-500 cursor-not-allowed' : 'bg-stone-50 focus:border-stone-900'
+                        !canEditOwnerDetails ? 'bg-stone-100 text-stone-500 cursor-not-allowed' : 'bg-stone-50 focus:border-stone-900'
                       }`}
-                      placeholder={canEditElevatedFields ? '+265 888 123 456' : 'Not specified'}
+                      placeholder={canEditOwnerDetails ? '+265 888 123 456' : 'Not specified'}
                     />
                   </div>
                 </div>
@@ -3525,7 +3454,7 @@ export default function ManageHotel() {
                           {displayedRooms.length} of {rooms.length} displayed
                         </span>
                       </div>
-                      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+                      <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                         <button
                           type="button"
                           onClick={() => setSelectedRoomMediaId('all')}

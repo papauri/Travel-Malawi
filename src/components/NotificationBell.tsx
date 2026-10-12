@@ -204,7 +204,7 @@ export default function NotificationBell() {
       {!isOpen && (
         <WalkthroughTooltip
           id="walkthrough-notification-bell"
-          icon="🔔"
+          icon={<Bell className="w-3.5 h-3.5 text-stone-300" />}
           title="Chat & Notifications"
           description="Direct guest messages, booking inquiries & call alerts live right here."
           arrowPosition="top-right"

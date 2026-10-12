@@ -1,4 +1,5 @@
 import React from 'react';
+import { ChevronDown } from 'lucide-react';
 
 interface SectionCardProps {
   title: string;
@@ -34,14 +35,7 @@ export default function SectionCard({
           </div>
           {collapsible && (
             <span className="sm:hidden text-stone-400 p-1">
-              <svg
-                className={`w-3.5 h-3.5 transform transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
+              <ChevronDown className={`w-4 h-4 transform transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
             </span>
           )}
         </div>
@@ -50,21 +44,14 @@ export default function SectionCard({
           {collapsible && (
             <button
               type="button"
-              className="hidden sm:inline-flex items-center gap-1 text-xs font-semibold text-stone-500 hover:text-stone-800 bg-white border border-stone-200 px-2.5 py-1 rounded-lg"
+              className="hidden sm:inline-flex items-center gap-1 text-xs font-semibold text-stone-500 hover:text-stone-800 bg-white border border-stone-200 px-2.5 py-1 rounded-lg cursor-pointer"
               onClick={(e) => {
                 e.stopPropagation();
                 setIsOpen(!isOpen);
               }}
             >
               <span>{isOpen ? 'Collapse' : 'Expand'}</span>
-              <svg
-                className={`w-3.5 h-3.5 transform transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
+              <ChevronDown className={`w-3.5 h-3.5 transform transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
             </button>
           )}
         </div>

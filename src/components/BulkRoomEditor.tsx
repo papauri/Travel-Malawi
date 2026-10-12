@@ -510,7 +510,7 @@ export default function BulkRoomEditor({
       {/* Minimal Underline-Based Navigation Tabs */}
       <div className="border-b border-stone-200/90 bg-white px-4 sm:px-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-6 sm:gap-8 overflow-x-auto scrollbar-none" role="tablist" aria-label="Editor modes">
+          <div className="flex flex-wrap items-center gap-4 sm:gap-8" role="tablist" aria-label="Editor modes">
             <button
               type="button"
               role="tab"

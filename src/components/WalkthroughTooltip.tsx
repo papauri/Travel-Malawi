@@ -3,13 +3,20 @@ import { X, ConciergeBell } from 'lucide-react';
 
 export const WALKTHROUGH_SESSION_KEY = 'tp_walkthrough_concierge_chat_seen';
 
+// In-memory set ensures tooltip is marked seen even if sessionStorage is blocked in iframes
+const seenInMemory = new Set<string>();
+
+let activeWalkthroughId: string | null = null;
+
 /**
  * Checks whether the walkthrough tooltip has already been displayed
  * during the current browser session.
  */
-export function hasSeenWalkthrough(): boolean {
+export function hasSeenWalkthrough(id?: string): boolean {
+  const key = id ? `${WALKTHROUGH_SESSION_KEY}_${id}` : WALKTHROUGH_SESSION_KEY;
+  if (seenInMemory.has(key)) return true;
   try {
-    return sessionStorage.getItem(WALKTHROUGH_SESSION_KEY) === 'true';
+    return sessionStorage.getItem(key) === 'true' || localStorage.getItem(key) === 'true';
   } catch {
     return false;
   }
@@ -18,18 +25,28 @@ export function hasSeenWalkthrough(): boolean {
 /**
  * Marks the walkthrough tooltip as seen for the current browser session.
  */
-export function markWalkthroughSeen(): void {
+export function markWalkthroughSeen(id?: string): void {
+  const key = id ? `${WALKTHROUGH_SESSION_KEY}_${id}` : WALKTHROUGH_SESSION_KEY;
+  seenInMemory.add(key);
   try {
-    sessionStorage.setItem(WALKTHROUGH_SESSION_KEY, 'true');
+    sessionStorage.setItem(key, 'true');
+  } catch {}
+  try {
+    localStorage.setItem(key, 'true');
   } catch {}
 }
 
 /**
  * Utility for debugging or resetting the session walkthrough.
  */
-export function resetWalkthroughSession(): void {
+export function resetWalkthroughSession(id?: string): void {
+  const key = id ? `${WALKTHROUGH_SESSION_KEY}_${id}` : WALKTHROUGH_SESSION_KEY;
+  seenInMemory.delete(key);
   try {
-    sessionStorage.removeItem(WALKTHROUGH_SESSION_KEY);
+    sessionStorage.removeItem(key);
+  } catch {}
+  try {
+    localStorage.removeItem(key);
   } catch {}
 }
 
@@ -40,32 +57,45 @@ export interface WalkthroughTooltipProps {
   description: string;
   arrowPosition?: 'top-right' | 'top-center' | 'bottom-right' | 'bottom-center' | 'left' | 'right';
   className?: string;
-  delayMs?: number; // Time before appearing (default 800ms)
-  visibleMs?: number; // Time to remain fully visible (default 4500ms)
-  fadeMs?: number; // Time to slowly fade away (default 2500ms)
+  delayMs?: number; // Time before appearing (default 600ms)
+  visibleMs?: number; // Time to remain fully visible before auto-closing (default 3200ms)
+  fadeMs?: number; // Time to slowly fade away (default 300ms)
   onDismiss?: () => void;
 }
 
 export default function WalkthroughTooltip({
   id,
-  icon = <ConciergeBell className="w-3.5 h-3.5 text-amber-400" />,
+  icon = <ConciergeBell className="w-3.5 h-3.5 text-stone-300" />,
   title,
   description,
   arrowPosition = 'bottom-right',
   className = '',
-  delayMs = 800,
-  visibleMs = 4500,
-  fadeMs = 2500,
+  delayMs = 600,
+  visibleMs = 3200,
+  fadeMs = 300,
   onDismiss,
 }: WalkthroughTooltipProps) {
   // Phase state: 'init' -> 'appearing' -> 'visible' -> 'vanishing' -> 'gone'
   const [phase, setPhase] = useState<'init' | 'appearing' | 'visible' | 'vanishing' | 'gone'>('init');
   const [progressWidth, setProgressWidth] = useState(100);
   const dismissedRef = useRef(false);
+  const tooltipRef = useRef<HTMLElement>(null);
+
+  const handleDismiss = () => {
+    if (dismissedRef.current) return;
+    dismissedRef.current = true;
+    if (activeWalkthroughId === id) {
+      activeWalkthroughId = null;
+    }
+    markWalkthroughSeen(id);
+    markWalkthroughSeen(); // Also mark global key
+    setPhase('gone');
+    onDismiss?.();
+  };
 
   useEffect(() => {
-    // Check if user already saw the walkthrough in this browser session
-    if (hasSeenWalkthrough()) {
+    // Check if user already saw this walkthrough tooltip
+    if (hasSeenWalkthrough(id)) {
       setPhase('gone');
       return;
     }
@@ -73,18 +103,28 @@ export default function WalkthroughTooltip({
     // Step 1: Wait for initial delay after mount
     const timerDelay = setTimeout(() => {
       if (dismissedRef.current) return;
-      // Mark as seen immediately so navigating or subsequent mounts won't repeat
+
+      // Ensure only one walkthrough tooltip is shown at a time
+      if (activeWalkthroughId && activeWalkthroughId !== id) {
+        // If another tooltip is already active, suppress this one
+        markWalkthroughSeen(id);
+        setPhase('gone');
+        return;
+      }
+
+      activeWalkthroughId = id;
+      markWalkthroughSeen(id);
       markWalkthroughSeen();
       setPhase('appearing');
 
-      // Next tick: transition to fully visible
       requestAnimationFrame(() => {
+        if (dismissedRef.current) return;
         setPhase('visible');
         setProgressWidth(0);
       });
     }, delayMs);
 
-    // Step 2: Begin the slow vanishing phase
+    // Step 2: Auto-close timer begins vanishing phase
     const timerVanishing = setTimeout(() => {
       if (dismissedRef.current) return;
       setPhase('vanishing');
@@ -93,24 +133,38 @@ export default function WalkthroughTooltip({
     // Step 3: Complete vanishing and unmount
     const timerGone = setTimeout(() => {
       if (dismissedRef.current) return;
+      if (activeWalkthroughId === id) {
+        activeWalkthroughId = null;
+      }
       setPhase('gone');
       onDismiss?.();
     }, delayMs + visibleMs + fadeMs);
+
+    // Auto-dismiss on outside interaction or page scroll
+    const handleOutsideInteraction = (e: Event) => {
+      if (tooltipRef.current && !tooltipRef.current.contains(e.target as Node)) {
+        handleDismiss();
+      }
+    };
+
+    const handleScroll = () => {
+      handleDismiss();
+    };
+
+    document.addEventListener('pointerdown', handleOutsideInteraction, true);
+    window.addEventListener('scroll', handleScroll, { passive: true });
 
     return () => {
       clearTimeout(timerDelay);
       clearTimeout(timerVanishing);
       clearTimeout(timerGone);
+      document.removeEventListener('pointerdown', handleOutsideInteraction, true);
+      window.removeEventListener('scroll', handleScroll);
+      if (activeWalkthroughId === id) {
+        activeWalkthroughId = null;
+      }
     };
-  }, [delayMs, visibleMs, fadeMs, onDismiss]);
-
-  const handleDismiss = (e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    dismissedRef.current = true;
-    markWalkthroughSeen();
-    setPhase('gone');
-    onDismiss?.();
-  };
+  }, [id, delayMs, visibleMs, fadeMs, onDismiss]);
 
   if (phase === 'init' || phase === 'gone') {
     return null;
@@ -146,6 +200,7 @@ export default function WalkthroughTooltip({
 
   return (
     <aside
+      ref={tooltipRef}
       id={id}
       role="status"
       aria-live="polite"

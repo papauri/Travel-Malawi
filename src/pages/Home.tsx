@@ -239,6 +239,17 @@ export default function Home() {
   const [userLocationAccuracy, setUserLocationAccuracy] = useState<number | null>(null);
   const [isLocatingUser, setIsLocatingUser] = useState(false);
   const [userLocationError, setUserLocationError] = useState<string | null>(null);
+  const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
+
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (activeStayType !== 'All') count++;
+    if (activeCategory !== 'All') count++;
+    if (isPriceFiltered) count++;
+    if (activeAmenities.length > 0) count += activeAmenities.length;
+    if (showUserLocation) count++;
+    return count;
+  }, [activeStayType, activeCategory, isPriceFiltered, activeAmenities.length, showUserLocation]);
 
   const handleToggleUserLocation = async () => {
     if (showUserLocation) {
@@ -1706,13 +1717,285 @@ export default function Home() {
           </p>
         </div>
 
-          {/* Filter Toolbar */}
+          {/* Filter Toolbar - Compact Collapsible Dropdown on Mobile, Streamlined Strip on Desktop */}
           <div className="mb-5 sm:mb-6 flex flex-col gap-2.5 bg-stone-50/70 border border-stone-200/80 p-2 sm:p-2.5 rounded-xl">
-            {/* Active search filter tags - clean subtle strip */}
-            {(hasSearch || isPriceFiltered || activeStayType !== 'All' || activeCategory !== 'All' || activeAmenities.length > 0) && (
-              <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide py-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden w-full border-b border-stone-200/60 pb-2">
+            {/* Mobile Filter Bar & Collapsible Trigger (Mobile only: < sm) */}
+            <div className="flex sm:hidden items-center justify-between gap-2 w-full">
+              {/* Collapsible Dropdown Toggle */}
+              <button
+                type="button"
+                onClick={() => setIsMobileFilterOpen(prev => !prev)}
+                className={`flex-1 h-9 px-3 rounded-lg border text-xs font-medium flex items-center justify-between transition-colors shadow-2xs cursor-pointer ${
+                  isMobileFilterOpen || activeFiltersCount > 0
+                    ? 'bg-stone-900 text-white border-stone-900'
+                    : 'bg-white hover:bg-stone-50 text-stone-800 border-stone-200'
+                }`}
+                aria-expanded={isMobileFilterOpen}
+                title="Toggle filter and sort menu"
+              >
+                <div className="flex items-center gap-2 truncate">
+                  <SlidersHorizontal className={`w-3.5 h-3.5 shrink-0 ${isMobileFilterOpen || activeFiltersCount > 0 ? 'text-white' : 'text-stone-600'}`} />
+                  <span className="font-semibold truncate">
+                    {activeFiltersCount > 0
+                      ? `${activeStayType !== 'All' ? (STAY_TYPE_LABELS[activeStayType] || activeStayType) : 'Filtered'} (${activeFiltersCount})`
+                      : 'Filter & Sort Stays'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0 ml-1.5">
+                  <span className="text-[11px] opacity-85">{isMobileFilterOpen ? 'Close' : 'Filter'}</span>
+                  <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isMobileFilterOpen ? 'rotate-180' : ''}`} />
+                </div>
+              </button>
+
+              {/* Quick Currency Selector on Mobile */}
+              {offeredCurrencies.length > 1 && (
+                <div className="flex items-center h-9 bg-white p-0.5 rounded-lg border border-stone-200 shadow-2xs shrink-0">
+                  {offeredCurrencies.map((code, cIdx) => (
+                    <button
+                      key={`mob-curr-${code}-${cIdx}`}
+                      type="button"
+                      onClick={() => chooseCurrency(code)}
+                      aria-pressed={currency === code}
+                      title={CURRENCIES[code].label}
+                      className={`h-full px-2.5 flex items-center justify-center rounded-md text-[11px] font-bold transition cursor-pointer ${
+                        currency === code
+                          ? 'bg-stone-900 text-white shadow-2xs'
+                          : 'text-stone-600 hover:text-stone-900'
+                      }`}
+                    >
+                      {code}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Mobile Expanded Filter Dropdown Content */}
+            {isMobileFilterOpen && (
+              <div className="sm:hidden mt-1 pt-2.5 border-t border-stone-200/80 flex flex-col gap-3 text-xs animate-in fade-in duration-200">
+                {/* Header with Title & Reset Button */}
+                <div className="flex items-center justify-between pb-1 border-b border-stone-200/60">
+                  <div className="flex items-center gap-1.5 font-bold text-stone-900 text-xs">
+                    <Filter className="w-3.5 h-3.5 text-stone-700" />
+                    <span>Filter & Refine Stays</span>
+                    {activeFiltersCount > 0 && (
+                      <span className="text-[10px] bg-stone-900 text-white px-1.5 py-0.5 rounded-full font-semibold">
+                        {activeFiltersCount}
+                      </span>
+                    )}
+                  </div>
+                  {activeFiltersCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={clearFilters}
+                      className="text-[11px] text-stone-500 hover:text-stone-900 font-medium flex items-center gap-1 cursor-pointer"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                      Reset all
+                    </button>
+                  )}
+                </div>
+
+                {/* Section 1: Stay Type & Experience Category */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1 block">
+                      Stay Type
+                    </label>
+                    <div className="relative">
+                      <select
+                        value={activeStayType}
+                        onChange={e => { setActiveStayType(e.target.value); setCurrentPage(1); }}
+                        className="w-full h-8.5 pl-2.5 pr-7 bg-white border border-stone-200 rounded-lg text-xs font-medium text-stone-800 outline-none appearance-none"
+                      >
+                        {STAY_TYPE_OPTIONS.map((opt) => (
+                          <option key={`m-stay-${opt.id}`} value={opt.id}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className="w-3.5 h-3.5 text-stone-400 pointer-events-none absolute right-2 top-2.5" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1 block">
+                      Experience
+                    </label>
+                    <div className="relative">
+                      <select
+                        value={activeCategory}
+                        onChange={e => { setActiveCategory(e.target.value); setCurrentPage(1); }}
+                        className="w-full h-8.5 pl-2.5 pr-7 bg-white border border-stone-200 rounded-lg text-xs font-medium text-stone-800 outline-none appearance-none"
+                      >
+                        {(['All', ...PROPERTY_CATEGORIES] as string[]).map((category, cIdx) => (
+                          <option key={`m-cat-${category}-${cIdx}`} value={category}>
+                            {category === 'All' ? 'All Experiences' : category}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className="w-3.5 h-3.5 text-stone-400 pointer-events-none absolute right-2 top-2.5" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Section 2: Budget (Price Range Slider Embedded) */}
+                <div className="bg-white border border-stone-200/90 rounded-lg p-2.5">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider">
+                      Budget Per Night
+                    </span>
+                    <span className="text-[11px] font-semibold text-stone-900">
+                      {isPriceFiltered
+                        ? `${formatMoney(priceRange[0], currency)} – ${priceRange[1] >= priceLimitMax ? `${formatMoney(priceLimitMax, currency)}+` : formatMoney(priceRange[1], currency)}`
+                        : `Any price (${currency})`}
+                    </span>
+                  </div>
+                  <PriceRangeFilter
+                    currency={currency}
+                    minPrice={priceRange[0]}
+                    maxPrice={priceRange[1]}
+                    priceLimitMin={priceLimitMin}
+                    priceLimitMax={priceLimitMax}
+                    step={priceStep}
+                    onPriceChange={(min, max) => {
+                      setPriceRange([min, max]);
+                      setCurrentPage(1);
+                    }}
+                    onReset={() => {
+                      setPriceRange([priceLimitMin, priceLimitMax]);
+                      setCurrentPage(1);
+                    }}
+                    includeUnpriced={includeUnpricedRooms}
+                    onToggleIncludeUnpriced={(include) => setIncludeUnpricedRooms(include)}
+                  />
+                </div>
+
+                {/* Section 3: Amenities Filter Chips */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider">
+                      Amenities
+                    </span>
+                    {activeAmenities.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setActiveAmenities([])}
+                        className="text-[10px] text-stone-500 hover:text-stone-900"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {COMMON_AMENITIES.slice(0, 8).map((amenity, aIdx) => {
+                      const isActive = activeAmenities.includes(amenity);
+                      return (
+                        <button
+                          key={`m-amenity-${amenity}-${aIdx}`}
+                          type="button"
+                          onClick={() => {
+                            setActiveAmenities(prev =>
+                              prev.includes(amenity)
+                                ? prev.filter(a => a !== amenity)
+                                : [...prev, amenity]
+                            );
+                            setCurrentPage(1);
+                          }}
+                          className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition border cursor-pointer ${
+                            isActive
+                              ? 'bg-stone-900 text-white border-stone-900'
+                              : 'bg-white text-stone-700 border-stone-200 hover:border-stone-300'
+                          }`}
+                        >
+                          {amenity}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Section 4: Location & GPS */}
+                <div>
+                  <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1 block">
+                    Location & Distances
+                  </span>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={handleToggleUserLocation}
+                      disabled={isLocatingUser}
+                      className={`h-8.5 flex items-center justify-center gap-1.5 rounded-lg border text-xs font-medium transition cursor-pointer ${
+                        showUserLocation && userLocationLabel === 'Live GPS'
+                          ? 'bg-stone-900 text-white border-stone-900'
+                          : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
+                      }`}
+                    >
+                      {isLocatingUser ? (
+                        <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <Locate className="w-3.5 h-3.5 text-stone-500" />
+                      )}
+                      <span>{showUserLocation && userLocationLabel === 'Live GPS' ? 'GPS Active' : 'Live GPS'}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => openAccessPermissionsModal('location')}
+                      className={`h-8.5 flex items-center justify-center gap-1.5 rounded-lg border text-xs font-medium transition cursor-pointer truncate px-2 ${
+                        showUserLocation && userLocationLabel && userLocationLabel !== 'Live GPS'
+                          ? 'bg-stone-900 text-white border-stone-900'
+                          : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
+                      }`}
+                    >
+                      <MapPin className="w-3.5 h-3.5 text-stone-500 shrink-0" />
+                      <span className="truncate">{userLocationLabel && userLocationLabel !== 'Live GPS' ? userLocationLabel : 'Select City Hub'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Section 5: Sort */}
+                <div>
+                  <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1 block">
+                    Sort Order
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={sortKey}
+                      onChange={e => setSortKey(e.target.value as SortKey)}
+                      className="w-full h-8.5 pl-2.5 pr-7 bg-white border border-stone-200 rounded-lg text-xs font-medium text-stone-800 outline-none appearance-none"
+                    >
+                      {(Object.keys(SORT_LABELS) as SortKey[]).map(key => (
+                        <option key={`m-sort-${key}`} value={key}>
+                          Sort: {SORT_LABELS[key]}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="w-3.5 h-3.5 text-stone-400 pointer-events-none absolute right-2 top-2.5" />
+                  </div>
+                </div>
+
+                {/* Close & Apply CTA button */}
+                <div className="pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMobileFilterOpen(false);
+                      document.getElementById('search-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }}
+                    className="w-full h-9 bg-stone-900 text-white font-medium rounded-lg text-xs hover:bg-stone-800 transition shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <span>Show {filteredHotels.length} Stays</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Active search filter tags - clean subtle strip (shown when collapsed on mobile, or always on desktop) */}
+            {(hasSearch || isPriceFiltered || activeStayType !== 'All' || activeCategory !== 'All' || activeAmenities.length > 0) && (!isMobileFilterOpen || true) && (
+              <div className={`${isMobileFilterOpen ? 'hidden sm:flex' : 'flex'} items-center gap-1.5 overflow-x-auto scrollbar-hide py-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden w-full border-b sm:border-b border-stone-200/60 pb-1.5`}>
                 {activeStayType !== 'All' && (
-                  <span className="text-[11px] font-medium bg-white text-stone-800 border border-stone-200 px-2.5 py-1 rounded-full flex items-center gap-1.5 shrink-0 shadow-2xs">
+                  <span className="text-[11px] font-medium bg-white text-stone-800 border border-stone-200 px-2.5 py-0.5 rounded-full flex items-center gap-1.5 shrink-0 shadow-2xs">
                     <span>{STAY_TYPE_LABELS[activeStayType] || activeStayType}</span>
                     <button
                       type="button"
@@ -1725,7 +2008,7 @@ export default function Home() {
                   </span>
                 )}
                 {activeCategory !== 'All' && (
-                  <span className="text-[11px] font-medium bg-white text-stone-800 border border-stone-200 px-2.5 py-1 rounded-full flex items-center gap-1.5 shrink-0 shadow-2xs">
+                  <span className="text-[11px] font-medium bg-white text-stone-800 border border-stone-200 px-2.5 py-0.5 rounded-full flex items-center gap-1.5 shrink-0 shadow-2xs">
                     <span>Category: {activeCategory}</span>
                     <button
                       type="button"
@@ -1738,27 +2021,27 @@ export default function Home() {
                   </span>
                 )}
                 {appliedSearch.coords && (
-                  <span className="text-[11px] font-medium bg-white border border-stone-200 text-stone-700 px-2.5 py-1 rounded-full shrink-0 shadow-2xs">
+                  <span className="text-[11px] font-medium bg-white border border-stone-200 text-stone-700 px-2.5 py-0.5 rounded-full shrink-0 shadow-2xs">
                     Within {appliedSearch.proximity} km
                   </span>
                 )}
                 {!appliedSearch.coords && appliedSearch.location && (
-                  <span className="text-[11px] font-medium bg-white border border-stone-200 text-stone-700 px-2.5 py-1 rounded-full shrink-0 shadow-2xs">
+                  <span className="text-[11px] font-medium bg-white border border-stone-200 text-stone-700 px-2.5 py-0.5 rounded-full shrink-0 shadow-2xs">
                     {appliedSearch.location}
                   </span>
                 )}
                 {appliedSearch.checkIn && appliedSearch.checkOut && (
-                  <span className="text-[11px] font-medium bg-white border border-stone-200 text-stone-700 px-2.5 py-1 rounded-full shrink-0 shadow-2xs">
+                  <span className="text-[11px] font-medium bg-white border border-stone-200 text-stone-700 px-2.5 py-0.5 rounded-full shrink-0 shadow-2xs">
                     {appliedSearch.checkIn} &rarr; {appliedSearch.checkOut}
                   </span>
                 )}
                 {!!appliedSearch.guests && (
-                  <span className="text-[11px] font-medium bg-white border border-stone-200 text-stone-700 px-2.5 py-1 rounded-full shrink-0 shadow-2xs">
+                  <span className="text-[11px] font-medium bg-white border border-stone-200 text-stone-700 px-2.5 py-0.5 rounded-full shrink-0 shadow-2xs">
                     {appliedSearch.guests} guest{appliedSearch.guests === 1 ? '' : 's'}
                   </span>
                 )}
                 {isPriceFiltered && (
-                  <span className="text-[11px] font-medium bg-white text-stone-800 border border-stone-200 px-2.5 py-1 rounded-full flex items-center gap-1.5 shrink-0 shadow-2xs">
+                  <span className="text-[11px] font-medium bg-white text-stone-800 border border-stone-200 px-2.5 py-0.5 rounded-full flex items-center gap-1.5 shrink-0 shadow-2xs">
                     <span>
                       {formatMoney(priceRange[0], currency)} – {priceRange[1] >= priceLimitMax ? `${formatMoney(priceLimitMax, currency)}+` : formatMoney(priceRange[1], currency)}
                     </span>
@@ -1775,15 +2058,15 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={clearFilters}
-                  className="text-[11px] font-medium text-stone-500 hover:text-stone-900 px-2.5 py-1 rounded-full hover:bg-white hover:border hover:border-stone-200 transition flex items-center gap-1 shrink-0 cursor-pointer ml-auto"
+                  className="text-[11px] font-medium text-stone-500 hover:text-stone-900 px-2 py-0.5 rounded-full hover:bg-white hover:border hover:border-stone-200 transition flex items-center gap-1 shrink-0 cursor-pointer ml-auto"
                 >
                   <RotateCcw className="w-3 h-3" /> Clear all
                 </button>
               </div>
             )}
 
-            {/* Uniform, Subtle Filter Controls Strip */}
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2 w-full">
+            {/* Desktop Filter Controls Strip (Hidden on mobile: sm:flex) */}
+            <div className="hidden sm:flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2 w-full">
               {/* Primary Content & Stay Filters (Left Group) */}
               <div className="flex flex-wrap items-center gap-2">
                 {/* Stay Type */}

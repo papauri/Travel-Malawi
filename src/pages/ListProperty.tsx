@@ -23,7 +23,7 @@ import {
   Images, Loader2, LocateFixed, Mail, MapPin, MessageCircle, Phone, Plus, Send,
   Award, FileText, CheckCircle2, Wallet, X, DollarSign, Coins, Trash2, Sliders, ChevronDown, ChevronUp,
   RefreshCw, TrendingUp, HelpCircle, AlertTriangle, BookOpen,
-  User, UserCheck, Shield, Building, ConciergeBell, Wand2, BedDouble, Tag, Home,
+  User, UserCheck, Shield, Building, ConciergeBell, BedDouble, Tag, Home,
 } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 
