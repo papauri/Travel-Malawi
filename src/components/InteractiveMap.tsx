@@ -104,18 +104,55 @@ const createUserLiveLocationIcon = (label: string = 'You are here') => {
   });
 };
 
-// Custom SVG Drop-Pin for a single destination / property with photo thumbnail badge
-const createCustomPinIcon = (label?: string, image?: string) => {
+// Compact SVG Pin for a single destination / property (small mode)
+const createSmallPinIcon = (label?: string) => {
   const html = `
-    <div style="position: relative; width: 52px; height: 66px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; cursor: pointer; pointer-events: auto;">
+    <div style="position: relative; width: 32px; height: 42px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; cursor: pointer; pointer-events: auto;" title="${esc(label ? `${label} (Click to view hotel icon)` : 'Click to view hotel icon')}">
+      <!-- Ground Anchor Glow -->
+      <div style="position: absolute; bottom: -2px; left: 50%; transform: translateX(-50%); width: 14px; height: 6px; border-radius: 50%; background: rgba(16, 185, 129, 0.5); filter: blur(1.5px); pointer-events: none; z-index: 1;"></div>
+
+      <!-- Compact Teardrop Pin SVG Silhouette -->
+      <svg width="32" height="42" viewBox="0 0 32 42" fill="none" xmlns="http://www.w3.org/2000/svg" style="position: absolute; top: 0; left: 50%; transform: translateX(-50%); filter: drop-shadow(0 4px 8px rgba(0,0,0,0.35)); z-index: 5;">
+        <path d="M16 42C16 42 30 27.5 30 15.5C30 7.49187 23.732 1 16 1C8.26801 1 2 7.49187 2 15.5C2 27.5 16 42 16 42Z" fill="#1c1917" stroke="#ffffff" stroke-width="2"/>
+      </svg>
+
+      <!-- Center Emerald Hotel/Location Emblem -->
+      <div style="position: absolute; top: 5px; left: 50%; transform: translateX(-50%); width: 21px; height: 21px; border-radius: 50%; background: #292524; display: flex; align-items: center; justify-content: center; color: #10b981; z-index: 10; box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);">
+        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 21h18"/>
+          <path d="M5 21V7l8-4v18"/>
+          <path d="M19 21V11l-6-3"/>
+          <path d="M9 9v.01"/>
+          <path d="M9 12v.01"/>
+        </svg>
+      </div>
+
+      <!-- Bottom Tip Emerald Dot Anchor -->
+      <div style="position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 5px; height: 5px; border-radius: 50%; background: #10b981; border: 1px solid #ffffff; z-index: 12; box-shadow: 0 0 6px #10b981;"></div>
+    </div>
+  `;
+
+  return L.divIcon({
+    html,
+    className: 'custom-leaflet-marker custom-leaflet-small-pin',
+    iconSize: [32, 42],
+    iconAnchor: [16, 42],
+  });
+};
+
+// Expanded SVG Pin for a single destination / property with photo thumbnail badge (hotel mode)
+const createExpandedHotelIcon = (label?: string, image?: string) => {
+  const html = `
+    <div style="position: relative; width: 52px; height: 66px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; cursor: pointer; pointer-events: auto;" title="Click to show compact pin">
       ${label ? `
-        <div style="position: absolute; bottom: 70px; left: 50%; transform: translateX(-50%); padding: 4px 10px; background: #1c1917; color: #ffffff; font-size: 11px; font-weight: 700; border-radius: 9999px; box-shadow: 0 4px 14px rgba(0,0,0,0.35); white-space: nowrap; border: 1.5px solid rgba(255,255,255,0.25); pointer-events: none; display: flex; align-items: center; gap: 5px; max-width: 220px; z-index: 30;">
+        <!-- Floating Hotel Name Pill Tag with Close Hint -->
+        <div style="position: absolute; bottom: 70px; left: 50%; transform: translateX(-50%); padding: 4px 10px; background: #1c1917; color: #ffffff; font-size: 11px; font-weight: 700; border-radius: 9999px; box-shadow: 0 4px 14px rgba(0,0,0,0.35); white-space: nowrap; border: 1.5px solid rgba(255,255,255,0.25); display: flex; align-items: center; gap: 5px; max-width: 220px; z-index: 30; pointer-events: none;">
           <span style="width: 7px; height: 7px; border-radius: 9999px; background: #10b981; flex-shrink: 0; box-shadow: 0 0 8px #10b981;"></span>
           <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${esc(label)}</span>
         </div>
       ` : ''}
 
-      <!-- Modern Teardrop Pin Container -->
+      <!-- Teardrop Pin Container -->
       <div style="position: relative; width: 46px; height: 58px; display: flex; flex-direction: column; align-items: center;">
         <!-- Base Ground Anchor Glow -->
         <div style="position: absolute; bottom: -3px; left: 50%; transform: translateX(-50%); width: 20px; height: 8px; border-radius: 50%; background: rgba(16, 185, 129, 0.45); filter: blur(1.5px); pointer-events: none; z-index: 1;"></div>
@@ -163,10 +200,9 @@ const createCustomPinIcon = (label?: string, image?: string) => {
 
   return L.divIcon({
     html,
-    className: 'custom-leaflet-marker',
+    className: 'custom-leaflet-marker custom-leaflet-hotel-pin',
     iconSize: [52, 66],
     iconAnchor: [26, 66],
-    popupAnchor: [0, -74],
   });
 };
 
@@ -324,6 +360,7 @@ export default function InteractiveMap({
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [isPrefetching, setIsPrefetching] = useState(false);
   const [mapReady, setMapReady] = useState(false);
+  const [isPinExpanded, setIsPinExpanded] = useState(false);
 
   useEffect(() => {
     const handleOnline = () => setIsOffline(false);
@@ -485,6 +522,16 @@ export default function InteractiveMap({
       setMapReady(false);
       map.remove();
       mapInstanceRef.current = null;
+      markerRef.current = null;
+      originMarkerRef.current = null;
+      userLocationMarkerRef.current = null;
+      userAccuracyCircleRef.current = null;
+      distanceMarkerRef.current = null;
+      polylineRef.current = null;
+      polylineCasingRef.current = null;
+      tileLayerRef.current = null;
+      clusterGroupRef.current = null;
+      lodgeMarkersMapRef.current.clear();
     };
   }, []);
 
@@ -646,30 +693,19 @@ export default function InteractiveMap({
     if (!map || !mapReady) return;
 
     if (isValidLatLng(markerPosition)) {
+      const activeIcon = isPinExpanded
+        ? createExpandedHotelIcon(popupText, markerImage)
+        : createSmallPinIcon(popupText);
+
       if (markerRef.current) {
         markerRef.current.setLatLng([markerPosition.lat, markerPosition.lng]);
-        markerRef.current.setIcon(createCustomPinIcon(popupText, markerImage));
+        markerRef.current.setIcon(activeIcon);
       } else {
         const marker = L.marker([markerPosition.lat, markerPosition.lng], {
-          icon: createCustomPinIcon(popupText, markerImage),
+          icon: activeIcon,
           draggable: interactive && !!onMarkerChange,
           zIndexOffset: 600,
         });
-
-        if (popupText) {
-          marker.bindPopup(`
-            <div style="font-family: sans-serif; padding: 4px; text-align: center; max-width: 190px;">
-              ${safeUrl(markerImage) ? `<img src="${safeUrl(markerImage)}" alt="${esc(popupText)}" style="width: 100%; height: 80px; object-fit: cover; border-radius: 8px; margin-bottom: 6px;" />` : ''}
-              <div style="font-weight: 700; font-size: 13px; color: #1c1917; line-height: 1.2;">${esc(popupText)}</div>
-              <div style="font-size: 11px; color: #059669; font-weight: 600; margin-top: 3px;">📍 Verified Stay Pinpoint</div>
-            </div>
-          `, {
-            closeButton: false,
-            className: 'custom-destination-popup',
-            autoPan: true,
-            autoPanPadding: [20, 40],
-          });
-        }
 
         if (interactive && onMarkerChange) {
           marker.on('dragend', () => {
@@ -682,20 +718,21 @@ export default function InteractiveMap({
         markerRef.current = marker;
       }
 
-      // If no route origin is active, center exactly on the destination stay
+      // Toggle between small pin and hotel icon on click (no popup overlay)
+      markerRef.current.off('click');
+      markerRef.current.on('click', () => {
+        setIsPinExpanded(prev => !prev);
+      });
+
+      // Central mapping: Ensure marker coordinate is always centrally positioned
       if (!isValidLatLng(origin)) {
-        const targetZoom = zoom || map.getZoom() || 13;
-        map.setView([markerPosition.lat, markerPosition.lng], targetZoom, { animate: false });
-        setTimeout(() => {
-          map.invalidateSize();
-          map.panTo([markerPosition.lat, markerPosition.lng], { animate: false });
-        }, 120);
+        map.panTo([markerPosition.lat, markerPosition.lng], { animate: true, duration: 0.35 });
       }
     } else if (markerRef.current) {
       map.removeLayer(markerRef.current);
       markerRef.current = null;
     }
-  }, [mapReady, markerPosition, interactive, onMarkerChange, popupText, markerImage, origin, zoom]);
+  }, [mapReady, markerPosition, interactive, onMarkerChange, popupText, markerImage, origin, zoom, isPinExpanded]);
 
   // Update Origin Marker and Route Line (if origin provided)
   useEffect(() => {
@@ -1024,14 +1061,8 @@ export default function InteractiveMap({
       ? center
       : MALAWI_CENTRE;
       
-    if (isValidLatLng(markerPosition)) {
-      const pt = map.project([target.lat, target.lng], 14);
-      pt.y -= 120;
-      const offsetLatLng = map.unproject(pt, 14);
-      map.setView(offsetLatLng, 14, { animate: true });
-    } else {
-      map.setView([target.lat, target.lng], 14, { animate: true });
-    }
+    const targetZoom = zoom || 14;
+    map.setView([target.lat, target.lng], targetZoom, { animate: true });
   };
 
   return (
@@ -1042,7 +1073,7 @@ export default function InteractiveMap({
     >
       <div ref={containerRef} className="h-full w-full" />
 
-      {/* Top-Left Offline & Cache Status Badge */}
+      {/* Top-Left Offline & Cache Status Badge + Pin View Mode Toggle */}
       <div className="absolute top-3 left-3 z-20 flex items-center gap-2 pointer-events-auto">
         {isOffline ? (
           <div className="bg-amber-900/90 text-white text-[11px] font-bold px-2.5 py-1 rounded-xl backdrop-blur-md flex items-center gap-1.5 shadow-md border border-amber-700/60">
@@ -1063,6 +1094,33 @@ export default function InteractiveMap({
               <CloudDownload className="w-3.5 h-3.5 text-emerald-600 group-hover:scale-110 transition-transform" />
             )}
             <span>{isPrefetching ? 'Caching Malawi...' : 'Offline Map Ready'}</span>
+          </button>
+        )}
+
+        {/* Quick Toggle Chip: Switch between compact pin and hotel photo icon */}
+        {isValidLatLng(markerPosition) && (
+          <button
+            type="button"
+            onClick={() => {
+              setIsPinExpanded(prev => !prev);
+              if (mapInstanceRef.current && isValidLatLng(markerPosition)) {
+                mapInstanceRef.current.panTo([markerPosition.lat, markerPosition.lng], { animate: true, duration: 0.35 });
+              }
+            }}
+            title={isPinExpanded ? 'Switch to compact pin' : 'Show hotel photo icon'}
+            className="bg-white/95 hover:bg-stone-50 text-stone-800 hover:text-emerald-800 text-[11px] font-semibold px-2.5 py-1 rounded-xl border border-stone-200/90 backdrop-blur-md flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+          >
+            {isPinExpanded ? (
+              <>
+                <MapPin className="w-3.5 h-3.5 text-stone-600" />
+                <span>Compact Pin</span>
+              </>
+            ) : (
+              <>
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>Hotel Photo</span>
+              </>
+            )}
           </button>
         )}
       </div>
