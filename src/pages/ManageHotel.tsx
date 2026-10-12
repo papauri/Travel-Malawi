@@ -24,7 +24,7 @@ import Pagination from '../components/Pagination';
 import BookingChat from '../components/BookingChat';
 import PropertyChat from '../components/PropertyChat';
 import { useChatModal } from '../contexts/ChatModalContext';
-import { MessageSquare, Megaphone, Presentation, Bell, ChevronDown, SlidersHorizontal, Sparkles, Star, Images, Upload, GripVertical, ChevronRight, Layers, LayoutGrid } from 'lucide-react';
+import { MessageSquare, Megaphone, Presentation, Bell, ChevronDown, SlidersHorizontal, Wand2, Star, Images, Upload, GripVertical, ChevronRight, Layers, LayoutGrid } from 'lucide-react';
 import SmartImage from '../components/SmartImage';
 import ReminderTemplatesModal from '../components/ReminderTemplatesModal';
 import EditBookingModal from '../components/EditBookingModal';
@@ -292,7 +292,7 @@ function RoomMediaEditor({
           {!imageUrl && (galleryUrls.length > 0 || hasHotelCover) && (
             <div className="p-2.5 bg-amber-50/80 border border-amber-200/70 rounded-xl flex items-center justify-between gap-2 text-xs">
               <div className="flex items-center gap-1.5 min-w-0 text-amber-900">
-                <Sparkles className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                <Wand2 className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                 <span className="truncate text-[11px] font-medium">
                   {galleryUrls.length > 0 ? "1st gallery photo available" : "Property photo available"}
                 </span>
@@ -397,6 +397,62 @@ export default function ManageHotel() {
   const confirmFlow = useConfirmBooking();
   const [editModalBooking, setEditModalBooking] = useState<Booking | null>(null);
   const [bookingToDelete, setBookingToDelete] = useState<string | null>(null);
+  // Desktop navigation tab horizontal scroll controls & state
+  const desktopNavRef = useRef<HTMLDivElement>(null);
+  const [canScrollNavLeft, setCanScrollNavLeft] = useState(false);
+  const [canScrollNavRight, setCanScrollNavRight] = useState(false);
+
+  const checkNavScroll = () => {
+    const el = desktopNavRef.current;
+    if (!el) return;
+    setCanScrollNavLeft(el.scrollLeft > 4);
+    setCanScrollNavRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+  };
+
+  useEffect(() => {
+    const el = desktopNavRef.current;
+    if (!el) return;
+    checkNavScroll();
+
+    const handleScroll = () => checkNavScroll();
+    const handleResize = () => checkNavScroll();
+    el.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('resize', handleResize);
+
+    // Smooth horizontal scrolling when vertical mouse wheel is scrolled over the tabs
+    const handleWheel = (e: WheelEvent) => {
+      if (e.deltaY !== 0 && Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+        el.scrollLeft += e.deltaY;
+        e.preventDefault();
+      }
+    };
+    el.addEventListener('wheel', handleWheel, { passive: false });
+
+    return () => {
+      el.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', handleResize);
+      el.removeEventListener('wheel', handleWheel);
+    };
+  }, []);
+
+  // Auto-scroll active tab into view whenever it changes
+  useEffect(() => {
+    if (desktopNavRef.current) {
+      const activeEl = desktopNavRef.current.querySelector(`[data-tab-id="${activeTab}"]`);
+      if (activeEl) {
+        activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      }
+      setTimeout(checkNavScroll, 350);
+    }
+  }, [activeTab]);
+
+  const scrollTabs = (direction: 'left' | 'right') => {
+    if (desktopNavRef.current) {
+      const offset = direction === 'left' ? -260 : 260;
+      desktopNavRef.current.scrollBy({ left: offset, behavior: 'smooth' });
+      setTimeout(checkNavScroll, 300);
+    }
+  };
 
   // Reminder states
   const [bookingReminders, setBookingReminders] = useState<Record<string, any[]>>({});
@@ -1688,34 +1744,33 @@ export default function ManageHotel() {
       )}
       {/* Dashboard Section Navigation */}
       <div className="sticky top-[88px] sm:top-[100px] md:top-[100px] lg:top-[108px] z-30 bg-stone-50/95 backdrop-blur-md py-2 sm:py-2.5 mb-5 sm:mb-7 border-b border-stone-200/80">
-        {/* Mobile Section Drawer (< md) */}
-        <div className="md:hidden space-y-2">
-          {(() => {
-            const tabsList = [
-              { id: 'details' as Tab, label: 'Property details', icon: Building },
-              { id: 'media' as Tab, label: 'Media', icon: Eye },
-              { id: 'promotions' as Tab, label: 'Promotions', icon: Percent },
-              { id: 'stayos' as Tab, label: 'Stay OS', icon: ShieldCheck },
-              { id: 'broadcasts' as Tab, label: 'Broadcasts', icon: Megaphone },
-              { id: 'rooms' as Tab, label: editHotelData.stayType === 'entire_place' ? 'Whole space & pricing' : 'Rooms & pricing', icon: editHotelData.stayType === 'entire_place' ? Home : BedDouble },
-              { id: 'conferences' as Tab, label: 'Conferences', icon: Presentation },
-              { id: 'restaurant' as Tab, label: 'Restaurant', icon: UtensilsCrossed },
-              { id: 'bookings' as Tab, label: 'Bookings', icon: Calendar },
-              { id: 'inquiries' as Tab, label: 'Inquiries', icon: MessageSquare },
-              { id: 'templates' as Tab, label: 'Email templates & automation', icon: Mail },
-            ];
-            const currentTabObj = tabsList.find(t => t.id === activeTab) || tabsList[0];
-            const CurrentIcon = currentTabObj.icon;
-            const currentPendingCount = activeTab === 'bookings' ? bookings.filter(b => b.status === 'pending').length : 0;
-            const currentUnreadCount = activeTab === 'inquiries' ? inquiries.filter(i => 
-              i.lastSenderId !== user?.uid && 
-              i.updatedAt && 
-              (!i.managerLastOpenedAt || i.updatedAt > i.managerLastOpenedAt)
-            ).length : 0;
+        {(() => {
+          const tabsList = [
+            { id: 'details' as Tab, label: 'Property details', icon: Building },
+            { id: 'media' as Tab, label: 'Media', icon: Eye },
+            { id: 'promotions' as Tab, label: 'Promotions', icon: Percent },
+            { id: 'stayos' as Tab, label: 'Stay OS', icon: ShieldCheck },
+            { id: 'broadcasts' as Tab, label: 'Broadcasts', icon: Megaphone },
+            { id: 'rooms' as Tab, label: editHotelData.stayType === 'entire_place' ? 'Whole space & pricing' : 'Rooms & pricing', icon: editHotelData.stayType === 'entire_place' ? Home : BedDouble },
+            { id: 'conferences' as Tab, label: 'Conferences', icon: Presentation },
+            { id: 'restaurant' as Tab, label: 'Restaurant', icon: UtensilsCrossed },
+            { id: 'bookings' as Tab, label: 'Bookings', icon: Calendar },
+            { id: 'inquiries' as Tab, label: 'Inquiries', icon: MessageSquare },
+            { id: 'templates' as Tab, label: 'Email templates & automation', icon: Mail },
+          ];
+          const currentTabObj = tabsList.find(t => t.id === activeTab) || tabsList[0];
+          const CurrentIcon = currentTabObj.icon;
+          const currentPendingCount = activeTab === 'bookings' ? bookings.filter(b => b.status === 'pending').length : 0;
+          const currentUnreadCount = activeTab === 'inquiries' ? inquiries.filter(i => 
+            i.lastSenderId !== user?.uid && 
+            i.updatedAt && 
+            (!i.managerLastOpenedAt || i.updatedAt > i.managerLastOpenedAt)
+          ).length : 0;
 
-            return (
-              <>
-                {/* Compact Single-Row Mobile & Tablet Section Bar */}
+          return (
+            <>
+              {/* Mobile Section Drawer (< md) */}
+              <div className="md:hidden space-y-2">
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
@@ -1797,73 +1852,102 @@ export default function ManageHotel() {
                     })}
                   </div>
                 )}
-              </>
-            );
-          })()}
-        </div>
+              </div>
 
-        {/* Tablet & Desktop Underline-Based Navigation Bar (>= md) */}
-        <div className="hidden md:flex items-center overflow-x-auto scrollbar-none gap-6 lg:gap-7 border-b border-stone-200/90 pb-0 mb-6">
-          {([
-            { id: 'details' as Tab, label: 'Property details', icon: Building },
-            { id: 'media' as Tab, label: 'Media', icon: Eye },
-            { id: 'promotions' as Tab, label: 'Promotions', icon: Percent },
-            { id: 'stayos' as Tab, label: 'Stay OS', icon: ShieldCheck },
-            { id: 'broadcasts' as Tab, label: 'Broadcasts', icon: Megaphone },
-            { id: 'rooms' as Tab, label: editHotelData.stayType === 'entire_place' ? 'Whole space & pricing' : 'Rooms & pricing', icon: editHotelData.stayType === 'entire_place' ? Home : BedDouble },
-            { id: 'conferences' as Tab, label: 'Conferences', icon: Presentation },
-            { id: 'restaurant' as Tab, label: 'Restaurant', icon: UtensilsCrossed },
-            { id: 'bookings' as Tab, label: 'Bookings', icon: Calendar },
-            { id: 'inquiries' as Tab, label: 'Inquiries', icon: MessageSquare },
-            { id: 'templates' as Tab, label: 'Email templates & automation', icon: Mail },
-          ]).map(tab => {
-            const Icon = tab.icon;
-            const pendingCount = tab.id === 'bookings' ? bookings.filter(b => b.status === 'pending').length : 0;
-            const unreadInquiryCount = tab.id === 'inquiries' ? inquiries.filter(i => 
-              i.lastSenderId !== user?.uid && 
-              i.updatedAt && 
-              (!i.managerLastOpenedAt || i.updatedAt > i.managerLastOpenedAt)
-            ).length : 0;
-            const isActive = activeTab === tab.id;
-            
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                role="tab"
-                aria-selected={isActive}
-                onClick={() => requestTab(tab.id)}
-                className={`flex items-center shrink-0 whitespace-nowrap gap-2 pb-3 pt-1 text-xs sm:text-sm font-medium border-b-2 -mb-px transition-colors cursor-pointer ${
-                  isActive
-                    ? 'border-stone-900 text-stone-900 font-semibold'
-                    : 'border-transparent text-stone-500 hover:text-stone-800 hover:border-stone-300'
-                }`}
-              >
-                <Icon className={`h-4 w-4 shrink-0 ${isActive ? 'text-stone-900' : 'text-stone-400'}`} />
-                <span>{tab.label}</span>
-                {dirtyOn(tab.id) && (
-                  <span title="Unsaved changes" className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
-                )}
-                {tab.id === 'restaurant' && hotel.restaurant?.enabled && (
-                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-md bg-stone-100 text-stone-700 shrink-0">
-                    Live
-                  </span>
-                )}
-                {pendingCount > 0 && (
-                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-md bg-amber-100 text-amber-900 shrink-0 font-semibold">
-                    {pendingCount}
-                  </span>
-                )}
-                {unreadInquiryCount > 0 && (
-                  <span className="inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.2 rounded-md bg-stone-100 text-stone-900 shrink-0 font-semibold">
-                    <Bell className="w-3 h-3 text-stone-700 animate-bell-ring" />
-                    {unreadInquiryCount} new
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
+              {/* Tablet & Desktop Underline-Based Navigation Bar (>= md) with Arrow Navigation */}
+              <div className="hidden md:block relative">
+                <div className="relative flex items-center">
+                  {/* Left Scroll Arrow Button with Gradient Fade */}
+                  {canScrollNavLeft && (
+                    <div className="absolute left-0 top-0 bottom-0 z-10 flex items-center pr-3 bg-gradient-to-r from-stone-50 via-stone-50 to-transparent">
+                      <button
+                        type="button"
+                        onClick={() => scrollTabs('left')}
+                        className="h-7 w-7 rounded-full bg-white border border-stone-200 shadow-xs hover:bg-stone-100 flex items-center justify-center text-stone-700 hover:text-stone-950 transition cursor-pointer"
+                        title="Scroll left"
+                        aria-label="Scroll left tabs"
+                      >
+                        <ChevronLeft className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Scrollable Tabs Container */}
+                  <div
+                    ref={desktopNavRef}
+                    className="flex-1 flex items-center overflow-x-auto scroll-smooth gap-4 lg:gap-5 xl:gap-6 border-b border-stone-200/90 pb-0 no-scrollbar [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                    role="tablist"
+                    aria-label="Property management sections"
+                  >
+                    {tabsList.map(tab => {
+                      const Icon = tab.icon;
+                      const pendingCount = tab.id === 'bookings' ? bookings.filter(b => b.status === 'pending').length : 0;
+                      const unreadInquiryCount = tab.id === 'inquiries' ? inquiries.filter(i => 
+                        i.lastSenderId !== user?.uid && 
+                        i.updatedAt && 
+                        (!i.managerLastOpenedAt || i.updatedAt > i.managerLastOpenedAt)
+                      ).length : 0;
+                      const isActive = activeTab === tab.id;
+                      
+                      return (
+                        <button
+                          key={tab.id}
+                          data-tab-id={tab.id}
+                          type="button"
+                          role="tab"
+                          aria-selected={isActive}
+                          onClick={() => requestTab(tab.id)}
+                          className={`flex items-center shrink-0 whitespace-nowrap gap-2 pb-3 pt-1 text-xs sm:text-sm font-medium border-b-2 -mb-px transition-colors cursor-pointer ${
+                            isActive
+                              ? 'border-stone-900 text-stone-900 font-semibold'
+                              : 'border-transparent text-stone-500 hover:text-stone-800 hover:border-stone-300'
+                          }`}
+                        >
+                          <Icon className={`h-4 w-4 shrink-0 ${isActive ? 'text-stone-900' : 'text-stone-400'}`} />
+                          <span>{tab.label}</span>
+                          {dirtyOn(tab.id) && (
+                            <span title="Unsaved changes" className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
+                          )}
+                          {tab.id === 'restaurant' && hotel.restaurant?.enabled && (
+                            <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-md bg-stone-100 text-stone-700 shrink-0">
+                              Live
+                            </span>
+                          )}
+                          {pendingCount > 0 && (
+                            <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-md bg-amber-100 text-amber-900 shrink-0 font-semibold">
+                              {pendingCount}
+                            </span>
+                          )}
+                          {unreadInquiryCount > 0 && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.2 rounded-md bg-stone-100 text-stone-900 shrink-0 font-semibold">
+                              <Bell className="w-3 h-3 text-stone-700 animate-bell-ring" />
+                              {unreadInquiryCount} new
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Right Scroll Arrow Button with Gradient Fade */}
+                  {canScrollNavRight && (
+                    <div className="absolute right-0 top-0 bottom-0 z-10 flex items-center pl-3 bg-gradient-to-l from-stone-50 via-stone-50 to-transparent">
+                      <button
+                        type="button"
+                        onClick={() => scrollTabs('right')}
+                        className="h-7 w-7 rounded-full bg-white border border-stone-200 shadow-xs hover:bg-stone-100 flex items-center justify-center text-stone-700 hover:text-stone-950 transition cursor-pointer"
+                        title="Scroll right to see all menu items"
+                        aria-label="Scroll right tabs"
+                      >
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          );
+        })()}
       </div>
 
       {/* TAB CONTENT: DETAILS */}
@@ -2069,7 +2153,7 @@ export default function ManageHotel() {
                       className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 border border-stone-200/80 px-2.5 py-1 rounded-lg transition shadow-2xs cursor-pointer"
                       title="Analyze description to link common amenities & befitting category"
                     >
-                      <Sparkles className="h-3.5 w-3.5 text-amber-600" />
+                      <Wand2 className="h-3.5 w-3.5 text-amber-600" />
                       <span>Link to Amenities & Category</span>
                     </button>
                     <AIAssistantButton
@@ -2096,7 +2180,7 @@ export default function ManageHotel() {
                       onClick={handleTriggerLinkAnalysis}
                       className="text-xs font-semibold text-stone-600 hover:text-stone-900 inline-flex items-center gap-1 transition cursor-pointer"
                     >
-                      <Sparkles className="h-3 w-3 text-amber-600" />
+                      <Wand2 className="h-3 w-3 text-amber-600" />
                       <span>Auto-detect amenities & category from text</span>
                     </button>
                   )}
@@ -2162,7 +2246,7 @@ export default function ManageHotel() {
               onClick={handleTriggerLinkAnalysis}
               className="text-xs font-semibold text-stone-600 hover:text-stone-900 inline-flex items-center gap-1 cursor-pointer"
             >
-              <Sparkles className="h-3.5 w-3.5 text-amber-600" />
+              <Wand2 className="h-3.5 w-3.5 text-amber-600" />
               <span>Auto-detect from description</span>
             </button>
           )}
@@ -2222,7 +2306,7 @@ export default function ManageHotel() {
                 onClick={handleTriggerLinkAnalysis}
                 className="text-xs font-semibold text-stone-600 hover:text-stone-900 inline-flex items-center gap-1 cursor-pointer"
               >
-                <Sparkles className="h-3.5 w-3.5 text-amber-600" />
+                <Wand2 className="h-3.5 w-3.5 text-amber-600" />
                 <span>Auto-detect from description</span>
               </button>
             )}

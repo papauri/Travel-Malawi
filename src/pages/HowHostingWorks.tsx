@@ -8,14 +8,17 @@ import {
   CheckCircle2,
   Phone,
   MessageSquare,
-  Sparkles,
   Compass,
   Calendar,
   Wallet,
   ShieldCheck,
   Building2,
   ExternalLink,
-  Home
+  Home,
+  Bed,
+  Bath,
+  Utensils,
+  Camera
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useAuthDialog } from '../contexts/AuthDialogContext';
@@ -411,48 +414,218 @@ export default function HowHostingWorks() {
         <div className="bg-[#F8F6F0] rounded-3xl border border-stone-200/90 p-6 sm:p-10">
           <div className="max-w-3xl mb-8">
             <span className="text-xs font-mono font-bold uppercase tracking-wider text-stone-400 block mb-2">
-              Photography Guidelines
+              Photography Guidelines &amp; Angle Blueprints
             </span>
             <h2 className="text-2xl sm:text-3xl font-serif text-stone-900">
-              You do not need a professional photographer.
+              Four Photos That Win the Stay (Instructor Framing Blueprints)
             </h2>
             <p className="mt-2 text-stone-600 text-sm sm:text-base leading-relaxed">
-              Any smartphone taken on a sunny morning with a wiped-clean camera lens produces photos that convert.
-              Our data shows guests book stays after seeing exactly these four simple views:
+              You do not need a professional photographer. Any smartphone shot in natural morning light with a wiped-clean lens works wonders. Whether you offer an <strong>entire holiday cottage, a private beach villa, or boutique en-suite rooms</strong>, follow these four precise camera angles to win guest bookings:
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white rounded-xl p-4 border border-stone-200/80">
-              <span className="text-xs font-mono text-amber-700 font-bold block mb-1">01 &middot; Sleep Shot</span>
-              <h3 className="font-serif font-bold text-stone-900 text-sm mb-1.5">The Bed &amp; Linens</h3>
-              <p className="text-stone-500 text-xs leading-relaxed">
-                Crisp, smooth sheets with natural morning window light. Dissolves the traveler’s hidden fear of uncomfortable mattresses.
-              </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Angle 1: Bed Shot */}
+            <div className="bg-white rounded-2xl p-5 border border-stone-200/90 shadow-2xs flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-xl bg-stone-100 flex items-center justify-center text-stone-800">
+                      <Bed className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="font-serif font-bold text-stone-900 text-sm sm:text-base">1. The Master Bed &amp; Linens</h3>
+                      <span className="text-[10px] font-mono text-stone-500 uppercase">45° Diagonal Isometric · Chest Height (1.4m)</span>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-stone-700 bg-stone-100 px-2 py-0.5 rounded-full border border-stone-200">
+                    Sleep Anchor
+                  </span>
+                </div>
+
+                {/* SVG Blueprint 1 */}
+                <div className="my-3 p-3 bg-stone-50/60 rounded-xl border border-stone-200/80">
+                  <svg viewBox="0 0 460 200" className="w-full h-auto text-stone-800 stroke-current fill-none stroke-[1.4] stroke-linecap-round stroke-linejoin-round select-none">
+                    <line x1="20" y1="20" x2="20" y2="180" className="stroke-stone-300 stroke-[1]" />
+                    <line x1="20" y1="180" x2="440" y2="180" className="stroke-stone-300 stroke-[1]" />
+                    <line x1="20" y1="180" x2="160" y2="75" className="stroke-stone-300 stroke-[1]" strokeDasharray="3 3" />
+                    <path d="M 120 140 L 250 175 L 400 110 L 270 75 Z" className="fill-stone-100 stroke-stone-900 stroke-[2]" />
+                    <path d="M 270 75 L 400 110 L 400 60 L 270 25 Z" className="fill-stone-200 stroke-stone-900 stroke-[1.8]" />
+                    <path d="M 170 130 L 260 155 L 370 105 L 280 80 Z" className="fill-white stroke-stone-600 stroke-[1.2]" />
+                    <rect x="290" y="63" width="38" height="22" rx="5" className="fill-white stroke-stone-800 stroke-[1.5]" />
+                    <rect x="340" y="80" width="38" height="22" rx="5" className="fill-white stroke-stone-800 stroke-[1.5]" />
+                    <rect x="30" y="30" width="55" height="75" rx="3" className="fill-amber-50/60 stroke-stone-700 stroke-[1.5]" />
+                    <path d="M 85 45 L 175 105 M 85 75 L 195 135" stroke="#d97706" strokeWidth="1.2" strokeDasharray="3 2" />
+                    <text x="95" y="38" className="text-[8px] font-mono fill-amber-700 stroke-none font-bold">MORNING SIDE LIGHT</text>
+                    <g transform="translate(45, 130)">
+                      <line x1="0" y1="25" x2="15" y2="0" stroke="#1c1917" strokeWidth="1.5" />
+                      <line x1="30" y1="25" x2="15" y2="0" stroke="#1c1917" strokeWidth="1.5" />
+                      <line x1="15" y1="30" x2="15" y2="0" stroke="#1c1917" strokeWidth="1.5" />
+                      <rect x="8" y="-18" width="14" height="20" rx="3" fill="#1c1917" stroke="#000" strokeWidth="1" />
+                      <circle cx="15" cy="-8" r="2" fill="white" />
+                      <text x="-25" y="42" className="text-[8px] font-mono fill-stone-700 stroke-none font-bold">STAND AT DOOR (1.4M)</text>
+                    </g>
+                    <path d="M 60 120 L 310 75 M 60 120 L 260 165" stroke="#78716c" strokeWidth="1" strokeDasharray="3 3" />
+                    <circle cx="330" cy="83" r="10" stroke="#b45309" strokeWidth="1.2" fill="none" />
+                    <text x="345" y="60" className="text-[8px] font-mono fill-amber-800 stroke-none font-bold">PILLOW FOCUS</text>
+                    <path d="M 90 140 A 25 25 0 0 0 85 115" stroke="#b45309" strokeWidth="1.2" fill="none" />
+                    <text x="96" y="127" className="text-[9px] font-mono fill-stone-700 stroke-none font-bold">45° CORNER ARC</text>
+                  </svg>
+                </div>
+
+                <p className="text-xs text-stone-600 leading-relaxed">
+                  Smooth crisp linens with morning side window light. For <strong>whole houses &amp; private cottages</strong>, photographing the primary suite proves overall comfort for the entire traveling group.
+                </p>
+              </div>
+              <div className="mt-3 pt-2 border-t border-stone-100 text-[11px] text-stone-500 font-mono">
+                ✓ Tip: Stand at the doorway diagonal, phone at chest height, wiped lens.
+              </div>
             </div>
 
-            <div className="bg-white rounded-xl p-4 border border-stone-200/80">
-              <span className="text-xs font-mono text-amber-700 font-bold block mb-1">02 &middot; Aspiration Shot</span>
-              <h3 className="font-serif font-bold text-stone-900 text-sm mb-1.5">The View from Veranda</h3>
-              <p className="text-stone-500 text-xs leading-relaxed">
-                Lake Malawi horizon, granite mountain peak, or lush garden trees. The image guests screenshot to share with friends.
-              </p>
+            {/* Angle 2: Veranda Horizon Shot */}
+            <div className="bg-white rounded-2xl p-5 border border-stone-200/90 shadow-2xs flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-xl bg-stone-100 flex items-center justify-center text-stone-800">
+                      <Compass className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="font-serif font-bold text-stone-900 text-sm sm:text-base">2. The Veranda &amp; Horizon Vista</h3>
+                      <span className="text-[10px] font-mono text-stone-500 uppercase">16:9 Landscape · Rule of Thirds Horizon</span>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-stone-700 bg-stone-100 px-2 py-0.5 rounded-full border border-stone-200">
+                    Aspiration Vista
+                  </span>
+                </div>
+
+                {/* SVG Blueprint 2 */}
+                <div className="my-3 p-3 bg-stone-50/60 rounded-xl border border-stone-200/80">
+                  <svg viewBox="0 0 460 200" className="w-full h-auto text-stone-800 stroke-current fill-none stroke-[1.4] stroke-linecap-round stroke-linejoin-round select-none">
+                    <line x1="20" y1="70" x2="440" y2="70" stroke="#0284c7" strokeWidth="1.2" strokeDasharray="4 2" />
+                    <text x="310" y="63" className="text-[8px] font-mono fill-sky-700 stroke-none font-bold">HORIZON (UPPER 1/3)</text>
+                    <text x="30" y="63" className="text-[8px] font-mono fill-sky-700 stroke-none font-bold">LEVEL BUBBLE ±0.0°</text>
+                    <path d="M 30 70 Q 90 35 160 70 Q 230 40 300 70 Q 370 45 440 70" className="fill-sky-50 stroke-stone-600 stroke-[1.5]" />
+                    <path d="M 40 90 Q 140 85 240 90 T 430 90" stroke="#bae6fd" strokeWidth="1" strokeDasharray="3 3" />
+                    <rect x="20" y="15" width="420" height="14" className="fill-stone-200 stroke-stone-800 stroke-[1.8]" />
+                    <line x1="90" y1="29" x2="90" y2="130" className="stroke-stone-800 stroke-[2.5]" />
+                    <line x1="370" y1="29" x2="370" y2="130" className="stroke-stone-800 stroke-[2.5]" />
+                    <rect x="20" y="130" width="420" height="15" className="fill-stone-200 stroke-stone-900 stroke-[2]" />
+                    <line x1="150" y1="145" x2="150" y2="190" className="stroke-stone-700 stroke-[2]" />
+                    <line x1="290" y1="145" x2="290" y2="190" className="stroke-stone-700 stroke-[2]" />
+                    <g transform="translate(195, 100)">
+                      <rect x="0" y="0" width="16" height="26" rx="3" className="fill-white stroke-stone-900 stroke-[1.5]" />
+                      <line x1="8" y1="-5" x2="8" y2="0" stroke-stone-900 strokeWidth="1.5" />
+                      <circle cx="8" cy="-5" r="3" fill="#1c1917" />
+                      <rect x="22" y="8" width="16" height="18" rx="2" className="fill-amber-100 stroke-stone-900 stroke-[1.5]" />
+                    </g>
+                    <path d="M 40 30 L 30 30 L 30 40 M 420 30 L 430 30 L 430 40 M 30 170 L 30 180 L 40 180 M 430 170 L 430 180 L 420 180" stroke="#1c1917" strokeWidth="2" />
+                    <text x="145" y="175" className="text-[9px] font-mono fill-stone-800 stroke-none font-bold">1/3 VERANDA DECK + 2/3 HORIZON</text>
+                  </svg>
+                </div>
+
+                <p className="text-xs text-stone-600 leading-relaxed">
+                  The Lake Malawi horizon or mountain ridge seen through the veranda railing. For <strong>whole houses &amp; cottages</strong>, this proves the private outdoor footprint where guests relax together.
+                </p>
+              </div>
+              <div className="mt-3 pt-2 border-t border-stone-100 text-[11px] text-stone-500 font-mono">
+                ✓ Tip: Keep the horizon perfectly flat (0.0°). Anchor with a coffee cup or chair in lower 1/3.
+              </div>
             </div>
 
-            <div className="bg-white rounded-xl p-4 border border-stone-200/80">
-              <span className="text-xs font-mono text-amber-700 font-bold block mb-1">03 &middot; Hygiene Shot</span>
-              <h3 className="font-serif font-bold text-stone-900 text-sm mb-1.5">The Spotless Bathroom</h3>
-              <p className="text-stone-500 text-xs leading-relaxed">
-                Clean shower, dry tiles, and clean towels. Reassures high-paying NGO consultants and international tourists immediately.
-              </p>
+            {/* Angle 3: Spotless Bathroom Shot */}
+            <div className="bg-white rounded-2xl p-5 border border-stone-200/90 shadow-2xs flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-xl bg-stone-100 flex items-center justify-center text-stone-800">
+                      <Bath className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="font-serif font-bold text-stone-900 text-sm sm:text-base">3. The Spotless Bathroom</h3>
+                      <span className="text-[10px] font-mono text-stone-500 uppercase">15° Off-Mirror Angle · Chest Height</span>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-stone-700 bg-stone-100 px-2 py-0.5 rounded-full border border-stone-200">
+                    Hygiene Proof
+                  </span>
+                </div>
+
+                {/* SVG Blueprint 3 */}
+                <div className="my-3 p-3 bg-stone-50/60 rounded-xl border border-stone-200/80">
+                  <svg viewBox="0 0 460 200" className="w-full h-auto text-stone-800 stroke-current fill-none stroke-[1.4] stroke-linecap-round stroke-linejoin-round select-none">
+                    <rect x="30" y="25" width="400" height="155" rx="10" className="fill-white stroke-stone-800 stroke-[1.8]" />
+                    <line x1="260" y1="25" x2="260" y2="180" className="stroke-stone-700 stroke-[2]" strokeDasharray="6 3" />
+                    <rect x="280" y="35" width="130" height="30" rx="3" className="fill-stone-100 stroke-stone-700" />
+                    <circle cx="345" cy="50" r="12" className="fill-white stroke-stone-900 stroke-[1.5]" />
+                    <line x1="345" y1="62" x2="345" y2="110" stroke="#0284c7" strokeWidth="1.5" strokeDasharray="3 2" />
+                    <text x="290" y="130" className="text-[8px] font-mono fill-sky-800 stroke-none font-bold">HOT RAIN SHOWER</text>
+                    <rect x="60" y="40" width="85" height="70" rx="4" className="fill-sky-50/50 stroke-stone-800 stroke-[1.5]" />
+                    <text x="75" y="78" className="text-[8px] font-mono fill-stone-500 stroke-none font-bold">MIRROR</text>
+                    <rect x="55" y="115" width="95" height="30" rx="4" className="fill-stone-100 stroke-stone-900 stroke-[1.5]" />
+                    <circle cx="102" cy="130" r="8" className="fill-white stroke-stone-900" />
+                    <g transform="translate(180, 140)">
+                      <rect x="0" y="0" width="16" height="22" rx="3" fill="#1c1917" stroke="#000" strokeWidth="1" />
+                      <circle cx="8" cy="11" r="3" fill="white" />
+                      <line x1="8" y1="0" x2="8" y2="-45" stroke="#d97706" strokeWidth="1.2" strokeDasharray="3 3" />
+                      <text x="-40" y="32" className="text-[8px] font-mono fill-stone-700 stroke-none font-bold">CAMERA AT 15° (NO REFLECTION)</text>
+                    </g>
+                  </svg>
+                </div>
+
+                <p className="text-xs text-stone-600 leading-relaxed">
+                  Spotless walk-in shower, dry tiles, and pristine towels. In <strong>whole houses &amp; cottages</strong> with multiple bathrooms, show the primary en-suite hygiene clearly.
+                </p>
+              </div>
+              <div className="mt-3 pt-2 border-t border-stone-100 text-[11px] text-stone-500 font-mono">
+                ✓ Tip: Stand slightly to the side (15°) so your own reflection stays completely out of the mirror.
+              </div>
             </div>
 
-            <div className="bg-white rounded-xl p-4 border border-stone-200/80">
-              <span className="text-xs font-mono text-amber-700 font-bold block mb-1">04 &middot; Connection Shot</span>
-              <h3 className="font-serif font-bold text-stone-900 text-sm mb-1.5">Boma Fire or Dining Area</h3>
-              <p className="text-stone-500 text-xs leading-relaxed">
-                Where the guest will unwind after a 4-hour drive from Lilongwe with a cold drink or freshly prepared lake chambo.
-              </p>
+            {/* Angle 4: Dining / Boma Hearth Shot */}
+            <div className="bg-white rounded-2xl p-5 border border-stone-200/90 shadow-2xs flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-xl bg-stone-100 flex items-center justify-center text-stone-800">
+                      <Utensils className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="font-serif font-bold text-stone-900 text-sm sm:text-base">4. Dining Area, Kitchen &amp; Boma</h3>
+                      <span className="text-[10px] font-mono text-stone-500 uppercase">Golden Hour Lighting · Eye Level</span>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-stone-700 bg-stone-100 px-2 py-0.5 rounded-full border border-stone-200">
+                    Hospitality Anchor
+                  </span>
+                </div>
+
+                {/* SVG Blueprint 4 */}
+                <div className="my-3 p-3 bg-stone-50/60 rounded-xl border border-stone-200/80">
+                  <svg viewBox="0 0 460 200" className="w-full h-auto text-stone-800 stroke-current fill-none stroke-[1.4] stroke-linecap-round stroke-linejoin-round select-none">
+                    <circle cx="230" cy="90" r="50" className="fill-amber-100/60 stroke-amber-700 stroke-[1.5]" />
+                    <text x="195" y="93" className="text-[8px] font-mono fill-amber-900 stroke-none font-bold">GOLDEN SUNSET</text>
+                    <rect x="70" y="115" width="180" height="40" rx="6" className="fill-stone-100 stroke-stone-900 stroke-[1.8]" />
+                    <circle cx="110" cy="135" r="9" className="fill-white stroke-stone-800 stroke-[1.2]" />
+                    <circle cx="160" cy="135" r="9" className="fill-white stroke-stone-800 stroke-[1.2]" />
+                    <circle cx="210" cy="135" r="9" className="fill-white stroke-stone-800 stroke-[1.2]" />
+                    <rect x="85" y="80" width="150" height="25" rx="4" className="fill-white stroke-stone-900 stroke-[1.8]" />
+                    <text x="105" y="96" className="text-[9px] font-mono fill-stone-800 stroke-none font-bold">DINING / SELF-CATERING TABLE</text>
+                    <circle cx="340" cy="130" r="30" className="fill-stone-200 stroke-stone-800 stroke-[2]" />
+                    <circle cx="340" cy="130" r="16" className="fill-amber-200 stroke-amber-800 stroke-[1.5]" />
+                    <path d="M 335 125 Q 340 115 345 125 T 340 138 Z" fill="#d97706" />
+                    <text x="312" y="172" className="text-[8px] font-mono fill-amber-800 stroke-none font-bold">BOMA FIRE PIT</text>
+                  </svg>
+                </div>
+
+                <p className="text-xs text-stone-600 leading-relaxed">
+                  The communal dining table, open kitchen, or outdoor boma fire. For <strong>whole houses, villas, and cottages</strong>, this highlights self-catering facilities and family evening relaxation.
+                </p>
+              </div>
+              <div className="mt-3 pt-2 border-t border-stone-100 text-[11px] text-stone-500 font-mono">
+                ✓ Tip: Take this shot at 16:30 golden hour with lamps on for inviting warmth.
+              </div>
             </div>
           </div>
         </div>

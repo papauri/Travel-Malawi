@@ -46,7 +46,6 @@ import {
   Building2,
   CalendarCheck,
   Key,
-  Sparkles,
   Lock,
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';

@@ -1209,22 +1209,24 @@ export default function ListProperty() {
     );
   }
 
-  // ---- Gate: no account, or an account that does not host yet ----
-  if (!user || !isHost) {
-    return <HostIntro user={user} enabling={enabling} onEnable={handleEnableHosting} onSignUp={() => openAuth('host')} />;
-  }
-
-  // ---- The wizard ----
+  // ---- The wizard (Unified for both guests and authenticated hosts) ----
   return (
     <div className="bg-stone-50">
       <div className="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 py-6 sm:py-10 md:py-12">
         <div className="mb-6 sm:mb-8 flex flex-wrap items-center justify-between gap-3 sm:gap-4">
           <div className="flex items-center gap-2 sm:gap-3">
             <button
-              onClick={() => navigate('/dashboard')}
+              type="button"
+              onClick={() => {
+                if (user && isHost) {
+                  navigate('/dashboard');
+                } else {
+                  navigate('/');
+                }
+              }}
               className="inline-flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-semibold text-stone-500 transition hover:text-stone-900 cursor-pointer"
             >
-              <ArrowLeft className="h-4 w-4" /> Back to your dashboard
+              <ArrowLeft className="h-4 w-4" /> {user && isHost ? 'Back to your dashboard' : 'Explore Stays'}
             </button>
             <Link
               to="/how-it-works"
@@ -1235,9 +1237,9 @@ export default function ListProperty() {
             <Link
               to="/host-guide"
               target="_blank"
-              className="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 px-3 py-1.5 rounded-full transition"
+              className="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold text-stone-700 bg-white hover:bg-stone-50 border border-stone-200 px-3 py-1.5 rounded-full transition shadow-2xs"
             >
-              <BookOpen className="w-3.5 h-3.5 text-emerald-700" />
+              <BookOpen className="w-3.5 h-3.5 text-stone-500" />
               <span>Host Starter Pack</span>
             </Link>
           </div>
@@ -1266,8 +1268,69 @@ export default function ListProperty() {
           </div>
         </div>
 
+        {/* Hospitable Welcome Banner for Unauthenticated Visitors */}
+        {!user && (
+          <div className="mb-6 p-4 sm:p-5 rounded-2xl bg-white border border-stone-200/90 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xs">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-wider text-stone-500">
+                <span className="font-semibold text-stone-900">Takulandirani</span>
+                <span>·</span>
+                <span>Direct Listing Wizard</span>
+                <span>·</span>
+                <span className="text-stone-600">0% Commission</span>
+              </div>
+              <h3 className="font-serif font-bold text-base sm:text-lg text-stone-900">
+                Draft your stay directly with travelers across Malawi.
+              </h3>
+              <p className="text-xs text-stone-600 max-w-2xl leading-relaxed">
+                Whether you offer an entire holiday cottage, private beach villa, B&amp;B, or safari camp, you can enter your details now. Your draft saves automatically in your browser.
+              </p>
+            </div>
+            <div className="shrink-0 flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={() => openAuth('host')}
+                className="px-4 py-2.5 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-semibold transition cursor-pointer shadow-2xs inline-flex items-center gap-1.5"
+              >
+                <User className="w-3.5 h-3.5" />
+                <span>Create Host Account</span>
+              </button>
+              <Link
+                to="/host-guide"
+                className="px-3.5 py-2.5 bg-stone-50 hover:bg-stone-100 text-stone-700 border border-stone-200 rounded-xl text-xs font-semibold transition inline-flex items-center gap-1.5"
+              >
+                <BookOpen className="w-3.5 h-3.5 text-stone-500" />
+                <span>Host Guide</span>
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {/* Upgrade Banner for Logged-In Guests Becoming Hosts */}
+        {user && !isHost && (
+          <div className="mb-6 p-4 sm:p-5 rounded-2xl bg-white border border-stone-200/90 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xs">
+            <div className="space-y-1">
+              <h3 className="font-serif font-bold text-base sm:text-lg text-stone-900">
+                Start Hosting on This Account
+              </h3>
+              <p className="text-xs text-stone-600 max-w-xl leading-relaxed">
+                You are currently signed in as <strong>{user.displayName || user.email}</strong>. Enable hosting to manage listings, room inventory, and direct guest bookings.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleEnableHosting}
+              disabled={enabling}
+              className="px-4 py-2.5 bg-stone-900 hover:bg-stone-800 disabled:opacity-50 text-white rounded-xl text-xs font-semibold transition cursor-pointer shadow-2xs inline-flex items-center gap-1.5 shrink-0"
+            >
+              {enabling ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Building2 className="w-3.5 h-3.5" />}
+              <span>Enable Hosting</span>
+            </button>
+          </div>
+        )}
+
         <header className="mb-5 sm:mb-7 md:mb-8">
-          <p className="mb-1.5 sm:mb-2 text-[0.65rem] sm:text-[0.7rem] font-bold uppercase tracking-[0.2em] text-emerald-700">
+          <p className="mb-1.5 sm:mb-2 text-[0.65rem] sm:text-[0.7rem] font-bold uppercase tracking-[0.2em] text-stone-500 font-mono">
             Step {step + 1} of {steps.length}
           </p>
           <h1 className="font-serif text-xl sm:text-2xl md:text-3xl lg:text-4xl tracking-tight text-stone-900">{steps[step].title}</h1>
@@ -1319,12 +1382,12 @@ export default function ListProperty() {
                 >
                   <span
                     className={`block h-1.5 rounded-full transition ${
-                      active ? 'bg-stone-900' : done ? 'bg-emerald-500' : 'bg-stone-200'
+                      active ? 'bg-stone-900' : done ? 'bg-stone-800' : 'bg-stone-200'
                     }`}
                   />
                   <span
                     className={`mt-1.5 sm:mt-2 hidden text-[11px] sm:text-xs font-semibold md:block truncate ${
-                      active ? 'text-stone-900' : done ? 'text-emerald-700' : 'text-stone-400'
+                      active ? 'text-stone-900' : done ? 'text-stone-800' : 'text-stone-400'
                     }`}
                   >
                     {s.title}
@@ -1343,7 +1406,7 @@ export default function ListProperty() {
                   <label className={labelClass} htmlFor="listing-name">Property name</label>
                   <div className="flex items-center gap-2">
                     <span className="text-[11px] font-medium text-stone-500 hidden sm:flex items-center gap-1">
-                      <MapPin className="w-3.5 h-3.5 text-emerald-600" />
+                      <MapPin className="w-3.5 h-3.5 text-stone-500" />
                       Google Maps verified
                     </span>
                     {aiStatus.enabled && aiStatus.available && (
@@ -1351,7 +1414,7 @@ export default function ListProperty() {
                         type="button"
                         onClick={() => handleLookupPropertyAI()}
                         disabled={aiLookupLoading || !draft.name.trim()}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-700 hover:bg-emerald-800 text-white shadow-sm transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-stone-900 hover:bg-stone-800 text-white shadow-2xs transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                         title="Look up property details and auto-fill listing fields"
                       >
                         {aiLookupLoading ? (
@@ -1391,8 +1454,8 @@ export default function ListProperty() {
                       className="absolute left-0 right-0 top-full mt-1.5 z-40 bg-white rounded-2xl shadow-xl border border-stone-200 overflow-hidden animate-in fade-in slide-in-from-top-1"
                     >
                       <div className="px-4 py-2 bg-stone-50 border-b border-stone-100 flex items-center justify-between text-[11px] font-semibold text-stone-500 uppercase tracking-wider">
-                        <span className="flex items-center gap-1.5 text-stone-600">
-                          <MapPin className="w-3.5 h-3.5 text-emerald-600" />
+                        <span className="flex items-center gap-1.5 text-stone-700">
+                          <MapPin className="w-3.5 h-3.5 text-stone-500" />
                           Google Maps Suggestions (Malawi)
                         </span>
                         <button
@@ -1406,17 +1469,17 @@ export default function ListProperty() {
                       </div>
                       <ul className="max-h-60 overflow-y-auto divide-y divide-stone-100">
                         {placeSuggestions.map((item, psIdx) => (
-                          <li key={`place-sug-${item.id || psIdx}-${psIdx}`} className="p-2 hover:bg-emerald-50/60 transition flex items-center justify-between gap-2 group">
+                          <li key={`place-sug-${item.id || psIdx}-${psIdx}`} className="p-2 hover:bg-stone-50 transition flex items-center justify-between gap-2 group">
                             <button
                               type="button"
                               onClick={() => handleSelectMalawiPlace(item)}
                               className="flex-1 text-left flex items-start gap-3 min-w-0 cursor-pointer"
                             >
-                              <div className="p-2 rounded-xl bg-stone-100 text-stone-600 group-hover:bg-emerald-100 group-hover:text-emerald-800 transition shrink-0 mt-0.5">
+                              <div className="p-2 rounded-xl bg-stone-100 text-stone-600 group-hover:bg-stone-200 group-hover:text-stone-900 transition shrink-0 mt-0.5">
                                 <Building2 className="w-4 h-4" />
                               </div>
                               <div className="flex-1 min-w-0">
-                                <p className="text-sm font-semibold text-stone-900 group-hover:text-emerald-950 truncate">
+                                <p className="text-sm font-semibold text-stone-900 group-hover:text-stone-950 truncate">
                                   {item.name}
                                 </p>
                                 <p className="text-xs text-stone-500 group-hover:text-stone-700 truncate mt-0.5">
@@ -1432,10 +1495,10 @@ export default function ListProperty() {
                                   handleSelectMalawiPlace(item);
                                   handleLookupPropertyAI(item.name);
                                 }}
-                                className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 px-3 py-1.5 rounded-xl shrink-0 cursor-pointer transition active:scale-95"
+                                className="inline-flex items-center gap-1 text-[11px] font-semibold text-stone-800 bg-stone-100 hover:bg-stone-200 border border-stone-200 px-3 py-1.5 rounded-xl shrink-0 cursor-pointer transition active:scale-95"
                                 title="Auto-fill listing details"
                               >
-                                <ConciergeBell className="w-3 h-3 text-emerald-700" />
+                                <ConciergeBell className="w-3 h-3 text-stone-600" />
                                 <span>Auto-Fill</span>
                               </button>
                             )}
@@ -1464,9 +1527,9 @@ export default function ListProperty() {
 
                 {/* Discovered Property Card */}
                 {aiPropertySuggestion && (
-                  <div className="mt-4 p-5 rounded-2xl bg-gradient-to-br from-emerald-50/95 via-stone-50 to-emerald-50/60 border-2 border-emerald-200/90 text-stone-800 shadow-md animate-in fade-in space-y-4">
+                  <div className="mt-4 p-5 rounded-2xl bg-stone-50 border border-stone-200/90 text-stone-800 shadow-xs animate-in fade-in space-y-4">
                     <div className="flex items-center justify-between">
-                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-600 text-white font-bold text-[11px] uppercase tracking-wider shadow-xs">
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-stone-900 text-white font-semibold text-[11px] uppercase tracking-wider shadow-2xs">
                         <ConciergeBell className="w-3.5 h-3.5 text-amber-300" />
                         <span>Hospitality Registry Discovery</span>
                       </div>
@@ -1486,8 +1549,8 @@ export default function ListProperty() {
                           {aiPropertySuggestion.officialName}
                         </h4>
                         {aiPropertySuggestion.category && (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-900 font-bold text-xs">
-                            <BadgeCheck className="w-3.5 h-3.5 text-emerald-600" />
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-stone-200 text-stone-900 font-semibold text-xs shadow-2xs">
+                            <BadgeCheck className="w-3.5 h-3.5 text-stone-700" />
                             Auto-Categorized: {aiPropertySuggestion.category}
                           </span>
                         )}
@@ -1496,13 +1559,13 @@ export default function ListProperty() {
                       <div className="flex flex-wrap items-center gap-2 mt-2 text-xs">
                         {aiPropertySuggestion.location && (
                           <span className="inline-flex items-center gap-1 text-stone-700 bg-white px-2.5 py-1 rounded-full border border-stone-200 font-medium shadow-2xs">
-                            <MapPin className="w-3.5 h-3.5 text-emerald-600" />
+                            <MapPin className="w-3.5 h-3.5 text-stone-500" />
                             {aiPropertySuggestion.location}
                           </span>
                         )}
                         {aiPropertySuggestion.coordinates && (
-                          <span className="inline-flex items-center gap-1 text-emerald-800 bg-emerald-100/70 px-2.5 py-1 rounded-full font-medium border border-emerald-200/60">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                          <span className="inline-flex items-center gap-1 text-stone-700 bg-white px-2.5 py-1 rounded-full font-medium border border-stone-200 shadow-2xs">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-stone-600" />
                             GPS Verified ({aiPropertySuggestion.coordinates.lat.toFixed(3)}, {aiPropertySuggestion.coordinates.lng.toFixed(3)})
                           </span>
                         )}
@@ -1516,7 +1579,7 @@ export default function ListProperty() {
                     </div>
 
                     {aiPropertySuggestion.summary && (
-                      <p className="text-xs text-stone-700 leading-relaxed italic bg-white/90 p-3 rounded-xl border border-stone-200/80 shadow-2xs">
+                      <p className="text-xs text-stone-700 leading-relaxed italic bg-white p-3 rounded-xl border border-stone-200 shadow-2xs">
                         "{aiPropertySuggestion.summary}"
                       </p>
                     )}
@@ -1542,13 +1605,13 @@ export default function ListProperty() {
                     )}
 
                     {aiPropertySuggestion.suggestedRooms && aiPropertySuggestion.suggestedRooms.length > 0 && (
-                      <div className="bg-white/80 p-3 rounded-xl border border-stone-200/80 space-y-1.5">
+                      <div className="bg-white p-3 rounded-xl border border-stone-200 space-y-1.5 shadow-2xs">
                         <div className="flex items-center justify-between text-[11px] font-bold text-stone-600 uppercase tracking-wider">
                           <span className="flex items-center gap-1.5">
-                            <BedDouble className="w-3.5 h-3.5 text-emerald-600" />
+                            <BedDouble className="w-3.5 h-3.5 text-stone-600" />
                             Auto-Configured Room Types & Pricing
                           </span>
-                          <span className="text-emerald-700 font-medium lowercase">ready to populate</span>
+                          <span className="text-stone-500 font-medium lowercase">ready to populate</span>
                         </div>
                         <div className="grid gap-2 sm:grid-cols-2">
                           {aiPropertySuggestion.suggestedRooms.map((r, ri) => (
@@ -1567,10 +1630,10 @@ export default function ListProperty() {
                       <button
                         type="button"
                         onClick={() => handleApplyAISuggestion(true)}
-                        className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-5 py-2.5 rounded-xl text-xs shadow-md transition active:scale-95 cursor-pointer"
+                        className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-stone-900 hover:bg-stone-800 text-white font-semibold px-5 py-2.5 rounded-xl text-xs shadow-2xs transition active:scale-95 cursor-pointer"
                       >
                         <ConciergeBell className="w-3.5 h-3.5 text-amber-300" />
-                        <span>Auto-Fill All Listing Fields & Categorize</span>
+                        <span>Auto-Fill All Listing Fields &amp; Categorize</span>
                       </button>
                       <button
                         type="button"
@@ -1677,14 +1740,14 @@ export default function ListProperty() {
                 </div>
 
                 {aiCategorized && draft.category && (
-                  <div className="mb-3.5 p-3 rounded-xl bg-emerald-50/90 border border-emerald-200 text-emerald-900 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 animate-in fade-in">
+                  <div className="mb-3.5 p-3 rounded-xl bg-stone-100/90 border border-stone-200 text-stone-800 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 animate-in fade-in">
                     <div className="flex items-center gap-2">
-                      <BadgeCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <BadgeCheck className="w-4 h-4 text-stone-700 shrink-0" />
                       <span>
-                        Automatically categorized as <span className="font-bold underline decoration-emerald-500 underline-offset-2">{draft.category}</span> based on verified hospitality registry data.
+                        Categorized as <span className="font-bold underline decoration-stone-400 underline-offset-2">{draft.category}</span> based on hospitality registry data.
                       </span>
                     </div>
-                    <span className="text-[11px] font-medium text-emerald-700 bg-emerald-100/70 px-2.5 py-1 rounded-full shrink-0 self-start sm:self-auto">
+                    <span className="text-[11px] font-medium text-stone-600 bg-white px-2.5 py-1 rounded-full border border-stone-200 shrink-0 self-start sm:self-auto shadow-2xs">
                       Tap any card below to override
                     </span>
                   </div>
@@ -1855,7 +1918,7 @@ export default function ListProperty() {
                       </button>
                     )}
                   </div>
-                  <span className={draft.description.trim().length < DESCRIPTION_MIN ? 'text-stone-400' : 'text-emerald-600'}>
+                  <span className={draft.description.trim().length < DESCRIPTION_MIN ? 'text-stone-400' : 'text-stone-700 font-medium'}>
                     {draft.description.trim().length} / {DESCRIPTION_MAX}
                   </span>
                 </div>
@@ -1980,14 +2043,14 @@ export default function ListProperty() {
                     {draft.amenities.map((amenity, aIdx) => (
                       <span
                         key={`${amenity}-${aIdx}`}
-                        className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-800"
+                        className="inline-flex items-center gap-1.5 rounded-full bg-stone-100 px-3 py-1.5 text-sm font-medium text-stone-800 border border-stone-200"
                       >
                         {amenity}
                         <button
                           type="button"
                           aria-label={`Remove ${amenity}`}
                           onClick={() => toggleAmenity(amenity)}
-                          className="text-emerald-600 transition hover:text-emerald-900"
+                          className="text-stone-400 hover:text-stone-700 transition cursor-pointer"
                         >
                           <X className="h-3.5 w-3.5" />
                         </button>
@@ -2034,11 +2097,11 @@ export default function ListProperty() {
                 <div>
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
-                      <div className="inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-800 text-xs font-bold px-3 py-1 rounded-full mb-2">
-                        <Home className="w-3.5 h-3.5" />
+                      <div className="inline-flex items-center gap-1.5 bg-stone-100 text-stone-800 border border-stone-200 text-xs font-semibold px-3 py-1 rounded-full mb-2 shadow-2xs">
+                        <Home className="w-3.5 h-3.5 text-stone-700" />
                         <span>Whole Space / Entire Property Setup</span>
                       </div>
-                      <h3 className="text-lg font-serif font-bold text-stone-900">Entire Place Capacity & Nightly Rate</h3>
+                      <h3 className="text-lg font-serif font-bold text-stone-900">Entire Place Capacity &amp; Nightly Rate</h3>
                       <p className="text-sm text-stone-600 mt-0.5">
                         Guests book the whole place as a single exclusive reservation. Set the property specifications and whole-property rate.
                       </p>
@@ -2186,7 +2249,7 @@ export default function ListProperty() {
                           });
                           toast.success(`Calculated MK rate: MK ${mwk.toLocaleString()}`);
                         }}
-                        className="mt-1 text-[11px] text-emerald-700 font-semibold hover:underline cursor-pointer"
+                        className="mt-1 text-[11px] text-stone-700 font-semibold hover:underline cursor-pointer"
                       >
                         Auto-calculate MK from USD →
                       </button>
@@ -2257,12 +2320,12 @@ export default function ListProperty() {
                           }}
                           className={`p-3 rounded-xl border text-left text-xs font-semibold flex items-center justify-between transition cursor-pointer ${
                             checked
-                              ? 'bg-emerald-50 border-emerald-300 text-emerald-950 shadow-2xs'
+                              ? 'bg-stone-900 border-stone-900 text-white shadow-2xs'
                               : 'bg-white border-stone-200 text-stone-700 hover:border-stone-300'
                           }`}
                         >
                           <span>{inc.label}</span>
-                          <span className={`w-4 h-4 rounded flex items-center justify-center text-[10px] ${checked ? 'bg-emerald-600 text-white' : 'border border-stone-300'}`}>
+                          <span className={`w-4 h-4 rounded flex items-center justify-center text-[10px] ${checked ? 'bg-white text-stone-900 font-bold' : 'border border-stone-300'}`}>
                             {checked ? '✓' : ''}
                           </span>
                         </button>
@@ -2334,7 +2397,7 @@ export default function ListProperty() {
                               </h4>
                               <div className="flex flex-wrap items-center gap-1.5 mt-0.5 text-xs text-stone-600">
                                 {room.prices?.USD ? (
-                                  <span className="font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
+                                  <span className="font-semibold text-stone-900 bg-stone-100 px-1.5 py-0.5 rounded border border-stone-200">
                                     ${room.prices.USD} USD
                                   </span>
                                 ) : null}
@@ -2783,7 +2846,7 @@ export default function ListProperty() {
                       {/* Currency Checkboxes */}
                       <div className="flex flex-wrap items-center gap-3">
                         <label className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-semibold cursor-pointer transition ${
-                          hasUsd ? 'bg-white border-emerald-500 text-emerald-900 shadow-2xs' : 'bg-stone-100 border-stone-200 text-stone-500'
+                          hasUsd ? 'bg-white border-stone-900 text-stone-900 shadow-2xs' : 'bg-stone-100 border-stone-200 text-stone-500'
                         }`}>
                           <input
                             type="checkbox"
@@ -2806,7 +2869,7 @@ export default function ListProperty() {
                               }
                               set('rooms', updated);
                             }}
-                            className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4"
+                            className="rounded text-stone-900 focus:ring-stone-900 w-4 h-4"
                           />
                           <span>US Dollar ($ USD)</span>
                         </label>
@@ -2957,7 +3020,7 @@ export default function ListProperty() {
 
                           <div className="grid grid-cols-2 gap-3 bg-amber-50/50 p-3 rounded-lg border border-amber-100">
                             <div>
-                              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800">Suggested USD</span>
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-stone-700">Suggested USD</span>
                               <p className="text-lg font-bold text-stone-900">${aiRateData.usd} <span className="text-xs font-normal text-stone-500">/nt</span></p>
                             </div>
                             <div>
@@ -3300,9 +3363,9 @@ export default function ListProperty() {
               </div>
 
               {/* Public Booking & Front Desk Contact */}
-              <div className="rounded-2xl border border-emerald-100 bg-emerald-50/40 p-5 sm:p-6 space-y-5">
+              <div className="rounded-2xl border border-stone-200 bg-white p-5 sm:p-6 space-y-5 shadow-2xs">
                 <div className="flex items-start gap-3">
-                  <div className="rounded-xl bg-emerald-600 p-2 text-white shadow-2xs">
+                  <div className="rounded-xl bg-stone-900 p-2 text-white shadow-2xs">
                     <Mail className="h-5 w-5" />
                   </div>
                   <div>
@@ -3449,13 +3512,13 @@ export default function ListProperty() {
                   </div>
                 </div>
               ) : (
-                <div className="rounded-2xl border border-stone-200 bg-stone-50 p-8 text-center shadow-sm">
-                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-green-600 mb-4">
-                    <BadgeCheck className="h-8 w-8" />
+                <div className="rounded-2xl border border-stone-200 bg-white p-8 text-center shadow-xs">
+                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-stone-100 text-stone-900 mb-4 border border-stone-200">
+                    <BadgeCheck className="h-7 w-7 text-stone-800" />
                   </div>
-                  <h3 className="font-serif text-2xl text-stone-900 mb-2">Listing is Free During Beta!</h3>
-                  <p className="text-stone-600 max-w-md mx-auto">
-                    Currently, there are no fees for listing your property. You get full access to all features at zero cost. Enjoy!
+                  <h3 className="font-serif text-2xl text-stone-900 mb-2 font-bold">0% Commission · Free Host Listing</h3>
+                  <p className="text-stone-600 max-w-md mx-auto text-xs sm:text-sm leading-relaxed">
+                    Listing your property on Travel Malawi is completely free. We take 0% commission on direct bookings. Guests settle payments directly with you.
                   </p>
                 </div>
               )}
@@ -3562,8 +3625,8 @@ export default function ListProperty() {
                       <div>
                         <div className="flex items-center justify-between mb-3">
                           <div className="flex items-center gap-2">
-                            <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full">
-                              <Home className="w-3 h-3 text-emerald-700" /> Entire Place
+                            <span className="inline-flex items-center gap-1 bg-stone-100 text-stone-800 text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border border-stone-200">
+                              <Home className="w-3 h-3 text-stone-700" /> Entire Place
                             </span>
                             <h4 className="text-xs font-bold uppercase tracking-wider text-stone-800">
                               Whole Property Setup & Nightly Rate
@@ -3578,19 +3641,19 @@ export default function ListProperty() {
                           </button>
                         </div>
 
-                        <div className="bg-emerald-50/60 p-4 rounded-xl border border-emerald-200/80 space-y-2">
+                        <div className="bg-stone-50 p-4 rounded-xl border border-stone-200 space-y-2">
                           <div className="flex flex-wrap items-center justify-between gap-2">
                             <span className="font-serif font-bold text-base text-stone-900">
                               Entire {draft.entirePlaceDetails?.propertyType || 'Place'}
                             </span>
                             <div className="flex items-center gap-2">
                               {draft.entirePlaceDetails?.ratePerNightUsd ? (
-                                <span className="text-emerald-900 font-bold bg-white px-2.5 py-1 rounded-lg border border-emerald-200 text-xs shadow-2xs">
+                                <span className="text-stone-900 font-bold bg-white px-2.5 py-1 rounded-lg border border-stone-200 text-xs shadow-2xs">
                                   ${draft.entirePlaceDetails.ratePerNightUsd} USD / night
                                 </span>
                               ) : null}
                               {draft.entirePlaceDetails?.ratePerNightMwk ? (
-                                <span className="text-blue-900 font-bold bg-white px-2.5 py-1 rounded-lg border border-blue-200 text-xs shadow-2xs">
+                                <span className="text-stone-900 font-bold bg-white px-2.5 py-1 rounded-lg border border-stone-200 text-xs shadow-2xs">
                                   MK {Number(draft.entirePlaceDetails.ratePerNightMwk).toLocaleString()} / night
                                 </span>
                               ) : null}
@@ -3646,7 +3709,7 @@ export default function ListProperty() {
                                 <p className="text-stone-600 line-clamp-1">{room.description || 'No description provided'}</p>
                                 <div className="flex flex-wrap items-center gap-2 pt-1 font-semibold">
                                   {room.prices?.USD ? (
-                                    <span className="text-emerald-800 bg-emerald-100/70 px-2 py-0.5 rounded">
+                                    <span className="text-stone-900 bg-stone-100 px-2 py-0.5 rounded border border-stone-200">
                                       ${room.prices.USD} USD / night
                                     </span>
                                   ) : null}
@@ -3780,7 +3843,7 @@ export default function ListProperty() {
               type="button"
               onClick={handleSubmit}
               disabled={submitting}
-              className="inline-flex items-center gap-2 rounded-full bg-emerald-700 px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-emerald-800 disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-full bg-stone-900 px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-stone-800 disabled:opacity-60 cursor-pointer shadow-xs"
             >
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               {submitting ? 'Sending…' : 'Submit for review'}

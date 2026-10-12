@@ -48,17 +48,10 @@ export default function Footer() {
         <div>
           <h4 className="text-white font-serif font-semibold text-sm sm:text-base mb-2.5 sm:mb-4">For Property Owners</h4>
           <ul className="space-y-2 sm:space-y-3 text-xs sm:text-sm">
-            <li><Link to="/how-it-works" className="hover:text-white transition inline-block py-0.5">How Hosting Works</Link></li>
+            <li><Link to="/how-hosting-works" className="hover:text-white transition inline-block py-0.5">How Hosting Works</Link></li>
             <li><Link to="/list-your-property" className="hover:text-white transition inline-block py-0.5">List Your Property</Link></li>
+            <li><Link to="/host-guide" className="hover:text-white transition inline-block py-0.5">Host Starter Pack</Link></li>
             <li><Link to="/dashboard" className="hover:text-white transition inline-block py-0.5">Host Dashboard</Link></li>
-            {showHostStarterPack && (
-              <li>
-                <Link to="/host-guide" className="hover:text-white transition flex items-center gap-1.5 py-0.5">
-                  <span>Host Starter Pack</span>
-                  <span className="bg-stone-800 text-stone-300 border border-stone-700 text-[10px] font-medium px-1.5 py-0.5 rounded-full">Host Only</span>
-                </Link>
-              </li>
-            )}
             {showMarketingPlaybook && (
               <>
                 <li><Link to="/marketing" className="text-stone-400 hover:text-white transition text-xs inline-block py-0.5">Marketing Playbook</Link></li>
@@ -153,7 +146,7 @@ export default function Footer() {
           </button>
           <Link to="/privacy" className="hover:text-white transition py-1">Privacy Policy</Link>
           <Link to="/terms" className="hover:text-white transition py-1">Terms of Service</Link>
-          <Link to="/refunds" className="hover:text-white transition py-1">Refunds</Link>
+          <Link to="/refunds" className="hover:text-white transition py-1">Refunds &amp; Cancellations</Link>
         </div>
       </div>
     </footer>

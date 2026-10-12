@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   X, Save, RotateCcw, Eye, Code2, Columns2, 
   Bold, Italic, Heading2, Heading3, List, Table, 
-  AlertCircle, Check, Sparkles, ExternalLink, HelpCircle
+  AlertCircle, Check, ExternalLink, HelpCircle
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { AdminDocMeta, markdownToReadableText } from '../lib/docUtils';

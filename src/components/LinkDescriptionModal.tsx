@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, Check, X, Tag, Coffee, ShieldCheck, Loader2, ArrowRight } from 'lucide-react';
+import { Wand2, Check, X, Tag, Coffee, ShieldCheck, Loader2, ArrowRight } from 'lucide-react';
 import { PropertyCategory, PROPERTY_CATEGORIES, COMMON_AMENITIES } from '../lib/listing';
 import { DescriptionAnalysisResult } from '../lib/descriptionAnalyzer';
 
@@ -71,7 +71,7 @@ export default function LinkDescriptionModal({
         <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-stone-100 bg-stone-50/50">
           <div className="flex items-center gap-2.5">
             <span className="p-2 rounded-xl bg-amber-500/10 text-amber-600 border border-amber-500/20">
-              <Sparkles className="h-5 w-5" />
+              <Wand2 className="h-5 w-5" />
             </span>
             <div>
               <h3 className="text-base sm:text-lg font-serif font-bold text-stone-900">
@@ -110,7 +110,7 @@ export default function LinkDescriptionModal({
               {/* Reasoning Card */}
               {analysis.reasoning && (
                 <div className="rounded-xl border border-amber-200/80 bg-amber-50/60 p-3.5 text-xs text-stone-700 flex items-start gap-2.5">
-                  <Sparkles className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                  <Wand2 className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
                   <div>
                     <span className="font-semibold text-stone-900">Ulendo Assessment: </span>
                     {analysis.reasoning}

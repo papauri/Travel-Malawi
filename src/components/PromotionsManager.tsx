@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Hotel, Promotion, SaleType, PromotionTarget, CurrencyCode, DiscountType, RoomType } from '../types';
 import SectionCard from './SectionCard';
-import { Percent, Plus, Trash2, Save, Loader2, Calendar, Eye, Tag, Sparkles, Check, DollarSign, Briefcase } from 'lucide-react';
+import { Percent, Plus, Trash2, Save, Loader2, Calendar, Eye, Tag, Check, DollarSign, Briefcase } from 'lucide-react';
 import { db } from '../lib/firebase';
 import { doc, collection, query, where, getDocs, runTransaction } from 'firebase/firestore';
 import toast from 'react-hot-toast';

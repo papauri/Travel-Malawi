@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  Sparkles,
   Compass,
   MapPin,
   Calendar,
@@ -357,8 +356,8 @@ Plan and book direct with 0% fees on Travel Malawi: https://travel-malawi.ai.stu
       {/* 2. Loading State Skeleton */}
       {loading && (
         <div className="bg-white rounded-3xl p-8 border border-stone-200 shadow-xs text-center space-y-4">
-          <div className="w-12 h-12 rounded-2xl bg-emerald-100 flex items-center justify-center mx-auto text-emerald-700 animate-pulse">
-            <Sparkles className="w-6 h-6" />
+          <div className="w-12 h-12 rounded-2xl bg-amber-100 flex items-center justify-center mx-auto text-amber-800 animate-pulse">
+            <Compass className="w-6 h-6" />
           </div>
           <div className="space-y-1">
             <h4 className="font-serif font-bold text-lg text-stone-900">
@@ -369,7 +368,7 @@ Plan and book direct with 0% fees on Travel Malawi: https://travel-malawi.ai.stu
             </p>
           </div>
           <div className="w-48 h-1.5 bg-stone-100 rounded-full mx-auto overflow-hidden">
-            <div className="w-full h-full bg-emerald-600 animate-pulse" />
+            <div className="w-full h-full bg-stone-900 animate-pulse" />
           </div>
         </div>
       )}

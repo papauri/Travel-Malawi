@@ -1040,15 +1040,13 @@ export default function MyBookings() {
 
       <ConfirmDialog
         isOpen={!!cancelTarget}
-        title="Cancel this booking?"
+        title="Cancel this booking request?"
         message={
           cancelTarget
-            ? cancellationTerms(cancelTarget).isFree
-              ? `Your stay at ${cancelTarget.hotel?.name ?? 'this property'} starts on ${formatDateStr(cancelTarget.checkIn)}. You are outside the ${FREE_CANCELLATION_DAYS}-day window, so cancelling is free.`
-              : `Your stay starts in under ${FREE_CANCELLATION_DAYS} days, so the property's late-cancellation terms apply. Contact them directly if you need to reschedule instead.`
+            ? `Your cancellation request will be sent directly to ${cancelTarget.hotel?.name ?? 'the property'}. Please note that Travel Malawi does not hold funds or handle refunds; any deposit return, refund, or cancellation terms are governed strictly by the property at its sole discretion. Please contact the host directly to resolve any deposit settlements.`
             : ''
         }
-        confirmText="Cancel booking"
+        confirmText="Confirm cancellation"
         cancelText="Keep booking"
         isDestructive
         onConfirm={() => { if (cancelTarget) handleCancel(cancelTarget); }}

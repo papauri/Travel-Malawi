@@ -12,7 +12,6 @@ import {
   Share2, 
   Check, 
   HelpCircle, 
-  Sparkles, 
   ChevronUp, 
   ChevronDown, 
   Car, 

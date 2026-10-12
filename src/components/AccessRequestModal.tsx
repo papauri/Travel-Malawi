@@ -272,8 +272,8 @@ export default function AccessRequestModal() {
             </button>
           </div>
 
-          <div className="grid grid-cols-2 gap-1.5">
-            {MALAWI_HUBS.slice(0, 6).map((hub) => {
+          <div className="grid grid-cols-2 gap-1.5 max-h-[210px] overflow-y-auto pr-0.5 scrollbar-thin">
+            {MALAWI_HUBS.map((hub) => {
               const isSelected = !isGPSActive && selectedHubId === hub.id;
               return (
                 <button
@@ -317,7 +317,7 @@ export default function AccessRequestModal() {
                 <MapPin className="w-3.5 h-3.5 text-stone-500 shrink-0 mt-0.5" />
                 <div className="min-w-0">
                   <div className="font-medium text-stone-900 text-xs">Geographic Location</div>
-                  <p className="text-stone-500 text-[10px] truncate mt-0.5">Calculates driving distance and travel times.</p>
+                  <p className="text-stone-500 text-[10px] truncate mt-0.5">Calculates driving times along M1, M5 &amp; lakeshore passes.</p>
                 </div>
               </div>
               <button
@@ -343,7 +343,7 @@ export default function AccessRequestModal() {
                 <Mic className="w-3.5 h-3.5 text-stone-500 shrink-0 mt-0.5" />
                 <div className="min-w-0">
                   <div className="font-medium text-stone-900 text-xs">Microphone</div>
-                  <p className="text-stone-500 text-[10px] truncate mt-0.5">Voice messages and inquiries with hosts.</p>
+                  <p className="text-stone-500 text-[10px] truncate mt-0.5">Voice messages and inquiries with property hosts.</p>
                 </div>
               </div>
               <button
@@ -369,7 +369,7 @@ export default function AccessRequestModal() {
                 <Video className="w-3.5 h-3.5 text-stone-500 shrink-0 mt-0.5" />
                 <div className="min-w-0">
                   <div className="font-medium text-stone-900 text-xs">Camera</div>
-                  <p className="text-stone-500 text-[10px] truncate mt-0.5">Optional video previews for lodge rooms.</p>
+                  <p className="text-stone-500 text-[10px] truncate mt-0.5">Voluntary photo updates and room video walkthroughs.</p>
                 </div>
               </div>
               <button

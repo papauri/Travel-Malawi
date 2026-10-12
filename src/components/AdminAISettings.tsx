@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Power, CheckCircle2, AlertTriangle, Key, ExternalLink, 
   RefreshCw, Play, Loader2, Eye, EyeOff, Check,
-  Sparkles, Globe, Search, ArrowRight, ShieldCheck,
+  Cpu, Globe, Search, ArrowRight, ShieldCheck,
   SlidersHorizontal, TableProperties, ChevronRight, X
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -740,7 +740,7 @@ export default function AdminAISettings() {
                     {fetchingProviderModels[selectedProviderId] ? (
                       <Loader2 className="w-3 h-3 animate-spin text-stone-700" />
                     ) : (
-                      <Sparkles className="w-3 h-3 text-stone-500" />
+                      <Cpu className="w-3 h-3 text-stone-500" />
                     )}
                     <span>Browse Live Model Catalog</span>
                   </button>
