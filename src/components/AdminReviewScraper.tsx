@@ -51,7 +51,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
     'TripAdvisor', 'Google Reviews', 'Booking.com', 'SafariBookings'
   ]);
   const [minRating, setMinRating] = useState<number>(4);
-  const [reviewCount, setReviewCount] = useState<number>(8);
+  const [reviewCount, setReviewCount] = useState<number>(4);
   const [showAdvancedOptions, setShowAdvancedOptions] = useState<boolean>(false);
 
   // Discovery State
@@ -598,10 +598,8 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
                       onChange={(e) => setReviewCount(Number(e.target.value))}
                       className="w-full bg-white border border-stone-200 rounded-lg px-2.5 py-1.5 text-xs text-stone-900 focus:border-stone-900 outline-none"
                     >
-                      <option value={6}>6 Reviews</option>
-                      <option value={8}>8 Reviews</option>
-                      <option value={12}>12 Reviews</option>
-                      <option value={15}>15 Reviews</option>
+                      <option value={4}>4 Reviews (Ultra-Lean ~300 tokens)</option>
+                      <option value={6}>6 Reviews (~450 tokens)</option>
                     </select>
                   </div>
 
@@ -623,10 +621,15 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
             )}
 
             {/* Launch Search Action */}
-            <div className="flex items-center justify-between pt-1">
-              <span className="text-xs text-stone-500">
-                Searching verified reviews across <strong className="text-stone-800">{selectedSources.length} channels</strong>
-              </span>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs text-stone-500">
+                  Searching verified reviews across <strong className="text-stone-800">{selectedSources.length} channels</strong>
+                </span>
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-stone-100 text-stone-700 border border-stone-200">
+                  Ultra-Lean Token Mode (&lt;400 tokens)
+                </span>
+              </div>
 
               <button
                 type="button"
