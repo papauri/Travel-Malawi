@@ -525,8 +525,10 @@ export default function InteractiveMap({
       markerRef.current = null;
       originMarkerRef.current = null;
       userLocationMarkerRef.current = null;
-      userAccuracyCircleRef.current = null;
-      distanceMarkerRef.current = null;
+      userLocationCircleRef.current = null;
+      userRouteCasingRef.current = null;
+      userRoutePolylineRef.current = null;
+      midpointMarkerRef.current = null;
       polylineRef.current = null;
       polylineCasingRef.current = null;
       tileLayerRef.current = null;
