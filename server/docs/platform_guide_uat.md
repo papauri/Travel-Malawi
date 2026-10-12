@@ -26,12 +26,14 @@ This guide sets out the test checklists, standards and acceptance criteria for T
 * **B1 WhatsApp enquiries:** The WhatsApp button opens a message with dates, number of guests and room already filled in.
 * **B2 Offline directions:** GPS coordinates open the phone's own navigation app (Google Maps or OsmAnd) and work without mobile data when maps have been saved.
 * **B3 Booking confirmation:** The confirmation shows clear payment details (Airtel Money, TNM Mpamba or bank transfer).
+* **B4 Two-way direct guest chat:** Guests can open real-time in-app chat with the property manager directly on the listing page or booking. Verify typing indicators, manager presence, and instant messaging.
 
 ### Suite C: Property manager tools
 
 * **C1 Property page:** Photos, amenities and check-in and check-out policies display clearly.
 * **C2 Calendar and date blocking:** Blocking dates prevents double bookings, and check-out must be after check-in.
 * **C3 Bulk rate changes:** Seasonal increases or discounts apply correctly across several rooms.
+* **C4 Ulendo Concierge AI copilot chat:** Managers can chat fully with Ulendo inside the Host Dashboard for seasonal pricing proposals, daily blackboard specials (lake fish of the day), and drafted guest replies.
 
 ### Suite D: Partner documents
 

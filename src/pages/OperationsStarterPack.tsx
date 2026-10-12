@@ -238,6 +238,16 @@ export default function OperationsStarterPack() {
                     <td className={td}>&ldquo;You will never log into an app. Guest inquiries land straight in your WhatsApp with room, dates, and total calculated. You confirm with one tap.&rdquo;</td>
                   </tr>
                   <tr>
+                    <td className={`${td} font-medium text-stone-900`}>&ldquo;Can guests contact us directly before booking?&rdquo;</td>
+                    <td className={`${td} text-stone-500`}>Opaque communication or masked numbers.</td>
+                    <td className={td}>&ldquo;Yes! Travelers chat directly with your manager via in-app real-time messaging and direct WhatsApp. Coordinate boat transfers, Lake Chambo dinners, and road directions with zero friction.&rdquo;</td>
+                  </tr>
+                  <tr>
+                    <td className={`${td} font-medium text-stone-900`}>&ldquo;What if I need help pricing rooms or drafting replies?&rdquo;</td>
+                    <td className={`${td} text-stone-500`}>Operational hesitation or copywriting worry.</td>
+                    <td className={td}>&ldquo;You have Ulendo Concierge AI built right into your Host Dashboard. Chat with Ulendo 24/7 for seasonal rate recommendations, daily restaurant blackboard updates, and drafted guest notes.&rdquo;</td>
+                  </tr>
+                  <tr>
                     <td className={`${td} font-medium text-stone-900`}>&ldquo;Why is it free? What is the catch?&rdquo;</td>
                     <td className={`${td} text-stone-500`}>Suspicion of hidden future fees.</td>
                     <td className={td}>&ldquo;No catch. We are partnering with 10 flagship stays per region to build the national network. We monetize optional corporate marketing packages later, never your baseline bookings.&rdquo;</td>
@@ -252,7 +262,29 @@ export default function OperationsStarterPack() {
             </div>
           </section>
 
-          {/* Section 4: field scout form */}
+          {/* Section 4: Dual-Channel Communication */}
+          <section className="mt-10">
+            <h2 className="text-xl font-semibold text-stone-900">4. Two-way direct guest chat &amp; 24/7 Ulendo Concierge Copilot</h2>
+            <p className="mt-3 text-stone-700">
+              When briefing lodge general managers and cottage owners, emphasize our two flagship communication advantages:
+            </p>
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="p-4 bg-stone-50 border border-stone-200 rounded-xl space-y-2">
+                <p className="font-semibold text-stone-900 text-sm">Direct Guest-to-Manager Inquiries</p>
+                <p className="text-xs text-stone-600 leading-relaxed">
+                  Travelers can chat directly with property managers in real time via in-app messaging and direct WhatsApp. No opaque call centers, no masked phone numbers. Ideal for coordinating Lake Malawi boat pickups, 4x4 road conditions, and custom Lake Chambo meal preparation.
+                </p>
+              </div>
+              <div className="p-4 bg-stone-900 text-stone-100 border border-stone-800 rounded-xl space-y-2">
+                <p className="font-semibold text-white text-sm">24/7 Ulendo Concierge AI Copilot</p>
+                <p className="text-xs text-stone-300 leading-relaxed">
+                  Inside the Host Dashboard, managers can chat with Ulendo—our resident Malawian hospitality AI concierge—to recommend seasonal pricing in MWK and USD, draft polite deposit reminders, update daily blackboard fish specials, and optimize listing amenities with 1 tap.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* Section 5: field scout form */}
           <section id="scout-form" className="mt-12 pt-8 border-t border-stone-200">
             <h2 className="text-xl font-semibold text-stone-900">Log a new lodge lead or field observation</h2>
             <p className="mt-2 text-stone-500">

@@ -39,10 +39,18 @@ Use this sequence on WhatsApp or in person with lodge managers and cottage owner
 | :--- | :--- | :--- |
 | "We already use Booking.com." | Losing international guests. | "Please keep it. We focus on your domestic, corporate and regional guests at 0% commission, so you are not paying $25 commission on a guest driving from Area 43." |
 | "I don't have time to manage another app." | Complexity and learning time. | "You do not need to log in to anything. Booking requests arrive on your WhatsApp with room type, dates and total already calculated, and you confirm with one reply." |
+| "Can guests contact us directly before booking?" | Opaque communication or masked numbers. | "Yes! Travelers can chat directly with your manager via in-app real-time messaging and WhatsApp. Coordinate boat transfers, Lake Chambo dinners, and road directions with zero friction." |
+| "What if I need help pricing rooms or drafting replies?" | Operational hesitation or copywriting worry. | "You have Ulendo Concierge AI built right into your Host Dashboard. Chat with Ulendo 24/7 for seasonal rate recommendations, daily restaurant blackboard updates, and drafted guest notes." |
 | "Why is it free? What is the catch?" | Hidden fees later. | "There is no catch. We are starting with a limited group of founding properties in each region to build the network. We plan to earn from optional marketing packages, not from commission on your room bookings during launch." |
 | "We only take cash on arrival." | Payment disputes and tax questions. | "You can keep doing that. Guests can also send a deposit to your Airtel Money, TNM Mpamba or bank account (NBM, Standard Bank, FDH Bank or Centenary Bank), which reduces last-minute no-shows." |
 
-## 4. Listing quality checks
+## 4. Two-Way Direct Guest Chat & Ulendo Concierge AI Copilot
+
+Make sure every prospective host understands our two flagship communication advantages:
+1. **Direct Guest Chat (In-App & WhatsApp):** Guests can chat directly with property managers on every listing and booking. No hidden numbers, no delayed call center emails. Perfect for Malawian travel logistics (boat arrivals from Monkey Bay, dirt road navigation, Chambo dinner prep).
+2. **Ulendo Concierge AI for Managers:** Inside the Host Dashboard, managers can chat 24/7 with Ulendo—our resident Malawian hospitality AI concierge—to recommend rates in MWK and USD, draft polite deposit reminders, update daily dining boards, and optimize amenities with 1 tap.
+
+## 5. Listing quality checks
 
 Before a property is marked **Approved** in the Admin Dashboard, check:
 
@@ -50,3 +58,4 @@ Before a property is marked **Approved** in the Admin Dashboard, check:
 2. **Real photos (at least 3).** Outside view, bedroom, and bathroom or view. No blurry or watermarked images.
 3. **Prices in both currencies.** MWK rounded to the nearest 1,000 and USD in whole dollars or rounded to the nearest $5.
 4. **Verified WhatsApp number.** The host replies to a test message within 15 minutes.
+5. **Chat presence configured.** Verify the host knows how to access direct guest chats and Ulendo Concierge in their dashboard.

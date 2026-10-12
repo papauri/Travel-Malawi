@@ -1,46 +1,99 @@
-<!-- Public copy for direct browser opening and email attachments -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Travel Malawi — Operations & Field Conversion Playbook</title>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,600&display=swap" rel="stylesheet">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Operations and Field Playbook — Travel Malawi</title>
   <style>
-    body { font-family: 'Plus Jakarta Sans', sans-serif; background: #fafaf9; color: #1c1917; line-height: 1.6; margin: 0; padding: 24px; }
-    .container { max-width: 900px; margin: 0 auto; }
-    .toolbar { display: flex; justify-content: space-between; background: #1c1917; color: #fff; padding: 12px 20px; border-radius: 12px; margin-bottom: 24px; }
-    .btn { background: #d97706; color: #fff; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 700; cursor: pointer; }
-    .hero { background: #1c1917; color: #fff; border-radius: 16px; padding: 32px; margin-bottom: 24px; }
-    .card { background: #fff; border: 1px solid #e7e5e4; border-radius: 16px; padding: 24px; margin-bottom: 20px; }
-    .box { background: #fafaf9; border-left: 4px solid #1c1917; padding: 14px 18px; margin-bottom: 12px; border-radius: 0 10px 10px 0; }
-    @media print { .toolbar { display: none !important; } body { background: #fff; padding: 0; } }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #ffffff; color: #44403c; font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 15px; line-height: 1.6; }
+    main { max-width: 720px; margin: 48px auto; padding: 0 20px; }
+    .category { margin: 0 0 4px; font-size: 13px; color: #78716c; }
+    h1, h2, h3 { color: #1c1917; font-weight: 600; line-height: 1.3; }
+    h1 { margin: 0 0 8px; font-size: 28px; }
+    .subtitle { margin: 0; color: #78716c; }
+    .rule { margin: 20px 0 0; border: 0; border-top: 1px solid #e7e5e4; }
+    h2 { margin: 36px 0 12px; font-size: 20px; }
+    h3 { margin: 24px 0 8px; font-size: 16px; }
+    p { margin: 0 0 12px; }
+    ul, ol { margin: 0 0 12px; padding-left: 24px; }
+    li { margin: 4px 0; }
+    strong { color: #1c1917; font-weight: 600; }
+    a { color: #1c1917; }
+    table { width: 100%; margin: 0 0 16px; border-collapse: collapse; font-size: 14px; }
+    th, td { padding: 8px 12px; border: 1px solid #e7e5e4; text-align: left; vertical-align: top; }
+    th { background: #fafaf9; color: #1c1917; font-weight: 600; }
+    .note { margin: 0 0 16px; padding: 12px 16px; background: #fafaf9; border: 1px solid #e7e5e4; border-radius: 6px; }
+    .note p:last-child { margin-bottom: 0; }
+    code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; }
+    pre { margin: 24px 0 0; white-space: pre-wrap; word-break: break-word; color: #44403c; }
+    fieldset { margin: 0 0 16px; padding: 0; border: 0; }
+    legend { margin: 0 0 4px; padding: 0; color: #1c1917; font-weight: 600; }
+    label { display: block; margin: 12px 0 4px; color: #1c1917; font-weight: 600; font-size: 14px; }
+    label.option { margin: 4px 0; color: #44403c; font-weight: 400; }
+    input, select, textarea, button { font: inherit; }
+    input[type="text"], input[type="email"], input[type="tel"], input[type="number"], select, textarea { width: 100%; padding: 8px 10px; color: #1c1917; background: #ffffff; border: 1px solid #d6d3d1; border-radius: 4px; }
+    button { margin-top: 16px; padding: 8px 16px; color: #ffffff; background: #1c1917; border: 1px solid #1c1917; border-radius: 4px; cursor: pointer; }
+    footer { display: flex; justify-content: space-between; gap: 16px; margin-top: 48px; padding-top: 12px; border-top: 1px solid #e7e5e4; font-size: 13px; color: #78716c; }
+    @media (max-width: 600px) { h1 { font-size: 24px; } }
+    @media print { main { max-width: none; margin: 0; padding: 0; } body, h1, h2, h3, strong, a, .category, .subtitle, footer { color: #000000; } button { display: none; } }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="toolbar">
-      <div style="font-weight: 700; color: #f59e0b;">TRAVEL MALAWI &bull; OPERATIONS PLAYBOOK</div>
-      <button class="btn" onclick="window.print()">Print / Save PDF</button>
-    </div>
-    <div class="hero">
-      <h1 style="font-family: 'Playfair Display', serif; font-size: 28px; margin: 0 0 8px;">Field Conversion Playbook</h1>
-      <p style="color: #d6d3d1; margin: 0; font-size: 14px;">The 3-Touch WhatsApp conversion sequence, zero-inertia scripts, and objection disarming.</p>
-    </div>
-    <div class="card">
-      <h2 style="font-family: 'Playfair Display', serif; font-size: 20px;">The 3-Touch WhatsApp Sequence</h2>
-      <div class="box">
-        <strong>Touch 1: Compliment + The Question</strong>
-        <p style="font-size: 13px; margin: 4px 0 0;">"Muli bwanji [Name]! Quick question: are you still paying 18%–22% commission on your Lilongwe weekend bookings?"</p>
-      </div>
-      <div class="box">
-        <strong>Touch 2: Zero-Inertia Value Demo</strong>
-        <p style="font-size: 13px; margin: 4px 0 0;">"We put together a private preview of [Property] with direct Airtel/Mpamba payouts and 0% commission. Take a look: [Link]."</p>
-      </div>
-      <div class="box">
-        <strong>Touch 3: Scarcity Close</strong>
-        <p style="font-size: 13px; margin: 4px 0 0;">"Locking our 10-property founding cohort for [Region] this Friday (0% commission for 90 days). 2 slots left in your area."</p>
-      </div>
-    </div>
-  </div>
+<main>
+  <header>
+    <p class="category">Operations</p>
+    <h1>Operations and Field Playbook</h1>
+    <p class="subtitle">Partner outreach, common objections and listing quality checks</p>
+    <hr class="rule">
+  </header>
+  <h2>1. Keep it easy for the property owner</h2>
+  <p>Lodge owners and managers in Malawi are busy with generators, road repairs, staff and supplies. <strong>Anything that feels like extra work is likely to be postponed.</strong></p>
+  <h3>The main rule for field outreach</h3>
+  <p><strong>Do not ask a host to &quot;sign up&quot;, &quot;fill out a form&quot; or &quot;learn a system&quot;.</strong> Do the work for them:</p>
+  <div class="note"><p>Send us four photos and your current rates on WhatsApp. Our team will build your listing for free, usually within about eight minutes.</p></div>
+  <h2>2. Three-message WhatsApp sequence</h2>
+  <p>Use this sequence on WhatsApp or in person with lodge managers and cottage owners.</p>
+  <h3>Message 1: Introduction and question</h3>
+  <div class="note"><p>Muli bwanji [Manager name]. We have seen the lakefront cottages at [Property name] and they look lovely. Quick question: for your weekend guests from Lilongwe and Blantyre, are you still paying foreign booking websites 18% to 22% commission?</p></div>
+  <p><em>Purpose:</em> Start a conversation and raise the cost of commission without being pushy.</p>
+  <h3>Message 2: Show a preview (24 hours later)</h3>
+  <div class="note"><p>We have put together a private preview of how [Property name] would look on Travel Malawi, with Airtel Money and TNM Mpamba deposits paid directly to you and 0% commission: [Preview link]. Guests message your WhatsApp directly. Would you like us to make it live?</p></div>
+  <p><em>Purpose:</em> Show work already done, so the owner can see the result straight away.</p>
+  <h3>Message 3: Founding partner invitation (48 hours later)</h3>
+  <div class="note"><p>Takulandirani [Manager name]. We are confirming our founding partner group for [Region] this Friday, limited to 10 properties (0% commission for 90 days and free listing setup). There are 2 places left in your area and we wanted to offer you one first.</p></div>
+  <p><em>Purpose:</em> Make clear that places in the founding group are limited.</p>
+  <h2>3. Common objections</h2>
+  <table>
+    <thead><tr><th>Objection</th><th>Underlying concern</th><th>Suggested response</th></tr></thead>
+    <tbody>
+      <tr><td>&quot;We already use Booking.com.&quot;</td><td>Losing international guests.</td><td>&quot;Please keep it. We focus on your domestic, corporate and regional guests at 0% commission, so you are not paying $25 commission on a guest driving from Area 43.&quot;</td></tr>
+      <tr><td>&quot;I don't have time to manage another app.&quot;</td><td>Complexity and learning time.</td><td>&quot;You do not need to log in to anything. Booking requests arrive on your WhatsApp with room type, dates and total already calculated, and you confirm with one reply.&quot;</td></tr>
+      <tr><td>&quot;Can guests contact us directly before booking?&quot;</td><td>Opaque communication or masked numbers.</td><td>&quot;Yes! Travelers can chat directly with your manager via in-app real-time messaging and WhatsApp. Coordinate boat transfers, Lake Chambo dinners, and road directions with zero friction.&quot;</td></tr>
+      <tr><td>&quot;What if I need help pricing rooms or drafting replies?&quot;</td><td>Operational hesitation or copywriting worry.</td><td>&quot;You have Ulendo Concierge AI built right into your Host Dashboard. Chat with Ulendo 24/7 for seasonal rate recommendations, daily restaurant blackboard updates, and drafted guest notes.&quot;</td></tr>
+      <tr><td>&quot;Why is it free? What is the catch?&quot;</td><td>Hidden fees later.</td><td>&quot;There is no catch. We are starting with a limited group of founding properties in each region to build the network. We plan to earn from optional marketing packages, not from commission on your room bookings during launch.&quot;</td></tr>
+      <tr><td>&quot;We only take cash on arrival.&quot;</td><td>Payment disputes and tax questions.</td><td>&quot;You can keep doing that. Guests can also send a deposit to your Airtel Money, TNM Mpamba or bank account (NBM, Standard Bank, FDH Bank or Centenary Bank), which reduces last-minute no-shows.&quot;</td></tr>
+    </tbody>
+  </table>
+  <h2>4. Two-Way Direct Guest Chat &amp; 24/7 Ulendo Concierge Copilot</h2>
+  <p>Make sure every prospective host understands our two flagship communication advantages:</p>
+  <ul>
+    <li><strong>Direct Guest Chat (In-App &amp; WhatsApp):</strong> Guests can chat directly with property managers on every listing and booking. No hidden numbers, no delayed call center emails. Perfect for Malawian travel logistics (boat arrivals from Monkey Bay, dirt road navigation, Chambo dinner prep).</li>
+    <li><strong>Ulendo Concierge AI for Managers:</strong> Inside the Host Dashboard, managers can chat 24/7 with Ulendo—our resident Malawian hospitality AI concierge—to recommend rates in MWK and USD, draft polite deposit reminders, update daily dining boards, and optimize amenities with 1 tap.</li>
+  </ul>
+  <h2>5. Listing quality checks</h2>
+  <p>Before a property is marked <strong>Approved</strong> in the Admin Dashboard, check:</p>
+  <ol>
+    <li><strong>Gate GPS coordinates.</strong> The pin is at the vehicle entrance gate, not the district post office. Offline navigation depends on this.</li>
+    <li><strong>Real photos (at least 3).</strong> Outside view, bedroom, and bathroom or view. No blurry or watermarked images.</li>
+    <li><strong>Prices in both currencies.</strong> MWK rounded to the nearest 1,000 and USD in whole dollars or rounded to the nearest $5.</li>
+    <li><strong>Verified WhatsApp number.</strong> The host replies to a test message within 15 minutes.</li>
+    <li><strong>Chat presence configured.</strong> Verify the host knows how to access direct guest chats and Ulendo Concierge in their dashboard.</li>
+  </ol>
+  <footer>
+    <span>Travel Malawi</span>
+    <span>Updated October 2026</span>
+  </footer>
+</main>
 </body>
 </html>

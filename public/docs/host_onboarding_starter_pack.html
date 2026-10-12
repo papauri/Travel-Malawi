@@ -1,41 +1,483 @@
-<!-- Public copy for direct browser opening and email attachments -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Travel Malawi — Host Acquisition & Onboarding Starter Pack</title>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,600&display=swap" rel="stylesheet">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Host Starter Pack & Field Guide — Travel Malawi</title>
   <style>
-    body { font-family: 'Plus Jakarta Sans', sans-serif; background: #fafaf9; color: #1c1917; line-height: 1.6; margin: 0; padding: 24px; }
-    .container { max-width: 900px; margin: 0 auto; }
-    .toolbar { display: flex; justify-content: space-between; background: #1c1917; color: #fff; padding: 12px 20px; border-radius: 12px; margin-bottom: 24px; }
-    .btn { background: #d97706; color: #fff; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 700; cursor: pointer; }
-    .hero { background: #1c1917; color: #fff; border-radius: 16px; padding: 32px; margin-bottom: 24px; }
-    .card { background: #fff; border: 1px solid #e7e5e4; border-radius: 16px; padding: 24px; margin-bottom: 20px; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-top: 12px; }
-    .item { background: #fafaf9; border: 1px solid #e7e5e4; border-radius: 10px; padding: 14px; }
-    @media print { .toolbar { display: none !important; } body { background: #fff; padding: 0; } }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #fafaf9;
+      color: #44403c;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+    main {
+      max-width: 960px;
+      margin: 40px auto;
+      padding: 44px 40px;
+      background: #ffffff;
+      border: 1px solid #e7e5e4;
+      border-radius: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .category {
+      margin: 0 0 8px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #78716c;
+      font-weight: 600;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+    h1, h2, h3 {
+      color: #1c1917;
+      font-weight: 700;
+      line-height: 1.3;
+      font-family: Georgia, Cambria, "Times New Roman", Times, serif;
+    }
+    h1 { margin: 0 0 10px; font-size: 36px; }
+    .subtitle { margin: 0 0 20px; color: #57534e; font-size: 16px; line-height: 1.5; }
+    .rule { margin: 26px 0; border: 0; border-top: 1px solid #e7e5e4; }
+    h2 { margin: 36px 0 14px; font-size: 24px; }
+    h3 { margin: 22px 0 8px; font-size: 16px; font-family: -apple-system, sans-serif; }
+    p { margin: 0 0 14px; }
+    ul, ol { margin: 0 0 16px; padding-left: 24px; }
+    li { margin: 6px 0; }
+    strong { color: #1c1917; font-weight: 600; }
+    a { color: #1c1917; text-decoration: underline; font-weight: 600; }
+    .banner-note {
+      margin: 18px 0;
+      padding: 16px 20px;
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      border-radius: 12px;
+      color: #78350f;
+      font-size: 14px;
+    }
+    .note {
+      margin: 18px 0;
+      padding: 14px 18px;
+      background: #f5f5f4;
+      border: 1px solid #e7e5e4;
+      border-radius: 10px;
+      font-size: 14px;
+    }
+    .template-box {
+      margin: 12px 0 20px;
+      padding: 14px 16px;
+      background: #fafaf9;
+      border: 1px solid #e7e5e4;
+      border-radius: 10px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.55;
+      color: #292524;
+    }
+    .pill-strip {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 16px;
+      margin: 20px 0;
+      padding: 16px 0;
+      border-top: 1px solid #f5f5f4;
+      border-bottom: 1px solid #f5f5f4;
+      font-size: 13px;
+    }
+    .pill-strip div span:first-child {
+      display: block;
+      font-size: 10px;
+      text-transform: uppercase;
+      color: #a8a29e;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+    .pill-strip div span:last-child {
+      font-weight: 700;
+      color: #1c1917;
+      font-size: 15px;
+    }
+    .sketch-card {
+      margin: 24px 0;
+      padding: 20px 22px;
+      background: #f5f5f4;
+      border: 1px solid #e7e5e4;
+      border-radius: 14px;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .sketch-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #78716c;
+      margin-bottom: 10px;
+    }
+    .sketch-caption {
+      text-align: center;
+      font-size: 11px;
+      color: #78716c;
+      margin-top: 10px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+    .sketch-svg {
+      width: 100%;
+      max-width: 580px;
+      height: auto;
+      margin: 0 auto;
+      display: block;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin: 18px 0;
+    }
+    .photo-angle-card {
+      padding: 16px;
+      background: #fafaf9;
+      border: 1px solid #e7e5e4;
+      border-radius: 12px;
+      font-size: 13px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .photo-angle-card h4 {
+      margin: 0 0 2px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #1c1917;
+    }
+    .photo-angle-badge {
+      font-size: 10px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      color: #78716c;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      display: block;
+    }
+    .tip-footer {
+      margin-top: 10px;
+      padding-top: 8px;
+      border-top: 1px solid #e7e5e4;
+      font-size: 11px;
+      color: #78716c;
+      font-family: ui-monospace, monospace;
+    }
+    .links-strip {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin: 24px 0;
+    }
+    .btn {
+      display: inline-block;
+      padding: 10px 18px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+    }
+    .btn-primary { background: #1c1917; color: #ffffff !important; }
+    .btn-secondary { background: #ffffff; color: #1c1917 !important; border: 1px solid #e7e5e4; }
+    .btn-whatsapp { background: #ffffff; color: #047857 !important; border: 1px solid #a7f3d0; }
+    footer {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      margin-top: 40px;
+      padding-top: 18px;
+      border-top: 1px solid #e7e5e4;
+      font-size: 12px;
+      color: #78716c;
+    }
+    @media (max-width: 640px) {
+      main { margin: 12px; padding: 24px 16px; border-radius: 12px; }
+      h1 { font-size: 26px; }
+      .grid-2 { grid-template-columns: 1fr; }
+    }
+    @media print {
+      @page { margin: 12mm 14mm; size: A4 portrait; }
+      body { background: #ffffff; color: #1c1917; }
+      main { max-width: none; margin: 0; padding: 0; border: none; box-shadow: none; }
+      .sketch-card, .photo-angle-card { page-break-inside: avoid; break-inside: avoid; }
+      .links-strip { display: none; }
+      a { text-decoration: none; color: #1c1917; }
+    }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="toolbar">
-      <div style="font-weight: 700; color: #f59e0b;">TRAVEL MALAWI &bull; ONBOARDING PLAYBOOK</div>
-      <button class="btn" onclick="window.print()">Print / Save PDF</button>
+<main>
+  <header>
+    <p class="category">Travel Malawi · Host Starter Pack & Field Guide · 3-Minute Read</p>
+    <h1>Host Starter Pack &amp; Field Guide</h1>
+    <p class="subtitle">A short, practical guide for independent lodges, whole lakeside cottages, private villas, B&Bs, and safari camps across Malawi.</p>
+    
+    <div class="pill-strip">
+      <div><span>Commission</span><span>0% Direct</span></div>
+      <div><span>Payout Speed</span><span>Instant to You</span></div>
+      <div><span>Accepted Rails</span><span>Airtel / Mpamba / Bank</span></div>
+      <div><span>Setup Time</span><span>Under 8 Minutes</span></div>
     </div>
-    <div class="hero">
-      <h1 style="font-family: 'Playfair Display', serif; font-size: 28px; margin: 0 0 8px;">The 8-Minute Direct Storefront</h1>
-      <p style="color: #d6d3d1; margin: 0; font-size: 14px;">The 4 golden photos, charm pricing in Kwacha, and zero-headache WhatsApp setup.</p>
+  </header>
+
+  <div class="banner-note">
+    <strong>Takulandirani!</strong> Whether you host an <strong>entire lakeside cottage</strong> in Cape Maclear, a <strong>private family holiday villa</strong> in Mangochi, a <strong>mountain cabin</strong> in Mulanje, an exclusive <strong>safari camp</strong> in Liwonde, or a <strong>boutique guest room</strong> in Lilongwe Area 10 — travelers come to you for peace of mind, comfort, and an honest Malawian welcome.
+  </div>
+
+  <p><strong>Quick Links:</strong> <a href="/list-your-property">List Your Property Online</a> · <a href="/how-hosting-works">Visual Hosting Playbook</a> · <a href="/dashboard">Host Dashboard &amp; Rates</a> · <a href="/">Browse Stays</a></p>
+
+  <!-- Handcrafted Architectural Sketch 01 -->
+  <div class="sketch-card">
+    <div class="sketch-header">
+      <span>Drafting Sketch 01 // Architectural Property Layout &amp; Rate Anchor</span>
+      <span>Scale: 1:50 · Whole Space &amp; Cottages</span>
     </div>
-    <div class="card">
-      <h2 style="font-family: 'Playfair Display', serif; font-size: 20px;">The 4 Golden Photos That Sell The Dream</h2>
-      <div class="grid">
-        <div class="item"><strong>1. The Bed (Trust)</strong><p style="font-size: 12px; margin: 4px 0 0; color: #57534e;">Smooth linens, fluffed pillows, side window light. Sells sleep.</p></div>
-        <div class="item"><strong>2. The View (Aspiration)</strong><p style="font-size: 12px; margin: 4px 0 0; color: #57534e;">Lake or bush horizon. The screenshot sent to companions.</p></div>
-        <div class="item"><strong>3. The Bathroom (Hygiene)</strong><p style="font-size: 12px; margin: 4px 0 0; color: #57534e;">Spotless tiles, dry floor, fresh towel. Dissolves hidden fear.</p></div>
-        <div class="item"><strong>4. The Table / Boma (Connection)</strong><p style="font-size: 12px; margin: 4px 0 0; color: #57534e;">Fresh Lake Chambo, sundowner, firepit. Sells the weekend.</p></div>
+    <svg viewBox="0 0 540 280" class="sketch-svg" style="stroke: #292524; fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round;">
+      <path d="M 30 240 Q 150 230 280 240 T 510 235" stroke-dasharray="3 3" stroke="#a8a29e" />
+      <text x="360" y="260" font-size="9" font-family="monospace" fill="#a8a29e" stroke="none">LAKE MALAWI WATERLINE ±0.00</text>
+      <path d="M 450 235 Q 455 190 465 160 Q 450 135 430 120 M 465 160 Q 480 135 500 120" stroke="#57534e" stroke-width="2" />
+      <path d="M 410 120 Q 450 105 480 115 Q 510 120 490 135 Q 450 145 410 120 Z" fill="rgba(231,229,228,0.5)" stroke="#78716c" stroke-width="1" />
+      <line x1="120" y1="180" x2="120" y2="235" stroke="#44403c" stroke-width="2" />
+      <line x1="180" y1="180" x2="180" y2="235" stroke="#44403c" stroke-width="2" />
+      <line x1="260" y1="180" x2="260" y2="235" stroke="#44403c" stroke-width="2" />
+      <line x1="340" y1="180" x2="340" y2="235" stroke="#44403c" stroke-width="2" />
+      <line x1="90" y1="180" x2="370" y2="180" stroke="#1c1917" stroke-width="2.5" />
+      <rect x="130" y="105" width="190" height="75" stroke="#1c1917" fill="#ffffff" stroke-width="2" />
+      <rect x="200" y="125" width="35" height="55" stroke="#292524" fill="#f5f5f4" stroke-width="1.5" />
+      <rect x="145" y="125" width="38" height="30" stroke="#292524" fill="#fafaf9" stroke-width="1.5" />
+      <line x1="145" y1="135" x2="183" y2="135" stroke="#a8a29e" stroke-width="1" />
+      <rect x="255" y="125" width="45" height="30" stroke="#292524" fill="#fafaf9" stroke-width="1.5" />
+      <line x1="255" y1="135" x2="300" y2="135" stroke="#a8a29e" stroke-width="1" />
+      <path d="M 75 120 L 225 40 L 385 120 Z" stroke="#1c1917" fill="#f5f5f4" stroke-width="2" />
+      <line x1="90" y1="200" x2="370" y2="200" stroke="#92400e" stroke-width="1" stroke-dasharray="4 2" />
+      <circle cx="90" cy="200" r="2" fill="#92400e" stroke="none" />
+      <circle cx="370" cy="200" r="2" fill="#92400e" stroke="none" />
+      <text x="175" y="215" font-size="10" font-family="monospace" fill="#78350f" font-weight="bold" stroke="none">VERANDA FRONTAGE: 9.5 METERS</text>
+      <g transform="translate(15, 20)">
+        <rect x="0" y="0" width="165" height="48" rx="8" fill="#ffffff" stroke="#292524" stroke-width="1.5" />
+        <text x="10" y="16" font-size="9" font-family="monospace" fill="#78716c" stroke="none">RATE BLUEPRINT</text>
+        <text x="10" y="34" font-size="12" font-family="Georgia, serif" font-weight="bold" fill="#1c1917" stroke="none">MK 120,000 / $80</text>
+        <path d="M 165 24 L 195 48" stroke="#b45309" stroke-width="1.2" stroke-dasharray="3 2" />
+        <circle cx="195" cy="48" r="2" fill="#b45309" stroke="none" />
+      </g>
+    </svg>
+    <div class="sketch-caption">Figure 1: Authentic Malawian property presentation with natural light, veranda presence &amp; clear rate anchoring.</div>
+  </div>
+
+  <hr class="rule">
+
+  <h2>1. Four Photos That Win the Stay (With Picture Angles)</h2>
+  <p>Follow these <strong>four precise camera framing angles</strong> to capture genuine quality and build instant guest trust:</p>
+
+  <div class="grid-2">
+    <!-- Angle 1 -->
+    <div class="photo-angle-card">
+      <div>
+        <h4>1. The Clean Bed (Sleep Shot)</h4>
+        <span class="photo-angle-badge">Camera Angle: 45° Eye-Level · Natural Side Light</span>
+        <svg viewBox="0 0 320 120" style="width:100%; height:auto; stroke:#292524; fill:none; stroke-width:1.3; stroke-linecap:round; margin: 6px 0;">
+          <path d="M 40 80 L 140 105 L 280 60 L 180 35 Z" fill="#f5f5f4" stroke="#292524" stroke-width="1.6" />
+          <path d="M 180 35 L 280 60 L 280 30 L 180 10 Z" fill="#e7e5e4" stroke="#292524" />
+          <path d="M 20 20 L 70 60 M 35 15 L 95 55" stroke="#f59e0b" stroke-width="1.2" stroke-dasharray="3 2" />
+          <text x="25" y="15" font-size="8" font-family="monospace" fill="#b45309" stroke="none">☀ MORNING SIDE LIGHT</text>
+          <path d="M 50 30 L 40 30 L 40 40 M 270 30 L 280 30 L 280 40" stroke="#059669" stroke-width="1.5" />
+          <text x="110" y="115" font-size="8" font-family="monospace" fill="#065f46" stroke="none">CAMERA: 45° ANGLE CROP</text>
+        </svg>
+        <p>Smooth crisp linens, fluffed pillows, with morning light from a side window. Reassures guests they will sleep comfortably.</p>
       </div>
+      <div class="tip-footer">Tip: Stand at the corner of the room at chest height.</div>
+    </div>
+
+    <!-- Angle 2 -->
+    <div class="photo-angle-card">
+      <div>
+        <h4>2. The Horizon View (Aspiration)</h4>
+        <span class="photo-angle-badge">Camera Angle: Eye-Level Veranda 16:9</span>
+        <svg viewBox="0 0 320 120" style="width:100%; height:auto; stroke:#292524; fill:none; stroke-width:1.3; stroke-linecap:round; margin: 6px 0;">
+          <line x1="20" y1="50" x2="300" y2="50" stroke="#3b82f6" stroke-width="1.2" stroke-dasharray="4 2" />
+          <text x="220" y="45" font-size="8" font-family="monospace" fill="#2563eb" stroke="none">HORIZON (UPPER 1/3)</text>
+          <path d="M 40 50 Q 90 25 140 50 Q 190 30 240 50 T 300 50" fill="#eff6ff" stroke="#57534e" />
+          <rect x="20" y="85" width="280" height="10" fill="#e7e5e4" stroke="#292524" />
+          <rect x="150" y="74" width="12" height="12" rx="2" fill="#ffffff" stroke="#292524" />
+          <text x="100" y="115" font-size="8" font-family="monospace" fill="#065f46" stroke="none">1/3 DECK + 2/3 HORIZON</text>
+        </svg>
+        <p>The horizon from your patio, Lake Malawi waters, or Mulanje peaks. The photo guests share on WhatsApp.</p>
+      </div>
+      <div class="tip-footer">Tip: Keep the horizon straight. Include 1/3 veranda deck in foreground.</div>
+    </div>
+
+    <!-- Angle 3 -->
+    <div class="photo-angle-card">
+      <div>
+        <h4>3. The Bathroom (Hygiene)</h4>
+        <span class="photo-angle-badge">Camera Angle: Straight 90° Elevation</span>
+        <svg viewBox="0 0 320 120" style="width:100%; height:auto; stroke:#292524; fill:none; stroke-width:1.3; stroke-linecap:round; margin: 6px 0;">
+          <rect x="40" y="20" width="70" height="90" fill="#fafaf9" stroke="#292524" stroke-width="1.5" />
+          <rect x="140" y="25" width="50" height="40" rx="3" fill="#f0f9ff" stroke="#57534e" />
+          <rect x="130" y="70" width="70" height="20" rx="2" fill="#ffffff" stroke="#292524" />
+          <rect x="220" y="55" width="35" height="50" rx="2" fill="#f5f5f4" stroke="#57534e" />
+          <text x="140" y="112" font-size="8" font-family="monospace" fill="#dc2626" stroke="none">STAND 15° OFF-MIRROR AXIS</text>
+        </svg>
+        <p>Spotless shower, clean mirror, dry floor, folded towel. Removes unspoken traveler hesitation and seals bookings.</p>
+      </div>
+      <div class="tip-footer">Tip: Stand slightly off-axis so your phone doesn't reflect in the mirror.</div>
+    </div>
+
+    <!-- Angle 4 -->
+    <div class="photo-angle-card">
+      <div>
+        <h4>4. Sunset Dining / Fire Pit</h4>
+        <span class="photo-angle-badge">Camera Angle: 30° Seated Dusk</span>
+        <svg viewBox="0 0 320 120" style="width:100%; height:auto; stroke:#292524; fill:none; stroke-width:1.3; stroke-linecap:round; margin: 6px 0;">
+          <circle cx="250" cy="40" r="18" fill="#fef3c7" stroke="#fbbf24" />
+          <ellipse cx="120" cy="85" rx="50" ry="18" fill="#f5f5f4" stroke="#292524" stroke-width="1.6" />
+          <path d="M 120 65 Q 126 73 120 81 Q 114 73 120 65 Z" fill="#fbbf24" stroke="#d97706" />
+          <text x="95" y="115" font-size="8" font-family="monospace" fill="#065f46" stroke="none">30° SEATED DUSK AMBIENCE</text>
+        </svg>
+        <p>Deck seating, evening sunset drink, boma fire pit, or fresh chambo. Shows travelers where they will unwind.</p>
+      </div>
+      <div class="tip-footer">Tip: Shoot during golden hour (5:00 PM – 5:45 PM).</div>
     </div>
   </div>
+
+  <h2>2. Dual Pricing, Whole-House Rates &amp; Clean Rounding</h2>
+  <p>Travelers in Malawi include domestic residents booking whole weekend cottages as well as international tourists:</p>
+  <ul>
+    <li><strong>Malawi Kwacha (MWK):</strong> Round cleanly to nearest <strong>MK 1,000</strong> (e.g. Whole 3-Bed Cottage: MK 280,000 / Master Chalet: MK 120,000). Never strange decimals.</li>
+    <li><strong>US Dollars (USD):</strong> Round to whole dollars or nearest <strong>$5</strong> (e.g. Whole Cottage: $180 / Chalet: $80).</li>
+  </ul>
+  <div class="note">
+    <strong>The Premium Anchor Rule:</strong> Always list your premier offering first (e.g. Whole 4-Bedroom Cottage at MK 320,000 / $210). When guests see that benchmark first, your 2-bedroom garden annex at MK 140,000 / $90 reads as an exceptional value.
+  </div>
+
+  <h2>3. Two-Way Direct Guest Chat &amp; 24/7 Ulendo Concierge Copilot</h2>
+  <p>Travel Malawi eliminates opaque call centers and masked numbers. You have two powerful communication loops built right into your dashboard:</p>
+  <ul>
+    <li><strong>Loop 1: Direct Guest-to-Host Inquiries (In-App &amp; WhatsApp):</strong> Travelers can message your lodge manager directly from the listing page or active booking. They coordinate boat pickups, Lake Chambo dinners, arrival times, and road turns without middleman delays.</li>
+    <li><strong>Loop 2: Chat Fully with Ulendo Concierge AI (Your 24/7 Operations Copilot):</strong> Inside your Host Dashboard, Ulendo is ready 24/7 to benchmark seasonal rates (Easter, Lake of Stars, Christmas), draft welcoming Chichewa &amp; English replies, update daily restaurant blackboards, and optimize amenities.</li>
+  </ul>
+
+  <!-- Handcrafted Architectural Sketch 02 -->
+  <div class="sketch-card">
+    <div class="sketch-header">
+      <span>Drafting Sketch 02 // Direct Guest Chat + Ulendo Concierge AI Architecture</span>
+      <span>Two-Way Conversations · Zero Friction</span>
+    </div>
+    <svg viewBox="0 0 680 210" class="sketch-svg" style="stroke: #292524; fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round;">
+      <!-- Station 1: Guest Phone -->
+      <rect x="30" y="20" width="110" height="170" rx="12" stroke="#292524" fill="#ffffff" stroke-width="2" />
+      <text x="45" y="48" font-size="8" font-family="monospace" fill="#a8a29e" stroke="none">GUEST DEVICE</text>
+      <text x="45" y="65" font-size="11" font-weight="bold" fill="#1c1917" stroke="none">Direct Traveler</text>
+      <rect x="38" y="78" width="94" height="48" rx="6" fill="#f5f5f4" stroke="#d6d3d1" stroke-width="1" />
+      <text x="44" y="93" font-size="7.5" font-family="sans-serif" font-weight="bold" fill="#1c1917" stroke="none">&ldquo;Available this Sat?&rdquo;</text>
+      <text x="44" y="105" font-size="7" font-family="sans-serif" fill="#57534e" stroke="none">Boat pickup from</text>
+      <text x="44" y="116" font-size="7" font-family="sans-serif" fill="#57534e" stroke="none">Monkey Bay at 2pm?</text>
+
+      <!-- Station 2: Host Phone & Dashboard -->
+      <rect x="270" y="20" width="130" height="170" rx="12" stroke="#292524" fill="#ffffff" stroke-width="2" />
+      <text x="285" y="48" font-size="8" font-family="monospace" fill="#047857" font-weight="bold" stroke="none">PROPERTY MANAGER</text>
+      <text x="285" y="65" font-size="11" font-weight="bold" fill="#1c1917" stroke="none">Your Lodge Hub</text>
+      <rect x="278" y="78" width="114" height="40" rx="6" fill="#ecfdf5" stroke="#059669" stroke-width="1" />
+      <text x="285" y="93" font-size="7.5" font-family="sans-serif" font-weight="bold" fill="#064e3b" stroke="none">&ldquo;Takulandirani!&rdquo;</text>
+      <text x="285" y="104" font-size="7" font-family="sans-serif" fill="#047857" stroke="none">Boat ready at 2 PM.</text>
+      <rect x="278" y="124" width="114" height="36" rx="6" fill="#fffbeb" stroke="#f59e0b" stroke-width="1" />
+      <text x="285" y="137" font-size="7" font-family="sans-serif" font-weight="bold" fill="#78350f" stroke="none">&ldquo;Ulendo, suggest Easter</text>
+      <text x="285" y="148" font-size="7" font-family="sans-serif" fill="#78350f" stroke="none">rate &amp; deposit snippet&rdquo;</text>
+
+      <!-- Station 3: Ulendo Concierge AI -->
+      <rect x="530" y="20" width="120" height="170" rx="12" stroke="#1c1917" fill="#1c1917" stroke-width="2" />
+      <text x="545" y="48" font-size="8" font-family="monospace" fill="#fbbf24" font-weight="bold" stroke="none">ULENDO CONCIERGE</text>
+      <text x="545" y="65" font-size="11" font-weight="bold" fill="#ffffff" stroke="none">24/7 Operations AI</text>
+      <rect x="538" y="78" width="104" height="65" rx="6" fill="#292524" stroke="#d97706" stroke-width="1" />
+      <text x="545" y="93" font-size="7" font-family="sans-serif" font-weight="bold" fill="#fde68a" stroke="none">&ldquo;Easter Benchmark:&rdquo;</text>
+      <text x="545" y="104" font-size="6.5" font-family="sans-serif" fill="#e7e5e4" stroke="none">MK 140,000 / $80</text>
+      <text x="545" y="115" font-size="6.5" font-family="sans-serif" fill="#e7e5e4" stroke="none">Deposit text ready</text>
+      <text x="545" y="128" font-size="6.5" font-family="sans-serif" fill="#34d399" font-weight="bold" stroke="none">&#10003; 1-click apply</text>
+
+      <!-- Arcs -->
+      <path d="M 140 90 C 190 65 210 65 270 90" stroke="#047857" stroke-width="2" stroke-dasharray="4 3" />
+      <text x="165" y="110" font-size="7" font-family="monospace" fill="#047857" font-weight="bold" stroke="none">GUEST CHAT</text>
+
+      <path d="M 400 135 C 450 110 470 110 530 135" stroke="#d97706" stroke-width="2" stroke-dasharray="4 3" />
+      <text x="420" y="155" font-size="7" font-family="monospace" fill="#b45309" font-weight="bold" stroke="none">AI COPILOT</text>
+    </svg>
+    <div class="sketch-caption">Figure 2: Two-way direct guest messaging + 24/7 Ulendo Concierge AI operations copilot.</div>
+  </div>
+
+  <h3>Template 1: Instant Reservation &amp; Deposit</h3>
+  <div class="template-box">
+    "Muli bwanji [Guest Name]! Thank you for choosing [Property Name]. We have provisionally held your [Whole Cottage / Room Type] for [Check-in Date] to [Check-out Date]. Total: MK [Amount]. To confirm your dates, please send your 50% deposit via Airtel Money/Mpamba to [Phone Number] or National Bank of Malawi [Account Details]. Once sent, we will send your confirmation voucher immediately!"
+  </div>
+
+  <h3>Template 2: Road Directions &amp; Gate Pin</h3>
+  <div class="template-box">
+    "Muli bwanji [Guest Name]! We look forward to welcoming you today at [Property Name]. Coming down the Lakeshore Road, take the turn-off at [Landmark]. Follow our marked signs for 3 km. Gate GPS pin: [Google Maps Link]. Our resident manager [Name] is ready on WhatsApp at [Phone Number] if you need any directions along the road!"
+  </div>
+
+  <h3>Template 3: Ulendo AI-Assisted Boat Transfer &amp; Arrival Note</h3>
+  <div class="template-box">
+    "Takulandirani [Guest Name]! We are getting your lake stay ready at [Property Name]. If you require boat transfer from [Harbor/Bay], our skipper departs at [Time]. Please reply here with your vehicle arrival time so our team can assist with luggage and fresh welcome drinks!"
+  </div>
+
+  <h2>4. Get Listed in 8 Minutes</h2>
+  <ol>
+    <li><strong>Send your 4 photos:</strong> Bed, view, bathroom, and sunset dining/fire pit.</li>
+    <li><strong>Send property name &amp; rates:</strong> Whole house rate or room rates in MWK or USD, plus any inclusions.</li>
+    <li><strong>Share your location pin:</strong> A WhatsApp pin taken at your vehicle gate.</li>
+  </ol>
+
+  <!-- Handcrafted Architectural Sketch 03 (Widened, no clipping) -->
+  <div class="sketch-card">
+    <div class="sketch-header">
+      <span>Drafting Sketch 03 // Commission Reconciliation Ledger</span>
+      <span>100% Host Revenue Retention</span>
+    </div>
+    <svg viewBox="0 0 600 220" class="sketch-svg" style="stroke: #292524; fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round;">
+      <rect x="30" y="20" width="540" height="180" rx="14" stroke="#292524" fill="#ffffff" stroke-width="2" />
+      <line x1="30" y1="58" x2="570" y2="58" stroke="#e7e5e4" stroke-width="1.5" />
+      <line x1="300" y1="58" x2="300" y2="200" stroke="#e7e5e4" stroke-width="1.5" />
+
+      <text x="50" y="44" font-size="10" font-family="monospace" font-weight="bold" fill="#57534e" stroke="none">FOREIGN OTA PLATFORM</text>
+      <text x="320" y="44" font-size="10" font-family="monospace" font-weight="bold" fill="#065f46" stroke="none">TRAVEL MALAWI DIRECT</text>
+
+      <text x="50" y="85" font-size="11" font-family="sans-serif" fill="#57534e" stroke="none">Nightly Rate: MK 100,000</text>
+      <text x="50" y="108" font-size="11" font-family="sans-serif" fill="#b91c1c" font-weight="bold" stroke="none">− 18% OTA Commission (− MK 18,000)</text>
+      <text x="50" y="128" font-size="11" font-family="sans-serif" fill="#b91c1c" stroke="none">− Wire and Forex Fee (− MK 4,500)</text>
+      <line x1="50" y1="142" x2="270" y2="142" stroke="#e7e5e4" />
+      <text x="50" y="165" font-size="15" font-family="Georgia, serif" font-weight="bold" fill="#991b1b" stroke="none">Net Payout: MK 77,500</text>
+      <text x="50" y="182" font-size="9" font-family="monospace" fill="#a8a29e" stroke="none">(Delayed 30 days)</text>
+
+      <text x="320" y="85" font-size="11" font-family="sans-serif" fill="#57534e" stroke="none">Nightly Rate: MK 100,000</text>
+      <text x="320" y="108" font-size="11" font-family="sans-serif" fill="#065f46" font-weight="bold" stroke="none">0% Commission Fee (MK 0)</text>
+      <text x="320" y="128" font-size="11" font-family="sans-serif" fill="#57534e" stroke="none">Direct Payout (Airtel / Mpamba / Bank)</text>
+      <line x1="320" y1="142" x2="540" y2="142" stroke="#e7e5e4" />
+      <text x="320" y="165" font-size="15" font-family="Georgia, serif" font-weight="bold" fill="#065f46" stroke="none">Net Payout: MK 100,000 (100%)</text>
+      <text x="320" y="182" font-size="9" font-family="monospace" fill="#065f46" font-weight="bold" stroke="none">Instant Direct Payout</text>
+    </svg>
+    <div class="sketch-caption">Figure 3: Commission reconciliation ledger showing 100% host revenue retention.</div>
+  </div>
+
+  <p><strong>Result:</strong> Our team verifies your details, builds your verified listing page, and routes guest inquiries directly to your WhatsApp phone — with 0% commission.</p>
+
+  <div class="links-strip">
+    <a href="/list-your-property" class="btn btn-primary">List Your Property Online &rarr;</a>
+    <a href="/dashboard" class="btn btn-secondary">Host Dashboard &amp; Rates</a>
+    <a href="https://api.whatsapp.com/send?phone=265999000000&text=Muli%20bwanji!%20I%20have%20a%20property%20I%20want%20to%20list%20on%20Travel%20Malawi" class="btn btn-whatsapp">WhatsApp Concierge</a>
+  </div>
+
+  <footer>
+    <span>Travel Malawi · The Warm Heart of Africa</span>
+    <span>Updated October 2026 · travelmalawi.mw</span>
+  </footer>
+</main>
 </body>
 </html>

@@ -46,15 +46,34 @@ Travelers in Malawi include domestic residents from Lilongwe and Blantyre bookin
 
 ---
 
-## 3. Direct WhatsApp Guest Templates
+## 3. Two-Way Direct Guest Chat & 24/7 Ulendo Concierge Copilot
 
-Keep your communications sharp and welcoming:
+Travel Malawi eliminates middleman call centers and masked numbers. You have two powerful communication loops built right into your dashboard:
 
-### Template 1: Instant Reservation & Deposit
+### Loop 1: Direct Guest-to-Host Inquiries (In-App & WhatsApp)
+* **Real-Time Guest Chat:** Travelers can open live chat directly on your property listing or booking page. They ask about boat transfers from Monkey Bay/Likoma Island, Lake Chambo dinners, road access, and gate directions.
+* **Direct WhatsApp Route:** For travelers on mobile, inquiries route straight to your WhatsApp phone with calculated totals and guest counts.
+* **Live Manager Presence:** Guests see when your lodge team is online and responsive.
+
+### Loop 2: Chat Fully with Ulendo Concierge AI (Your 24/7 Operations Copilot)
+Inside your Host Dashboard, **Ulendo** is your resident Malawian hospitality AI concierge. You can chat with Ulendo anytime for:
+* **Seasonal Pricing Guidance:** Benchmark rates for Easter, Christmas, or Lake of Stars in clean MWK and whole USD.
+* **Drafting Guest Messages:** Generate welcoming Chichewa & English confirmations with one tap.
+* **Daily Restaurant & Fish Blackboard:** Update today's fresh catch (Chambo, Kampango, Usipa) and dinner specials effortlessly.
+* **Amenity & Listing Tuning:** Get recommendations on highlighting solar backup, lakeshore Wi-Fi, and excursion perks.
+
+---
+
+### Copy-and-Paste Message Templates:
+
+#### Template 1: Instant Reservation & Deposit
 > *"Muli bwanji [Guest Name]! Thank you for choosing [Property Name]. We have provisionally held your [Whole Cottage / Room Type] for [Check-in Date] to [Check-out Date]. Total: MK [Amount]. To confirm your dates, please send your 50% deposit via Airtel Money/Mpamba to [Phone Number] or National Bank of Malawi [Account Details]. Once sent, we will send your confirmation voucher immediately!"*
 
-### Template 2: Road Directions & Gate Pin
+#### Template 2: Road Directions & Gate Pin
 > *"Muli bwanji [Guest Name]! We look forward to welcoming you today at [Property Name]. Coming down the Lakeshore Road, take the turn-off at [Landmark]. Follow our marked signs for 3 km. Gate GPS pin: [Google Maps Link]. Our resident manager [Name] is ready on WhatsApp at [Phone Number] if you need any directions along the road!"*
+
+#### Template 3: Ulendo AI-Assisted Boat Transfer & Arrival Note
+> *"Takulandirani [Guest Name]! We are getting your lake stay ready at [Property Name]. If you require boat transfer from [Harbor/Bay], our skipper departs at [Time]. Please reply here with your vehicle arrival time so our team can assist with luggage and fresh welcome drinks!"*
 
 ---
 

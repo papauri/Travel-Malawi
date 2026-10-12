@@ -70,6 +70,17 @@ const UAT_TESTS: TestCase[] = [
     expected: 'Coordinates launch native device GPS navigation (OsmAnd, Organic Maps, Google Maps) without cellular data.'
   },
   {
+    id: 'B3',
+    suite: 'Direct Inquiries & Host Tools',
+    title: 'Two-Way Direct Guest-to-Manager In-App Chat',
+    steps: [
+      'Click "Chat with Host" on property detail page or active booking',
+      'Send inquiry regarding boat transfers, meals, or arrival time',
+      'Verify typing indicators and manager presence status'
+    ],
+    expected: 'Real-time two-way messaging between traveler and host with zero call-center intermediaries.'
+  },
+  {
     id: 'C1',
     suite: 'Host Operations',
     title: '0% Commission Direct Booking & Vouchers',
@@ -78,6 +89,17 @@ const UAT_TESTS: TestCase[] = [
       'Verify mobile money rails (Airtel Money, TNM Mpamba, and Bank transfer)'
     ],
     expected: 'Direct settlement instructions to host account with 0% platform deductions.'
+  },
+  {
+    id: 'C2',
+    suite: 'Host Operations',
+    title: '24/7 Ulendo Concierge AI Copilot Operations Chat',
+    steps: [
+      'Open Host Dashboard and launch Ulendo Concierge chat',
+      'Request seasonal rate recommendation (e.g. Easter / Lake of Stars)',
+      'Ask Ulendo to update daily restaurant blackboard special or draft guest confirmation'
+    ],
+    expected: 'Ulendo provides instant Malawian hospitality copilot assistance with 1-click action proposals.'
   }
 ];
 

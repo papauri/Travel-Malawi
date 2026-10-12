@@ -239,7 +239,29 @@ export default function PropertyListingGuide() {
             </ol>
           </section>
 
-          {/* Section 4: listing request form */}
+          {/* Section 4: Direct Guest Chat & Ulendo Concierge AI */}
+          <section className="mt-10">
+            <h2 className="text-xl font-semibold text-stone-900">4. Two-way guest chat &amp; Ulendo Concierge AI assistance</h2>
+            <p className="mt-3 text-stone-700">
+              Your listing is alive, not static. Travel Malawi integrates two powerful communication tools:
+            </p>
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="p-4 bg-stone-50 border border-stone-200 rounded-xl space-y-2">
+                <p className="font-semibold text-stone-900 text-sm">Direct Guest Inquiries</p>
+                <p className="text-xs text-stone-600 leading-relaxed">
+                  Travelers can chat directly with your manager via in-app real-time messaging and WhatsApp before and after booking. They ask about boat transfers, arrival ETAs, dietary preferences (fresh Chambo, vegetarian relish), and road access without middleman friction.
+                </p>
+              </div>
+              <div className="p-4 bg-stone-900 text-stone-100 border border-stone-800 rounded-xl space-y-2">
+                <p className="font-semibold text-white text-sm">Ulendo Concierge AI Assistance</p>
+                <p className="text-xs text-stone-300 leading-relaxed">
+                  Inside your Host Dashboard, chat 24/7 with Ulendo—our resident Malawian hospitality AI copilot. Ulendo helps you craft enticing room descriptions, benchmark dual-currency rates (clean MWK &amp; whole USD), update daily restaurant blackboard specials, and suggest amenities.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* Section 5: listing request form */}
           <section id="listing-form" className="mt-12 pt-8 border-t border-stone-200">
             <h2 className="text-xl font-semibold text-stone-900">Submit your property for listing curation</h2>
             <p className="mt-2 text-stone-500">

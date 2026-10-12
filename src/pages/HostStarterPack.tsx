@@ -83,11 +83,15 @@ Key Summary for Property Owners & Caretakers:
    - 03. The En-Suite Bathroom: 15° off-mirror axis showing dry tiles & clean hot shower.
    - 04. Evening Veranda Dining / Boma: 30° seated angle at golden hour (17:15).
 
-3. Dual Pricing Guidelines:
+3. Two-Way Direct Guest Chat & 24/7 Ulendo Concierge AI Copilot:
+   - Guests chat directly with you via in-app real-time messaging and WhatsApp (no masked numbers or call centers).
+   - Managers chat with Ulendo Concierge AI inside the dashboard for 24/7 seasonal rate guidance, daily restaurant board updates, and drafted guest notes.
+
+4. Dual Pricing Guidelines:
    - Malawian Kwacha (MWK): Clean round thousands (e.g. MK 85,000 / night or MK 280,000 for whole cottages).
    - US Dollars (USD): Whole figures rounded to nearest $5 (e.g. $55 or $180).
 
-4. Zero Commission Ledger:
+5. Zero Commission Ledger:
    - Foreign OTAs take ~18% commission + forex remittance fees (e.g. MK 77,500 payout delayed 30 days).
    - Travel Malawi Direct: 100% retained (MK 100,000 net) paid instantly to your Airtel Money, TNM Mpamba, or National Bank of Malawi account.
 
@@ -761,64 +765,124 @@ ${window.location.origin}/list-your-property`;
               </p>
             </section>
 
-            {/* SECTION 3: WhatsApp Communication & Templates */}
+            {/* SECTION 3: Two-Way Direct Guest Chat & Ulendo Concierge AI Copilot */}
             <section id="section-whatsapp" className="pt-4 border-t border-stone-200/80">
               <div className="flex items-center gap-2 mb-1 text-xs font-mono text-stone-400 uppercase tracking-wider">
                 <span>Rule 03</span>
                 <span>·</span>
-                <span>Fast Direct WhatsApp Communication</span>
+                <span>Direct Inquiries &amp; 24/7 Hospitality Copilot</span>
               </div>
               <h2 className="text-xl sm:text-2xl md:text-3xl font-serif font-bold text-stone-900">
-                3. Direct WhatsApp Guest Templates
+                3. Direct Guest Chat &amp; Ulendo Concierge AI Copilot
               </h2>
               <p className="mt-2 text-stone-600 max-w-4xl">
-                Guests love fast, personal replies directly from the host. Keep these two templates saved on your phone and simply fill in the brackets before sending:
+                Travel Malawi eliminates opaque call centers and robotic intermediaries. Guests can chat directly with your property manager in real time, while managers have 24/7 conversational access to <strong>Ulendo Concierge AI</strong>—our resident hospitality copilot—to draft replies, recommend seasonal rates, and update daily boards in seconds.
               </p>
 
-              {/* Handcrafted Architectural Sketch 02: The Direct WhatsApp Flow */}
+              {/* Handcrafted Architectural Sketch 02: Dual-Channel Communication Architecture */}
               <div className="break-inside-avoid my-6 p-5 sm:p-6 bg-stone-50 rounded-2xl border border-stone-200/80">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-[10px] font-mono text-stone-500 uppercase tracking-wider">
-                    Drafting Sketch 02 // Direct Guest-to-Host WhatsApp Pathway
+                    Drafting Sketch 02 // Direct Guest Chat + Ulendo Concierge AI Architecture
                   </span>
-                  <span className="text-[10px] font-mono text-stone-400">Zero Middlemen</span>
+                  <span className="text-[10px] font-mono text-stone-400">Two-Way Conversations · Zero Friction</span>
                 </div>
 
                 <div className="flex items-center justify-center py-2 overflow-x-auto">
                   <svg
-                    viewBox="0 0 540 220"
-                    className="w-full max-w-xl h-auto text-stone-800 stroke-current fill-none stroke-[1.5] stroke-linecap-round stroke-linejoin-round select-none"
+                    viewBox="0 0 720 250"
+                    className="w-full max-w-3xl h-auto text-stone-800 stroke-current fill-none stroke-[1.5] stroke-linecap-round stroke-linejoin-round select-none"
                   >
-                    {/* Guest Phone Silhouette */}
-                    <rect x="40" y="20" width="110" height="180" rx="14" className="stroke-stone-800 fill-white stroke-[2]" />
-                    <line x1="75" y1="30" x2="115" y2="30" className="stroke-stone-300 stroke-[2]" />
-                    <circle cx="95" cy="185" r="3" className="stroke-stone-300 stroke-[1]" />
-                    <text x="55" y="60" className="text-[9px] font-mono fill-stone-400 stroke-none">GUEST PHONE</text>
-                    <text x="55" y="80" className="text-[11px] font-bold fill-stone-900 stroke-none">Traveler</text>
+                    {/* Station 1: Guest Phone (Left, x=30 to x=150) */}
+                    <rect x="30" y="25" width="120" height="195" rx="16" className="stroke-stone-800 fill-white stroke-[2]" />
+                    <line x1="70" y1="36" x2="110" y2="36" className="stroke-stone-300 stroke-[2]" />
+                    <circle cx="90" cy="205" r="3" className="stroke-stone-300 stroke-[1]" />
+                    <text x="45" y="58" className="text-[9px] font-mono fill-stone-400 stroke-none uppercase">GUEST DEVICE</text>
+                    <text x="45" y="75" className="text-[12px] font-bold fill-stone-900 stroke-none">Direct Traveler</text>
+                    {/* Guest Chat Bubble */}
+                    <rect x="40" y="90" width="100" height="52" rx="8" className="fill-stone-100 stroke-stone-300 stroke-[1]" />
+                    <text x="48" y="106" className="text-[8px] font-sans fill-stone-800 stroke-none font-semibold">&ldquo;Available this Sat?&rdquo;</text>
+                    <text x="48" y="118" className="text-[7.5px] font-sans fill-stone-600 stroke-none">Boat pickup from</text>
+                    <text x="48" y="129" className="text-[7.5px] font-sans fill-stone-600 stroke-none">Monkey Bay at 2pm?</text>
 
-                    {/* Host Phone Silhouette */}
-                    <rect x="390" y="20" width="110" height="180" rx="14" className="stroke-stone-800 fill-white stroke-[2]" />
-                    <line x1="425" y1="30" x2="465" y2="30" className="stroke-stone-300 stroke-[2]" />
-                    <circle cx="445" cy="185" r="3" className="stroke-stone-300 stroke-[1]" />
-                    <text x="405" y="60" className="text-[9px] font-mono fill-stone-400 stroke-none">HOST PHONE</text>
-                    <text x="405" y="80" className="text-[11px] font-bold fill-stone-900 stroke-none">Your Stay</text>
+                    {/* Station 2: Host Phone & Dashboard (Center, x=290 to x=430) */}
+                    <rect x="290" y="25" width="140" height="195" rx="16" className="stroke-stone-800 fill-white stroke-[2]" />
+                    <line x1="335" y1="36" x2="385" y2="36" className="stroke-stone-300 stroke-[2]" />
+                    <circle cx="360" cy="205" r="3" className="stroke-stone-300 stroke-[1]" />
+                    <text x="305" y="58" className="text-[9px] font-mono fill-emerald-800 stroke-none uppercase font-bold">PROPERTY MANAGER</text>
+                    <text x="305" y="75" className="text-[12px] font-bold fill-stone-900 stroke-none">Your Lodge Hub</text>
+                    {/* Manager Reply to Guest */}
+                    <rect x="300" y="90" width="120" height="42" rx="8" className="fill-emerald-50 stroke-emerald-600 stroke-[1]" />
+                    <text x="308" y="105" className="text-[8px] font-sans fill-emerald-950 stroke-none font-bold">&ldquo;Takulandirani!&rdquo;</text>
+                    <text x="308" y="117" className="text-[7.5px] font-sans fill-emerald-800 stroke-none">Boat ready at 2 PM.</text>
+                    <text x="308" y="127" className="text-[7.5px] font-sans fill-emerald-800 stroke-none">Lakeview Chalet held!</text>
+                    {/* Manager Query to Ulendo */}
+                    <rect x="300" y="140" width="120" height="40" rx="8" className="fill-amber-50 stroke-amber-400 stroke-[1]" />
+                    <text x="308" y="154" className="text-[7.5px] font-sans fill-amber-950 stroke-none font-semibold">&ldquo;Ulendo, suggest Easter</text>
+                    <text x="308" y="165" className="text-[7.5px] font-sans fill-amber-950 stroke-none">rate &amp; draft deposit note&rdquo;</text>
 
-                    {/* Connecting Arc with Checkmark */}
-                    <path d="M 150 90 C 230 40 310 40 390 90" className="stroke-emerald-700 stroke-[2]" strokeDasharray="5 3" />
-                    <circle cx="270" cy="62" r="13" className="fill-emerald-800 stroke-white stroke-[2]" />
-                    <path d="M 264 62 L 268 66 L 276 58" className="stroke-white stroke-[2] fill-none" />
-                    <text x="210" y="90" className="text-[9px] font-mono fill-emerald-800 stroke-none font-bold">DIRECT WHATSAPP CONFIRMATION</text>
+                    {/* Station 3: Ulendo Concierge AI (Right, x=570 to x=690) */}
+                    <rect x="570" y="25" width="120" height="195" rx="16" className="stroke-stone-900 fill-stone-900 stroke-[2]" />
+                    <line x1="610" y1="36" x2="650" y2="36" className="stroke-stone-700 stroke-[2]" />
+                    <circle cx="630" cy="205" r="3" className="stroke-amber-500 stroke-[1]" />
+                    <text x="585" y="58" className="text-[9px] font-mono fill-amber-400 stroke-none uppercase font-bold">ULENDO CONCIERGE</text>
+                    <text x="585" y="75" className="text-[12px] font-bold fill-white stroke-none">24/7 Operations AI</text>
+                    {/* Ulendo Output Bubble */}
+                    <rect x="580" y="90" width="100" height="72" rx="8" className="fill-stone-800 stroke-amber-600/60 stroke-[1]" />
+                    <text x="588" y="106" className="text-[8px] font-sans fill-amber-300 stroke-none font-bold">&ldquo;Easter Benchmark:&rdquo;</text>
+                    <text x="588" y="118" className="text-[7.5px] font-sans fill-stone-200 stroke-none">MK 140,000 / $80</text>
+                    <text x="588" y="130" className="text-[7.5px] font-sans fill-stone-200 stroke-none">Deposit text ready</text>
+                    <text x="588" y="143" className="text-[7.5px] font-sans fill-emerald-400 stroke-none font-medium">&#10003; 1-click apply</text>
 
-                    {/* Floating Bubble on Guest Phone */}
-                    <rect x="50" y="95" width="90" height="35" rx="6" className="fill-stone-100 stroke-stone-300 stroke-[1]" />
-                    <text x="58" y="110" className="text-[8px] font-sans fill-stone-700 stroke-none font-medium">&ldquo;Available this Sat?&rdquo;</text>
-                    <text x="58" y="122" className="text-[8px] font-sans fill-stone-500 stroke-none">Whole Cottage</text>
+                    {/* Left Connecting Arc (Guest <-> Manager) */}
+                    <path d="M 150 110 C 210 80 230 80 290 110" className="stroke-emerald-700 stroke-[2]" strokeDasharray="5 3" />
+                    <circle cx="220" cy="94" r="11" className="fill-emerald-800 stroke-white stroke-[1.5]" />
+                    <path d="M 216 94 L 219 97 L 225 91" className="stroke-white stroke-[1.5] fill-none" />
+                    <text x="160" y="132" className="text-[8px] font-mono fill-emerald-800 stroke-none font-bold">DIRECT GUEST CHAT</text>
 
-                    {/* Floating Bubble on Host Phone */}
-                    <rect x="400" y="95" width="90" height="35" rx="6" className="fill-emerald-50 stroke-emerald-600 stroke-[1]" />
-                    <text x="408" y="110" className="text-[8px] font-sans fill-emerald-950 stroke-none font-bold">&ldquo;Takulandirani!&rdquo;</text>
-                    <text x="408" y="122" className="text-[8px] font-sans fill-emerald-800 stroke-none font-medium">Pin + Directions sent</text>
+                    {/* Right Connecting Arc (Manager <-> Ulendo) */}
+                    <path d="M 430 160 C 490 135 510 135 570 160" className="stroke-amber-600 stroke-[2]" strokeDasharray="5 3" />
+                    <circle cx="500" cy="146" r="11" className="fill-amber-600 stroke-white stroke-[1.5]" />
+                    <circle cx="500" cy="146" r="3" className="fill-white stroke-none" />
+                    <text x="445" y="182" className="text-[8px] font-mono fill-amber-800 stroke-none font-bold">CONCIERGE COPILOT</text>
                   </svg>
+                </div>
+              </div>
+
+              {/* Two Core Conversation Pillars */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                {/* Pillar 1: Direct Guest Inquiries */}
+                <div className="p-5 rounded-2xl border border-stone-200 bg-white shadow-2xs space-y-3">
+                  <div className="flex items-center gap-2 text-stone-900 font-bold text-sm sm:text-base">
+                    <MessageSquare className="w-4 h-4 text-emerald-700" />
+                    <span>Channel 1: Direct Guest-to-Host Chat</span>
+                  </div>
+                  <p className="text-xs sm:text-sm text-stone-600 leading-relaxed">
+                    Travelers can chat directly with you via <strong>real-time in-app messaging</strong> on your listing and via <strong>instant WhatsApp</strong>. No masked phone numbers, no delayed email queues.
+                  </p>
+                  <ul className="text-xs text-stone-600 space-y-1.5 list-disc pl-4">
+                    <li><strong>Boat &amp; Lake Transfers:</strong> Coordinate boat pickups from Monkey Bay, Cape Maclear, Senga Bay, or Likoma Island.</li>
+                    <li><strong>Meal &amp; Dining Preferences:</strong> Prepare fresh Lake Chambo or special dietary requests prior to arrival.</li>
+                    <li><strong>Live Presence Indicator:</strong> Guests see when the lodge manager is online and active.</li>
+                    <li><strong>Turn-by-Turn Arrival Coordination:</strong> Share gate pins and road condition updates directly.</li>
+                  </ul>
+                </div>
+
+                {/* Pillar 2: Ulendo Concierge AI Copilot */}
+                <div className="p-5 rounded-2xl border border-stone-200 bg-stone-900 text-stone-100 shadow-2xs space-y-3">
+                  <div className="flex items-center gap-2 text-white font-bold text-sm sm:text-base">
+                    <Compass className="w-4 h-4 text-amber-400" />
+                    <span>Channel 2: Chat Fully with Ulendo Concierge AI</span>
+                  </div>
+                  <p className="text-xs sm:text-sm text-stone-300 leading-relaxed">
+                    Inside your Host Dashboard, <strong>Ulendo</strong> is your resident Malawian hospitality AI concierge—always on duty to help you manage operations without friction.
+                  </p>
+                  <ul className="text-xs text-stone-300 space-y-1.5 list-disc pl-4">
+                    <li><strong>Seasonal Pricing Guidance:</strong> Ask Ulendo to benchmark rates for Easter, Lake of Stars, or Christmas in MWK and USD.</li>
+                    <li><strong>Drafting Guest Replies:</strong> Generate welcoming, authentic Chichewa &amp; English responses with one click.</li>
+                    <li><strong>Daily Blackboard Specials:</strong> Update today's lake fish catch (Chambo, Kampango, Usipa) and dinner menus effortlessly.</li>
+                    <li><strong>Amenity &amp; Policy Suggestions:</strong> Get recommendations for solar backup, Wi-Fi packages, and cancellation terms.</li>
+                  </ul>
                 </div>
               </div>
 
@@ -869,6 +933,30 @@ ${window.location.origin}/list-your-property`;
                   </div>
                   <div className="p-3.5 bg-stone-50 rounded-xl font-mono text-xs text-stone-800 leading-relaxed border border-stone-100">
                     &ldquo;Muli bwanji! We are getting your stay ready at <strong>[Property Name]</strong>. Check-in is from 2:00 PM. Here is our exact location pin: <strong>[Google Maps / WhatsApp Pin]</strong>. Turn off the M5 at <strong>[Landmark]</strong>. Our caretaker <strong>[Name]</strong> will be waiting at the gate to welcome you. Safe travels!&rdquo;
+                  </div>
+                </div>
+
+                <div className="break-inside-avoid p-5 rounded-2xl border border-stone-200 bg-white shadow-2xs">
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <span className="text-xs font-mono font-bold uppercase tracking-wider text-amber-800">
+                      Template C · Ulendo AI-Assisted Deposit &amp; Transfer Confirmation
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        copyTemplateText(
+                          'deposit',
+                          `Takulandirani [Guest Name]! We have provisionally blocked your dates for [Property Name]. To confirm your booking, please send your 50% deposit (MK [Amount]) via Airtel Money or TNM Mpamba to [Phone Number], or National Bank of Malawi [Account Details]. If you need lake boat transfer from [Harbor], reply here and we will have the boat ready!`
+                        )
+                      }
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-stone-700 hover:text-stone-950 px-2.5 py-1 rounded-lg border border-stone-200 hover:bg-stone-50 transition cursor-pointer print:hidden"
+                    >
+                      {copiedTemplate === 'deposit' ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3 text-stone-500" />}
+                      <span>{copiedTemplate === 'deposit' ? 'Copied' : 'Copy'}</span>
+                    </button>
+                  </div>
+                  <div className="p-3.5 bg-stone-50 rounded-xl font-mono text-xs text-stone-800 leading-relaxed border border-stone-100">
+                    &ldquo;Takulandirani <strong>[Guest Name]</strong>! We have provisionally blocked your dates for <strong>[Property Name]</strong>. To confirm your booking, please send your 50% deposit (MK <strong>[Amount]</strong>) via Airtel Money or TNM Mpamba to <strong>[Phone Number]</strong>, or National Bank of Malawi <strong>[Account Details]</strong>. If you need lake boat transfer from <strong>[Harbor]</strong>, reply here and we will have the boat ready!&rdquo;
                   </div>
                 </div>
               </div>

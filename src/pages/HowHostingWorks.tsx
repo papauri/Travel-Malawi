@@ -68,15 +68,15 @@ const STEPS: Step[] = [
   {
     id: 'whatsapp',
     number: '03',
-    title: 'Direct WhatsApp & Phone Line',
-    subtitle: 'Inquiries reach your phone with zero intermediaries',
+    title: 'Two-Way Guest Chat & Concierge AI',
+    subtitle: 'Direct guest inquiries + 24/7 Ulendo Concierge operations copilot',
     summary:
-      'When a guest wants to book, their request routes directly to your WhatsApp or direct phone. You get the guest’s real name, party size, requested dates, and calculated totals right away.',
+      'Travelers chat directly with your lodge manager via in-app messaging and WhatsApp—coordinating boat pickups, Lake Chambo dinners, and arrival times without intermediaries. Meanwhile, managers can chat 24/7 with Ulendo Concierge AI for smart pricing, menu updates, and drafted replies.',
     keyPoints: [
-      'Direct contact from day one—no hidden guest phone numbers',
-      'Automated itinerary summary with nights and guest count',
-      'Pre-written Chichewa & English confirmation templates',
-      'You answer on your schedule and agree on arrival details',
+      'Direct guest-to-manager chat from day one—no hidden phone numbers',
+      'Real-time coordination for boat transfers, diets, and gate PINs',
+      'Managers can chat fully with Ulendo Concierge AI for 24/7 operations',
+      '1-tap seasonal rate proposals and automated deposit snippets',
     ],
     sketchType: 'whatsapp',
   },
@@ -904,51 +904,66 @@ function SketchIllustration({ type }: { type: 'cottage' | 'discovery' | 'whatsap
     case 'whatsapp':
       return (
         <svg
-          viewBox="0 0 520 320"
-          className="w-full max-w-md h-auto text-stone-800 stroke-current fill-none stroke-[1.5] stroke-linecap-round stroke-linejoin-round select-none"
+          viewBox="0 0 540 320"
+          className="w-full max-w-lg h-auto text-stone-800 stroke-current fill-none stroke-[1.5] stroke-linecap-round stroke-linejoin-round select-none"
         >
           {/* Guest Phone Silhouette on Left */}
-          <rect x="50" y="50" width="130" height="230" rx="16" className="stroke-stone-800 fill-white stroke-[2]" />
-          <line x1="85" y1="62" x2="145" y2="62" className="stroke-stone-300 stroke-[2]" />
-          <circle cx="115" cy="265" r="4" className="stroke-stone-300 stroke-[1]" />
+          <rect x="25" y="45" width="115" height="230" rx="14" className="stroke-stone-800 fill-white stroke-[2]" />
+          <line x1="60" y1="56" x2="105" y2="56" className="stroke-stone-300 stroke-[2]" />
+          <circle cx="82" cy="260" r="3.5" className="stroke-stone-300 stroke-[1]" />
+          <text x="38" y="76" className="text-[8px] font-mono fill-stone-400 stroke-none uppercase">GUEST</text>
+          <text x="38" y="90" className="text-[10px] font-bold fill-stone-900 stroke-none">Direct Traveler</text>
+          {/* Guest Message */}
+          <rect x="33" y="105" width="98" height="58" rx="8" className="fill-stone-100 stroke-stone-300 stroke-[1]" />
+          <text x="40" y="120" className="text-[8px] font-sans fill-stone-800 stroke-none font-semibold">&ldquo;Boat transfer</text>
+          <text x="40" y="132" className="text-[7.5px] font-sans fill-stone-600 stroke-none">from Monkey Bay</text>
+          <text x="40" y="144" className="text-[7.5px] font-sans fill-stone-600 stroke-none">ready for 4 guests?&rdquo;</text>
+          <text x="40" y="156" className="text-[7px] font-mono fill-emerald-700 stroke-none font-bold">Total: MK 280,000</text>
 
-          {/* Host Phone Silhouette on Right */}
-          <rect x="340" y="50" width="130" height="230" rx="16" className="stroke-stone-800 fill-white stroke-[2]" />
-          <line x1="375" y1="62" x2="435" y2="62" className="stroke-stone-300 stroke-[2]" />
-          <circle cx="405" cy="265" r="4" className="stroke-stone-300 stroke-[1]" />
+          {/* Host Phone & Dashboard in Center */}
+          <rect x="200" y="45" width="135" height="230" rx="14" className="stroke-stone-800 fill-white stroke-[2]" />
+          <line x1="245" y1="56" x2="290" y2="56" className="stroke-stone-300 stroke-[2]" />
+          <circle cx="267" cy="260" r="3.5" className="stroke-stone-300 stroke-[1]" />
+          <text x="212" y="76" className="text-[8px] font-mono fill-emerald-800 stroke-none uppercase font-bold">LODGE MANAGER</text>
+          <text x="212" y="90" className="text-[10px] font-bold fill-stone-900 stroke-none">Direct Operations</text>
+          {/* Manager Reply */}
+          <rect x="208" y="105" width="118" height="52" rx="8" className="fill-emerald-50 stroke-emerald-600 stroke-[1]" />
+          <text x="215" y="120" className="text-[8px] font-sans fill-emerald-950 stroke-none font-bold">&ldquo;Takulandirani!&rdquo;</text>
+          <text x="215" y="132" className="text-[7.5px] font-sans fill-emerald-800 stroke-none">Boat ready at 2 PM.</text>
+          <text x="215" y="144" className="text-[7.5px] font-sans fill-emerald-800 stroke-none">Fresh Chambo booked.</text>
+          {/* Manager Query to Ulendo */}
+          <rect x="208" y="165" width="118" height="42" rx="8" className="fill-amber-50 stroke-amber-400 stroke-[1]" />
+          <text x="215" y="179" className="text-[7.5px] font-sans fill-amber-950 stroke-none font-semibold">&ldquo;Ulendo, confirm deposit</text>
+          <text x="215" y="190" className="text-[7.5px] font-sans fill-amber-950 stroke-none">via Airtel / Mpamba&rdquo;</text>
 
-          {/* Connection Arc Between the Two Phones */}
-          <path
-            d="M 180 140 C 240 90 280 90 340 140"
-            className="stroke-emerald-700 stroke-[2]"
-            strokeDasharray="5 3"
-          />
-          <circle cx="260" cy="108" r="14" className="fill-emerald-800 stroke-white stroke-[2]" />
-          <path d="M 255 108 L 259 112 L 267 104" className="stroke-white stroke-[2]" />
+          {/* Ulendo Concierge Terminal on Right */}
+          <rect x="395" y="45" width="120" height="230" rx="14" className="stroke-stone-900 fill-stone-900 stroke-[2]" />
+          <line x1="435" y1="56" x2="475" y2="56" className="stroke-stone-700 stroke-[2]" />
+          <circle cx="455" cy="260" r="3.5" className="stroke-amber-500 stroke-[1]" />
+          <text x="407" y="76" className="text-[8px] font-mono fill-amber-400 stroke-none uppercase font-bold">ULENDO CONCIERGE</text>
+          <text x="407" y="90" className="text-[10px] font-bold fill-white stroke-none">24/7 AI Copilot</text>
+          {/* Ulendo Reply */}
+          <rect x="403" y="105" width="104" height="90" rx="8" className="fill-stone-800 stroke-amber-600/60 stroke-[1]" />
+          <text x="410" y="122" className="text-[7.5px] font-sans fill-amber-300 stroke-none font-bold">Operations Assistant:</text>
+          <text x="410" y="134" className="text-[7px] font-sans fill-stone-200 stroke-none">&#8226; Deposit snippet ready</text>
+          <text x="410" y="146" className="text-[7px] font-sans fill-stone-200 stroke-none">&#8226; MK 140,000 / $80</text>
+          <text x="410" y="158" className="text-[7px] font-sans fill-stone-200 stroke-none">&#8226; Menu specials synced</text>
+          <text x="410" y="172" className="text-[7px] font-sans fill-emerald-400 stroke-none font-medium">&#10003; 1-tap WhatsApp reply</text>
 
-          {/* Direct WhatsApp Message Chat Box */}
-          <g transform="translate(190, 140)">
-            <rect x="0" y="0" width="145" height="110" rx="10" className="fill-[#DCF8C6] stroke-stone-800 stroke-[1.5] filter drop-shadow-xs" />
-            <text x="10" y="18" className="text-[9px] font-mono fill-emerald-900 stroke-none font-bold">DIRECT INQUIRY</text>
-            <text x="10" y="34" className="text-[10px] font-sans fill-stone-900 stroke-none">
-              &ldquo;Muli bwanji! We are 4
-            </text>
-            <text x="10" y="48" className="text-[10px] font-sans fill-stone-900 stroke-none">
-              guests looking for Lake
-            </text>
-            <text x="10" y="62" className="text-[10px] font-sans fill-stone-900 stroke-none">
-              Chalet on 14-17 Nov.
-            </text>
-            <text x="10" y="78" className="text-[10px] font-sans font-bold fill-stone-900 stroke-none">
-              Total: MK 255,000.&rdquo;
-            </text>
-            <text x="10" y="98" className="text-[8px] font-mono fill-stone-500 stroke-none">
-              Guest WhatsApp: +265 999...
-            </text>
-          </g>
+          {/* Connecting Arc: Guest <-> Manager */}
+          <path d="M 140 130 C 170 105 180 105 200 130" className="stroke-emerald-700 stroke-[2]" strokeDasharray="4 3" />
+          <circle cx="170" cy="116" r="9" className="fill-emerald-800 stroke-white stroke-[1.5]" />
+          <path d="M 167 116 L 169 118 L 174 114" className="stroke-white stroke-[1.5] fill-none" />
 
-          <text x="75" y="100" className="text-[9px] font-mono fill-stone-400 stroke-none">GUEST DEVICE</text>
-          <text x="365" y="100" className="text-[9px] font-mono fill-stone-400 stroke-none">HOST DEVICE</text>
+          {/* Connecting Arc: Manager <-> Ulendo */}
+          <path d="M 335 185 C 365 160 375 160 395 185" className="stroke-amber-600 stroke-[2]" strokeDasharray="4 3" />
+          <circle cx="365" cy="170" r="9" className="fill-amber-600 stroke-white stroke-[1.5]" />
+          <circle cx="365" cy="170" r="2.5" className="fill-white stroke-none" />
+
+          {/* Bottom Labels */}
+          <text x="45" y="295" className="text-[8.5px] font-mono fill-stone-400 stroke-none font-medium">GUEST DEVICE</text>
+          <text x="215" y="295" className="text-[8.5px] font-mono fill-emerald-800 stroke-none font-bold">DIRECT CHAT</text>
+          <text x="405" y="295" className="text-[8.5px] font-mono fill-amber-700 stroke-none font-bold">ULENDO COPILOT</text>
         </svg>
       );
 

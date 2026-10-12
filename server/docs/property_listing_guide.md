@@ -44,3 +44,8 @@ Write directions in four parts:
 2. **Road condition:** "Follow the gravel road for 3.8 km. Fine for 2WD cars in the dry season; 4WD recommended in the January to March rains."
 3. **Arrival landmark:** "Look for the carved wooden boat sign on your right at the beach gate."
 4. **Gate GPS coordinates:** A pin at the front gate, so travellers can navigate offline with maps saved in Travel Malawi.
+
+## 5. Direct Guest Inquiries & Ulendo Concierge AI Assistance
+
+1. **Direct Guest-to-Host Chat:** Travellers can message your manager directly from the listing page and booking confirmation via in-app real-time messaging and direct WhatsApp. They coordinate boat transfers from Monkey Bay/Likoma Island, custom Lake Chambo meals, and road directions with zero call center delays.
+2. **Ulendo Concierge AI Copilot:** Inside your Host Dashboard, chat 24/7 with Ulendo—our resident Malawian hospitality AI concierge. Ulendo assists you in crafting inviting room descriptions, proposing competitive MWK and USD rates, updating daily restaurant specials, and optimizing amenities with 1 click.
