@@ -1,9 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { 
-  Search, Save, Star, Loader2, RefreshCw, Check, Globe, MapPin, 
-  Sparkles, Trash2, Edit3, Sliders, X, Filter, Compass, Building2, 
-  MessageSquare, ExternalLink, AlertCircle, Eye, CheckCircle2,
-  Calendar, User, Plus
+  Search, Save, Star, Loader2, Check, MapPin, 
+  Trash2, Edit3, Sliders, X, Eye
 } from 'lucide-react';
 import { Hotel } from '../types';
 import toast from 'react-hot-toast';
@@ -34,11 +32,11 @@ interface ScrapedReviewItem {
 }
 
 const AVAILABLE_SOURCES = [
-  { id: 'TripAdvisor', label: 'TripAdvisor', icon: Compass, color: 'text-emerald-700 bg-emerald-50 border-emerald-200' },
-  { id: 'Google Reviews', label: 'Google Reviews', icon: Globe, color: 'text-sky-700 bg-sky-50 border-sky-200' },
-  { id: 'Booking.com', label: 'Booking.com', icon: Building2, color: 'text-blue-800 bg-blue-50 border-blue-200' },
-  { id: 'SafariBookings', label: 'SafariBookings', icon: Star, color: 'text-amber-800 bg-amber-50 border-amber-200' },
-  { id: 'Facebook / Guest Book', label: 'Guest Book & Social', icon: MessageSquare, color: 'text-stone-700 bg-stone-100 border-stone-200' },
+  { id: 'TripAdvisor', label: 'TripAdvisor' },
+  { id: 'Google Reviews', label: 'Google Reviews' },
+  { id: 'Booking.com', label: 'Booking.com' },
+  { id: 'SafariBookings', label: 'SafariBookings' },
+  { id: 'Facebook / Guest Book', label: 'Guest Book & Social' },
 ];
 
 export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminReviewScraperProps) {
@@ -144,7 +142,6 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
       
       if (data.data && Array.isArray(data.data)) {
         setScrapedReviews(data.data);
-        // Pre-select all discovered reviews by default
         setSelectedReviews(new Set(data.data.map((_, i) => i)));
         toast.success(`Discovered ${data.data.length} authentic guest reviews across web channels!`);
       } else {
@@ -221,7 +218,6 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
       };
     }
 
-    // Append mode
     const totalCount = existingStats.count + selectedList.length;
     const existingTotal = existingStats.rating * existingStats.count;
     const newTotal = selectedList.reduce((acc, r) => acc + (r.rating || 5), 0);
@@ -254,7 +250,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
           rating: typeof r.rating === 'number' ? r.rating : 5,
           title: r.title || '',
           comment,
-          text: comment, // ensure both text and comment for full backwards compatibility
+          text: comment,
           source: r.source || 'TripAdvisor',
           sourceUrl: r.sourceUrl || '',
           date: r.date || new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
@@ -270,13 +266,11 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
       if (saveMode === 'replace') {
         finalReviews = newReviews;
       } else {
-        // Deduplicate against existing reviews by author and first 30 chars of comment
         const existingKeys = new Set(currentReviews.map((er: any) => `${(er.author || '').toLowerCase()}|${(er.comment || er.text || '').substring(0, 30).toLowerCase()}`));
         const fresh = newReviews.filter(nr => !existingKeys.has(`${nr.author.toLowerCase()}|${nr.comment.substring(0, 30).toLowerCase()}`));
         finalReviews = [...fresh, ...currentReviews];
       }
 
-      // Calculate new score metrics
       const totalCount = finalReviews.length;
       const totalScore = finalReviews.reduce((sum: number, r: any) => sum + (r.rating || 5), 0);
       const newAverage = totalCount > 0 ? Math.round((totalScore / totalCount) * 10) / 10 : 5;
@@ -298,7 +292,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
         reviewsSummary: updatedSummary 
       });
 
-      toast.success(`Successfully saved ${newReviews.length} reviews! New property rating is ${newAverage}★ across ${totalCount} reviews.`);
+      toast.success(`Successfully saved ${newReviews.length} reviews! Property rating updated.`);
       setScrapedReviews([]);
       setSelectedReviews(new Set());
     } catch (err: any) {
@@ -386,64 +380,25 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
     });
   };
 
-  // Helper for source badge styling
+  // Clean, simple text-only source badge (no AI-obvious icons)
   const getSourceBadge = (source: string) => {
-    const s = (source || '').toLowerCase();
-    if (s.includes('tripadvisor')) {
-      return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-          <Compass className="w-3 h-3 text-emerald-600" />
-          TripAdvisor
-        </span>
-      );
-    }
-    if (s.includes('google')) {
-      return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-sky-50 text-sky-800 border border-sky-200">
-          <Globe className="w-3 h-3 text-sky-600" />
-          Google Reviews
-        </span>
-      );
-    }
-    if (s.includes('booking')) {
-      return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-blue-50 text-blue-800 border border-blue-200">
-          <Building2 className="w-3 h-3 text-blue-600" />
-          Booking.com
-        </span>
-      );
-    }
-    if (s.includes('safari')) {
-      return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-50 text-amber-900 border border-amber-200">
-          <Star className="w-3 h-3 text-amber-600" />
-          SafariBookings
-        </span>
-      );
-    }
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-stone-100 text-stone-700 border border-stone-200">
-        <MessageSquare className="w-3 h-3 text-stone-500" />
-        {source || 'Direct Guestbook'}
+      <span className="inline-block px-2 py-0.5 rounded text-[11px] font-medium bg-stone-100 text-stone-700 border border-stone-200">
+        {source || 'Guest Review'}
       </span>
     );
   };
 
   return (
     <div className="space-y-6 max-w-6xl animate-in fade-in duration-200">
-      {/* Header Banner */}
+      {/* Header Banner - Clean and Simple */}
       <div className="pb-3 border-b border-stone-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="p-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
-              <Sparkles className="w-4 h-4" />
-            </span>
-            <h2 className="text-2xl font-serif font-bold text-stone-900 tracking-tight">
-              Hospitality Review Discovery &amp; Intelligence
-            </h2>
-          </div>
-          <p className="text-stone-500 text-xs sm:text-sm mt-1">
-            Deep-scan verified public channels (TripAdvisor, Google Reviews, Booking.com, SafariBookings) and link real traveler experiences to Malawian properties.
+          <h2 className="text-2xl font-serif font-bold text-stone-900 tracking-tight">
+            Review Discovery &amp; Moderation
+          </h2>
+          <p className="text-stone-500 text-xs sm:text-sm mt-0.5">
+            Search verified public channels (TripAdvisor, Google Reviews, Booking.com, SafariBookings) and link real traveler experiences to Malawian properties.
           </p>
         </div>
 
@@ -452,7 +407,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
             <button
               type="button"
               onClick={() => setActiveSubTab('discover')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition ${
                 activeSubTab === 'discover'
                   ? 'bg-white text-stone-900 shadow-xs'
                   : 'text-stone-600 hover:text-stone-900'
@@ -464,7 +419,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
             <button
               type="button"
               onClick={() => setActiveSubTab('existing')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition ${
                 activeSubTab === 'existing'
                   ? 'bg-white text-stone-900 shadow-xs'
                   : 'text-stone-600 hover:text-stone-900'
@@ -535,19 +490,19 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
                     className="w-full h-full object-cover" 
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-stone-400">
-                    <Building2 className="w-6 h-6" />
+                  <div className="w-full h-full flex items-center justify-center text-stone-400 text-xs font-medium">
+                    Stay
                   </div>
                 )}
               </div>
               <div className="min-w-0 flex-1">
                 <h4 className="font-serif font-bold text-stone-900 text-sm truncate">{selectedHotel.name}</h4>
                 <p className="text-[11px] text-stone-500 truncate flex items-center gap-1 mt-0.5">
-                  <MapPin className="w-3 h-3 text-emerald-600 shrink-0" />
+                  <MapPin className="w-3 h-3 text-stone-400 shrink-0" />
                   <span>{selectedHotel.location || 'Malawi'}</span>
                 </p>
                 <div className="flex items-center gap-2 mt-1">
-                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-stone-800 bg-stone-100 px-1.5 py-0.5 rounded border border-stone-200">
                     <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
                     <span>{existingStats.rating > 0 ? existingStats.rating : 'New'}</span>
                   </span>
@@ -569,37 +524,34 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
           <div className="pt-3 border-t border-stone-100 space-y-3.5">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="text-xs font-bold text-stone-800 uppercase tracking-wider">
-                2. Target Search Channels &amp; Grounding
+                2. Target Search Channels
               </span>
               <button
                 type="button"
                 onClick={() => setShowAdvancedOptions(prev => !prev)}
-                className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 hover:text-emerald-800"
+                className="inline-flex items-center gap-1 text-xs font-medium text-stone-700 hover:text-stone-900"
               >
                 <Sliders className="w-3.5 h-3.5" />
-                <span>{showAdvancedOptions ? 'Hide Advanced Query Tools' : 'Configure Search Terms & Sources'}</span>
+                <span>{showAdvancedOptions ? 'Hide Advanced Options' : 'Configure Search Terms & Sources'}</span>
               </button>
             </div>
 
-            {/* Target Source Channel Pills */}
+            {/* Simple Text Target Source Channel Pills (No AI Obvious Icons) */}
             <div className="flex flex-wrap gap-2">
               {AVAILABLE_SOURCES.map(source => {
                 const isSelected = selectedSources.includes(source.id);
-                const IconComponent = source.icon;
                 return (
                   <button
                     key={source.id}
                     type="button"
                     onClick={() => toggleSourceSelection(source.id)}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition cursor-pointer ${
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition cursor-pointer ${
                       isSelected 
-                        ? `${source.color} shadow-2xs ring-1 ring-stone-900/10` 
-                        : 'bg-white text-stone-500 border-stone-200 hover:border-stone-300'
+                        ? 'bg-stone-900 text-white border-stone-900' 
+                        : 'bg-stone-50 text-stone-600 border-stone-200 hover:bg-stone-100 hover:text-stone-900'
                     }`}
                   >
-                    <IconComponent className="w-3.5 h-3.5" />
-                    <span>{source.label}</span>
-                    {isSelected && <Check className="w-3 h-3 ml-0.5" />}
+                    {source.label}
                   </button>
                 );
               })}
@@ -610,13 +562,13 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
               <div className="p-3.5 bg-stone-50 rounded-xl border border-stone-200 grid grid-cols-1 sm:grid-cols-3 gap-3 animate-in fade-in duration-150">
                 <div>
                   <label className="block text-[11px] font-bold text-stone-700 mb-1">
-                    Specific Property Alias / Moniker (Optional)
+                    Specific Property Alias (Optional)
                   </label>
                   <input
                     type="text"
                     value={customQuery}
                     onChange={(e) => setCustomQuery(e.target.value)}
-                    placeholder={`e.g. ${selectedHotel.name} Likoma Island, RPS`}
+                    placeholder={`e.g. ${selectedHotel.name} Likoma`}
                     className="w-full bg-white border border-stone-200 rounded-lg px-3 py-1.5 text-xs text-stone-900 focus:border-stone-900 outline-none"
                   />
                   <span className="text-[10px] text-stone-500 mt-0.5 block">Used for lodges with alternate brand names.</span>
@@ -680,12 +632,12 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
                 type="button"
                 onClick={handleScrape}
                 disabled={isScraping}
-                className="flex items-center gap-2 bg-stone-900 text-white px-5 py-2.5 rounded-xl text-xs font-bold hover:bg-emerald-800 transition disabled:opacity-40 disabled:cursor-not-allowed shadow-xs cursor-pointer active:scale-98"
+                className="flex items-center gap-2 bg-stone-900 text-white px-5 py-2.5 rounded-xl text-xs font-bold hover:bg-stone-800 transition disabled:opacity-40 disabled:cursor-not-allowed shadow-xs cursor-pointer active:scale-98"
               >
                 {isScraping ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Scanning Public Web &amp; Channels...</span>
+                    <span>Searching Channels...</span>
                   </>
                 ) : (
                   <>
@@ -699,20 +651,15 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
         )}
       </div>
 
-      {/* Loading Radar Animation while Scraping */}
+      {/* Simple, Clean Loading State */}
       {isScraping && (
         <div className="bg-stone-50 border border-stone-200 rounded-2xl p-8 sm:p-10 flex flex-col items-center justify-center text-center space-y-3">
-          <div className="relative flex items-center justify-center">
-            <span className="w-12 h-12 rounded-full bg-emerald-500/20 animate-ping absolute"></span>
-            <div className="w-12 h-12 rounded-full bg-stone-900 text-white flex items-center justify-center shadow-lg">
-              <RefreshCw className="w-5 h-5 animate-spin text-emerald-400" />
-            </div>
-          </div>
+          <Loader2 className="w-6 h-6 animate-spin text-stone-700" />
           <h3 className="font-serif font-bold text-stone-900 text-base">
-            Actively Querying Travel Channels for {selectedHotel?.name}
+            Searching Travel Channels for {selectedHotel?.name}
           </h3>
           <p className="text-stone-600 text-xs max-w-lg leading-relaxed">
-            Searching TripAdvisor, Google Reviews, Booking.com, and SafariBookings. Extracting authentic guest feedback, travel dates, stay ratings, and Lake Malawi / Safari highlights.
+            Querying public travel channels (TripAdvisor, Google Reviews, Booking.com, SafariBookings) for authentic guest feedback.
           </p>
         </div>
       )}
@@ -727,31 +674,31 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
                 {scrapedReviews.length} Reviews Found
               </span>
               <span className="text-stone-300">|</span>
-              <span className="font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+              <span className="font-semibold text-stone-800 bg-stone-100 px-2 py-0.5 rounded-md border border-stone-200">
                 {selectedReviews.size} selected
               </span>
 
               {projectedStats.count > 0 && (
                 <span className="text-[11px] text-stone-600 bg-stone-100 px-2 py-0.5 rounded-md flex items-center gap-1 font-mono font-bold">
                   <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                  <span>Projected Property Rating: {projectedStats.average}★ ({projectedStats.count} total)</span>
+                  <span>Projected Rating: {projectedStats.average}★ ({projectedStats.count} total)</span>
                 </span>
               )}
             </div>
 
-            {/* Quick Actions & Channel Filters */}
+            {/* Quick Actions */}
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={handleSelectAll}
-                className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-stone-100 text-stone-800 hover:bg-stone-200 transition"
+                className="text-xs font-medium px-2.5 py-1 rounded-lg bg-stone-100 text-stone-800 hover:bg-stone-200 transition"
               >
                 Select All
               </button>
               <button
                 type="button"
                 onClick={handleSelectFiveStarOnly}
-                className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 transition flex items-center gap-1"
+                className="text-xs font-medium px-2.5 py-1 rounded-lg bg-stone-100 text-stone-800 border border-stone-200 hover:bg-stone-200 transition flex items-center gap-1"
               >
                 <Star className="w-3 h-3 fill-amber-400 text-amber-500" />
                 <span>5★ Only</span>
@@ -759,7 +706,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
               <button
                 type="button"
                 onClick={handleDeselectAll}
-                className="text-xs font-semibold px-2.5 py-1 rounded-lg text-stone-600 hover:text-stone-900 transition"
+                className="text-xs font-medium px-2.5 py-1 rounded-lg text-stone-600 hover:text-stone-900 transition"
               >
                 Clear
               </button>
@@ -779,16 +726,16 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
                     onClick={() => handleToggleReview(actualIdx)}
                     className={`p-4 sm:p-5 rounded-2xl border transition text-left flex flex-col justify-between gap-3 relative cursor-pointer group ${
                       isSelected 
-                        ? 'border-emerald-600 bg-emerald-50/20 ring-1.5 ring-emerald-600 shadow-xs' 
+                        ? 'border-stone-900 bg-stone-50/50 ring-1 ring-stone-900 shadow-xs' 
                         : 'border-stone-200 bg-white hover:border-stone-300'
                     }`}
                   >
                     <div className="space-y-2.5">
-                      {/* Review Header: Checkbox, Author, Source & Rating */}
+                      {/* Review Header: Checkbox, Author, Simple Source Badge & Rating */}
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-center gap-2.5 min-w-0">
                           <div className={`w-5 h-5 rounded-md flex items-center justify-center border text-xs transition ${
-                            isSelected ? 'bg-emerald-600 border-emerald-600 text-white' : 'border-stone-300 bg-white'
+                            isSelected ? 'bg-stone-900 border-stone-900 text-white' : 'border-stone-300 bg-white'
                           }`}>
                             {isSelected && <Check className="w-3.5 h-3.5" />}
                           </div>
@@ -805,7 +752,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
                               )}
                             </div>
                             {review.travellerType && (
-                              <span className="text-[10px] font-semibold text-stone-500 bg-stone-100 px-1.5 py-0.5 rounded">
+                              <span className="text-[10px] font-medium text-stone-500 bg-stone-100 px-1.5 py-0.5 rounded">
                                 {review.travellerType}
                               </span>
                             )}
@@ -833,36 +780,27 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
                         "{review.comment || review.text}"
                       </p>
 
-                      {/* Highlights Chips */}
+                      {/* Simple Highlights Chips */}
                       {review.highlights && review.highlights.length > 0 && (
                         <div className="flex flex-wrap gap-1.5 pt-1">
                           {review.highlights.map((h, hi) => (
                             <span 
                               key={hi} 
-                              className="text-[10px] font-semibold text-emerald-800 bg-emerald-50/80 border border-emerald-200/70 px-2 py-0.5 rounded-md"
+                              className="text-[10px] font-medium text-stone-600 bg-stone-100 border border-stone-200/80 px-2 py-0.5 rounded"
                             >
-                              ✓ {h}
+                              {h}
                             </span>
                           ))}
                         </div>
                       )}
                     </div>
 
-                    {/* Review Footer: Date, Actions */}
+                    {/* Review Footer: Date, Clean Status, Actions */}
                     <div className="flex items-center justify-between text-[11px] text-stone-400 border-t border-stone-100 pt-2 mt-1">
-                      <div className="flex items-center gap-2">
-                        {review.date && (
-                          <span className="flex items-center gap-1 text-stone-500">
-                            <Calendar className="w-3 h-3" />
-                            <span>{review.date}</span>
-                          </span>
-                        )}
-                        {review.verified && (
-                          <span className="text-emerald-700 font-semibold flex items-center gap-0.5">
-                            <CheckCircle2 className="w-3 h-3" />
-                            <span>Verified Experience</span>
-                          </span>
-                        )}
+                      <div className="flex items-center gap-1.5 text-stone-500">
+                        {review.date && <span>{review.date}</span>}
+                        {review.date && review.verified && <span>·</span>}
+                        {review.verified && <span className="font-medium text-stone-700">Verified</span>}
                       </div>
 
                       <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition">
@@ -878,7 +816,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
                           type="button"
                           onClick={(e) => handleRemoveScrapedReview(actualIdx, e)}
                           title="Discard this review"
-                          className="p-1 text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition"
+                          className="p-1 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-md transition"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -908,7 +846,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
                 <span className="font-bold text-xs sm:text-sm text-stone-900">
                   {selectedReviews.size} reviews selected to attach to {selectedHotel?.name}
                 </span>
-                <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                <span className="text-[11px] font-medium text-stone-700 bg-stone-100 px-2 py-0.5 rounded-md border border-stone-200">
                   New Rating: {projectedStats.average}★ ({projectedStats.count} total)
                 </span>
               </div>
@@ -919,12 +857,12 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
 
             <div className="flex items-center gap-3">
               {/* Append vs Replace Selector */}
-              <div className="flex items-center bg-stone-100 p-1 rounded-xl text-xs font-semibold">
+              <div className="flex items-center bg-stone-100 p-1 rounded-xl text-xs font-medium">
                 <button
                   type="button"
                   onClick={() => setSaveMode('append')}
                   className={`px-2.5 py-1 rounded-lg transition ${
-                    saveMode === 'append' ? 'bg-white text-stone-900 shadow-2xs' : 'text-stone-600 hover:text-stone-900'
+                    saveMode === 'append' ? 'bg-white text-stone-900 shadow-2xs font-semibold' : 'text-stone-600 hover:text-stone-900'
                   }`}
                 >
                   Append to Existing
@@ -933,7 +871,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
                   type="button"
                   onClick={() => setSaveMode('replace')}
                   className={`px-2.5 py-1 rounded-lg transition ${
-                    saveMode === 'replace' ? 'bg-white text-stone-900 shadow-2xs' : 'text-stone-600 hover:text-stone-900'
+                    saveMode === 'replace' ? 'bg-white text-stone-900 shadow-2xs font-semibold' : 'text-stone-600 hover:text-stone-900'
                   }`}
                 >
                   Replace All
@@ -944,7 +882,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
                 type="button"
                 onClick={handleSaveReviews}
                 disabled={selectedReviews.size === 0 || isSaving}
-                className="flex items-center gap-2 bg-stone-900 hover:bg-emerald-800 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition disabled:opacity-40 disabled:cursor-not-allowed shadow-md cursor-pointer active:scale-98"
+                className="flex items-center gap-2 bg-stone-900 hover:bg-stone-800 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition disabled:opacity-40 disabled:cursor-not-allowed shadow-md cursor-pointer active:scale-98"
               >
                 {isSaving ? (
                   <>
@@ -979,7 +917,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
             <button
               type="button"
               onClick={() => setActiveSubTab('discover')}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-stone-900 text-white rounded-xl text-xs font-bold hover:bg-stone-800 transition shadow-2xs"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-stone-900 text-white rounded-xl text-xs font-medium hover:bg-stone-800 transition shadow-2xs"
             >
               <Search className="w-3.5 h-3.5" />
               <span>Discover More Reviews</span>
@@ -988,10 +926,9 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
 
           {existingReviews.length === 0 ? (
             <div className="p-8 text-center bg-stone-50 rounded-xl border border-dashed border-stone-200 space-y-2">
-              <MessageSquare className="w-8 h-8 text-stone-400 mx-auto" />
               <h4 className="font-semibold text-stone-800 text-sm">No reviews currently saved</h4>
               <p className="text-stone-500 text-xs max-w-sm mx-auto">
-                Use the AI Review Discovery Engine to scan public web channels and attach authentic traveler reviews to this listing.
+                Use the Review Discovery Engine to scan public web channels and attach authentic traveler reviews to this listing.
               </p>
             </div>
           ) : (
@@ -1024,7 +961,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
                       type="button"
                       disabled={isDeletingExisting === String(i)}
                       onClick={() => handleDeleteExistingReview(i)}
-                      className="inline-flex items-center gap-1 text-rose-600 hover:text-rose-800 font-semibold disabled:opacity-50 transition"
+                      className="inline-flex items-center gap-1 text-stone-600 hover:text-stone-900 font-medium disabled:opacity-50 transition"
                     >
                       {isDeletingExisting === String(i) ? (
                         <Loader2 className="w-3 h-3 animate-spin" />
@@ -1118,7 +1055,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
               <button
                 type="button"
                 onClick={() => setEditingReviewIndex(null)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-stone-600 hover:bg-stone-100 transition"
+                className="px-4 py-2 rounded-xl text-xs font-medium text-stone-600 hover:bg-stone-100 transition"
               >
                 Cancel
               </button>
