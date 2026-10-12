@@ -104,44 +104,59 @@ const createUserLiveLocationIcon = (label: string = 'You are here') => {
   });
 };
 
-// Custom SVG Pin for a single destination / property with photo thumbnail badge
+// Custom SVG Drop-Pin for a single destination / property with photo thumbnail badge
 const createCustomPinIcon = (label?: string, image?: string) => {
   const html = `
-    <div style="position: relative; width: 56px; height: 68px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; cursor: pointer; pointer-events: auto;">
+    <div style="position: relative; width: 52px; height: 66px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; cursor: pointer; pointer-events: auto;">
       ${label ? `
-        <div style="position: absolute; bottom: 70px; left: 50%; transform: translateX(-50%); padding: 5px 12px; background: #1c1917; color: #ffffff; font-size: 11px; font-weight: 700; border-radius: 9999px; box-shadow: 0 10px 25px rgba(0,0,0,0.4); white-space: nowrap; border: 1.5px solid rgba(255,255,255,0.35); pointer-events: none; display: flex; align-items: center; gap: 6px; max-width: 240px; z-index: 30;">
-          <span style="width: 8px; height: 8px; border-radius: 9999px; background: #10b981; flex-shrink: 0; box-shadow: 0 0 10px #10b981;"></span>
+        <div style="position: absolute; bottom: 70px; left: 50%; transform: translateX(-50%); padding: 4px 10px; background: #1c1917; color: #ffffff; font-size: 11px; font-weight: 700; border-radius: 9999px; box-shadow: 0 4px 14px rgba(0,0,0,0.35); white-space: nowrap; border: 1.5px solid rgba(255,255,255,0.25); pointer-events: none; display: flex; align-items: center; gap: 5px; max-width: 220px; z-index: 30;">
+          <span style="width: 7px; height: 7px; border-radius: 9999px; background: #10b981; flex-shrink: 0; box-shadow: 0 0 8px #10b981;"></span>
           <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${esc(label)}</span>
         </div>
       ` : ''}
-      
-      <div style="position: relative; width: 52px; height: 52px; margin-bottom: 6px; display: flex; align-items: center; justify-content: center;">
-        <!-- Glowing Beacon Radar Rings -->
-        <div style="position: absolute; width: 66px; height: 66px; border-radius: 9999px; background: rgba(16, 185, 129, 0.25); pointer-events: none; z-index: 1;"></div>
-        <div style="position: absolute; width: 58px; height: 58px; border-radius: 9999px; background: rgba(16, 185, 129, 0.4); pointer-events: none; z-index: 2;"></div>
-        
-        <!-- Circular Picture Frame with Stay Thumbnail -->
-        <div style="position: relative; width: 52px; height: 52px; border-radius: 9999px; background: #1c1917; border: 3.5px solid #ffffff; box-shadow: 0 12px 28px -4px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(0,0,0,0.15); overflow: hidden; display: flex; align-items: center; justify-content: center; z-index: 10;">
+
+      <!-- Modern Teardrop Pin Container -->
+      <div style="position: relative; width: 46px; height: 58px; display: flex; flex-direction: column; align-items: center;">
+        <!-- Base Ground Anchor Glow -->
+        <div style="position: absolute; bottom: -3px; left: 50%; transform: translateX(-50%); width: 20px; height: 8px; border-radius: 50%; background: rgba(16, 185, 129, 0.45); filter: blur(1.5px); pointer-events: none; z-index: 1;"></div>
+
+        <!-- Drop-Pin SVG Silhouette with Sharp Point Tip -->
+        <svg width="46" height="58" viewBox="0 0 46 58" fill="none" xmlns="http://www.w3.org/2000/svg" style="position: absolute; top: 0; left: 50%; transform: translateX(-50%); filter: drop-shadow(0 6px 12px rgba(0,0,0,0.4)); z-index: 5;">
+          <path d="M23 58C23 58 44 38.5 44 23C44 10.2975 34.598 0 23 0C11.402 0 2 10.2975 2 23C2 38.5 23 58 23 58Z" fill="#1c1917" stroke="#ffffff" stroke-width="2.5"/>
+        </svg>
+
+        <!-- Circular Stay Image Inset Framed Inside Pin Head -->
+        <div style="position: absolute; top: 3.5px; left: 50%; transform: translateX(-50%); width: 39px; height: 39px; border-radius: 50%; overflow: hidden; background: #292524; display: flex; align-items: center; justify-content: center; z-index: 10;">
           ${safeUrl(image) ? `
             <img src="${safeUrl(image)}" alt="${esc(label || 'Stay')}" style="width: 100%; height: 100%; object-fit: cover; display: block;" referrerpolicy="no-referrer" onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';" />
             <div style="display: none; width: 100%; height: 100%; background: #1c1917; align-items: center; justify-content: center; color: #10b981;">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
-                <circle cx="12" cy="10" r="3"/>
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 21h18"/>
+                <path d="M5 21V7l8-4v18"/>
+                <path d="M19 21V11l-6-3"/>
+                <path d="M9 9v.01"/>
+                <path d="M9 12v.01"/>
+                <path d="M9 15v.01"/>
+                <path d="M9 18v.01"/>
               </svg>
             </div>
           ` : `
             <div style="width: 100%; height: 100%; background: #1c1917; display: flex; align-items: center; justify-content: center; color: #10b981;">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
-                <circle cx="12" cy="10" r="3"/>
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 21h18"/>
+                <path d="M5 21V7l8-4v18"/>
+                <path d="M19 21V11l-6-3"/>
+                <path d="M9 9v.01"/>
+                <path d="M9 12v.01"/>
+                <path d="M9 15v.01"/>
+                <path d="M9 18v.01"/>
               </svg>
             </div>
           `}
         </div>
-        
-        <!-- Bottom Pin Pointer Tip -->
-        <div style="position: absolute; bottom: -5px; left: 50%; transform: translateX(-50%) rotate(45deg); width: 13px; height: 13px; background: #1c1917; border-right: 3px solid #ffffff; border-bottom: 3px solid #ffffff; z-index: 5; box-shadow: 2px 2px 5px rgba(0,0,0,0.35);"></div>
+
+        <!-- Precise Emerald Anchor Dot at Bottom Point -->
+        <div style="position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 6px; height: 6px; border-radius: 50%; background: #10b981; border: 1px solid #ffffff; z-index: 12; box-shadow: 0 0 6px #10b981;"></div>
       </div>
     </div>
   `;
@@ -149,9 +164,9 @@ const createCustomPinIcon = (label?: string, image?: string) => {
   return L.divIcon({
     html,
     className: 'custom-leaflet-marker',
-    iconSize: [56, 68],
-    iconAnchor: [28, 68],
-    popupAnchor: [0, -68],
+    iconSize: [52, 66],
+    iconAnchor: [26, 66],
+    popupAnchor: [0, -74],
   });
 };
 
@@ -643,10 +658,10 @@ export default function InteractiveMap({
 
         if (popupText) {
           marker.bindPopup(`
-            <div style="font-family: sans-serif; padding: 4px; text-align: center; max-width: 180px;">
-              ${safeUrl(markerImage) ? `<img src="${safeUrl(markerImage)}" alt="${esc(popupText)}" style="width: 100%; height: 75px; object-fit: cover; border-radius: 8px; margin-bottom: 6px;" />` : ''}
+            <div style="font-family: sans-serif; padding: 4px; text-align: center; max-width: 190px;">
+              ${safeUrl(markerImage) ? `<img src="${safeUrl(markerImage)}" alt="${esc(popupText)}" style="width: 100%; height: 80px; object-fit: cover; border-radius: 8px; margin-bottom: 6px;" />` : ''}
               <div style="font-weight: 700; font-size: 13px; color: #1c1917; line-height: 1.2;">${esc(popupText)}</div>
-              <div style="font-size: 11px; color: #059669; font-weight: 600; margin-top: 3px;">📍 Exact Property Pinpoint</div>
+              <div style="font-size: 11px; color: #059669; font-weight: 600; margin-top: 3px;">📍 Verified Stay Pinpoint</div>
             </div>
           `, {
             closeButton: false,
@@ -667,27 +682,14 @@ export default function InteractiveMap({
         markerRef.current = marker;
       }
 
-      // If no route origin is active, center on the destination stay
+      // If no route origin is active, center exactly on the destination stay
       if (!isValidLatLng(origin)) {
-        if (interactive && !!onMarkerChange) {
-          // Normal center without auto-popup for draggable location pickers
-          // Keep current zoom level instead of resetting to initial zoom
-          map.setView([markerPosition.lat, markerPosition.lng], map.getZoom(), { animate: false });
-        } else {
-          // Offset down so rich popup is fully visible for display maps
-          const currentZoom = map.getZoom();
-          const pt = map.project([markerPosition.lat, markerPosition.lng], currentZoom);
-          pt.y -= 120;
-          const offsetLatLng = map.unproject(pt, currentZoom);
-          map.setView(offsetLatLng, currentZoom, { animate: false });
-          
-          // Automatically open the popup
-          if (popupText) {
-            setTimeout(() => {
-              if (markerRef.current) markerRef.current.openPopup();
-            }, 150);
-          }
-        }
+        const targetZoom = zoom || map.getZoom() || 13;
+        map.setView([markerPosition.lat, markerPosition.lng], targetZoom, { animate: false });
+        setTimeout(() => {
+          map.invalidateSize();
+          map.panTo([markerPosition.lat, markerPosition.lng], { animate: false });
+        }, 120);
       }
     } else if (markerRef.current) {
       map.removeLayer(markerRef.current);
@@ -771,14 +773,7 @@ export default function InteractiveMap({
       }
       // Re-center smoothly on property marker if origin was turned off
       if (isValidLatLng(markerPosition)) {
-        if (interactive && !!onMarkerChange) {
-          map.setView([markerPosition.lat, markerPosition.lng], zoom || 13, { animate: true });
-        } else {
-          const pt = map.project([markerPosition.lat, markerPosition.lng], zoom || 13);
-          pt.y -= 120;
-          const offsetLatLng = map.unproject(pt, zoom || 13);
-          map.setView(offsetLatLng, zoom || 13, { animate: true });
-        }
+        map.setView([markerPosition.lat, markerPosition.lng], zoom || 13, { animate: true });
       }
     }
   }, [mapReady, origin, markerPosition, originLabel, originRoadRoute, zoom]);
@@ -974,11 +969,8 @@ export default function InteractiveMap({
       if (interactive && !!onMarkerChange) {
          // Do nothing automatically here to preserve user pan/zoom while dropping pins
       } else {
-        const currentZoom = map.getZoom();
-        const pt = map.project([markerPosition.lat, markerPosition.lng], currentZoom);
-        pt.y -= 120;
-        const offsetLatLng = map.unproject(pt, currentZoom);
-        map.setView(offsetLatLng, currentZoom, { animate: true });
+        const currentZoom = zoom || map.getZoom() || 13;
+        map.setView([markerPosition.lat, markerPosition.lng], currentZoom, { animate: true });
       }
     } else if (isValidLatLng(center) && !isValidLatLng(markerPosition) && (!lodges || lodges.length === 0)) {
       map.setView([center.lat, center.lng], map.getZoom(), { animate: true });

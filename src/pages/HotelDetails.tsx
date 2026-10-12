@@ -116,6 +116,7 @@ export default function HotelDetails() {
   // person can fill it in; something submitting the form blindly will.
   const [honeypot, setHoneypot] = useState('');
   const [isScrolledPastHero, setIsScrolledPastHero] = useState(false);
+  const [isDirectionsOpenMobile, setIsDirectionsOpenMobile] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -1795,6 +1796,12 @@ export default function HotelDetails() {
               <div className="flex flex-wrap items-center gap-2">
                 <a
                   href="#directions"
+                  onClick={(e) => {
+                    setIsDirectionsOpenMobile(true);
+                    setTimeout(() => {
+                      document.getElementById('directions')?.scrollIntoView({ behavior: 'smooth' });
+                    }, 50);
+                  }}
                   className="inline-flex items-center gap-1.5 text-xs font-bold text-stone-900 bg-stone-50 border border-stone-200 px-3.5 py-2 rounded-xl hover:bg-stone-100 hover:border-stone-300 transition shadow-2xs"
                 >
                   <Navigation className="h-3.5 w-3.5 text-emerald-600" />
@@ -2133,23 +2140,68 @@ export default function HotelDetails() {
             </ul>
           </div>
         </div>
-          {/* Full Directions & Navigation Panel for Guests */}
+          {/* Full Directions & Navigation Panel for Guests - Collapsible on Mobile */}
           <div id="directions" className="scroll-mt-28 sm:scroll-mt-36 lg:scroll-mt-28 md:col-span-12 mb-0 pt-6 sm:pt-8 border-t border-stone-200 relative z-10 bg-white">
-            <div className="mb-5 sm:mb-8">
-              <span className="text-[0.65rem] sm:text-[0.68rem] font-bold text-emerald-700 tracking-[0.16em] uppercase">Find Your Way</span>
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-serif text-stone-900 mt-0.5 sm:mt-1 tracking-tight">Location &amp; Driving Directions</h2>
-              <p className="text-stone-500 text-xs sm:text-sm md:text-base mt-1.5">
-                Turn-by-turn navigation launchers, travel distance estimator, and interactive map for {hotel.name}.
-              </p>
+            <div className="mb-4 sm:mb-8">
+              <div className="flex flex-col md:flex-row md:items-end justify-between gap-3">
+                <div>
+                  <span className="text-[0.65rem] sm:text-[0.68rem] font-bold text-emerald-700 tracking-[0.16em] uppercase">Find Your Way</span>
+                  <h2 className="text-xl sm:text-3xl md:text-4xl font-serif text-stone-900 mt-0.5 sm:mt-1 tracking-tight">Location &amp; Driving Directions</h2>
+                  <p className="text-stone-500 text-xs sm:text-sm md:text-base mt-1 sm:mt-1.5">
+                    Turn-by-turn navigation launchers, travel distance estimator, and interactive map for {hotel.name}.
+                  </p>
+                </div>
+
+                {/* Mobile Collapsible Toggle Button */}
+                <div className="md:hidden">
+                  <button
+                    type="button"
+                    id="btn-toggle-directions-mobile"
+                    onClick={() => setIsDirectionsOpenMobile(prev => !prev)}
+                    className="w-full flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl bg-stone-900 text-white hover:bg-stone-800 transition shadow-xs text-xs font-semibold"
+                    aria-expanded={isDirectionsOpenMobile}
+                  >
+                    <span className="flex items-center gap-2">
+                      <Navigation className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>{isDirectionsOpenMobile ? 'Collapse Driving Directions' : 'Open Driving Directions & GPS'}</span>
+                    </span>
+                    <span className="flex items-center gap-1 text-[11px] text-stone-300">
+                      <span>{isDirectionsOpenMobile ? 'Hide' : '4 apps'}</span>
+                      <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isDirectionsOpenMobile ? 'rotate-180' : ''}`} />
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Collapsed summary pill banner on mobile when closed */}
+              {!isDirectionsOpenMobile && (
+                <div className="md:hidden mt-3 p-3 bg-stone-50 border border-stone-200/80 rounded-xl flex items-center justify-between text-xs text-stone-600">
+                  <div className="flex items-center gap-2 min-w-0 truncate">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+                    <span className="truncate">Google Maps · Apple Maps · Waze · Live Distance</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsDirectionsOpenMobile(true)}
+                    className="text-xs font-bold text-emerald-700 hover:text-emerald-800 shrink-0 ml-2"
+                  >
+                    Expand ▾
+                  </button>
+                </div>
+              )}
             </div>
-            <DirectionsPanel
-              hotelName={hotel.name}
-              location={hotel.location}
-              coordinates={resolveHotelCoordinates(hotel)}
-              locationNotes={hotel.locationNotes}
-              hotelImage={getHotelImage(hotel)}
-              hotelId={hotel.id}
-            />
+
+            {/* Content container: collapsible on mobile, always visible on md+ screens */}
+            <div className={`${isDirectionsOpenMobile ? 'block' : 'hidden md:block'}`}>
+              <DirectionsPanel
+                hotelName={hotel.name}
+                location={hotel.location}
+                coordinates={resolveHotelCoordinates(hotel)}
+                locationNotes={hotel.locationNotes}
+                hotelImage={getHotelImage(hotel)}
+                hotelId={hotel.id}
+              />
+            </div>
           </div>
 
       </div>
