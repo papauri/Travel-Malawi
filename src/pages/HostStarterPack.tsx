@@ -272,7 +272,7 @@ ${window.location.origin}/list-your-property`;
               </div>
               <div className="p-3 bg-stone-50/80 rounded-xl border border-stone-100">
                 <span className="text-stone-400 block font-mono text-[10px] uppercase">Setup Time</span>
-                <span className="font-semibold text-stone-900 text-sm sm:text-base">Under 8 Minutes</span>
+                <span className="font-semibold text-stone-900 text-sm sm:text-base">Under 3 Minutes</span>
               </div>
             </div>
 

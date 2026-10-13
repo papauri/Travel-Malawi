@@ -39,7 +39,7 @@ const STEPS: Step[] = [
     id: 'listing',
     number: '01',
     title: 'The Listing Canvas',
-    subtitle: 'Craft your direct storefront in under 8 minutes',
+    subtitle: 'Craft your direct storefront in just 3 minutes',
     summary:
       'You tell us what you have: a lakeside cottage, safari tent, guest house, or boutique room. Upload 4 crisp daytime photos (bed, view, bathroom, dining area) and set rates in Malawian Kwacha and US Dollars.',
     keyPoints: [

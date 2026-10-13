@@ -23,7 +23,7 @@ import {
   Images, Loader2, LocateFixed, Mail, MapPin, MessageCircle, Phone, Plus, Send,
   Award, FileText, CheckCircle2, Wallet, X, DollarSign, Coins, Trash2, Sliders, ChevronDown, ChevronUp,
   RefreshCw, TrendingUp, HelpCircle, AlertTriangle, BookOpen,
-  User, UserCheck, Shield, Building, ConciergeBell, BedDouble, Tag, Home,
+  User, UserCheck, Shield, Building, ConciergeBell, BedDouble, Tag, Home, Sparkles,
 } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -145,16 +145,17 @@ function getDraftStorageKey(uid?: string | null): string {
 
 export function getSteps(stayType?: string) {
   return [
-    { title: 'The basics', blurb: 'What it is called, where it is, and how it is booked.' },
-    { title: 'The place', blurb: 'What a guest should know before booking.' },
-    { title: 'Photographs', blurb: 'The pictures that do the selling.' },
+    { title: 'The basics', blurb: 'What it is called, where it is, and how it is booked.', time: '~1 min' },
+    { title: 'The place', blurb: 'What a guest should know before booking.', time: '~1 min' },
+    { title: 'Photographs', blurb: 'The pictures that do the selling.', time: '~30 secs' },
     {
       title: stayType === 'entire_place' ? 'Whole Space & Rate' : 'Rooms & Rates',
       blurb: stayType === 'entire_place' ? 'Whole house capacity, specifications, and nightly rate.' : 'What guests will actually book.',
+      time: '~1 min',
     },
-    { title: 'Management & Contact', blurb: 'Designate the property manager, contacts, and check-in hours.' },
-    { title: 'Plan & Pricing', blurb: 'Provisioning options.' },
-    { title: 'Check it over', blurb: 'One last look before it goes for review.' },
+    { title: 'Management & Contact', blurb: 'Designate the property manager, contacts, and check-in hours.', time: '~30 secs' },
+    { title: 'Plan & Pricing', blurb: 'Provisioning options.', time: '~15 secs' },
+    { title: 'Check it over', blurb: 'One last look before it goes for review.', time: '~15 secs' },
   ];
 }
 
@@ -195,6 +196,19 @@ export default function ListProperty() {
   const prevUserUidRef = useRef<string | undefined>(user?.uid);
   const [draft, setDraft] = useState<ListingDraft>(() => readDraftForUser(user?.uid));
   const [step, setStep] = useState(0);
+  const [showWelcomeWalkthrough, setShowWelcomeWalkthrough] = useState<boolean>(() => {
+    // If user has already typed a draft with name, location, or description, jump directly to the form
+    const userDraft = readDraftForUser(user?.uid);
+    if (userDraft.name || userDraft.location || userDraft.description) {
+      return false;
+    }
+    // Check if user previously saw and dismissed the welcome screen
+    try {
+      return !localStorage.getItem('travel_malawi_seen_onboarding_welcome');
+    } catch {
+      return true;
+    }
+  });
   const [showErrors, setShowErrors] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [enabling, setEnabling] = useState(false);
@@ -1155,6 +1169,16 @@ export default function ListProperty() {
       openAuth('host');
       return;
     }
+
+    // Auto-ensure the user has the host role so they never get blocked by permissions error
+    if (!isHost) {
+      try {
+        await becomeHost();
+      } catch (err: any) {
+        console.warn('Auto becomeHost on submit:', err);
+      }
+    }
+
     // The final guard is the whole draft, not just this step: a host can jump
     // back and empty a field they already passed.
     if (Object.keys(allErrors).length > 0) {
@@ -1162,8 +1186,8 @@ export default function ListProperty() {
       setStep(firstBadStep);
       setShowErrors(true);
       toast.error('Something above still needs filling in.');
-        setTimeout(() => document.querySelector('p[role="alert"].text-red-600')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
-        return;
+      setTimeout(() => document.querySelector('p[role="alert"].text-red-600')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+      return;
     }
 
     setSubmitting(true);
@@ -1174,8 +1198,8 @@ export default function ListProperty() {
         toast.error('You already have a property listed under that name.');
         setStep(0);
         setShowErrors(true);
-      setTimeout(() => document.querySelector('p[role="alert"].text-red-600')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
-      return;
+        setTimeout(() => document.querySelector('p[role="alert"].text-red-600')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+        return;
       }
 
       const id = await createListing(draft, user.uid);
@@ -1185,10 +1209,15 @@ export default function ListProperty() {
         // Nothing to do; the draft is replaced on the next listing anyway.
       }
       setDraft(emptyDraft());
-      toast.success('Submitted for review. Now add a room so it can take bookings.', { duration: 6000 });
-      // A listing with no room cannot take a single booking, so the room
-      // editor — not the dashboard — is where this ends.
-      navigate(`/dashboard/hotel/${id}?tab=rooms`);
+      
+      const hasRooms = (draft.rooms && draft.rooms.length > 0) || draft.stayType === 'entire_place';
+      if (hasRooms) {
+        toast.success('Property and rooms submitted for review! Opening your management hub.', { duration: 6000 });
+        navigate(`/dashboard/hotel/${id}`);
+      } else {
+        toast.success('Submitted for review. Add individual rooms now so guests can book.', { duration: 6000 });
+        navigate(`/dashboard/hotel/${id}?tab=rooms`);
+      }
     } catch (error: any) {
       console.error('Could not create listing:', error);
       toast.error(
@@ -1209,12 +1238,33 @@ export default function ListProperty() {
     );
   }
 
+  if (showWelcomeWalkthrough) {
+    return (
+      <OnboardingWelcomeWalkthrough
+        user={user}
+        enabling={enabling}
+        hasAI={Boolean(aiStatus.enabled && aiStatus.available)}
+        onStart={() => {
+          setShowWelcomeWalkthrough(false);
+          try {
+            localStorage.setItem('travel_malawi_seen_onboarding_welcome', '1');
+          } catch {}
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+        onImportDocument={aiStatus.enabled && aiStatus.available ? () => {
+          setShowWelcomeWalkthrough(false);
+          setShowPropertyImporter(true);
+        } : undefined}
+      />
+    );
+  }
+
   // ---- The wizard (Unified for both guests and authenticated hosts) ----
   return (
     <div className="bg-stone-50">
       <div className="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 py-6 sm:py-10 md:py-12">
         <div className="mb-6 sm:mb-8 flex flex-wrap items-center justify-between gap-3 sm:gap-4">
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
             <button
               type="button"
               onClick={() => {
@@ -1242,6 +1292,18 @@ export default function ListProperty() {
               <BookOpen className="w-3.5 h-3.5 text-stone-500" />
               <span>Host Starter Pack</span>
             </Link>
+            <button
+              type="button"
+              onClick={() => {
+                setShowWelcomeWalkthrough(true);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold text-stone-700 bg-white hover:bg-stone-50 border border-stone-200 px-3 py-1.5 rounded-full transition shadow-2xs cursor-pointer"
+              title="Review the quick 3-minute onboarding overview"
+            >
+              <Clock className="w-3.5 h-3.5 text-amber-600" />
+              <span>3-Min Walkthrough</span>
+            </button>
           </div>
 
           <div className="flex items-center gap-2">
@@ -1330,9 +1392,20 @@ export default function ListProperty() {
         )}
 
         <header className="mb-5 sm:mb-7 md:mb-8">
-          <p className="mb-1.5 sm:mb-2 text-[0.65rem] sm:text-[0.7rem] font-bold uppercase tracking-[0.2em] text-stone-500 font-mono">
-            Step {step + 1} of {steps.length}
-          </p>
+          <div className="flex items-center gap-2 mb-1.5 sm:mb-2 flex-wrap">
+            <p className="text-[0.65rem] sm:text-[0.7rem] font-bold uppercase tracking-[0.2em] text-stone-500 font-mono">
+              Step {step + 1} of {steps.length}
+            </p>
+            <span className="text-stone-300">·</span>
+            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-stone-700 bg-stone-100 border border-stone-200/80 px-2 py-0.5 rounded-full font-mono">
+              <Clock className="w-3 h-3 text-stone-500" />
+              {(steps[step] as any).time || '~3 mins total'}
+            </span>
+            <span className="text-stone-300 hidden sm:inline">·</span>
+            <span className="text-[11px] text-stone-500 font-medium hidden sm:inline">
+              Total setup ~3 mins
+            </span>
+          </div>
           <h1 className="font-serif text-xl sm:text-2xl md:text-3xl lg:text-4xl tracking-tight text-stone-900">{steps[step].title}</h1>
           <p className="mt-1 sm:mt-1.5 text-xs sm:text-sm md:text-base text-stone-500">{steps[step].blurb}</p>
         </header>
@@ -3863,30 +3936,39 @@ export default function ListProperty() {
 /* ------------------------------------------------------------------ */
 
 /**
- * The gate. Same page for a signed-out visitor and for someone signed in who
- * has not hosted before — only the button differs.
- * Styled with warm earthy neutrals, clean typography, and zero dark AI templates.
+ * Simple, welcoming first-time walkthrough screen.
+ * Clarifies that listing only takes ~3 minutes, showcases the 3 easy steps,
+ * conditionally highlights Ulendo AI if enabled/available, and completely omits AI
+ * mentions if AI is unavailable to prevent host confusion.
  */
-function HostIntro({
-  user, enabling, onEnable, onSignUp,
+function OnboardingWelcomeWalkthrough({
+  user,
+  enabling,
+  hasAI,
+  onStart,
+  onImportDocument,
 }: {
-  user: unknown;
+  user: any;
   enabling: boolean;
-  onEnable: () => void;
-  onSignUp: () => void;
+  hasAI: boolean;
+  onStart: () => void;
+  onImportDocument?: () => void;
 }) {
+  const navigate = useNavigate();
+
   return (
     <div className="min-h-screen bg-stone-50/50 text-stone-700 font-sans">
-      <main className="max-w-5xl lg:max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-        {/* Top Control Bar matching logged-in wizard */}
+      <main className="max-w-5xl lg:max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 md:py-12">
+        {/* Top Control Bar */}
         <div className="flex items-center justify-between gap-3 mb-6 pb-4 border-b border-stone-200/90 flex-wrap">
-          <Link
-            to="/"
-            className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-stone-600 hover:text-stone-950 transition"
+          <button
+            type="button"
+            onClick={() => navigate('/')}
+            className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-stone-600 hover:text-stone-950 transition cursor-pointer"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>Explore Stays</span>
-          </Link>
+          </button>
 
           <div className="flex items-center gap-2 flex-wrap text-xs">
             <Link
@@ -3903,17 +3985,28 @@ function HostIntro({
               <FileText className="w-3.5 h-3.5 text-stone-500" />
               <span>How Hosting Works</span>
             </Link>
+            <button
+              type="button"
+              onClick={onStart}
+              className="inline-flex items-center gap-1 text-stone-500 hover:text-stone-900 font-medium px-2 py-1 transition cursor-pointer"
+            >
+              <span>Skip Walkthrough</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
           </div>
         </div>
 
-        {/* Paper Container matching Host Starter Pack and Wizard */}
-        <article className="bg-white rounded-3xl border border-stone-200/90 p-6 sm:p-10 lg:p-12 shadow-xs space-y-10">
+        {/* Paper Container matching Warm Malawi Aesthetics */}
+        <article className="bg-white rounded-3xl border border-stone-200/90 p-6 sm:p-10 lg:p-12 shadow-xs space-y-8 sm:space-y-10">
           {/* Header */}
           <header className="border-b border-stone-200 pb-8">
-            <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-stone-500 mb-2.5">
-              <span>Travel Malawi</span>
+            <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-stone-500 mb-2.5 flex-wrap">
+              <span className="font-semibold text-stone-900">Takulandirani</span>
               <span>·</span>
-              <span>Host Hub</span>
+              <span className="inline-flex items-center gap-1 font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/70">
+                <Clock className="w-3.5 h-3.5 text-amber-600" />
+                Quick 3-Minute Setup
+              </span>
               <span>·</span>
               <span className="text-stone-900 font-semibold">0% Commission · Direct Bookings</span>
             </div>
@@ -3922,169 +4015,197 @@ function HostIntro({
               List your stay directly with travelers across Malawi.
             </h1>
             <p className="mt-3 text-stone-600 text-sm sm:text-base md:text-lg leading-relaxed max-w-3xl">
-              Connect directly with domestic and international travelers looking for authentic Malawian stays — from whole lakeside cottages in Cape Maclear and private family villas in Mangochi to boutique guest houses in Lilongwe and safari lodges.
+              Takes just <strong>3 minutes</strong> from start to finish. Connect directly with domestic and international travelers — no foreign commission fees, direct guest WhatsApp communication, and your draft saves automatically in your browser as you type.
             </p>
 
-            {/* CTA action bar */}
-            <div className="mt-8 flex flex-col sm:flex-row items-start sm:items-center gap-3.5 pt-6 border-t border-stone-100">
-              {user ? (
+            {/* Primary Action Button */}
+            <div className="mt-7 flex flex-col sm:flex-row items-start sm:items-center gap-3.5 pt-6 border-t border-stone-100">
+              <button
+                type="button"
+                onClick={onStart}
+                className="inline-flex items-center justify-center gap-2 bg-stone-900 hover:bg-stone-800 text-white font-bold px-7 py-3.5 rounded-xl text-sm transition shadow-xs cursor-pointer active:scale-98"
+              >
+                <span>Start 3-Minute Setup</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+
+              {hasAI && onImportDocument && (
                 <button
                   type="button"
-                  onClick={onEnable}
-                  disabled={enabling}
-                  className="inline-flex items-center justify-center gap-2 bg-stone-900 hover:bg-stone-800 disabled:opacity-50 text-white font-semibold px-6 py-3 rounded-xl text-xs sm:text-sm transition shadow-2xs cursor-pointer"
+                  onClick={onImportDocument}
+                  className="inline-flex items-center justify-center gap-1.5 bg-white hover:bg-stone-50 text-stone-800 border border-stone-300 font-semibold px-5 py-3.5 rounded-xl text-sm transition shadow-2xs cursor-pointer"
                 >
-                  {enabling ? <Loader2 className="w-4 h-4 animate-spin" /> : <Building2 className="w-4 h-4" />}
-                  <span>Start Hosting on This Account</span>
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={onSignUp}
-                  className="inline-flex items-center justify-center gap-2 bg-stone-900 hover:bg-stone-800 text-white font-semibold px-6 py-3 rounded-xl text-xs sm:text-sm transition shadow-2xs cursor-pointer"
-                >
-                  <Building2 className="w-4 h-4" />
-                  <span>Create Host Account &amp; Start Listing</span>
+                  <FileText className="w-4 h-4 text-stone-600" />
+                  <span>Import from Document</span>
                 </button>
               )}
 
-              <Link
-                to="/host-guide"
-                className="inline-flex items-center justify-center gap-1.5 bg-white hover:bg-stone-50 text-stone-800 border border-stone-200 font-semibold px-5 py-3 rounded-xl text-xs sm:text-sm transition shadow-2xs"
+              <button
+                type="button"
+                onClick={onStart}
+                className="text-xs text-stone-500 hover:text-stone-900 underline font-medium py-2 cursor-pointer"
               >
-                <BookOpen className="w-4 h-4 text-stone-500" />
-                <span>Read Host Starter Pack (3-Min Read)</span>
-              </Link>
-
-              <span className="text-xs text-stone-400 font-mono">
-                {user ? 'One account · Instant upgrade' : 'Free to list · Zero monthly fees'}
-              </span>
+                Skip walkthrough and start entering details
+              </button>
             </div>
 
             {/* Quick Metrics Strip */}
             <div className="mt-8 pt-6 border-t border-stone-100 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
               <div className="p-3 bg-stone-50/80 rounded-xl border border-stone-100">
-                <span className="text-stone-400 block font-mono text-[10px] uppercase">Commission</span>
+                <span className="text-stone-400 block font-mono text-[10px] uppercase">Estimated Time</span>
+                <span className="font-semibold text-stone-900 text-sm sm:text-base flex items-center gap-1">
+                  <Clock className="w-4 h-4 text-amber-600" />
+                  3 Minutes
+                </span>
+              </div>
+              <div className="p-3 bg-stone-50/80 rounded-xl border border-stone-100">
+                <span className="text-stone-400 block font-mono text-[10px] uppercase">Host Commission</span>
                 <span className="font-semibold text-stone-900 text-sm sm:text-base">0% Direct</span>
               </div>
               <div className="p-3 bg-stone-50/80 rounded-xl border border-stone-100">
-                <span className="text-stone-400 block font-mono text-[10px] uppercase">Payout Speed</span>
-                <span className="font-semibold text-stone-900 text-sm sm:text-base">Instant to You</span>
-              </div>
-              <div className="p-3 bg-stone-50/80 rounded-xl border border-stone-100">
-                <span className="text-stone-400 block font-mono text-[10px] uppercase">Accepted Rails</span>
+                <span className="text-stone-400 block font-mono text-[10px] uppercase">Payment Rails</span>
                 <span className="font-semibold text-stone-900 text-sm sm:text-base">Airtel / Mpamba / Bank</span>
               </div>
               <div className="p-3 bg-stone-50/80 rounded-xl border border-stone-100">
-                <span className="text-stone-400 block font-mono text-[10px] uppercase">Listing Time</span>
-                <span className="font-semibold text-stone-900 text-sm sm:text-base">Under 8 Minutes</span>
+                <span className="text-stone-400 block font-mono text-[10px] uppercase">Draft Saving</span>
+                <span className="font-semibold text-stone-900 text-sm sm:text-base">Instant Auto-Save</span>
               </div>
             </div>
           </header>
 
-          {/* Three Core Hosting Principles */}
+          {/* Simple 3-Step Walkthrough */}
           <section className="space-y-4">
             <div className="flex items-center gap-2 text-xs font-mono text-stone-400 uppercase tracking-wider">
-              <span>Why Host With Us</span>
+              <span>Simple 3-Step Process</span>
               <span>·</span>
-              <span>The Warm Heart Advantage</span>
+              <span>Only ~3 Minutes</span>
             </div>
             <h2 className="text-xl sm:text-2xl font-serif font-bold text-stone-900">
-              Built for Malawian Property Owners &amp; Caretakers
+              How simple it is to list your stay
             </h2>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
-              <div className="p-5 rounded-2xl border border-stone-200/90 bg-stone-50/50 space-y-2">
-                <div className="w-8 h-8 rounded-xl bg-white border border-stone-200 flex items-center justify-center text-stone-800 shadow-2xs">
-                  <Wallet className="w-4 h-4" />
-                </div>
-                <h3 className="font-semibold text-stone-900 text-sm sm:text-base">You Keep 100% of Your Rate</h3>
-                <p className="text-xs text-stone-600 leading-relaxed">
-                  No 18% foreign commission and no delayed wire transfers. Guests pay you directly in Malawian Kwacha or USD via Airtel Money, Mpamba, or bank transfer.
-                </p>
-              </div>
-
-              <div className="p-5 rounded-2xl border border-stone-200/90 bg-stone-50/50 space-y-2">
-                <div className="w-8 h-8 rounded-xl bg-white border border-stone-200 flex items-center justify-center text-stone-800 shadow-2xs">
-                  <Home className="w-4 h-4" />
-                </div>
-                <h3 className="font-semibold text-stone-900 text-sm sm:text-base">Whole Houses, Cottages &amp; Rooms</h3>
-                <p className="text-xs text-stone-600 leading-relaxed">
-                  Whether you list an entire 4-bedroom holiday cottage, a private beach villa, a boutique B&amp;B, or safari chalets, you control your nightly inventory and rates.
-                </p>
-              </div>
-
-              <div className="p-5 rounded-2xl border border-stone-200/90 bg-stone-50/50 space-y-2">
-                <div className="w-8 h-8 rounded-xl bg-white border border-stone-200 flex items-center justify-center text-stone-800 shadow-2xs">
-                  <MessageCircle className="w-4 h-4" />
-                </div>
-                <h3 className="font-semibold text-stone-900 text-sm sm:text-base">Direct WhatsApp Inquiries</h3>
-                <p className="text-xs text-stone-600 leading-relaxed">
-                  Booking requests and guest questions route directly to your WhatsApp and your private host dashboard. Zero call centers or confusing ticketing queues.
-                </p>
-              </div>
-            </div>
-          </section>
-
-          {/* Simple 4-Step Walkthrough */}
-          <section className="pt-6 border-t border-stone-200/90 space-y-4">
-            <div className="flex items-center gap-2 text-xs font-mono text-stone-400 uppercase tracking-wider">
-              <span>Listing Flow</span>
-              <span>·</span>
-              <span>One Sitting (8 Minutes)</span>
-            </div>
-            <h2 className="text-xl sm:text-2xl font-serif font-bold text-stone-900">
-              Four simple steps to go live
-            </h2>
-            <p className="text-xs sm:text-sm text-stone-600 max-w-3xl">
-              Once you start, our step-by-step listing wizard guides you through each detail. All drafts save automatically as you type:
+            <p className="text-xs sm:text-sm text-stone-600 max-w-3xl leading-relaxed">
+              We made listing effortless so you can focus on welcoming guests. Three quick steps and your property is live:
             </p>
 
-            <ol className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 pt-2">
-              {[
-                {
-                  step: '01',
-                  title: 'The Basics',
-                  body: 'Property name, category (Cottage, B&B, Lodge, Villa), and district pin.',
-                  icon: Building2,
-                },
-                {
-                  step: '02',
-                  title: 'The Space',
-                  body: 'Whole house or individual rooms, key amenities, and arrival directions.',
-                  icon: Home,
-                },
-                {
-                  step: '03',
-                  title: 'Four Photos',
-                  body: 'Clean bed, veranda horizon view, bathroom hygiene, and dining area.',
-                  icon: Images,
-                },
-                {
-                  step: '04',
-                  title: 'Your Rates',
-                  body: 'Fair Malawian Kwacha and USD prices with clean rounding. No hidden cuts.',
-                  icon: DollarSign,
-                },
-              ].map(item => (
-                <li
-                  key={item.step}
-                  className="p-5 rounded-2xl border border-stone-200 bg-white flex flex-col justify-between shadow-2xs"
-                >
-                  <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-[10px] font-mono font-bold text-stone-400 tracking-wider">
-                        STEP {item.step}
-                      </span>
-                      <item.icon className="w-4 h-4 text-stone-700" />
-                    </div>
-                    <h3 className="font-semibold text-stone-900 text-sm mb-1.5">{item.title}</h3>
-                    <p className="text-xs text-stone-500 leading-relaxed">{item.body}</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+              <div className="p-5 rounded-2xl border border-stone-200/90 bg-stone-50/50 space-y-3 flex flex-col justify-between">
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-mono font-bold text-stone-400 tracking-wider">
+                      STEP 01
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-stone-600 bg-white border border-stone-200 px-2 py-0.5 rounded-full font-mono">
+                      <Clock className="w-3 h-3 text-stone-500" /> ~1 min
+                    </span>
                   </div>
-                </li>
-              ))}
-            </ol>
+                  <div className="w-9 h-9 rounded-xl bg-white border border-stone-200 flex items-center justify-center text-stone-800 shadow-2xs">
+                    <Building2 className="w-4 h-4 text-stone-700" />
+                  </div>
+                  <h3 className="font-bold text-stone-900 text-base">The Basics</h3>
+                  <p className="text-xs text-stone-600 leading-relaxed">
+                    Name your stay, pick its category (Lakeside cottage, safari camp, B&amp;B, or guest house), and select its Malawian location.
+                  </p>
+                </div>
+                <div className="text-[11px] font-medium text-stone-500 pt-2 border-t border-stone-200/60">
+                  ✓ Google Maps verified autocomplete
+                </div>
+              </div>
+
+              <div className="p-5 rounded-2xl border border-stone-200/90 bg-stone-50/50 space-y-3 flex flex-col justify-between">
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-mono font-bold text-stone-400 tracking-wider">
+                      STEP 02
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-stone-600 bg-white border border-stone-200 px-2 py-0.5 rounded-full font-mono">
+                      <Clock className="w-3 h-3 text-stone-500" /> ~1.5 mins
+                    </span>
+                  </div>
+                  <div className="w-9 h-9 rounded-xl bg-white border border-stone-200 flex items-center justify-center text-stone-800 shadow-2xs">
+                    <Images className="w-4 h-4 text-stone-700" />
+                  </div>
+                  <h3 className="font-bold text-stone-900 text-base">Photos &amp; Nightly Rates</h3>
+                  <p className="text-xs text-stone-600 leading-relaxed">
+                    Add your photos (bed, view, bathroom, grounds) and set your nightly prices in Malawian Kwacha (MWK), USD, or both.
+                  </p>
+                </div>
+                <div className="text-[11px] font-medium text-stone-500 pt-2 border-t border-stone-200/60">
+                  ✓ Instant dual USD/MK price converter
+                </div>
+              </div>
+
+              <div className="p-5 rounded-2xl border border-stone-200/90 bg-stone-50/50 space-y-3 flex flex-col justify-between">
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-mono font-bold text-stone-400 tracking-wider">
+                      STEP 03
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-stone-600 bg-white border border-stone-200 px-2 py-0.5 rounded-full font-mono">
+                      <Clock className="w-3 h-3 text-stone-500" /> ~30 secs
+                    </span>
+                  </div>
+                  <div className="w-9 h-9 rounded-xl bg-white border border-stone-200 flex items-center justify-center text-stone-800 shadow-2xs">
+                    <CheckCircle2 className="w-4 h-4 text-stone-700" />
+                  </div>
+                  <h3 className="font-bold text-stone-900 text-base">Go Live &amp; Welcome Guests</h3>
+                  <p className="text-xs text-stone-600 leading-relaxed">
+                    Review and submit! Guests contact you directly via WhatsApp, and book without middleman commissions or escrow delays.
+                  </p>
+                </div>
+                <div className="text-[11px] font-medium text-stone-500 pt-2 border-t border-stone-200/60">
+                  ✓ Direct payouts straight to your phone or bank
+                </div>
+              </div>
+            </div>
           </section>
+
+          {/* Conditional AI Assistant Feature Box (Mention ONLY when AI is active) */}
+          {hasAI ? (
+            <section className="bg-amber-50/80 border border-amber-200/90 rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-2xs">
+              <div className="flex items-start gap-3.5">
+                <div className="p-2.5 bg-amber-100 text-amber-800 rounded-xl shrink-0 mt-0.5">
+                  <Sparkles className="w-5 h-5 text-amber-700" />
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h4 className="text-xs sm:text-sm font-bold text-stone-900 uppercase tracking-wider">
+                      Ulendo AI Assistant is Ready to Help
+                    </h4>
+                    <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200">
+                      Active
+                    </span>
+                  </div>
+                  <p className="text-xs text-stone-600 leading-relaxed max-w-xl">
+                    Prefer not to type everything manually? Ulendo AI can auto-craft your property description, recommend authentic amenities, and calculate competitive Malawian room rates in seconds. You maintain 100% control over every detail.
+                  </p>
+                </div>
+              </div>
+              {onImportDocument && (
+                <button
+                  type="button"
+                  onClick={onImportDocument}
+                  className="shrink-0 px-4 py-2.5 bg-white hover:bg-stone-50 text-stone-800 border border-amber-300 rounded-xl text-xs font-semibold transition shadow-2xs flex items-center gap-1.5 cursor-pointer"
+                >
+                  <FileText className="w-3.5 h-3.5 text-stone-600" />
+                  <span>Import Document</span>
+                </button>
+              )}
+            </section>
+          ) : (
+            <section className="bg-stone-100/70 border border-stone-200 rounded-2xl p-5 sm:p-6 flex items-start gap-3.5 shadow-2xs">
+              <div className="p-2.5 bg-white text-stone-800 rounded-xl shrink-0 border border-stone-200 mt-0.5 shadow-2xs">
+                <CheckCircle2 className="w-5 h-5 text-stone-700" />
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-xs sm:text-sm font-bold text-stone-900 uppercase tracking-wider">
+                  Friction-Free, Zero-Stress Setup
+                </h4>
+                <p className="text-xs text-stone-600 leading-relaxed max-w-2xl">
+                  Everything is built for speed: 1-click amenity checkboxes, Google Maps verified location matching, and instant photo upload. No technical experience required — your listing will look stunning on mobile and desktop.
+                </p>
+              </div>
+            </section>
+          )}
 
           {/* Bottom Call to Action Card */}
           <section className="pt-6 border-t border-stone-200/90">
@@ -4094,34 +4215,23 @@ function HostIntro({
                   Ready to put your stay in front of travelers?
                 </h3>
                 <p className="text-xs sm:text-sm text-stone-600 max-w-xl">
-                  Listing is completely free. Our local concierge team checks every listing within 24 hours to ensure high trust for guests.
+                  Listing takes only 3 minutes and is completely free. Start now and watch your listing take shape immediately.
                 </p>
               </div>
 
-              <div className="shrink-0 flex items-center gap-2.5 flex-wrap">
-                {user ? (
-                  <button
-                    type="button"
-                    onClick={onEnable}
-                    disabled={enabling}
-                    className="inline-flex items-center justify-center gap-2 bg-stone-900 hover:bg-stone-800 disabled:opacity-50 text-white font-semibold px-5 py-2.5 rounded-xl text-xs sm:text-sm transition shadow-2xs cursor-pointer"
-                  >
-                    {enabling ? <Loader2 className="w-4 h-4 animate-spin" /> : <Building2 className="w-4 h-4" />}
-                    <span>Start Hosting</span>
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={onSignUp}
-                    className="inline-flex items-center justify-center gap-2 bg-stone-900 hover:bg-stone-800 text-white font-semibold px-5 py-2.5 rounded-xl text-xs sm:text-sm transition shadow-2xs cursor-pointer"
-                  >
-                    <Building2 className="w-4 h-4" />
-                    <span>Get Started</span>
-                  </button>
-                )}
+              <div className="shrink-0 flex items-center gap-3 flex-wrap">
+                <button
+                  type="button"
+                  onClick={onStart}
+                  className="inline-flex items-center justify-center gap-2 bg-stone-900 hover:bg-stone-800 text-white font-bold px-6 py-3 rounded-xl text-xs sm:text-sm transition shadow-2xs cursor-pointer active:scale-98"
+                >
+                  <span>Start 3-Minute Setup</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+
                 <Link
                   to="/host-guide"
-                  className="inline-flex items-center justify-center gap-1.5 bg-white hover:bg-stone-100 text-stone-700 border border-stone-200 font-semibold px-4 py-2.5 rounded-xl text-xs sm:text-sm transition shadow-2xs"
+                  className="inline-flex items-center justify-center gap-1.5 bg-white hover:bg-stone-100 text-stone-700 border border-stone-200 font-semibold px-4 py-3 rounded-xl text-xs sm:text-sm transition shadow-2xs"
                 >
                   <BookOpen className="w-3.5 h-3.5 text-stone-500" />
                   <span>Host Guide</span>
@@ -4136,7 +4246,7 @@ function HostIntro({
               Travel Malawi · The Warm Heart of Africa
             </div>
             <div className="font-mono text-[11px] text-stone-500">
-              Direct Bookings · 0% Commission
+              Direct Bookings · 0% Commission · 3-Minute Setup
             </div>
           </footer>
         </article>
