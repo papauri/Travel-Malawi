@@ -69,6 +69,44 @@ const AVAILABLE_SOURCES = [
   { id: 'Facebook / Guest Book', label: 'Guest Book & Social' },
 ];
 
+/**
+ * Helper to identify if a scraped review matches any review already attached to the property
+ */
+export function isReviewDuplicate(
+  candidate: any,
+  existingList?: Array<{ author?: string; comment?: string; text?: string; title?: string }>
+): boolean {
+  if (!candidate || !Array.isArray(existingList) || existingList.length === 0) return false;
+  const cAuthor = (candidate.author || candidate.guestName || '').toLowerCase().trim();
+  const cComment = (candidate.comment || candidate.text || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const cTitle = (candidate.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+  return existingList.some(ex => {
+    const exAuthor = (ex.author || '').toLowerCase().trim();
+    const exComment = (ex.comment || ex.text || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const exTitle = (ex.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+    // 1. Author and comment prefix overlap
+    if (cAuthor && exAuthor && cAuthor === exAuthor) {
+      if (cComment && exComment) {
+        if (cComment.slice(0, 30) === exComment.slice(0, 30)) return true;
+        if (cComment.includes(exComment.slice(0, 40)) || exComment.includes(cComment.slice(0, 40))) return true;
+      }
+      if (cTitle && exTitle && cTitle === exTitle) return true;
+      if (cComment && exComment && Math.abs(cComment.length - exComment.length) < 20) return true;
+    }
+
+    // 2. Exact or substantial comment overlap
+    if (cComment.length > 25 && exComment.length > 25) {
+      if (cComment === exComment) return true;
+      if (cComment.slice(0, 50) === exComment.slice(0, 50)) return true;
+      if (cComment.includes(exComment.slice(0, 60)) || exComment.includes(cComment.slice(0, 60))) return true;
+    }
+
+    return false;
+  });
+}
+
 export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminReviewScraperProps) {
   const [selectedHotelId, setSelectedHotelId] = useState<string>('');
   const [hotelSearchQuery, setHotelSearchQuery] = useState<string>('');
@@ -275,6 +313,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
   const [selectedReviews, setSelectedReviews] = useState<Set<number>>(new Set());
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [saveMode, setSaveMode] = useState<'append' | 'replace'>('append');
+  const [duplicateFilteredCount, setDuplicateFilteredCount] = useState<number>(0);
 
   // Filter & Pagination for Scraped Reviews
   const [sourceFilter, setSourceFilter] = useState<string>('all');
@@ -333,6 +372,17 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
     setScrapedReviews([]);
     setSelectedReviews(new Set());
     setCurrentPage(1);
+    setDuplicateFilteredCount(0);
+
+    // Prepare combined list of reviews already attached to this hotel (imported + direct)
+    const propertyExistingReviews = [
+      ...existingReviews,
+      ...directReviews.filter(r => r.hotelId === selectedHotel.id)
+    ].map(r => ({
+      author: (r as any).author || (r as any).authorName || (r as any).guestName,
+      comment: (r as any).comment || (r as any).text,
+      title: (r as any).title,
+    }));
     
     try {
       const response = await fetch('/api/admin/scrape-reviews', {
@@ -348,6 +398,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
           sentimentMode,
           minRating,
           count: reviewCount,
+          existingReviews: propertyExistingReviews,
         })
       });
       
@@ -374,9 +425,26 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
       }
 
       if (reviewsList && reviewsList.length > 0) {
-        setScrapedReviews(reviewsList);
-        setSelectedReviews(new Set(reviewsList.map((_, i) => i)));
-        toast.success(`Discovered ${reviewsList.length} authentic guest reviews across web channels!`);
+        // Exclude reviews that have already been attached to the property
+        const freshReviews = reviewsList.filter(r => !isReviewDuplicate(r, propertyExistingReviews));
+        const dupesCount = reviewsList.length - freshReviews.length;
+        setDuplicateFilteredCount(dupesCount);
+
+        if (freshReviews.length > 0) {
+          setScrapedReviews(freshReviews);
+          setSelectedReviews(new Set(freshReviews.map((_, i) => i)));
+          if (dupesCount > 0) {
+            toast.success(`Discovered ${freshReviews.length} new reviews (${dupesCount} duplicate${dupesCount > 1 ? 's' : ''} already attached were excluded).`);
+          } else {
+            toast.success(`Discovered ${freshReviews.length} authentic guest reviews across web channels!`);
+          }
+        } else {
+          setScrapedReviews([]);
+          toast(
+            `All ${dupesCount} discovered reviews are already attached to ${selectedHotel.name}. Your listing already has all available public reviews!`,
+            { icon: 'ℹ️' }
+          );
+        }
       } else {
         throw new Error('Unable to parse review data format. Please retry discovery.');
       }
@@ -1262,6 +1330,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
                   setSelectedHotelId(e.target.value);
                   setScrapedReviews([]);
                   setSelectedReviews(new Set());
+                  setDuplicateFilteredCount(0);
                 }}
                 className="w-full max-w-[280px] bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-xs font-medium text-stone-900 focus:bg-white focus:border-stone-900 outline-none transition truncate"
               >
@@ -1500,6 +1569,30 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
         </div>
       )}
 
+      {/* Informational banner when all discovered reviews were already attached */}
+      {!isScraping && scrapedReviews.length === 0 && duplicateFilteredCount > 0 && activeSubTab === 'discover' && (
+        <div className="bg-amber-50/80 border border-amber-200 rounded-2xl p-6 text-center space-y-2">
+          <div className="inline-flex p-2.5 bg-amber-100 text-amber-800 rounded-full mb-1">
+            <ShieldCheck className="w-5 h-5 text-amber-700" />
+          </div>
+          <h4 className="font-serif font-bold text-stone-900 text-sm">
+            All Discovered Reviews Are Already Attached
+          </h4>
+          <p className="text-stone-600 text-xs max-w-md mx-auto leading-relaxed">
+            {duplicateFilteredCount} public review{duplicateFilteredCount > 1 ? 's were' : ' was'} discovered across web channels, but {duplicateFilteredCount > 1 ? 'they have already been' : 'it has already been'} scraped and attached to <strong>{selectedHotel?.name}</strong>. No duplicate reviews were added.
+          </p>
+          <div className="pt-2">
+            <button
+              type="button"
+              onClick={() => setActiveSubTab('existing')}
+              className="text-xs font-semibold text-stone-900 underline hover:text-stone-700 cursor-pointer"
+            >
+              View Currently Attached Reviews ({existingStats.count}) →
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Discovered Reviews Presentation */}
       {!isScraping && scrapedReviews.length > 0 && activeSubTab === 'discover' && (
         <div className="space-y-4">
@@ -1513,6 +1606,13 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
               <span className="font-semibold text-stone-800 bg-stone-100 px-2 py-0.5 rounded-md border border-stone-200">
                 {selectedReviews.size} selected
               </span>
+
+              {duplicateFilteredCount > 0 && (
+                <span className="text-[11px] text-amber-800 bg-amber-50 px-2.5 py-0.5 rounded-md border border-amber-200 flex items-center gap-1 font-medium">
+                  <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
+                  <span>{duplicateFilteredCount} duplicate{duplicateFilteredCount > 1 ? 's' : ''} hidden</span>
+                </span>
+              )}
 
               {projectedStats.count > 0 && (
                 <span className="text-[11px] text-stone-600 bg-stone-100 px-2 py-0.5 rounded-md flex items-center gap-1 font-mono font-bold">

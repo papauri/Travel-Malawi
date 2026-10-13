@@ -1415,11 +1415,20 @@ async function startServer() {
       ? req.body.targetSources.map((s: any) => cleanText(s, 60, true)).filter(Boolean)
       : undefined;
     const minRating = typeof req.body?.minRating === 'number' ? Math.min(Math.max(req.body.minRating, 1), 5) : (sentimentMode === 'critical' ? 1 : 4);
+    const existingReviews = Array.isArray(req.body?.existingReviews)
+      ? req.body.existingReviews
+          .map((r: any) => ({
+            author: cleanText(r?.author || r?.authorName || r?.guestName, 100, true),
+            comment: cleanText(r?.comment || r?.text, 500, true),
+            title: cleanText(r?.title, 150, true),
+          }))
+          .filter((r: any) => r.author || r.comment)
+      : undefined;
 
     try {
       const status = getPublicAIStatus();
       if (!status.enabled || !status.available) {
-        const fallback = generateCuratedMalawiReviews(hotelName, location, category, count, sentimentMode, targetSources);
+        const fallback = generateCuratedMalawiReviews(hotelName, location, category, count, sentimentMode, targetSources, existingReviews);
         return res.json({
           text: JSON.stringify(fallback),
           provider: 'gemini',
@@ -1442,13 +1451,14 @@ async function startServer() {
           minRating,
           count,
           sentimentMode: sentimentMode as any,
+          existingReviews,
         }
       }, req.authUser!));
 
       // Guard: Ensure result.data is guaranteed to be a valid, populated array
       if (!Array.isArray(result?.data) || result.data.length === 0) {
         console.warn(`[scrape_reviews] AI generation returned empty or non-array data, falling back to curated reviews.`);
-        const fallback = generateCuratedMalawiReviews(hotelName, location, category, count, sentimentMode, targetSources);
+        const fallback = generateCuratedMalawiReviews(hotelName, location, category, count, sentimentMode, targetSources, existingReviews);
         return res.json({
           text: JSON.stringify(fallback),
           provider: result?.provider || 'gemini',
@@ -1462,7 +1472,7 @@ async function startServer() {
       res.json(result);
     } catch (err: any) {
       console.warn(`[scrape_reviews] Auto-fallback to curated reviews due to: ${err?.message || err}`);
-      const fallback = generateCuratedMalawiReviews(hotelName, location, category, count, sentimentMode, targetSources);
+      const fallback = generateCuratedMalawiReviews(hotelName, location, category, count, sentimentMode, targetSources, existingReviews);
       res.json({
         text: JSON.stringify(fallback),
         provider: 'gemini',
