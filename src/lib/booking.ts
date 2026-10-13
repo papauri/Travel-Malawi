@@ -6,7 +6,7 @@
  * cannot drift apart.
  */
 
-import { Booking, CurrencyCode, RoomType, Promotion } from '../types';
+import { Booking, CurrencyCode, RoomType, Promotion, ChildPolicy } from '../types';
 import { DateStr, daysUntil, nightsBetween } from './dates';
 import { packagePrice, roomExtraGuestFee, roomPrice, roomPrimaryCurrency, resolveCurrency, roundPrice } from './currency';
 import { calculateSlashedPrice, MAX_PROMO_DISCOUNT_PERCENT } from './promotions';
@@ -41,7 +41,9 @@ export function computeBookingPricing(
   quantity: number,
   packageIds: string[],
   requestedCurrency?: CurrencyCode,
-  discountPercentageOrPromo: number | Promotion | null = 0
+  discountPercentageOrPromo: number | Promotion | null = 0,
+  guestBreakdown?: { adults?: number; children?: number },
+  childPolicy?: ChildPolicy
 ): BookingPricing {
   const currency = resolveCurrency(room, requestedCurrency);
   const primary = roomPrimaryCurrency(room);
@@ -50,8 +52,34 @@ export function computeBookingPricing(
   const basePrice = roomPrice(room, currency) ?? 0;
   const extraGuestFee = roomExtraGuestFee(room, currency);
   const baseGuests = room.baseGuests || room.maxGuests || 2;
-  const extraGuestsCount = Math.max(0, guests - baseGuests);
-  const extraGuestTotal = extraGuestsCount * extraGuestFee * nights * quantity;
+
+  let extraGuestsCount = Math.max(0, guests - baseGuests);
+  let extraGuestTotal = extraGuestsCount * extraGuestFee * nights * quantity;
+
+  // If the property manager configured custom child pricing and children are present
+  if (childPolicy?.enabled && guestBreakdown && (guestBreakdown.children ?? 0) > 0) {
+    const adults = Math.max(1, guestBreakdown.adults ?? (guests - (guestBreakdown.children ?? 0)));
+    const children = Math.max(0, guestBreakdown.children ?? 0);
+
+    const extraAdults = Math.max(0, adults - baseGuests);
+    const remainingBaseGuests = Math.max(0, baseGuests - adults);
+    const extraChildren = Math.max(0, children - remainingBaseGuests);
+
+    let childFee = extraGuestFee;
+    if (childPolicy.rateType === 'free') {
+      childFee = 0;
+    } else if (childPolicy.rateType === 'percentage') {
+      const discount = Math.min(100, Math.max(0, childPolicy.discountPercentage ?? 50));
+      childFee = roundPrice(extraGuestFee * (1 - discount / 100), currency);
+    } else if (childPolicy.rateType === 'fixed') {
+      const fixedRate = currency === 'MWK' ? (childPolicy.fixedRateMwk ?? 0) : (childPolicy.fixedRateUsd ?? 0);
+      childFee = fixedRate;
+    }
+
+    extraGuestsCount = extraAdults + extraChildren;
+    extraGuestTotal = (extraAdults * extraGuestFee + extraChildren * childFee) * nights * quantity;
+  }
+
   const accommodationTotal = basePrice * nights * quantity + extraGuestTotal;
 
   let packagesTotal = 0;

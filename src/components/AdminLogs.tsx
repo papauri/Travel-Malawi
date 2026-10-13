@@ -61,6 +61,7 @@ export default function AdminLogs() {
   const [logs, setLogs] = useState<SystemLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [clearing, setClearing] = useState(false);
+  const [confirmClear, setConfirmClear] = useState(false);
   const [mainView, setMainView] = useState<MainViewMode>('intune_table');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
@@ -267,18 +268,18 @@ export default function AdminLogs() {
     }
   };
 
-  // Clear all logs
+  // Clear all logs without blocking window.confirm
   const handleClearAllLogs = async () => {
-    if (!window.confirm('Are you sure you want to delete all audit & system logs? This cannot be undone.')) {
-      return;
-    }
     setClearing(true);
     try {
-      await clearAllSystemLogs();
+      const count = await clearAllSystemLogs();
+      setLogs([]);
       setSelectedLog(null);
-      toast.success('All audit records deleted');
-    } catch {
-      toast.error('Failed to clear logs');
+      setConfirmClear(false);
+      toast.success(count > 0 ? `Deleted ${count} audit & telemetry records` : 'All audit records cleared');
+    } catch (err) {
+      console.error('Failed to clear logs:', err);
+      toast.error('Failed to clear logs. Verify admin privileges.');
     } finally {
       setClearing(false);
     }
@@ -515,16 +516,39 @@ export default function AdminLogs() {
 
             {/* Clear All Logs */}
             {logs.length > 0 && (
-              <button
-                type="button"
-                onClick={handleClearAllLogs}
-                disabled={clearing}
-                className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold rounded-xl transition disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer border border-rose-200/60 shadow-2xs"
-                title="Clear all stored logs"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>{clearing ? 'Clearing...' : 'Clear All'}</span>
-              </button>
+              confirmClear ? (
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={handleClearAllLogs}
+                    disabled={clearing}
+                    className="px-3 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer shadow-xs animate-pulse"
+                    title="Click to permanently delete all logs"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>{clearing ? 'Deleting All...' : 'Confirm Delete All?'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmClear(false)}
+                    disabled={clearing}
+                    className="px-2.5 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold rounded-xl transition cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setConfirmClear(true)}
+                  disabled={clearing}
+                  className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold rounded-xl transition disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer border border-rose-200/60 shadow-2xs shrink-0"
+                  title="Clear all stored logs"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Clear All</span>
+                </button>
+              )
             )}
           </div>
         </div>
@@ -830,60 +854,56 @@ export default function AdminLogs() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse">
                     <thead>
-                      <tr className="bg-stone-50 border-b border-stone-200 text-stone-600 text-[11px] font-bold uppercase tracking-wider select-none">
+                      <tr className="bg-stone-50 border-b border-stone-200 text-stone-600 text-[10px] font-bold uppercase tracking-wider select-none">
                         <th
-                          className="px-4 py-3.5 w-44 cursor-pointer hover:bg-stone-100/80 transition"
+                          className="px-3 py-2.5 w-32 cursor-pointer hover:bg-stone-100/80 transition"
                           onClick={() => {
                             if (sortField === 'timestamp') setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
                             else { setSortField('timestamp'); setSortOrder('desc'); }
                           }}
                         >
                           <div className="flex items-center gap-1">
-                            <span>Date and time</span>
-                            <ArrowUpDown className="w-3 h-3 text-stone-400" />
+                            <span>Date & Time</span>
+                            <ArrowUpDown className="w-2.5 h-2.5 text-stone-400" />
                           </div>
                         </th>
 
                         <th
-                          className="px-4 py-3.5 min-w-[220px] cursor-pointer hover:bg-stone-100/80 transition"
+                          className="px-3 py-2.5 min-w-[170px] cursor-pointer hover:bg-stone-100/80 transition"
                           onClick={() => {
                             if (sortField === 'activity') setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
                             else { setSortField('activity'); setSortOrder('asc'); }
                           }}
                         >
                           <div className="flex items-center gap-1">
-                            <span>Activity (Operation)</span>
-                            <ArrowUpDown className="w-3 h-3 text-stone-400" />
+                            <span>Activity & Target</span>
+                            <ArrowUpDown className="w-2.5 h-2.5 text-stone-400" />
                           </div>
                         </th>
 
                         <th
-                          className="px-4 py-3.5 w-44 cursor-pointer hover:bg-stone-100/80 transition"
+                          className="px-3 py-2.5 w-36 cursor-pointer hover:bg-stone-100/80 transition"
                           onClick={() => {
                             if (sortField === 'userName') setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
                             else { setSortField('userName'); setSortOrder('asc'); }
                           }}
                         >
                           <div className="flex items-center gap-1">
-                            <span>Initiated by (Actor)</span>
-                            <ArrowUpDown className="w-3 h-3 text-stone-400" />
+                            <span>Actor</span>
+                            <ArrowUpDown className="w-2.5 h-2.5 text-stone-400" />
                           </div>
                         </th>
 
-                        <th className="px-4 py-3.5 min-w-[170px]">Target(s) / Resource</th>
-                        <th className="px-4 py-3.5 w-40">Category</th>
-                        <th className="px-4 py-3.5 w-24">Status</th>
-                        <th className="px-4 py-3.5 w-48">Client IP & Location</th>
-                        <th className="px-4 py-3.5 w-40">Device & OS</th>
-                        <th className="px-3 py-3.5 w-16 text-right">Action</th>
+                        <th className="px-3 py-2.5 w-32">Status & Category</th>
+                        <th className="px-3 py-2.5 w-44">Client Telemetry</th>
+                        <th className="px-2 py-2.5 w-12 text-right">View</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-stone-100 text-xs">
                       {sortedLogs.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((log) => {
-                        const isFailed = log.status === 'Failed' || log.type === 'error';
                         const timeDistance = formatDistanceToNow(new Date(log.timestamp), { addSuffix: true });
                         const formattedDate = format(new Date(log.timestamp), 'MMM d, yyyy');
-                        const formattedTime = format(new Date(log.timestamp), 'h:mm:ss a');
+                        const formattedTime = format(new Date(log.timestamp), 'h:mm a');
 
                         return (
                           <tr
@@ -894,104 +914,72 @@ export default function AdminLogs() {
                             }`}
                           >
                             {/* Date & Time */}
-                            <td className="px-4 py-3 align-top whitespace-nowrap text-stone-600">
-                              <div className="font-semibold text-stone-900">{formattedDate}</div>
-                              <div className="text-[11px] text-stone-400">{formattedTime}</div>
-                              <div className="text-[10px] text-stone-500 mt-0.5">{timeDistance}</div>
+                            <td className="px-3 py-2.5 align-top whitespace-nowrap text-stone-600">
+                              <div className="font-semibold text-stone-900 text-xs leading-tight">{formattedDate}</div>
+                              <div className="text-[10px] text-stone-400 leading-tight mt-0.5">{formattedTime} · {timeDistance}</div>
                             </td>
 
-                            {/* Activity Display Name */}
-                            <td className="px-4 py-3 align-top">
-                              <div className="font-bold text-stone-900 group-hover:text-amber-900 transition-colors">
+                            {/* Activity & Target */}
+                            <td className="px-3 py-2.5 align-top">
+                              <div className="font-bold text-stone-900 group-hover:text-amber-900 transition-colors text-xs leading-snug line-clamp-1">
                                 {log.activity || log.message}
                               </div>
-                              <div className="text-[11px] text-stone-500 mt-0.5 line-clamp-1">
-                                {log.message}
-                              </div>
-                              {log.sessionId && (
-                                <div className="text-[10px] font-mono text-stone-400 mt-1">
-                                  {log.sessionId}
+                              {log.target && (
+                                <div className="text-[11px] text-stone-600 truncate max-w-[220px] mt-0.5">
+                                  <span className="text-stone-400 font-semibold text-[10px]">Target:</span> {log.target}
+                                  {log.targetType && (
+                                    <span className="text-[9px] uppercase font-bold text-stone-400 ml-1">({log.targetType})</span>
+                                  )}
                                 </div>
                               )}
                             </td>
 
                             {/* Initiated by (Actor) */}
-                            <td className="px-4 py-3 align-top">
-                              <div className="flex flex-col gap-1">
-                                <span className="font-semibold text-stone-900 truncate max-w-[160px]">
+                            <td className="px-3 py-2.5 align-top">
+                              <div className="flex flex-col gap-0.5">
+                                <span className="font-semibold text-stone-900 truncate max-w-[130px] text-xs leading-tight">
                                   {log.userName || log.userEmail || 'System Core'}
                                 </span>
-                                {log.userEmail && log.userName && (
-                                  <span className="text-[11px] text-stone-400 truncate max-w-[160px]">
-                                    {log.userEmail}
-                                  </span>
-                                )}
                                 <div>{renderRoleBadge(log.userRole)}</div>
                               </div>
                             </td>
 
-                            {/* Target(s) */}
-                            <td className="px-4 py-3 align-top">
-                              <div className="font-semibold text-stone-800 break-words max-w-[200px]">
-                                {log.target || 'Platform / Core'}
+                            {/* Status & Category */}
+                            <td className="px-3 py-2.5 align-top whitespace-nowrap">
+                              <div className="flex flex-col gap-1 items-start">
+                                {renderStatusBadge(log.status, log.type)}
+                                {renderCategoryBadge(log.category)}
                               </div>
-                              {log.targetType && (
-                                <span className="inline-block mt-1 text-[10px] uppercase font-bold text-stone-400">
-                                  {log.targetType}
-                                </span>
-                              )}
                             </td>
 
-                            {/* Category */}
-                            <td className="px-4 py-3 align-top whitespace-nowrap">
-                              {renderCategoryBadge(log.category)}
-                            </td>
-
-                            {/* Status */}
-                            <td className="px-4 py-3 align-top whitespace-nowrap">
-                              {renderStatusBadge(log.status, log.type)}
-                            </td>
-
-                            {/* Client IP & Location */}
-                            <td className="px-4 py-3 align-top whitespace-nowrap">
+                            {/* Client Telemetry (IP + Location + OS) */}
+                            <td className="px-3 py-2.5 align-top whitespace-nowrap">
                               <div className="flex flex-col gap-0.5">
-                                <div className="flex items-center gap-1.5 font-medium text-stone-800">
+                                <div className="flex items-center gap-1.5 font-medium text-stone-800 text-[11px] leading-tight">
                                   <span>{log.location?.flag || '🌐'}</span>
-                                  <span>{log.location?.city || log.location?.country || 'Malawi'}</span>
+                                  <span className="truncate max-w-[120px]">{log.location?.city || log.location?.country || 'Malawi'}</span>
                                 </div>
-                                {log.ip && (
-                                  <div className="text-[11px] font-mono text-stone-500">
-                                    {log.ip}
-                                  </div>
-                                )}
-                              </div>
-                            </td>
-
-                            {/* Device & OS */}
-                            <td className="px-4 py-3 align-top whitespace-nowrap">
-                              <div className="flex items-center gap-1.5 text-stone-700">
-                                {renderDeviceIcon(log.device?.type)}
-                                <span className="font-medium text-stone-800">
-                                  {log.device?.os || 'Client'}
-                                </span>
-                              </div>
-                              <div className="text-[11px] text-stone-400 mt-0.5">
-                                {log.device?.browser || 'Browser'}
+                                <div className="text-[10px] text-stone-400 font-mono flex items-center gap-1 mt-0.5">
+                                  {renderDeviceIcon(log.device?.type)}
+                                  <span className="truncate max-w-[130px]">
+                                    {log.ip || '—'} · {log.device?.os || log.device?.browser || 'Web'}
+                                  </span>
+                                </div>
                               </div>
                             </td>
 
                             {/* Action Button */}
-                            <td className="px-3 py-3 align-top text-right whitespace-nowrap">
+                            <td className="px-2 py-2.5 align-top text-right whitespace-nowrap">
                               <button
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setSelectedLog(log);
                                 }}
-                                className="min-h-[32px] min-w-[32px] p-1.5 text-stone-400 hover:text-stone-900 hover:bg-stone-100 rounded-lg transition inline-flex items-center justify-center cursor-pointer"
+                                className="p-1.5 text-stone-400 hover:text-stone-900 hover:bg-stone-100 rounded-lg transition inline-flex items-center justify-center cursor-pointer"
                                 title="Inspect audit details"
                               >
-                                <Eye className="w-4 h-4" />
+                                <Eye className="w-3.5 h-3.5" />
                               </button>
                             </td>
                           </tr>

@@ -105,6 +105,7 @@ function hotelFormSnapshot(data: Partial<Hotel>): string {
     isOnline: data.isOnline ?? true,
     outOfOfficeMessage: data.outOfOfficeMessage ?? '',
     depositInfo: data.depositInfo ?? null,
+    childPolicy: data.childPolicy ?? null,
   });
 }
 
@@ -143,6 +144,7 @@ function pickHotelFormData(data: Partial<Hotel>): Partial<Hotel> {
     isOnline: data.isOnline ?? true,
     outOfOfficeMessage: data.outOfOfficeMessage ?? '',
     depositInfo: getHotelDepositInfo(data as Hotel),
+    childPolicy: data.childPolicy ?? null,
   });
 }
 
@@ -2578,6 +2580,243 @@ export default function ManageHotel() {
                     />
                   </div>
                 </div>
+              </div>
+
+              {/* Child Stay Policy (Manager Discretion) */}
+              <div className="mt-5 sm:mt-7 pt-5 sm:pt-7 border-t border-stone-200">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-3.5">
+                  <div>
+                    <h3 className="text-base sm:text-lg font-serif font-bold text-stone-900 flex items-center gap-2">
+                      <span>Child Stay Policy &amp; Age Rules</span>
+                    </h3>
+                    <p className="text-stone-500 text-xs mt-0.5">
+                      Configure custom age rules and pricing for children, or disable to count all guests equally under standard capacity.
+                    </p>
+                  </div>
+                  <label className="inline-flex items-center gap-2 cursor-pointer bg-stone-100 hover:bg-stone-200 px-3 py-1.5 rounded-xl border border-stone-200 transition">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(editHotelData.childPolicy?.enabled)}
+                      onChange={e => {
+                        const enabled = e.target.checked;
+                        const current = editHotelData.childPolicy || {
+                          enabled: false,
+                          allowed: true,
+                          freeUnderAge: 5,
+                          rateType: 'free',
+                          discountPercentage: 50,
+                          notes: ''
+                        };
+                        setEditHotelData({
+                          ...editHotelData,
+                          childPolicy: { ...current, enabled }
+                        });
+                      }}
+                      className="w-4 h-4 text-emerald-600 border-stone-300 rounded focus:ring-emerald-600"
+                    />
+                    <span className="text-xs font-bold text-stone-800">
+                      {editHotelData.childPolicy?.enabled ? 'Custom Child Rules Enabled' : 'Enable Child Policy'}
+                    </span>
+                  </label>
+                </div>
+
+                {editHotelData.childPolicy?.enabled ? (
+                  <div className="bg-stone-50 border border-stone-200 rounded-xl sm:rounded-2xl p-4 sm:p-5 space-y-4">
+                    {/* Children Allowed or Adults Only */}
+                    <div>
+                      <label className="block text-[11px] sm:text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">
+                        Property Children Allowance
+                      </label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <label className={`flex items-center gap-2.5 p-3 rounded-xl border cursor-pointer transition ${
+                          editHotelData.childPolicy.allowed !== false
+                            ? 'bg-white border-emerald-500 ring-1 ring-emerald-500 text-emerald-950 font-bold'
+                            : 'bg-white/60 border-stone-200 text-stone-700'
+                        }`}>
+                          <input
+                            type="radio"
+                            name="childAllowed"
+                            checked={editHotelData.childPolicy.allowed !== false}
+                            onChange={() => setEditHotelData({
+                              ...editHotelData,
+                              childPolicy: { ...editHotelData.childPolicy!, allowed: true }
+                            })}
+                            className="w-4 h-4 text-emerald-600"
+                          />
+                          <div className="text-xs">
+                            <div className="font-bold">Children Welcome</div>
+                            <div className="text-[11px] text-stone-500 font-normal mt-0.5">Families with infants and children are accepted.</div>
+                          </div>
+                        </label>
+                        <label className={`flex items-center gap-2.5 p-3 rounded-xl border cursor-pointer transition ${
+                          editHotelData.childPolicy.allowed === false
+                            ? 'bg-white border-rose-500 ring-1 ring-rose-500 text-rose-950 font-bold'
+                            : 'bg-white/60 border-stone-200 text-stone-700'
+                        }`}>
+                          <input
+                            type="radio"
+                            name="childAllowed"
+                            checked={editHotelData.childPolicy.allowed === false}
+                            onChange={() => setEditHotelData({
+                              ...editHotelData,
+                              childPolicy: { ...editHotelData.childPolicy!, allowed: false }
+                            })}
+                            className="w-4 h-4 text-rose-600"
+                          />
+                          <div className="text-xs">
+                            <div className="font-bold">Adults-Only Stay (18+)</div>
+                            <div className="text-[11px] text-stone-500 font-normal mt-0.5">No children permitted at this property.</div>
+                          </div>
+                        </label>
+                      </div>
+                    </div>
+
+                    {editHotelData.childPolicy.allowed !== false && (
+                      <>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4 pt-2 border-t border-stone-200/60">
+                          {/* Free Under Age */}
+                          <div>
+                            <label className="block text-[11px] sm:text-xs font-bold text-stone-500 uppercase tracking-wider mb-1 sm:mb-1.5">
+                              Free Stay Age Threshold
+                            </label>
+                            <select
+                              value={editHotelData.childPolicy.freeUnderAge ?? 5}
+                              onChange={e => setEditHotelData({
+                                ...editHotelData,
+                                childPolicy: {
+                                  ...editHotelData.childPolicy!,
+                                  freeUnderAge: parseInt(e.target.value, 10)
+                                }
+                              })}
+                              className="w-full bg-white border border-stone-200 px-3 py-2 text-xs sm:text-sm rounded-lg sm:rounded-xl outline-none focus:border-stone-900 transition"
+                            >
+                              <option value="0">No free stay (all children charged)</option>
+                              <option value="3">Children under 3 stay free</option>
+                              <option value="5">Children under 5 stay free</option>
+                              <option value="12">Children under 12 stay free</option>
+                              <option value="16">Children under 16 stay free</option>
+                            </select>
+                            <p className="text-[10px] text-stone-400 mt-1">Children under this age do not incur extra guest charges.</p>
+                          </div>
+
+                          {/* Rate for older children */}
+                          <div>
+                            <label className="block text-[11px] sm:text-xs font-bold text-stone-500 uppercase tracking-wider mb-1 sm:mb-1.5">
+                              Rate for Older Children
+                            </label>
+                            <select
+                              value={editHotelData.childPolicy.rateType ?? 'free'}
+                              onChange={e => setEditHotelData({
+                                ...editHotelData,
+                                childPolicy: {
+                                  ...editHotelData.childPolicy!,
+                                  rateType: e.target.value as any
+                                }
+                              })}
+                              className="w-full bg-white border border-stone-200 px-3 py-2 text-xs sm:text-sm rounded-lg sm:rounded-xl outline-none focus:border-stone-900 transition"
+                            >
+                              <option value="free">Free of charge (all children stay free)</option>
+                              <option value="percentage">Discounted percentage of extra guest fee</option>
+                              <option value="fixed">Fixed nightly fee per child</option>
+                              <option value="standard">Standard extra adult rate</option>
+                            </select>
+                            <p className="text-[10px] text-stone-400 mt-1">Pricing model applied when children exceed base capacity.</p>
+                          </div>
+                        </div>
+
+                        {editHotelData.childPolicy.rateType === 'percentage' && (
+                          <div>
+                            <label className="block text-[11px] sm:text-xs font-bold text-stone-500 uppercase tracking-wider mb-1">
+                              Child Discount Percentage (%)
+                            </label>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="number"
+                                min="0"
+                                max="100"
+                                value={editHotelData.childPolicy.discountPercentage ?? 50}
+                                onChange={e => setEditHotelData({
+                                  ...editHotelData,
+                                  childPolicy: {
+                                    ...editHotelData.childPolicy!,
+                                    discountPercentage: Math.max(0, Math.min(100, parseInt(e.target.value, 10) || 0))
+                                  }
+                                })}
+                                className="w-32 bg-white border border-stone-200 px-3 py-2 text-xs sm:text-sm rounded-lg sm:rounded-xl outline-none focus:border-stone-900 transition"
+                              />
+                              <span className="text-xs text-stone-600 font-medium">% off the standard room extra guest fee</span>
+                            </div>
+                          </div>
+                        )}
+
+                        {editHotelData.childPolicy.rateType === 'fixed' && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-[11px] sm:text-xs font-bold text-stone-500 uppercase tracking-wider mb-1">
+                                Child Fee (MWK) / Night
+                              </label>
+                              <input
+                                type="number"
+                                min="0"
+                                value={editHotelData.childPolicy.fixedRateMwk ?? 15000}
+                                onChange={e => setEditHotelData({
+                                  ...editHotelData,
+                                  childPolicy: {
+                                    ...editHotelData.childPolicy!,
+                                    fixedRateMwk: Math.max(0, parseInt(e.target.value, 10) || 0)
+                                  }
+                                })}
+                                className="w-full bg-white border border-stone-200 px-3 py-2 text-xs sm:text-sm rounded-lg sm:rounded-xl outline-none focus:border-stone-900 transition"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[11px] sm:text-xs font-bold text-stone-500 uppercase tracking-wider mb-1">
+                                Child Fee (USD) / Night
+                              </label>
+                              <input
+                                type="number"
+                                min="0"
+                                value={editHotelData.childPolicy.fixedRateUsd ?? 10}
+                                onChange={e => setEditHotelData({
+                                  ...editHotelData,
+                                  childPolicy: {
+                                    ...editHotelData.childPolicy!,
+                                    fixedRateUsd: Math.max(0, parseInt(e.target.value, 10) || 0)
+                                  }
+                                })}
+                                className="w-full bg-white border border-stone-200 px-3 py-2 text-xs sm:text-sm rounded-lg sm:rounded-xl outline-none focus:border-stone-900 transition"
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Child notes */}
+                        <div>
+                          <label className="block text-[11px] sm:text-xs font-bold text-stone-500 uppercase tracking-wider mb-1">
+                            Child House Rules &amp; Cot Guidance
+                          </label>
+                          <textarea
+                            rows={2}
+                            value={editHotelData.childPolicy.notes ?? ''}
+                            onChange={e => setEditHotelData({
+                              ...editHotelData,
+                              childPolicy: {
+                                ...editHotelData.childPolicy!,
+                                notes: e.target.value
+                              }
+                            })}
+                            className="w-full bg-white border border-stone-200 p-2.5 text-xs sm:text-sm rounded-lg sm:rounded-xl outline-none focus:border-stone-900 transition"
+                            placeholder="e.g. Free baby cot upon request. Children must be supervised around swimming pools and lake access."
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ) : (
+                  <div className="bg-stone-50 border border-stone-200/80 rounded-xl p-3 sm:p-3.5 text-xs text-stone-500">
+                    Standard guest capacity is currently active. All occupants (adults and children) are counted together under regular room allowances.
+                  </div>
+                )}
               </div>
 
     </div>

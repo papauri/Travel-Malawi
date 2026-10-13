@@ -648,19 +648,25 @@ export async function deleteSystemLog(logId: string) {
   }
 }
 
-export async function clearAllSystemLogs() {
+export async function clearAllSystemLogs(): Promise<number> {
   try {
-    const q = query(collection(db, 'system_logs'), limit(500));
-    const snap = await getDocs(q);
+    let totalDeleted = 0;
+    // Iterate in batches of 450 (below Firestore's 500 max limit) to completely drain collection
+    while (true) {
+      const q = query(collection(db, 'system_logs'), limit(450));
+      const snap = await getDocs(q);
+      if (snap.empty) break;
 
-    if (snap.empty) return;
+      const batch = writeBatch(db);
+      snap.docs.forEach((doc) => {
+        batch.delete(doc.ref);
+      });
 
-    const batch = writeBatch(db);
-    snap.docs.forEach((doc) => {
-      batch.delete(doc.ref);
-    });
-
-    await batch.commit();
+      await batch.commit();
+      totalDeleted += snap.size;
+      if (snap.size < 450) break;
+    }
+    return totalDeleted;
   } catch (err) {
     console.error('Failed to clear system logs:', err);
     throw err;

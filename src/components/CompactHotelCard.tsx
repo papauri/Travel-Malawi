@@ -128,6 +128,21 @@ export default function CompactHotelCard({
                   {hotel.categories[0]}
                 </span>
               )}
+              {hotel.childPolicy?.enabled && (
+                <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded border whitespace-nowrap ${
+                  hotel.childPolicy.allowed === false
+                    ? 'bg-rose-50 text-rose-700 border-rose-200/60'
+                    : 'bg-emerald-50 text-emerald-800 border-emerald-200/60'
+                }`}>
+                  {hotel.childPolicy.allowed === false
+                    ? 'Adults 18+'
+                    : hotel.childPolicy.freeUnderAge
+                    ? `Kids <${hotel.childPolicy.freeUnderAge} free`
+                    : hotel.childPolicy.rateType === 'free'
+                    ? 'Kids free'
+                    : 'Children welcome'}
+                </span>
+              )}
               {hotel.amenities?.slice(0, 3).map((amenity, i) => (
                 <span key={i} className="text-[11px] text-stone-500 bg-stone-100 px-1.5 py-0.5 rounded whitespace-nowrap hidden sm:inline-block">
                   {amenity}

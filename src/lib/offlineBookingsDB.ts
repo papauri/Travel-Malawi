@@ -25,6 +25,8 @@ export interface OfflineBookingRecord {
   checkIn: string;
   checkOut: string;
   guests: number;
+  adults?: number;
+  children?: number;
   quantity: number;
   total: number;
   currency: string;

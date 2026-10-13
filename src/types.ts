@@ -174,6 +174,17 @@ export interface EntirePlaceDetails {
   hasDedicatedHost?: boolean;
 }
 
+export interface ChildPolicy {
+  enabled: boolean;          // Manager discretion: true if custom child rules apply, false for standard guest count
+  allowed: boolean;          // true = children welcome, false = adults-only property
+  freeUnderAge?: number;     // e.g. 5 (children under 5 stay free of charge)
+  rateType?: 'free' | 'percentage' | 'fixed' | 'standard';
+  discountPercentage?: number; // e.g. 50 (% discount on extra guest fee for older children)
+  fixedRateUsd?: number;
+  fixedRateMwk?: number;
+  notes?: string;            // e.g. "Free baby cot available upon request. Supervision required near the lake."
+}
+
 export interface Hotel {
   id?: string;
   status?: 'pending' | 'approved' | 'rejected';
@@ -184,6 +195,7 @@ export interface Hotel {
   /** 'rooms' for per-room listings, 'entire_place' for whole houses/cottages/villas */
   stayType?: PropertyStayType;
   entirePlaceDetails?: EntirePlaceDetails;
+  childPolicy?: ChildPolicy;
   infrastructure?: InfrastructureDetails;
   crew?: StayCrewMember[];
   promotions?: Promotion[];
@@ -486,6 +498,8 @@ export interface Booking {
   checkIn: string;
   checkOut: string;
   guests: number;
+  adults?: number;
+  children?: number;
   quantity: number;
   total: number;
   /** The currency the guest was quoted and will pay in. */

@@ -1507,6 +1507,25 @@ export default function Home() {
 
               {showGuestDropdown && (
                 <div className="absolute top-full left-0 right-0 sm:left-auto sm:right-0 sm:w-72 mt-2 bg-[#FBF9F5] rounded-2xl shadow-2xl ring-1 ring-stone-200 p-2 z-[100]">
+                  {(!searchCheckIn || !searchCheckOut) && (
+                    <div className="mb-2 p-2.5 bg-amber-50/90 border border-amber-200/80 rounded-xl flex items-center justify-between gap-2">
+                      <div className="text-[11px] text-amber-900 leading-tight">
+                        <span className="font-semibold block">Select dates first</span>
+                        <span className="text-[10px] text-amber-800">For accurate rates & room capacity</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowGuestDropdown(false);
+                          openCheckInPicker();
+                        }}
+                        className="text-[11px] font-bold bg-amber-600 hover:bg-amber-700 text-white px-2.5 py-1 rounded-lg transition shrink-0 cursor-pointer"
+                      >
+                        Pick Dates
+                      </button>
+                    </div>
+                  )}
                   {([
                     { label: 'Adults', hint: 'Ages 13 or above', value: adults, set: setAdults, min: 1, max: 16 },
                     { label: 'Children', hint: 'Ages 2–12', value: children, set: setChildren, min: 0, max: 16 },

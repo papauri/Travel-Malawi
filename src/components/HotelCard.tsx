@@ -225,6 +225,21 @@ export default function HotelCard({
                 {hotel.categories[0]}
               </span>
             )}
+            {hotel.childPolicy?.enabled && (
+              <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded border ${
+                hotel.childPolicy.allowed === false
+                  ? 'bg-rose-50 text-rose-700 border-rose-200/60'
+                  : 'bg-emerald-50 text-emerald-800 border-emerald-200/60'
+              }`}>
+                {hotel.childPolicy.allowed === false
+                  ? 'Adults 18+'
+                  : hotel.childPolicy.freeUnderAge
+                  ? `Kids <${hotel.childPolicy.freeUnderAge} free`
+                  : hotel.childPolicy.rateType === 'free'
+                  ? 'Kids free'
+                  : 'Children welcome'}
+              </span>
+            )}
           </div>
         </div>
         <h3 className="font-serif text-sm sm:text-base md:text-lg font-bold text-stone-900 leading-snug line-clamp-2 group-hover:text-stone-700 transition-colors duration-200">
