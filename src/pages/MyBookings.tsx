@@ -83,6 +83,17 @@ export default function MyBookings() {
         setBookings(JSON.parse(cached));
         setLoading(false);
       }
+      const cachedHost = localStorage.getItem(`hostBookingsCache_${uid}`);
+      if (cachedHost) {
+        setHostBookings(JSON.parse(cachedHost));
+        setLoadingHost(false);
+      }
+      const cachedHotels = localStorage.getItem(`managerHotelsCache_${uid}`);
+      if (cachedHotels) {
+        const parsed = JSON.parse(cachedHotels);
+        setManagerHotels(parsed);
+        if (parsed.length > 0) setActiveMainTab('host');
+      }
     } catch (e) {
       console.warn('Failed to read bookings cache', e);
     }
@@ -112,6 +123,10 @@ export default function MyBookings() {
         });
 
         setManagerHotels(hotels);
+        try {
+          localStorage.setItem(`managerHotelsCache_${uid}`, JSON.stringify(hotels));
+        } catch {}
+
         if (hotels.length > 0) {
           setActiveMainTab('host');
           const hIds = hotels.map(h => h.id).filter(Boolean) as string[];
@@ -140,6 +155,9 @@ export default function MyBookings() {
             }));
             enrichedHost.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
             setHostBookings(enrichedHost);
+            try {
+              localStorage.setItem(`hostBookingsCache_${uid}`, JSON.stringify(enrichedHost));
+            } catch {}
           }
         }
       } catch (err) {
@@ -183,7 +201,9 @@ export default function MyBookings() {
         }
       } catch (error) {
         console.error("Error fetching bookings:", error);
-        toast.error('Could not load your bookings.');
+        if (navigator.onLine) {
+          toast.error('Could not load your bookings.');
+        }
       } finally {
         setLoading(false);
       }

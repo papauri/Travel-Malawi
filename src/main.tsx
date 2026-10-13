@@ -50,11 +50,21 @@ if (typeof window !== 'undefined' && typeof window.fetch === 'function') {
   }
 }
 
-// Register PWA service worker smoothly in production/preview
+// Register PWA service worker immediately in production/preview for instant offline readiness
 if ('serviceWorker' in navigator && !window.location.host.includes('ais-dev-')) {
   import('virtual:pwa-register').then(({ registerSW }) => {
-    registerSW();
-  }).catch(() => {});
+    registerSW({
+      immediate: true,
+      onNeedRefresh() {
+        console.log('[PWA] New version of Travel Malawi is available.');
+      },
+      onOfflineReady() {
+        console.log('[PWA] Travel Malawi is ready to work offline.');
+      },
+    });
+  }).catch((err) => {
+    console.warn('[PWA] Service worker registration error:', err);
+  });
 }
 
 createRoot(document.getElementById('root')!).render(

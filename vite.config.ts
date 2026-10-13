@@ -11,34 +11,94 @@ export default defineConfig(() => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: ['favicon-32.png', 'apple-touch-icon.png', 'icons/*.png'],
+        includeAssets: ['favicon-32.png', 'apple-touch-icon.png', 'icons/*.png', 'hotels/*.jpg'],
         manifest: {
+          id: '/',
           name: 'Travel Malawi',
-          short_name: 'TravelMalawi',
-          description: 'A globally inclusive platform connecting the world to independent lodges and camps across Malawi.',
+          short_name: 'Travel Malawi',
+          description: 'A direct booking and hospitality platform connecting travelers with independent lodges, B&Bs, cottages, and safari camps across Malawi.',
+          start_url: '/',
+          scope: '/',
+          display: 'standalone',
+          display_override: ['window-controls-overlay', 'standalone', 'minimal-ui'],
+          orientation: 'any',
           theme_color: '#1c1917',
           background_color: '#1c1917',
-          display: 'standalone',
+          lang: 'en',
+          categories: ['travel', 'hospitality', 'vacation', 'lodging'],
           icons: [
             { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
             { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
             { src: '/icons/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
+          ],
+          shortcuts: [
+            {
+              name: 'Explore Stays',
+              short_name: 'Explore',
+              description: 'Browse lodges, safari camps & cottages across Malawi',
+              url: '/',
+              icons: [{ src: '/icons/icon-192.png', sizes: '192x192' }]
+            },
+            {
+              name: 'My Bookings',
+              short_name: 'Bookings',
+              description: 'View your stay vouchers and reservations offline',
+              url: '/my-bookings',
+              icons: [{ src: '/icons/icon-192.png', sizes: '192x192' }]
+            },
+            {
+              name: 'Host Dashboard',
+              short_name: 'Dashboard',
+              description: 'Manage property rooms, rates, and guest arrivals',
+              url: '/dashboard',
+              icons: [{ src: '/icons/icon-192.png', sizes: '192x192' }]
+            }
           ]
         },
         workbox: {
+          navigateFallback: '/index.html',
           navigateFallbackDenylist: [/^\/api/],
-          maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
+          maximumFileSizeToCacheInBytes: 12 * 1024 * 1024,
           globIgnores: ['**/server.cjs', '**/server.cjs.map', '**/host_app_*.png'],
-          globPatterns: ['**/*.{js,css,html,ico,svg,webmanifest}'],
+          globPatterns: ['**/*.{js,css,html,ico,png,jpg,jpeg,svg,webp,webmanifest,woff,woff2}'],
           runtimeCaching: [
             {
               urlPattern: /^https:\/\/firestore\.googleapis\.com\/.*/i,
               handler: 'NetworkFirst',
               options: {
                 cacheName: 'firebase-firestore',
+                networkTimeoutSeconds: 3,
                 expiration: {
                   maxEntries: 100,
                   maxAgeSeconds: 60 * 60 * 24 * 7 // 1 week
+                },
+                cacheableResponse: {
+                  statuses: [0, 200]
+                }
+              }
+            },
+            {
+              urlPattern: /^https:\/\/firebasestorage\.googleapis\.com\/.*/i,
+              handler: 'StaleWhileRevalidate',
+              options: {
+                cacheName: 'firebase-storage-media-v1',
+                expiration: {
+                  maxEntries: 300,
+                  maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
+                },
+                cacheableResponse: {
+                  statuses: [0, 200]
+                }
+              }
+            },
+            {
+              urlPattern: /^https:\/\/images\.unsplash\.com\/.*/i,
+              handler: 'StaleWhileRevalidate',
+              options: {
+                cacheName: 'unsplash-images-v1',
+                expiration: {
+                  maxEntries: 300,
+                  maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
                 },
                 cacheableResponse: {
                   statuses: [0, 200]
@@ -51,7 +111,7 @@ export default defineConfig(() => {
               options: {
                 cacheName: 'malawi-map-tiles-v1',
                 expiration: {
-                  maxEntries: 2000,
+                  maxEntries: 2500,
                   maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
                 },
                 cacheableResponse: {
@@ -65,7 +125,7 @@ export default defineConfig(() => {
               options: {
                 cacheName: 'malawi-map-tiles-v1',
                 expiration: {
-                  maxEntries: 1000,
+                  maxEntries: 1500,
                   maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
                 },
                 cacheableResponse: {
@@ -95,13 +155,13 @@ export default defineConfig(() => {
               }
             },
             {
-              urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp)$/i,
+              urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp)(?:\?.*)?$/i,
               handler: 'CacheFirst',
               options: {
                 cacheName: 'travel-malawi-images-v1',
                 expiration: {
-                  maxEntries: 200,
-                  maxAgeSeconds: 60 * 60 * 24 * 14 // 14 days
+                  maxEntries: 250,
+                  maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
                 },
                 cacheableResponse: {
                   statuses: [0, 200]

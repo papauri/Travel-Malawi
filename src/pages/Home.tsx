@@ -170,12 +170,12 @@ const FALLBACK_DESTINATIONS = ['Lake Malawi', 'Likoma', 'Zomba', 'Liwonde', 'Lil
 export default function Home() {
   const today = todayStr();
 
-  const [hotels, setHotels] = useState<Hotel[]>([]);
-  const [rooms, setRooms] = useState<RoomType[]>([]);
+  const [hotels, setHotels] = useState<Hotel[]>(() => getCachedHotels());
+  const [rooms, setRooms] = useState<RoomType[]>(() => getCachedRooms());
   const [reviews, setReviews] = useState<Review[]>([]);
   const [bookings, setBookings] = useState<BookingLike[]>([]);
   const [bookingsLoaded, setBookingsLoaded] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => getCachedHotels().length === 0);
   const [searching, setSearching] = useState(false);
   const [activeStayType, setActiveStayType] = useState('All');
   const [activeCategory, setActiveCategory] = useState('All');
