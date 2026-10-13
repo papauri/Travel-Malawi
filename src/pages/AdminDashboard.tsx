@@ -794,7 +794,7 @@ export default function AdminDashboard() {
       { id: 'overview' as Tab, label: 'Overview', icon: LayoutDashboard },
       { id: 'analytics' as Tab, label: 'Analytics', icon: TrendingUp },
       { id: 'properties' as Tab, label: 'Properties', icon: Building2 },
-      { id: 'reviews' as Tab, label: 'Review Scraper', icon: Star },
+      { id: 'reviews' as Tab, label: 'Reviews & Scraper', icon: Star },
       { id: 'users' as Tab, label: 'Users', icon: Users, visible: isAdmin(user) || isMarketing(user) },
       { id: 'bookings' as Tab, label: 'All Bookings', icon: CalendarRange },
       { id: 'destinations' as Tab, label: 'Destinations', icon: Navigation },

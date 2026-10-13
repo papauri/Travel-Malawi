@@ -1,17 +1,47 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Search, Save, Star, Loader2, Check, MapPin, 
-  Trash2, Edit3, Sliders, X, Eye, ExternalLink
+  Trash2, Edit3, Sliders, X, Eye, ExternalLink,
+  ShieldCheck, Building2, Globe, ListFilter, Filter, MessageSquare, RefreshCw, AlertTriangle
 } from 'lucide-react';
-import { Hotel } from '../types';
+import { Hotel, Review } from '../types';
 import toast from 'react-hot-toast';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, deleteDoc, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import Pagination from './Pagination';
+import { parseReviewDateToTimestamp, formatReviewDate } from '../lib/reviewDates';
 
 interface AdminReviewScraperProps {
   hotels: Hotel[];
   onHotelUpdated: (updatedHotel: Hotel) => void;
+}
+
+export interface UnifiedPlatformReview {
+  id: string;
+  reviewType: 'direct' | 'imported';
+  hotelId: string;
+  hotelName: string;
+  hotelLocation?: string;
+  hotelImage?: string;
+  author: string;
+  rating: number;
+  title?: string;
+  comment: string;
+  date: string;
+  timestamp: number;
+  source: string;
+  sourceUrl?: string;
+  verified: boolean;
+  bookingId?: string;
+  guestId?: string;
+  originalIndex?: number;
+}
+
+interface EditingTarget {
+  sourceType: 'all_direct' | 'all_imported' | 'scraped_discover' | 'existing_hotel';
+  reviewId?: string;
+  hotelId?: string;
+  originalIndex?: number;
 }
 
 interface ScrapedReviewItem {
@@ -42,7 +72,186 @@ const AVAILABLE_SOURCES = [
 export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminReviewScraperProps) {
   const [selectedHotelId, setSelectedHotelId] = useState<string>('');
   const [hotelSearchQuery, setHotelSearchQuery] = useState<string>('');
-  const [activeSubTab, setActiveSubTab] = useState<'discover' | 'existing'>('discover');
+  const [activeSubTab, setActiveSubTab] = useState<'all' | 'discover' | 'existing'>('all');
+
+  // Direct Guest-Written Reviews from Platform
+  const [directReviews, setDirectReviews] = useState<Review[]>([]);
+  const [isLoadingDirectReviews, setIsLoadingDirectReviews] = useState<boolean>(true);
+
+  // All Platform Reviews Filtering & Search State
+  const [platformSearchQuery, setPlatformSearchQuery] = useState<string>('');
+  const [platformPropertyFilter, setPlatformPropertyFilter] = useState<string>('all');
+  const [platformSourceFilter, setPlatformSourceFilter] = useState<string>('all');
+  const [platformRatingFilter, setPlatformRatingFilter] = useState<string>('all');
+  const [platformSortBy, setPlatformSortBy] = useState<'recent' | 'oldest' | 'highest' | 'critical'>('recent');
+  const [platformCurrentPage, setPlatformCurrentPage] = useState<number>(1);
+  const platformItemsPerPage = 10;
+
+  // Editing Target State
+  const [editingTarget, setEditingTarget] = useState<EditingTarget | null>(null);
+
+  // Fetch direct platform reviews
+  const fetchDirectReviews = async () => {
+    setIsLoadingDirectReviews(true);
+    try {
+      const snap = await getDocs(collection(db, 'reviews'));
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Review));
+      setDirectReviews(list);
+    } catch (err: any) {
+      console.warn('Failed to load direct platform reviews:', err);
+    } finally {
+      setIsLoadingDirectReviews(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDirectReviews();
+  }, []);
+
+  // Aggregated Platform Reviews (Direct + All Imported from Hotels)
+  const allPlatformReviews = useMemo(() => {
+    const hotelMap = new Map<string, Hotel>();
+    hotels.forEach(h => {
+      if (h.id) hotelMap.set(h.id, h);
+    });
+
+    // 1. Direct guest-written reviews from Firestore
+    const direct: UnifiedPlatformReview[] = directReviews.map(r => {
+      const h = hotelMap.get(r.hotelId);
+      const ts = r.createdAt || Date.now();
+      return {
+        id: r.id || `direct-${ts}`,
+        reviewType: 'direct',
+        hotelId: r.hotelId,
+        hotelName: h?.name || 'Property',
+        hotelLocation: h?.location || 'Malawi',
+        hotelImage: h?.imageUrl,
+        author: r.authorName || 'Guest',
+        rating: r.rating || 5,
+        title: undefined,
+        comment: r.text || '',
+        date: formatReviewDate(ts),
+        timestamp: ts,
+        source: 'Travel-Malawi',
+        sourceUrl: undefined,
+        verified: true,
+        bookingId: r.bookingId,
+        guestId: r.guestId,
+      };
+    });
+
+    // 2. Imported reviews from all hotels
+    const imported: UnifiedPlatformReview[] = [];
+    hotels.forEach(h => {
+      const revs = Array.isArray(h.reviews) ? h.reviews : [];
+      revs.forEach((r, idx) => {
+        const rawDate = r.date || (r as any).createdAt || (r as any).scrapedAt || null;
+        const ts = parseReviewDateToTimestamp(rawDate, (r as any).createdAt || 0);
+        const comment = (r.comment || r.text || '').trim();
+        imported.push({
+          id: r.id || `imported-${h.id}-${idx}`,
+          reviewType: 'imported',
+          hotelId: h.id!,
+          hotelName: h.name,
+          hotelLocation: h.location || 'Malawi',
+          hotelImage: h.imageUrl,
+          author: r.author || 'Guest',
+          rating: typeof r.rating === 'number' ? r.rating : 5,
+          title: r.title || undefined,
+          comment,
+          date: formatReviewDate(rawDate || ts),
+          timestamp: ts,
+          source: r.source || 'TripAdvisor',
+          sourceUrl: r.sourceUrl || undefined,
+          verified: r.verified ?? false,
+          originalIndex: idx,
+        });
+      });
+    });
+
+    return [...direct, ...imported];
+  }, [directReviews, hotels]);
+
+  // Overall Platform Statistics
+  const platformStats = useMemo(() => {
+    const total = allPlatformReviews.length;
+    const directCount = directReviews.length;
+    const importedCount = total - directCount;
+    const ratings = allPlatformReviews.map(r => r.rating).filter(r => typeof r === 'number' && r > 0);
+    const avg = ratings.length > 0 ? (ratings.reduce((sum, r) => sum + r, 0) / ratings.length) : 0;
+    const criticalCount = allPlatformReviews.filter(r => r.rating <= 3.0).length;
+
+    return {
+      total,
+      directCount,
+      importedCount,
+      averageRating: Math.round(avg * 10) / 10,
+      criticalCount,
+    };
+  }, [allPlatformReviews, directReviews.length]);
+
+  // Filtered & Sorted Platform Reviews
+  const filteredPlatformReviews = useMemo(() => {
+    let list = [...allPlatformReviews];
+
+    if (platformSearchQuery.trim()) {
+      const q = platformSearchQuery.toLowerCase().trim();
+      list = list.filter(r => 
+        r.author.toLowerCase().includes(q) ||
+        r.hotelName.toLowerCase().includes(q) ||
+        r.comment.toLowerCase().includes(q) ||
+        (r.title && r.title.toLowerCase().includes(q)) ||
+        (r.hotelLocation && r.hotelLocation.toLowerCase().includes(q))
+      );
+    }
+
+    if (platformPropertyFilter !== 'all') {
+      list = list.filter(r => r.hotelId === platformPropertyFilter);
+    }
+
+    if (platformSourceFilter !== 'all') {
+      if (platformSourceFilter === 'direct') {
+        list = list.filter(r => r.reviewType === 'direct');
+      } else {
+        list = list.filter(r => (r.source || '').toLowerCase().includes(platformSourceFilter.toLowerCase()));
+      }
+    }
+
+    if (platformRatingFilter !== 'all') {
+      if (platformRatingFilter === '5') {
+        list = list.filter(r => r.rating >= 4.8);
+      } else if (platformRatingFilter === '4') {
+        list = list.filter(r => r.rating >= 3.8 && r.rating < 4.8);
+      } else if (platformRatingFilter === '3') {
+        list = list.filter(r => r.rating >= 2.8 && r.rating < 3.8);
+      } else if (platformRatingFilter === 'critical') {
+        list = list.filter(r => r.rating < 3.0);
+      }
+    }
+
+    // Sort order (most recent first by default)
+    list.sort((a, b) => {
+      if (platformSortBy === 'highest') {
+        if (b.rating !== a.rating) return b.rating - a.rating;
+        return (b.timestamp || 0) - (a.timestamp || 0);
+      }
+      if (platformSortBy === 'critical') {
+        if (a.rating !== b.rating) return a.rating - b.rating;
+        return (b.timestamp || 0) - (a.timestamp || 0);
+      }
+      if (platformSortBy === 'oldest') {
+        return (a.timestamp || 0) - (b.timestamp || 0);
+      }
+      // 'recent' (default): most recent first
+      if ((b.timestamp || 0) !== (a.timestamp || 0)) {
+        return (b.timestamp || 0) - (a.timestamp || 0);
+      }
+      if (a.verified !== b.verified) return a.verified ? -1 : 1;
+      return b.rating - a.rating;
+    });
+
+    return list;
+  }, [allPlatformReviews, platformSearchQuery, platformPropertyFilter, platformSourceFilter, platformRatingFilter, platformSortBy]);
 
   // Discovery settings
   const [customQuery, setCustomQuery] = useState<string>('');
@@ -351,22 +560,213 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
     }
   };
 
-  // Open Edit Review Modal
+  // Open Edit Review Modal for Discovered Scraped Review
   const handleStartEditReview = (idx: number, e: React.MouseEvent) => {
     e.stopPropagation();
+    setEditingTarget({
+      sourceType: 'scraped_discover',
+      originalIndex: idx,
+    });
     setEditingReviewIndex(idx);
     setEditFormData({ ...scrapedReviews[idx] });
   };
 
-  // Save Inline Edit
-  const handleSaveEditedReview = () => {
-    if (editingReviewIndex === null || !editFormData) return;
-    const updated = [...scrapedReviews];
-    updated[editingReviewIndex] = { ...editFormData };
-    setScrapedReviews(updated);
-    setEditingReviewIndex(null);
-    setEditFormData(null);
-    toast.success('Review updated in list.');
+  // Open Edit Review Modal for Unified Platform Review
+  const handleStartEditPlatformReview = (review: UnifiedPlatformReview, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingTarget({
+      sourceType: review.reviewType === 'direct' ? 'all_direct' : 'all_imported',
+      reviewId: review.id,
+      hotelId: review.hotelId,
+      originalIndex: review.originalIndex,
+    });
+    setEditingReviewIndex(0);
+    setEditFormData({
+      id: review.id,
+      author: review.author,
+      rating: review.rating,
+      title: review.title || '',
+      comment: review.comment,
+      text: review.comment,
+      source: review.source,
+      sourceUrl: review.sourceUrl || '',
+      date: review.date,
+    });
+  };
+
+  // Open Edit Review Modal for Existing Review on Selected Property
+  const handleStartEditExistingReview = (idx: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!selectedHotel) return;
+    setEditingTarget({
+      sourceType: 'existing_hotel',
+      hotelId: selectedHotel.id,
+      originalIndex: idx,
+    });
+    setEditingReviewIndex(idx);
+    const rev = existingReviews[idx];
+    setEditFormData({
+      id: rev.id,
+      author: rev.author || 'Guest',
+      rating: typeof rev.rating === 'number' ? rev.rating : 5,
+      title: rev.title || '',
+      comment: rev.comment || rev.text || '',
+      text: rev.comment || rev.text || '',
+      source: rev.source || 'TripAdvisor',
+      sourceUrl: rev.sourceUrl || '',
+      date: rev.date || 'Recent stay',
+    });
+  };
+
+  // Save Inline Edit (Dispatched according to editing target)
+  const handleSaveEditedReview = async () => {
+    if (!editFormData) return;
+
+    try {
+      if (editingTarget?.sourceType === 'all_direct' && editingTarget.reviewId) {
+        const revRef = doc(db, 'reviews', editingTarget.reviewId);
+        await updateDoc(revRef, {
+          authorName: editFormData.author,
+          rating: editFormData.rating,
+          text: editFormData.comment || editFormData.text || '',
+        });
+        setDirectReviews(prev => prev.map(r => r.id === editingTarget.reviewId ? {
+          ...r,
+          authorName: editFormData.author,
+          rating: editFormData.rating,
+          text: editFormData.comment || editFormData.text || '',
+        } : r));
+        toast.success('Direct guest review updated.');
+      } else if (editingTarget?.sourceType === 'all_imported' && editingTarget.hotelId) {
+        const targetHotel = hotels.find(h => h.id === editingTarget.hotelId);
+        if (targetHotel && targetHotel.id) {
+          const hotelRef = doc(db, 'hotels', targetHotel.id);
+          const currentReviews = Array.isArray(targetHotel.reviews) ? [...targetHotel.reviews] : [];
+          if (editingTarget.originalIndex != null && currentReviews[editingTarget.originalIndex]) {
+            currentReviews[editingTarget.originalIndex] = {
+              ...currentReviews[editingTarget.originalIndex],
+              author: editFormData.author,
+              rating: editFormData.rating,
+              title: editFormData.title || '',
+              comment: editFormData.comment || editFormData.text || '',
+              text: editFormData.comment || editFormData.text || '',
+              source: editFormData.source || 'TripAdvisor',
+              sourceUrl: editFormData.sourceUrl || '',
+              date: editFormData.date || 'Recent stay',
+            };
+            const totalCount = currentReviews.length;
+            const totalScore = currentReviews.reduce((sum: number, r: any) => sum + (r.rating || 5), 0);
+            const newAvg = totalCount > 0 ? Math.round((totalScore / totalCount) * 10) / 10 : 5;
+            const updatedSummary = {
+              count: totalCount,
+              averageRating: newAvg,
+              recentReviews: currentReviews.slice(0, 20),
+            };
+            await updateDoc(hotelRef, {
+              reviews: currentReviews,
+              reviewsSummary: updatedSummary,
+            });
+            onHotelUpdated({
+              ...targetHotel,
+              reviews: currentReviews,
+              reviewsSummary: updatedSummary,
+            });
+            toast.success('Imported review updated on property.');
+          }
+        }
+      } else if (editingTarget?.sourceType === 'existing_hotel' && selectedHotel && selectedHotel.id) {
+        const hotelRef = doc(db, 'hotels', selectedHotel.id);
+        const currentReviews = Array.isArray(selectedHotel.reviews) ? [...selectedHotel.reviews] : [];
+        if (editingTarget.originalIndex != null && currentReviews[editingTarget.originalIndex]) {
+          currentReviews[editingTarget.originalIndex] = {
+            ...currentReviews[editingTarget.originalIndex],
+            author: editFormData.author,
+            rating: editFormData.rating,
+            title: editFormData.title || '',
+            comment: editFormData.comment || editFormData.text || '',
+            text: editFormData.comment || editFormData.text || '',
+            source: editFormData.source || 'TripAdvisor',
+            sourceUrl: editFormData.sourceUrl || '',
+            date: editFormData.date || 'Recent stay',
+          };
+          const totalCount = currentReviews.length;
+          const totalScore = currentReviews.reduce((sum: number, r: any) => sum + (r.rating || 5), 0);
+          const newAvg = totalCount > 0 ? Math.round((totalScore / totalCount) * 10) / 10 : 5;
+          const updatedSummary = {
+            count: totalCount,
+            averageRating: newAvg,
+            recentReviews: currentReviews.slice(0, 20),
+          };
+          await updateDoc(hotelRef, {
+            reviews: currentReviews,
+            reviewsSummary: updatedSummary,
+          });
+          onHotelUpdated({
+            ...selectedHotel,
+            reviews: currentReviews,
+            reviewsSummary: updatedSummary,
+          });
+          toast.success('Property review updated.');
+        }
+      } else if (editingReviewIndex !== null) {
+        // Newly scraped review in discovery queue
+        const updated = [...scrapedReviews];
+        updated[editingReviewIndex] = { ...editFormData };
+        setScrapedReviews(updated);
+        toast.success('Review updated in discovery list.');
+      }
+      setEditingReviewIndex(null);
+      setEditFormData(null);
+      setEditingTarget(null);
+    } catch (err: any) {
+      console.error('Error saving edited review:', err);
+      toast.error(err.message || 'Failed to update review');
+    }
+  };
+
+  // Delete Platform Review from Database
+  const handleDeletePlatformReview = async (review: UnifiedPlatformReview) => {
+    if (!window.confirm(`Delete review by "${review.author}" for "${review.hotelName}"? This action cannot be undone.`)) {
+      return;
+    }
+    setIsDeletingExisting(review.id);
+    try {
+      if (review.reviewType === 'direct') {
+        await deleteDoc(doc(db, 'reviews', review.id));
+        setDirectReviews(prev => prev.filter(r => r.id !== review.id));
+        toast.success('Direct guest review deleted.');
+      } else {
+        const targetHotel = hotels.find(h => h.id === review.hotelId);
+        if (targetHotel && targetHotel.id) {
+          const hotelRef = doc(db, 'hotels', targetHotel.id);
+          const currentReviews = Array.isArray(targetHotel.reviews) ? [...targetHotel.reviews] : [];
+          const filtered = currentReviews.filter((_, idx) => idx !== review.originalIndex);
+          const totalCount = filtered.length;
+          const totalScore = filtered.reduce((sum: number, r: any) => sum + (r.rating || 5), 0);
+          const newAvg = totalCount > 0 ? Math.round((totalScore / totalCount) * 10) / 10 : 0;
+          const updatedSummary = {
+            count: totalCount,
+            averageRating: newAvg,
+            recentReviews: filtered.slice(0, 20),
+          };
+          await updateDoc(hotelRef, {
+            reviews: filtered,
+            reviewsSummary: updatedSummary,
+          });
+          onHotelUpdated({
+            ...targetHotel,
+            reviews: filtered,
+            reviewsSummary: updatedSummary,
+          });
+          toast.success('Imported review removed from property.');
+        }
+      }
+    } catch (err: any) {
+      console.error('Delete platform review error:', err);
+      toast.error(err.message || 'Failed to delete review');
+    } finally {
+      setIsDeletingExisting(null);
+    }
   };
 
   // Remove single scraped review from list
@@ -405,37 +805,403 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
           </p>
         </div>
 
-        {selectedHotel && (
-          <div className="flex items-center bg-stone-100 p-1 rounded-xl border border-stone-200 shrink-0">
-            <button
-              type="button"
-              onClick={() => setActiveSubTab('discover')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                activeSubTab === 'discover'
-                  ? 'bg-white text-stone-900 shadow-xs'
-                  : 'text-stone-600 hover:text-stone-900'
-              }`}
-            >
-              <Search className="w-3.5 h-3.5" />
-              <span>Discover Web Reviews</span>
-            </button>
+        <div className="flex items-center bg-stone-100 p-1 rounded-xl border border-stone-200 shrink-0 flex-wrap gap-1">
+          <button
+            type="button"
+            onClick={() => setActiveSubTab('all')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
+              activeSubTab === 'all'
+                ? 'bg-white text-stone-900 shadow-xs font-semibold'
+                : 'text-stone-600 hover:text-stone-900'
+            }`}
+          >
+            <ListFilter className="w-3.5 h-3.5" />
+            <span>All Platform Reviews ({allPlatformReviews.length})</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveSubTab('discover')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
+              activeSubTab === 'discover'
+                ? 'bg-white text-stone-900 shadow-xs font-semibold'
+                : 'text-stone-600 hover:text-stone-900'
+            }`}
+          >
+            <Search className="w-3.5 h-3.5" />
+            <span>Discover Web Reviews</span>
+          </button>
+          {selectedHotel && (
             <button
               type="button"
               onClick={() => setActiveSubTab('existing')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
                 activeSubTab === 'existing'
-                  ? 'bg-white text-stone-900 shadow-xs'
+                  ? 'bg-white text-stone-900 shadow-xs font-semibold'
                   : 'text-stone-600 hover:text-stone-900'
               }`}
             >
               <Eye className="w-3.5 h-3.5" />
-              <span>Existing Reviews ({existingStats.count})</span>
+              <span>{selectedHotel.name} ({existingStats.count})</span>
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
-      {/* Property Selector Card */}
+      {/* ==================== SUB-TAB: ALL PLATFORM REVIEWS ==================== */}
+      {activeSubTab === 'all' && (
+        <div className="space-y-4 animate-in fade-in duration-200">
+          {/* KPI Summary Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+            <div className="bg-white p-3.5 rounded-xl border border-stone-200 shadow-2xs">
+              <div className="flex items-center justify-between text-stone-400 mb-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500">Total Reviews</span>
+                <MessageSquare className="w-4 h-4 text-stone-600" />
+              </div>
+              <div className="text-xl sm:text-2xl font-serif font-bold text-stone-900">
+                {platformStats.total}
+              </div>
+              <p className="text-[10px] text-stone-500 mt-0.5">Across all Malawi stays</p>
+            </div>
+
+            <div className="bg-white p-3.5 rounded-xl border border-stone-200 shadow-2xs">
+              <div className="flex items-center justify-between text-stone-400 mb-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">Direct Guests</span>
+                <ShieldCheck className="w-4 h-4 text-emerald-700" />
+              </div>
+              <div className="text-xl sm:text-2xl font-serif font-bold text-emerald-800">
+                {platformStats.directCount}
+              </div>
+              <p className="text-[10px] text-stone-500 mt-0.5">Verified completed stays</p>
+            </div>
+
+            <div className="bg-white p-3.5 rounded-xl border border-stone-200 shadow-2xs">
+              <div className="flex items-center justify-between text-stone-400 mb-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-stone-600">Imported</span>
+                <Globe className="w-4 h-4 text-stone-500" />
+              </div>
+              <div className="text-xl sm:text-2xl font-serif font-bold text-stone-900">
+                {platformStats.importedCount}
+              </div>
+              <p className="text-[10px] text-stone-500 mt-0.5">TripAdvisor &amp; Google</p>
+            </div>
+
+            <div className="bg-white p-3.5 rounded-xl border border-stone-200 shadow-2xs">
+              <div className="flex items-center justify-between text-stone-400 mb-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700">Avg Rating</span>
+                <Star className="w-4 h-4 text-amber-500 fill-amber-400" />
+              </div>
+              <div className="text-xl sm:text-2xl font-serif font-bold text-stone-900 flex items-baseline gap-1">
+                <span>{platformStats.averageRating > 0 ? platformStats.averageRating.toFixed(1) : '—'}</span>
+                <span className="text-xs text-amber-500 font-sans">★</span>
+              </div>
+              <p className="text-[10px] text-stone-500 mt-0.5">Global platform score</p>
+            </div>
+
+            <div className="bg-white p-3.5 rounded-xl border border-stone-200 shadow-2xs col-span-2 sm:col-span-1">
+              <div className="flex items-center justify-between text-stone-400 mb-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-rose-700">Constructive</span>
+                <AlertTriangle className="w-4 h-4 text-rose-600" />
+              </div>
+              <div className="text-xl sm:text-2xl font-serif font-bold text-rose-800">
+                {platformStats.criticalCount}
+              </div>
+              <p className="text-[10px] text-stone-500 mt-0.5">1–3★ critiques &amp; feedback</p>
+            </div>
+          </div>
+
+          {/* Search & Filter Toolbar */}
+          <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-2xs space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
+              {/* Search */}
+              <div className="lg:col-span-2 relative">
+                <Search className="absolute left-3 top-2.5 w-3.5 h-3.5 text-stone-400" />
+                <input
+                  type="text"
+                  value={platformSearchQuery}
+                  onChange={(e) => {
+                    setPlatformSearchQuery(e.target.value);
+                    setPlatformCurrentPage(1);
+                  }}
+                  placeholder="Search guest, lodge name, comments..."
+                  className="w-full bg-stone-50 border border-stone-200 rounded-lg pl-8 pr-7 py-1.5 text-xs text-stone-900 focus:bg-white focus:border-stone-900 outline-none transition"
+                />
+                {platformSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPlatformSearchQuery('');
+                      setPlatformCurrentPage(1);
+                    }}
+                    className="absolute right-2 top-2 text-stone-400 hover:text-stone-600"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+
+              {/* Property Filter */}
+              <div>
+                <select
+                  value={platformPropertyFilter}
+                  onChange={(e) => {
+                    setPlatformPropertyFilter(e.target.value);
+                    setPlatformCurrentPage(1);
+                  }}
+                  className="w-full bg-stone-50 border border-stone-200 rounded-lg px-2.5 py-1.5 text-xs font-medium text-stone-900 outline-none focus:bg-white focus:border-stone-900 transition truncate"
+                >
+                  <option value="all">All Properties ({hotels.length})</option>
+                  {hotels.map(h => (
+                    <option key={h.id} value={h.id}>
+                      {h.name} {h.location ? `(${h.location})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Source Filter */}
+              <div>
+                <select
+                  value={platformSourceFilter}
+                  onChange={(e) => {
+                    setPlatformSourceFilter(e.target.value);
+                    setPlatformCurrentPage(1);
+                  }}
+                  className="w-full bg-stone-50 border border-stone-200 rounded-lg px-2.5 py-1.5 text-xs font-medium text-stone-900 outline-none focus:bg-white focus:border-stone-900 transition"
+                >
+                  <option value="all">All Channels</option>
+                  <option value="direct">Direct Stays (Travel-Malawi)</option>
+                  <option value="tripadvisor">TripAdvisor</option>
+                  <option value="google">Google Reviews</option>
+                  <option value="booking">Booking.com</option>
+                  <option value="safaribookings">SafariBookings</option>
+                </select>
+              </div>
+
+              {/* Rating Filter & Sort */}
+              <div className="flex gap-2">
+                <select
+                  value={platformRatingFilter}
+                  onChange={(e) => {
+                    setPlatformRatingFilter(e.target.value);
+                    setPlatformCurrentPage(1);
+                  }}
+                  className="w-1/2 bg-stone-50 border border-stone-200 rounded-lg px-2 py-1.5 text-xs font-medium text-stone-900 outline-none focus:bg-white focus:border-stone-900 transition"
+                >
+                  <option value="all">All Stars</option>
+                  <option value="5">5 Stars</option>
+                  <option value="4">4 Stars</option>
+                  <option value="3">3 Stars</option>
+                  <option value="critical">1-3 Stars (Critique)</option>
+                </select>
+
+                <select
+                  value={platformSortBy}
+                  onChange={(e) => {
+                    setPlatformSortBy(e.target.value as any);
+                    setPlatformCurrentPage(1);
+                  }}
+                  className="w-1/2 bg-stone-50 border border-stone-200 rounded-lg px-2 py-1.5 text-xs font-medium text-stone-900 outline-none focus:bg-white focus:border-stone-900 transition"
+                >
+                  <option value="recent">Most Recent</option>
+                  <option value="highest">Highest</option>
+                  <option value="critical">Critical</option>
+                  <option value="oldest">Oldest</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Quick status bar */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-stone-100 text-[11px] text-stone-500">
+              <div className="flex items-center gap-1.5">
+                <span>Showing <strong>{filteredPlatformReviews.length}</strong> of {allPlatformReviews.length} reviews</span>
+                {(platformSearchQuery || platformPropertyFilter !== 'all' || platformSourceFilter !== 'all' || platformRatingFilter !== 'all') && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPlatformSearchQuery('');
+                      setPlatformPropertyFilter('all');
+                      setPlatformSourceFilter('all');
+                      setPlatformRatingFilter('all');
+                      setPlatformSortBy('recent');
+                      setPlatformCurrentPage(1);
+                    }}
+                    className="ml-2 text-stone-700 hover:text-stone-900 underline font-medium cursor-pointer"
+                  >
+                    Reset filters
+                  </button>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={fetchDirectReviews}
+                className="inline-flex items-center gap-1 text-stone-600 hover:text-stone-900 font-medium transition cursor-pointer"
+                title="Refresh direct reviews from database"
+              >
+                <RefreshCw className={`w-3 h-3 ${isLoadingDirectReviews ? 'animate-spin' : ''}`} />
+                <span>Sync reviews</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Platform Reviews Grid */}
+          {filteredPlatformReviews.length === 0 ? (
+            <div className="bg-white p-8 rounded-2xl border border-dashed border-stone-300 text-center space-y-2">
+              <p className="font-serif font-bold text-stone-800 text-base">No reviews matched your filters</p>
+              <p className="text-stone-500 text-xs max-w-sm mx-auto">
+                Try clearing your search terms or expanding your rating and channel filters.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              {filteredPlatformReviews
+                .slice((platformCurrentPage - 1) * platformItemsPerPage, platformCurrentPage * platformItemsPerPage)
+                .map((review) => (
+                  <div
+                    key={review.id}
+                    className="bg-white p-4 rounded-xl border border-stone-200/90 shadow-2xs hover:border-stone-300 transition-all flex flex-col justify-between gap-3"
+                  >
+                    <div className="space-y-2">
+                      {/* Top Header: Author, Rating, Date */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="w-7 h-7 rounded-full bg-stone-100 flex items-center justify-center text-stone-700 font-serif font-bold text-xs shrink-0 border border-stone-200/60">
+                            {review.author.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-semibold text-stone-900 text-xs sm:text-sm truncate leading-snug">
+                              {review.author}
+                            </p>
+                            <p className="text-[10px] text-stone-500 leading-none mt-0.5">
+                              {review.date}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs font-bold ${
+                            review.rating >= 4
+                              ? 'bg-stone-50 border-stone-200/80 text-stone-900'
+                              : review.rating >= 3
+                              ? 'bg-amber-50/90 border-amber-200 text-amber-900'
+                              : 'bg-rose-50 border-rose-200 text-rose-900'
+                          }`}>
+                            <Star className={`h-3 w-3 fill-current ${
+                              review.rating >= 4 ? 'text-amber-400' : review.rating >= 3 ? 'text-amber-500' : 'text-rose-500'
+                            }`} />
+                            <span>{review.rating.toFixed(1)}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Property Badge with Live Listing Link */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <a
+                          href={`/hotel/${review.hotelId}`}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                          className="inline-flex items-center gap-1 text-[11px] font-semibold text-stone-800 bg-stone-100 hover:bg-stone-200 px-2 py-0.5 rounded border border-stone-200/80 transition hover:underline"
+                          title="Open live listing in new tab"
+                        >
+                          <Building2 className="w-3 h-3 text-stone-500 shrink-0" />
+                          <span className="truncate max-w-[200px]">{review.hotelName}</span>
+                          <ExternalLink className="w-2.5 h-2.5 text-stone-400" />
+                        </a>
+
+                        {review.verified ? (
+                          <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded uppercase tracking-wider flex items-center gap-1">
+                            <ShieldCheck className="w-2.5 h-2.5" /> Verified Stay
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-semibold text-stone-600 bg-stone-100 border border-stone-200 px-1.5 py-0.2 rounded">
+                            {review.source}
+                          </span>
+                        )}
+
+                        {review.rating <= 2.5 && (
+                          <span className="text-[9px] font-bold text-rose-800 bg-rose-50 border border-rose-200 px-1.5 py-0.2 rounded uppercase tracking-wider">
+                            Critique
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Title Headline (if any) */}
+                      {review.title && (
+                        <h4 className="font-serif font-bold text-stone-900 text-xs sm:text-sm leading-snug">
+                          "{review.title}"
+                        </h4>
+                      )}
+
+                      {/* Body Text */}
+                      <p className="text-stone-700 text-xs sm:text-sm leading-relaxed italic font-serif">
+                        "{review.comment}"
+                      </p>
+                    </div>
+
+                    {/* Footer: External Verification Link & Moderation Actions */}
+                    <div className="pt-2 border-t border-stone-100 flex items-center justify-between text-[11px] gap-2 flex-wrap">
+                      <div>
+                        {review.sourceUrl ? (
+                          <a
+                            href={review.sourceUrl}
+                            target="_blank"
+                            rel="noreferrer noopener"
+                            className="inline-flex items-center gap-1 text-emerald-700 hover:text-emerald-800 font-semibold transition hover:underline text-[10px]"
+                            title={`Verify original review on ${review.source}`}
+                          >
+                            <span>Verify on {review.source}</span>
+                            <ExternalLink className="w-2.5 h-2.5" />
+                          </a>
+                        ) : (
+                          <span className="text-stone-400 text-[10px]">Direct Malawian booking</span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={(e) => handleStartEditPlatformReview(review, e)}
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded text-stone-600 hover:text-stone-900 hover:bg-stone-100 text-xs font-medium transition cursor-pointer"
+                          title="Edit review text or rating"
+                        >
+                          <Edit3 className="w-3 h-3" />
+                          <span>Edit</span>
+                        </button>
+                        <button
+                          type="button"
+                          disabled={isDeletingExisting === review.id}
+                          onClick={() => handleDeletePlatformReview(review)}
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded text-rose-600 hover:text-rose-800 hover:bg-rose-50 text-xs font-medium transition cursor-pointer disabled:opacity-50"
+                          title="Permanently remove review"
+                        >
+                          {isDeletingExisting === review.id ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <Trash2 className="w-3 h-3" />
+                          )}
+                          <span>Delete</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          )}
+
+          {/* Pagination */}
+          {filteredPlatformReviews.length > platformItemsPerPage && (
+            <div className="pt-2 flex justify-center">
+              <Pagination
+                currentPage={platformCurrentPage}
+                totalPages={Math.ceil(filteredPlatformReviews.length / platformItemsPerPage)}
+                onPageChange={setPlatformCurrentPage}
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Property Selector Card (Visible when in Discover or Existing mode) */}
+      {activeSubTab !== 'all' && (
       <div className="bg-white p-5 rounded-2xl border border-stone-200 shadow-xs space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="md:col-span-2 space-y-2">
@@ -681,6 +1447,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
           </div>
         )}
       </div>
+      )}
 
       {/* Simple, Clean Loading State */}
       {isScraping && (
@@ -1048,19 +1815,31 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
                         </a>
                       )}
                     </div>
-                    <button
-                      type="button"
-                      disabled={isDeletingExisting === String(i)}
-                      onClick={() => handleDeleteExistingReview(i)}
-                      className="inline-flex items-center gap-1 text-stone-600 hover:text-stone-900 font-medium disabled:opacity-50 transition"
-                    >
-                      {isDeletingExisting === String(i) ? (
-                        <Loader2 className="w-3 h-3 animate-spin" />
-                      ) : (
-                        <Trash2 className="w-3 h-3" />
-                      )}
-                      <span>Remove</span>
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={(e) => handleStartEditExistingReview(i, e)}
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded text-stone-600 hover:text-stone-900 hover:bg-stone-100 text-xs font-medium transition cursor-pointer"
+                        title="Edit review"
+                      >
+                        <Edit3 className="w-3 h-3" />
+                        <span>Edit</span>
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isDeletingExisting === String(i)}
+                        onClick={() => handleDeleteExistingReview(i)}
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded text-rose-600 hover:text-rose-800 hover:bg-rose-50 text-xs font-medium disabled:opacity-50 transition cursor-pointer"
+                        title="Remove review"
+                      >
+                        {isDeletingExisting === String(i) ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-3 h-3" />
+                        )}
+                        <span>Remove</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -1174,8 +1953,12 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-100">
               <button
                 type="button"
-                onClick={() => setEditingReviewIndex(null)}
-                className="px-4 py-2 rounded-xl text-xs font-medium text-stone-600 hover:bg-stone-100 transition"
+                onClick={() => {
+                  setEditingReviewIndex(null);
+                  setEditFormData(null);
+                  setEditingTarget(null);
+                }}
+                className="px-4 py-2 rounded-xl text-xs font-medium text-stone-600 hover:bg-stone-100 transition cursor-pointer"
               >
                 Cancel
               </button>

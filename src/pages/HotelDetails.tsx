@@ -55,6 +55,7 @@ import Lightbox from '../components/Lightbox';
 import PriceDisplay from '../components/PriceDisplay';
 import RoomGallery from '../components/RoomGallery';
 import { useWhatsAppSettings } from '../hooks/useWhatsAppSettings';
+import { parseReviewDateToTimestamp, formatReviewDate } from '../lib/reviewDates';
 
 interface CompactReviewItem {
   key: string;
@@ -63,6 +64,7 @@ interface CompactReviewItem {
   title?: string;
   text: string;
   date: string;
+  timestamp?: number;
   source: string;
   sourceUrl?: string;
   verified: boolean;
@@ -255,7 +257,7 @@ export default function HotelDetails() {
   const [guestWhatsapp, setGuestWhatsapp] = useState('');
   const [specialRequests, setSpecialRequests] = useState('');
   const [currentReviewPage, setCurrentReviewPage] = useState(1);
-  const [reviewSort, setReviewSort] = useState<'recent' | 'highest'>('recent');
+  const [reviewSort, setReviewSort] = useState<'recent' | 'highest' | 'critical'>('recent');
   const reviewsPerPage = 6;
   const [selectedPackages, setSelectedPackages] = useState<string[]>([]);
   const [currency, setCurrency] = useState<CurrencyCode>(readStoredCurrency);
@@ -517,35 +519,64 @@ export default function HotelDetails() {
     };
   }, [hotel?.reviews, reviews]);
 
-  /** Imported and guest-written reviews in one list, verified stays first. */
+  /** Imported and guest-written reviews in one list, sorted by chosen sort order (most recent first by default). */
   const allReviews = useMemo(() => {
-    const written = reviews.map((r, i) => ({
-      key: r.id ? `rev-${r.id}-${i}` : `review-${r.createdAt}-${i}`,
-      author: r.authorName || 'Guest',
-      rating: r.rating,
-      title: undefined as string | undefined,
-      text: r.text,
-      date: new Date(r.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
-      source: 'Travel-Malawi',
-      sourceUrl: undefined as string | undefined,
-      verified: true,
-    }));
+    const written = reviews.map((r, i) => {
+      const ts = r.createdAt || Date.now();
+      return {
+        key: r.id ? `rev-${r.id}-${i}` : `review-${ts}-${i}`,
+        author: r.authorName || 'Guest',
+        rating: r.rating,
+        title: undefined as string | undefined,
+        text: r.text,
+        date: formatReviewDate(ts),
+        timestamp: ts,
+        source: 'Travel-Malawi',
+        sourceUrl: undefined as string | undefined,
+        verified: true,
+      };
+    });
+
     const imported = (hotel?.reviews ?? []).map((r, i) => {
       const comment = (r.text || r.comment || '').trim();
+      const rawDate = r.date || (r as any).createdAt || (r as any).scrapedAt || null;
+      const ts = parseReviewDateToTimestamp(rawDate, (r as any).createdAt || 0);
+      const formattedDate = formatReviewDate(rawDate || ts);
+
       return {
         key: r.id || `imported-${i}`,
         author: r.author || 'Guest',
         rating: typeof r.rating === 'number' ? r.rating : 5,
         title: r.title || undefined,
         text: comment,
-        date: r.date || 'Recent stay',
+        date: formattedDate,
+        timestamp: ts,
         source: r.source || 'TripAdvisor',
         sourceUrl: r.sourceUrl || undefined,
         verified: false,
       };
     });
-    return [...written, ...imported];
-  }, [hotel?.reviews, reviews]);
+
+    const combined = [...written, ...imported];
+
+    return combined.sort((a, b) => {
+      if (reviewSort === 'highest') {
+        if (b.rating !== a.rating) return b.rating - a.rating;
+        return (b.timestamp || 0) - (a.timestamp || 0);
+      }
+      if (reviewSort === 'critical') {
+        if (a.rating !== b.rating) return a.rating - b.rating;
+        return (b.timestamp || 0) - (a.timestamp || 0);
+      }
+      // 'recent' (default): most recent first by timestamp
+      if ((b.timestamp || 0) !== (a.timestamp || 0)) {
+        return (b.timestamp || 0) - (a.timestamp || 0);
+      }
+      // Secondary sort: verified stays first
+      if (a.verified !== b.verified) return a.verified ? -1 : 1;
+      return b.rating - a.rating;
+    });
+  }, [hotel?.reviews, reviews, reviewSort]);
 
   /**
    * Re-verifies availability against the live inventory mirror immediately
@@ -2121,13 +2152,33 @@ export default function HotelDetails() {
                   </span>
                 )}
               </div>
-              <button
-                onClick={() => setIsReviewModalOpen(true)}
-                className="inline-flex items-center gap-1.5 sm:gap-2 bg-stone-900 hover:bg-stone-800 text-white px-4 sm:px-5 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-bold transition shadow-2xs self-start sm:self-auto"
-              >
-                <Star className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                Write a Review
-              </button>
+              <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                {allReviews.length > 1 && (
+                  <div className="flex items-center gap-1.5 bg-stone-50 border border-stone-200/90 rounded-full px-3 py-1.5 text-xs">
+                    <span className="text-stone-400 text-[11px] font-medium">Sort:</span>
+                    <select
+                      value={reviewSort}
+                      onChange={(e) => {
+                        setReviewSort(e.target.value as 'recent' | 'highest' | 'critical');
+                        setCurrentReviewPage(1);
+                      }}
+                      className="bg-transparent border-none text-stone-800 font-semibold text-xs focus:outline-hidden cursor-pointer pr-1"
+                      aria-label="Sort guest reviews"
+                    >
+                      <option value="recent">Most Recent First</option>
+                      <option value="highest">Highest Rated</option>
+                      <option value="critical">Critical / Feedback</option>
+                    </select>
+                  </div>
+                )}
+                <button
+                  onClick={() => setIsReviewModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 sm:gap-2 bg-stone-900 hover:bg-stone-800 text-white px-4 sm:px-5 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-bold transition shadow-2xs self-start sm:self-auto cursor-pointer"
+                >
+                  <Star className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  Write a Review
+                </button>
+              </div>
             </div>
             
             {allReviews.length === 0 ? (
