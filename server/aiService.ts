@@ -1359,6 +1359,20 @@ export interface OperationsAssistantRequest {
       trigger?: string;
       resolution?: string;
     }>;
+    managerHabits?: {
+      preferredName?: string;
+      currencyPreference?: 'MWK' | 'USD';
+      communicationStyle?: 'casual_friendly' | 'brief_curt' | 'detailed_executive';
+      familiarityTier?: 'New Friend' | 'Trusted Partner' | 'Resident Ally';
+      familiarityScore?: number;
+      habits?: Array<{
+        id: string;
+        category: string;
+        text: string;
+        learnedAt: number;
+        confidence: number;
+      }>;
+    };
   };
 }
 
@@ -1881,7 +1895,8 @@ function sanitizeAssistantReply(
   rawText: string,
   resolvedDisplayName?: string,
   userEmail?: string,
-  hasHistory = false
+  hasHistory = false,
+  userSentGreeting = false
 ): string {
   // Strip code blocks for proposals/patches/rules/follow-ups
   let clean = rawText
@@ -1891,33 +1906,22 @@ function sanitizeAssistantReply(
     .replace(/```suggested_follow_ups[\s\S]*?```/g, '')
     .trim();
 
-  // 1. Strip formulaic Chichewa greetings and repetitive robot openings at the start:
-  // Examples: "Moni! Muli bwanji!", "Moni muli bwanji John!", "Muli bwanji!", "Moni!"
-  clean = clean.replace(/^(👋\s*)?(moni[,\s!]+(muli\s+bwanji)?|muli\s+bwanji)([,\s]+[A-Za-z0-9_\-\.]+)*[!.,:\s-]*/i, '');
+  // 1. Strip repetitive greetings with generic robot role titles like "Moni Administrator", "Hello Manager", "Hi Admin", etc.
+  clean = clean.replace(/^(?:👋\s*)?(hello|hi|hey|greetings|good\s+(morning|afternoon|day|evening))[,\s]+(there|partner|host|administrator|global administrator|property manager|manager|admin|top boss|boss)[!.,:\s-]*/i, '');
 
-  // 2. Strip repetitive greetings with generic role titles like "Moni Administrator", "Hello Manager", "Hi Admin", etc.
-  clean = clean.replace(/^(👋\s*)?(hello|hi|hey|greetings|good\s+(morning|afternoon|day|evening))[,\s]+(there|partner|host|administrator|global administrator|property manager|manager|admin|top boss|boss)[!.,:\s-]*/i, '');
-
-  // 3. Strip repetitive name salutations if AI echoed the user's name or username at the beginning:
-  if (resolvedDisplayName) {
-    const escapedFull = resolvedDisplayName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const firstName = resolvedDisplayName.split(' ')[0].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    clean = clean.replace(new RegExp(`^(👋\\s*)?(hello|hi|hey|greetings|good\\s+(morning|afternoon|day|evening))[\\s,]+(${escapedFull}|${firstName})[!.,:\\s-]*`, 'i'), '');
+  // 2. Only if the user DID NOT send a greeting and hasHistory is true, strip repetitive opening greetings to avoid repeating hello on every turn
+  if (hasHistory && !userSentGreeting) {
+    clean = clean.replace(/^(?:👋\s*)?(hello|hi|hey|greetings|good\s+(morning|afternoon|day|evening))[!.,:\s-]*/i, '');
+    clean = clean.replace(/^(?:👋\s*)?(moni|muli\s+bwanji)[!.,:\s-]+/i, '');
   }
+
+  // 3. Strip user email prefix if AI accidentally outputs "Hello johnpaulchirwa!"
   if (userEmail) {
     const local = userEmail.split('@')[0].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    clean = clean.replace(new RegExp(`^(👋\\s*)?(hello|hi|hey|greetings|good\\s+(morning|afternoon|day|evening))[\\s,]+${local}[!.,:\\s-]*`, 'i'), '');
+    clean = clean.replace(new RegExp(`^(?:👋\\s*)?(hello|hi|hey|greetings|good\\s+(morning|afternoon|day|evening))[\\s,]+${local}[!.,:\\s-]*`, 'i'), '');
   }
 
-  // 4. In an ongoing conversation (hasHistory is true), strip repetitive opening greetings like "Hello!", "Hi!", "Good morning!"
-  if (hasHistory) {
-    clean = clean.replace(/^(👋\s*)?(hello|hi|hey|greetings|good\s+(morning|afternoon|day|evening))[!.,:\s-]*/i, '');
-  }
-
-  // 5. Any remaining lone "Moni" or "Muli bwanji" at the start
-  clean = clean.replace(/^(👋\s*)?(moni|muli\s+bwanji)[!.,:\s-]+/i, '');
-
-  // 6. Normalize Markdown tables: fix rows merged with `| |` on a single line
+  // 4. Normalize Markdown tables: fix rows merged with `| |` on a single line
   clean = clean.replace(/\|\s*\|\s*(?=[^:\s|])/g, '|\n| ');
   clean = clean.replace(/\|\s*\|\s*(?=:\s*-)/g, '|\n| ');
   clean = clean.replace(/\|\s*\|\s*(?=-\s*:)/g, '|\n| ');
@@ -1927,13 +1931,13 @@ function sanitizeAssistantReply(
 
   clean = clean.trim();
 
-  // Ensure first character is properly capitalized if prefix was stripped
+  // Ensure first character is properly capitalized
   if (clean.length > 0) {
     clean = clean.charAt(0).toUpperCase() + clean.slice(1);
   }
 
   if (!clean) {
-    clean = 'Ready to assist with your properties. What would you like to review or update?';
+    clean = 'Right here with you! What would you like to review, audit, or adjust next?';
   }
 
   return clean;
@@ -2340,15 +2344,48 @@ ${upcoming.length > 10 ? `  ...and ${upcoming.length - 10} more upcoming booking
     ? `\nActive Autonomous Concierge Patches (Self-corrected rules & mistake patches):\n${req.context.autonomousPatches.slice(-MAX_LEARNED_RULES).map((p, i) => `${i + 1}. [Patch: ${clip(p.trigger, 120) || 'Correction'}] ${clip(p.patch, MAX_LEARNED_RULE_CHARS)}`).join('\n')}`
     : '';
 
+  const managerHabits = req.context.managerHabits;
+  const habitsSummary = managerHabits?.habits && managerHabits.habits.length > 0
+    ? `\nLEARNED MANAGER HABITS & LODGE ROUTINES (${managerHabits.familiarityTier || 'Trusted Partner'}):\n${managerHabits.habits.map((h, i) => `${i + 1}. [${h.category.toUpperCase()}] ${h.text}`).join('\n')}`
+    : '';
+
+  const cleanUserMsg = (req.message || '').trim().toLowerCase();
+  const strippedMsg = cleanUserMsg.replace(/[!.,?]/g, '').trim();
+  const isGreetingWord = /^(hi|hello|hey|moni|muli\s+bwanji|good\s+(morning|afternoon|evening)|howdy|greetings|bo|sup|yo|morning|afternoon|evening)\b/i.test(strippedMsg);
+  const isCasualPleasantry = cleanUserMsg.includes('how are you') || cleanUserMsg.includes('how r u') || cleanUserMsg.includes('not too bad') || cleanUserMsg.includes('doing well') || cleanUserMsg.includes('all good') || cleanUserMsg.includes('fine thanks');
+  const isFeedbackOnSpeedOrPersona = 
+    cleanUserMsg.includes('taking so long') || 
+    cleanUserMsg.includes('taking ages') || 
+    cleanUserMsg.includes('sound natural') || 
+    cleanUserMsg.includes('learner') || 
+    cleanUserMsg.includes('friend') || 
+    cleanUserMsg.includes('habits') ||
+    cleanUserMsg.includes('get to know');
+  const isUserGreeting = isGreetingWord || isCasualPleasantry || req.intent === 'greeting_or_chat';
+  const isCalculationHeavy = cleanUserMsg.includes('compare') || cleanUserMsg.includes('audit') || cleanUserMsg.includes('calculate') || cleanUserMsg.includes('analytics');
+
+  // Dynamic latency pacing: zero thinking budget for conversational turns to ensure sub-second response (< 800ms)
+  const thinkingBudget = isCalculationHeavy ? 128 : 0;
+  const targetMaxTokens = (isUserGreeting || isFeedbackOnSpeedOrPersona) ? 380 : 1200;
+
+  const effectiveDisplayName = managerHabits?.preferredName || resolvedDisplayName;
+
   const userPrompt = `
 CURRENT USER & CONTEXT:
-- Display Name: ${resolvedDisplayName || 'Not specified (address in second person "you")'}
+- Display Name: ${effectiveDisplayName || 'Not specified (address in second person "you")'}
+- Manager Persona & Habits Profile:
+  * Role: ${isAdminUser ? 'Executive Administrator' : 'Lodge Manager / Host'}
+  * Familiarity Tier: ${managerHabits?.familiarityTier || 'Trusted Partner'} (Treat them as a genuine companion, trusted partner, and resident concierge).
+  * Preferred Name: ${effectiveDisplayName || 'Friend'}
+  * Preferred Currency: ${managerHabits?.currencyPreference || 'MWK'}
+  * Communication Style: ${managerHabits?.communicationStyle || 'casual_friendly'}
+${habitsSummary}
 - Communication Directives:
-  * Address the user naturally in the second person ("you", "your lodge"). If referring to the user, strictly use their Display Name ("${resolvedDisplayName || ''}") if provided; NEVER use an email username or email prefix.
-  * DO NOT say "Moni" or "Muli bwanji" unless the user addresses you in Chichewa first.
-  * DO NOT repeat the user's name on every response. Keep conversational flow natural and direct.
-  * ONGOING CONVERSATION STATUS: ${(req.history || []).length > 0 ? 'YES (History present: DO NOT start with "Hello", "Hi", or greeting salutations. Pick up conversation naturally.)' : 'NO (First turn)'}
-  * CASUAL PLEASANTRIES: If the user is sharing or answering pleasantries ("not too bad how are you", "doing well", etc.), respond in 1-2 warm sentences. DO NOT dump unprompted status audits or property overviews.
+  * Natural Peer & Concierge Tone: Speak like a warm, intuitive, and capable partner in the Warm Heart of Africa. Be natural, hospitable, and friendly.
+  * ZERO ROBOTIC BOILERPLATE: NEVER output canned corporate intros like "Takulandirani, Manager! I am Ulendo, your resident hospitality concierge... I have active visibility across your 3 platform properties...".
+  * Fast, Natural Pleasantries: If greeted or asked how you are, reply naturally in 1-2 friendly sentences. Inquire about their day or lodge without unprompted database dumps.
+  * Adaptive Learner: If the manager notes response speed, persona, or wants you to be a friend and learner, warmly embrace it! Acknowledge that latency reasoning delays are turned off, you are observing their habits and lodge rules, and you are right beside them.
+  * ONGOING CONVERSATION STATUS: ${(req.history || []).length > 0 ? 'YES (History present: pick up conversation naturally without repeating full greetings on every turn).' : 'NO (First turn: warm welcoming opening).'}
   * TAKE FULL CHARGE & DRIVE (NEVER DEFER OR MAKE HOLLOW PROMISES): NEVER say "Let me pull that up", "I'll check the metrics", or stall. You have 100% of the live property, room, package, pricing, and booking data right below. Answer immediately, thoroughly, and decisively. When asked to compare packages or performance, deliver the full breakdown, metrics, comparison, and revenue recommendations right now.
 - Access Level: ${isAdminUser ? 'Executive Platform Access (all platform properties)' : 'Property Manager (assigned properties only)'}
 - Scope Notice: ${isAdminUser ? 'Platform-wide authority. Listing reviews, platform rate audits, and system configuration allowed.' : 'Strictly restricted to their own assigned properties. Cannot edit other managers or accounts.'}
@@ -2390,7 +2427,7 @@ USER MESSAGE:
   const classification = classifySwarmIntent(req);
   const specialistPrompt = getSpecialistAgentPrompt(classification.primaryAgent);
   const systemPrompt = `${OPERATIONS_SYSTEM_PROMPT}\n\n${specialistPrompt}\n\n${UNTRUSTED_DATA_RULE}`;
-  const rawGenerated = await callProvider(providerId, apiKey, model, systemPrompt, finalUserPrompt, 0.4, 1200, false, { thinkingBudget: 512 });
+  const rawGenerated = await callProvider(providerId, apiKey, model, systemPrompt, finalUserPrompt, 0.45, targetMaxTokens, false, { thinkingBudget });
 
   // Parse out action proposal
   let actionProposal: ActionProposal | null = null;
@@ -2502,7 +2539,7 @@ USER MESSAGE:
   }
 
   // Clean the text to show the user with natural flow and no repetitive greetings/names
-  let cleanReply = sanitizeAssistantReply(rawGenerated, resolvedDisplayName, req.userEmail, (req.history || []).length > 0);
+  let cleanReply = sanitizeAssistantReply(rawGenerated, effectiveDisplayName, req.userEmail, (req.history || []).length > 0, isUserGreeting);
 
   // Safety net domain boundary enforcement:
   // If user requested something out-of-scope (e.g. coding an app, buying a car, crypto)

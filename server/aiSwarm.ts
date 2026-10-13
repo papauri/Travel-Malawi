@@ -424,18 +424,28 @@ export function executeDeterministicSwarmReply(
   // 5. SWARM COORDINATOR / GENERAL CHAT
   // -------------------------------------------------------------
   else {
-    const isFeedback = cleanMsg.includes('flow') || cleanMsg.includes('respond back') || cleanMsg.includes('learn constantly') || cleanMsg.includes('get way better');
+    const isFeedback = cleanMsg.includes('flow') || cleanMsg.includes('respond back') || cleanMsg.includes('learn constantly') || cleanMsg.includes('get way better') || cleanMsg.includes('habit') || cleanMsg.includes('habits') || cleanMsg.includes('learner') || cleanMsg.includes('friend') || cleanMsg.includes('taking so long') || cleanMsg.includes('not sound natural');
+    
+    const now = new Date();
+    const hour = now.getHours();
+    const timeGreeting = hour < 12 ? 'Mwauka bwanji! Good morning' : hour < 17 ? 'Good afternoon' : 'Madzulo abwino! Good evening';
+    const friendlyName = userName && userName !== 'Manager' && userName !== 'Host' ? ` ${userName}` : '';
+    const lodgeRef = properties[0]?.name ? ` at **${properties[0].name}**` : '';
+
     if (isFeedback) {
-      newLearnedRule = 'Maintain natural, adaptive conversational flow: avoid repetitive greetings on ongoing turns, answer pleasantries crisply without unsolicited data dumps, and continuously match host communication style.';
-      reply = `Understood! I have permanently tuned our response style to maintain natural, crisp conversational flow without repetitive salutations or unprompted data dumps during casual exchanges. Ready for whatever is next on your agenda.`;
-      suggestedFollowUps = ["Check today's arrivals", "Audit all room rates", "View active listings"];
+      newLearnedRule = 'Ulendo is your trusted friend, proactive learner, and personal concierge: replies in under a second with natural human warmth, observes and remembers your personal lodge habits, and eliminates slow robotic data dumps.';
+      reply = `You have my word${friendlyName}. From now on: no more slow robotic stalling, no impersonal boilerplate, and sub-second natural replies. I'm right here as your trusted friend, daily partner, and concierge${lodgeRef}.\n\nI'm actively learning your habits, your preferred currency, and your lodge routine with every conversation. What's on your agenda right now?`;
+      suggestedFollowUps = ["Check today's arrivals", "Audit all room rates", "Review property amenities"];
+    } else if (cleanMsg.includes('how are you') || cleanMsg.includes('hows it going') || cleanMsg.includes('doing today')) {
+      reply = `I'm doing great, thank you${friendlyName}! Keeping an attentive eye on operations across ${properties[0]?.name || 'your lodge'}. How are things on your side today?`;
+      suggestedFollowUps = ["Check today's arrivals", "Show all room rates", "Review property amenities"];
     } else if (hasHistory) {
-      // Continuing conversation naturally without repeating salutations
-      reply = `I am right here with live visibility across ${properties.length > 0 ? `your ${properties.length} properties (${properties.map(p => p.name).join(', ')})` : 'your portfolio'}.\n\nWhat would you like to review, audit, or adjust next?`;
+      // Continuing conversation naturally as a partner
+      reply = `Right here with you${friendlyName}! Ready for whatever is next across ${properties.length > 0 ? properties.map(p => p.name).join(', ') : 'your lodge'}. What shall we look into?`;
       suggestedFollowUps = ["Check today's arrivals", "Show all room rates", "Review property amenities"];
     } else {
-      // Warm first greeting
-      reply = `Takulandirani, ${userName}! I am **Ulendo**, your resident hospitality concierge for Travel Malawi.\n\nI have active visibility across ${properties.length > 0 ? `your ${properties.length} platform properties` : 'your listings'}, bookings, and room rates. How can I assist your operations today?`;
+      // Warm, natural first greeting
+      reply = `${timeGreeting}${friendlyName}! Hope you had a peaceful night. I'm right here with you${lodgeRef}—ready for whatever the day brings.\n\nAnything on your mind this morning, or should we check on today's arrivals?`;
       suggestedFollowUps = [
         "Do I have any arrivals scheduled for today?",
         "Show me all my room rates",

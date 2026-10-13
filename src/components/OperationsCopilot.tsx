@@ -27,6 +27,13 @@ import {
   LearnedDirective,
   MAX_DIRECTIVE_CHARS
 } from '../lib/assistantMemory';
+import {
+  getManagerHabits,
+  observeAndLearnHabits,
+  generateNaturalGreeting,
+  syncManagerHabitsWithCloud,
+  ManagerHabitsProfile
+} from '../lib/managerHabits';
 import { logSystemEvent } from '../lib/logger';
 import { confirmBooking, confirmErrorMessage, PriceMismatchError } from '../lib/transactions';
 import { updateBookingWithSlot, cancelBookingReminders } from '../lib/bookingWrites';
@@ -234,6 +241,11 @@ export default function OperationsCopilot() {
   const [proposalHotelSelections, setProposalHotelSelections] = useState<Record<string, string[]>>({});
   const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
 
+  // Manager Habits & Concierge Companion Profile
+  const [managerHabits, setManagerHabits] = useState<ManagerHabitsProfile>(() =>
+    getManagerHabits(user?.uid || 'global', (user?.displayName || '').trim())
+  );
+
   const handleCopyMessage = useCallback((id: string, text: string) => {
     navigator.clipboard.writeText(text);
     setCopiedMsgId(id);
@@ -286,6 +298,19 @@ export default function OperationsCopilot() {
         .catch(err => console.warn('Could not sync directives with cloud:', err));
     }
   }, [user?.uid]);
+
+  // Load and sync manager habits with cloud
+  useEffect(() => {
+    if (user?.uid) {
+      const initial = getManagerHabits(user.uid, userDisplayName || undefined);
+      setManagerHabits(initial);
+      syncManagerHabitsWithCloud(user.uid)
+        .then(synced => {
+          if (synced) setManagerHabits(synced);
+        })
+        .catch(err => console.warn('Could not sync manager habits with cloud:', err));
+    }
+  }, [user?.uid, userDisplayName]);
 
   // Today's formatted string in local time (e.g. "2026-09-02")
   const todayStr = useMemo(() => {
@@ -414,31 +439,28 @@ export default function OperationsCopilot() {
   }, [user?.displayName, user?.email]);
 
   const createWelcomeMessage = useCallback((isReset = false): ChatMessage => {
-    const greeting = userDisplayName ? `Hi ${userDisplayName}` : 'Hello';
     const now = Date.now();
     const nonce = Math.random().toString(36).substring(2, 8);
-    if (userIsAdmin) {
-      const propText = properties.length > 0 ? `all **${properties.length} platform properties**` : 'the platform';
+    if (isReset) {
+      const propText = userIsAdmin
+        ? (properties.length > 0 ? `all **${properties.length} platform properties**` : 'the platform')
+        : (properties.map(p => `**${p.name}**`).join(', ') || 'your properties');
       return {
         id: `welcome_${now}_${nonce}`,
         role: 'assistant',
-        content: isReset
-          ? `${greeting}! Conversation cleared. I have live visibility across ${propText}.\n\nWhat would you like to review, audit, or adjust next?`
-          : `${greeting}! I have live visibility across ${propText}.\n\nWhat would you like to review, audit, or adjust today?`,
-        timestamp: now,
-      };
-    } else {
-      const propNames = properties.map(p => `**${p.name}**`).join(', ') || 'your properties';
-      return {
-        id: `welcome_${now}_${nonce}`,
-        role: 'assistant',
-        content: isReset
-          ? `${greeting}! Conversation cleared. Ready to assist with ${propNames}.\n\nWhat would you like to do next?`
-          : `${greeting}! Ready to assist with ${propNames}.\n\nWhat's on your agenda today?`,
+        content: `Conversation refreshed! Right here beside you across ${propText}.\n\nWhat would you like to review or update next?`,
         timestamp: now,
       };
     }
-  }, [userDisplayName, userIsAdmin, properties]);
+
+    const naturalGreeting = generateNaturalGreeting(managerHabits, properties, todayStr);
+    return {
+      id: `welcome_${now}_${nonce}`,
+      role: 'assistant',
+      content: naturalGreeting,
+      timestamp: now,
+    };
+  }, [managerHabits, properties, todayStr, userIsAdmin]);
 
   // Persist messages to sessionStorage across page navigations in current session
   useEffect(() => {
@@ -694,6 +716,17 @@ export default function OperationsCopilot() {
     const text = (textToSend || inputMessage).trim();
     if (!text || generating) return;
 
+    // Observe and adapt to manager habits in real-time
+    const { profile: updatedHabits, discoveredHabit } = observeAndLearnHabits(
+      user?.uid || 'global',
+      text,
+      managerHabits
+    );
+    setManagerHabits(updatedHabits);
+    if (discoveredHabit) {
+      toast.success(discoveredHabit, { icon: '🤝', duration: 3200 });
+    }
+
     const detectedIntent = detectQueryIntent(text);
     setActiveQueryIntent(detectedIntent);
     setActiveQueryText(text);
@@ -894,6 +927,7 @@ export default function OperationsCopilot() {
             trigger: r.trigger,
             resolution: r.resolution,
           })),
+        managerHabits: updatedHabits,
       },
     };
 
@@ -1748,6 +1782,52 @@ export default function OperationsCopilot() {
                     >
                       Back to chat
                     </button>
+                  </div>
+
+                  {/* Manager Companion & Learned Habits Profile Card */}
+                  <div className="p-3 bg-gradient-to-br from-amber-50/80 via-white to-amber-50/40 border border-amber-200/90 rounded-2xl space-y-2.5 shadow-2xs">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <ConciergeBell className="w-3.5 h-3.5 text-amber-700" />
+                        <span className="text-xs font-bold text-stone-900 tracking-tight">
+                          Learned Companion & Habits Profile
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300/80">
+                        {managerHabits.familiarityTier}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-[11px]">
+                      <div className="bg-white p-2 rounded-xl border border-stone-200/80 shadow-2xs">
+                        <span className="text-stone-400 block text-[10px]">Preferred Name</span>
+                        <span className="font-semibold text-stone-800">{managerHabits.preferredName || userDisplayName || 'Friend'}</span>
+                      </div>
+                      <div className="bg-white p-2 rounded-xl border border-stone-200/80 shadow-2xs">
+                        <span className="text-stone-400 block text-[10px]">Currency Preference</span>
+                        <span className="font-semibold text-stone-800">{managerHabits.currencyPreference}</span>
+                      </div>
+                    </div>
+
+                    {managerHabits.habits && managerHabits.habits.length > 0 && (
+                      <div className="pt-1 space-y-1.5">
+                        <div className="flex items-center justify-between text-[10px] font-bold text-stone-600 uppercase tracking-wider">
+                          <span>Observed Lodge Habits ({managerHabits.habits.length})</span>
+                          <span className="text-amber-700 font-semibold normal-case">Learns automatically</span>
+                        </div>
+                        <div className="space-y-1 max-h-36 overflow-y-auto">
+                          {managerHabits.habits.map((h, idx) => (
+                            <div key={`habit-item-${idx}`} className="text-[11px] bg-white p-2 rounded-xl border border-stone-200/80 text-stone-800 flex items-start gap-1.5 shadow-2xs">
+                              <span className="text-amber-600 font-bold shrink-0 mt-0.5">•</span>
+                              <div className="flex-1 min-w-0">
+                                <span className="text-[10px] uppercase font-bold text-amber-800/80 mr-1.5">[{h.category}]</span>
+                                <span className="leading-snug">{h.text}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Add New Directive Form */}

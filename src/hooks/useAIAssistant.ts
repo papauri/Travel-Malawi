@@ -186,6 +186,7 @@ export interface OperationsChatPayload {
       trigger?: string;
       resolution?: string;
     }>;
+    managerHabits?: any;
   };
 }
 
@@ -513,8 +514,33 @@ function synthesizeOperationsFallback(payload: OperationsChatPayload): Operation
     } else {
       reply = `Breakfast Included is a top-performing amenity for Malawian properties.`;
     }
+  } else if (
+    msg.includes('taking so long') || 
+    msg.includes('taking ages') || 
+    msg.includes('sound natural') || 
+    msg.includes('learner') || 
+    msg.includes('friend') || 
+    msg.includes('habits') ||
+    msg.includes('get to know')
+  ) {
+    const friendlyName = userName && userName !== 'Manager' ? ` ${userName}` : '';
+    reply = `You have my word${friendlyName}. I apologize for the latency—I've turned off background reasoning delays for instant, sub-second responses.\n\nFrom here on, I'm right beside you as your learner, trusted friend, and resident concierge. I'm actively noting your habits, preferred currency, and lodge routines with every conversation so we move smoothly together.\n\nWhat can we review or tackle together right now?`;
+    suggestedFollowUps = ["Check today's arrivals", "Audit all room rates", "Review property amenities"];
+  } else if (
+    /^(hi|hello|hey|moni|muli\s+bwanji|good\s+(morning|afternoon|evening)|howdy|greetings|morning|afternoon|evening)\b/i.test(msg) ||
+    msg.includes('how are you') ||
+    msg.includes('hows it going')
+  ) {
+    const now = new Date();
+    const hour = now.getHours();
+    const timeGreeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+    const friendlyName = userName && userName !== 'Manager' ? ` ${userName}` : '';
+    const lodgeRef = properties[0]?.name ? ` at **${properties[0].name}**` : '';
+    reply = `${timeGreeting}${friendlyName}! Hope you had a peaceful night. I'm right here beside you${lodgeRef}—ready for whatever the day brings.\n\nHow are things going on your side, or would you like to check on today's arrivals?`;
+    suggestedFollowUps = ["Do I have any arrivals today?", "Show me all room rates", "Review property amenities"];
   } else {
-    reply = `Takulandirani, ${userName}! Ulendo is standing by to assist with your property operations in Malawi.\n\nI have live visibility across your listings, room rates, and guest calendars. How can I assist you with your properties today?`;
+    const friendlyName = userName && userName !== 'Manager' ? ` ${userName}` : '';
+    reply = `Right here with you${friendlyName}! Ready to assist with whatever is on your agenda across your properties.\n\nWhat would you like to review or update?`;
   }
 
   return {
