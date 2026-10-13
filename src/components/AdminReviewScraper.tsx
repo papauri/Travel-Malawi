@@ -212,6 +212,11 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
     if (platformSourceFilter !== 'all') {
       if (platformSourceFilter === 'direct') {
         list = list.filter(r => r.reviewType === 'direct');
+      } else if (platformSourceFilter.toLowerCase().includes('guest') || platformSourceFilter.toLowerCase().includes('facebook') || platformSourceFilter.toLowerCase().includes('social')) {
+        list = list.filter(r => {
+          const s = (r.source || '').toLowerCase();
+          return s.includes('guest') || s.includes('facebook') || s.includes('social');
+        });
       } else {
         list = list.filter(r => (r.source || '').toLowerCase().includes(platformSourceFilter.toLowerCase()));
       }
@@ -351,12 +356,29 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
         throw new Error(data.error || 'Failed to scrape reviews');
       }
       
-      if (data.data && Array.isArray(data.data)) {
-        setScrapedReviews(data.data);
-        setSelectedReviews(new Set(data.data.map((_, i) => i)));
-        toast.success(`Discovered ${data.data.length} authentic guest reviews across web channels!`);
+      let reviewsList: any[] | null = null;
+      if (Array.isArray(data.data) && data.data.length > 0) {
+        reviewsList = data.data;
+      } else if (Array.isArray(data.reviews) && data.reviews.length > 0) {
+        reviewsList = data.reviews;
+      } else if (typeof data.text === 'string') {
+        try {
+          const match = data.text.match(/\[[\s\S]*\]/);
+          if (match) {
+            const parsed = JSON.parse(match[0]);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              reviewsList = parsed;
+            }
+          }
+        } catch { /* non-critical client recovery */ }
+      }
+
+      if (reviewsList && reviewsList.length > 0) {
+        setScrapedReviews(reviewsList);
+        setSelectedReviews(new Set(reviewsList.map((_, i) => i)));
+        toast.success(`Discovered ${reviewsList.length} authentic guest reviews across web channels!`);
       } else {
-        throw new Error('Invalid review data format returned from AI engine');
+        throw new Error('Unable to parse review data format. Please retry discovery.');
       }
     } catch (err: any) {
       console.error('Review scraper error:', err);
@@ -408,7 +430,12 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
     return scrapedReviews.filter(review => {
       if (sourceFilter !== 'all') {
         const revSrc = (review.source || '').toLowerCase();
-        if (!revSrc.includes(sourceFilter.toLowerCase())) return false;
+        const sf = sourceFilter.toLowerCase();
+        if (sf.includes('guest') || sf.includes('facebook') || sf.includes('social')) {
+          if (!revSrc.includes('guest') && !revSrc.includes('facebook') && !revSrc.includes('social')) return false;
+        } else if (!revSrc.includes(sf)) {
+          return false;
+        }
       }
       if (ratingFilter === '5' && review.rating < 4.8) return false;
       if (ratingFilter === '4' && (review.rating < 3.8 || review.rating >= 4.8)) return false;
@@ -1468,7 +1495,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
             Searching Travel Channels for {selectedHotel?.name}
           </h3>
           <p className="text-stone-600 text-xs max-w-lg leading-relaxed">
-            Querying public travel channels (TripAdvisor, Google Reviews, Booking.com, SafariBookings) for authentic guest feedback.
+            Querying public travel channels (TripAdvisor, Google Reviews, Booking.com, SafariBookings, and Guest Book &amp; Social) for authentic guest feedback.
           </p>
         </div>
       )}

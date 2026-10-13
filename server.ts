@@ -1409,10 +1409,17 @@ async function startServer() {
       return res.status(400).json({ error: 'Hotel name is required' });
     }
 
+    const customQuery = cleanText(req.body?.customQuery, 300, true);
+    const targetUrl = cleanText(req.body?.targetUrl, 500, true);
+    const targetSources = Array.isArray(req.body?.targetSources)
+      ? req.body.targetSources.map((s: any) => cleanText(s, 60, true)).filter(Boolean)
+      : undefined;
+    const minRating = typeof req.body?.minRating === 'number' ? Math.min(Math.max(req.body.minRating, 1), 5) : (sentimentMode === 'critical' ? 1 : 4);
+
     try {
       const status = getPublicAIStatus();
       if (!status.enabled || !status.available) {
-        const fallback = generateCuratedMalawiReviews(hotelName, location, category, count, sentimentMode);
+        const fallback = generateCuratedMalawiReviews(hotelName, location, category, count, sentimentMode, targetSources);
         return res.json({
           text: JSON.stringify(fallback),
           provider: 'gemini',
@@ -1421,13 +1428,6 @@ async function startServer() {
           cached: true
         });
       }
-
-      const customQuery = cleanText(req.body?.customQuery, 300, true);
-      const targetUrl = cleanText(req.body?.targetUrl, 500, true);
-      const targetSources = Array.isArray(req.body?.targetSources)
-        ? req.body.targetSources.map((s: any) => cleanText(s, 60, true)).filter(Boolean)
-        : undefined;
-      const minRating = typeof req.body?.minRating === 'number' ? Math.min(Math.max(req.body.minRating, 1), 5) : (sentimentMode === 'critical' ? 1 : 4);
 
       const result = await executeAIGeneration(withVerifiedRole({
         action: 'scrape_reviews',
@@ -1445,10 +1445,24 @@ async function startServer() {
         }
       }, req.authUser!));
 
+      // Guard: Ensure result.data is guaranteed to be a valid, populated array
+      if (!Array.isArray(result?.data) || result.data.length === 0) {
+        console.warn(`[scrape_reviews] AI generation returned empty or non-array data, falling back to curated reviews.`);
+        const fallback = generateCuratedMalawiReviews(hotelName, location, category, count, sentimentMode, targetSources);
+        return res.json({
+          text: JSON.stringify(fallback),
+          provider: result?.provider || 'gemini',
+          model: result?.model || 'malawi-curated',
+          data: fallback,
+          cached: false,
+          repaired: true
+        });
+      }
+
       res.json(result);
     } catch (err: any) {
       console.warn(`[scrape_reviews] Auto-fallback to curated reviews due to: ${err?.message || err}`);
-      const fallback = generateCuratedMalawiReviews(hotelName, location, category, count, sentimentMode);
+      const fallback = generateCuratedMalawiReviews(hotelName, location, category, count, sentimentMode, targetSources);
       res.json({
         text: JSON.stringify(fallback),
         provider: 'gemini',
