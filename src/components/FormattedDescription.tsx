@@ -104,9 +104,24 @@ export default function FormattedDescription({
   }
 
   const preprocessed = useMemo(() => normalizeDescriptionMarkdown(text), [text]);
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const [isExpanded, setIsExpanded] = useState<boolean>(defaultExpanded);
   const [canExpand, setCanExpand] = useState<boolean>(false);
+
+  const toggleExpand = () => {
+    setIsExpanded(prev => {
+      const next = !prev;
+      // If closing a tall section and user scrolled below its top, gently reposition
+      if (!next && wrapperRef.current) {
+        const rect = wrapperRef.current.getBoundingClientRect();
+        if (rect.top < 80) {
+          wrapperRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      }
+      return next;
+    });
+  };
 
   useEffect(() => {
     if (!collapsible) return;
@@ -122,34 +137,61 @@ export default function FormattedDescription({
 
     check();
 
+    const t1 = setTimeout(check, 100);
+    const t2 = setTimeout(check, 350);
+    const t3 = setTimeout(check, 800);
+
+    if (typeof document !== 'undefined' && document.fonts?.ready) {
+      document.fonts.ready.then(check).catch(() => {});
+    }
+
     if (typeof ResizeObserver !== 'undefined') {
       const observer = new ResizeObserver(check);
       observer.observe(el);
-      return () => observer.disconnect();
+      return () => {
+        clearTimeout(t1);
+        clearTimeout(t2);
+        clearTimeout(t3);
+        observer.disconnect();
+      };
     }
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+    };
   }, [collapsible, collapsedHeight, preprocessed]);
 
   const isFolded = collapsible && canExpand && !isExpanded;
 
-  const handleTextClick = (e: React.MouseEvent) => {
+  const handleWrapperClick = (e: React.MouseEvent) => {
     if (!canExpand) return;
     const target = e.target as HTMLElement;
-    // Don't intercept if user clicked an explicit link or interactive child
+    // Don't intercept if user clicked an explicit link, button, or input
     if (target.closest('a, button, input, textarea')) return;
-    setIsExpanded(prev => !prev);
+    // If the user is selecting text, do not toggle
+    const selection = window.getSelection();
+    if (selection && selection.toString().trim().length > 0) return;
+    toggleExpand();
   };
 
   return (
-    <div className={`formatted-description-wrapper relative ${canExpand ? 'group cursor-pointer' : ''}`}>
+    <div 
+      ref={wrapperRef}
+      onClick={handleWrapperClick}
+      className={`formatted-description-wrapper relative ${
+        canExpand ? 'group cursor-pointer select-text' : ''
+      }`}
+    >
       <div
         ref={contentRef}
-        onClick={handleTextClick}
         role={canExpand ? 'button' : undefined}
         tabIndex={canExpand ? 0 : undefined}
+        aria-expanded={canExpand ? isExpanded : undefined}
         onKeyDown={canExpand ? (e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
-            setIsExpanded(prev => !prev);
+            toggleExpand();
           }
         } : undefined}
         title={canExpand ? (isExpanded ? 'Click to show less' : 'Click to see more details') : undefined}
@@ -157,13 +199,13 @@ export default function FormattedDescription({
           isFolded
             ? {
                 maxHeight: `${collapsedHeight}px`,
-                maskImage: 'linear-gradient(to bottom, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 1) 35%, rgba(0, 0, 0, 0.35) 75%, rgba(0, 0, 0, 0) 100%)',
-                WebkitMaskImage: 'linear-gradient(to bottom, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 1) 35%, rgba(0, 0, 0, 0.35) 75%, rgba(0, 0, 0, 0) 100%)',
+                maskImage: 'linear-gradient(to bottom, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 1) 40%, rgba(0, 0, 0, 0.25) 80%, rgba(0, 0, 0, 0) 100%)',
+                WebkitMaskImage: 'linear-gradient(to bottom, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 1) 40%, rgba(0, 0, 0, 0.25) 80%, rgba(0, 0, 0, 0) 100%)',
               }
             : undefined
         }
         className={`formatted-description leading-relaxed transition-all duration-300 ease-in-out ${
-          isFolded ? 'overflow-hidden select-none' : 'overflow-visible'
+          isFolded ? 'overflow-hidden select-none sm:select-text' : 'overflow-visible'
         } ${canExpand ? 'cursor-pointer hover:opacity-95' : ''} ${className}`}
       >
         <ReactMarkdown
@@ -171,8 +213,9 @@ export default function FormattedDescription({
           components={{
             p: ({ node, children, ...props }) => (
               <p
-                onClick={canExpand ? handleTextClick : undefined}
-                className={`mb-2.5 last:mb-0 leading-relaxed whitespace-pre-line ${canExpand ? 'cursor-pointer' : ''} ${paragraphClassName}`}
+                className={`mb-2.5 last:mb-0 leading-relaxed whitespace-pre-line ${paragraphClassName} ${
+                  canExpand ? 'cursor-pointer' : ''
+                }`}
                 {...props}
               >
                 {children}
@@ -228,8 +271,11 @@ export default function FormattedDescription({
       {collapsible && canExpand && (
         <button
           type="button"
-          onClick={() => setIsExpanded(prev => !prev)}
-          className={`mt-1.5 inline-flex items-center gap-1 text-xs font-semibold hover:opacity-80 transition cursor-pointer select-none ${
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleExpand();
+          }}
+          className={`mt-1.5 inline-flex items-center gap-1.5 text-xs font-semibold hover:opacity-80 transition cursor-pointer select-none py-0.5 ${
             buttonClassName || 'text-stone-900 underline underline-offset-4 decoration-stone-300'
           }`}
           aria-expanded={isExpanded}

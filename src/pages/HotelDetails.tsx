@@ -56,6 +56,158 @@ import PriceDisplay from '../components/PriceDisplay';
 import RoomGallery from '../components/RoomGallery';
 import { useWhatsAppSettings } from '../hooks/useWhatsAppSettings';
 
+interface CompactReviewItem {
+  key: string;
+  author: string;
+  rating: number;
+  title?: string;
+  text: string;
+  date: string;
+  source: string;
+  sourceUrl?: string;
+  verified: boolean;
+}
+
+function CompactReviewCard({ review }: { review: CompactReviewItem }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const textLength = (review.text || '').length;
+  // Consider long if body text exceeds 120 characters or if has title and exceeds 90 chars
+  const isLong = textLength > 120 || (Boolean(review.title) && textLength > 90);
+
+  const handleCardClick = (e: React.MouseEvent) => {
+    if (!isLong) return;
+    const target = e.target as HTMLElement;
+    // Don't toggle if user clicked an explicit link or button with its own handler
+    if (target.closest('a, button, input, textarea')) return;
+    // If text is being highlighted/selected, do not toggle
+    const selection = window.getSelection();
+    if (selection && selection.toString().trim().length > 0) return;
+    setIsExpanded(prev => !prev);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!isLong) return;
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      setIsExpanded(prev => !prev);
+    }
+  };
+
+  return (
+    <div
+      onClick={handleCardClick}
+      onKeyDown={handleKeyDown}
+      role={isLong ? 'button' : undefined}
+      tabIndex={isLong ? 0 : undefined}
+      aria-expanded={isLong ? isExpanded : undefined}
+      title={isLong ? (isExpanded ? 'Click to show less' : 'Click to see more details') : undefined}
+      className={`bg-white p-3.5 sm:p-4 rounded-xl sm:rounded-2xl border border-stone-200/90 shadow-2xs transition-all duration-200 flex flex-col justify-between ${
+        isLong ? 'cursor-pointer hover:border-stone-300 hover:shadow-xs focus:outline-hidden focus:ring-2 focus:ring-stone-400/40 select-text' : ''
+      }`}
+    >
+      <div>
+        {/* Header: Author & Rating */}
+        <div className="flex justify-between items-start mb-2 sm:mb-2.5 gap-2">
+          <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 bg-stone-100 rounded-full flex items-center justify-center text-stone-700 font-serif font-bold text-xs shrink-0 border border-stone-200/60">
+              {review.author ? review.author.charAt(0).toUpperCase() : 'G'}
+            </div>
+            <div className="min-w-0">
+              <p className="font-semibold text-stone-900 text-xs sm:text-sm truncate leading-snug">{review.author}</p>
+              <p className="text-[10px] sm:text-[11px] text-stone-500 leading-none mt-0.5">{review.date}</p>
+            </div>
+          </div>
+          <div
+            className={`flex items-center gap-1 px-2 py-0.5 rounded-full border shrink-0 text-xs font-bold ${
+              review.rating >= 4
+                ? 'bg-stone-50 border-stone-200/80 text-stone-900'
+                : review.rating >= 3
+                ? 'bg-amber-50/90 border-amber-200 text-amber-900'
+                : 'bg-rose-50 border-rose-200 text-rose-900'
+            }`}
+          >
+            <Star
+              className={`h-3 w-3 fill-current ${
+                review.rating >= 4 ? 'text-amber-400' : review.rating >= 3 ? 'text-amber-500' : 'text-rose-500'
+              }`}
+            />
+            <span>{review.rating.toFixed(1)}</span>
+          </div>
+        </div>
+
+        {/* Title */}
+        {review.title && (
+          <h4 className={`font-serif font-bold text-stone-900 text-xs sm:text-sm mb-1 leading-snug ${isExpanded ? '' : 'line-clamp-1'}`}>
+            "{review.title}"
+          </h4>
+        )}
+
+        {/* Body Text */}
+        <p className={`text-stone-700 leading-relaxed italic text-xs sm:text-sm transition-all duration-200 ${
+          isLong && !isExpanded ? 'line-clamp-2' : ''
+        }`}>
+          "{review.text}"
+        </p>
+
+        {/* Toggle Button */}
+        {isLong && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsExpanded(prev => !prev);
+            }}
+            className="inline-flex items-center gap-1 text-[11px] sm:text-xs font-semibold text-stone-900 hover:text-emerald-800 underline underline-offset-2 decoration-stone-300 hover:decoration-stone-600 mt-1.5 cursor-pointer select-none transition"
+            aria-expanded={isExpanded}
+          >
+            <span>{isExpanded ? 'Show less' : 'See more details'}</span>
+            <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
+          </button>
+        )}
+      </div>
+
+      {/* Footer: Attribution, Badges & Verification Link */}
+      <div className="mt-2.5 pt-2 border-t border-stone-100 flex flex-wrap items-center justify-between gap-1.5 text-[10px] sm:text-[11px]">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {review.verified ? (
+            <span className="text-emerald-700 uppercase tracking-wider font-semibold flex items-center gap-1 text-[10px]">
+              <ShieldCheck className="h-3 w-3 shrink-0" /> Verified stay
+            </span>
+          ) : (
+            <span className="text-stone-500 uppercase tracking-wider font-semibold text-[10px]">
+              Imported from {review.source}
+            </span>
+          )}
+          {review.rating <= 2.5 && (
+            <span className="font-bold text-rose-800 bg-rose-50 border border-rose-200 px-1.5 py-0.2 rounded text-[9px] uppercase tracking-wider">
+              Transparent Critique
+            </span>
+          )}
+          {review.rating > 2.5 && review.rating <= 3.8 && (
+            <span className="font-bold text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.2 rounded text-[9px] uppercase tracking-wider">
+              Constructive Feedback
+            </span>
+          )}
+        </div>
+
+        {review.sourceUrl && (
+          <a
+            href={review.sourceUrl}
+            target="_blank"
+            rel="noreferrer noopener"
+            onClick={(e) => e.stopPropagation()}
+            className="inline-flex items-center gap-1 text-emerald-700 hover:text-emerald-800 font-semibold transition hover:underline text-[10px] sm:text-[11px]"
+            title={`Verify original review on ${review.source}`}
+          >
+            <span>View original on {review.source}</span>
+            <ExternalLink className="w-2.5 h-2.5 sm:w-3 sm:h-3 shrink-0" />
+          </a>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function HotelDetails() {
   const { whatsappEnabled } = useWhatsAppSettings();
   const { id } = useParams<{ id: string }>();
@@ -104,7 +256,7 @@ export default function HotelDetails() {
   const [specialRequests, setSpecialRequests] = useState('');
   const [currentReviewPage, setCurrentReviewPage] = useState(1);
   const [reviewSort, setReviewSort] = useState<'recent' | 'highest'>('recent');
-  const reviewsPerPage = 5;
+  const reviewsPerPage = 6;
   const [selectedPackages, setSelectedPackages] = useState<string[]>([]);
   const [currency, setCurrency] = useState<CurrencyCode>(readStoredCurrency);
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<BookingField, string>>>({});
@@ -1982,79 +2134,9 @@ export default function HotelDetails() {
               <p className="text-stone-500 text-xs sm:text-sm italic">No reviews yet. Be the first to review this property!</p>
             ) : (
               <>
-                <div className="grid grid-cols-1 gap-4 sm:gap-5 md:gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                   {allReviews.slice((currentReviewPage - 1) * reviewsPerPage, currentReviewPage * reviewsPerPage).map((review, rIdx) => (
-                    <div key={`${review.key}-${rIdx}`} className="bg-white p-4 sm:p-5 md:p-6 rounded-2xl sm:rounded-3xl border border-stone-200 shadow-2xs">
-                      <div className="flex justify-between items-start mb-3 sm:mb-4">
-                        <div className="flex items-center gap-2.5 sm:gap-3.5">
-                          <div className="w-9 h-9 sm:w-10 sm:h-10 bg-stone-100 rounded-full flex items-center justify-center text-stone-600 font-serif font-bold text-sm sm:text-base">
-                            {review.author.charAt(0)}
-                          </div>
-                          <div>
-                            <p className="font-semibold text-stone-900 text-xs sm:text-sm">{review.author}</p>
-                            <p className="text-[11px] sm:text-xs text-stone-500">{review.date}</p>
-                          </div>
-                        </div>
-                        <div className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-full border ${
-                          review.rating >= 4
-                            ? 'bg-stone-50 border-stone-100 text-stone-900'
-                            : review.rating >= 3
-                            ? 'bg-amber-50/80 border-amber-200 text-amber-900'
-                            : 'bg-rose-50 border-rose-200 text-rose-900'
-                        }`}>
-                          <Star className={`h-3 w-3 sm:h-3.5 sm:w-3.5 fill-current ${
-                            review.rating >= 4 ? 'text-amber-400' : review.rating >= 3 ? 'text-amber-500' : 'text-rose-500'
-                          }`} />
-                          <span className="font-semibold text-xs sm:text-sm">{review.rating.toFixed(1)}</span>
-                        </div>
-                      </div>
-
-                      {review.title && (
-                        <h4 className="font-serif font-bold text-stone-900 text-xs sm:text-sm mb-1.5 leading-snug">
-                          "{review.title}"
-                        </h4>
-                      )}
-
-                      <p className="text-stone-700 leading-relaxed italic text-xs sm:text-sm md:text-base">"{review.text}"</p>
-
-                      {/* Review Attribution, Transparency Badges & Direct Source Link */}
-                      <div className="mt-3 sm:mt-4 pt-2.5 border-t border-stone-100 flex flex-wrap items-center justify-between gap-2 text-[10px] sm:text-xs">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {review.verified ? (
-                            <span className="text-emerald-700 uppercase tracking-wider font-semibold flex items-center gap-1.5">
-                              <ShieldCheck className="h-3.5 w-3.5" /> Verified stay
-                            </span>
-                          ) : (
-                            <span className="text-stone-500 uppercase tracking-wider font-semibold">
-                              Imported from {review.source}
-                            </span>
-                          )}
-                          {review.rating <= 2.5 && (
-                            <span className="font-bold text-rose-800 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded text-[10px]">
-                              Transparent Critique
-                            </span>
-                          )}
-                          {review.rating > 2.5 && review.rating <= 3.8 && (
-                            <span className="font-bold text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded text-[10px]">
-                              Constructive Feedback
-                            </span>
-                          )}
-                        </div>
-
-                        {review.sourceUrl && (
-                          <a
-                            href={review.sourceUrl}
-                            target="_blank"
-                            rel="noreferrer noopener"
-                            className="inline-flex items-center gap-1 text-emerald-700 hover:text-emerald-800 font-semibold transition hover:underline"
-                            title={`Verify original review on ${review.source}`}
-                          >
-                            <span>View original on {review.source}</span>
-                            <ExternalLink className="w-3 h-3" />
-                          </a>
-                        )}
-                      </div>
-                    </div>
+                    <CompactReviewCard key={`${review.key}-${rIdx}`} review={review} />
                   ))}
                 </div>
                 {allReviews.length > reviewsPerPage && (
