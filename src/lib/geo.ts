@@ -12,6 +12,8 @@
  * Everything to do with reading, checking and rendering a pin lives here.
  */
 
+import { searchMalawiHospitalityRegistry, generateSmartPropertySuggestions } from './malawiHospitalityRegistry';
+
 export interface LatLng {
   lat: number;
   lng: number;
@@ -803,59 +805,170 @@ export interface MalawiPlaceSuggestion {
   category?: string;
   type?: string;
   district?: string;
+  source?: 'registry' | 'smart_suggestion' | 'osm';
+  badge?: string;
+  description?: string;
+  summary?: string;
+  amenities?: string[];
+  suggestedRooms?: Array<{
+    name: string;
+    description: string;
+    priceMwk: number;
+    priceUsd: number;
+    maxGuests: number;
+    baseGuests?: number;
+    quantity?: number;
+    amenities?: string[];
+  }>;
+  locationNotes?: string;
+  checkInTime?: string;
+  checkOutTime?: string;
+  contactPhone?: string;
+  contactEmail?: string;
+  contactWhatsapp?: string;
 }
 
 /**
- * Searches places strictly within Malawi using OpenStreetMap / Nominatim.
- * Scoped to country code 'mw' and Malawi bounding box.
+ * Searches places across Malawi, integrating the curated National Hospitality Registry,
+ * smart naming suggestions, and filtered OpenStreetMap landmarks.
  */
 export async function searchMalawiPlaces(queryStr: string, limit = 6): Promise<MalawiPlaceSuggestion[]> {
   const text = queryStr.trim();
   if (text.length < 2) return [];
 
+  const results: MalawiPlaceSuggestion[] = [];
+  const seenNames = new Set<string>();
+
+  // 1. Primary: Match from Verified Malawi Hospitality Registry
   try {
-    // Malawi bounding box: West 32.67, North -9.36, East 35.92, South -17.13
-    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(text)}&countrycodes=mw&viewbox=32.67,-9.36,35.92,-17.13&bounded=1&limit=${limit}&addressdetails=1`;
-    const response = await fetch(url, {
-      headers: {
-        'Accept-Language': 'en',
-      },
-    });
-    if (!response.ok) return [];
-    const data = await response.json();
-    if (!Array.isArray(data)) return [];
+    const registryMatches = searchMalawiHospitalityRegistry(text, limit);
 
-    return data.map((item: any) => {
-      const lat = parseFloat(item.lat);
-      const lng = parseFloat(item.lon);
-      const addr = item.address || {};
-      
-      const cleanName = item.name || item.display_name.split(',')[0].trim();
-      
-      // Build a clean, concise Malawian location (e.g. "Cape Maclear, Mangochi" or "Lilongwe")
-      const locality = addr.suburb || addr.village || addr.town || addr.city || addr.municipality || '';
-      const district = addr.county || addr.state_district || addr.state || '';
-      
-      let locSummary = [locality, district].filter(Boolean).join(', ');
-      if (!locSummary) {
-        const parts = item.display_name.split(',').map((s: string) => s.trim());
-        locSummary = parts.slice(1, 3).join(', ') || 'Malawi';
+    for (const p of registryMatches) {
+      const key = p.name.toLowerCase();
+      if (!seenNames.has(key)) {
+        seenNames.add(key);
+        results.push({
+          id: `reg-${p.id}`,
+          name: p.name,
+          location: p.location,
+          coordinates: p.coordinates,
+          category: p.category,
+          type: 'hospitality',
+          district: p.district,
+          source: 'registry',
+          badge: p.badge,
+          description: p.description,
+          summary: p.summary,
+          amenities: p.amenities,
+          suggestedRooms: p.suggestedRooms,
+          locationNotes: p.locationNotes,
+          checkInTime: p.checkInTime,
+          checkOutTime: p.checkOutTime,
+          contactPhone: p.contactPhone,
+          contactEmail: p.contactEmail,
+          contactWhatsapp: p.contactWhatsapp,
+        });
       }
-
-      return {
-        id: `mw-place-${item.place_id || item.osm_id || Math.random()}`,
-        name: cleanName,
-        location: locSummary,
-        coordinates: { lat, lng },
-        category: item.type || item.class || 'place',
-        type: item.type,
-        district,
-      };
-    });
+    }
   } catch (err) {
-    console.error('Malawi places search failed:', err);
-    return [];
+    console.warn('Registry search error:', err);
   }
+
+  // 2. Secondary: If query is specific and we need suggestions, add smart hospitality naming ideas
+  if (results.length < limit && text.length >= 3) {
+    try {
+      const smartIdeas = generateSmartPropertySuggestions(text);
+      for (const idea of smartIdeas) {
+        const key = idea.name.toLowerCase();
+        if (!seenNames.has(key) && results.length < limit) {
+          seenNames.add(key);
+          results.push({
+            id: `smart-${Math.random().toString(36).slice(2, 7)}`,
+            name: idea.name,
+            location: 'Malawi',
+            coordinates: { lat: -13.9833, lng: 33.7833 },
+            category: idea.category,
+            type: 'suggestion',
+            source: 'smart_suggestion',
+            badge: idea.badge,
+            description: idea.description,
+            summary: `Proposed listing name optimized for ${idea.category} bookings.`,
+          });
+        }
+      }
+    } catch (err) {
+      console.warn('Smart suggestion error:', err);
+    }
+  }
+
+  // 3. Tertiary: OpenStreetMap Nominatim for geographic context, strictly excluding generic polygons
+  if (results.length < limit) {
+    try {
+      const remainingLimit = limit - results.length;
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(text)}&countrycodes=mw&viewbox=32.67,-9.36,35.92,-17.13&bounded=1&limit=${remainingLimit + 4}&addressdetails=1`;
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2500);
+
+      const response = await fetch(url, {
+        headers: { 'Accept-Language': 'en' },
+        signal: controller.signal,
+      }).finally(() => clearTimeout(timeoutId));
+
+      if (response.ok) {
+        const data = await response.json();
+        if (Array.isArray(data)) {
+          for (const item of data) {
+            if (results.length >= limit) break;
+
+            const cleanName = (item.name || item.display_name.split(',')[0] || '').trim();
+            const lowerName = cleanName.toLowerCase();
+
+            // Filter out broad, generic administrative polygons
+            if (
+              !cleanName ||
+              lowerName === 'malawi' ||
+              lowerName.includes('central region') ||
+              lowerName.includes('southern region') ||
+              lowerName.includes('northern region') ||
+              seenNames.has(lowerName)
+            ) {
+              continue;
+            }
+
+            const lat = parseFloat(item.lat);
+            const lng = parseFloat(item.lon);
+            const addr = item.address || {};
+            const locality = addr.suburb || addr.village || addr.town || addr.city || addr.municipality || '';
+            const district = addr.county || addr.state_district || addr.state || '';
+            
+            let locSummary = [locality, district].filter(Boolean).join(', ');
+            if (!locSummary) {
+              const parts = item.display_name.split(',').map((s: string) => s.trim());
+              locSummary = parts.slice(1, 3).join(', ') || 'Malawi';
+            }
+
+            seenNames.add(lowerName);
+            results.push({
+              id: `mw-osm-${item.place_id || item.osm_id || Math.random()}`,
+              name: cleanName,
+              location: locSummary,
+              coordinates: { lat, lng },
+              category: item.type || item.class || 'Landmark',
+              type: item.type,
+              district,
+              source: 'osm',
+              badge: 'Landmark / Area',
+            });
+          }
+        }
+      }
+    } catch {
+      // Quietly ignore OSM network or abort failures
+    }
+  }
+
+  return results;
 }
 
 export interface MalawiHub {

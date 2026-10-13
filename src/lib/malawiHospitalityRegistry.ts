@@ -1,0 +1,1514 @@
+import { PropertyCategory } from './listing';
+
+export interface RegisteredProperty {
+  id: string;
+  name: string;
+  aliases?: string[];
+  category: PropertyCategory;
+  region: string;
+  location: string;
+  district: string;
+  coordinates: { lat: number; lng: number };
+  badge: string;
+  locationNotes: string;
+  description: string;
+  summary: string;
+  amenities: string[];
+  checkInTime: string;
+  checkOutTime: string;
+  suggestedRooms: Array<{
+    name: string;
+    description: string;
+    priceMwk: number;
+    priceUsd: number;
+    maxGuests: number;
+    baseGuests?: number;
+    quantity?: number;
+    amenities?: string[];
+  }>;
+  contactPhone?: string;
+  contactEmail?: string;
+  contactWhatsapp?: string;
+}
+
+/**
+ * Verified National Registry of Malawian Accommodations.
+ * Connects property name searches directly to authentic local data across all 28 districts.
+ */
+export const MALAWI_HOSPITALITY_REGISTRY: RegisteredProperty[] = [
+  // Lake Malawi (Likoma & Chizumulu Islands)
+  {
+    id: 'kaya-mawa',
+    name: 'Kaya Mawa',
+    aliases: ['Kaya Mawa Island Lodge', 'Kayamawa', 'Likoma Island Lodge'],
+    category: 'Luxury',
+    region: 'Likoma Island, Lake Malawi',
+    location: 'Likoma Island, Lake Malawi',
+    district: 'Likoma',
+    coordinates: { lat: -12.0622, lng: 34.7351 },
+    badge: 'Premier Island Luxury',
+    locationNotes: 'Accessible by boat transfer from Nkhata Bay or charter flight to Likoma Island Airstrip. Complimentary lodge pickup from the airstrip.',
+    description: 'Carved organically into the granite headlands of Likoma Island, Kaya Mawa is an award-winning luxury sanctuary on the turquoise waters of Lake Malawi. Each handcrafted stone cottage and private island house opens directly to panoramic water views, secluded sandy coves, and private plunge pools. Guests enjoy world-class snorkeling with colorful cichlid fish, private sailing dhow cruises, and open-air beachfront dining celebrating fresh Lake Chambo and garden-grown produce.',
+    summary: 'Iconic barefoot luxury retreat nestled on Likoma Island with private plunge pools, pristine diving, and unforgettable lake sunsets.',
+    amenities: ['Lake view', 'Private beach', 'Swimming pool', 'Private plunge pool', 'Restaurant', 'Bar', 'Solar backup power', 'Free WiFi', 'Boat trips', 'Ensuite bathroom', 'Hot water', 'Room service'],
+    checkInTime: '14:00',
+    checkOutTime: '10:30',
+    suggestedRooms: [
+      {
+        name: 'Handcrafted Lake Stone Cottage',
+        description: 'Secluded cottage built into the granite headland with private veranda over the water and direct cove access.',
+        priceMwk: 380000,
+        priceUsd: 220,
+        maxGuests: 2,
+        baseGuests: 2,
+        quantity: 6,
+        amenities: ['Ensuite bathroom', 'Lake view', 'Balcony', 'Private deck', 'Ceiling fan', 'Mosquito net'],
+      },
+      {
+        name: 'Island Villa with Private Plunge Pool',
+        description: 'Expansive private villa featuring personal plunge pool, king canopy bed, open lounge, and panoramic lake vistas.',
+        priceMwk: 650000,
+        priceUsd: 380,
+        maxGuests: 2,
+        baseGuests: 2,
+        quantity: 3,
+        amenities: ['Private plunge pool', 'Ensuite bathroom', 'Lake view', 'Butler service', 'Mini-fridge'],
+      },
+    ],
+    contactPhone: '+265 999 967 850',
+    contactEmail: 'reservations@kayamawa.com',
+    contactWhatsapp: '+265 999 967 850',
+  },
+  {
+    id: 'ulisa-bay-lodge',
+    name: 'Ulisa Bay Lodge',
+    aliases: ['Ulisa Bay', 'Ulisa Lodge'],
+    category: 'Lake & Beach',
+    region: 'Likoma Island, Lake Malawi',
+    location: 'Ulisa Bay, Likoma Island',
+    district: 'Likoma',
+    coordinates: { lat: -12.0542, lng: 34.7215 },
+    badge: 'Island Beachfront Chalets',
+    locationNotes: 'Located on the tranquil western shore of Likoma Island. 10 minutes drive from the airstrip or harbor.',
+    description: 'Set along a sheltered cove on Likoma Island, Ulisa Bay Lodge offers charming stone chalets perched right above sandy beaches. Enjoy relaxed lakeside living, snorkeling right off the beach, and freshly cooked meals on the open-air wooden deck as the sun sinks beneath the horizon.',
+    summary: 'Charming island beach chalets with direct bay views, clear snorkeling waters, and warm island hospitality.',
+    amenities: ['Lake view', 'Private beach', 'Restaurant', 'Bar', 'Solar backup power', 'Free WiFi', 'Mosquito nets', 'Hot water'],
+    checkInTime: '13:00',
+    checkOutTime: '10:00',
+    suggestedRooms: [
+      {
+        name: 'Standard Beach Chalet',
+        description: 'Comfortable stone chalet steps from the water with private veranda and ensuite bath.',
+        priceMwk: 125000,
+        priceUsd: 75,
+        maxGuests: 2,
+        quantity: 4,
+        amenities: ['Ensuite bathroom', 'Veranda', 'Mosquito net', 'Ceiling fan'],
+      },
+    ],
+    contactPhone: '+265 888 234 567',
+  },
+  {
+    id: 'mango-drift',
+    name: 'Mango Drift Beach Lodge',
+    aliases: ['Mango Drift', 'Mango Drift Likoma'],
+    category: 'Adventure',
+    region: 'Likoma Island, Lake Malawi',
+    location: 'Mbuzi Beach, Likoma Island',
+    district: 'Likoma',
+    coordinates: { lat: -12.0712, lng: 34.7405 },
+    badge: 'Laid-back Island Beach Camp',
+    locationNotes: 'Situated on Mbuzi beach on the southern tip of Likoma. Boat transfer available from the harbor.',
+    description: 'A secluded beach hideaway shaded by ancient mango trees on Likoma Island. Offering beachfront chalets and a relaxed bar, Mango Drift is a favorite for travellers, divers, and lovers of untouched shores.',
+    summary: 'Relaxed beach retreat under the mango trees with white sands and calm swimming waters.',
+    amenities: ['Private beach', 'Lake view', 'Restaurant', 'Bar', 'Solar backup power', 'Boat trips'],
+    checkInTime: '14:00',
+    checkOutTime: '10:00',
+    suggestedRooms: [
+      {
+        name: 'Beachfront Chalet',
+        description: 'Rustic reed-and-stone chalet on the sand with private patio overlooking the lake.',
+        priceMwk: 95000,
+        priceUsd: 55,
+        maxGuests: 2,
+        quantity: 5,
+        amenities: ['Mosquito net', 'Veranda', 'Ensuite bathroom'],
+      },
+    ],
+  },
+
+  // Cape Maclear & Chembe (Lake Malawi National Park)
+  {
+    id: 'pumulani-lodge',
+    name: 'Pumulani Lodge',
+    aliases: ['Pumulani', 'Robin Pope Pumulani', 'Pumulani Lake Malawi'],
+    category: 'Luxury',
+    region: 'Cape Maclear, Lake Malawi',
+    location: 'Lake Malawi National Park, Cape Maclear',
+    district: 'Mangochi',
+    coordinates: { lat: -14.0245, lng: 34.8458 },
+    badge: 'Exclusive Hillside Luxury Villas',
+    locationNotes: 'Signposted turnoff near the entrance to Lake Malawi National Park. Tarred road to Monkey Bay, followed by unpaved scenic pass road to Cape Maclear.',
+    description: 'Perched gracefully on the granite hills of Lake Malawi National Park, Pumulani — meaning "Rest well" in Chichewa — is an exclusive luxury lodge offering ten architect-designed villas. Each villa features a spacious living area, master bedroom, and wrap-around deck overlooking the sparkling lake. Experience sunset sailing aboard a traditional wooden dhow, infinity pool lounging, birdwatching, and gourmet cuisine.',
+    summary: 'Ten exclusive luxury hillside villas with sweeping lake views, private beach access, infinity pool, and sunset dhow cruises.',
+    amenities: ['Lake view', 'Private beach', 'Swimming pool', 'Restaurant', 'Bar', 'Air conditioning', 'Solar backup power', 'Free WiFi', 'Boat trips', 'Ensuite bathroom', 'Hot water', 'Room service'],
+    checkInTime: '14:00',
+    checkOutTime: '11:00',
+    suggestedRooms: [
+      {
+        name: 'Luxury Hillside Villa',
+        description: 'Expansive private villa with separate lounge, master bedroom, and panoramic deck over Lake Malawi.',
+        priceMwk: 495000,
+        priceUsd: 285,
+        maxGuests: 2,
+        baseGuests: 2,
+        quantity: 8,
+        amenities: ['Ensuite bathroom', 'Air conditioning', 'Lake view', 'Private terrace', 'Minibar', 'Solar power'],
+      },
+      {
+        name: 'Family Hillside Villa',
+        description: 'Two-bedroom luxury villa with large living area, multiple bathrooms, and spacious lakeview sun deck.',
+        priceMwk: 790000,
+        priceUsd: 450,
+        maxGuests: 4,
+        baseGuests: 4,
+        quantity: 2,
+        amenities: ['Two bedrooms', 'Ensuite bathroom', 'Air conditioning', 'Lake view', 'Private terrace'],
+      },
+    ],
+    contactPhone: '+265 999 970 001',
+    contactEmail: 'info@robinpopesafaris.net',
+    contactWhatsapp: '+265 999 970 001',
+  },
+  {
+    id: 'chembe-eagles-nest',
+    name: 'Chembe Eagles Nest',
+    aliases: ['Chembe Eagles', 'Eagles Nest Cape Maclear'],
+    category: 'Lake & Beach',
+    region: 'Cape Maclear, Lake Malawi',
+    location: 'Chembe Village, Cape Maclear',
+    district: 'Mangochi',
+    coordinates: { lat: -14.0210, lng: 34.8490 },
+    badge: 'Lakeside Beachfront Resort',
+    locationNotes: 'Situated at the peaceful northern end of Chembe beach. Dedicated gated property with secure parking.',
+    description: 'Set on a private stretch of white sand at the edge of Lake Malawi National Park, Chembe Eagles Nest offers en-suite chalets with private patios just footsteps from the water. Enjoy sunset catamaran cruises, fresh lake fish, swimming, and chilled drinks beneath shady palms.',
+    summary: 'Peaceful beachfront chalets on Cape Maclear with catamaran sunset cruises, private beach, and freshwater pool.',
+    amenities: ['Lake view', 'Private beach', 'Swimming pool', 'Restaurant', 'Bar', 'Solar backup power', 'Free WiFi', 'Hot water', 'Boat trips', 'Secure parking', 'Mosquito nets'],
+    checkInTime: '14:00',
+    checkOutTime: '10:30',
+    suggestedRooms: [
+      {
+        name: 'Lakeside En-suite Chalet',
+        description: 'Air-cooled chalet with private veranda overlooking the lake, mosquito nets, and ensuite shower.',
+        priceMwk: 145000,
+        priceUsd: 85,
+        maxGuests: 2,
+        quantity: 11,
+        amenities: ['Ensuite bathroom', 'Lake view', 'Veranda', 'Mosquito net', 'Ceiling fan'],
+      },
+    ],
+    contactPhone: '+265 999 967 851',
+  },
+  {
+    id: 'norman-carr-cottage',
+    name: 'Norman Carr Cottage',
+    aliases: ['Norman Carr', 'Norman Carr Cottage Cape Maclear'],
+    category: 'Cottage & Chalet',
+    region: 'Cape Maclear, Lake Malawi',
+    location: 'Cape Maclear, Mangochi',
+    district: 'Mangochi',
+    coordinates: { lat: -14.0310, lng: 34.8560 },
+    badge: 'Boutique Lakeshore Cottage',
+    locationNotes: 'Located at the southern entrance of Cape Maclear. Signposted gate on the lakeside road.',
+    description: 'An intimate, family-run boutique lodge right on the beach in Cape Maclear. Named after legendary conservationist Norman Carr, the cottage is famous for its warm hospitality, exquisite home-cooked dinners on the beach, and tranquil lakeside atmosphere.',
+    summary: 'Intimate boutique lodge famed for beachfront candlelit dinners, comfortable chalets, and personal hospitality.',
+    amenities: ['Lake view', 'Private beach', 'Restaurant', 'Bar', 'Solar backup power', 'Free WiFi', 'Hot water', 'Breakfast included', 'Boat trips'],
+    checkInTime: '14:00',
+    checkOutTime: '10:00',
+    suggestedRooms: [
+      {
+        name: 'Courtyard Garden Chalet',
+        description: 'Charming chalet surrounded by tropical greenery with ensuite bath and ceiling fan.',
+        priceMwk: 160000,
+        priceUsd: 95,
+        maxGuests: 2,
+        quantity: 4,
+        amenities: ['Ensuite bathroom', 'Breakfast included', 'Mosquito net', 'Ceiling fan'],
+      },
+      {
+        name: 'Lakefront Executive Cottage',
+        description: 'Direct lakefront cottage with panoramic sunrise vistas, king bed, and private veranda on the sand.',
+        priceMwk: 220000,
+        priceUsd: 130,
+        maxGuests: 2,
+        quantity: 2,
+        amenities: ['Ensuite bathroom', 'Lake view', 'Breakfast included', 'Private veranda'],
+      },
+    ],
+    contactPhone: '+265 999 535 000',
+  },
+  {
+    id: 'thumbi-view-lodge',
+    name: 'Thumbi View Lodge',
+    aliases: ['Thumbi View', 'Thumbi Lodge'],
+    category: 'Lake & Beach',
+    region: 'Cape Maclear, Lake Malawi',
+    location: 'Chembe Village, Cape Maclear',
+    district: 'Mangochi',
+    coordinates: { lat: -14.0280, lng: 34.8530 },
+    badge: 'Lakeside Diving & Beach Lodge',
+    locationNotes: 'Central Chembe beach with views facing Thumbi West Island.',
+    description: 'Offering prime views of Thumbi Island, Thumbi View Lodge features an elevated swimming pool overlooking the lake, beachfront dining, on-site scuba diving, and comfortable air-conditioned chalets.',
+    summary: 'Lively beach lodge featuring swimming pool deck, PADI scuba diving center, and stunning island views.',
+    amenities: ['Lake view', 'Private beach', 'Swimming pool', 'Restaurant', 'Bar', 'Air conditioning', 'Free WiFi', 'Boat trips', 'Hot water'],
+    checkInTime: '14:00',
+    checkOutTime: '10:30',
+    suggestedRooms: [
+      {
+        name: 'Deluxe Lakeview Room',
+        description: 'Air-conditioned room with private balcony looking out to Thumbi Island.',
+        priceMwk: 120000,
+        priceUsd: 70,
+        maxGuests: 2,
+        quantity: 6,
+        amenities: ['Ensuite bathroom', 'Air conditioning', 'Lake view', 'Balcony'],
+      },
+    ],
+  },
+  {
+    id: 'gecko-lounge',
+    name: 'Gecko Lounge',
+    aliases: ['The Gecko Lounge', 'Gecko Cape Maclear'],
+    category: 'Lake & Beach',
+    region: 'Cape Maclear, Lake Malawi',
+    location: 'Chembe, Cape Maclear',
+    district: 'Mangochi',
+    coordinates: { lat: -14.0255, lng: 34.8510 },
+    badge: 'Beachfront Chalets & Bar',
+    locationNotes: 'Central beach location in Chembe, Cape Maclear.',
+    description: 'A relaxed beachfront lodge featuring spacious thatch-roofed chalets, shaded hammocks, an open-air restaurant serving freshly caught Lake Chambo, and sunset drinks right by the water.',
+    summary: 'Laid-back beach haven with thatched chalets, hammocks, fresh fish dining, and sunset lake views.',
+    amenities: ['Lake view', 'Private beach', 'Restaurant', 'Bar', 'Free WiFi', 'Backup power', 'Hot water'],
+    checkInTime: '14:00',
+    checkOutTime: '10:00',
+    suggestedRooms: [
+      {
+        name: 'Beachfront Thatched Chalet',
+        description: 'Spacious chalet steps from the lake with ensuite bathroom and private patio.',
+        priceMwk: 105000,
+        priceUsd: 60,
+        maxGuests: 2,
+        quantity: 5,
+        amenities: ['Ensuite bathroom', 'Lake view', 'Veranda', 'Mosquito net'],
+      },
+    ],
+  },
+  {
+    id: 'warm-heart-adventures',
+    name: 'Warm Heart Adventures Lodge',
+    aliases: ['Warm Heart Lodge', 'Warm Heart Cape Maclear'],
+    category: 'Bed & Breakfast',
+    region: 'Cape Maclear, Lake Malawi',
+    location: 'Cape Maclear, Mangochi',
+    district: 'Mangochi',
+    coordinates: { lat: -14.0230, lng: 34.8500 },
+    badge: 'Authentic Malawian Hospitality',
+    locationNotes: 'Near the northern village road, Cape Maclear.',
+    description: 'Locally founded and operated with true Malawian warmth, Warm Heart Adventures offers comfortable, authentic lakeside cottages, home-cooked local meals, and guided lake snorkeling excursions.',
+    summary: 'Community-rooted, welcoming B&B lodge providing genuine Malawian hospitality and guided island trips.',
+    amenities: ['Lake view', 'Beach access', 'Breakfast included', 'Restaurant', 'Solar backup power', 'Free WiFi', 'Boat trips'],
+    checkInTime: '13:00',
+    checkOutTime: '10:00',
+    suggestedRooms: [
+      {
+        name: 'Traditional Lake Cottage',
+        description: 'Ensuite cottage with breakfast included and authentic Malawian decor.',
+        priceMwk: 85000,
+        priceUsd: 50,
+        maxGuests: 2,
+        quantity: 4,
+        amenities: ['Ensuite bathroom', 'Breakfast included', 'Mosquito net'],
+      },
+    ],
+  },
+
+  // Mangochi & Southern Lakeshore
+  {
+    id: 'makokola-retreat',
+    name: 'The Makokola Retreat',
+    aliases: ['Club Makokola', 'Makokola', 'Makokola Resort'],
+    category: 'Luxury',
+    region: 'Mangochi, Lake Malawi',
+    location: 'Club Makokola, Mangochi, Lake Malawi',
+    district: 'Mangochi',
+    coordinates: { lat: -14.1833, lng: 35.1333 },
+    badge: 'Iconic Lakefront Resort & Spa',
+    locationNotes: 'Located along the M10 lakeshore highway north of Mangochi town. Private on-site airstrip available for direct flights.',
+    description: 'Spanning kilometers of manicured tropical gardens and brilliant white sandy shores, The Makokola Retreat is one of Malawi\'s premier luxury beach resorts. Features hand-carved stone and wood villas, an 18-hole golf course, expansive swimming pools, Lake Malawi cruises, tennis courts, and fine dining under the baobabs.',
+    summary: 'World-class lakeside resort with expansive private beaches, golf course, spa, swimming pools, and private airstrip.',
+    amenities: ['Lake view', 'Private beach', 'Swimming pool', 'Restaurant', 'Bar', 'Air conditioning', 'Backup power', 'Free WiFi', 'Spa', 'Gym', 'Airport transfer', 'Room service'],
+    checkInTime: '14:00',
+    checkOutTime: '11:00',
+    suggestedRooms: [
+      {
+        name: 'Lake Suite',
+        description: 'Elegantly furnished suite with hand-carved Malawian wood, private veranda, and direct beach lawn access.',
+        priceMwk: 395000,
+        priceUsd: 225,
+        maxGuests: 2,
+        quantity: 12,
+        amenities: ['Ensuite bathroom', 'Air conditioning', 'Lake view', 'Mini-fridge', 'Private terrace'],
+      },
+      {
+        name: 'Executive Beach Villa',
+        description: 'Spacious beachfront villa with panoramic lake views, master king suite, and private garden patio.',
+        priceMwk: 590000,
+        priceUsd: 340,
+        maxGuests: 2,
+        quantity: 4,
+        amenities: ['Ensuite bathroom', 'Air conditioning', 'Lake view', 'Mini-fridge', 'Room service'],
+      },
+    ],
+    contactPhone: '+265 1 580 469',
+    contactEmail: 'reservations@makokola.com',
+  },
+  {
+    id: 'sunbird-nkopola',
+    name: 'Sunbird Nkopola Lodge',
+    aliases: ['Nkopola Lodge', 'Sunbird Nkopola'],
+    category: 'Lake & Beach',
+    region: 'Mangochi, Lake Malawi',
+    location: 'Nkopola, Mangochi, Lake Malawi',
+    district: 'Mangochi',
+    coordinates: { lat: -14.3012, lng: 35.1558 },
+    badge: 'Classic Beachfront Resort',
+    locationNotes: '24km north of Mangochi town along the M10 lakeshore highway.',
+    description: 'Set between lush hills and golden sandy beaches, Sunbird Nkopola is a favorite family and leisure resort. Offers water sports, boat safaris, tennis, beach volleyball, and an open-air restaurant overlooking the lake.',
+    summary: 'Family-friendly lakeside hotel with golden beaches, water sports, and comfortable air-conditioned rooms.',
+    amenities: ['Lake view', 'Private beach', 'Swimming pool', 'Restaurant', 'Bar', 'Air conditioning', 'Backup power', 'Free WiFi', 'Conference room', 'Secure parking'],
+    checkInTime: '14:00',
+    checkOutTime: '11:00',
+    suggestedRooms: [
+      {
+        name: 'Superior Lakeview Room',
+        description: 'Modern hotel room with air conditioning, private balcony, and sunrise views across Lake Malawi.',
+        priceMwk: 185000,
+        priceUsd: 110,
+        maxGuests: 2,
+        quantity: 20,
+        amenities: ['Ensuite bathroom', 'Air conditioning', 'Lake view', 'Free WiFi', 'Work desk'],
+      },
+    ],
+    contactPhone: '+265 1 580 444',
+  },
+  {
+    id: 'boadzulu-lakeside',
+    name: 'Boadzulu Lakeside Resort',
+    aliases: ['Boadzulu Resort', 'Boadzulu Lodge'],
+    category: 'Lake & Beach',
+    region: 'Mangochi, Lake Malawi',
+    location: 'Mangochi, Lake Malawi',
+    district: 'Mangochi',
+    coordinates: { lat: -14.2500, lng: 35.1450 },
+    badge: 'Scenic Lakeshore Resort',
+    locationNotes: 'North of Mangochi on the lakeshore road, facing Boadzulu Island.',
+    description: 'A peaceful lakeside resort offering comfortable family chalets, private sandy beach frontage, and stunning views of birdlife on Boadzulu Island.',
+    summary: 'Tranquil beach resort with gentle waters, family chalets, and views of Boadzulu Island bird sanctuaries.',
+    amenities: ['Lake view', 'Private beach', 'Restaurant', 'Bar', 'Swimming pool', 'Backup power', 'Free WiFi'],
+    checkInTime: '14:00',
+    checkOutTime: '10:00',
+    suggestedRooms: [
+      {
+        name: 'Executive Lakeview Chalet',
+        description: 'Ensuite beachfront chalet with ceiling fan and private veranda.',
+        priceMwk: 135000,
+        priceUsd: 80,
+        maxGuests: 2,
+        quantity: 8,
+        amenities: ['Ensuite bathroom', 'Lake view', 'Veranda'],
+      },
+    ],
+  },
+  {
+    id: 'zaburi-beach',
+    name: 'Zaburi Beach Resort',
+    aliases: ['Zaburi Resort', 'Zaburi Lodge Mangochi'],
+    category: 'Lake & Beach',
+    region: 'Mangochi, Lake Malawi',
+    location: 'Mangochi, Lake Malawi',
+    district: 'Mangochi',
+    coordinates: { lat: -14.2800, lng: 35.1500 },
+    badge: 'Private Beach Resort',
+    locationNotes: 'Along the M10 lakeshore highway, Mangochi.',
+    description: 'Boasting a wide private beach and beautifully landscaped lawns, Zaburi Beach Resort offers relaxing beach chalets, conference facilities, and outdoor dining.',
+    summary: 'Expansive private beach with tranquil lakefront chalets and conference facilities.',
+    amenities: ['Lake view', 'Private beach', 'Restaurant', 'Bar', 'Air conditioning', 'Backup power', 'Conference room'],
+    checkInTime: '14:00',
+    checkOutTime: '10:30',
+    suggestedRooms: [
+      {
+        name: 'Deluxe Beach Chalet',
+        description: 'Air-conditioned chalet on the beach with private patio and lake views.',
+        priceMwk: 155000,
+        priceUsd: 90,
+        maxGuests: 2,
+        quantity: 10,
+        amenities: ['Ensuite bathroom', 'Air conditioning', 'Lake view'],
+      },
+    ],
+  },
+
+  // Senga Bay & Salima (Central Lakeshore)
+  {
+    id: 'sunbird-livingstonia',
+    name: 'Sunbird Livingstonia Beach',
+    aliases: ['Livingstonia Beach Hotel', 'Sunbird Livingstonia', 'Livingstonia Beach'],
+    category: 'Lake & Beach',
+    region: 'Senga Bay, Salima',
+    location: 'Senga Bay, Salima, Lake Malawi',
+    district: 'Salima',
+    coordinates: { lat: -13.7245, lng: 34.6225 },
+    badge: 'Historic Lakeshore Beach Hotel',
+    locationNotes: 'Only 1.5 hours drive from Lilongwe on the paved M5/M14 highway. Direct beachfront entrance in Senga Bay.',
+    description: 'The closest Lake Malawi beach hotel to Lilongwe, Sunbird Livingstonia Beach has hosted travellers for decades. Set amidst mature tropical gardens on a long white beach, it offers ocean-style lake breakers, swimming pools, open-air dining with fresh Chambo, and conference facilities.',
+    summary: 'Classic resort on Senga Bay beach just 90 minutes from Lilongwe, with beachfront rooms, pools, and fresh fish dining.',
+    amenities: ['Lake view', 'Private beach', 'Swimming pool', 'Restaurant', 'Bar', 'Air conditioning', 'Backup power', 'Free WiFi', 'Conference room', 'Secure parking'],
+    checkInTime: '14:00',
+    checkOutTime: '11:00',
+    suggestedRooms: [
+      {
+        name: 'Deluxe Beachfront Room',
+        description: 'Spacious air-conditioned room opening out to the beach with private terrace and lake views.',
+        priceMwk: 195000,
+        priceUsd: 115,
+        maxGuests: 2,
+        quantity: 18,
+        amenities: ['Ensuite bathroom', 'Air conditioning', 'Lake view', 'Free WiFi', 'Mini-fridge'],
+      },
+    ],
+    contactPhone: '+265 1 263 222',
+    contactEmail: 'livingstonia@sunbirdmalawi.com',
+  },
+  {
+    id: 'blue-zebra-island',
+    name: 'Blue Zebra Island Lodge',
+    aliases: ['Blue Zebra', 'Blue Zebra Lodge', 'Nankoma Island Lodge'],
+    category: 'Luxury',
+    region: 'Salima, Lake Malawi',
+    location: 'Nankoma Island, Marelli Archipelago, Salima',
+    district: 'Salima',
+    coordinates: { lat: -13.8863, lng: 34.6086 },
+    badge: 'Private Island Eco-Luxury Lodge',
+    locationNotes: 'Accessible via a 20-minute scenic boat transfer from the mainland reception in Salima. Free secure parking on the mainland.',
+    description: 'An exclusive luxury eco-lodge tucked away on uninhabited Nankoma Island in Lake Malawi National Park. Safari-style tented chalets overlook crystal-clear waters populated with colorful cichlid fish. Enjoy infinity pool views, kayaking around the archipelago, birdwatching trails, and candlelit island dinners.',
+    summary: 'Exclusive private island retreat in the Marelli Archipelago with luxury safari tented suites, infinity pool, and birding trails.',
+    amenities: ['Lake view', 'Private beach', 'Swimming pool', 'Restaurant', 'Bar', 'Solar backup power', 'Free WiFi', 'Boat trips', 'Ensuite bathroom', 'Hot water'],
+    checkInTime: '14:00',
+    checkOutTime: '11:00',
+    suggestedRooms: [
+      {
+        name: 'Executive Safari Island Chalet',
+        description: 'Canvas-and-stone chalet on wooden stilts over the water with king bed, open-air bathroom, and private deck.',
+        priceMwk: 460000,
+        priceUsd: 265,
+        maxGuests: 2,
+        quantity: 8,
+        amenities: ['Ensuite bathroom', 'Lake view', 'Private deck', 'Solar power', 'Mosquito net'],
+      },
+    ],
+    contactPhone: '+265 992 244 456',
+    contactEmail: 'info@bluezebra.mw',
+  },
+  {
+    id: 'safari-beach-lodge',
+    name: 'Safari Beach Lodge',
+    aliases: ['Safari Beach Senga Bay', 'Safari Beach'],
+    category: 'Lake & Beach',
+    region: 'Senga Bay, Salima',
+    location: 'Senga Bay, Salima',
+    district: 'Salima',
+    coordinates: { lat: -13.7280, lng: 34.6210 },
+    badge: 'Secluded Forest & Beach Lodge',
+    locationNotes: 'South end of Senga Bay, nestled on a forested rocky promontory.',
+    description: 'Surrounded by secluded forest and rocky bays, Safari Beach Lodge offers comfortable lakeview chalets, a private swimming pool, monkeys in the trees, and peaceful shoreline dining.',
+    summary: 'Peaceful wooded promontory lodge with lakeview gazebos, pool, and secluded sandy beach.',
+    amenities: ['Lake view', 'Private beach', 'Swimming pool', 'Restaurant', 'Bar', 'Free WiFi', 'Backup power'],
+    checkInTime: '14:00',
+    checkOutTime: '10:00',
+    suggestedRooms: [
+      {
+        name: 'Lakeview Gazebo Chalet',
+        description: 'Chalet perched on the rock face with sweeping views over Senga Bay.',
+        priceMwk: 130000,
+        priceUsd: 75,
+        maxGuests: 2,
+        quantity: 6,
+        amenities: ['Ensuite bathroom', 'Lake view', 'Veranda'],
+      },
+    ],
+  },
+  {
+    id: 'cool-runnings',
+    name: 'Cool Runnings',
+    aliases: ['Cool Runnings Guesthouse', 'Cool Runnings Senga Bay'],
+    category: 'Bed & Breakfast',
+    region: 'Senga Bay, Salima',
+    location: 'Senga Bay, Salima',
+    district: 'Salima',
+    coordinates: { lat: -13.7295, lng: 34.6240 },
+    badge: 'Beachfront Community B&B',
+    locationNotes: 'Direct beachfront guesthouse in Senga Bay village.',
+    description: 'A charming eco-friendly beachfront guesthouse known for its lush green gardens, great home-cooked food, community involvement, and warm hospitality right on the lake.',
+    summary: 'Charming beachfront guesthouse with lush gardens, hammocks, and authentic community hospitality.',
+    amenities: ['Lake view', 'Beach access', 'Breakfast included', 'Restaurant', 'Free WiFi', 'Hot water'],
+    checkInTime: '13:00',
+    checkOutTime: '10:00',
+    suggestedRooms: [
+      {
+        name: 'Garden Beach Room',
+        description: 'Cozy en-suite room in lush beachfront gardens with breakfast included.',
+        priceMwk: 85000,
+        priceUsd: 50,
+        maxGuests: 2,
+        quantity: 5,
+        amenities: ['Ensuite bathroom', 'Breakfast included', 'Mosquito net'],
+      },
+    ],
+  },
+
+  // Nkhata Bay & Chintheche (Northern Lakeshore)
+  {
+    id: 'mayoka-village',
+    name: 'Mayoka Village',
+    aliases: ['Mayoka', 'Mayoka Lodge Nkhata Bay', 'Mayoka Village Lodge'],
+    category: 'Lake & Beach',
+    region: 'Nkhata Bay, Lake Malawi',
+    location: 'Nkhata Bay, Lake Malawi',
+    district: 'Nkhata Bay',
+    coordinates: { lat: -11.6015, lng: 34.3032 },
+    badge: 'Iconic Cliffside Lakeside Lodge',
+    locationNotes: 'Located 1.5 km out of Nkhata Bay town along the lake path. Signposted turnoff from the main road with secure parking.',
+    description: 'Clinging dramatically to the green cliffs of Nkhata Bay, Mayoka Village is world-famous for its colorful terraced stone chalets, clear waters, and vibrant atmosphere. Swim or kayak directly from wooden decks over the water, savor wood-fired pizza and fresh lake Chambo, and enjoy stunning sunrises over the lake.',
+    summary: 'Legendary cliffside lodge with terraced stone chalets, water-level sun decks, free kayaks, and lively social dining.',
+    amenities: ['Lake view', 'Restaurant', 'Bar', 'Free WiFi', 'Solar backup power', 'Hot water', 'Boat trips', 'Ensuite bathroom'],
+    checkInTime: '13:00',
+    checkOutTime: '10:30',
+    suggestedRooms: [
+      {
+        name: 'Cliffside En-suite Chalet',
+        description: 'Stone and timber chalet built into the rocks with private balcony directly overlooking the lake.',
+        priceMwk: 110000,
+        priceUsd: 65,
+        maxGuests: 2,
+        quantity: 10,
+        amenities: ['Ensuite bathroom', 'Lake view', 'Balcony', 'Ceiling fan', 'Mosquito net'],
+      },
+      {
+        name: 'Executive Lakeview Cottage',
+        description: 'Private cottage on upper terrace with panoramic views across Nkhata Bay and king bed.',
+        priceMwk: 175000,
+        priceUsd: 100,
+        maxGuests: 2,
+        quantity: 3,
+        amenities: ['Ensuite bathroom', 'Lake view', 'Private terrace', 'Coffee maker'],
+      },
+    ],
+    contactPhone: '+265 999 289 891',
+    contactEmail: 'info@mayokavillage.com',
+  },
+  {
+    id: 'butterfly-space',
+    name: 'Butterfly Space',
+    aliases: ['Butterfly Space Eco Lodge', 'Butterfly Space Nkhata Bay'],
+    category: 'Adventure',
+    region: 'Nkhata Bay, Lake Malawi',
+    location: 'Nkhata Bay, Lake Malawi',
+    district: 'Nkhata Bay',
+    coordinates: { lat: -11.6080, lng: 34.2980 },
+    badge: 'Non-profit Eco-Lodge & Cultural Space',
+    locationNotes: 'Just outside Nkhata Bay town on the forested lakeside cliff.',
+    description: 'A non-profit community eco-lodge nestled in cliffside indigenous forest. Offers eco-chalets, direct lake swimming, community projects, and a peaceful green retreat.',
+    summary: 'Forest eco-lodge supporting community projects with direct lake access and cliffside nature trails.',
+    amenities: ['Lake view', 'Restaurant', 'Bar', 'Free WiFi', 'Solar backup power'],
+    checkInTime: '13:00',
+    checkOutTime: '10:00',
+    suggestedRooms: [
+      {
+        name: 'Forest Eco-Chalet',
+        description: 'Handcrafted timber chalet tucked into the trees with private lakeview deck.',
+        priceMwk: 75000,
+        priceUsd: 45,
+        maxGuests: 2,
+        quantity: 6,
+        amenities: ['Mosquito net', 'Deck', 'Ensuite bathroom'],
+      },
+    ],
+  },
+  {
+    id: 'chintheche-inn',
+    name: 'Chintheche Inn',
+    aliases: ['Chintheche', 'Robin Pope Chintheche'],
+    category: 'Lake & Beach',
+    region: 'Chintheche, Lake Malawi',
+    location: 'Chintheche, Nkhata Bay District',
+    district: 'Nkhata Bay',
+    coordinates: { lat: -11.8333, lng: 34.1667 },
+    badge: 'White Sand Beachfront Inn',
+    locationNotes: '40km south of Nkhata Bay along the M5 lakeshore highway.',
+    description: 'Fronting what is widely considered the finest white sand beach on Lake Malawi, Chintheche Inn features comfortable beachfront rooms set within expansive gardens of grand acacias and wild figs. Enjoy paddle boarding, birdwatching, and beach dining.',
+    summary: 'Premier lakeshore inn on miles of pristine white sand beach with mature gardens and crystal-clear swimming.',
+    amenities: ['Lake view', 'Private beach', 'Swimming pool', 'Restaurant', 'Bar', 'Free WiFi', 'Backup power', 'Hot water', 'Ensuite bathroom'],
+    checkInTime: '14:00',
+    checkOutTime: '11:00',
+    suggestedRooms: [
+      {
+        name: 'Beachfront Garden Room',
+        description: 'Ensuite room with veranda opening directly onto the soft white sands of Lake Malawi.',
+        priceMwk: 245000,
+        priceUsd: 140,
+        maxGuests: 2,
+        quantity: 10,
+        amenities: ['Ensuite bathroom', 'Lake view', 'Veranda', 'Ceiling fan'],
+      },
+    ],
+  },
+  {
+    id: 'makuzi-beach',
+    name: 'Makuzi Beach Lodge',
+    aliases: ['Makuzi Beach', 'Makuzi Lodge'],
+    category: 'Lake & Beach',
+    region: 'Chintheche, Lake Malawi',
+    location: 'Chintheche, Lake Malawi',
+    district: 'Nkhata Bay',
+    coordinates: { lat: -11.8700, lng: 34.1800 },
+    badge: 'Secluded Private Bay Retreat',
+    locationNotes: 'South of Chintheche, signposted turnoff from the M5 highway.',
+    description: 'Overlooking a completely private secluded bay, Makuzi Beach Lodge features comfortable thatched chalets nestled in tropical gardens, calm cichlid-filled waters, and exceptional local cuisine.',
+    summary: 'Secluded private bay with thatched beachfront chalets, warm hospitality, and safe calm swimming.',
+    amenities: ['Lake view', 'Private beach', 'Restaurant', 'Bar', 'Solar backup power', 'Free WiFi', 'Hot water'],
+    checkInTime: '14:00',
+    checkOutTime: '10:30',
+    suggestedRooms: [
+      {
+        name: 'Thatched Lake Chalet',
+        description: 'Individually built thatched chalet steps from the bay with private veranda.',
+        priceMwk: 175000,
+        priceUsd: 100,
+        maxGuests: 2,
+        quantity: 8,
+        amenities: ['Ensuite bathroom', 'Lake view', 'Veranda', 'Mosquito net'],
+      },
+    ],
+  },
+  {
+    id: 'kande-beach',
+    name: 'Kande Beach Lodge',
+    aliases: ['Kande Beach', 'Kande Lodge'],
+    category: 'Adventure',
+    region: 'Kande, Lake Malawi',
+    location: 'Kande, Nkhata Bay District',
+    district: 'Nkhata Bay',
+    coordinates: { lat: -11.9542, lng: 34.1205 },
+    badge: 'Adventure & Horse Riding Beach Stay',
+    locationNotes: 'Located off the M5 highway between Chintheche and Dwangwa.',
+    description: 'Renowned for its expansive golden beach, beach horse riding excursions, water sports, and beach bar, Kande Beach provides en-suite chalets and campsites on the northern lake.',
+    summary: 'Expansive golden beach lodge offering beach horse-riding, water sports, and chalets.',
+    amenities: ['Lake view', 'Beach access', 'Restaurant', 'Bar', 'Free WiFi', 'Secure parking'],
+    checkInTime: '13:00',
+    checkOutTime: '10:00',
+    suggestedRooms: [
+      {
+        name: 'Beach Chalet',
+        description: 'Comfortable ensuite chalet with private patio near the beach.',
+        priceMwk: 95000,
+        priceUsd: 55,
+        maxGuests: 2,
+        quantity: 6,
+        amenities: ['Ensuite bathroom', 'Mosquito net'],
+      },
+    ],
+  },
+
+  // Wildlife Reserves (Liwonde, Majete, Nyika, Nkhotakota)
+  {
+    id: 'mvuu-camp',
+    name: 'Mvuu Camp & Lodge',
+    aliases: ['Mvuu Lodge', 'Mvuu Camp', 'Mvuu Liwonde', 'Wilderness Mvuu'],
+    category: 'Safari & Wildlife',
+    region: 'Liwonde National Park',
+    location: 'Liwonde National Park, Shire River',
+    district: 'Machinga',
+    coordinates: { lat: -14.8512, lng: 35.2891 },
+    badge: 'Premier Big Five Safari Lodge',
+    locationNotes: 'Inside Liwonde National Park on the Shire River. Boat transfer across the river from the park gate or road access.',
+    description: 'Situated on the banks of the Shire River in Liwonde National Park, Mvuu ("Hippo" in Chichewa) is Malawi\'s premier wildlife sanctuary lodge. Guests experience thrilling boat safaris among huge pods of hippos and bathing elephants, 4x4 open vehicle game drives tracking black rhinos, cheetahs, and lions, and guided bush walks with expert Malawian trackers.',
+    summary: 'Legendary wildlife lodge on the Shire River in Liwonde National Park, offering boat safaris, rhino tracking, and luxury tented chalets.',
+    amenities: ['Safari game drives', 'Boat trips', 'Swimming pool', 'Restaurant', 'Bar', 'Solar backup power', 'Mosquito nets', 'Ensuite bathroom', 'Hot water'],
+    checkInTime: '14:00',
+    checkOutTime: '10:00',
+    suggestedRooms: [
+      {
+        name: 'Riverview Safari Chalet (Camp)',
+        description: 'Spacious stone-and-canvas chalet overlooking the Shire River and lagoon with private veranda.',
+        priceMwk: 295000,
+        priceUsd: 170,
+        maxGuests: 2,
+        quantity: 12,
+        amenities: ['Ensuite bathroom', 'River view', 'Veranda', 'Mosquito net', 'Solar hot water'],
+      },
+      {
+        name: 'Luxury Tented Suite (Lodge)',
+        description: 'Elevated luxury tent with viewing deck over the lagoon, private plunge pool, and gourmet dining included.',
+        priceMwk: 580000,
+        priceUsd: 330,
+        maxGuests: 2,
+        quantity: 8,
+        amenities: ['Ensuite bathroom', 'River view', 'Plunge pool', 'All-inclusive meals'],
+      },
+    ],
+    contactPhone: '+265 1 771 393',
+    contactEmail: 'info@cawm.mw',
+  },
+  {
+    id: 'kuthengo-camp',
+    name: 'Kuthengo Camp',
+    aliases: ['Kuthengo', 'Robin Pope Kuthengo'],
+    category: 'Luxury',
+    region: 'Liwonde National Park',
+    location: 'Liwonde National Park',
+    district: 'Machinga',
+    coordinates: { lat: -14.9350, lng: 35.2510 },
+    badge: 'Intimate Luxury River Safari Camp',
+    locationNotes: 'Located in an open plain on the banks of the Shire River within Liwonde National Park.',
+    description: 'An intimate, luxurious safari camp with just four spacious tented chalets pitched along a sweeping curve of the Shire River. Features open-air en-suite bathrooms, private verandas, and personalized game drives and boat cruises.',
+    summary: 'Four secluded luxury safari tents on the Shire River with open-air stone bathrooms and personalized wildlife guiding.',
+    amenities: ['Safari game drives', 'Boat trips', 'Restaurant', 'Bar', 'Solar backup power', 'Ensuite bathroom', 'Hot water'],
+    checkInTime: '14:00',
+    checkOutTime: '10:30',
+    suggestedRooms: [
+      {
+        name: 'Luxury River Safari Tent',
+        description: 'Canvas safari tent with open-air bathtub overlooking the river, king bed, and private deck.',
+        priceMwk: 540000,
+        priceUsd: 310,
+        maxGuests: 2,
+        quantity: 4,
+        amenities: ['Ensuite bathroom', 'River view', 'Deck', 'Mosquito net'],
+      },
+    ],
+  },
+  {
+    id: 'mkulumadzi-lodge',
+    name: 'Mkulumadzi Lodge',
+    aliases: ['Mkulumadzi', 'Robin Pope Mkulumadzi', 'Majete Mkulumadzi'],
+    category: 'Luxury',
+    region: 'Majete Wildlife Reserve',
+    location: 'Majete Wildlife Reserve, Chikwawa',
+    district: 'Chikwawa',
+    coordinates: { lat: -15.9167, lng: 34.7500 },
+    badge: 'Premier Big Five Wilderness Lodge',
+    locationNotes: 'Within Majete Wildlife Reserve, accessed via footbridge over the Mkulumadzi River.',
+    description: 'Set on the banks of the Shire River in the heart of Majete Wildlife Reserve, Mkulumadzi combines chic contemporary luxury with untamed wilderness. Eight spacious chalets feature private viewing decks, solar cooling, and sunken baths with vistas into the river rapids.',
+    summary: 'Eight chic luxury riverfront chalets in Majete Big Five reserve, with sunken bathtubs, private decks, and river cruises.',
+    amenities: ['Safari game drives', 'Swimming pool', 'Restaurant', 'Bar', 'Solar backup power', 'Free WiFi', 'Ensuite bathroom', 'Hot water'],
+    checkInTime: '14:00',
+    checkOutTime: '11:00',
+    suggestedRooms: [
+      {
+        name: 'Luxury River Chalet',
+        description: 'Chic bush chalet with floor-to-ceiling river views, private deck, and sunken open-air tub.',
+        priceMwk: 590000,
+        priceUsd: 340,
+        maxGuests: 2,
+        quantity: 8,
+        amenities: ['Ensuite bathroom', 'River view', 'Deck', 'Solar cooling'],
+      },
+    ],
+  },
+  {
+    id: 'thawale-camp',
+    name: 'Thawale Camp',
+    aliases: ['Thawale', 'Majete Thawale Camp'],
+    category: 'Safari & Wildlife',
+    region: 'Majete Wildlife Reserve',
+    location: 'Majete Wildlife Reserve, Chikwawa',
+    district: 'Chikwawa',
+    coordinates: { lat: -15.9250, lng: 34.7600 },
+    badge: 'Classic Waterhole Safari Camp',
+    locationNotes: 'Inside the main gate of Majete Wildlife Reserve, built around a floodlit waterhole.',
+    description: 'Built directly around a busy natural waterhole frequented by elephants, buffalo, and waterbucks, Thawale Camp offers comfortable tented chalets and an elevated dining lapa with continuous wildlife viewing.',
+    summary: 'Tented safari camp overlooking a floodlit waterhole frequented by elephants and game.',
+    amenities: ['Safari game drives', 'Restaurant', 'Bar', 'Solar backup power', 'Hot water', 'Ensuite bathroom'],
+    checkInTime: '14:00',
+    checkOutTime: '10:00',
+    suggestedRooms: [
+      {
+        name: 'Waterhole Tented Chalet',
+        description: 'Canvas chalet on wooden deck with ensuite bath and view directly into the active game waterhole.',
+        priceMwk: 245000,
+        priceUsd: 140,
+        maxGuests: 2,
+        quantity: 6,
+        amenities: ['Ensuite bathroom', 'Waterhole view', 'Deck', 'Mosquito net'],
+      },
+    ],
+  },
+  {
+    id: 'chelinda-lodge',
+    name: 'Chelinda Lodge',
+    aliases: ['Chelinda', 'Nyika Chelinda', 'Chelinda Lodge Nyika'],
+    category: 'Safari & Wildlife',
+    region: 'Nyika National Park',
+    location: 'Nyika National Park, Rumphi',
+    district: 'Rumphi',
+    coordinates: { lat: -10.5847, lng: 33.8053 },
+    badge: 'Highland Pine Log Cabins',
+    locationNotes: 'High on the Nyika Plateau at 2,200m elevation. 4x4 vehicle required for the mountain ascent.',
+    description: 'Nestled in a pine forest on the edge of the high Nyika montane plateau, Chelinda Lodge features double-storey pine log cabins with working stone fireplaces, private viewing decks, and gourmet cuisine. Experience mountain biking across rolling grasslands, leopard tracking, and endemic birding.',
+    summary: 'Double-storey pine log cabins with log fireplaces overlooking the sweeping montane grasslands of Nyika Plateau.',
+    amenities: ['Fireplace', 'Mountain view', 'Restaurant', 'Bar', 'Solar backup power', 'Hot water', 'Safari game drives', 'Ensuite bathroom'],
+    checkInTime: '14:00',
+    checkOutTime: '10:30',
+    suggestedRooms: [
+      {
+        name: 'Double-Storey Pine Log Cabin',
+        description: 'Two-level log cabin with upstairs bedroom, ground-floor living area, log fireplace, and ensuite bathroom.',
+        priceMwk: 395000,
+        priceUsd: 225,
+        maxGuests: 2,
+        quantity: 8,
+        amenities: ['Ensuite bathroom', 'Fireplace', 'Mountain view', 'Veranda'],
+      },
+    ],
+  },
+  {
+    id: 'tongole-wilderness',
+    name: 'Tongole Wilderness Retreat',
+    aliases: ['Tongole', 'Tongole Lodge Nkhotakota'],
+    category: 'Luxury',
+    region: 'Nkhotakota Wildlife Reserve',
+    location: 'Nkhotakota Wildlife Reserve, Bua River',
+    district: 'Nkhotakota',
+    coordinates: { lat: -12.9830, lng: 34.0520 },
+    badge: 'Eco-Luxury Forest River Retreat',
+    locationNotes: 'Located inside Nkhotakota Wildlife Reserve on the Bua River. 30 km west of Nkhotakota town.',
+    description: 'An exceptional eco-luxury retreat overlooking the wild Bua River in Nkhotakota Reserve. Open-fronted suites constructed from local stone and timber feature sunken bathtubs, private decks, and immersive wilderness serenity.',
+    summary: 'Exclusive eco-luxury retreat above the rapids of the Bua River with open-fronted river suites.',
+    amenities: ['River view', 'Swimming pool', 'Restaurant', 'Bar', 'Solar backup power', 'Hot water', 'Safari game drives'],
+    checkInTime: '14:00',
+    checkOutTime: '11:00',
+    suggestedRooms: [
+      {
+        name: 'Open-Fronted River Suite',
+        description: 'Luxury suite high above the river with sunken stone bath, private viewing deck, and king bed.',
+        priceMwk: 490000,
+        priceUsd: 280,
+        maxGuests: 2,
+        quantity: 5,
+        amenities: ['Ensuite bathroom', 'River view', 'Deck', 'Sunken bath'],
+      },
+    ],
+  },
+
+  // Highlands & Mountains (Zomba, Mulanje, Thyolo, Viphya)
+  {
+    id: 'sunbird-ku-chawe',
+    name: 'Sunbird Ku Chawe',
+    aliases: ['Ku Chawe Inn', 'Sunbird Ku Chawe Inn', 'Ku Chawe Zomba'],
+    category: 'Romantic Escape',
+    region: 'Zomba Plateau',
+    location: 'Zomba Plateau, Zomba',
+    district: 'Zomba',
+    coordinates: { lat: -15.3642, lng: 35.3048 },
+    badge: 'Mountain Rim Inn & Gardens',
+    locationNotes: 'Perched on the rim of Zomba Plateau, 10 km up the scenic mountain road from Zomba town.',
+    description: 'Built dramatically on the edge of the Zomba Plateau rim, Sunbird Ku Chawe commands dizzying panoramic views over the old colonial capital and the Shire Valley below. Beautiful terraced gardens, crisp pine mountain air, cozy fireplaces, and hiking trails to waterfalls.',
+    summary: 'Historic mountain inn perched on the rim of Zomba Plateau with terraced gardens and log fireplaces.',
+    amenities: ['Mountain view', 'Fireplace', 'Restaurant', 'Bar', 'Free WiFi', 'Backup power', 'Hot water', 'Conference room', 'Secure parking'],
+    checkInTime: '14:00',
+    checkOutTime: '11:00',
+    suggestedRooms: [
+      {
+        name: 'Plateau Rim Deluxe Room',
+        description: 'Cozy room with working log fireplace, private balcony overlooking the valley, and ensuite bath.',
+        priceMwk: 175000,
+        priceUsd: 100,
+        maxGuests: 2,
+        quantity: 16,
+        amenities: ['Ensuite bathroom', 'Fireplace', 'Mountain view', 'Balcony', 'Free WiFi'],
+      },
+    ],
+  },
+  {
+    id: 'zomba-forest-lodge',
+    name: 'Zomba Forest Lodge',
+    aliases: ['Zomba Forest', 'ZFL'],
+    category: 'Cottage & Chalet',
+    region: 'Zomba Plateau',
+    location: 'Zomba Plateau, Zomba',
+    district: 'Zomba',
+    coordinates: { lat: -15.3520, lng: 35.2980 },
+    badge: 'Off-grid Boutique Forest Retreat',
+    locationNotes: 'Deep in the pine and indigenous forest on Zomba Plateau. High-clearance vehicle recommended.',
+    description: 'An intimate, off-grid eco-lodge with just four cozy rooms in the heart of Zomba Plateau\'s forest. Renowned across Malawi for its phenomenal multi-course candlelit dinners, lush gardens, berry picking, and complete peaceful seclusion.',
+    summary: 'Intimate four-room off-grid forest cottage renowned for exceptional candlelit cuisine and tranquil woods.',
+    amenities: ['Fireplace', 'Mountain view', 'Breakfast included', 'Restaurant', 'Hot water', 'Hiking trails'],
+    checkInTime: '14:00',
+    checkOutTime: '10:00',
+    suggestedRooms: [
+      {
+        name: 'Forest Cottage Room',
+        description: 'Charming ensuite room with garden views and all gourmet meals included.',
+        priceMwk: 220000,
+        priceUsd: 130,
+        maxGuests: 2,
+        quantity: 4,
+        amenities: ['Ensuite bathroom', 'Breakfast included', 'Dinner included'],
+      },
+    ],
+  },
+  {
+    id: 'huntingdon-house',
+    name: 'Huntingdon House',
+    aliases: ['Satemwa Tea Estate', 'Huntingdon House Satemwa', 'Satemwa'],
+    category: 'Luxury',
+    region: 'Thyolo, Southern Highlands',
+    location: 'Satemwa Tea Estate, Thyolo',
+    district: 'Thyolo',
+    coordinates: { lat: -16.0240, lng: 35.1480 },
+    badge: 'Colonial Tea Estate Heritage Luxury',
+    locationNotes: 'Inside Satemwa Tea Estate, 45 minutes scenic drive south of Blantyre via the Thyolo road.',
+    description: 'Built in the 1930s on Malawi\'s oldest commercial tea estate, Huntingdon House offers timeless colonial luxury surrounded by rolling emerald tea fields. Five bespoke heritage suites, private tea tastings, croquet lawns, and farm-to-table cuisine.',
+    summary: 'Historic 1930s colonial tea estate manor house with bespoke suites, private tea tastings, and garden verandas.',
+    amenities: ['Fireplace', 'Breakfast included', 'Restaurant', 'Bar', 'Free WiFi', 'Backup power', 'Hot water', 'Garden view', 'Ensuite bathroom'],
+    checkInTime: '14:00',
+    checkOutTime: '11:00',
+    suggestedRooms: [
+      {
+        name: 'Planter\'s Heritage Suite',
+        description: 'Bespoke antique suite with claw-foot tub, private veranda looking onto the tea fields, and log fireplace.',
+        priceMwk: 380000,
+        priceUsd: 220,
+        maxGuests: 2,
+        quantity: 5,
+        amenities: ['Ensuite bathroom', 'Fireplace', 'Breakfast included', 'Garden view'],
+      },
+    ],
+  },
+  {
+    id: 'game-haven-lodge',
+    name: 'Game Haven Lodge',
+    aliases: ['Game Haven', 'Chimwenya Game Park'],
+    category: 'Family',
+    region: 'Thyolo / Blantyre',
+    location: 'Chimwenya Game Park, Bvumbwe, Thyolo',
+    district: 'Thyolo',
+    coordinates: { lat: -15.9520, lng: 35.1215 },
+    badge: 'Private Wildlife & Golf Sanctuary',
+    locationNotes: '25 minutes drive from Blantyre city centre towards Bvumbwe.',
+    description: 'Located in a private 500-acre game park, Game Haven combines giraffe, zebra, and antelope viewing with a 9-hole golf course, swimming pool, fishing, and luxury cottages.',
+    summary: 'Family-friendly game lodge and golf resort with giraffe and antelope viewing just outside Blantyre.',
+    amenities: ['Safari game drives', 'Swimming pool', 'Restaurant', 'Bar', 'Golf course', 'Air conditioning', 'Backup power', 'Free WiFi', 'Secure parking'],
+    checkInTime: '14:00',
+    checkOutTime: '10:30',
+    suggestedRooms: [
+      {
+        name: 'Nyala Executive Cottage',
+        description: 'Cottage with private patio overlooking grazing zebras and giraffes in the park.',
+        priceMwk: 195000,
+        priceUsd: 115,
+        maxGuests: 2,
+        quantity: 12,
+        amenities: ['Ensuite bathroom', 'Air conditioning', 'Game view', 'Free WiFi'],
+      },
+    ],
+  },
+  {
+    id: 'luwawa-forest-lodge',
+    name: 'Luwawa Forest Lodge',
+    aliases: ['Luwawa Lodge', 'Luwawa Viphya'],
+    category: 'Adventure',
+    region: 'Viphya Plateau',
+    location: 'Viphya Forest Reserve, Mzimba',
+    district: 'Mzimba',
+    coordinates: { lat: -12.1158, lng: 33.7542 },
+    badge: 'Highland Pine Eco-Adventure Lodge',
+    locationNotes: '8 km off the M1 highway on the Viphya Plateau between Kasungu and Mzuzu.',
+    description: 'A dedicated eco-adventure lodge in the cool pine highlands of the Viphya Plateau. Features log cabins, horse riding, mountain biking, canoeing on the lake, sauna, and roaring fires.',
+    summary: 'Highland adventure lodge with horse riding, mountain biking, log fires, and mountain pine air.',
+    amenities: ['Fireplace', 'Restaurant', 'Bar', 'Sauna', 'Hiking trails', 'Hot water', 'Ensuite bathroom'],
+    checkInTime: '13:00',
+    checkOutTime: '10:00',
+    suggestedRooms: [
+      {
+        name: 'Highland Log Chalet',
+        description: 'Pine log chalet with ensuite bathroom, solar hot water, and forest view.',
+        priceMwk: 125000,
+        priceUsd: 75,
+        maxGuests: 2,
+        quantity: 8,
+        amenities: ['Ensuite bathroom', 'Fireplace', 'Forest view'],
+      },
+    ],
+  },
+  {
+    id: 'kara-o-mula',
+    name: 'Kara O\'Mula Country Lodge',
+    aliases: ['Kara Omula', 'Kara O Mula Mulanje'],
+    category: 'Family',
+    region: 'Mount Mulanje',
+    location: 'Mulanje Mountain Foothills, Mulanje',
+    district: 'Mulanje',
+    coordinates: { lat: -15.9350, lng: 35.5100 },
+    badge: 'Mulanje Mountain Foothill Resort',
+    locationNotes: 'Nestled on the lower slopes of Mount Mulanje above the colonial golf course.',
+    description: 'Set against the dramatic cliff faces of Mount Mulanje, Kara O\'Mula features terraced chalets, swimming pool, and easy access to hiking trails and tea fields.',
+    summary: 'Comfortable foothill lodge with panoramic views of Mount Mulanje cliffs and surrounding tea estates.',
+    amenities: ['Mountain view', 'Swimming pool', 'Restaurant', 'Bar', 'Free WiFi', 'Backup power', 'Secure parking'],
+    checkInTime: '14:00',
+    checkOutTime: '10:00',
+    suggestedRooms: [
+      {
+        name: 'Mountain Face Chalet',
+        description: 'Ensuite chalet with private patio facing the towering peaks of Mount Mulanje.',
+        priceMwk: 115000,
+        priceUsd: 65,
+        maxGuests: 2,
+        quantity: 14,
+        amenities: ['Ensuite bathroom', 'Mountain view', 'Veranda'],
+      },
+    ],
+  },
+
+  // Lilongwe Area (Capital & Business Hub)
+  {
+    id: 'latitude-13',
+    name: 'Latitude 13° Hotel',
+    aliases: ['Latitude 13', 'Latitude Hotel Lilongwe'],
+    category: 'Luxury',
+    region: 'Area 43, Lilongwe',
+    location: 'Area 43, Lilongwe',
+    district: 'Lilongwe',
+    coordinates: { lat: -13.9325, lng: 33.7930 },
+    badge: 'Boutique Contemporary Luxury Hotel',
+    locationNotes: 'Quiet residential Area 43, 20 minutes from Kamuzu International Airport.',
+    description: 'A boutique design hotel featuring recycled art, custom African furnishings, an 18-meter swimming pool, state-of-the-art gym, spa, and cosmopolitan dining. The preferred stay for discerning business travelers and diplomats.',
+    summary: 'Chic boutique hotel in Area 43 with designer suites, heated lap pool, fitness club, and contemporary dining.',
+    amenities: ['Swimming pool', 'Restaurant', 'Bar', 'Air conditioning', 'Backup power', 'Free WiFi', 'Dedicated Workspace', 'Gym', 'Spa', 'Airport transfer', 'Room service'],
+    checkInTime: '14:00',
+    checkOutTime: '11:00',
+    suggestedRooms: [
+      {
+        name: 'Boutique Garden Suite',
+        description: 'Air-conditioned designer suite with private patio, super king bed, Nespresso machine, and workstation.',
+        priceMwk: 380000,
+        priceUsd: 220,
+        maxGuests: 2,
+        quantity: 20,
+        amenities: ['Ensuite bathroom', 'Air conditioning', 'Dedicated Workspace', 'Free WiFi', 'Nespresso'],
+      },
+    ],
+    contactPhone: '+265 999 970 800',
+    contactEmail: '13@thelatitudehotels.com',
+  },
+  {
+    id: 'kumbali-country-lodge',
+    name: 'Kumbali Country Lodge',
+    aliases: ['Kumbali Lodge', 'Kumbali Lilongwe'],
+    category: 'Romantic Escape',
+    region: 'Area 44, Lilongwe',
+    location: 'Area 44, Kumbali Farm, Lilongwe',
+    district: 'Lilongwe',
+    coordinates: { lat: -13.9820, lng: 33.8420 },
+    badge: 'Dairy Farm & Forest Country Lodge',
+    locationNotes: '10 minutes drive east of City Centre on a private 650-hectare dairy and forest estate.',
+    description: 'Situated on an active private dairy farm and nature reserve just minutes outside Lilongwe, Kumbali Country Lodge offers thatched cottages, organic garden dining, forest walking trails, and peaceful rural charm.',
+    summary: 'Peaceful farm lodge with thatched cottages, dairy farm walks, and quiet countryside relaxation.',
+    amenities: ['Swimming pool', 'Restaurant', 'Bar', 'Breakfast included', 'Backup power', 'Free WiFi', 'Secure parking', 'Ensuite bathroom'],
+    checkInTime: '14:00',
+    checkOutTime: '10:30',
+    suggestedRooms: [
+      {
+        name: 'Thatched Farm Cottage',
+        description: 'Spacious cottage with high thatched ceilings, private veranda, and garden views.',
+        priceMwk: 195000,
+        priceUsd: 115,
+        maxGuests: 2,
+        quantity: 16,
+        amenities: ['Ensuite bathroom', 'Breakfast included', 'Veranda', 'Mosquito net'],
+      },
+    ],
+    contactPhone: '+265 999 935 000',
+    contactEmail: 'info@kumbalilodge.com',
+  },
+  {
+    id: 'burley-house',
+    name: 'Burley House',
+    aliases: ['Burley House Area 43'],
+    category: 'Bed & Breakfast',
+    region: 'Area 43, Lilongwe',
+    location: 'Area 43, Lilongwe',
+    district: 'Lilongwe',
+    coordinates: { lat: -13.9350, lng: 33.7900 },
+    badge: 'Boutique Executive Bed & Breakfast',
+    locationNotes: 'Paved access road in secure Area 43.',
+    description: 'An elegant boutique guesthouse set in private landscaped gardens in Area 43. Features luxurious suites, dedicated workstations, fiber optic Wi-Fi, and personalized breakfast service.',
+    summary: 'Executive boutique B&B offering peaceful gardens, reliable fiber Wi-Fi, and personalized service.',
+    amenities: ['Free WiFi', 'Dedicated Workspace', 'Breakfast included', 'Backup power', 'Air conditioning', 'Hot water', 'Secure parking'],
+    checkInTime: '14:00',
+    checkOutTime: '11:00',
+    suggestedRooms: [
+      {
+        name: 'Executive Garden Suite',
+        description: 'Air-conditioned suite with work desk, king bed, and garden veranda.',
+        priceMwk: 155000,
+        priceUsd: 90,
+        maxGuests: 2,
+        quantity: 6,
+        amenities: ['Ensuite bathroom', 'Dedicated Workspace', 'Free WiFi', 'Breakfast included'],
+      },
+    ],
+  },
+  {
+    id: 'sunbird-capital',
+    name: 'Sunbird Capital Hotel',
+    aliases: ['Capital Hotel Lilongwe', 'Sunbird Capital'],
+    category: 'Guest House',
+    region: 'City Centre, Lilongwe',
+    location: 'Presidential Way, City Centre, Lilongwe',
+    district: 'Lilongwe',
+    coordinates: { lat: -13.9629, lng: 33.7885 },
+    badge: 'Premier City Centre Convention Hotel',
+    locationNotes: 'Centrally located on Presidential Way, walking distance to government ministries.',
+    description: 'Malawi\'s premier city business hotel, Sunbird Capital offers modern guest rooms, large conference halls, swimming pool, gym, squash courts, and fine dining.',
+    summary: 'Leading business and convention hotel in Lilongwe City Centre with comprehensive facilities.',
+    amenities: ['Swimming pool', 'Restaurant', 'Bar', 'Air conditioning', 'Backup power', 'Free WiFi', 'Gym', 'Conference room', 'Secure parking'],
+    checkInTime: '14:00',
+    checkOutTime: '11:00',
+    suggestedRooms: [
+      {
+        name: 'Executive King Room',
+        description: 'Modern room with workstation, city view, and high-speed Wi-Fi.',
+        priceMwk: 245000,
+        priceUsd: 140,
+        maxGuests: 2,
+        quantity: 30,
+        amenities: ['Ensuite bathroom', 'Air conditioning', 'Free WiFi', 'Work desk'],
+      },
+    ],
+  },
+
+  // Blantyre (Commercial Capital)
+  {
+    id: 'sunbird-mount-soche',
+    name: 'Sunbird Mount Soche',
+    aliases: ['Mount Soche Hotel', 'Sunbird Mount Soche Blantyre'],
+    category: 'Guest House',
+    region: 'Blantyre CBD',
+    location: 'Glyn Jones Road, Blantyre',
+    district: 'Blantyre',
+    coordinates: { lat: -15.7889, lng: 35.0083 },
+    badge: 'Central Landmark City Hotel',
+    locationNotes: 'Heart of Blantyre CBD on Glyn Jones Road.',
+    description: 'A historic high-rise hotel in central Blantyre offering sweeping views over the city and Mount Soche. Features lush gardens, outdoor pool, and executive conference spaces.',
+    summary: 'Classic landmark hotel in the heart of Blantyre with city skyline views and pool gardens.',
+    amenities: ['Swimming pool', 'Restaurant', 'Bar', 'Air conditioning', 'Backup power', 'Free WiFi', 'Conference room', 'Secure parking'],
+    checkInTime: '14:00',
+    checkOutTime: '11:00',
+    suggestedRooms: [
+      {
+        name: 'Superior Cityview Room',
+        description: 'Air-conditioned room overlooking Blantyre skyline with work desk and high-speed internet.',
+        priceMwk: 210000,
+        priceUsd: 120,
+        maxGuests: 2,
+        quantity: 25,
+        amenities: ['Ensuite bathroom', 'Air conditioning', 'Work desk', 'Free WiFi'],
+      },
+    ],
+  },
+  {
+    id: 'protea-ryalls',
+    name: 'Protea Hotel by Marriott Blantyre Ryalls',
+    aliases: ['Ryalls Hotel', 'Protea Ryalls', 'Ryalls Blantyre'],
+    category: 'Luxury',
+    region: 'Blantyre CBD',
+    location: 'Hanover Avenue, Blantyre',
+    district: 'Blantyre',
+    coordinates: { lat: -15.7905, lng: 35.0062 },
+    badge: 'Historic 4-Star City Hotel',
+    locationNotes: 'Hanover Avenue, Blantyre commercial district.',
+    description: 'Established in 1922, Ryalls is Malawi\'s oldest grand hotel, modernly upgraded with Marriott Protea comforts. Features swimming pool, fitness center, 21 Grill restaurant, and conference facilities.',
+    summary: 'Historic 4-star hotel in Blantyre commercial district with swimming pool and gourmet dining.',
+    amenities: ['Swimming pool', 'Restaurant', 'Bar', 'Air conditioning', 'Backup power', 'Free WiFi', 'Gym', 'Room service'],
+    checkInTime: '14:00',
+    checkOutTime: '11:00',
+    suggestedRooms: [
+      {
+        name: 'Deluxe Queen Room',
+        description: 'Refined hotel room with luxury bedding, modern work area, and city views.',
+        priceMwk: 260000,
+        priceUsd: 150,
+        maxGuests: 2,
+        quantity: 20,
+        amenities: ['Ensuite bathroom', 'Air conditioning', 'Free WiFi', 'Work desk'],
+      },
+    ],
+  },
+  {
+    id: 'leslie-lodge',
+    name: 'Leslie Lodge',
+    aliases: ['Leslie Lodge Blantyre'],
+    category: 'Bed & Breakfast',
+    region: 'Sunnyside, Blantyre',
+    location: 'Sunnyside, Blantyre',
+    district: 'Blantyre',
+    coordinates: { lat: -15.7950, lng: 34.9950 },
+    badge: 'Boutique Garden Bed & Breakfast',
+    locationNotes: 'Residential Sunnyside, 5 minutes from central Blantyre.',
+    description: 'A cozy boutique bed and breakfast nestled in tranquil subtropical gardens. Known for personalized hospitality, refreshing pool, and peaceful surroundings.',
+    summary: 'Charming boutique B&B in Sunnyside with swimming pool and lush tropical gardens.',
+    amenities: ['Swimming pool', 'Breakfast included', 'Restaurant', 'Backup power', 'Free WiFi', 'Secure parking'],
+    checkInTime: '14:00',
+    checkOutTime: '10:30',
+    suggestedRooms: [
+      {
+        name: 'Garden Cottage Room',
+        description: 'Charming ensuite room opening onto the pool garden with full breakfast included.',
+        priceMwk: 120000,
+        priceUsd: 70,
+        maxGuests: 2,
+        quantity: 8,
+        amenities: ['Ensuite bathroom', 'Breakfast included', 'Free WiFi'],
+      },
+    ],
+  },
+
+  // Mzuzu & Northern Region
+  {
+    id: 'sunbird-mzuzu',
+    name: 'Sunbird Mzuzu',
+    aliases: ['Mzuzu Hotel', 'Sunbird Mzuzu Hotel'],
+    category: 'Guest House',
+    region: 'Mzuzu',
+    location: 'Mzuzu City Centre',
+    district: 'Mzimba',
+    coordinates: { lat: -11.4645, lng: 34.0205 },
+    badge: 'Premier Northern Hub Hotel',
+    locationNotes: 'Adjacent to Mzuzu Golf Course in central Mzuzu.',
+    description: 'The leading hotel in Northern Malawi, Sunbird Mzuzu is situated adjacent to the golf course and serves as the primary staging point for trips to Nyika National Park and Vwaza Marsh.',
+    summary: 'Northern Malawi\'s flagship hotel next to the golf course with conference and dining facilities.',
+    amenities: ['Restaurant', 'Bar', 'Air conditioning', 'Backup power', 'Free WiFi', 'Conference room', 'Secure parking'],
+    checkInTime: '14:00',
+    checkOutTime: '11:00',
+    suggestedRooms: [
+      {
+        name: 'Standard Executive Room',
+        description: 'Comfortable ensuite room with work desk, air conditioning, and golf course views.',
+        priceMwk: 165000,
+        priceUsd: 95,
+        maxGuests: 2,
+        quantity: 20,
+        amenities: ['Ensuite bathroom', 'Air conditioning', 'Free WiFi'],
+      },
+    ],
+  },
+  {
+    id: 'grand-palace-mzuzu',
+    name: 'Grand Palace Hotel',
+    aliases: ['Grand Palace Mzuzu', 'Grand Palace'],
+    category: 'Guest House',
+    region: 'Mzuzu',
+    location: 'Mzuzu City',
+    district: 'Mzimba',
+    coordinates: { lat: -11.4620, lng: 34.0180 },
+    badge: 'Modern Executive City Hotel',
+    locationNotes: 'Central Mzuzu along the main boulevard.',
+    description: 'A modern multi-storey executive hotel offering air-conditioned rooms, elevator access, international restaurant, gym, and conference halls in Mzuzu.',
+    summary: 'Modern hotel in central Mzuzu with executive suites, fitness gym, and conference halls.',
+    amenities: ['Restaurant', 'Bar', 'Air conditioning', 'Backup power', 'Free WiFi', 'Gym', 'Conference room'],
+    checkInTime: '14:00',
+    checkOutTime: '10:30',
+    suggestedRooms: [
+      {
+        name: 'Deluxe City Room',
+        description: 'Modern room with workstation, air conditioning, and high-speed Wi-Fi.',
+        priceMwk: 140000,
+        priceUsd: 80,
+        maxGuests: 2,
+        quantity: 25,
+        amenities: ['Ensuite bathroom', 'Air conditioning', 'Free WiFi'],
+      },
+    ],
+  },
+];
+
+/**
+ * Normalizes query string for fuzzy and partial matching.
+ */
+function cleanQuery(str: string): string {
+  return str.toLowerCase().replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Searches the curated Malawian Hospitality Registry.
+ * High-precision scoring that prioritizes exact prefix and word-boundary matches.
+ */
+export function searchMalawiHospitalityRegistry(query: string, limit = 8): RegisteredProperty[] {
+  const q = cleanQuery(query);
+  if (q.length < 2) return [];
+
+  const scored: Array<{ property: RegisteredProperty; score: number }> = [];
+
+  for (const p of MALAWI_HOSPITALITY_REGISTRY) {
+    const pName = cleanQuery(p.name);
+    const pLoc = cleanQuery(p.location);
+    const pDist = cleanQuery(p.district);
+    const pCat = cleanQuery(p.category);
+    const aliases = (p.aliases || []).map(cleanQuery);
+
+    let score = 0;
+
+    // Exact or prefix match on name (highest score)
+    if (pName === q) {
+      score += 100;
+    } else if (pName.startsWith(q)) {
+      score += 80;
+    } else if (pName.includes(` ${q}`)) {
+      score += 65;
+    } else if (pName.includes(q)) {
+      score += 50;
+    }
+
+    // Alias matches
+    for (const alias of aliases) {
+      if (alias === q) score += 90;
+      else if (alias.startsWith(q)) score += 70;
+      else if (alias.includes(q)) score += 40;
+    }
+
+    // Location / District matches
+    if (pDist.startsWith(q) || pDist === q) {
+      score += 35;
+    } else if (pLoc.includes(q)) {
+      score += 30;
+    }
+
+    // Category matches
+    if (pCat === q || pCat.startsWith(q)) {
+      score += 20;
+    }
+
+    if (score > 0) {
+      scored.push({ property: p, score });
+    }
+  }
+
+  scored.sort((a, b) => b.score - a.score);
+  return scored.slice(0, limit).map(s => s.property);
+}
+
+/**
+ * Finds a single matching property in the registry by exact or near-exact name.
+ */
+export function getRegisteredPropertyByName(name: string): RegisteredProperty | null {
+  const q = cleanQuery(name);
+  if (!q) return null;
+
+  for (const p of MALAWI_HOSPITALITY_REGISTRY) {
+    const pName = cleanQuery(p.name);
+    if (pName === q) return p;
+    for (const a of p.aliases || []) {
+      if (cleanQuery(a) === q) return p;
+    }
+  }
+
+  // Fallback to substring match if unique enough
+  const matches = searchMalawiHospitalityRegistry(name, 1);
+  return matches.length > 0 ? matches[0] : null;
+}
+
+/**
+ * Generates smart hospitality suggestions if user is naming a new independent stay.
+ */
+export function generateSmartPropertySuggestions(rawInput: string): Array<{
+  name: string;
+  category: PropertyCategory;
+  badge: string;
+  description: string;
+}> {
+  const trimmed = rawInput.trim();
+  if (trimmed.length < 3) return [];
+
+  // Capitalize properly
+  const formatted = trimmed
+    .split(' ')
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+
+  const lower = trimmed.toLowerCase();
+  const suggestions: Array<{ name: string; category: PropertyCategory; badge: string; description: string }> = [];
+
+  const hasSuffix = lower.includes('lodge') || lower.includes('chalet') || lower.includes('cottage') ||
+    lower.includes('hotel') || lower.includes('inn') || lower.includes('camp') || lower.includes('guest') ||
+    lower.includes('b&b') || lower.includes('retreat') || lower.includes('resort');
+
+  if (!hasSuffix) {
+    if (lower.includes('lake') || lower.includes('beach') || lower.includes('bay')) {
+      suggestions.push({
+        name: `${formatted} Lakeside Chalets`,
+        category: 'Lake & Beach',
+        badge: 'Lakeside Chalet',
+        description: `Direct beach and water access along Lake Malawi.`,
+      });
+      suggestions.push({
+        name: `${formatted} Beach Resort`,
+        category: 'Lake & Beach',
+        badge: 'Beachfront Resort',
+        description: `Sandy shores and panoramic Lake Malawi sunrise views.`,
+      });
+    } else if (lower.includes('safari') || lower.includes('wild') || lower.includes('bush')) {
+      suggestions.push({
+        name: `${formatted} Safari Camp`,
+        category: 'Safari & Wildlife',
+        badge: 'Safari Wildlife Camp',
+        description: `Bush chalets with guided wildlife excursions.`,
+      });
+    } else {
+      suggestions.push({
+        name: `${formatted} Lodge`,
+        category: 'Bed & Breakfast',
+        badge: 'Welcoming Lodge',
+        description: `Comfortable accommodations with warm Malawian hospitality.`,
+      });
+      suggestions.push({
+        name: `${formatted} Cottage & Chalets`,
+        category: 'Cottage & Chalet',
+        badge: 'Private Cottage',
+        description: `Self-contained private chalets with garden verandas.`,
+      });
+      suggestions.push({
+        name: `${formatted} Boutique Guest House`,
+        category: 'Guest House',
+        badge: 'Boutique Guest House',
+        description: `Quiet, secure guest house with high-speed Wi-Fi and solar backup.`,
+      });
+    }
+  }
+
+  return suggestions;
+}
+
+/**
+ * Top curated properties for instant onboarding inspiration.
+ */
+export const POPULAR_MALAWI_PROPERTIES_SHOWCASE = [
+  { name: 'Kaya Mawa', category: 'Luxury', location: 'Likoma Island' },
+  { name: 'Pumulani Lodge', category: 'Lake & Beach', location: 'Cape Maclear' },
+  { name: 'The Makokola Retreat', category: 'Luxury', location: 'Mangochi' },
+  { name: 'Sunbird Livingstonia Beach', category: 'Lake & Beach', location: 'Salima' },
+  { name: 'Mayoka Village', category: 'Lake & Beach', location: 'Nkhata Bay' },
+  { name: 'Mvuu Camp & Lodge', category: 'Safari & Wildlife', location: 'Liwonde' },
+  { name: 'Sunbird Ku Chawe', category: 'Romantic Escape', location: 'Zomba Plateau' },
+  { name: 'Kumbali Country Lodge', category: 'Romantic Escape', location: 'Lilongwe' },
+];

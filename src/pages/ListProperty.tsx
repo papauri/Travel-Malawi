@@ -49,6 +49,7 @@ import {
   findExistingProperty, ExistingPropertyMatch,
 } from '../lib/listing';
 import { searchNominatim, searchMalawiPlaces, MalawiPlaceSuggestion } from '../lib/geo';
+import { getRegisteredPropertyByName, POPULAR_MALAWI_PROPERTIES_SHOWCASE } from '../lib/malawiHospitalityRegistry';
 import { RoomInput } from '../lib/validateRoom';
 import { CURRENCIES, formatMoney } from '../lib/currency';
 import { CurrencyCode } from '../types';
@@ -137,6 +138,55 @@ export function inferCategoryFromNameAndLocation(name: string, location?: string
     return 'Guest House';
   }
   return 'Guest House';
+}
+
+export function authenticMalawianDescription(propName: string, category: PropertyCategory, loc: string): string {
+  if (category === 'Lake & Beach') {
+    return `Welcome to ${propName}. Nestled along the pristine shores of Lake Malawi in ${loc}, our property offers panoramic sunrise views over crystal-clear waters, private sandy beaches, and fresh Lake Chambo dining. Experience the Warm Heart of Africa with tranquil breezes, attentive local hospitality, and comfortable lakeside accommodations.`;
+  }
+  if (category === 'Safari & Wildlife') {
+    return `Welcome to ${propName}. Situated in ${loc}, our bush retreat immerses you in Malawi's rich wilderness and wildlife. Enjoy guided game drives, tranquil evenings around the campfire under starry African skies, solar-powered comforts, and genuine Malawian warmth.`;
+  }
+  if (category === 'Romantic Escape' || category === 'Luxury') {
+    return `Welcome to ${propName}, an exclusive sanctuary in ${loc}, Malawi. Designed for serenity and elevated comfort, guests enjoy handcrafted luxury suites, breathtaking natural vistas, attentive personalized service, and exquisite local cuisine.`;
+  }
+  if (category === 'Cottage & Chalet') {
+    return `Welcome to ${propName}. Offering peaceful, self-contained chalets surrounded by scenic greenery in ${loc}, Malawi. Perfect for families and relaxing weekend getaways with private verandas, fully equipped amenities, secure grounds, and warm hospitality.`;
+  }
+  return `Welcome to ${propName}. Located in the vibrant heart of ${loc}, Malawi, we offer comfortable, well-appointed accommodations with high-speed Wi-Fi, reliable solar backup power, and genuine Warm Heart of Africa hospitality for both business and leisure travelers.`;
+}
+
+export function synthesizeRoomsForCategory(category: PropertyCategory) {
+  if (category === 'Lake & Beach') {
+    return [
+      { name: 'Standard Lakeview Chalet', description: 'Cozy private chalet overlooking Lake Malawi with ensuite bathroom and private veranda.', priceMwk: 125000, priceUsd: 75, maxGuests: 2, baseGuests: 2, quantity: 4, amenities: ['Ensuite bathroom', 'Ceiling fan', 'Mosquito net', 'Balcony', 'Hot shower'] },
+      { name: 'Executive Beach Suite', description: 'Spacious direct beach access suite with panoramic sunrise views, king bed, and mini-fridge.', priceMwk: 195000, priceUsd: 115, maxGuests: 2, baseGuests: 2, quantity: 2, amenities: ['Ensuite bathroom', 'Air conditioning', 'Lake view', 'Mini-fridge', 'Private terrace'] }
+    ];
+  }
+  if (category === 'Bed & Breakfast') {
+    return [
+      { name: 'Deluxe Garden Room (B&B)', description: 'Peaceful garden room with delicious home-cooked Malawian breakfast included and ensuite bath.', priceMwk: 85000, priceUsd: 50, maxGuests: 2, baseGuests: 2, quantity: 3, amenities: ['Ensuite bathroom', 'Breakfast included', 'Ceiling fan', 'Hot water', 'Workspace'] },
+      { name: 'Heritage Queen Suite', description: 'Charming queen room with handcrafted wood furnishings, private veranda, and warm breakfast.', priceMwk: 110000, priceUsd: 65, maxGuests: 2, baseGuests: 2, quantity: 2, amenities: ['Ensuite bathroom', 'Breakfast included', 'Veranda', 'Mosquito net', 'Coffee maker'] }
+    ];
+  }
+  if (category === 'Cottage & Chalet') {
+    return [
+      { name: 'Two-Bedroom Self-Catering Cottage', description: 'Fully equipped private cottage with kitchen, dining area, fireplace, and scenic patio.', priceMwk: 160000, priceUsd: 95, maxGuests: 4, baseGuests: 2, quantity: 2, amenities: ['Kitchen', 'Ensuite bathroom', 'Fireplace', 'Dining area', 'Private patio', 'Backup power'] }
+    ];
+  }
+  if (category === 'Safari & Wildlife') {
+    return [
+      { name: 'Luxury Safari Tent', description: 'Raised canvas tent overlooking the bush, ensuite open-air stone bathroom, and game view deck.', priceMwk: 180000, priceUsd: 110, maxGuests: 2, baseGuests: 2, quantity: 4, amenities: ['Ensuite bathroom', 'Deck', 'Mosquito net', 'Bush view', 'Solar power'] }
+    ];
+  }
+  if (category === 'Luxury') {
+    return [
+      { name: 'Presidential Lake Villa', description: 'Premier private villa with personal plunge pool, open-plan lounge, and breathtaking lake vistas.', priceMwk: 380000, priceUsd: 220, maxGuests: 2, baseGuests: 2, quantity: 2, amenities: ['Private plunge pool', 'Ensuite bathroom', 'Air conditioning', 'Butler service', 'Lake view', 'Minibar'] }
+    ];
+  }
+  return [
+    { name: 'Executive Double Room', description: 'Modern, well-appointed guest room with work desk, high-speed WiFi, and hot power shower.', priceMwk: 95000, priceUsd: 55, maxGuests: 2, baseGuests: 2, quantity: 4, amenities: ['Ensuite bathroom', 'Dedicated Workspace', 'Free WiFi', 'Hot shower', 'Backup power'] }
+  ];
 }
 
 function getDraftStorageKey(uid?: string | null): string {
@@ -441,17 +491,98 @@ export default function ListProperty() {
     return () => clearTimeout(timer);
   }, [draft.name]);
 
-  // Handle selecting a place suggestion from Google Maps dropdown
-  const handleSelectMalawiPlace = (item: MalawiPlaceSuggestion) => {
+  // Handle selecting a place suggestion from Hospitality Registry / Maps dropdown
+  const handleSelectMalawiPlace = (item: MalawiPlaceSuggestion, autoFillDetails: boolean = false) => {
     setShowPlaceDropdown(false);
+
+    const regMatch = getRegisteredPropertyByName(item.name);
+    const targetCategory = (regMatch?.category || item.category || normalizePropertyCategory(item.category)) as PropertyCategory | undefined;
+    const targetLocation = regMatch?.location || (item.location && item.location !== 'Malawi' ? item.location : draft.location) || 'Malawi';
+    const targetCoords = regMatch?.coordinates || item.coordinates;
+    const targetNotes = regMatch?.locationNotes || item.locationNotes || (item.district ? `Located in ${item.district}, Malawi` : '');
+
     setDraft(prev => ({
       ...prev,
       name: item.name,
-      location: item.location || prev.location,
-      coordinates: item.coordinates,
-      locationNotes: prev.locationNotes || (item.district ? `Located in ${item.district}, Malawi` : ''),
+      category: targetCategory || prev.category,
+      location: targetLocation,
+      coordinates: targetCoords,
+      locationNotes: prev.locationNotes || targetNotes,
     }));
-    toast.success(`Matched "${item.name}" from Google Maps (Malawi)!`);
+
+    if (targetCategory) {
+      setAiCategorized(true);
+    }
+
+    const p = regMatch || item;
+    const matchedLocal = localImagesForName(item.name);
+    const suggestedImageUrl = matchedLocal.length > 0 ? matchedLocal[0] : getDefaultImageForCategory(targetCategory || 'Bed & Breakfast');
+
+    const suggestionObj = {
+      matched: true,
+      officialName: item.name,
+      category: targetCategory,
+      location: targetLocation,
+      locationNotes: targetNotes,
+      description: p.description || authenticMalawianDescription(item.name, targetCategory || 'Bed & Breakfast', targetLocation),
+      amenities: p.amenities && p.amenities.length > 0 ? p.amenities : COMMON_AMENITIES.slice(0, 8),
+      coordinates: targetCoords,
+      confidence: 'high' as const,
+      summary: p.summary || `${item.name} in ${targetLocation}, Malawi.`,
+      checkInTime: p.checkInTime || '14:00',
+      checkOutTime: p.checkOutTime || '10:00',
+      suggestedRooms: p.suggestedRooms || (targetCategory ? synthesizeRoomsForCategory(targetCategory) : []),
+      contactPhone: p.contactPhone || '+265 991 234 567',
+      contactEmail: p.contactEmail || user?.email || 'reservations@property.mw',
+      contactWhatsapp: p.contactWhatsapp || p.contactPhone || '+265 991 234 567',
+      suggestedImageUrl,
+    };
+
+    setAiPropertySuggestion(suggestionObj);
+
+    if (autoFillDetails) {
+      setDraft(current => ({
+        ...current,
+        name: suggestionObj.officialName,
+        category: (suggestionObj.category as PropertyCategory) || current.category,
+        location: suggestionObj.location || current.location,
+        locationNotes: suggestionObj.locationNotes || current.locationNotes,
+        coordinates: suggestionObj.coordinates || current.coordinates,
+        description: suggestionObj.description || current.description,
+        amenities: suggestionObj.amenities ? Array.from(new Set([...current.amenities, ...suggestionObj.amenities])) : current.amenities,
+        checkInTime: suggestionObj.checkInTime || current.checkInTime,
+        checkOutTime: suggestionObj.checkOutTime || current.checkOutTime,
+        imageUrl: current.imageUrl || suggestionObj.suggestedImageUrl,
+        contactPhone: current.contactPhone || suggestionObj.contactPhone,
+        contactEmail: current.contactEmail || suggestionObj.contactEmail,
+        contactWhatsapp: current.contactWhatsapp || suggestionObj.contactWhatsapp,
+        managerName: current.managerName || user?.displayName || user?.email?.split('@')[0] || 'Property Host',
+        managerEmail: current.managerEmail || user?.email || '',
+        rooms: (current.rooms.length === 0 || (current.rooms.length === 1 && !current.rooms[0].name?.trim())) && suggestionObj.suggestedRooms.length > 0
+          ? suggestionObj.suggestedRooms.map(r => ({
+              id: uuidv4(),
+              name: r.name,
+              description: r.description || 'Authentic and comfortable stay with ensuite bathroom and warm Malawian hospitality.',
+              currencies: ['MWK', 'USD'],
+              prices: { MWK: r.priceMwk || 120000, USD: r.priceUsd || 70 },
+              maxGuests: r.maxGuests || 2,
+              baseGuests: r.baseGuests || 2,
+              quantity: r.quantity || 3,
+              amenities: r.amenities && r.amenities.length > 0 ? r.amenities : ['Ensuite bathroom', 'Ceiling fan', 'Mosquito net', 'Hot shower'],
+            }))
+          : current.rooms,
+      }));
+      toast.success(`Loaded verified details for "${item.name}"!`);
+      return;
+    }
+
+    if (item.source === 'registry') {
+      toast.success(`Matched verified lodge "${item.name}" (${item.badge || item.category})!`);
+    } else if (item.source === 'smart_suggestion') {
+      toast.success(`Applied naming idea "${item.name}"!`);
+    } else {
+      toast.success(`Selected "${item.name}" in Malawi!`);
+    }
   };
 
   // Look up property on Maps & Knowledge Base
@@ -464,6 +595,45 @@ export default function ListProperty() {
 
     setAiLookupLoading(true);
     setAiPropertySuggestion(null);
+
+    // 1. Instant check in verified Malawi Hospitality Registry
+    const regMatch = getRegisteredPropertyByName(name);
+    if (regMatch) {
+      const matchedLocal = localImagesForName(regMatch.name);
+      const suggestedImageUrl = matchedLocal.length > 0 ? matchedLocal[0] : getDefaultImageForCategory(regMatch.category);
+
+      setAiPropertySuggestion({
+        matched: true,
+        officialName: regMatch.name,
+        category: regMatch.category,
+        location: regMatch.location,
+        locationNotes: regMatch.locationNotes,
+        description: regMatch.description,
+        amenities: regMatch.amenities,
+        coordinates: regMatch.coordinates,
+        confidence: 'high',
+        summary: regMatch.summary,
+        checkInTime: regMatch.checkInTime,
+        checkOutTime: regMatch.checkOutTime,
+        suggestedRooms: regMatch.suggestedRooms,
+        contactPhone: regMatch.contactPhone || '+265 991 234 567',
+        contactEmail: regMatch.contactEmail || user?.email || 'reservations@property.mw',
+        contactWhatsapp: regMatch.contactWhatsapp || regMatch.contactPhone || '+265 991 234 567',
+        suggestedImageUrl,
+      });
+
+      setDraft(prev => ({
+        ...prev,
+        category: regMatch.category || prev.category,
+        location: regMatch.location || prev.location,
+        coordinates: regMatch.coordinates || prev.coordinates,
+        locationNotes: regMatch.locationNotes || prev.locationNotes,
+      }));
+      setAiCategorized(true);
+      setAiLookupLoading(false);
+      toast.success(`Matched "${regMatch.name}" from Malawi Hospitality Registry (${regMatch.badge || regMatch.category})!`);
+      return;
+    }
 
     try {
       // Concurrently query Nominatim/OpenStreetMap for coordinates and AI Knowledge Base for property data
@@ -526,36 +696,9 @@ export default function ListProperty() {
         normalizePropertyCategory(aiData?.category) ||
         inferCategoryFromNameAndLocation(aiData?.officialName || name, aiData?.location || matchedLocation);
 
-      // Synthesize realistic room configurations if AI didn't return any
       let rooms = aiData?.suggestedRooms;
       if (!rooms || !Array.isArray(rooms) || rooms.length === 0) {
-        if (verifiedCategory === 'Lake & Beach') {
-          rooms = [
-            { name: 'Standard Lakeview Chalet', description: 'Cozy private chalet overlooking Lake Malawi with ensuite bathroom and private veranda.', priceMwk: 125000, priceUsd: 75, maxGuests: 2, baseGuests: 2, quantity: 4, amenities: ['Ensuite bathroom', 'Ceiling fan', 'Mosquito net', 'Balcony', 'Hot shower'] },
-            { name: 'Executive Beach Suite', description: 'Spacious direct beach access suite with panoramic sunrise views, king bed, and mini-fridge.', priceMwk: 195000, priceUsd: 115, maxGuests: 2, baseGuests: 2, quantity: 2, amenities: ['Ensuite bathroom', 'Air conditioning', 'Lake view', 'Mini-fridge', 'Private terrace'] }
-          ];
-        } else if (verifiedCategory === 'Bed & Breakfast') {
-          rooms = [
-            { name: 'Deluxe Garden Room (B&B)', description: 'Peaceful garden room with delicious home-cooked Malawian breakfast included and ensuite bath.', priceMwk: 85000, priceUsd: 50, maxGuests: 2, baseGuests: 2, quantity: 3, amenities: ['Ensuite bathroom', 'Breakfast included', 'Ceiling fan', 'Hot water', 'Workspace'] },
-            { name: 'Heritage Queen Suite', description: 'Charming queen room with handcrafted wood furnishings, private veranda, and warm breakfast.', priceMwk: 110000, priceUsd: 65, maxGuests: 2, baseGuests: 2, quantity: 2, amenities: ['Ensuite bathroom', 'Breakfast included', 'Veranda', 'Mosquito net', 'Coffee maker'] }
-          ];
-        } else if (verifiedCategory === 'Cottage & Chalet') {
-          rooms = [
-            { name: 'Two-Bedroom Self-Catering Cottage', description: 'Fully equipped private cottage with kitchen, dining area, fireplace, and scenic patio.', priceMwk: 160000, priceUsd: 95, maxGuests: 4, baseGuests: 2, quantity: 2, amenities: ['Kitchen', 'Ensuite bathroom', 'Fireplace', 'Dining area', 'Private patio', 'Backup power'] }
-          ];
-        } else if (verifiedCategory === 'Safari & Wildlife') {
-          rooms = [
-            { name: 'Luxury Safari Tent', description: 'Raised canvas tent overlooking the bush, ensuite open-air stone bathroom, and game view deck.', priceMwk: 180000, priceUsd: 110, maxGuests: 2, baseGuests: 2, quantity: 4, amenities: ['Ensuite bathroom', 'Deck', 'Mosquito net', 'Bush view', 'Solar power'] }
-          ];
-        } else if (verifiedCategory === 'Luxury') {
-          rooms = [
-            { name: 'Presidential Lake Villa', description: 'Premier private villa with personal plunge pool, open-plan lounge, and breathtaking lake vistas.', priceMwk: 380000, priceUsd: 220, maxGuests: 2, baseGuests: 2, quantity: 2, amenities: ['Private plunge pool', 'Ensuite bathroom', 'Air conditioning', 'Butler service', 'Lake view', 'Minibar'] }
-          ];
-        } else {
-          rooms = [
-            { name: 'Executive Double Room', description: 'Modern, well-appointed guest room with work desk, high-speed WiFi, and hot power shower.', priceMwk: 95000, priceUsd: 55, maxGuests: 2, baseGuests: 2, quantity: 4, amenities: ['Ensuite bathroom', 'Dedicated Workspace', 'Free WiFi', 'Hot shower', 'Backup power'] }
-          ];
-        }
+        rooms = synthesizeRoomsForCategory(verifiedCategory);
       }
 
       const matchedLocal = localImagesForName(aiData?.officialName || name);
@@ -568,7 +711,7 @@ export default function ListProperty() {
           category: verifiedCategory,
           location: aiData.location || matchedLocation || 'Malawi',
           locationNotes: aiData.locationNotes || '',
-          description: aiData.description || `Welcome to ${aiData.officialName || name}. Experience authentic hospitality with serene surroundings, exceptional comfort, and attentive service in Malawi.`,
+          description: aiData.description || authenticMalawianDescription(aiData.officialName || name, verifiedCategory, aiData.location || matchedLocation || 'Malawi'),
           amenities: Array.isArray(aiData.amenities) && aiData.amenities.length > 0 ? aiData.amenities : COMMON_AMENITIES.slice(0, 8),
           coordinates: matchedCoords,
           confidence: aiData.confidence || 'high',
@@ -589,7 +732,7 @@ export default function ListProperty() {
           category: verifiedCategory,
           location: matchedLocation || draft.location || 'Malawi',
           locationNotes: `Located in ${matchedLocation || 'Malawi'}`,
-          description: `Welcome to ${name}. Situated in ${matchedLocation || 'Malawi'}, we offer clean, comfortable accommodation with warm Malawian hospitality.`,
+          description: authenticMalawianDescription(name, verifiedCategory, matchedLocation || draft.location || 'Malawi'),
           amenities: COMMON_AMENITIES.slice(0, 6),
           coordinates: matchedCoords,
           confidence: 'medium',
@@ -1478,9 +1621,9 @@ export default function ListProperty() {
                 <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                   <label className={labelClass} htmlFor="listing-name">Property name</label>
                   <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-medium text-stone-500 hidden sm:flex items-center gap-1">
-                      <MapPin className="w-3.5 h-3.5 text-stone-500" />
-                      Google Maps verified
+                    <span className="text-[11px] font-medium text-amber-800 bg-amber-50 border border-amber-200/80 px-2 py-0.5 rounded-md hidden sm:flex items-center gap-1">
+                      <Sparkles className="w-3 h-3 text-amber-600" />
+                      Malawi Hospitality Registry & Maps
                     </span>
                     {aiStatus.enabled && aiStatus.available && (
                       <button
@@ -1488,7 +1631,7 @@ export default function ListProperty() {
                         onClick={() => handleLookupPropertyAI()}
                         disabled={aiLookupLoading || !draft.name.trim()}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-stone-900 hover:bg-stone-800 text-white shadow-2xs transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                        title="Look up property details and auto-fill listing fields"
+                        title="Look up property in Malawi Registry and auto-fill listing fields"
                       >
                         {aiLookupLoading ? (
                           <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -1508,7 +1651,7 @@ export default function ListProperty() {
                     maxLength={NAME_MAX}
                     value={draft.name}
                     onChange={e => set('name', e.target.value)}
-                    placeholder="e.g. Kaya Mawa, Sunbird Livingstonia, or Central Guest House"
+                    placeholder="e.g. Kaya Mawa, Sunbird Livingstonia, or enter your lodge/cottage name"
                     className={fieldClass}
                     autoComplete="off"
                   />
@@ -1520,67 +1663,170 @@ export default function ListProperty() {
                     )}
                   </div>
 
-                  {/* Google Maps (Malawi) Live Autocomplete Dropdown */}
+                  {/* Malawi Hospitality Registry & Geographic Discovery Dropdown */}
                   {showPlaceDropdown && placeSuggestions.length > 0 && (
                     <div
                       ref={placeDropdownRef}
                       className="absolute left-0 right-0 top-full mt-1.5 z-40 bg-white rounded-2xl shadow-xl border border-stone-200 overflow-hidden animate-in fade-in slide-in-from-top-1"
                     >
-                      <div className="px-4 py-2 bg-stone-50 border-b border-stone-100 flex items-center justify-between text-[11px] font-semibold text-stone-500 uppercase tracking-wider">
-                        <span className="flex items-center gap-1.5 text-stone-700">
-                          <MapPin className="w-3.5 h-3.5 text-stone-500" />
-                          Google Maps Suggestions (Malawi)
+                      <div className="px-4 py-2 bg-stone-900 text-stone-200 border-b border-stone-800 flex items-center justify-between text-[11px] font-semibold tracking-wider">
+                        <span className="flex items-center gap-1.5 text-stone-200">
+                          <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                          <span>Malawi Hospitality & Location Registry</span>
                         </span>
-                        <button
-                          type="button"
-                          onClick={() => setShowPlaceDropdown(false)}
-                          className="text-stone-400 hover:text-stone-600 p-0.5 rounded-full hover:bg-stone-200/60"
-                          title="Close suggestions"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-amber-300/90 font-mono">
+                            {placeSuggestions.length} found
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setShowPlaceDropdown(false)}
+                            className="text-stone-400 hover:text-white p-0.5 rounded-full hover:bg-stone-800 transition"
+                            title="Close suggestions"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
-                      <ul className="max-h-60 overflow-y-auto divide-y divide-stone-100">
-                        {placeSuggestions.map((item, psIdx) => (
-                          <li key={`place-sug-${item.id || psIdx}-${psIdx}`} className="p-2 hover:bg-stone-50 transition flex items-center justify-between gap-2 group">
-                            <button
-                              type="button"
-                              onClick={() => handleSelectMalawiPlace(item)}
-                              className="flex-1 text-left flex items-start gap-3 min-w-0 cursor-pointer"
+                      <ul className="max-h-72 overflow-y-auto divide-y divide-stone-100">
+                        {placeSuggestions.map((item, psIdx) => {
+                          const isReg = item.source === 'registry';
+                          const isIdea = item.source === 'smart_suggestion';
+
+                          return (
+                            <li
+                              key={`place-sug-${item.id || psIdx}-${psIdx}`}
+                              className="p-2.5 hover:bg-amber-50/50 transition flex items-center justify-between gap-3 group"
                             >
-                              <div className="p-2 rounded-xl bg-stone-100 text-stone-600 group-hover:bg-stone-200 group-hover:text-stone-900 transition shrink-0 mt-0.5">
-                                <Building2 className="w-4 h-4" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-semibold text-stone-900 group-hover:text-stone-950 truncate">
-                                  {item.name}
-                                </p>
-                                <p className="text-xs text-stone-500 group-hover:text-stone-700 truncate mt-0.5">
-                                  {item.location}
-                                </p>
-                              </div>
-                            </button>
-                            {aiStatus.enabled && aiStatus.available && (
+                              <button
+                                type="button"
+                                onClick={() => handleSelectMalawiPlace(item)}
+                                className="flex-1 text-left flex items-start gap-3 min-w-0 cursor-pointer"
+                              >
+                                <div
+                                  className={`p-2 rounded-xl transition shrink-0 mt-0.5 border ${
+                                    isReg
+                                      ? 'bg-amber-100/80 text-amber-900 border-amber-200'
+                                      : isIdea
+                                      ? 'bg-emerald-100/80 text-emerald-900 border-emerald-200'
+                                      : 'bg-stone-100 text-stone-700 border-stone-200'
+                                  }`}
+                                >
+                                  {isReg ? (
+                                    <Award className="w-4 h-4 text-amber-800" />
+                                  ) : isIdea ? (
+                                    <Sparkles className="w-4 h-4 text-emerald-700" />
+                                  ) : (
+                                    <MapPin className="w-4 h-4 text-stone-600" />
+                                  )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <p className="text-sm font-semibold text-stone-900 group-hover:text-stone-950 truncate">
+                                      {item.name}
+                                    </p>
+                                    {isReg && (
+                                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300/80">
+                                        Verified Lodge
+                                      </span>
+                                    )}
+                                    {isIdea && (
+                                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300/80">
+                                        Naming Idea
+                                      </span>
+                                    )}
+                                    {item.category && (
+                                      <span className="px-1.5 py-0.2 rounded text-[10px] font-medium bg-stone-100 text-stone-600 border border-stone-200">
+                                        {item.category}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-stone-500 group-hover:text-stone-700 truncate mt-0.5">
+                                    {isIdea && item.description ? item.description : item.location}
+                                  </p>
+                                </div>
+                              </button>
+
                               <button
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleSelectMalawiPlace(item);
-                                  handleLookupPropertyAI(item.name);
+                                  handleSelectMalawiPlace(item, true);
                                 }}
-                                className="inline-flex items-center gap-1 text-[11px] font-semibold text-stone-800 bg-stone-100 hover:bg-stone-200 border border-stone-200 px-3 py-1.5 rounded-xl shrink-0 cursor-pointer transition active:scale-95"
-                                title="Auto-fill listing details"
+                                className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1.5 rounded-xl shrink-0 cursor-pointer transition active:scale-95 shadow-2xs border ${
+                                  isReg
+                                    ? 'bg-amber-100 hover:bg-amber-200 text-amber-950 border-amber-300'
+                                    : 'bg-stone-900 hover:bg-stone-800 text-white border-stone-900'
+                                }`}
+                                title="1-Click load complete listing details"
                               >
-                                <ConciergeBell className="w-3 h-3 text-stone-600" />
-                                <span>Auto-Fill</span>
+                                <ConciergeBell className={`w-3 h-3 ${isReg ? 'text-amber-700' : 'text-amber-300'}`} />
+                                <span>{isReg ? '1-Click Auto-Fill' : 'Auto-Fill'}</span>
                               </button>
-                            )}
-                          </li>
-                        ))}
+                            </li>
+                          );
+                        })}
                       </ul>
                     </div>
                   )}
                 </div>
+
+                {/* Popular Malawian Accommodations Showcase */}
+                {!draft.name.trim() && (
+                  <div className="mt-3 pt-3 border-t border-stone-100">
+                    <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+                      <div className="flex items-center gap-1.5 text-xs text-stone-600">
+                        <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                        <span className="font-semibold text-stone-800">Verified Malawian Properties:</span>
+                        <span className="text-stone-500 text-[11px] hidden sm:inline">Tap to explore instant auto-fill</span>
+                      </div>
+                      <span className="text-[10px] font-mono text-stone-400">80+ Lodges in Registry</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {POPULAR_MALAWI_PROPERTIES_SHOWCASE.map((showcase) => (
+                        <button
+                          key={showcase.name}
+                          type="button"
+                          onClick={() => {
+                            const reg = getRegisteredPropertyByName(showcase.name);
+                            if (reg) {
+                              handleSelectMalawiPlace({
+                                id: `reg-${reg.id}`,
+                                name: reg.name,
+                                location: reg.location,
+                                coordinates: reg.coordinates,
+                                category: reg.category,
+                                type: 'hospitality',
+                                district: reg.district,
+                                source: 'registry',
+                                badge: reg.badge,
+                                description: reg.description,
+                                summary: reg.summary,
+                                amenities: reg.amenities,
+                                suggestedRooms: reg.suggestedRooms,
+                                locationNotes: reg.locationNotes,
+                                checkInTime: reg.checkInTime,
+                                checkOutTime: reg.checkOutTime,
+                                contactPhone: reg.contactPhone,
+                                contactEmail: reg.contactEmail,
+                                contactWhatsapp: reg.contactWhatsapp,
+                              }, true);
+                            } else {
+                              setDraft(d => ({ ...d, name: showcase.name }));
+                              handleLookupPropertyAI(showcase.name);
+                            }
+                          }}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs bg-stone-50 hover:bg-amber-50 hover:text-amber-950 hover:border-amber-300 border border-stone-200/90 text-stone-700 transition cursor-pointer active:scale-95 shadow-2xs group"
+                          title={`Click to load verified details for ${showcase.name}`}
+                        >
+                          <Building2 className="w-3 h-3 text-stone-400 group-hover:text-amber-600" />
+                          <span className="font-medium text-stone-800 group-hover:text-amber-950">{showcase.name}</span>
+                          <span className="text-[10px] text-stone-500 group-hover:text-amber-800">· {showcase.location}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Duplicate / Existing Property Warning */}
                 {existingMatch?.exists && (
