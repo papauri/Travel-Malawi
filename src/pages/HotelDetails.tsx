@@ -15,7 +15,7 @@ import { useChatModal } from '../contexts/ChatModalContext';
 import { useManagerPresence } from '../hooks/usePresence';
 import PhoneInput from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
-import { MapPin, Megaphone, Calendar, Users, Star, CheckCircle2, ChevronRight, ChevronDown, Compass, Info, Plus, Minus, ShieldCheck, AlertTriangle, UtensilsCrossed, Clock, BedDouble, MessageSquare, MessageCircle, Images, Mail, PhoneCall, Phone, Navigation, CreditCard, LogIn, LogOut, Share, Share2, Zap, Droplets, Map, Wifi, WifiOff, HardDrive, Monitor, Tag, Building, Lock } from 'lucide-react';
+import { MapPin, Megaphone, Calendar, Users, Star, CheckCircle2, ChevronRight, ChevronDown, Compass, Info, Plus, Minus, ShieldCheck, AlertTriangle, UtensilsCrossed, Clock, BedDouble, MessageSquare, MessageCircle, Images, Mail, PhoneCall, Phone, Navigation, CreditCard, LogIn, LogOut, Share, Share2, Zap, Droplets, Map, Wifi, WifiOff, HardDrive, Monitor, Tag, Building, Lock, ExternalLink } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
 import { saveOfflineBooking } from '../lib/offlineBookingsDB';
@@ -371,20 +371,27 @@ export default function HotelDetails() {
       key: r.id ? `rev-${r.id}-${i}` : `review-${r.createdAt}-${i}`,
       author: r.authorName || 'Guest',
       rating: r.rating,
+      title: undefined as string | undefined,
       text: r.text,
       date: new Date(r.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
       source: 'Travel-Malawi',
+      sourceUrl: undefined as string | undefined,
       verified: true,
     }));
-    const imported = (hotel?.reviews ?? []).map((r, i) => ({
-      key: `imported-${i}`,
-      author: r.author || 'Guest',
-      rating: r.rating,
-      text: r.text,
-      date: r.date,
-      source: r.source,
-      verified: false,
-    }));
+    const imported = (hotel?.reviews ?? []).map((r, i) => {
+      const comment = (r.text || r.comment || '').trim();
+      return {
+        key: r.id || `imported-${i}`,
+        author: r.author || 'Guest',
+        rating: typeof r.rating === 'number' ? r.rating : 5,
+        title: r.title || undefined,
+        text: comment,
+        date: r.date || 'Recent stay',
+        source: r.source || 'TripAdvisor',
+        sourceUrl: r.sourceUrl || undefined,
+        verified: false,
+      };
+    });
     return [...written, ...imported];
   }, [hotel?.reviews, reviews]);
 
@@ -1988,24 +1995,65 @@ export default function HotelDetails() {
                             <p className="text-[11px] sm:text-xs text-stone-500">{review.date}</p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-1 bg-stone-50 px-2 sm:px-2.5 py-1 rounded-full border border-stone-100">
-                          <Star className="h-3 w-3 sm:h-3.5 sm:w-3.5 fill-current text-stone-900" />
-                          <span className="font-semibold text-stone-900 text-xs sm:text-sm">{review.rating.toFixed(1)}</span>
+                        <div className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-full border ${
+                          review.rating >= 4
+                            ? 'bg-stone-50 border-stone-100 text-stone-900'
+                            : review.rating >= 3
+                            ? 'bg-amber-50/80 border-amber-200 text-amber-900'
+                            : 'bg-rose-50 border-rose-200 text-rose-900'
+                        }`}>
+                          <Star className={`h-3 w-3 sm:h-3.5 sm:w-3.5 fill-current ${
+                            review.rating >= 4 ? 'text-amber-400' : review.rating >= 3 ? 'text-amber-500' : 'text-rose-500'
+                          }`} />
+                          <span className="font-semibold text-xs sm:text-sm">{review.rating.toFixed(1)}</span>
                         </div>
                       </div>
-                      <p className="text-stone-700 leading-relaxed italic text-xs sm:text-sm md:text-base">"{review.text}"</p>
-                      {/* Only a review written from a completed booking on this
-                          platform can claim a verified stay; imported ones say
-                          where they came from instead. */}
-                      {review.verified ? (
-                        <p className="text-[10px] sm:text-xs text-emerald-700 mt-3 sm:mt-4 uppercase tracking-wider font-semibold flex items-center gap-1.5">
-                          <ShieldCheck className="h-3.5 w-3.5" /> Verified stay
-                        </p>
-                      ) : (
-                        <p className="text-[10px] sm:text-xs text-stone-400 mt-3 sm:mt-4 uppercase tracking-wider font-semibold">
-                          Imported from {review.source}
-                        </p>
+
+                      {review.title && (
+                        <h4 className="font-serif font-bold text-stone-900 text-xs sm:text-sm mb-1.5 leading-snug">
+                          "{review.title}"
+                        </h4>
                       )}
+
+                      <p className="text-stone-700 leading-relaxed italic text-xs sm:text-sm md:text-base">"{review.text}"</p>
+
+                      {/* Review Attribution, Transparency Badges & Direct Source Link */}
+                      <div className="mt-3 sm:mt-4 pt-2.5 border-t border-stone-100 flex flex-wrap items-center justify-between gap-2 text-[10px] sm:text-xs">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {review.verified ? (
+                            <span className="text-emerald-700 uppercase tracking-wider font-semibold flex items-center gap-1.5">
+                              <ShieldCheck className="h-3.5 w-3.5" /> Verified stay
+                            </span>
+                          ) : (
+                            <span className="text-stone-500 uppercase tracking-wider font-semibold">
+                              Imported from {review.source}
+                            </span>
+                          )}
+                          {review.rating <= 2.5 && (
+                            <span className="font-bold text-rose-800 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded text-[10px]">
+                              Transparent Critique
+                            </span>
+                          )}
+                          {review.rating > 2.5 && review.rating <= 3.8 && (
+                            <span className="font-bold text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded text-[10px]">
+                              Constructive Feedback
+                            </span>
+                          )}
+                        </div>
+
+                        {review.sourceUrl && (
+                          <a
+                            href={review.sourceUrl}
+                            target="_blank"
+                            rel="noreferrer noopener"
+                            className="inline-flex items-center gap-1 text-emerald-700 hover:text-emerald-800 font-semibold transition hover:underline"
+                            title={`Verify original review on ${review.source}`}
+                          >
+                            <span>View original on {review.source}</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>

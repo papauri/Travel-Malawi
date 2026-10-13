@@ -1403,6 +1403,7 @@ async function startServer() {
     const location = cleanText(req.body?.location, 200, true);
     const category = cleanText(req.body?.category, 100, true);
     const count = typeof req.body?.count === 'number' ? Math.min(Math.max(req.body.count, 3), 6) : 4;
+    const sentimentMode = cleanText(req.body?.sentimentMode, 30, true) || 'balanced';
 
     if (!hotelName) {
       return res.status(400).json({ error: 'Hotel name is required' });
@@ -1411,7 +1412,7 @@ async function startServer() {
     try {
       const status = getPublicAIStatus();
       if (!status.enabled || !status.available) {
-        const fallback = generateCuratedMalawiReviews(hotelName, location, category, count);
+        const fallback = generateCuratedMalawiReviews(hotelName, location, category, count, sentimentMode);
         return res.json({
           text: JSON.stringify(fallback),
           provider: 'gemini',
@@ -1426,7 +1427,7 @@ async function startServer() {
       const targetSources = Array.isArray(req.body?.targetSources)
         ? req.body.targetSources.map((s: any) => cleanText(s, 60, true)).filter(Boolean)
         : undefined;
-      const minRating = typeof req.body?.minRating === 'number' ? Math.min(Math.max(req.body.minRating, 1), 5) : 4;
+      const minRating = typeof req.body?.minRating === 'number' ? Math.min(Math.max(req.body.minRating, 1), 5) : (sentimentMode === 'critical' ? 1 : 4);
 
       const result = await executeAIGeneration(withVerifiedRole({
         action: 'scrape_reviews',
@@ -1440,13 +1441,14 @@ async function startServer() {
           targetSources,
           minRating,
           count,
+          sentimentMode: sentimentMode as any,
         }
       }, req.authUser!));
 
       res.json(result);
     } catch (err: any) {
       console.warn(`[scrape_reviews] Auto-fallback to curated reviews due to: ${err?.message || err}`);
-      const fallback = generateCuratedMalawiReviews(hotelName, location, category, count);
+      const fallback = generateCuratedMalawiReviews(hotelName, location, category, count, sentimentMode);
       res.json({
         text: JSON.stringify(fallback),
         provider: 'gemini',

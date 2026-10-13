@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { 
   Search, Save, Star, Loader2, Check, MapPin, 
-  Trash2, Edit3, Sliders, X, Eye
+  Trash2, Edit3, Sliders, X, Eye, ExternalLink
 } from 'lucide-react';
 import { Hotel } from '../types';
 import toast from 'react-hot-toast';
@@ -50,7 +50,8 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
   const [selectedSources, setSelectedSources] = useState<string[]>([
     'TripAdvisor', 'Google Reviews', 'Booking.com', 'SafariBookings'
   ]);
-  const [minRating, setMinRating] = useState<number>(4);
+  const [sentimentMode, setSentimentMode] = useState<'balanced' | 'critical' | 'positive' | 'all'>('balanced');
+  const [minRating, setMinRating] = useState<number>(1);
   const [reviewCount, setReviewCount] = useState<number>(4);
   const [showAdvancedOptions, setShowAdvancedOptions] = useState<boolean>(false);
 
@@ -130,6 +131,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
           customQuery: customQuery.trim() || undefined,
           targetUrl: targetUrl.trim() || undefined,
           targetSources: selectedSources.length > 0 ? selectedSources : undefined,
+          sentimentMode,
           minRating,
           count: reviewCount,
         })
@@ -200,7 +202,8 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
         if (!revSrc.includes(sourceFilter.toLowerCase())) return false;
       }
       if (ratingFilter === '5' && review.rating < 4.8) return false;
-      if (ratingFilter === '4' && review.rating >= 4.8) return false;
+      if (ratingFilter === '4' && (review.rating < 3.8 || review.rating >= 4.8)) return false;
+      if (ratingFilter === 'critical' && review.rating > 3.8) return false;
       return true;
     });
   }, [scrapedReviews, sourceFilter, ratingFilter]);
@@ -588,7 +591,29 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
                   <span className="text-[10px] text-stone-500 mt-0.5 block">Direct link to target TripAdvisor or Booking profile.</span>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <div className="flex-1">
+                    <label className="block text-[11px] font-bold text-stone-700 mb-1">
+                      Scraping Tone &amp; Transparency
+                    </label>
+                    <select
+                      value={sentimentMode}
+                      onChange={(e) => {
+                        const m = e.target.value as any;
+                        setSentimentMode(m);
+                        if (m === 'critical') setMinRating(1);
+                        else if (m === 'positive') setMinRating(4);
+                        else setMinRating(1);
+                      }}
+                      className="w-full bg-white border border-stone-200 rounded-lg px-2.5 py-1.5 text-xs text-stone-900 focus:border-stone-900 outline-none"
+                    >
+                      <option value="balanced">Balanced &amp; Transparent (Mix of 4-5★ &amp; 2-3★)</option>
+                      <option value="critical">Critical / Negative Only (1-3★ authentic issues)</option>
+                      <option value="positive">Positive Highlights Only (4-5★)</option>
+                      <option value="all">All Ratings (1-5★ Unfiltered)</option>
+                    </select>
+                  </div>
+
                   <div className="flex-1">
                     <label className="block text-[11px] font-bold text-stone-700 mb-1">
                       Target Reviews
@@ -605,13 +630,16 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
 
                   <div className="flex-1">
                     <label className="block text-[11px] font-bold text-stone-700 mb-1">
-                      Min Rating
+                      Min Rating Threshold
                     </label>
                     <select
                       value={minRating}
                       onChange={(e) => setMinRating(Number(e.target.value))}
                       className="w-full bg-white border border-stone-200 rounded-lg px-2.5 py-1.5 text-xs text-stone-900 focus:border-stone-900 outline-none"
                     >
+                      <option value={1}>1+ Star (Full Transparency)</option>
+                      <option value={2}>2+ Stars</option>
+                      <option value={3}>3+ Stars</option>
                       <option value={4}>4+ Stars</option>
                       <option value={5}>5 Stars Only</option>
                     </select>
@@ -689,8 +717,21 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
               )}
             </div>
 
-            {/* Quick Actions */}
+            {/* Quick Actions & Rating Filters */}
             <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-1.5 mr-1">
+                <span className="text-[11px] text-stone-500 font-medium">Filter:</span>
+                <select
+                  value={ratingFilter}
+                  onChange={(e) => setRatingFilter(e.target.value)}
+                  className="bg-stone-50 border border-stone-200 rounded-lg px-2 py-1 text-xs text-stone-800 outline-none"
+                >
+                  <option value="all">All Stars ({scrapedReviews.length})</option>
+                  <option value="5">5★ Only</option>
+                  <option value="4">4★ Range</option>
+                  <option value="critical">1–3★ Critical/Constructive</option>
+                </select>
+              </div>
               <button
                 type="button"
                 onClick={handleSelectAll}
@@ -764,8 +805,14 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
 
                         <div className="flex items-center gap-1.5 shrink-0">
                           {getSourceBadge(review.source)}
-                          <div className="flex items-center gap-0.5 px-2 py-0.5 rounded-md bg-stone-900 text-white font-mono text-xs font-bold">
-                            <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                          <div className={`flex items-center gap-0.5 px-2 py-0.5 rounded-md font-mono text-xs font-bold ${
+                            review.rating >= 4 
+                              ? 'bg-stone-900 text-white' 
+                              : review.rating >= 3 
+                              ? 'bg-amber-700 text-white' 
+                              : 'bg-rose-700 text-white'
+                          }`}>
+                            <Star className={`w-3 h-3 ${review.rating >= 4 ? 'fill-amber-400 text-amber-400' : 'fill-white text-white'}`} />
                             <span>{review.rating}</span>
                           </div>
                         </div>
@@ -798,12 +845,33 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
                       )}
                     </div>
 
-                    {/* Review Footer: Date, Clean Status, Actions */}
+                    {/* Review Footer: Date, Clean Status, Direct Link, Actions */}
                     <div className="flex items-center justify-between text-[11px] text-stone-400 border-t border-stone-100 pt-2 mt-1">
-                      <div className="flex items-center gap-1.5 text-stone-500">
-                        {review.date && <span>{review.date}</span>}
-                        {review.date && review.verified && <span>·</span>}
-                        {review.verified && <span className="font-medium text-stone-700">Verified</span>}
+                      <div className="flex items-center gap-2 text-stone-500 flex-wrap">
+                        {review.date && <span className="font-medium text-stone-700">{review.date}</span>}
+                        {review.rating <= 2.5 && (
+                          <span className="text-[10px] font-bold text-rose-800 bg-rose-50 border border-rose-200 px-1.5 py-0.2 rounded">
+                            Critical Feedback
+                          </span>
+                        )}
+                        {review.rating > 2.5 && review.rating <= 3.8 && (
+                          <span className="text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.2 rounded">
+                            Constructive
+                          </span>
+                        )}
+                        {review.sourceUrl && (
+                          <a
+                            href={review.sourceUrl}
+                            target="_blank"
+                            rel="noreferrer noopener"
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center gap-1 text-emerald-700 hover:text-emerald-800 font-semibold transition hover:underline"
+                            title="Verify original review on source site"
+                          >
+                            <span>Direct Link</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        )}
                       </div>
 
                       <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition">
@@ -947,8 +1015,14 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
                         <span className="font-bold text-stone-900 text-xs sm:text-sm">{review.author}</span>
                         {review.source && getSourceBadge(review.source)}
                       </div>
-                      <div className="flex items-center gap-1 font-mono text-xs font-bold text-stone-800">
-                        <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                      <div className={`flex items-center gap-1 font-mono text-xs font-bold px-2 py-0.5 rounded-md ${
+                        review.rating >= 4 
+                          ? 'bg-stone-900 text-white' 
+                          : review.rating >= 3 
+                          ? 'bg-amber-700 text-white' 
+                          : 'bg-rose-700 text-white'
+                      }`}>
+                        <Star className={`w-3.5 h-3.5 ${review.rating >= 4 ? 'fill-amber-400 text-amber-400' : 'fill-white text-white'}`} />
                         <span>{review.rating}</span>
                       </div>
                     </div>
@@ -958,8 +1032,22 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
                     </p>
                   </div>
 
-                  <div className="flex items-center justify-between text-[11px] text-stone-400 border-t border-stone-200/60 pt-2">
-                    <span>{review.date || 'Recent stay'}</span>
+                  <div className="flex items-center justify-between text-[11px] text-stone-500 border-t border-stone-200/60 pt-2 flex-wrap gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-medium text-stone-700">{review.date || 'Recent stay'}</span>
+                      {review.sourceUrl && (
+                        <a
+                          href={review.sourceUrl}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                          className="inline-flex items-center gap-1 text-emerald-700 hover:text-emerald-800 font-semibold transition hover:underline"
+                          title="Open original review source"
+                        >
+                          <span>Direct Link</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      )}
+                    </div>
                     <button
                       type="button"
                       disabled={isDeletingExisting === String(i)}
@@ -1019,6 +1107,11 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
                     <option value={4.8}>4.8 Stars</option>
                     <option value={4.5}>4.5 Stars</option>
                     <option value={4}>4 Stars ★★★★☆</option>
+                    <option value={3.5}>3.5 Stars</option>
+                    <option value={3}>3 Stars ★★★☆☆ (Constructive)</option>
+                    <option value={2.5}>2.5 Stars</option>
+                    <option value={2}>2 Stars ★★☆☆☆ (Critical)</option>
+                    <option value={1}>1 Star ★☆☆☆☆ (Negative)</option>
                   </select>
                 </div>
 
@@ -1028,6 +1121,30 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
                     type="text"
                     value={editFormData.source}
                     onChange={(e) => setEditFormData({ ...editFormData, source: e.target.value })}
+                    className="w-full bg-stone-50 border border-stone-200 rounded-lg px-3 py-2 text-xs font-medium text-stone-900 outline-none focus:border-stone-900"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-stone-700 mb-1">Stay / Review Date</label>
+                  <input
+                    type="text"
+                    value={editFormData.date || ''}
+                    onChange={(e) => setEditFormData({ ...editFormData, date: e.target.value })}
+                    placeholder="e.g. October 2024"
+                    className="w-full bg-stone-50 border border-stone-200 rounded-lg px-3 py-2 text-xs font-medium text-stone-900 outline-none focus:border-stone-900"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-stone-700 mb-1">Direct Review Link (URL)</label>
+                  <input
+                    type="url"
+                    value={editFormData.sourceUrl || ''}
+                    onChange={(e) => setEditFormData({ ...editFormData, sourceUrl: e.target.value })}
+                    placeholder="https://www.tripadvisor.com/..."
                     className="w-full bg-stone-50 border border-stone-200 rounded-lg px-3 py-2 text-xs font-medium text-stone-900 outline-none focus:border-stone-900"
                   />
                 </div>
