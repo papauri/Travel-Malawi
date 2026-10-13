@@ -467,6 +467,65 @@ function synthesizeClientFallback(options: AIGenerateOptions): { text: string; d
   return { text: `Comfortable and welcoming accommodation in ${location}.` };
 }
 
+function synthesizeOperationsFallback(payload: OperationsChatPayload): OperationsChatResult {
+  const msg = (payload.message || '').toLowerCase();
+  const properties = payload.context?.properties || [];
+  const bookings = (payload.context as any)?.bookings || [];
+  const todayStr = payload.context?.currentDateStr || new Date().toISOString().split('T')[0];
+  const userName = payload.displayName || payload.userName || 'Manager';
+
+  let reply = '';
+  let actionProposal: ActionProposal | null = null;
+  let suggestedFollowUps: string[] = ["Check today's arrivals", "Audit all room rates", "Review property amenities"];
+
+  if (msg.includes('arrival') || msg.includes('checkin') || msg.includes('check in')) {
+    const todayArrivals = bookings.filter((b: any) => b.checkIn === todayStr && b.status !== 'cancelled');
+    if (todayArrivals.length > 0) {
+      reply = `### 🛎️ Guest Arrivals for Today (${todayStr})\n\n| Guest | Reference | Property | Room | Status |\n| :--- | :--- | :--- | :--- | :--- |\n` +
+        todayArrivals.map((b: any) => `| **${b.guestName}** | \`${b.reference || b.id?.slice(0, 8)}\` | ${b.hotelName} | ${b.roomName || 'Room'} | Confirmed |`).join('\n') +
+        `\n\n*Rooms should be checked and solar backup ready.*`;
+    } else {
+      reply = `### 🛎️ Guest Arrivals for Today (${todayStr})\n\nThere are **no guest arrivals scheduled for today** (${todayStr}). All room units remain available for direct booking.`;
+    }
+  } else if (msg.includes('rate') || msg.includes('price') || msg.includes('cost') || msg.includes('kwacha') || msg.includes('usd')) {
+    const allRooms: any[] = [];
+    properties.forEach(p => {
+      (p.rooms || []).forEach(r => allRooms.push({ pName: p.name, ...r }));
+    });
+    if (allRooms.length > 0) {
+      reply = `### 💰 Active Room Rates\n\n| Property | Room Type | USD Rate | MWK Rate | Capacity |\n| :--- | :--- | :--- | :--- | :--- |\n` +
+        allRooms.map(r => `| ${r.pName} | **${r.name}** | $${r.priceUSD ?? '—'} | ${r.priceMWK ? `MK ${r.priceMWK.toLocaleString()}` : '—'} | ${r.maxGuests || 2} guests |`).join('\n');
+    } else {
+      reply = `Current standard room rates in Malawi average $55–$95 USD (MK 95,000–MK 165,000) for chalets with solar backup.`;
+    }
+  } else if (msg.includes('breakfast') && (msg.includes('add') || msg.includes('free') || msg.includes('include'))) {
+    if (properties.length > 0) {
+      actionProposal = {
+        type: 'add_amenity',
+        hotelId: properties[0].id,
+        hotelName: properties[0].name,
+        amenity: 'Breakfast Included',
+        targetScope: 'all',
+        hotelIds: properties.map(p => p.id),
+        hotelNames: properties.map(p => p.name),
+      };
+      reply = `I have drafted adding **Breakfast Included** across your properties. Confirm below to apply this update to your live listings.`;
+    } else {
+      reply = `Breakfast Included is a top-performing amenity for Malawian properties.`;
+    }
+  } else {
+    reply = `Takulandirani, ${userName}! Ulendo is standing by to assist with your property operations in Malawi.\n\nI have live visibility across your listings, room rates, and guest calendars. How can I assist you with your properties today?`;
+  }
+
+  return {
+    reply,
+    provider: 'local',
+    model: 'ulendo-resident-concierge',
+    actionProposal,
+    suggestedFollowUps,
+  };
+}
+
   const generate = useCallback(async (options: AIGenerateOptions): Promise<string | null> => {
     if (generating) {
       toast('A request is already processing. Please wait a moment...', { icon: '⏳' });
@@ -556,33 +615,15 @@ function synthesizeClientFallback(options: AIGenerateOptions): { text: string; d
           toast.error(errMsg);
           return null;
         }
-        console.warn(`[AI Hook] Operations chat server responded with ${res.status}. Serving resident concierge fallback.`);
-        return {
-          reply: `Takulandirani! Ulendo is standing by to assist with your property operations in Malawi. Even during network drops, your property settings, rates, and guest calendars remain accessible. Please let me know how I can help you with your listings today.`,
-          provider: 'local',
-          model: 'ulendo-concierge',
-          suggestedFollowUps: [
-            'What are standard room rates for Lake Malawi?',
-            'How to optimize listings for peak season?',
-            'Review my property amenities'
-          ],
-        };
+        console.warn(`[AI Hook] Operations chat server responded with ${res.status}. Serving resident concierge swarm fallback.`);
+        return synthesizeOperationsFallback(payload);
       }
 
       const data = await res.json();
       return data;
     } catch (err: any) {
-      console.warn('[AI Hook] Operations chat network error, serving resident concierge fallback:', err);
-      return {
-        reply: `Takulandirani! Ulendo is standing by to assist with your property operations in Malawi. Even during network drops, your property settings, rates, and guest calendars remain accessible. Please let me know how I can help you with your listings today.`,
-        provider: 'local',
-        model: 'ulendo-concierge',
-        suggestedFollowUps: [
-          'What are standard room rates for Lake Malawi?',
-          'How to optimize listings for peak season?',
-          'Review my property amenities'
-        ],
-      };
+      console.warn('[AI Hook] Operations chat network error, serving resident concierge swarm fallback:', err);
+      return synthesizeOperationsFallback(payload);
     } finally {
       setGenerating(false);
     }

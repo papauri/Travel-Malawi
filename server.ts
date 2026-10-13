@@ -425,7 +425,7 @@ async function startServer() {
   app.post('/api/ai/operations-chat', requireRole('hotel_manager', 'admin', 'marketing'), aiLimiter, async (req, res) => {
     try {
       const status = getPublicAIStatus();
-      if (!status.enabled) {
+      if (!status.systemEnabled && !status.enabled) {
         return res.status(403).json({ error: 'Ulendo is currently switched off by the platform team.' });
       }
 

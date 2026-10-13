@@ -202,7 +202,19 @@ export default function OperationsCopilot() {
         if (stored) {
           const parsed = JSON.parse(stored);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            return parsed;
+            const seenIds = new Set<string>();
+            const deduped: ChatMessage[] = [];
+            for (let i = 0; i < parsed.length; i++) {
+              const m = parsed[i];
+              if (m && typeof m === 'object') {
+                const safeId = m.id && !seenIds.has(m.id)
+                  ? m.id
+                  : `restored_${Date.now()}_${i}_${Math.random().toString(36).substring(2, 8)}`;
+                seenIds.add(safeId);
+                deduped.push({ ...m, id: safeId });
+              }
+            }
+            return deduped;
           }
         }
       } catch (err) {
@@ -404,10 +416,11 @@ export default function OperationsCopilot() {
   const createWelcomeMessage = useCallback((isReset = false): ChatMessage => {
     const greeting = userDisplayName ? `Hi ${userDisplayName}` : 'Hello';
     const now = Date.now();
+    const nonce = Math.random().toString(36).substring(2, 8);
     if (userIsAdmin) {
       const propText = properties.length > 0 ? `all **${properties.length} platform properties**` : 'the platform';
       return {
-        id: `welcome_${now}`,
+        id: `welcome_${now}_${nonce}`,
         role: 'assistant',
         content: isReset
           ? `${greeting}! Conversation cleared. I have live visibility across ${propText}.\n\nWhat would you like to review, audit, or adjust next?`
@@ -417,7 +430,7 @@ export default function OperationsCopilot() {
     } else {
       const propNames = properties.map(p => `**${p.name}**`).join(', ') || 'your properties';
       return {
-        id: `welcome_${now}`,
+        id: `welcome_${now}_${nonce}`,
         role: 'assistant',
         content: isReset
           ? `${greeting}! Conversation cleared. Ready to assist with ${propNames}.\n\nWhat would you like to do next?`
@@ -686,7 +699,7 @@ export default function OperationsCopilot() {
     setActiveQueryText(text);
 
     const userMsg: ChatMessage = {
-      id: `user_${Date.now()}`,
+      id: `user_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
       role: 'user',
       content: text,
       timestamp: Date.now(),
@@ -897,7 +910,7 @@ export default function OperationsCopilot() {
             : null;
 
         const assistantMsg: ChatMessage = {
-          id: `assistant_${Date.now()}`,
+          id: `assistant_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
           role: 'assistant',
           content: result.reply,
           actionProposal: result.actionProposal,
@@ -1371,7 +1384,7 @@ export default function OperationsCopilot() {
       setMessages(prev => [
         ...prev,
         {
-          id: `sys_${Date.now()}`,
+          id: `sys_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
           role: 'assistant',
           content: `✅ **Applied Successfully:** ${actionSummaryText}\n\n*Updated ${targetIds.length} properties (${targetNames.join(', ')}). All live listings, guest search views, and dashboards reflect this change immediately.*`,
           timestamp: Date.now(),
@@ -1791,7 +1804,7 @@ export default function OperationsCopilot() {
                 <>
                   {messages.map((msg, mIdx) => (
                     <div
-                      key={`${msg.id}-${mIdx}`}
+                      key={`${msg.id || 'msg'}-${mIdx}-${msg.timestamp || ''}`}
                       className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} max-w-full min-w-0`}
                     >
                       <div

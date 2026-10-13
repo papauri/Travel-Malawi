@@ -1093,7 +1093,7 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
             </p>
           </div>
         ) : (
-          timelineItems.map((item) => {
+          timelineItems.map((item, idx) => {
             if (item.type === 'call') {
               const call = item.data;
               const isMe = call.callerId === currentUser.uid;
@@ -1127,7 +1127,7 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
               }
 
               return (
-                <div key={`call-${item.id}`} className="flex justify-center my-2.5 animate-fadeIn">
+                <div key={`call-${item.id || 'call'}-${idx}`} className="flex justify-center my-2.5 animate-fadeIn">
                   <div className="flex items-center gap-2.5 px-3.5 py-1.5 bg-stone-100/90 rounded-full border border-stone-200/80 shadow-2xs text-xs">
                     <div className={`w-6 h-6 rounded-full flex items-center justify-center bg-white shadow-2xs border border-stone-100 ${iconColor}`}>
                       <CallIcon className="w-3.5 h-3.5" />
@@ -1164,7 +1164,7 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
             const isCredentialMessage = (msg as any).isCredentialNotice || msg.text?.includes('Arrival PIN:');
 
             return (
-              <div key={`msg-${item.id}`} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-fadeIn`}>
+              <div key={`msg-${item.id || 'msg'}-${idx}`} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-fadeIn`}>
                 <span className="text-[10px] text-stone-400 mb-1 px-1">
                   {msg.senderId === liveBooking.guestId ? (liveBooking.guestName || 'Guest') : (hotel?.name || 'Host')}
                 </span>

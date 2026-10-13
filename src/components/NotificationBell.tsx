@@ -319,7 +319,7 @@ export default function NotificationBell() {
                       <span>Click to reply</span>
                     </div>
 
-                    {unreadItems.map((item) => {
+                    {unreadItems.map((item, uIdx) => {
                       const initials = (item.senderName || 'U').slice(0, 2).toUpperCase();
                       const isOpenNow = item.type === 'inquiry'
                         ? isChatOpen('inquiry', item.hotelId, item.guestId)
@@ -327,7 +327,7 @@ export default function NotificationBell() {
 
                       return (
                         <div
-                          key={item.id}
+                          key={`${item.id || 'notif'}-${uIdx}`}
                           onClick={() => handleOpenItem(item)}
                           className="w-full text-left p-3 rounded-xl bg-white hover:bg-stone-50 border border-stone-200/70 hover:border-stone-300 transition-all flex items-start gap-3 group cursor-pointer shadow-2xs"
                         >
@@ -412,7 +412,7 @@ export default function NotificationBell() {
                       <span>Open / Close anytime</span>
                     </div>
 
-                    {activeChats.map((item) => {
+                    {activeChats.map((item, aIdx) => {
                       const initials = (item.senderName || 'G').slice(0, 2).toUpperCase();
                       const isOpenNow = item.type === 'inquiry'
                         ? isChatOpen('inquiry', item.hotelId, item.guestId)
@@ -420,7 +420,7 @@ export default function NotificationBell() {
 
                       return (
                         <div
-                          key={item.id}
+                          key={`${item.id || 'chat'}-${aIdx}`}
                           onClick={() => handleOpenItem(item)}
                           className={`w-full text-left p-3 rounded-xl border transition-all flex items-start gap-3 group cursor-pointer shadow-2xs ${
                             isOpenNow

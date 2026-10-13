@@ -604,9 +604,9 @@ Plan and book direct at: https://travel-malawi.ai.studio/`;
             {/* Regional Legend Footer */}
             <div className="mt-4 pt-3 flex flex-wrap items-center justify-center gap-3 text-xs">
               <span className="text-stone-400 font-medium">Regional Hubs:</span>
-              {regionalGroups.map(group => (
+              {regionalGroups.map((group, gIdx) => (
                 <div 
-                  key={group.name} 
+                  key={`${group.name || 'group'}-${gIdx}`} 
                   className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-semibold"
                   style={{ backgroundColor: group.info.bg, borderColor: group.info.borderColor, color: group.info.color }}
                 >

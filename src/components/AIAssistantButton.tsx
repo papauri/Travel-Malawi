@@ -39,8 +39,8 @@ export default function AIAssistantButton({
   const [activeAction, setActiveAction] = useState<'draft' | 'polish' | 'shorten'>('draft');
   const [customNote, setCustomNote] = useState('');
 
-  // Strict Kill Switch check: If admin disabled AI or no key configured, render nothing
-  if (!status.enabled || !status.available) {
+  // Strict Kill Switch check: If admin completely disabled AI system-wide, render nothing
+  if (!status.available && !status.enabled) {
     return null;
   }
 

@@ -938,7 +938,7 @@ export default function PropertyChat({
                 }
                 
                 return (
-                  <div key={`call-${item.id}`} className="flex justify-center my-3 animate-fadeIn">
+                  <div key={`call-${item.id || 'call'}-${index}`} className="flex justify-center my-3 animate-fadeIn">
                     <div className="flex items-center gap-2.5 px-4 py-2 bg-stone-100/80 rounded-full border border-stone-200 shadow-2xs">
                        <div className={`w-7 h-7 rounded-full flex items-center justify-center bg-white shadow-sm border border-stone-100 ${iconColor}`}>
                          <CallIcon className="w-3.5 h-3.5" />
@@ -973,7 +973,7 @@ export default function PropertyChat({
 
               return (
                 <div 
-                  key={`msg-${item.id}`} 
+                  key={`msg-${item.id || 'msg'}-${index}`} 
                   className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-fadeIn`}
                 >
                   <span className="text-[10px] font-medium text-stone-400 mb-1 px-1">

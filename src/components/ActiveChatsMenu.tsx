@@ -442,7 +442,7 @@ const ActiveChatsMenu = forwardRef<ActiveChatsMenuRef, {}>((props, ref) => {
               <div data-lenis-prevent="true" className="flex-1 overflow-y-auto overscroll-contain scrollbar-slim divide-y divide-stone-100 max-h-[min(420px,calc(100dvh-12rem))]">
                 {currentDisplayList.length > 0 ? (
                   <div className="p-2 space-y-2">
-                    {currentDisplayList.map((item) => {
+                    {currentDisplayList.map((item, idx) => {
                       const initials = (item.senderName || 'G').slice(0, 2).toUpperCase();
                       const isCurrentlyOpen = item.type === 'inquiry'
                         ? isChatOpen('inquiry', item.hotelId, item.guestId)
@@ -452,7 +452,7 @@ const ActiveChatsMenu = forwardRef<ActiveChatsMenuRef, {}>((props, ref) => {
 
                       return (
                         <div
-                          key={item.id}
+                          key={`${item.id || 'chat'}-${idx}`}
                           className={`w-full text-left p-3 rounded-xl border transition-all flex items-start gap-3 group relative shadow-2xs ${
                             isCurrentlyOpen
                               ? 'bg-stone-50/90 border-stone-400 ring-1 ring-stone-400'

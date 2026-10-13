@@ -317,11 +317,11 @@ Plan and book direct with 0% fees on Travel Malawi: https://travel-malawi.ai.stu
             Select Your Travel Style
           </label>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
-            {TRAVEL_STYLES.map(style => {
+            {TRAVEL_STYLES.map((style, sIdx) => {
               const isSelected = selectedStyle === style.id;
               return (
                 <button
-                  key={style.id}
+                  key={`${style.id}-${sIdx}`}
                   type="button"
                   onClick={() => setSelectedStyle(style.id)}
                   className={`p-3 rounded-2xl border text-left transition flex flex-col justify-between cursor-pointer ${
@@ -460,7 +460,7 @@ Plan and book direct with 0% fees on Travel Malawi: https://travel-malawi.ai.stu
 
                 return (
                   <div
-                    key={idx}
+                    key={`leg-${leg.dayNumber || idx}-${idx}`}
                     className="p-4 sm:p-5 rounded-2xl border border-stone-200 bg-stone-50/40 hover:bg-stone-50 transition space-y-3"
                   >
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -540,7 +540,7 @@ Plan and book direct with 0% fees on Travel Malawi: https://travel-malawi.ai.stu
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-stone-700">
               {insights.insiderSecrets.map((tip, idx) => (
-                <div key={idx} className="p-3.5 bg-amber-50/40 rounded-2xl border border-amber-200/60 flex items-start gap-2.5">
+                <div key={`secret-${idx}`} className="p-3.5 bg-amber-50/40 rounded-2xl border border-amber-200/60 flex items-start gap-2.5">
                   <span className="w-5 h-5 rounded-full bg-amber-200/80 text-amber-900 flex items-center justify-center font-bold text-[11px] shrink-0 mt-0.5">
                     {idx + 1}
                   </span>
@@ -592,7 +592,7 @@ Plan and book direct with 0% fees on Travel Malawi: https://travel-malawi.ai.stu
                 </div>
                 <ul className="space-y-2 text-xs text-stone-600">
                   {insights.packingHighlights.map((item, idx) => (
-                    <li key={idx} className="flex items-start gap-2">
+                    <li key={`pack-${idx}`} className="flex items-start gap-2">
                       <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                       <span>{item}</span>
                     </li>
@@ -631,7 +631,7 @@ Plan and book direct with 0% fees on Travel Malawi: https://travel-malawi.ai.stu
         <div className="flex flex-wrap gap-2">
           {SUGGESTED_QUESTIONS.map((q, i) => (
             <button
-              key={i}
+              key={`sug-q-${i}`}
               type="button"
               onClick={() => handleSendMessage(q)}
               className="text-[11px] font-medium px-3 py-1.5 rounded-full bg-stone-100 hover:bg-stone-200/80 text-stone-700 transition cursor-pointer text-left"
@@ -646,7 +646,7 @@ Plan and book direct with 0% fees on Travel Malawi: https://travel-malawi.ai.stu
           <div className="space-y-3 max-h-[360px] overflow-y-auto p-4 rounded-2xl bg-stone-50 border border-stone-200/70 text-xs">
             {chatMessages.map((msg, i) => (
               <div
-                key={i}
+                key={`chat-msg-${msg.id || i}-${i}`}
                 className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
               >
                 <div

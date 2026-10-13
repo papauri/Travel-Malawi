@@ -1,4 +1,5 @@
 import { AIProviderId, getEffectiveApiKey, loadAIConfig, saveAIConfig, markProviderValidity, getAvailableProviders, AISystemConfig } from './aiConfig';
+import { classifySwarmIntent, getSpecialistAgentPrompt, executeDeterministicSwarmReply } from './aiSwarm';
 
 export interface GenerationRequest {
   action: 'draft' | 'polish' | 'shorten' | 'highlights' | 'suggest_amenities' | 'suggest_rooms' | 'review_listing' | 'suggest_rate' | 'lookup_property' | 'scrape_reviews' | 'link_description_to_amenities_and_category';
@@ -2386,7 +2387,9 @@ USER MESSAGE:
 
   const finalUserPrompt = userPrompt;
 
-  const systemPrompt = `${OPERATIONS_SYSTEM_PROMPT}\n\n${UNTRUSTED_DATA_RULE}`;
+  const classification = classifySwarmIntent(req);
+  const specialistPrompt = getSpecialistAgentPrompt(classification.primaryAgent);
+  const systemPrompt = `${OPERATIONS_SYSTEM_PROMPT}\n\n${specialistPrompt}\n\n${UNTRUSTED_DATA_RULE}`;
   const rawGenerated = await callProvider(providerId, apiKey, model, systemPrompt, finalUserPrompt, 0.4, 1200, false, { thinkingBudget: 512 });
 
   // Parse out action proposal
@@ -2553,14 +2556,16 @@ USER MESSAGE:
 
 export async function executeOperationsAssistantChat(req: OperationsAssistantRequest): Promise<OperationsAssistantResult> {
   const config = loadAIConfig();
+  const classification = classifySwarmIntent(req);
+
   if (!config.enabled) {
-    return generateCuratedOperationsChatReply(req);
+    return executeDeterministicSwarmReply(req, classification.primaryAgent);
   }
 
   const providers = getAvailableProviders();
   if (providers.length === 0) {
-    console.warn('[OperationsChat] No active AI providers. Serving curated Ulendo concierge reply.');
-    return generateCuratedOperationsChatReply(req);
+    console.info(`[OperationsChat Swarm] No cloud AI providers active. Dispatching to Deterministic Swarm Agent (${classification.primaryAgent}).`);
+    return executeDeterministicSwarmReply(req, classification.primaryAgent);
   }
 
   const errors: any[] = [];
@@ -2577,8 +2582,8 @@ export async function executeOperationsAssistantChat(req: OperationsAssistantReq
     }
   }
 
-  console.warn('[OperationsChat] All AI providers failed. Serving curated Ulendo concierge reply.', errors.map(e => e.message));
-  return generateCuratedOperationsChatReply(req);
+  console.warn(`[OperationsChat Swarm] All cloud AI providers failed or rate limited. Seamlessly dispatching to Deterministic Swarm Agent (${classification.primaryAgent}).`, errors.map(e => e.message));
+  return executeDeterministicSwarmReply(req, classification.primaryAgent);
 }
 
 export async function testProviderConnection(
@@ -4145,54 +4150,7 @@ export function generateCuratedMalawiDescriptionLink(currentText?: string, detai
 }
 
 export function generateCuratedOperationsChatReply(req: OperationsAssistantRequest): OperationsAssistantResult {
-  const msg = (req.message || '').toLowerCase();
-  const userName = req.userName || req.displayName || 'Manager';
-  const properties = req.context?.properties || [];
-  const propertyNames = properties.map(p => p.name).join(', ') || 'your properties';
-
-  let reply = '';
-  let suggestedFollowUps: string[] = [
-    'How do I set optimal room rates for peak season?',
-    'What amenities are most requested by Lake Malawi travellers?',
-    'Can you audit my property listing description?'
-  ];
-
-  if (msg.includes('hello') || msg.includes('hi') || msg.includes('moni') || msg.includes('takulandirani')) {
-    reply = `Moni ${userName}! Takulandirani. I am Ulendo, your resident hospitality concierge for Travel Malawi.\n\nI am actively tracking ${properties.length > 0 ? `${properties.length} property (${propertyNames})` : 'your listings'}. How can I assist you today with room rates, guest inquiries, listing polish, or front-desk operations?`;
-  } else if (msg.includes('rate') || msg.includes('price') || msg.includes('pricing') || msg.includes('kwacha') || msg.includes('usd')) {
-    reply = `In Malawi's lodging market, maintaining dual-currency pricing is standard practice:\n\n• **USD Rates**: Preferred by international tourists and safari travellers (typically $50–$90 for standard chalets, $110–$180+ for executive lakefront or safari suites).\n• **Malawian Kwacha (MWK)**: Crucial for domestic and resident bookings, calculated around ~1,750 MWK per USD and rounded cleanly to the nearest 5,000 MWK (e.g. MK 95,000 to MK 280,000).\n\nDuring high season (May to October), lodges generally hold firm on rack rates. For green season (November to April), offering special weekend promotions for Lilongwe and Blantyre residents keeps occupancy high.`;
-    suggestedFollowUps = [
-      'Suggest seasonal rates for my rooms',
-      'How to setup local resident discounts',
-      'Review my cancellation policy'
-    ];
-  } else if (msg.includes('amenity') || msg.includes('amenities') || msg.includes('power') || msg.includes('solar') || msg.includes('wifi')) {
-    reply = `Reliability is the #1 factor in Malawian hospitality reviews:\n\n1. **Backup Power (Solar & Generator)**: ESCOM outages occur regularly. Having an automatic solar inverter that runs lights, Wi-Fi, and fans earns immediate 5-star reviews.\n2. **Reliable Hot Water**: Solar geysers with electrical or gas backup for overcast days.\n3. **Mosquito Nets**: Crisp, box-style nets tucked neatly over every bed.\n4. **High-Speed Wi-Fi**: Guests and remote workers frequently inquire about connectivity before booking.`;
-    suggestedFollowUps = [
-      'How should I describe my backup power setup?',
-      'Add dedicated workspace to amenities',
-      'Draft a welcome message for guests'
-    ];
-  } else if (msg.includes('review') || msg.includes('audit') || msg.includes('listing')) {
-    reply = `I audited your listing configuration for ${propertyNames}:\n\n• **Photography & Atmosphere**: Highlight sunrise/sunset views, bed comfort with draped nets, and dining areas.\n• **Access Road Instructions**: Travellers appreciate honest guidance on road condition (e.g. whether 2WD is sufficient or 4x4 recommended after rains).\n• **Local Dining**: Mention fresh Lake Chambo or local seasonal dishes, as guests love authentic culinary experiences.`;
-    suggestedFollowUps = [
-      'Help draft an updated property description',
-      'Propose 3 standard room types',
-      'What policies work best for direct bookings?'
-    ];
-  } else {
-    reply = `Zikomo for reaching out, ${userName}. As your hospitality concierge, I can assist you with optimizing room rates, drafting engaging property copy, managing inventory, or enhancing guest communication for ${propertyNames}.\n\nPlease let me know which area you would like to focus on right now.`;
-  }
-
-  return {
-    reply,
-    provider: 'gemini',
-    model: 'ulendo-concierge',
-    actionProposal: null,
-    newLearnedRule: null,
-    autonomousPatch: null,
-    suggestedFollowUps,
-  };
+  return executeDeterministicSwarmReply(req);
 }
 
 export function handleCuratedActionFallback(req: GenerationRequest): GenerationResult {
