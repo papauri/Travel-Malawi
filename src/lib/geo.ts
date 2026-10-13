@@ -118,6 +118,73 @@ export function parseCoordinates(input: string): LatLng | null {
   return null;
 }
 
+/**
+ * Reads a property name and/or coordinates from a pasted Google Maps link or share URL.
+ * Works 100% offline without any Google Maps API calls or billing!
+ */
+export function parseGoogleMapsPlaceUrl(input: string): { name?: string; coordinates?: LatLng } | null {
+  const text = (input ?? '').trim();
+  if (!text) return null;
+
+  const isMapsUrl =
+    /maps\.(?:google\.[a-z.]+|app\.goo\.gl)/i.test(text) ||
+    /google\.[a-z.]+\/maps/i.test(text) ||
+    /goo\.gl\/maps/i.test(text);
+
+  if (!isMapsUrl) return null;
+
+  const coordinates = parseCoordinates(text) || undefined;
+  let name: string | undefined;
+
+  // 1. Match /maps/place/{Name}/
+  const placeMatch = text.match(/\/maps\/place\/([^/@?#]+)/i);
+  if (placeMatch && placeMatch[1]) {
+    try {
+      const decoded = decodeURIComponent(placeMatch[1].replace(/\+/g, ' ')).trim();
+      if (decoded && !/^-?\d+(\.\d+)?[,\s]/.test(decoded)) {
+        name = decoded;
+      }
+    } catch {
+      name = placeMatch[1].replace(/\+/g, ' ').trim();
+    }
+  }
+
+  // 2. Match /maps/search/{Name}/
+  if (!name) {
+    const searchMatch = text.match(/\/maps\/search\/([^/@?#]+)/i);
+    if (searchMatch && searchMatch[1]) {
+      try {
+        const decoded = decodeURIComponent(searchMatch[1].replace(/\+/g, ' ')).trim();
+        if (decoded && !/^-?\d+(\.\d+)?[,\s]/.test(decoded)) {
+          name = decoded;
+        }
+      } catch {
+        name = searchMatch[1].replace(/\+/g, ' ').trim();
+      }
+    }
+  }
+
+  // 3. Match ?q={Name} (if not bare coordinates)
+  if (!name) {
+    const qMatch = text.match(/[?&]q=([^&]+)/i);
+    if (qMatch && qMatch[1]) {
+      try {
+        const decoded = decodeURIComponent(qMatch[1].replace(/\+/g, ' ')).trim();
+        if (decoded && !/^-?\d+(\.\d+)?[,\s]/.test(decoded)) {
+          name = decoded;
+        }
+      } catch {
+        name = qMatch[1].replace(/\+/g, ' ').trim();
+      }
+    }
+  }
+
+  if (name || coordinates) {
+    return { name, coordinates };
+  }
+  return null;
+}
+
 /** Great-circle distance in kilometres. */
 export function distanceKm(a: LatLng, b: LatLng): number {
   const R = 6371;

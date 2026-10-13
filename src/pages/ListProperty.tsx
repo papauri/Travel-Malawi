@@ -48,7 +48,7 @@ import {
   emptyDraft, errorsForStep, hasDuplicateListing, isStepComplete, validateDraft,
   findExistingProperty, ExistingPropertyMatch,
 } from '../lib/listing';
-import { searchNominatim, searchMalawiPlaces, MalawiPlaceSuggestion } from '../lib/geo';
+import { searchNominatim, searchMalawiPlaces, MalawiPlaceSuggestion, parseGoogleMapsPlaceUrl } from '../lib/geo';
 import { getRegisteredPropertyByName, POPULAR_MALAWI_PROPERTIES_SHOWCASE } from '../lib/malawiHospitalityRegistry';
 import { RoomInput } from '../lib/validateRoom';
 import { CURRENCIES, formatMoney } from '../lib/currency';
@@ -1650,8 +1650,30 @@ export default function ListProperty() {
                     type="text"
                     maxLength={NAME_MAX}
                     value={draft.name}
-                    onChange={e => set('name', e.target.value)}
-                    placeholder="e.g. Kaya Mawa, Sunbird Livingstonia, or enter your lodge/cottage name"
+                    onChange={e => {
+                      const val = e.target.value;
+                      const gmaps = parseGoogleMapsPlaceUrl(val);
+                      if (gmaps && (gmaps.name || gmaps.coordinates)) {
+                        const extractedName = gmaps.name || draft.name;
+                        setDraft(prev => ({
+                          ...prev,
+                          name: extractedName,
+                          coordinates: gmaps.coordinates || prev.coordinates,
+                        }));
+                        toast.success(
+                          extractedName
+                            ? `Extracted "${extractedName}" from Google Maps link (0 API calls)!`
+                            : `Extracted location coordinates from Google Maps link!`,
+                          { icon: '📍' }
+                        );
+                        if (extractedName) {
+                          handleLookupPropertyAI(extractedName);
+                        }
+                        return;
+                      }
+                      set('name', val);
+                    }}
+                    placeholder="e.g. Kaya Mawa, Sunbird Capital, or paste a Google Maps link"
                     className={fieldClass}
                     autoComplete="off"
                   />
@@ -2116,8 +2138,22 @@ export default function ListProperty() {
                   type="text"
                   list="malawi-locations"
                   value={draft.location}
-                  onChange={e => set('location', e.target.value)}
-                  placeholder="e.g. Cape Maclear"
+                  onChange={e => {
+                    const val = e.target.value;
+                    const gmaps = parseGoogleMapsPlaceUrl(val);
+                    if (gmaps) {
+                      if (gmaps.coordinates) {
+                        set('coordinates', gmaps.coordinates);
+                      }
+                      if (gmaps.name && !draft.name) {
+                        set('name', gmaps.name);
+                      }
+                      toast.success('Extracted GPS coordinates from Google Maps link (0 API calls)!', { icon: '📍' });
+                      return;
+                    }
+                    set('location', val);
+                  }}
+                  placeholder="e.g. Cape Maclear, Area 43 Lilongwe, or paste a Google Maps link"
                   className={fieldClass}
                 />
                 <datalist id="malawi-locations">
