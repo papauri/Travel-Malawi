@@ -3,13 +3,13 @@ import { useAuth } from '../contexts/AuthContext';
 import { collection, getDocs, doc, updateDoc, deleteDoc, getDoc, setDoc, query, where, writeBatch } from 'firebase/firestore';
 import { todayStr } from '../lib/dates';
 import { db, auth } from '../lib/firebase';
-import { Hotel, User, Booking, Role } from '../types';
+import { Hotel, User, Booking, Role, RoomType } from '../types';
 import { SystemSettings } from '../hooks/useSystemSettings';
 import { 
   Shield, ShieldCheck, Building2, CheckCircle, CheckCircle2, XCircle, Clock, MapPin, 
   MapPinOff, Users, Edit2, Edit3, Key, Trash2, Star, ExternalLink, 
   MessageSquare, MessageSquareOff, LayoutDashboard, CalendarRange, FileText, 
-  Search, Activity, Cpu, Target, Download, ChevronDown, MoreHorizontal, Check, X
+  Search, Activity, Cpu, Target, Download, ChevronDown, MoreHorizontal, Check, X, Eye
 } from 'lucide-react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import Pagination from '../components/Pagination';
@@ -18,6 +18,7 @@ import toast from 'react-hot-toast';
 import SmartImage from '../components/SmartImage';
 import ConfirmDialog from '../components/ConfirmDialog';
 import Modal from '../components/Modal';
+import ReviewListingModal from '../components/ReviewListingModal';
 import AdminAISettings from '../components/AdminAISettings';
 import AdminDocsHub from '../components/AdminDocsHub';
 import AdminReviewScraper from '../components/AdminReviewScraper';
@@ -80,6 +81,9 @@ export default function AdminDashboard() {
   }, [activeTab]);
   
   const [hotels, setHotels] = useState<Hotel[]>([]);
+  const [rooms, setRooms] = useState<RoomType[]>([]);
+  const [inspectingHotel, setInspectingHotel] = useState<Hotel | null>(null);
+  const [hotelStatusFilter, setHotelStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [users, setUsers] = useState<User[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   
@@ -152,11 +156,12 @@ export default function AdminDashboard() {
 
   const fetchData = async () => {
     try {
-      const [hotelsSnapshot, usersSnapshot, bookingsSnapshot, settingsSnapshot] = await Promise.all([
+      const [hotelsSnapshot, usersSnapshot, bookingsSnapshot, settingsSnapshot, roomsSnapshot] = await Promise.all([
         getDocs(collection(db, 'hotels')),
         getDocs(collection(db, 'users')),
         getDocs(collection(db, 'bookings')),
-        getDoc(doc(db, 'system', 'settings'))
+        getDoc(doc(db, 'system', 'settings')),
+        getDocs(collection(db, 'room_types'))
       ]);
       
       if (settingsSnapshot.exists()) {
@@ -172,6 +177,12 @@ export default function AdminDashboard() {
         ...doc.data()
       })) as Hotel[];
       setHotels(hotelsData);
+
+      const roomsData = roomsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as RoomType[];
+      setRooms(roomsData);
 
       const usersData = usersSnapshot.docs.map(doc => ({
         ...doc.data()
@@ -351,20 +362,31 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleUpdateStatus = async (hotelId: string, newStatus: 'approved' | 'rejected' | 'pending') => {
+  const handleUpdateStatus = async (hotelId: string, newStatus: 'approved' | 'rejected' | 'pending', reason?: string) => {
     if (updatingId) return;
     setUpdatingId(hotelId);
     const targetHotel = hotels.find(h => h.id === hotelId);
     try {
       const hotelRef = doc(db, 'hotels', hotelId);
-      await updateDoc(hotelRef, { status: newStatus });
-      setHotels(hotels.map(h => h.id === hotelId ? { ...h, status: newStatus } : h));
-      toast.success(`Hotel status updated to ${newStatus}`);
+      const updatePayload: Record<string, any> = { status: newStatus };
+      if (reason) {
+        updatePayload.moderationNotes = reason;
+        updatePayload.moderatedAt = Date.now();
+      }
+      await updateDoc(hotelRef, updatePayload);
+      setHotels(hotels.map(h => h.id === hotelId ? { ...h, status: newStatus, moderationNotes: reason || h.moderationNotes } : h));
+      if (inspectingHotel && inspectingHotel.id === hotelId) {
+        setInspectingHotel(prev => prev ? { ...prev, status: newStatus, moderationNotes: reason || prev.moderationNotes } : null);
+      }
+      toast.success(newStatus === 'approved' 
+        ? `${targetHotel?.name || 'Property'} approved and live on Travel Malawi!` 
+        : `Property status updated to ${newStatus}`);
 
-      await logSystemEvent('action', `Admin set property status: "${targetHotel?.name || hotelId}" -> ${newStatus.toUpperCase()}`, {
+      await logSystemEvent('action', `Admin set property status: "${targetHotel?.name || hotelId}" -> ${newStatus.toUpperCase()}${reason ? ` (Reason: ${reason})` : ''}`, {
         hotelId,
         hotelName: targetHotel?.name,
         status: newStatus,
+        reason,
       }, user, 'property');
     } catch (error) {
       console.error("Error updating status:", error);
@@ -603,6 +625,13 @@ export default function AdminDashboard() {
 
   const visibleHotels = useMemo(() => {
     let filtered = hotels;
+    if (hotelStatusFilter !== 'all') {
+      if (hotelStatusFilter === 'approved') {
+        filtered = filtered.filter(h => h.status === 'approved' || !h.status);
+      } else {
+        filtered = filtered.filter(h => h.status === hotelStatusFilter);
+      }
+    }
     if (onlyBadPins) {
       filtered = filtered.filter(h => pinProblem(h.coordinates));
     }
@@ -610,6 +639,7 @@ export default function AdminDashboard() {
       const q = hotelSearch.toLowerCase();
       filtered = filtered.filter(h => 
         h.name.toLowerCase().includes(q) || 
+        (h.location && h.location.toLowerCase().includes(q)) ||
         (h.managerName && h.managerName.toLowerCase().includes(q)) ||
         (h.ownerName && h.ownerName.toLowerCase().includes(q)) ||
         (h.managerEmail && h.managerEmail.toLowerCase().includes(q)) ||
@@ -617,7 +647,7 @@ export default function AdminDashboard() {
       );
     }
     return filtered;
-  }, [hotels, onlyBadPins, hotelSearch]);
+  }, [hotels, hotelStatusFilter, onlyBadPins, hotelSearch]);
 
   const visibleUsers = useMemo(() => {
     if (!userSearch) return users;
@@ -744,9 +774,14 @@ export default function AdminDashboard() {
   }, [hotels, bookings]);
 
   const stats = useMemo(() => {
+    const pendingList = hotels.filter(h => h.status === 'pending');
+    const approvedList = hotels.filter(h => h.status === 'approved' || !h.status);
+    const rejectedList = hotels.filter(h => h.status === 'rejected');
     return {
       totalProperties: hotels.length,
-      pendingProperties: hotels.filter(h => h.status === 'pending').length,
+      pendingProperties: pendingList.length,
+      approvedProperties: approvedList.length,
+      rejectedProperties: rejectedList.length,
       totalUsers: users.length,
       totalBookings: bookings.length,
       managersCount: users.filter(u => isHotelManager(u)).length,
@@ -1057,22 +1092,30 @@ export default function AdminDashboard() {
               </button>
               
               <button
-                onClick={() => setActiveTab('properties')}
-                className="bg-white p-4 rounded-xl border border-stone-200 shadow-2xs text-left hover:border-stone-300 transition cursor-pointer"
+                onClick={() => {
+                  setActiveTab('properties');
+                  setHotelStatusFilter('pending');
+                  setCurrentHotelPage(1);
+                }}
+                className={`p-4 rounded-xl border shadow-2xs text-left transition cursor-pointer ${
+                  stats.pendingProperties > 0 
+                    ? 'bg-amber-50/60 border-amber-300 hover:border-amber-400 ring-1 ring-amber-300/50' 
+                    : 'bg-white border-stone-200 hover:border-stone-300'
+                }`}
               >
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-stone-500 text-xs font-medium">Pending Review</span>
-                  <Activity className={`w-4 h-4 ${stats.pendingProperties > 0 ? 'text-amber-600' : 'text-stone-400'}`} />
+                  <Activity className={`w-4 h-4 ${stats.pendingProperties > 0 ? 'text-amber-600 animate-pulse' : 'text-stone-400'}`} />
                 </div>
                 <div className="flex items-baseline gap-1.5">
                   <p className={`text-2xl font-serif font-bold tabular-nums ${stats.pendingProperties > 0 ? 'text-amber-800' : 'text-stone-900'}`}>
                     {stats.pendingProperties}
                   </p>
                   {stats.pendingProperties > 0 && (
-                    <span className="text-xs text-amber-700 font-medium">awaiting</span>
+                    <span className="text-xs text-amber-700 font-semibold">awaiting review</span>
                   )}
                 </div>
-                <p className="text-[11px] text-stone-400 mt-0.5">Listing applications</p>
+                <p className="text-[11px] text-stone-400 mt-0.5">Click to inspect review queue</p>
               </button>
             </div>
 
@@ -1392,6 +1435,7 @@ export default function AdminDashboard() {
         {/* ===================== PROPERTIES TAB ===================== */}
         {activeTab === 'properties' && (
           <div className="space-y-6 animate-in fade-in duration-200">
+            {/* Header & Search */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-stone-200">
               <div>
                 <h2 className="text-2xl font-serif font-bold text-stone-900 tracking-tight">Properties</h2>
@@ -1403,7 +1447,7 @@ export default function AdminDashboard() {
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-400" />
                   <input
                     type="text"
-                    placeholder="Search properties..."
+                    placeholder="Search properties or city..."
                     value={hotelSearch}
                     onChange={e => { setHotelSearch(e.target.value); setCurrentHotelPage(1); }}
                     className="pl-8 pr-3 py-1.5 border border-stone-200 bg-white rounded-lg text-xs focus:outline-none focus:border-stone-900 w-full sm:w-56"
@@ -1423,17 +1467,110 @@ export default function AdminDashboard() {
               </div>
             </div>
 
+            {/* Editorial Status Filter Pills */}
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              {[
+                { id: 'all', label: 'All Properties', count: stats.totalProperties },
+                { id: 'pending', label: 'Pending Review', count: stats.pendingProperties, badgeClass: 'bg-amber-200 text-amber-950 font-bold' },
+                { id: 'approved', label: 'Live & Approved', count: stats.approvedProperties },
+                { id: 'rejected', label: 'Unpublished / Rejected', count: stats.rejectedProperties },
+              ].map(pill => {
+                const isSelected = hotelStatusFilter === pill.id;
+                return (
+                  <button
+                    key={pill.id}
+                    type="button"
+                    onClick={() => {
+                      setHotelStatusFilter(pill.id as any);
+                      setCurrentHotelPage(1);
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-xs transition cursor-pointer flex items-center gap-1.5 ${
+                      isSelected
+                        ? 'bg-stone-900 text-white font-semibold shadow-2xs'
+                        : 'bg-white border border-stone-200 text-stone-600 hover:text-stone-900 hover:border-stone-300'
+                    }`}
+                  >
+                    <span>{pill.label}</span>
+                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] leading-none ${
+                      isSelected
+                        ? 'bg-stone-800 text-white'
+                        : pill.badgeClass || 'bg-stone-100 text-stone-600'
+                    }`}>
+                      {pill.count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Attention Banner: Listings Awaiting Marketing Review */}
+            {stats.pendingProperties > 0 && hotelStatusFilter !== 'pending' && (
+              <div className="bg-amber-50/90 border border-amber-200 rounded-xl p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-amber-950 shadow-2xs">
+                <div className="flex items-start sm:items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-amber-200/80 flex items-center justify-center shrink-0 text-amber-900 mt-0.5 sm:mt-0">
+                    <Clock className="w-4 h-4 animate-pulse" />
+                  </div>
+                  <div>
+                    <p className="text-xs sm:text-sm font-bold text-amber-950">
+                      {stats.pendingProperties} propert{stats.pendingProperties === 1 ? 'y' : 'ies'} awaiting marketing &amp; editorial review
+                    </p>
+                    <p className="text-[11px] sm:text-xs text-amber-800/80 mt-0.5">
+                      Verify high-res imagery, dual-currency pricing (MWK &amp; USD), and GPS gate coordinates before ads go live.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setHotelStatusFilter('pending');
+                    setCurrentHotelPage(1);
+                  }}
+                  className="px-3.5 py-1.5 bg-amber-800 hover:bg-amber-900 text-white rounded-lg text-xs font-semibold shrink-0 cursor-pointer transition shadow-2xs self-start sm:self-auto"
+                >
+                  Review Pending Queue ({stats.pendingProperties})
+                </button>
+              </div>
+            )}
+
             <div className="space-y-3">
-              {visibleHotels.slice((currentHotelPage - 1) * itemsPerPage, currentHotelPage * itemsPerPage).map((hotel, index) => (
-                <div key={`admin-hotel-${hotel.id || index}-${index}`} className="bg-white rounded-xl p-4 shadow-2xs border border-stone-200 flex flex-col sm:flex-row gap-4 hover:border-stone-300 transition">
-                  <div className="w-full aspect-[16/10] sm:aspect-auto sm:h-32 sm:w-44 bg-stone-100 rounded-lg overflow-hidden shrink-0">
+              {visibleHotels.slice((currentHotelPage - 1) * itemsPerPage, currentHotelPage * itemsPerPage).map((hotel, index) => {
+                const hotelRooms = rooms.filter(r => r.hotelId === hotel.id);
+                const minPriceUsd = hotelRooms.length > 0 
+                  ? Math.min(...hotelRooms.map(r => r.prices?.USD ?? r.price ?? 0).filter(p => p > 0))
+                  : (hotel.entirePlaceDetails?.ratePerNightUsd || 0);
+                const minPriceMwk = hotelRooms.length > 0 
+                  ? Math.min(...hotelRooms.map(r => r.prices?.MWK ?? r.priceMWK ?? 0).filter(p => p > 0))
+                  : (hotel.entirePlaceDetails?.ratePerNightMwk || 0);
+
+                return (
+                <div 
+                  key={`admin-hotel-${hotel.id || index}-${index}`} 
+                  className={`rounded-xl p-4 shadow-2xs border flex flex-col sm:flex-row gap-4 transition ${
+                    hotel.status === 'pending'
+                      ? 'bg-amber-50/30 border-amber-300 ring-1 ring-amber-300/40 hover:border-amber-400'
+                      : 'bg-white border-stone-200 hover:border-stone-300'
+                  }`}
+                >
+                  <div className="w-full aspect-[16/10] sm:aspect-auto sm:h-36 sm:w-48 bg-stone-100 rounded-lg overflow-hidden shrink-0 relative">
                     <SmartImage src={getHotelImage(hotel)} alt={hotel.name} className="w-full h-full object-cover" />
+                    {hotel.stayType === 'entire_place' && (
+                      <span className="absolute top-2 left-2 bg-stone-900/80 backdrop-blur-xs text-white text-[10px] font-medium px-2 py-0.5 rounded">
+                        Entire Place
+                      </span>
+                    )}
                   </div>
                   
                   <div className="flex-1 min-w-0 flex flex-col justify-between">
                     <div>
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-1 gap-1">
-                        <h3 className="text-base font-bold text-stone-900 truncate">{hotel.name}</h3>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <h3 className="text-base font-bold text-stone-900 truncate">{hotel.name}</h3>
+                          {hotel.categories?.[0] && (
+                            <span className="text-[10px] font-medium bg-stone-100 text-stone-600 px-1.5 py-0.5 rounded shrink-0">
+                              {hotel.categories[0]}
+                            </span>
+                          )}
+                        </div>
                         <div className="flex items-center gap-2 shrink-0">
                           {hotel.featured && (
                             <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-800">
@@ -1442,17 +1579,17 @@ export default function AdminDashboard() {
                           )}
                           
                           {(!hotel.status || hotel.status === 'approved') && (
-                            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700">
+                            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
                               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Approved
                             </span>
                           )}
                           {hotel.status === 'pending' && (
-                            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-700">
+                            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-800 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-md animate-pulse">
                               <span className="w-1.5 h-1.5 rounded-full bg-amber-500" /> Pending Review
                             </span>
                           )}
                           {hotel.status === 'rejected' && (
-                            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-stone-500">
+                            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-stone-500 bg-stone-100 border border-stone-200 px-2 py-0.5 rounded-md">
                               <span className="w-1.5 h-1.5 rounded-full bg-stone-400" /> Rejected
                             </span>
                           )}
@@ -1463,6 +1600,27 @@ export default function AdminDashboard() {
                         <p className="flex items-center gap-1.5">
                           <MapPin className="h-3.5 w-3.5 text-stone-400 shrink-0" /> <span className="truncate">{hotel.location}</span>
                         </p>
+                        
+                        {/* Room inventory & dual pricing snapshot */}
+                        <div className="flex items-center gap-2 pt-0.5 font-mono text-stone-600">
+                          <Building2 className="h-3.5 w-3.5 text-stone-400 shrink-0" />
+                          <span>
+                            {hotelRooms.length} room unit{hotelRooms.length === 1 ? '' : 's'}
+                          </span>
+                          {(minPriceMwk > 0 || minPriceUsd > 0) && (
+                            <>
+                              <span>&middot;</span>
+                              <span className="font-bold text-stone-900">
+                                {minPriceMwk > 0 ? `MK ${minPriceMwk.toLocaleString()}` : `$${minPriceUsd}`}
+                              </span>
+                              {minPriceMwk > 0 && minPriceUsd > 0 && (
+                                <span className="text-stone-400 font-normal">(${minPriceUsd})</span>
+                              )}
+                              <span>/ night</span>
+                            </>
+                          )}
+                        </div>
+
                         {(() => {
                           const problem = pinProblem(hotel.coordinates);
                           return problem ? (
@@ -1486,7 +1644,7 @@ export default function AdminDashboard() {
                           <p className="flex items-center gap-1.5 truncate">
                             <Users className="h-3.5 w-3.5 text-stone-400 shrink-0" />
                             <span className="truncate">
-                              <strong className="text-stone-700 font-medium">Manager:</strong>{' '}
+                              <strong className="text-stone-700 font-medium">Host:</strong>{' '}
                               {hotel.managerName ? (
                                 <span>{hotel.managerName}</span>
                               ) : (
@@ -1517,14 +1675,28 @@ export default function AdminDashboard() {
                     
                     <div className="flex flex-wrap items-center justify-between gap-2 mt-3 pt-2.5 border-t border-stone-100">
                       <div className="flex items-center gap-2">
+                        {/* Primary Review & Inspect Button */}
+                        <button
+                          type="button"
+                          onClick={() => setInspectingHotel(hotel)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs ${
+                            hotel.status === 'pending'
+                              ? 'bg-amber-800 hover:bg-amber-900 text-white'
+                              : 'bg-stone-900 hover:bg-stone-800 text-white'
+                          }`}
+                        >
+                          <Eye className="h-3.5 w-3.5" />
+                          <span>{hotel.status === 'pending' ? 'Review & Inspect' : 'Inspect Dossier'}</span>
+                        </button>
+
                         {hotel.status === 'pending' && (
                           <div className="flex items-center gap-1.5">
                             <button 
                               type="button"
                               onClick={() => handleUpdateStatus(hotel.id!, 'approved')}
-                              className="bg-stone-900 text-white px-2.5 py-1.5 rounded-lg text-xs font-semibold hover:bg-stone-800 transition flex items-center justify-center cursor-pointer shadow-2xs"
+                              className="bg-emerald-700 text-white px-2.5 py-1.5 rounded-lg text-xs font-semibold hover:bg-emerald-800 transition flex items-center justify-center cursor-pointer shadow-2xs"
                             >
-                              Approve
+                              Quick Approve
                             </button>
                             <button 
                               type="button"
@@ -1538,7 +1710,7 @@ export default function AdminDashboard() {
 
                         <Link 
                           to={`/admin/hotel/${hotel.id}`}
-                          className="bg-stone-900 hover:bg-stone-800 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 shadow-2xs"
+                          className="bg-stone-100 hover:bg-stone-200 text-stone-800 px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5"
                         >
                           <Edit3 className="h-3 w-3" />
                           <span>Manage</span>
@@ -1644,8 +1816,20 @@ export default function AdminDashboard() {
 
                               <div className="my-1 border-t border-stone-100" />
                               <div className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-stone-400">
-                                Moderation
+                                Moderation &amp; Review
                               </div>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setInspectingHotel(hotel);
+                                  setOpenHotelMenuId(null);
+                                }}
+                                className="w-full px-3 py-1.5 text-xs text-amber-900 hover:bg-amber-50 flex items-center gap-2 transition cursor-pointer font-semibold"
+                              >
+                                <Eye className="w-3.5 h-3.5 text-amber-700" />
+                                <span>Inspect &amp; Review Listing</span>
+                              </button>
 
                               {(!hotel.status || hotel.status === 'approved') && (
                                 <button
@@ -1698,7 +1882,7 @@ export default function AdminDashboard() {
                     </div>
                   </div>
                 </div>
-              ))}
+              ); })}
               
               {visibleHotels.length === 0 && (
                 <div className="bg-stone-50 rounded-xl p-8 text-center text-stone-500 border border-stone-200 text-xs">
@@ -2683,6 +2867,21 @@ export default function AdminDashboard() {
             </div>
           </div>
         )}
+
+        {/* Marketing & Admin Property Review Modal */}
+        <ReviewListingModal
+          hotel={inspectingHotel}
+          rooms={rooms}
+          isOpen={!!inspectingHotel}
+          onClose={() => setInspectingHotel(null)}
+          onApprove={async (id) => {
+            await handleUpdateStatus(id, 'approved');
+          }}
+          onReject={async (id, reason) => {
+            await handleUpdateStatus(id, 'rejected', reason);
+          }}
+          isUpdating={updatingId === inspectingHotel?.id}
+        />
 
       </div>
     </div>

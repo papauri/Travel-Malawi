@@ -5,7 +5,7 @@ import { X } from 'lucide-react';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { useModalScrollIsolation } from '../hooks/useModalScrollIsolation';
 
-type Size = 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl';
+type Size = 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl';
 
 interface Props {
   open: boolean;
@@ -27,6 +27,7 @@ const SIZES: Record<Size, string> = {
   xl: 'max-w-xl',
   '2xl': 'max-w-2xl',
   '3xl': 'max-w-4xl',
+  '4xl': 'max-w-5xl',
 };
 
 /**

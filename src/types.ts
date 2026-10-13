@@ -177,6 +177,9 @@ export interface EntirePlaceDetails {
 export interface Hotel {
   id?: string;
   status?: 'pending' | 'approved' | 'rejected';
+  moderationNotes?: string;
+  moderatedAt?: number;
+  category?: string;
   verificationStatus?: 'unverified' | 'community_verified' | 'verified_partner';
   /** 'rooms' for per-room listings, 'entire_place' for whole houses/cottages/villas */
   stayType?: PropertyStayType;
