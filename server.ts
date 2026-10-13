@@ -413,9 +413,6 @@ async function startServer() {
       if (!status.enabled) {
         return res.status(403).json({ error: 'Ulendo is currently switched off by the platform team.' });
       }
-      if (!status.available) {
-        return res.status(503).json({ error: 'Ulendo is not set up yet. An administrator needs to add an AI provider key.' });
-      }
 
       const result = await executeAIGeneration(withVerifiedRole(req.body, req.authUser!));
       res.json(result);
@@ -430,9 +427,6 @@ async function startServer() {
       const status = getPublicAIStatus();
       if (!status.enabled) {
         return res.status(403).json({ error: 'Ulendo is currently switched off by the platform team.' });
-      }
-      if (!status.available) {
-        return res.status(503).json({ error: 'Ulendo is not set up yet. An administrator needs to add an AI provider key.' });
       }
 
       const result = await executeOperationsAssistantChat(withVerifiedRole(req.body, req.authUser!));

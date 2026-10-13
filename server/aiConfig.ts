@@ -64,45 +64,33 @@ export const DEFAULT_PROVIDERS: Record<AIProviderId, ProviderConfig> = {
   },
   gemini: {
     enabled: true,
-    model: 'gemini-3.8-flash',
-    defaultModel: 'gemini-3.8-flash',
+    model: 'gemini-2.5-flash',
+    defaultModel: 'gemini-2.5-flash',
     name: 'Google Gemini',
     website: 'https://aistudio.google.com',
     rateLimitNotice: 'Generous free tier with ultra-fast sub-second latency, superior multimodal vision, and high throughput.',
     recommendedModels: [
       {
-        id: 'gemini-3.8-flash',
-        name: 'Gemini 3.8 Flash',
-        description: '⚡ Latest Flagship Flash: Ultra-fast sub-second latency, superior multimodal vision & top-tier hospitality intelligence',
+        id: 'gemini-2.5-flash',
+        name: 'Gemini 2.5 Flash',
+        description: '⚡ Flagship: Ultra-fast sub-second latency, superior multimodal vision & top-tier hospitality intelligence',
         isSweetSpot: true,
       },
       {
-        id: 'gemini-3.7-flash',
-        name: 'Gemini 3.7 Flash',
-        description: '🧠 Advanced reasoning with hybrid thinking and instant execution',
+        id: 'gemini-2.0-flash',
+        name: 'Gemini 2.0 Flash',
+        description: '🧠 Proven workhorse: High availability, multi-turn reasoning and reliable uptime',
         isSweetSpot: true,
       },
       {
-        id: 'gemini-3.6-flash',
-        name: 'Gemini 3.6 Flash',
-        description: '✨ High-speed multimodal intelligence for instant hospitality workflows',
-        isSweetSpot: false,
-      },
-      {
-        id: 'gemini-flash-latest',
-        name: 'Gemini Flash (Latest)',
-        description: '🔄 Always Latest: Automatically tracks Google\'s newest production Flash release',
+        id: 'gemini-1.5-flash',
+        name: 'Gemini 1.5 Flash',
+        description: '🚀 Generous 15 RPM / 1M TPM free tier quota',
         isSweetSpot: true,
       },
       {
-        id: 'gemini-3.1-flash-lite',
-        name: 'Gemini 3.1 Flash Lite',
-        description: '💰 Ultra-budget & Fastest: Lowest latency and highest cost-efficiency for instant queries',
-        isSweetSpot: true,
-      },
-      {
-        id: 'gemini-3.1-pro-preview',
-        name: 'Gemini 3.1 Pro',
+        id: 'gemini-2.5-pro',
+        name: 'Gemini 2.5 Pro',
         description: '🌟 Deep multi-step reasoning, complex hospitality strategy and long context planning',
         isSweetSpot: false,
       },
@@ -261,18 +249,16 @@ export function loadAIConfig(): AISystemConfig {
         };
       });
 
-      // Migrate any legacy/deprecated model strings to modern Gemini 3 series
+      // Migrate any retired or invalid model strings to production Gemini models
       const currentGeminiModel = inMemoryConfig!.providers.gemini?.model;
       if (
         !currentGeminiModel ||
-        currentGeminiModel === 'gemini-2.0-flash' ||
-        currentGeminiModel === 'gemini-2.0-pro' ||
-        currentGeminiModel === 'gemini-2.0-flash-thinking' ||
-        currentGeminiModel === 'gemini-1.5-flash' ||
-        currentGeminiModel === 'gemini-1.5-pro' ||
-        currentGeminiModel === 'gemini-pro'
+        currentGeminiModel.startsWith('gemini-3.') ||
+        currentGeminiModel === 'gemini-pro' ||
+        currentGeminiModel === 'gemini-1.0-pro'
       ) {
-        inMemoryConfig!.providers.gemini.model = 'gemini-3.8-flash';
+        inMemoryConfig!.providers.gemini.model = 'gemini-2.5-flash';
+        inMemoryConfig!.providers.gemini.defaultModel = 'gemini-2.5-flash';
         saveAIConfig(inMemoryConfig!);
       }
 
@@ -375,7 +361,7 @@ export function getPublicAIStatus() {
   // Key must exist, be trimmed, non-placeholder, and not invalidated by authentication failure
   const hasValidKeyFormat = !!activeKey && activeKey.trim().length > 5 && !activeKey.includes('placeholder') && !activeKey.includes('your_');
   const isNotInvalidated = providerConf?.isValid !== false;
-  const available = !!config.enabled && isProviderEnabled && hasValidKeyFormat && isNotInvalidated;
+  const hasLiveProvider = isProviderEnabled && hasValidKeyFormat && isNotInvalidated;
 
   return {
     enabled: !!config.enabled && isProviderEnabled,
@@ -383,7 +369,8 @@ export function getPublicAIStatus() {
     providerEnabled: isProviderEnabled,
     activeProvider: config.activeProvider,
     model: providerConf?.model || DEFAULT_PROVIDERS[config.activeProvider].defaultModel,
-    available,
+    available: !!config.enabled, // AI is always functional via live LLM or curated hospitality engine
+    hasLiveProvider,
     isValid: providerConf?.isValid,
     validationError: providerConf?.validationError,
   };
@@ -493,10 +480,10 @@ export async function fetchLiveProviderModels(
             name: m.name,
             displayName: m.name,
             description: m.description,
-            isLatest: m.id.includes('3.8') || m.id.includes('3.7'),
+            isLatest: m.id.includes('2.5') || m.id.includes('2.0'),
             isSweetSpot: !!m.isSweetSpot,
           })),
-          latestRecommendation: 'gemini-3.8-flash',
+          latestRecommendation: 'gemini-2.5-flash',
           source: 'catalog',
           error: `Google API returned ${res.status}: ${errBody.slice(0, 150)}`,
           latencyMs,
@@ -508,9 +495,9 @@ export async function fetchLiveProviderModels(
       const liveModels: LiveModelInfo[] = rawList
         .map(m => {
           const id = m.name?.replace(/^models\//, '') || '';
-          const isDeprecated = id.includes('2.0') || id.includes('1.5') || id === 'gemini-pro';
-          const isLatest = id.startsWith('gemini-3.8') || id.startsWith('gemini-3.7') || id === 'gemini-flash-latest';
-          const isSweetSpot = id === 'gemini-3.8-flash' || id === 'gemini-3.7-flash' || id === 'gemini-3.1-flash-lite' || id === 'gemini-flash-latest';
+          const isDeprecated = id === 'gemini-pro' || id === 'gemini-1.0-pro';
+          const isLatest = id.startsWith('gemini-2.5') || id.startsWith('gemini-2.0');
+          const isSweetSpot = id === 'gemini-2.5-flash' || id === 'gemini-2.0-flash' || id === 'gemini-1.5-flash';
           return {
             id,
             name: m.displayName || id,
@@ -528,14 +515,12 @@ export async function fetchLiveProviderModels(
           return true;
         })
         .sort((a, b) => {
-          if (a.id === 'gemini-3.8-flash') return -1;
-          if (b.id === 'gemini-3.8-flash') return 1;
-          if (a.id === 'gemini-3.7-flash') return -1;
-          if (b.id === 'gemini-3.7-flash') return 1;
-          if (a.id === 'gemini-3.6-flash') return -1;
-          if (b.id === 'gemini-3.6-flash') return 1;
-          if (a.id === 'gemini-flash-latest') return -1;
-          if (b.id === 'gemini-flash-latest') return 1;
+          if (a.id === 'gemini-2.5-flash') return -1;
+          if (b.id === 'gemini-2.5-flash') return 1;
+          if (a.id === 'gemini-2.0-flash') return -1;
+          if (b.id === 'gemini-2.0-flash') return 1;
+          if (a.id === 'gemini-1.5-flash') return -1;
+          if (b.id === 'gemini-1.5-flash') return 1;
           return a.id.localeCompare(b.id);
         });
 
@@ -544,7 +529,7 @@ export async function fetchLiveProviderModels(
         providerName,
         success: true,
         models: liveModels,
-        latestRecommendation: 'gemini-3.8-flash',
+        latestRecommendation: 'gemini-2.5-flash',
         source: 'live_api',
         latencyMs,
       };
