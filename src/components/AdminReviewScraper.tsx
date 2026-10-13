@@ -1270,7 +1270,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
                   <MapPin className="w-3 h-3 text-stone-400 shrink-0" />
                   <span>{selectedHotel.location || 'Malawi'}</span>
                 </p>
-                <div className="flex items-center gap-2 mt-1">
+                <div className="flex items-center gap-2 mt-1 flex-wrap">
                   <span className="inline-flex items-center gap-1 text-[11px] font-bold text-stone-800 bg-stone-100 px-1.5 py-0.5 rounded border border-stone-200">
                     <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
                     <span>{existingStats.rating > 0 ? existingStats.rating : 'New'}</span>
@@ -1278,6 +1278,17 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
                   <span className="text-[10px] text-stone-500 font-medium">
                     {existingStats.count} existing reviews
                   </span>
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${selectedHotel.name} ${selectedHotel.location || 'Malawi'}`)}`}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="inline-flex items-center gap-1 text-[10px] font-medium text-stone-700 hover:text-stone-900 bg-white hover:bg-stone-100 px-2 py-0.5 rounded border border-stone-200/90 shadow-2xs transition"
+                    title="Cross-reference live Google Maps listing, community reviews & photos"
+                  >
+                    <MapPin className="w-2.5 h-2.5 text-stone-400" />
+                    <span>Google Maps</span>
+                    <ExternalLink className="w-2.5 h-2.5 text-stone-400" />
+                  </a>
                 </div>
               </div>
             </div>

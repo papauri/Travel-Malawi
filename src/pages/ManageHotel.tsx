@@ -11,7 +11,7 @@ import { doc, getDoc, collection, query, where, getDocs, addDoc, updateDoc, dele
 import { db } from '../lib/firebase';
 import { Hotel, RoomType, Booking, CurrencyCode, PriceMap, Restaurant, WeeklyHours } from '../types';
 import { useAuth } from '../contexts/AuthContext';
-import { Plus, CheckCircle2, XCircle, Clock, Save, Edit2, Trash2, Users, Calendar, Check, X, Building, BedDouble, Home, Loader2, Download, TrendingUp, Percent, Wallet, UtensilsCrossed, Eye, ChevronLeft, ExternalLink, AlertTriangle, ShieldCheck, UserCheck, User, Mail, Phone, Lock, UserCog, EyeOff } from 'lucide-react';
+import { Plus, CheckCircle2, XCircle, Clock, Save, Edit2, Trash2, Users, Calendar, Check, X, Building, BedDouble, Home, Loader2, Download, TrendingUp, Percent, Wallet, UtensilsCrossed, Eye, ChevronLeft, ExternalLink, AlertTriangle, ShieldCheck, UserCheck, User, Mail, Phone, Lock, UserCog, EyeOff, MapPin } from 'lucide-react';
 import ImageUpload from '../components/ImageUpload';
 import GalleryUpload from '../components/GalleryUpload';
 import Lightbox from '../components/Lightbox';
@@ -1507,6 +1507,18 @@ export default function ManageHotel() {
               className="inline-flex items-center gap-1 text-xs sm:text-sm font-semibold text-stone-600 hover:text-emerald-700 transition"
             >
               View live listing <ExternalLink className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+            </a>
+            <span className="text-stone-300 hidden sm:inline">·</span>
+            <a
+              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${hotel.name} ${hotel.location || 'Malawi'}`)}`}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="inline-flex items-center gap-1 text-xs sm:text-sm font-semibold text-stone-600 hover:text-amber-800 transition"
+              title="View Google Maps community reviews, photos and star rating"
+            >
+              <MapPin className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-stone-400" />
+              <span>Google Maps &amp; Reviews</span>
+              <ExternalLink className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-stone-400" />
             </a>
           </div>
         </div>

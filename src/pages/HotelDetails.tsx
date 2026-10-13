@@ -578,6 +578,12 @@ export default function HotelDetails() {
     });
   }, [hotel?.reviews, reviews, reviewSort]);
 
+  /** Direct Google Maps lookup URL for viewing all community reviews, ratings & traveler photos. */
+  const googleMapsReviewsUrl = useMemo(() => {
+    if (!hotel?.name) return '';
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${hotel.name} ${hotel.location || 'Malawi'}`)}`;
+  }, [hotel?.name, hotel?.location]);
+
   /**
    * Re-verifies availability against the live inventory mirror immediately
    * before writing a booking. If the check itself fails the booking is not
@@ -2171,6 +2177,19 @@ export default function HotelDetails() {
                     </select>
                   </div>
                 )}
+                {googleMapsReviewsUrl && (
+                  <a
+                    href={googleMapsReviewsUrl}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="inline-flex items-center gap-1.5 bg-stone-100 hover:bg-stone-200/80 text-stone-700 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-semibold transition border border-stone-200/90"
+                    title="Explore all community reviews, ratings & traveler photos on Google Maps"
+                  >
+                    <MapPin className="h-3.5 w-3.5 text-stone-500" />
+                    <span>Google Reviews</span>
+                    <ExternalLink className="h-3 w-3 text-stone-400" />
+                  </a>
+                )}
                 <button
                   onClick={() => setIsReviewModalOpen(true)}
                   className="inline-flex items-center gap-1.5 sm:gap-2 bg-stone-900 hover:bg-stone-800 text-white px-4 sm:px-5 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-bold transition shadow-2xs self-start sm:self-auto cursor-pointer"
@@ -2182,7 +2201,38 @@ export default function HotelDetails() {
             </div>
             
             {allReviews.length === 0 ? (
-              <p className="text-stone-500 text-xs sm:text-sm italic">No reviews yet. Be the first to review this property!</p>
+              <div className="bg-stone-50/80 border border-stone-200/90 rounded-2xl p-6 sm:p-8 text-center space-y-3.5">
+                <div className="w-12 h-12 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mx-auto border border-amber-200/60">
+                  <Star className="w-6 h-6 fill-amber-400/30 text-amber-600" />
+                </div>
+                <div>
+                  <h4 className="font-serif font-bold text-stone-900 text-base sm:text-lg">No direct reviews logged on Travel Malawi yet</h4>
+                  <p className="text-stone-500 text-xs sm:text-sm mt-1 max-w-md mx-auto leading-relaxed">
+                    Be the first guest to share your experience on Travel Malawi, or check live Google Maps community reviews, ratings, and traveler photos directly.
+                  </p>
+                </div>
+                <div className="flex items-center justify-center gap-2.5 sm:gap-3 pt-1 flex-wrap">
+                  {googleMapsReviewsUrl && (
+                    <a
+                      href={googleMapsReviewsUrl}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="inline-flex items-center gap-1.5 bg-white hover:bg-stone-100 text-stone-800 px-4 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-semibold transition border border-stone-200 shadow-2xs"
+                    >
+                      <MapPin className="w-3.5 h-3.5 text-stone-600" />
+                      <span>View all reviews on Google Maps</span>
+                      <ExternalLink className="w-3 h-3 text-stone-400" />
+                    </a>
+                  )}
+                  <button
+                    onClick={() => setIsReviewModalOpen(true)}
+                    className="inline-flex items-center gap-1.5 bg-stone-900 hover:bg-stone-800 text-white px-4 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-bold transition shadow-2xs cursor-pointer"
+                  >
+                    <Star className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Write First Review</span>
+                  </button>
+                </div>
+              </div>
             ) : (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
@@ -2196,6 +2246,23 @@ export default function HotelDetails() {
                     totalPages={Math.ceil(allReviews.length / reviewsPerPage)}
                     onPageChange={setCurrentReviewPage}
                   />
+                )}
+                {googleMapsReviewsUrl && (
+                  <div className="mt-4 pt-3.5 border-t border-stone-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs text-stone-500">
+                    <span className="flex items-center gap-1.5">
+                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <span>Travel Malawi verifies stays while highlighting authentic community feedback.</span>
+                    </span>
+                    <a
+                      href={googleMapsReviewsUrl}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="inline-flex items-center gap-1 text-stone-700 hover:text-stone-900 font-semibold underline underline-offset-2 shrink-0 transition"
+                    >
+                      <span>See all reviews &amp; photos on Google Maps</span>
+                      <ExternalLink className="w-3 h-3 text-stone-400" />
+                    </a>
+                  </div>
                 )}
               </>
             )}
