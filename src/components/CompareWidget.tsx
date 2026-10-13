@@ -22,6 +22,7 @@ export default function CompareWidget() {
       <AnimatePresence>
         {!isCompareModalOpen && (
           <motion.div
+            key="compare-floating-pill"
             initial={{ y: 100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 100, opacity: 0 }}
@@ -65,6 +66,7 @@ export default function CompareWidget() {
         <AnimatePresence>
           {isCompareModalOpen && (
             <div
+              key="compare-modal-container"
               data-lenis-prevent="true"
               className="fixed inset-0 z-[100] overflow-y-auto overscroll-contain flex min-h-full items-center justify-center p-3 sm:p-6 md:p-10 text-center"
             >

@@ -1485,6 +1485,7 @@ export default function OperationsCopilot() {
         {/* Backdrop for full-sheet touch and desktop dismissal */}
         {isOpen && !isMinimized && (
           <motion.div
+            key="operations-copilot-backdrop"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -1495,6 +1496,7 @@ export default function OperationsCopilot() {
 
         {isOpen && !isMinimized && (
           <motion.div
+            key="operations-copilot-drawer-panel"
             data-lenis-prevent="true"
             initial={{ opacity: 0, y: 20, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}

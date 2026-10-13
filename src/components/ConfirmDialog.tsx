@@ -55,6 +55,7 @@ export default function ConfirmDialog({
     <AnimatePresence>
       {isOpen && (
         <div
+          key="confirm-dialog-portal-root"
           data-lenis-prevent="true"
           className="fixed inset-0 z-[160] overflow-y-auto overscroll-contain flex min-h-full items-center justify-center p-4 text-center"
           role="dialog"

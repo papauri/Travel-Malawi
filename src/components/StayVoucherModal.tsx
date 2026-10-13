@@ -108,6 +108,7 @@ Host Contact: ${hotel.contactPhone || hotel.managerPhone || 'via Travel Malawi c
     <AnimatePresence>
       {isOpen && (
         <div
+          key="stay-voucher-modal-portal-root"
           data-lenis-prevent="true"
           className="fixed inset-0 z-[100] overflow-y-auto overscroll-contain flex min-h-full items-center justify-center p-3 sm:p-4 md:p-6 bg-stone-900/60 backdrop-blur-sm text-center print:p-0 print:bg-white"
         >

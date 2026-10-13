@@ -206,6 +206,7 @@ export default function OfflineIndicator() {
       <AnimatePresence>
         {!isOnline && isDismissed && (
           <motion.div
+            key="offline-floating-pill"
             initial={{ opacity: 0, scale: 0.9, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 10 }}
@@ -234,7 +235,7 @@ export default function OfflineIndicator() {
       {/* 3. Offline Capabilities & Guide Modal */}
       <AnimatePresence>
         {showGuideModal && (
-          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+          <div key="offline-guide-modal-wrapper" className="fixed inset-0 z-[120] flex items-center justify-center p-4">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}

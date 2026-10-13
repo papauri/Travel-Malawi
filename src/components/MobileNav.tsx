@@ -71,31 +71,32 @@ export default function MobileNav() {
       {/* Bottom Sheet */}
       <AnimatePresence>
         {isOpen && (
-          <>
-            {/* Backdrop */}
-            <motion.div
-              role="button"
-              tabIndex={0}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsOpen(false)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  setIsOpen(false);
-                }
-              }}
-              className="md:hidden fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-[60] cursor-pointer"
-            />
-            
-            {/* Sheet */}
-            <motion.div
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="md:hidden fixed bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.1)] z-[70] overflow-hidden flex flex-col pb-safe max-h-[85vh]"
-            >
+          <motion.div
+            key="mobile-nav-backdrop"
+            role="button"
+            tabIndex={0}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsOpen(false)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                setIsOpen(false);
+              }
+            }}
+            className="md:hidden fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-[60] cursor-pointer"
+          />
+        )}
+
+        {isOpen && (
+          <motion.div
+            key="mobile-nav-sheet-panel"
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '100%' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="md:hidden fixed bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.1)] z-[70] overflow-hidden flex flex-col pb-safe max-h-[85vh]"
+          >
               <div className="p-5 flex items-center justify-between border-b border-stone-100 relative">
                 <div className="flex items-center gap-3">
                   <h2 className="font-serif font-bold text-xl text-stone-900">Menu</h2>
@@ -269,7 +270,6 @@ export default function MobileNav() {
                 </div>
               </div>
             </motion.div>
-          </>
         )}
       </AnimatePresence>
     </>

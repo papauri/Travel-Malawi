@@ -1805,9 +1805,9 @@ export default function ListProperty() {
                       <span className="text-[10px] font-mono text-stone-400">80+ Lodges in Registry</span>
                     </div>
                     <div className="flex flex-wrap gap-1.5">
-                      {POPULAR_MALAWI_PROPERTIES_SHOWCASE.map((showcase) => (
+                      {POPULAR_MALAWI_PROPERTIES_SHOWCASE.map((showcase, scIdx) => (
                         <button
-                          key={showcase.name}
+                          key={`showcase-${showcase.name}-${scIdx}`}
                           type="button"
                           onClick={() => {
                             const reg = getRegisteredPropertyByName(showcase.name);

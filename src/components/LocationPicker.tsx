@@ -337,9 +337,9 @@ export default function LocationPicker({
                       <div className="px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 rounded-lg flex items-center gap-1.5 mb-1">
                         <Building className="h-3 w-3" /> Existing Registered Properties
                       </div>
-                      {localMatches.existing.map(hotel => (
+                      {localMatches.existing.map((hotel, hIdx) => (
                         <button
-                          key={`hotel-${hotel.id}`}
+                          key={`hotel-${hotel.id || hIdx}-${hIdx}`}
                           type="button"
                           onClick={() =>
                             handlePickPlace(
@@ -378,9 +378,9 @@ export default function LocationPicker({
                       <div className="px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-stone-500 bg-stone-100 rounded-lg flex items-center gap-1.5 mb-1">
                         <Compass className="h-3 w-3" /> Known Places &amp; Landmarks
                       </div>
-                      {localMatches.known.map(place => (
+                      {localMatches.known.map((place, pIdx) => (
                         <button
-                          key={`known-${place.id}`}
+                          key={`known-${place.id || pIdx}-${pIdx}`}
                           type="button"
                           onClick={() =>
                             handlePickPlace(

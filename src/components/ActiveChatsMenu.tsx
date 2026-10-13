@@ -256,29 +256,31 @@ const ActiveChatsMenu = forwardRef<ActiveChatsMenuRef, {}>((props, ref) => {
       {/* Floating Active Chats Dropdown */}
       <AnimatePresence>
         {isOpen && (
-          <>
-            {/* Mobile backdrop to dismiss cleanly */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
-              className="fixed inset-0 bg-stone-950/40 backdrop-blur-xs z-40 sm:hidden"
-              onClick={() => {
-                setIsOpen(false);
-                setActiveItemMenuId(null);
-              }}
-            />
+          <motion.div
+            key="active-chats-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="fixed inset-0 bg-stone-950/40 backdrop-blur-xs z-40 sm:hidden"
+            onClick={() => {
+              setIsOpen(false);
+              setActiveItemMenuId(null);
+            }}
+          />
+        )}
 
-            <motion.div
-              ref={scrollIsolationRef}
-              data-lenis-prevent="true"
-              initial={{ opacity: 0, y: 8, scale: 0.96 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 6, scale: 0.96 }}
-              transition={{ duration: 0.16, ease: 'easeOut' }}
-              className="fixed top-16 inset-x-3 sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2.5 sm:w-[430px] max-w-[calc(100vw-1.5rem)] bg-white/95 backdrop-blur-xl border border-stone-200/90 rounded-2xl shadow-2xl py-0 z-50 overflow-hidden max-h-[calc(100dvh-5rem)] flex flex-col overscroll-contain"
-            >
+        {isOpen && (
+          <motion.div
+            key="active-chats-dropdown-panel"
+            ref={scrollIsolationRef}
+            data-lenis-prevent="true"
+            initial={{ opacity: 0, y: 8, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 6, scale: 0.96 }}
+            transition={{ duration: 0.16, ease: 'easeOut' }}
+            className="fixed top-16 inset-x-3 sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2.5 sm:w-[430px] max-w-[calc(100vw-1.5rem)] bg-white/95 backdrop-blur-xl border border-stone-200/90 rounded-2xl shadow-2xl py-0 z-50 overflow-hidden max-h-[calc(100dvh-5rem)] flex flex-col overscroll-contain"
+          >
               {/* Header */}
               <div className="px-4 py-3 bg-stone-900 text-white flex items-center justify-between shrink-0 border-b border-stone-800">
                 <div className="flex items-center gap-2.5">
@@ -661,7 +663,6 @@ const ActiveChatsMenu = forwardRef<ActiveChatsMenuRef, {}>((props, ref) => {
                 </div>
               </div>
             </motion.div>
-          </>
         )}
       </AnimatePresence>
     </div>
