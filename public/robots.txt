@@ -1,0 +1,9 @@
+# Robots.txt for Travel Malawi (https://ulendomalawi.com)
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /api/admin/
+Disallow: /dashboard
+
+# Sitemaps
+Sitemap: https://ulendomalawi.com/sitemap.xml

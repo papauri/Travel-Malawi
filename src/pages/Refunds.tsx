@@ -1,19 +1,21 @@
 import React from 'react';
-import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
 import { RefreshCcw, ArrowLeft, ShieldCheck, AlertCircle, Building2, HelpCircle } from 'lucide-react';
 import { useSystemSettings } from '../hooks/useSystemSettings';
 import MarkdownContent from '../components/MarkdownContent';
+import SEOHead from '../components/SEOHead';
 
 export default function Refunds() {
   const { settings } = useSystemSettings();
 
   return (
     <div className="min-h-screen bg-stone-50/50 text-stone-700 font-sans">
-      <Helmet>
-        <title>Refunds &amp; Cancellation Policy · Travel Malawi</title>
-        <meta name="description" content="Important policy regarding cancellations, refunds, direct guest-host settlement, and platform liability limitation." />
-      </Helmet>
+      <SEOHead
+        title="Refunds & Cancellation Policy — Travel Malawi"
+        description="Guidelines on guest cancellations, deposit refunds, host settlement, and booking modification rules across Malawi."
+        keywords="Malawi lodge refunds, cancellation policy Malawi, Travel Malawi refunds"
+        url="https://ulendomalawi.com/refunds"
+      />
 
       <main className="max-w-4xl lg:max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
         {/* Top Control Bar */}

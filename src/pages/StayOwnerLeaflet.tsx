@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import DocQuickEditButton from '../components/DocQuickEditButton';
 import { useDocContent } from '../hooks/useDocContent';
+import SEOHead from '../components/SEOHead';
 
 const secondaryBtn =
   'inline-flex items-center gap-1.5 border border-stone-300 text-stone-800 rounded-md px-3 py-1.5 text-sm hover:bg-stone-50 cursor-pointer';
@@ -81,6 +82,12 @@ export default function StayOwnerLeaflet() {
 
   return (
     <div className="min-h-screen bg-white text-stone-700 font-sans">
+      <SEOHead
+        title="Stay Owner Leaflet & Partnership Overview — Travel Malawi"
+        description="Why Malawian lodge, cottage, and camp owners choose Travel Malawi: 0% commissions, direct WhatsApp bookings, and mobile money payouts (Airtel Money, TNM Mpamba)."
+        keywords="Malawi lodge owners, cottage hosting Malawi, stay owner leaflet, Travel Malawi partner overview"
+        url="https://ulendomalawi.com/stay-owner-leaflet"
+      />
       <div className="max-w-3xl mx-auto px-5 py-12 print:py-0">
 
         {/* Toolbar (hidden when printing) */}

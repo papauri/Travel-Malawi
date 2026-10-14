@@ -54,6 +54,7 @@ import {
   sendWhatsAppMessage
 } from './server/whatsappConfig';
 import { trafficTracker } from './server/trafficTracker';
+import { generateSitemapXml, generateRobotsTxt } from './server/seo';
 import {
   optionalAuth,
   requireAuth,
@@ -201,6 +202,51 @@ async function startServer() {
 
   app.get('/health', (req, res) => {
     res.status(200).json({ status: 'ok', time: new Date().toISOString() });
+  });
+
+  // SEO Crawler Directives
+  app.get('/robots.txt', (req, res) => {
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.send(generateRobotsTxt());
+  });
+
+  // Dynamic XML Sitemap for Search Engines
+  app.get('/sitemap.xml', async (req, res) => {
+    try {
+      let liveHotels: { id: string; updatedAt?: number; location?: string; district?: string }[] = [];
+      try {
+        const firestoreRes = await fetch(`${FIRESTORE_BASE}/hotels?pageSize=100`, {
+          signal: AbortSignal.timeout(3000),
+        });
+        if (firestoreRes.ok) {
+          const body: any = await firestoreRes.json();
+          if (Array.isArray(body.documents)) {
+            liveHotels = body.documents
+              .map((doc: any) => {
+                const id = doc.name ? String(doc.name).split('/').pop() : '';
+                const fields = doc.fields || {};
+                const location = fields.location?.stringValue || fields.city?.stringValue;
+                const district = fields.district?.stringValue || fields.region?.stringValue;
+                const updatedAt = fields.updatedAt?.integerValue
+                  ? Number(fields.updatedAt.integerValue)
+                  : undefined;
+                return { id: id || '', updatedAt, location, district };
+              })
+              .filter((h: any) => Boolean(h.id));
+          }
+        }
+      } catch {
+        // Fall back gracefully to national registry
+      }
+
+      const xml = generateSitemapXml(liveHotels);
+      res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+      res.send(xml);
+    } catch (err) {
+      sendError(res, err, 'Failed to generate sitemap');
+    }
   });
 
   // Client telemetry: IP address & location resolution for Intune-style audit logs

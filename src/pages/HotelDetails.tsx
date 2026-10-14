@@ -11,6 +11,7 @@ import { Hotel, RoomType, ConferenceRoom, Review, CurrencyCode, Broadcast } from
 import { useAuth } from '../contexts/AuthContext';
 import { useAuthDialog } from '../contexts/AuthDialogContext';
 import { Helmet } from 'react-helmet-async';
+import SEOHead from '../components/SEOHead';
 import { useChatModal } from '../contexts/ChatModalContext';
 import { useManagerPresence } from '../hooks/usePresence';
 import PhoneInput from 'react-phone-number-input';
@@ -1055,13 +1056,125 @@ export default function HotelDetails() {
   const galleryImages = hotelImages.slice(1, 1 + maxHeroSupporting);
   const hasGallery = galleryImages.length > 0;
 
+  // Rich Schema.org structured data for LodgingBusiness / Hotel Knowledge Graph
+  const hotelSchema = useMemo(() => {
+    if (!hotel) return undefined;
+    const coords = resolveHotelCoordinates(hotel);
+    const avgRating = reviews.length > 0
+      ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
+      : undefined;
+
+    const roomPricesMwk = rooms
+      .map((r) => r.prices?.MWK || r.priceMWK || (r.price as number))
+      .filter((p): p is number => typeof p === 'number' && p > 0);
+    const minMwk = roomPricesMwk.length > 0 ? Math.min(...roomPricesMwk) : null;
+    const maxMwk = roomPricesMwk.length > 0 ? Math.max(...roomPricesMwk) : null;
+
+    const roomPricesUsd = rooms
+      .map((r) => r.prices?.USD || (r.currency === 'USD' && typeof r.price === 'number' ? r.price : 0))
+      .filter((p): p is number => typeof p === 'number' && p > 0);
+    const minUsd = roomPricesUsd.length > 0 ? Math.min(...roomPricesUsd) : null;
+    const maxUsd = roomPricesUsd.length > 0 ? Math.max(...roomPricesUsd) : null;
+
+    let computedPriceRange: string | undefined = undefined;
+    if (minMwk !== null && maxMwk !== null) {
+      const mwkStr = minMwk === maxMwk
+        ? `MK ${minMwk.toLocaleString()}`
+        : `MK ${minMwk.toLocaleString()} - MK ${maxMwk.toLocaleString()}`;
+      const usdStr = minUsd !== null && maxUsd !== null
+        ? (minUsd === maxUsd ? `$${minUsd}` : `$${minUsd} - $${maxUsd}`)
+        : '';
+      computedPriceRange = usdStr ? `${mwkStr} / ${usdStr}` : mwkStr;
+    }
+
+    let aggregateRatingNode: Record<string, any> | undefined = undefined;
+    if (reviews.length > 0 && avgRating) {
+      aggregateRatingNode = {
+        '@type': 'AggregateRating',
+        ratingValue: avgRating,
+        reviewCount: String(reviews.length),
+        bestRating: '5',
+        worstRating: '1',
+      };
+    } else if (hotel.reviewsSummary && hotel.reviewsSummary.averageRating > 0) {
+      aggregateRatingNode = {
+        '@type': 'AggregateRating',
+        ratingValue: hotel.reviewsSummary.averageRating.toFixed(1),
+        reviewCount: String(hotel.reviewsSummary.count || 1),
+        bestRating: '5',
+        worstRating: '1',
+      };
+    }
+
+    const schemaNode: Record<string, any> = {
+      '@context': 'https://schema.org',
+      '@type': ['LodgingBusiness', hotel.category === 'Luxury' ? 'Resort' : 'Hotel'],
+      name: hotel.name,
+      description: hotel.description,
+      image: hotelImages.slice(0, 5),
+      url: `https://ulendomalawi.com/hotel/${hotel.id}`,
+      telephone: hotel.contactPhone || undefined,
+      currenciesAccepted: 'MWK, USD',
+      address: {
+        '@type': 'PostalAddress',
+        addressCountry: 'MW',
+        addressLocality: hotel.location || 'Malawi',
+        addressRegion: 'Malawi',
+      },
+      checkinTime: hotel.checkInTime || '14:00',
+      checkoutTime: hotel.checkOutTime || '10:30',
+    };
+
+    if (computedPriceRange) {
+      schemaNode.priceRange = computedPriceRange;
+    }
+
+    if (coords && isValidLatLng(coords)) {
+      schemaNode.geo = {
+        '@type': 'GeoCoordinates',
+        latitude: coords.lat,
+        longitude: coords.lng,
+      };
+    }
+
+    if (aggregateRatingNode) {
+      schemaNode.aggregateRating = aggregateRatingNode;
+    }
+
+    if (hotel.amenities && hotel.amenities.length > 0) {
+      schemaNode.amenityFeature = hotel.amenities.map((amenity) => ({
+        '@type': 'LocationFeatureSpecification',
+        name: amenity,
+        value: true,
+      }));
+    }
+
+    if (rooms && rooms.length > 0) {
+      schemaNode.containsPlace = rooms.map((room) => ({
+        '@type': 'HotelRoom',
+        name: room.name,
+        description: room.description,
+        occupancy: {
+          '@type': 'QuantitativeValue',
+          maxValue: room.maxGuests || 2,
+        },
+      }));
+    }
+
+    return schemaNode;
+  }, [hotel, hotelImages, rooms, reviews]);
+
   return (
-    <div className="min-h-screen bg-white pb-24"><Helmet>        <title>{hotel.name} - Travel Malawi</title>
-        <meta name="description" content={hotel.description.substring(0, 160)} />
-        <meta property="og:title" content={`${hotel.name} - Travel Malawi`} />
-        <meta property="og:description" content={hotel.description.substring(0, 160)} />
-        <meta property="og:image" content={hotel.imageUrl} />
-      </Helmet>
+    <div className="min-h-screen bg-white pb-24">
+      <SEOHead
+        title={`${hotel.name} — ${hotel.category || 'Luxury'} Lodge in ${hotel.location || 'Lake Malawi'}`}
+        description={`${hotel.description.substring(0, 150)}... Book direct in MWK and USD with zero booking commissions on Travel Malawi.`}
+        keywords={`Malawi lodge, ${hotel.name}, ${hotel.location || 'Lake Malawi'}, ${hotel.category || 'Lodge'}, book ${hotel.name}, Lake Malawi accommodation, safari stay`}
+        image={hotel.imageUrl || hotelImages[0]}
+        url={`https://ulendomalawi.com/hotel/${hotel.id}`}
+        type="hotel"
+        schema={hotelSchema}
+      />
       {/* Sticky Header when scrolled past hero */}
       <div
         id="sticky-property-bar"

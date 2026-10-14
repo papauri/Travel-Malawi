@@ -30,6 +30,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { useAuth } from '../contexts/AuthContext';
 import { useAuthDialog } from '../contexts/AuthDialogContext';
 import { isHotelManager } from '../lib/roles';
+import SEOHead from '../components/SEOHead';
 import ImageUpload from '../components/ImageUpload';
 import GalleryUpload from '../components/GalleryUpload';
 import SmartImage from '../components/SmartImage';
@@ -1405,6 +1406,12 @@ export default function ListProperty() {
   // ---- The wizard (Unified for both guests and authenticated hosts) ----
   return (
     <div className="bg-stone-50">
+      <SEOHead
+        title="List Your Property — Join Travel Malawi Hospitality Platform"
+        description="List your lodge, boutique hotel, B&B, or Lake Malawi cottage on Travel Malawi. Connect directly with domestic and international travelers with zero listing fees and payouts in MWK or USD."
+        keywords="list property Malawi, host lodge Malawi, lodge onboarding Malawi, hotel management Malawi, Travel Malawi partner"
+        url="https://ulendomalawi.com/list-your-property"
+      />
       <div className="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 py-6 sm:py-10 md:py-12">
         <div className="mb-6 sm:mb-8 flex flex-wrap items-center justify-between gap-3 sm:gap-4">
           <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
@@ -4240,6 +4247,12 @@ function OnboardingWelcomeWalkthrough({
 
   return (
     <div className="min-h-screen bg-stone-50/50 text-stone-700 font-sans">
+      <SEOHead
+        title="List Your Property — Join Travel Malawi Hospitality Platform"
+        description="List your lodge, boutique hotel, B&B, or Lake Malawi cottage on Travel Malawi. Connect directly with domestic and international travelers with zero listing fees and payouts in MWK or USD."
+        keywords="list property Malawi, host lodge Malawi, lodge onboarding Malawi, hotel management Malawi, Travel Malawi partner"
+        url="https://ulendomalawi.com/list-your-property"
+      />
       <main className="max-w-5xl lg:max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 md:py-12">
         {/* Top Control Bar */}
         <div className="flex items-center justify-between gap-3 mb-6 pb-4 border-b border-stone-200/90 flex-wrap">

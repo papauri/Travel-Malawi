@@ -26,6 +26,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { useAuthDialog } from '../contexts/AuthDialogContext';
 import { isHotelManager } from '../lib/roles';
 import { getActivePromotion, calculateSlashedPrice, getSaleTypeBadge } from '../lib/promotions';
+import SEOHead from '../components/SEOHead';
+import { generateAutonomousSeo } from '../lib/dynamicSeo';
 
 type SortKey = 'recommended' | 'distance_asc' | 'price_asc' | 'price_desc' | 'rating' | 'name_asc';
 
@@ -1136,10 +1138,39 @@ export default function Home() {
 
   /** Whether the row above is a real editorial pick or just the best rated. */
   const hasPromotedFeatures = useMemo(() => hotels.some(h => h.featured), [hotels]);
-  
+
+  const currentLocParam = searchParams.get('location') || searchParams.get('search') || appliedSearch.location;
+  const currentCategoryParam = searchParams.get('category') || (activeCategory !== 'All' ? activeCategory : undefined);
+
+  const pageSeo = useMemo(() => {
+    return generateAutonomousSeo({
+      hotels,
+      filteredHotels,
+      roomsByHotel,
+      ratingByHotel,
+      locationParam: currentLocParam,
+      categoryParam: currentCategoryParam,
+      searchParam: searchParams.get('search'),
+    });
+  }, [
+    hotels,
+    filteredHotels,
+    roomsByHotel,
+    ratingByHotel,
+    currentLocParam,
+    currentCategoryParam,
+    searchParams,
+  ]);
 
   return (
     <div className="flex flex-col min-h-screen">
+      <SEOHead
+        title={pageSeo.title}
+        description={pageSeo.description}
+        keywords={pageSeo.keywords}
+        url={pageSeo.url}
+        schema={pageSeo.schema}
+      />
       {/* Hero */}
       <section className="relative z-20 min-h-[50svh] sm:min-h-[54svh] md:min-h-[58svh] lg:min-h-[80svh] xl:min-h-[86svh] 2xl:min-h-[90svh] w-full flex flex-col justify-center items-center pb-12 sm:pb-16 md:pb-20 lg:pb-28 pt-20 sm:pt-24 md:pt-28 lg:pt-36 bg-stone-950 overflow-hidden">
         <motion.div

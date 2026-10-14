@@ -10,6 +10,7 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import DocQuickEditButton from '../components/DocQuickEditButton';
 import { useDocContent } from '../hooks/useDocContent';
+import SEOHead from '../components/SEOHead';
 
 export default function HostStarterPack() {
   const { title: customTitle, subtitle: customSubtitle, isCustomized, lastEditedBy, refreshDoc } = useDocContent(
@@ -151,6 +152,12 @@ ${window.location.origin}/list-your-property`;
 
   return (
     <div className="min-h-screen bg-stone-50/50 text-stone-700 font-sans print:bg-white">
+      <SEOHead
+        title="Host Starter Pack & Field Guide — Travel Malawi"
+        description="A practical operational guide for independent lodges, lakeside cottages, private villas, B&Bs, and safari camps across Malawi. 0% commission direct booking and WhatsApp host tools."
+        keywords="Malawi host guide, lodge onboarding Malawi, cottage rental Malawi, safari camp operations, Travel Malawi starter pack"
+        url="https://ulendomalawi.com/host-starter-pack"
+      />
       {/* Container widened to max-w-6xl matching ListProperty page layout */}
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 print:p-0 print:max-w-none">
 

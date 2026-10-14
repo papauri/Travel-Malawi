@@ -1,19 +1,21 @@
 import React from 'react';
-import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
 import { ShieldCheck, ArrowLeft, Lock, FileText, RefreshCcw, Mail, MapPin, CheckCircle2 } from 'lucide-react';
 import { useSystemSettings } from '../hooks/useSystemSettings';
 import MarkdownContent from '../components/MarkdownContent';
+import SEOHead from '../components/SEOHead';
 
 export default function Privacy() {
   const { settings } = useSystemSettings();
 
   return (
     <div className="min-h-screen bg-stone-50/50 text-stone-700 font-sans">
-      <Helmet>
-        <title>Privacy Policy · Travel Malawi</title>
-        <meta name="description" content="How Travel Malawi protects and handles your personal information with zero ad tracking." />
-      </Helmet>
+      <SEOHead
+        title="Privacy Policy — Travel Malawi"
+        description="How Travel Malawi protects and handles guest and host data with zero third-party ad tracking, secure communication, and transparent direct booking."
+        keywords="Travel Malawi privacy, data protection Malawi, guest privacy"
+        url="https://ulendomalawi.com/privacy"
+      />
 
       <main className="max-w-4xl lg:max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
         {/* Top Control Bar */}

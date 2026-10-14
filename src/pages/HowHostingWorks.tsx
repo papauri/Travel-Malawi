@@ -23,6 +23,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { useAuthDialog } from '../contexts/AuthDialogContext';
 import { isHotelManager } from '../lib/roles';
+import SEOHead from '../components/SEOHead';
 
 interface Step {
   id: string;
@@ -122,6 +123,12 @@ export default function HowHostingWorks() {
 
   return (
     <div className="min-h-screen bg-[#FCFAF7] text-stone-800 font-sans selection:bg-amber-100 selection:text-stone-900 pb-20">
+      <SEOHead
+        title="How Hosting Works — Direct Booking Architecture & Host Tools"
+        description="Learn how hosting works on Travel Malawi. Direct WhatsApp guest communication, local currency deposits (MWK & USD), real-time availability calendar, and 0% host commissions."
+        keywords="how hosting works Malawi, lodge hosting guide, cottage management Malawi, Travel Malawi host workflow"
+        url="https://ulendomalawi.com/how-hosting-works"
+      />
       {/* Hero Header: Human, Quiet, Dignified */}
       <header className="pt-6 sm:pt-10 md:pt-12 pb-10 sm:pb-14 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto text-center">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-stone-100 border border-stone-200/90 text-stone-600 text-xs font-medium mb-5">
