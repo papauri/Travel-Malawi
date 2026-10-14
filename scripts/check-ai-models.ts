@@ -51,6 +51,9 @@ const retiredOnServer: Record<string, string> = {
 /** Models answering 429 with Google's quota message. */
 const rateLimitedOnServer = new Set<string>();
 let catalogReachable = true;
+/** When true, models answer 400 "invalid argument" to any thinkingConfig (as some Gemini 3 models do). */
+let rejectThinkingConfig = false;
+let lastGenerateBody: any = null;
 const generateCalls: string[] = [];
 
 function json(status: number, body: unknown): Response {
@@ -91,6 +94,10 @@ globalThis.fetch = (async (input: any, init?: any) => {
       });
     }
     const body = JSON.parse(init?.body || '{}');
+    lastGenerateBody = body;
+    if (rejectThinkingConfig && body?.generationConfig?.thinkingConfig) {
+      return json(400, { error: { code: 400, message: 'Request contains an invalid argument.', status: 'INVALID_ARGUMENT' } });
+    }
     const prompt = body?.contents?.[0]?.parts?.[0]?.text || '';
     return json(200, { candidates: [{ content: { parts: [{ text: `Answer from ${model}: ${prompt.slice(0, 20)}` }] } }] });
   }
@@ -178,7 +185,44 @@ async function main() {
   check('Greeting reports real numbers', busy.includes('1 arrival') && busy.includes('1 check-out') && busy.includes('1 booking waiting'));
   check('Greeting stays short (< 160 chars)', quiet.length < 160 && busy.length < 160, `${quiet.length}/${busy.length}`);
 
-  console.log('\n7. Operations chat prompt budgets');
+  console.log('\n7. Ulendo knows who is signed in and answers through the AI');
+  rejectThinkingConfig = true;
+  const swarm = await load('server/aiSwarm.ts');
+  const intent = await load('src/lib/queryIntent.ts');
+  const esthers = {
+    id: 'h-esthers', name: 'Esthers Guest House- Boat house', location: 'Salima', status: 'approved',
+    ownerName: 'Esther Banda', ownerEmail: 'esther@example.com', managerId: 'unassigned',
+    rooms: [{ id: 'r1', name: 'Boat Room', priceUSD: 60, priceMWK: 105000 }],
+  };
+  const adminCtx = { currentDateStr: '2026-10-14', currentTimeStr: '12:00', properties: [esthers, { id: 'h2', name: 'Kaya Mawa', location: 'Likoma', rooms: [] }], bookings: [] };
+  const adminReq = { userRole: 'admin', message: 'Not bad, who owns esthers', intent: 'greeting_or_chat', history: [{ role: 'user', content: 'How are you' }, { role: 'assistant', content: 'All good here.' }], context: adminCtx };
+  generateCalls.length = 0;
+  const opsReply = await aiService.executeOperationsAssistantChat(adminReq);
+  check('Gemini 400 "invalid argument" retried without optional params', generateCalls.length >= 2 && generateCalls[0] === generateCalls[1], generateCalls.join(' > '));
+  check('Reply came from the AI, not the local fallback', opsReply.provider === 'gemini' && opsReply.reply.startsWith('Answer from'), `${opsReply.provider}: ${opsReply.reply.slice(0, 60)}`);
+  const sentPrompt = lastGenerateBody?.contents?.[0]?.parts?.[0]?.text || '';
+  check('"Not bad, who owns esthers" gets the full context, not small talk', sentPrompt.includes('Esther Banda'));
+  check('Prompt tells the AI the user is the global administrator', sentPrompt.includes('Global administrator'));
+  generateCalls.length = 0;
+  await aiService.executeOperationsAssistantChat({ ...adminReq, message: 'Which rooms does Kaya Mawa have?' });
+  check('Model remembers which options it accepts (single call next time)', generateCalls.length === 1, generateCalls.join(' > '));
+  rejectThinkingConfig = false;
+
+  console.log('\n8. Local fallback is role-aware and stays on topic');
+  check('"hi" and "how are you" are small talk', intent.isPureSmallTalk('hi') && intent.isPureSmallTalk('How are you?') && intent.isPureSmallTalk('not bad, and you?'));
+  check('"Not bad, who owns esthers" is a question', !intent.isPureSmallTalk('Not bad, who owns esthers'));
+  const owner = swarm.executeDeterministicSwarmReply(adminReq);
+  check('Fallback answers ownership from the data', owner.reply.includes('Esther Banda') && owner.reply.includes('Manager:'), owner.reply);
+  const howAdmin = swarm.executeDeterministicSwarmReply({ ...adminReq, message: 'How are you', history: [] });
+  check('Admin small talk refers to the platform, not one stay', howAdmin.reply.includes('the platform') && !howAdmin.reply.includes('Esthers'), howAdmin.reply);
+  const car = swarm.executeDeterministicSwarmReply({ ...adminReq, message: 'Help me buy a used car' });
+  check('Off-topic request gets a friendly pivot back to stays', /transport|shuttle|4x4/i.test(car.reply), car.reply);
+  const managerOwn = swarm.executeDeterministicSwarmReply({ ...adminReq, userRole: 'hotel_manager', message: 'who runs esthers?', context: { ...adminCtx, properties: [esthers] } });
+  check('Manager sees their own property as managed by them', managerOwn.reply.includes('Managed by:** you'), managerOwn.reply);
+  const unknown = swarm.executeDeterministicSwarmReply({ ...adminReq, message: 'What is our occupancy forecast strategy?' });
+  check('Unanswerable question gets an honest reply, not a greeting', /can't reach the AI service/.test(unknown.reply), unknown.reply);
+
+  console.log('\n9. Operations chat prompt budgets');
   const property = (i: number) => ({
     id: `h${i}`, name: ['Kaya Mawa', 'Pumulani Lodge', 'Mvuu Camp', 'Zomba Forest Lodge'][i % 4] + (i > 3 ? ` ${i}` : ''),
     description: 'A lakeside lodge with chalets, a pool and a restaurant overlooking Lake Malawi.'.repeat(2),

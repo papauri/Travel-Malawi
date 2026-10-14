@@ -1,5 +1,6 @@
 import { AIProviderId } from './aiConfig';
 import { buildConciergeGreeting } from '../src/lib/conciergeGreeting';
+import { detectOutOfScope, findMentionedPropertyIds, isPureSmallTalk, outOfScopeReply } from '../src/lib/queryIntent';
 import { OperationsAssistantRequest, OperationsAssistantResult, ActionProposal } from './aiService';
 
 export type SwarmAgentId = 
@@ -179,6 +180,26 @@ export function executeDeterministicSwarmReply(
   // Helper: format MWK cleanly
   const formatMwk = (amount?: number) => amount ? `MK ${amount.toLocaleString()}` : '—';
   const formatUsd = (amount?: number) => amount ? `$${amount}` : '—';
+
+  // -------------------------------------------------------------
+  // 0. DIRECT ANSWERS FROM LIVE DATA (role-aware, checked first)
+  // -------------------------------------------------------------
+  const isAdmin = req.userRole === 'admin';
+  const scopeLabel = isAdmin
+    ? `the platform (${properties.length} ${properties.length === 1 ? 'property' : 'properties'})`
+    : properties.map(p => p.name).join(', ') || 'your properties';
+  const direct = answerFromLiveData(req, isAdmin);
+  if (direct) {
+    return {
+      reply: direct.reply,
+      provider: 'local' as any,
+      model: 'ulendo-swarm-coordinator',
+      actionProposal: null,
+      newLearnedRule: null,
+      autonomousPatch: null,
+      suggestedFollowUps: direct.followUps,
+    };
+  }
 
   // -------------------------------------------------------------
   // 1. FRONT DESK & RESERVATIONS INTENT
@@ -428,26 +449,29 @@ export function executeDeterministicSwarmReply(
     const now = new Date();
     const hour = now.getHours();
     const friendlyName = userName && userName !== 'Manager' && userName !== 'Host' ? ` ${userName}` : '';
-    const lodgeRef = properties[0]?.name ? ` at **${properties[0].name}**` : '';
 
     if (isFeedback) {
-      newLearnedRule = 'Ulendo is your trusted friend, proactive learner, and personal concierge: replies in under a second with natural human warmth, observes and remembers your personal lodge habits, and eliminates slow robotic data dumps.';
-      reply = `You have my word${friendlyName}. From now on: no more slow robotic stalling, no impersonal boilerplate, and sub-second natural replies. I'm right here as your trusted friend, daily partner, and concierge${lodgeRef}.\n\nI'm actively learning your habits, your preferred currency, and your lodge routine with every conversation. What's on your agenda right now?`;
-      suggestedFollowUps = ["Check today's arrivals", "Audit all room rates", "Review property amenities"];
-    } else if (cleanMsg.includes('how are you') || cleanMsg.includes('hows it going') || cleanMsg.includes('doing today')) {
-      reply = `I'm doing great, thank you${friendlyName}! Keeping an attentive eye on operations across ${properties[0]?.name || 'your lodge'}. How are things on your side today?`;
-      suggestedFollowUps = ["Check today's arrivals", "Show all room rates", "Review property amenities"];
-    } else {
+      newLearnedRule = 'Keep replies natural and brief, skip repeated greetings, and avoid unprompted data dumps during small talk.';
+      reply = `Noted${friendlyName}. I'll keep it natural and to the point, and remember how you like things done. What's next?`;
+      suggestedFollowUps = ["Check today's arrivals", "Audit all room rates", "Review pending bookings"];
+    } else if (/how are you|hows it going|how r u|doing today/.test(cleanMsg) && isPureSmallTalk(cleanMsg)) {
+      reply = `All good here, thanks${friendlyName}. Keeping an eye on ${scopeLabel}. How's your day going?`;
+      suggestedFollowUps = ["Check today's arrivals", "Show all room rates", "Review pending bookings"];
+    } else if (isPureSmallTalk(cleanMsg) || !cleanMsg) {
       reply = buildConciergeGreeting({
         name: friendlyName.trim(),
         propertyNames: properties.map(p => p.name).filter(Boolean),
-        isAdmin: req.userRole === 'admin',
+        isAdmin,
         bookings: req.context.bookings,
         todayStr: req.context.currentDateStr,
         hour,
         ongoing: hasHistory,
       });
       suggestedFollowUps = ["Check today's arrivals", "Show all room rates", "Review pending bookings"];
+    } else {
+      // A real question the local engine cannot answer: say so plainly instead of a canned line.
+      reply = `I can't reach the AI service right now, so I can only answer straight from your data. I can show today's arrivals and departures, room rates, amenities, or details and contacts for any property on ${scopeLabel}. Try asking about one of those, or try again in a minute.`;
+      suggestedFollowUps = ["Check today's arrivals", "Show all room rates", isAdmin ? 'List all properties' : 'Show my properties'];
     }
   }
 
@@ -464,4 +488,84 @@ export function executeDeterministicSwarmReply(
     } : null,
     suggestedFollowUps,
   };
+}
+
+type PropertyCtx = OperationsAssistantRequest['context']['properties'][number];
+
+function ownershipLines(p: PropertyCtx, isAdmin: boolean): string {
+  const lines = [`**${p.name}**${p.location ? ` (${p.location})` : ''}`];
+  if (p.ownerName) {
+    lines.push(`• **Owner:** ${p.ownerName}${p.ownerEmail ? ` · ${p.ownerEmail}` : ''}${p.ownerPhone ? ` · ${p.ownerPhone}` : ''}`);
+  }
+  const hasManager = Boolean(p.managerId && !['N/A', 'unassigned', 'none'].includes(p.managerId));
+  if (isAdmin) {
+    lines.push(hasManager
+      ? `• **Manager:** ${p.managerName || 'Assigned host'}${p.managerEmail ? ` · ${p.managerEmail}` : ''}${p.managerPhone ? ` · ${p.managerPhone}` : ''}`
+      : '• **Manager:** none assigned yet');
+  } else {
+    lines.push('• **Managed by:** you');
+  }
+  const desk = [p.contactEmail, p.contactPhone, p.contactWhatsapp ? `WhatsApp ${p.contactWhatsapp}` : ''].filter(Boolean).join(' · ');
+  if (desk) lines.push(`• **Front desk:** ${desk}`);
+  if (!p.ownerName && !hasManager && isAdmin) lines.push('No owner is recorded on the listing yet. You can add one under the property details.');
+  return lines.join('\n');
+}
+
+function propertySummary(p: PropertyCtx): string {
+  const rooms = p.rooms || [];
+  const usd = rooms.map(r => r.priceUSD).filter((n): n is number => typeof n === 'number');
+  const rate = usd.length ? `$${Math.min(...usd)}${Math.max(...usd) !== Math.min(...usd) ? `–$${Math.max(...usd)}` : ''} per night` : 'rates not set';
+  return [
+    `**${p.name}**${p.location ? ` · ${p.location}` : ''}${p.category ? ` · ${p.category}` : ''}`,
+    `• **Listing:** ${p.status || 'active'}${p.featured ? ', featured' : ''} · front desk ${p.isOnline === false ? 'offline' : 'online'}`,
+    `• **Rooms:** ${rooms.length} room type${rooms.length === 1 ? '' : 's'}, ${rate}`,
+    p.amenities?.length ? `• **Amenities:** ${p.amenities.slice(0, 8).join(', ')}` : '',
+  ].filter(Boolean).join('\n');
+}
+
+/**
+ * Answers the questions the local engine can answer exactly from the data in
+ * scope (out-of-scope pivots, property ownership and contacts, property
+ * summaries, portfolio lists). Returns null for anything else.
+ */
+function answerFromLiveData(req: OperationsAssistantRequest, isAdmin: boolean): { reply: string; followUps: string[] } | null {
+  const message = req.message || '';
+  const lower = message.toLowerCase();
+  const properties = req.context.properties || [];
+
+  const outOfScope = detectOutOfScope(message);
+  if (outOfScope) {
+    return { reply: outOfScopeReply(outOfScope), followUps: ["Check today's arrivals", 'Arrange an airport shuttle', 'Audit room rates'] };
+  }
+
+  const mentionedIds = findMentionedPropertyIds(message, properties);
+  const mentioned = properties.filter(p => mentionedIds.has(p.id));
+  const asksOwnership = /\b(own|owns|owner|owners|owned|manag\w*|run|runs|contact|phone|email|whatsapp|call|reach|who)\b/.test(lower);
+
+  if (mentioned.length > 0 && asksOwnership) {
+    return {
+      reply: mentioned.slice(0, 5).map(p => ownershipLines(p, isAdmin)).join('\n\n'),
+      followUps: [`Show ${mentioned[0].name} rooms`, 'Check today\'s arrivals', isAdmin ? 'List all properties' : 'Show my properties'],
+    };
+  }
+
+  if (/\b(how many|list|which|all|my)\b.*\b(propert(y|ies)|stays|lodges|hotels|listings)\b/.test(lower)) {
+    if (properties.length === 0) {
+      return { reply: isAdmin ? 'There are no properties on the platform yet.' : "You don't have any properties set up yet. You can add one from List a Property.", followUps: ['How do I list a property?'] };
+    }
+    const header = isAdmin
+      ? `The platform has **${properties.length}** ${properties.length === 1 ? 'property' : 'properties'}:`
+      : `You manage **${properties.length}** ${properties.length === 1 ? 'property' : 'properties'}:`;
+    const list = properties.slice(0, 25).map(p => `• **${p.name}**${p.location ? ` · ${p.location}` : ''} · ${p.status || 'active'}`).join('\n');
+    return { reply: `${header}\n${list}${properties.length > 25 ? `\n…and ${properties.length - 25} more` : ''}`, followUps: ['Who owns each property?', 'Audit room rates', "Check today's arrivals"] };
+  }
+
+  // A bare property name ("tell me about Esthers") gets its summary when no other agent applies.
+  if (mentioned.length > 0 && classifySwarmIntent(req).primaryAgent === 'swarm_coordinator' && !isPureSmallTalk(message)) {
+    return {
+      reply: mentioned.slice(0, 3).map(propertySummary).join('\n\n'),
+      followUps: [`Who owns ${mentioned[0].name}?`, `Show ${mentioned[0].name} rooms`, "Check today's arrivals"],
+    };
+  }
+  return null;
 }

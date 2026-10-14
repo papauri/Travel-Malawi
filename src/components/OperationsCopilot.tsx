@@ -39,6 +39,7 @@ import { confirmBooking, confirmErrorMessage, PriceMismatchError } from '../lib/
 import { updateBookingWithSlot, cancelBookingReminders } from '../lib/bookingWrites';
 import WalkthroughTooltip from './WalkthroughTooltip';
 import { addDays } from '../lib/dates';
+import { detectOutOfScope, findMentionedPropertyIds, isPureSmallTalk } from '../lib/queryIntent';
 
 interface ChatMessage {
   id: string;
@@ -607,7 +608,7 @@ export default function OperationsCopilot() {
     const isGeneralOutOfScope = 
       /\b(crypto|bitcoin|ethereum|forex|stock\s+market|stock\s+trading|medical\s+diagnosis|legal\s+counsel)\b/i.test(clean);
 
-    if (isCarBuying || isCodingOrTech || isGeneralOutOfScope) {
+    if (isCarBuying || isCodingOrTech || isGeneralOutOfScope || detectOutOfScope(clean)) {
       return 'out_of_scope_or_pivot';
     }
 
@@ -644,11 +645,10 @@ export default function OperationsCopilot() {
     const isAiFlowOrFeedback = 
       /\b(ai\s+flow|response\s+flow|flow|respond\s+back|learn\s+constantly|get\s+way\s+better|better\s+flow|how\s+to\s+respond|learn\s+how|copilot\s+flow)\b/i.test(clean);
 
-    const isConversational = 
-      isAiFlowOrFeedback ||
-      standardGreetings.some(g => stripped === g || stripped.startsWith(g + ' ')) ||
-      conversationalPhrases.some(p => clean.includes(p)) ||
-      (clean.split(/\s+/).length <= 4 && ['fine', 'good', 'well', 'alright', 'great', 'cool', 'ok', 'yes', 'no', 'sure', 'awesome'].includes(stripped));
+    // Small talk only when the whole message is pleasantry; "not bad, who owns Esthers?" is a question.
+    const isConversational =
+      (isAiFlowOrFeedback || isPureSmallTalk(clean) || standardGreetings.includes(stripped) || conversationalPhrases.includes(stripped))
+      && findMentionedPropertyIds(clean, properties.map(p => ({ id: p.id || '', name: p.name }))).size === 0;
 
     // Operational & Database Keywords
     const dbKeywords = [

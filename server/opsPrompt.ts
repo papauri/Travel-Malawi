@@ -11,6 +11,7 @@ import {
   clip,
   untrusted,
 } from './promptUtils';
+import { findMentionedPropertyIds } from '../src/lib/queryIntent';
 
 /**
  * Prompt builder for the Ulendo operations concierge.
@@ -114,12 +115,6 @@ const TOPIC_PATTERNS: Record<ContextTopic, RegExp> = {
 /** Broad questions ("audit everything", "how are we doing") get the full context. */
 const BROAD_REQUEST = /\b(audit|overview|summary|summari[sz]e|everything|report|all details|full details|compare|comparison|analy[sz]e|analysis|health|how are we doing|how is business|performance|status check|tell me about)\b/i;
 
-/** Words in property names too generic to identify one property. */
-const GENERIC_NAME_WORDS = new Set([
-  'lodge', 'lodges', 'hotel', 'resort', 'camp', 'house', 'guest', 'guesthouse', 'beach', 'lake', 'cottage',
-  'cottages', 'village', 'malawi', 'safari', 'retreat', 'suites', 'country', 'island', 'river', 'the',
-]);
-
 const CHANGE_REQUEST = /\b(add|remove|delete|update|change|set|apply|make|put|turn|switch|raise|lower|increase|decrease|drop|reduce|confirm|cancel|approve|reject|feature|unfeature|publish|create|enable|disable|go ahead|do it|yes|yep|proceed|offline|online)\b/i;
 const TOURISM_REQUEST = /\b(tour|tourism|excursions?|activit(y|ies)|safari|game drive|itinerar\w*|things to do|recommend|visit|trip|travel|route|drive|driving|road|roads|transfer|shuttle|airport|boat|snorkel\w*|div(e|ing)|hike|hiking|lake|mulanje|zomba|liwonde|majete|nyika|cape maclear|likoma|nkhata|senga|mangochi|chambo|nsima|culture|weather|season|guests? (ask|want)|festival|revenue strategy|peak)\b/i;
 
@@ -131,23 +126,6 @@ function detectTopics(text: string): Set<ContextTopic> {
     if (pattern.test(text)) topics.add(topic);
   }
   return topics;
-}
-
-/** Properties the conversation names explicitly, matched on the full name or a distinctive word. */
-function findMentionedProperties(text: string, properties: PropertyContext[]): Set<string> {
-  const lower = text.toLowerCase();
-  const mentioned = new Set<string>();
-  for (const p of properties) {
-    const name = (p.name || '').toLowerCase().trim();
-    if (!name) continue;
-    if (lower.includes(name)) {
-      mentioned.add(p.id);
-      continue;
-    }
-    const distinctive = name.split(/[^a-z0-9']+/).filter(w => w.length >= 4 && !GENERIC_NAME_WORDS.has(w));
-    if (distinctive.some(w => new RegExp(`\\b${w}\\b`).test(lower))) mentioned.add(p.id);
-  }
-  return mentioned;
 }
 
 function roomLine(r: NonNullable<PropertyContext['rooms']>[number], withDetail: boolean): string {
@@ -298,7 +276,7 @@ export function buildOperationsChatPrompts(
   const broad = BROAD_REQUEST.test(message) || topics.size === 0;
 
   const properties = (req.context.properties || []).slice(0, 40);
-  const mentioned = findMentionedProperties(recentText, properties);
+  const mentioned = findMentionedPropertyIds(recentText, properties);
   // With no property named, every property is in focus (up to a handful in full detail).
   const focusAll = mentioned.size === 0;
 

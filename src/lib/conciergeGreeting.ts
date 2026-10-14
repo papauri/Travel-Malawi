@@ -67,7 +67,7 @@ export function buildConciergeGreeting(input: GreetingInput): string {
   }
 
   return pick([
-    `${salutation}${name}. Quiet day so far at ${scope}. What can I help with?`,
+    `${salutation}${name}. How can I help across ${scope} today?`,
     `${salutation}${name}. What's on the list for ${scope} today?`,
     `${salutation}${name}. Rates, bookings, guests or something else? Just ask.`,
   ]);

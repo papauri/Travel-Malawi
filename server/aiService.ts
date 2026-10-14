@@ -22,6 +22,7 @@ import {
   untrusted,
 } from './promptUtils';
 import { buildOperationsChatPrompts } from './opsPrompt';
+import { isPureSmallTalk } from '../src/lib/queryIntent';
 import { classifySwarmIntent, getSpecialistAgentPrompt, executeDeterministicSwarmReply } from './aiSwarm';
 
 export interface GenerationRequest {
@@ -597,9 +598,18 @@ function openAITokenParams(providerId: AIProviderId, model: string, maxTokens: n
 /** Gemini 2.5+ models think before answering; that budget is reserved on top of the answer length. */
 function geminiThinks(model: string): boolean {
   if (/-latest$/.test(model)) return true;
-  const m = model.match(/^gemini-(\d+(?:\.\d+)?)/);
-  return !!m && parseFloat(m[1]) >= 2.5;
+  return geminiVersion(model) >= 2.5;
 }
+
+/** Numeric Gemini version (3.8 for gemini-3.8-flash); evergreen aliases count as current. */
+function geminiVersion(model: string): number {
+  if (/-latest$/.test(model)) return 3;
+  const m = model.match(/^gemini-(\d+(?:\.\d+)?)/);
+  return m ? parseFloat(m[1]) : 0;
+}
+
+/** Per model: how many optional request parameters had to be dropped for it to accept calls. */
+const geminiCompatLevel = new Map<string, number>();
 
 /** Joins the visible text parts of a Gemini response, skipping thought summaries. */
 function geminiText(data: any): string {
@@ -676,47 +686,59 @@ async function callGemini(
   }
 ): Promise<string> {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
-  const thinkingBudget = geminiThinks(model) ? (options?.thinkingBudget ?? 512) : undefined;
+  const thinks = geminiThinks(model);
+  const isGemini3Plus = geminiVersion(model) >= 3;
+  const wantsJson = Boolean(options?.responseMimeType && !useSearch);
 
-  const send = (withThinking: boolean) =>
-    pacedFetch(providerId, url, {
+  // Optional parameters are dropped step by step when a model rejects them
+  // (400 "invalid argument"), and the level that works is remembered per model.
+  const buildBody = (level: number) => {
+    const thinkingConfig = level === 0 && thinks
+      ? (isGemini3Plus
+        // Gemini 3 sets thinking by level; small budgets map to "low".
+        ? { thinkingLevel: (options?.thinkingBudget ?? 512) > 1024 ? 'high' : 'low' }
+        : { thinkingBudget: options?.thinkingBudget ?? 512 })
+      : undefined;
+    return JSON.stringify({
+      systemInstruction: { parts: [{ text: systemPrompt }] },
+      contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+      tools: useSearch ? [{ googleSearch: {} }] : undefined,
+      generationConfig: {
+        temperature,
+        // The cap is free; thinking models need headroom or the visible answer comes back empty.
+        maxOutputTokens: maxTokens + (thinks ? 2048 : 0),
+        ...(wantsJson && level < 2 ? { responseMimeType: options!.responseMimeType } : {}),
+        ...(thinkingConfig ? { thinkingConfig } : {}),
+      },
+    });
+  };
+  const maxLevel = wantsJson ? 2 : 1;
+
+  let level = Math.min(geminiCompatLevel.get(model) ?? 0, maxLevel);
+  let response: Response;
+  for (;;) {
+    response = await pacedFetch(providerId, url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-      body: JSON.stringify({
-        systemInstruction: {
-          parts: [{ text: systemPrompt }],
-        },
-        contents: [
-          {
-            role: 'user',
-            parts: [{ text: userPrompt }],
-          },
-        ],
-        tools: useSearch ? [{ googleSearch: {} }] : undefined,
-        generationConfig: {
-          temperature,
-          // Thinking tokens count against the output limit, so room is reserved for them.
-          maxOutputTokens: maxTokens + (withThinking && thinkingBudget ? thinkingBudget : 0),
-          ...(options?.responseMimeType && !useSearch ? { responseMimeType: options.responseMimeType } : {}),
-          ...(withThinking && thinkingBudget !== undefined ? { thinkingConfig: { thinkingBudget } } : {}),
-        },
-      }),
+      body: buildBody(level),
     });
-
-  let response = await send(true);
-
-  // Some models cannot change their thinking budget (Pro cannot switch it off); retry on the model default.
-  if (response.status === 400 && thinkingBudget !== undefined) {
+    if (response.status !== 400 || level >= maxLevel) break;
     const msg = await readErrorMessage(response.clone(), '');
-    if (msg.toLowerCase().includes('thinking')) {
-      response = await send(false);
-    }
+    console.warn(`[callGemini] ${model} rejected request options (level ${level}): ${msg}. Retrying with fewer options.`);
+    level++;
   }
+  if (response.ok && level > 0) geminiCompatLevel.set(model, level);
 
   if (response.status === 401 || response.status === 403) {
     const cleanMsg = await readErrorMessage(response, 'Invalid Gemini API key.');
     markProviderValidity(providerId, false, cleanMsg);
     throw new Error(`Authentication failed for Gemini: ${cleanMsg}`);
+  }
+
+  if (response.status === 400) {
+    // A request this model cannot take may still work on a sibling model.
+    const msg = await readErrorMessage(response, 'Request contains an invalid argument.');
+    throw new ModelCallError(`Gemini model ${model} rejected the request (400): ${msg}`, 400, true);
   }
 
   if (!response.ok) {
@@ -1634,14 +1656,20 @@ async function executeOperationsChatWithProvider(
 
   const isAiFlowMsg = /\b(ai\s+flow|response\s+flow|flow|respond\s+back|learn\s+constantly|get\s+way\s+better|better\s+flow|how\s+to\s+respond|learn\s+how|copilot\s+flow)\b/i.test(cleanMsg);
 
-  const isExactGreeting = greetingPhrases.includes(cleanMsg) || greetingPhrases.some(p => cleanMsg === p || cleanMsg.startsWith(p + ' ')) || isAiFlowMsg;
-  const isGreetingOrSmallTalk = !hasOperationalTerm && req.intent !== 'database_query' && req.intent !== 'database_action' && (isExactGreeting || (req.intent === 'greeting_or_chat' && !hasOperationalTerm));
+  // Only messages that are entirely greeting or pleasantry take the small-talk path:
+  // "not bad, who owns Esthers?" is a real question and gets the full context.
+  const isGreetingOrSmallTalk = req.intent !== 'database_action'
+    && !hasOperationalTerm
+    && (isPureSmallTalk(req.message || '') || isAiFlowMsg);
 
   if (isGreetingOrSmallTalk) {
     const quickPropNames = (req.context.properties || []).slice(0, 5).map(p => p.name).filter(Boolean);
-    const propContextLine = quickPropNames.length > 0
-      ? `Properties in host portfolio: ${quickPropNames.join(', ')}.`
-      : `Platform context: Travel Malawi Lodges & Accommodations.`;
+    const propCount = (req.context.properties || []).length;
+    const propContextLine = isAdminUser
+      ? `Signed in as the global administrator of the whole Travel Malawi platform (${propCount} properties). Speak about the platform, not any single stay.`
+      : quickPropNames.length > 0
+        ? `Signed in as the property manager of: ${quickPropNames.join(', ')}.`
+        : `Signed in as a property manager with no properties yet.`;
 
     const hasHistory = (req.history || []).length > 0;
 
@@ -1701,7 +1729,7 @@ Return your response followed by any \`\`\`learned_rule / \`\`\`autonomous_patch
 
     const chatUserPrompt = `CURRENT CONTEXT:
 - Display Name: ${resolvedDisplayName || 'Not specified (refer naturally as "you")'}
-- Role: ${isAdminUser ? 'Platform Executive' : 'Lodge Manager/Host'}
+- Role: ${isAdminUser ? 'Global administrator (platform-wide)' : 'Property manager (own properties only)'}
 - ${propContextLine}
 - Date: ${today}
 - Conversation History Present: ${hasHistory ? 'YES (Continue naturally without repeating Hello/greetings)' : 'NO (First turn)'}
