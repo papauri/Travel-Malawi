@@ -1,5 +1,6 @@
 import { db } from './firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { buildConciergeGreeting, type GreetingBooking } from './conciergeGreeting';
 
 export interface ManagerHabit {
   id: string;
@@ -301,37 +302,20 @@ export function observeAndLearnHabits(
 }
 
 /**
- * Returns a warm, authentic, natural friend greeting grounded in Malawian hospitality.
+ * Short welcome grounded in today's bookings (no tokens spent). Varies between
+ * sessions and never repeats a canned paragraph.
  */
 export function generateNaturalGreeting(
   profile: ManagerHabitsProfile,
-  properties: any[] = [],
-  todayStr?: string
+  properties: Array<{ name?: string }> = [],
+  todayStr?: string,
+  options: { isAdmin?: boolean; bookings?: GreetingBooking[] } = {}
 ): string {
-  const name = profile.preferredName ? profile.preferredName : '';
-  const now = new Date();
-  const hour = now.getHours();
-
-  const propName = properties[0]?.name || 'your lodge';
-
-  // Time-of-day natural Malawian greeting
-  if (hour >= 5 && hour < 12) {
-    if (name) {
-      return `Mwauka bwanji ${name}! Good morning! Hope you had a peaceful night. Everything quiet over at ${propName}, or ready to check on today's arrivals and lakeside plans?`;
-    }
-    return `Mwauka bwanji! Good morning! Hope you had a peaceful night. I'm right here with you across ${propName}—ready for whatever the day brings. Anything on your mind this morning?`;
-  }
-
-  if (hour >= 12 && hour < 17) {
-    if (name) {
-      return `Good afternoon ${name}! Hope the day is treating you well over at ${propName}. Taking a breather, or need a quick hand checking checkouts or guest requests?`;
-    }
-    return `Good afternoon! Hope the day is running smoothly over at ${propName}. Right here beside you—what can we tackle together this afternoon?`;
-  }
-
-  // Evening
-  if (name) {
-    return `Madzulo abwino ${name}! Hope it was a fruitful day. Winding down for the evening, or should we review tomorrow's reservations before you call it a day?`;
-  }
-  return `Madzulo abwino! Hope you had a productive day across ${propName}. Right here if you need to review tomorrow's arrivals or update anything before heading off!`;
+  return buildConciergeGreeting({
+    name: profile.preferredName,
+    propertyNames: properties.map(p => p.name || '').filter(Boolean),
+    isAdmin: options.isAdmin,
+    bookings: options.bookings,
+    todayStr: todayStr || new Date().toISOString().slice(0, 10),
+  });
 }

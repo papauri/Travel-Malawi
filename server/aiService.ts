@@ -1,8 +1,11 @@
 import { createHash } from 'crypto';
+import { AsyncLocalStorage } from 'async_hooks';
 import { AIProviderId, getEffectiveApiKey, loadAIConfig, saveAIConfig, markProviderValidity, getAvailableProviders, AISystemConfig } from './aiConfig';
 import {
   resolveModel as registryResolveModel,
   getCandidateModels,
+  coolDownModel,
+  rateLimitCooldownMs,
   hasCatalog,
   isModelUnavailableMessage,
   markModelRetired,
@@ -300,7 +303,14 @@ const PROVIDER_RATE_LIMITS_MS: Record<AIProviderId, number> = {
 const PROVIDER_TIMEOUT_MS = 30_000;
 /** Minimum backoff after a 429, per AGENTS.md. */
 const BACKOFF_BASE_MS = 4500;
-const MAX_RATE_LIMIT_RETRIES = 3;
+const MAX_RATE_LIMIT_RETRIES = 2;
+/** Longest quota reset worth waiting for inline before giving up on a model. */
+const MAX_INLINE_RATE_LIMIT_WAIT_MS = 15_000;
+/** Total time one request may spend trying candidate models. */
+const MODEL_FALLBACK_BUDGET_MS = 12_000;
+
+/** Per-request retry policy: retry inline only when no other candidate model is left. */
+const retryPolicy = new AsyncLocalStorage<{ retryHere: boolean }>();
 
 const OPENAI_COMPATIBLE_ENDPOINTS: Partial<Record<AIProviderId, string>> = {
   deepseek: 'https://api.deepseek.com/chat/completions',
@@ -406,11 +416,23 @@ async function pacedFetch(provider: AIProviderId, url: string, init: RequestInit
       return response;
     }
 
-    if (attempt >= MAX_RATE_LIMIT_RETRIES) {
+    // When another model can take this request, hand back at once instead of waiting:
+    // switching models is faster than backing off on an exhausted quota.
+    if (retryPolicy.getStore()?.retryHere === false) {
       return response;
     }
 
     const retryAfterSec = parseRetryAfter(response);
+    if (response.status === 429) {
+      // One backoff at most, and only when the quota resets soon; long waits never help a live chat.
+      const resetMs = rateLimitCooldownMs(await response.clone().text().catch(() => ''), retryAfterSec);
+      if (attempt >= 1 || resetMs > MAX_INLINE_RATE_LIMIT_WAIT_MS) {
+        return response;
+      }
+    } else if (attempt >= MAX_RATE_LIMIT_RETRIES) {
+      return response;
+    }
+
     const delay = response.status === 429
       ? backoffMs(attempt, retryAfterSec)
       : Math.min(10000, (2000 * (attempt + 1)) + Math.floor(Math.random() * 1000));
@@ -477,6 +499,9 @@ async function modelCallError(providerId: AIProviderId, model: string, response:
   if (lower.includes('api_key_invalid') || lower.includes('invalid api key') || lower.includes('invalid_api_key')) {
     markProviderValidity(providerId, false, msg);
   }
+  if (response.status === 429) {
+    coolDownModel(providerId, model, rateLimitCooldownMs(msg, parseRetryAfter(response)));
+  }
   // A busy or rate-limited model may still have headroom on a sibling model with its own quota.
   const tryNext = response.status === 429 || response.status === 503 || response.status === 529;
   return new ModelCallError(`${label} API error (${response.status}): ${msg}`, response.status, tryNext);
@@ -513,9 +538,13 @@ async function withModelFallback(
     }
 
     let lastError: any = null;
-    for (const model of getCandidateModels(providerId, storedModel)) {
+    const candidates = getCandidateModels(providerId, storedModel);
+    const startedAt = Date.now();
+    for (const [index, model] of candidates.entries()) {
+      if (index > 0 && Date.now() - startedAt > MODEL_FALLBACK_BUDGET_MS) break;
       try {
-        const text = await call(model);
+        const isLast = index === candidates.length - 1;
+        const text = await retryPolicy.run({ retryHere: isLast }, () => call(model));
         lastModelUsed[providerId] = model;
         if (callCache.size >= CALL_CACHE_MAX_ENTRIES) {
           callCache.delete(callCache.keys().next().value!);
@@ -527,6 +556,9 @@ async function withModelFallback(
         if (!(err instanceof ModelCallError) || !err.tryNextModel) throw err;
         console.warn(`[${providerId}] ${err.message}. Trying next candidate model...`);
       }
+    }
+    if (lastError?.status === 429 || candidates.length === 0) {
+      throw new AIRateLimitError(providerId, 60);
     }
     throw lastError || new Error(`No ${PROVIDER_LABELS[providerId]} model is currently available.`);
   })();
@@ -1954,7 +1986,14 @@ export async function executeOperationsAssistantChat(req: OperationsAssistantReq
   }
 
   console.warn(`[OperationsChat Swarm] All cloud AI providers failed or rate limited. Seamlessly dispatching to Deterministic Swarm Agent (${classification.primaryAgent}).`, errors.map(e => e.message));
-  return executeDeterministicSwarmReply(req, classification.primaryAgent);
+  const fallback = executeDeterministicSwarmReply(req, classification.primaryAgent);
+  // Small talk reads fine from the local engine; for real questions, say why the answer is simpler.
+  const isSmallTalk = req.intent === 'greeting_or_chat' || classification.primaryAgent === 'swarm_coordinator';
+  if (!isSmallTalk) {
+    const busy = errors.some(isRateLimitError);
+    fallback.reply = `_${busy ? 'The AI service is at its rate limit right now' : "The AI service couldn't be reached"}, so this is a quick answer from your live data._\n\n${fallback.reply}`;
+  }
+  return fallback;
 }
 
 export async function testProviderConnection(

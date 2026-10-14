@@ -455,14 +455,14 @@ export default function OperationsCopilot() {
       };
     }
 
-    const naturalGreeting = generateNaturalGreeting(managerHabits, properties, todayStr);
+    const naturalGreeting = generateNaturalGreeting(managerHabits, properties, todayStr, { isAdmin: userIsAdmin, bookings });
     return {
       id: `welcome_${now}_${nonce}`,
       role: 'assistant',
       content: naturalGreeting,
       timestamp: now,
     };
-  }, [managerHabits, properties, todayStr, userIsAdmin]);
+  }, [managerHabits, properties, todayStr, userIsAdmin, bookings]);
 
   // Persist messages to sessionStorage across page navigations in current session
   useEffect(() => {

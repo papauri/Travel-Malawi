@@ -18,7 +18,7 @@ export const AUTO_MODEL = 'auto';
 
 export const MODEL_CATALOG_TTL_MS = 6 * 60 * 60 * 1000;
 const DISCOVERY_TIMEOUT_MS = 8000;
-const MAX_CANDIDATES = 5;
+const MAX_CANDIDATES = 6;
 
 /**
  * Last-resort models when a provider's catalog cannot be reached. Evergreen
@@ -418,17 +418,63 @@ export function resolveModel(provider: AIProviderId, stored?: string | null): st
   return m;
 }
 
+// ---------------------------------------------------------------------------
+// Rate-limit cooldowns
+// ---------------------------------------------------------------------------
+
+/** Models whose quota is exhausted, until the given timestamp. In memory only. */
+const cooldowns = new Map<string, number>();
+
+/** Skips a model until its quota resets, so requests go straight to one with headroom. */
+export function coolDownModel(provider: AIProviderId, model: string, ms: number): void {
+  const key = `${provider}:${model}`;
+  const until = Date.now() + Math.max(5_000, ms);
+  cooldowns.set(key, Math.max(until, cooldowns.get(key) || 0));
+  console.warn(`[modelRegistry] ${provider} model ${model} is rate-limited; skipping it for ${Math.round(ms / 1000)}s.`);
+}
+
+export function isCoolingDown(provider: AIProviderId, model: string): boolean {
+  const key = `${provider}:${model}`;
+  const until = cooldowns.get(key);
+  if (!until) return false;
+  if (until <= Date.now()) {
+    cooldowns.delete(key);
+    return false;
+  }
+  return true;
+}
+
+/**
+ * How long to rest a model after a 429, from the provider's message: a zero
+ * free-tier quota rests for hours, a daily cap for an hour, otherwise the
+ * suggested retry delay (default one minute).
+ */
+export function rateLimitCooldownMs(message: string, retryAfterSec?: number | null): number {
+  const lower = (message || '').toLowerCase();
+  if (/limit:\s*0\b/.test(lower)) return 6 * 60 * 60 * 1000;
+  const retryIn = lower.match(/retry in\s+([\d.]+)\s*s/);
+  const suggested = retryIn ? parseFloat(retryIn[1]) * 1000 : retryAfterSec ? retryAfterSec * 1000 : 0;
+  if (/per\s*day|perday|daily/.test(lower)) return Math.max(suggested, 60 * 60 * 1000);
+  return suggested || 60_000;
+}
+
 /**
  * Ordered models to try for one request: the resolved model, provider-suggested
- * replacements, the next-cheapest latest-generation models, then evergreen fallbacks.
+ * replacements, the next-cheapest current models, then evergreen fallbacks.
+ * Previous-generation models come last as an emergency reserve, used only when
+ * every current model is retired or rate-limited. Rate-limited models are skipped.
  */
 export function getCandidateModels(provider: AIProviderId, stored?: string | null): string[] {
   const retired = retiredFor(provider);
+  const ranked = getRankedModels(provider);
   const ordered = [
     resolveModel(provider, stored),
     ...(getState().hints[provider] || []),
-    ...getRankedModels(provider).filter(m => m.isLatestGeneration && m.stable).map(m => m.id),
+    ...ranked.filter(m => m.isLatestGeneration && m.stable).map(m => m.id),
+    ...ranked.filter(m => !m.isLatestGeneration && m.stable).map(m => m.id),
     ...FALLBACK_MODELS[provider],
   ];
-  return [...new Set(ordered)].filter(m => !retired.has(m)).slice(0, MAX_CANDIDATES);
+  return [...new Set(ordered)]
+    .filter(m => !retired.has(m) && !isCoolingDown(provider, m))
+    .slice(0, MAX_CANDIDATES);
 }

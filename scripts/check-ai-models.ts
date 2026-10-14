@@ -48,6 +48,8 @@ const GEMINI_CATALOG = [
 const retiredOnServer: Record<string, string> = {
   'gemini-2.5-flash-lite': 'gemini-3.5-flash-lite',
 };
+/** Models answering 429 with Google's quota message. */
+const rateLimitedOnServer = new Set<string>();
 let catalogReachable = true;
 const generateCalls: string[] = [];
 
@@ -76,6 +78,15 @@ globalThis.fetch = (async (input: any, init?: any) => {
         error: {
           code: 404,
           message: `This model models/${model} is no longer available to new users. Please update your code to use models/${retiredOnServer[model]} for the latest features and improvements. We recommend you to use the Interactions API (https://ai.google.dev/gemini-api/docs/get-started).`,
+        },
+      });
+    }
+    if (rateLimitedOnServer.has(model)) {
+      return json(429, {
+        error: {
+          code: 429,
+          status: 'RESOURCE_EXHAUSTED',
+          message: `You exceeded your current quota. Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 15, model: ${model}\nPlease retry in 37.5s.`,
         },
       });
     }
@@ -141,7 +152,33 @@ async function main() {
   await aiService.executeAIGeneration({ ...req, details: { name: 'Another Lodge', location: 'Liwonde' } }, 'gemini');
   check('Repeat request made no API call', generateCalls.length === 0, generateCalls.join(' > '));
 
-  console.log('\n5. Operations chat prompt budgets');
+  console.log('\n5. Rate limits switch models immediately instead of waiting');
+  rateLimitedOnServer.add('gemini-3.8-flash');
+  generateCalls.length = 0;
+  const t0 = Date.now();
+  const limited = await aiService.executeAIGeneration({ ...req, details: { name: 'Rate Limit Lodge', location: 'Nkhata Bay' } }, 'gemini');
+  const elapsed = Date.now() - t0;
+  check('429 on the current pick moved to another model', generateCalls[0] === 'gemini-3.8-flash' && generateCalls.length === 2, generateCalls.join(' > '));
+  check('No inline backoff wait for a 37s quota reset (< 12s total)', elapsed < 12_000, `${elapsed}ms`);
+  check('Answer came from a model with headroom', limited.text.startsWith('Answer from') && !limited.text.includes('3.8-flash'), limited.text);
+  generateCalls.length = 0;
+  await aiService.executeAIGeneration({ ...req, details: { name: 'Second Lodge', location: 'Mzuzu' } }, 'gemini');
+  check('Rate-limited model is skipped on the next request', !generateCalls.includes('gemini-3.8-flash'), generateCalls.join(' > '));
+
+  console.log('\n6. Greetings are short, varied and data-aware');
+  const greet = await load('src/lib/conciergeGreeting.ts');
+  const quiet = greet.buildConciergeGreeting({ name: 'Grace', propertyNames: ['Esthers Guest House'], todayStr: '2026-10-14', hour: 9 });
+  const busy = greet.buildConciergeGreeting({ propertyNames: ['Esthers Guest House'], todayStr: '2026-10-14', hour: 15, bookings: [
+    { checkIn: '2026-10-14', checkOut: '2026-10-16', status: 'confirmed' },
+    { checkIn: '2026-10-12', checkOut: '2026-10-14', status: 'confirmed' },
+    { checkIn: '2026-10-20', checkOut: '2026-10-22', status: 'pending' },
+  ] });
+  console.log(`      quiet: "${quiet}"\n      busy:  "${busy}"`);
+  check('No canned Chichewa opener or "peaceful night"', !/mwauka|peaceful night/i.test(quiet + busy));
+  check('Greeting reports real numbers', busy.includes('1 arrival') && busy.includes('1 check-out') && busy.includes('1 booking waiting'));
+  check('Greeting stays short (< 160 chars)', quiet.length < 160 && busy.length < 160, `${quiet.length}/${busy.length}`);
+
+  console.log('\n7. Operations chat prompt budgets');
   const property = (i: number) => ({
     id: `h${i}`, name: ['Kaya Mawa', 'Pumulani Lodge', 'Mvuu Camp', 'Zomba Forest Lodge'][i % 4] + (i > 3 ? ` ${i}` : ''),
     description: 'A lakeside lodge with chalets, a pool and a restaurant overlooking Lake Malawi.'.repeat(2),

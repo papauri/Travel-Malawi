@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { logSystemEvent } from '../lib/logger';
+import { buildConciergeGreeting } from '../lib/conciergeGreeting';
 
 export interface AIStatus {
   enabled: boolean;
@@ -531,12 +532,14 @@ function synthesizeOperationsFallback(payload: OperationsChatPayload): Operation
     msg.includes('how are you') ||
     msg.includes('hows it going')
   ) {
-    const now = new Date();
-    const hour = now.getHours();
-    const timeGreeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
-    const friendlyName = userName && userName !== 'Manager' ? ` ${userName}` : '';
-    const lodgeRef = properties[0]?.name ? ` at **${properties[0].name}**` : '';
-    reply = `${timeGreeting}${friendlyName}! Hope you had a peaceful night. I'm right here beside you${lodgeRef}—ready for whatever the day brings.\n\nHow are things going on your side, or would you like to check on today's arrivals?`;
+    reply = buildConciergeGreeting({
+      name: userName && userName !== 'Manager' ? userName : '',
+      propertyNames: properties.map((p: any) => p.name).filter(Boolean),
+      isAdmin: payload.userRole === 'admin',
+      bookings,
+      todayStr,
+      ongoing: (payload.history || []).length > 0,
+    });
     suggestedFollowUps = ["Do I have any arrivals today?", "Show me all room rates", "Review property amenities"];
   } else {
     const friendlyName = userName && userName !== 'Manager' ? ` ${userName}` : '';

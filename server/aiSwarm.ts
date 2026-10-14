@@ -1,4 +1,5 @@
 import { AIProviderId } from './aiConfig';
+import { buildConciergeGreeting } from '../src/lib/conciergeGreeting';
 import { OperationsAssistantRequest, OperationsAssistantResult, ActionProposal } from './aiService';
 
 export type SwarmAgentId = 
@@ -426,7 +427,6 @@ export function executeDeterministicSwarmReply(
     
     const now = new Date();
     const hour = now.getHours();
-    const timeGreeting = hour < 12 ? 'Mwauka bwanji! Good morning' : hour < 17 ? 'Good afternoon' : 'Madzulo abwino! Good evening';
     const friendlyName = userName && userName !== 'Manager' && userName !== 'Host' ? ` ${userName}` : '';
     const lodgeRef = properties[0]?.name ? ` at **${properties[0].name}**` : '';
 
@@ -437,18 +437,17 @@ export function executeDeterministicSwarmReply(
     } else if (cleanMsg.includes('how are you') || cleanMsg.includes('hows it going') || cleanMsg.includes('doing today')) {
       reply = `I'm doing great, thank you${friendlyName}! Keeping an attentive eye on operations across ${properties[0]?.name || 'your lodge'}. How are things on your side today?`;
       suggestedFollowUps = ["Check today's arrivals", "Show all room rates", "Review property amenities"];
-    } else if (hasHistory) {
-      // Continuing conversation naturally as a partner
-      reply = `Right here with you${friendlyName}! Ready for whatever is next across ${properties.length > 0 ? properties.map(p => p.name).join(', ') : 'your lodge'}. What shall we look into?`;
-      suggestedFollowUps = ["Check today's arrivals", "Show all room rates", "Review property amenities"];
     } else {
-      // Warm, natural first greeting
-      reply = `${timeGreeting}${friendlyName}! Hope you had a peaceful night. I'm right here with you${lodgeRef}—ready for whatever the day brings.\n\nAnything on your mind this morning, or should we check on today's arrivals?`;
-      suggestedFollowUps = [
-        "Do I have any arrivals scheduled for today?",
-        "Show me all my room rates",
-        "Add Breakfast Included to all properties"
-      ];
+      reply = buildConciergeGreeting({
+        name: friendlyName.trim(),
+        propertyNames: properties.map(p => p.name).filter(Boolean),
+        isAdmin: req.userRole === 'admin',
+        bookings: req.context.bookings,
+        todayStr: req.context.currentDateStr,
+        hour,
+        ongoing: hasHistory,
+      });
+      suggestedFollowUps = ["Check today's arrivals", "Show all room rates", "Review pending bookings"];
     }
   }
 
