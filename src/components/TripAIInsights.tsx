@@ -86,7 +86,7 @@ export default function TripAIInsights({ hotels, onOpenListing }: Props) {
   // Chat Concierge State
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
-  const [chatMessages, setChatMessages] = useState<Array<{ role: 'user' | 'assistant'; text: string; time: string; notice?: string }>>([]);
+  const [chatMessages, setChatMessages] = useState<Array<{ id?: string; role: 'user' | 'assistant'; text: string; time: string; notice?: string }>>([]);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   // Cache key based on hotels list

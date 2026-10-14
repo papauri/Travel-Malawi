@@ -183,6 +183,20 @@ export default function OperationsCopilot() {
   const navigate = useNavigate();
   const { status: aiStatus, operationsChat, generating } = useAIAssistant();
 
+  // User display name strictly honoring profile Display Name (never email username or generic titles)
+  const userDisplayName = useMemo(() => {
+    const raw = (user?.displayName || '').trim();
+    if (raw && !raw.includes('@')) {
+      const lower = raw.toLowerCase();
+      const isGenericRole = ['administrator', 'admin', 'manager', 'host', 'user', 'owner', 'top boss', 'boss'].includes(lower);
+      const isEmailPrefix = Boolean(user?.email && lower === user.email.split('@')[0].toLowerCase());
+      if (!isGenericRole && !isEmailPrefix) {
+        return raw;
+      }
+    }
+    return '';
+  }, [user?.displayName, user?.email]);
+
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   useBodyScrollLock(isOpen && !isMinimized);
@@ -243,7 +257,7 @@ export default function OperationsCopilot() {
 
   // Manager Habits & Concierge Companion Profile
   const [managerHabits, setManagerHabits] = useState<ManagerHabitsProfile>(() =>
-    getManagerHabits(user?.uid || 'global', (user?.displayName || '').trim())
+    getManagerHabits(user?.uid || 'global', userDisplayName || '')
   );
 
   const handleCopyMessage = useCallback((id: string, text: string) => {
@@ -302,7 +316,7 @@ export default function OperationsCopilot() {
   // Load and sync manager habits with cloud
   useEffect(() => {
     if (user?.uid) {
-      const initial = getManagerHabits(user.uid, userDisplayName || undefined);
+      const initial = getManagerHabits(user.uid, userDisplayName || '');
       setManagerHabits(initial);
       syncManagerHabitsWithCloud(user.uid)
         .then(synced => {
@@ -424,19 +438,6 @@ export default function OperationsCopilot() {
     }
   }, [user?.uid, isAuthorized, aiStatus.enabled, aiStatus.available]);
 
-  // User display name strictly honoring profile Display Name (never email username or generic titles)
-  const userDisplayName = useMemo(() => {
-    const raw = (user?.displayName || '').trim();
-    if (raw && !raw.includes('@')) {
-      const lower = raw.toLowerCase();
-      const isGenericRole = ['administrator', 'admin', 'manager', 'host', 'user', 'owner', 'top boss', 'boss'].includes(lower);
-      const isEmailPrefix = Boolean(user?.email && lower === user.email.split('@')[0].toLowerCase());
-      if (!isGenericRole && !isEmailPrefix) {
-        return raw;
-      }
-    }
-    return '';
-  }, [user?.displayName, user?.email]);
 
   const createWelcomeMessage = useCallback((isReset = false): ChatMessage => {
     const now = Date.now();

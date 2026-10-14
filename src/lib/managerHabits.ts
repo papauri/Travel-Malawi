@@ -30,13 +30,37 @@ export function calculateFamiliarityTier(score: number): 'New Friend' | 'Trusted
 }
 
 /**
+ * Recursively strips undefined fields from an object so Firestore setDoc/updateDoc never errors out.
+ */
+function sanitizeForFirestore<T>(data: T): T {
+  if (data === null || data === undefined) {
+    return null as any;
+  }
+  if (Array.isArray(data)) {
+    return data.map(item => sanitizeForFirestore(item)) as any;
+  }
+  if (typeof data === 'object') {
+    const clean: Record<string, any> = {};
+    for (const [key, val] of Object.entries(data as Record<string, any>)) {
+      if (val !== undefined) {
+        clean[key] = sanitizeForFirestore(val);
+      }
+    }
+    return clean as any;
+  }
+  return data;
+}
+
+/**
  * Retrieves the local manager habits profile, initializing sensible defaults if not found.
  */
 export function getManagerHabits(userId: string = 'global', displayName?: string): ManagerHabitsProfile {
+  const safeDisplayName = (displayName || '').trim();
+
   if (typeof window === 'undefined') {
     return {
       userId,
-      preferredName: displayName,
+      preferredName: safeDisplayName,
       communicationStyle: 'casual_friendly',
       currencyPreference: 'MWK',
       familiarityScore: 1,
@@ -54,10 +78,13 @@ export function getManagerHabits(userId: string = 'global', displayName?: string
         const score = (parsed.familiarityScore || 0) + 1;
         return {
           ...parsed,
-          preferredName: parsed.preferredName || displayName,
+          preferredName: (parsed.preferredName ?? safeDisplayName ?? '').trim(),
+          communicationStyle: parsed.communicationStyle || 'casual_friendly',
+          currencyPreference: parsed.currencyPreference || 'MWK',
           familiarityScore: score,
           familiarityTier: calculateFamiliarityTier(score),
           habits: Array.isArray(parsed.habits) ? parsed.habits : [],
+          lastActive: parsed.lastActive || Date.now(),
         };
       }
     }
@@ -65,7 +92,7 @@ export function getManagerHabits(userId: string = 'global', displayName?: string
 
   const defaultProfile: ManagerHabitsProfile = {
     userId,
-    preferredName: displayName || '',
+    preferredName: safeDisplayName,
     communicationStyle: 'casual_friendly',
     currencyPreference: 'MWK',
     familiarityScore: 1,
@@ -105,6 +132,9 @@ export function saveManagerHabits(profile: ManagerHabitsProfile): void {
   if (typeof window === 'undefined') return;
   profile.lastActive = Date.now();
   profile.familiarityTier = calculateFamiliarityTier(profile.familiarityScore);
+  if (profile.preferredName === undefined) {
+    profile.preferredName = '';
+  }
 
   try {
     localStorage.setItem(`${STORAGE_KEY_PREFIX}${profile.userId}`, JSON.stringify(profile));
@@ -114,7 +144,25 @@ export function saveManagerHabits(profile: ManagerHabitsProfile): void {
 
   // Cloud sync if authenticated user
   if (profile.userId && profile.userId !== 'global') {
-    setDoc(doc(db, 'manager_habits', profile.userId), profile, { merge: true })
+    const cloudPayload = sanitizeForFirestore({
+      userId: profile.userId,
+      preferredName: (profile.preferredName || '').trim(),
+      communicationStyle: profile.communicationStyle || 'casual_friendly',
+      currencyPreference: profile.currencyPreference || 'MWK',
+      familiarityScore: Number(profile.familiarityScore) || 1,
+      familiarityTier: profile.familiarityTier || 'New Friend',
+      habits: (profile.habits || []).map(h => ({
+        id: h.id || `habit_${Date.now()}`,
+        category: h.category || 'hospitality',
+        text: h.text || '',
+        learnedAt: h.learnedAt || Date.now(),
+        source: h.source || 'explicit',
+        confidence: typeof h.confidence === 'number' ? h.confidence : 0.9,
+      })),
+      lastActive: profile.lastActive || Date.now(),
+    });
+
+    setDoc(doc(db, 'manager_habits', profile.userId), cloudPayload, { merge: true })
       .catch(err => console.warn('Could not sync manager habits to cloud:', err));
   }
 }
@@ -128,21 +176,24 @@ export async function syncManagerHabitsWithCloud(userId: string): Promise<Manage
   try {
     const snap = await getDoc(doc(db, 'manager_habits', userId));
     if (snap.exists()) {
-      const cloudData = snap.data() as ManagerHabitsProfile;
+      const cloudData = snap.data() as Partial<ManagerHabitsProfile>;
       const local = getManagerHabits(userId);
-      const mergedScore = Math.max(local.familiarityScore, cloudData.familiarityScore || 0);
+      const mergedScore = Math.max(local.familiarityScore || 1, cloudData.familiarityScore || 0);
 
       // Merge habits list by text
       const map = new Map<string, ManagerHabit>();
-      (local.habits || []).forEach(h => map.set(h.text.toLowerCase().trim(), h));
-      (cloudData.habits || []).forEach(h => map.set(h.text.toLowerCase().trim(), h));
+      (local.habits || []).forEach(h => {
+        if (h && h.text) map.set(h.text.toLowerCase().trim(), h);
+      });
+      (cloudData.habits || []).forEach(h => {
+        if (h && h.text) map.set(h.text.toLowerCase().trim(), h);
+      });
 
       const mergedProfile: ManagerHabitsProfile = {
-        ...local,
-        ...cloudData,
-        preferredName: cloudData.preferredName || local.preferredName,
-        currencyPreference: cloudData.currencyPreference || local.currencyPreference,
-        communicationStyle: cloudData.communicationStyle || local.communicationStyle,
+        userId,
+        preferredName: cloudData.preferredName || local.preferredName || '',
+        currencyPreference: cloudData.currencyPreference || local.currencyPreference || 'MWK',
+        communicationStyle: cloudData.communicationStyle || local.communicationStyle || 'casual_friendly',
         familiarityScore: mergedScore,
         familiarityTier: calculateFamiliarityTier(mergedScore),
         habits: Array.from(map.values()),
