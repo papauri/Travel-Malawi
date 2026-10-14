@@ -16,7 +16,6 @@
     "data:provision-storage": "node scripts/provision-storage.mjs",
     "data:backfill-slots": "node scripts/backfill-booking-slots.mjs",
     "check:validation": "tsx scripts/check-validation.ts",
-    "check:ai": "tsx scripts/check-ai-models.ts",
     "start": "node dist/server.cjs"
   },
   "dependencies": {

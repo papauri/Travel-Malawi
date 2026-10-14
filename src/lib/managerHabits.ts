@@ -1,6 +1,5 @@
 import { db } from './firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { buildConciergeGreeting, type GreetingBooking } from './conciergeGreeting';
 
 export interface ManagerHabit {
   id: string;
@@ -301,21 +300,3 @@ export function observeAndLearnHabits(
   return { profile, discoveredHabit };
 }
 
-/**
- * Short welcome grounded in today's bookings (no tokens spent). Varies between
- * sessions and never repeats a canned paragraph.
- */
-export function generateNaturalGreeting(
-  profile: ManagerHabitsProfile,
-  properties: Array<{ name?: string }> = [],
-  todayStr?: string,
-  options: { isAdmin?: boolean; bookings?: GreetingBooking[] } = {}
-): string {
-  return buildConciergeGreeting({
-    name: profile.preferredName,
-    propertyNames: properties.map(p => p.name || '').filter(Boolean),
-    isAdmin: options.isAdmin,
-    bookings: options.bookings,
-    todayStr: todayStr || new Date().toISOString().slice(0, 10),
-  });
-}

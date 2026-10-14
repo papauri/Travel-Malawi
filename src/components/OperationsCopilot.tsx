@@ -30,7 +30,6 @@ import {
 import {
   getManagerHabits,
   observeAndLearnHabits,
-  generateNaturalGreeting,
   syncManagerHabitsWithCloud,
   ManagerHabitsProfile
 } from '../lib/managerHabits';
@@ -276,7 +275,6 @@ export default function OperationsCopilot() {
   const chatInputRef = useRef<HTMLInputElement>(null);
   const promptsMenuRef = useRef<HTMLDivElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
-  const hasInitializedWelcomeRef = useRef(false);
 
   // Close prompts & mobile dropdowns when clicking outside
   useEffect(() => {
@@ -441,29 +439,6 @@ export default function OperationsCopilot() {
   }, [user?.uid, isAuthorized, aiStatus.enabled, aiStatus.available]);
 
 
-  const createWelcomeMessage = useCallback((isReset = false): ChatMessage => {
-    const now = Date.now();
-    const nonce = Math.random().toString(36).substring(2, 8);
-    if (isReset) {
-      const propText = userIsAdmin
-        ? (properties.length > 0 ? `all **${properties.length} platform properties**` : 'the platform')
-        : (properties.map(p => `**${p.name}**`).join(', ') || 'your properties');
-      return {
-        id: `welcome_${now}_${nonce}`,
-        role: 'assistant',
-        content: `Conversation refreshed! Right here beside you across ${propText}.\n\nWhat would you like to review or update next?`,
-        timestamp: now,
-      };
-    }
-
-    const naturalGreeting = generateNaturalGreeting(managerHabits, properties, todayStr, { isAdmin: userIsAdmin, bookings });
-    return {
-      id: `welcome_${now}_${nonce}`,
-      role: 'assistant',
-      content: naturalGreeting,
-      timestamp: now,
-    };
-  }, [managerHabits, properties, todayStr, userIsAdmin, bookings]);
 
   // Persist messages to sessionStorage across page navigations in current session
   useEffect(() => {
@@ -480,13 +455,6 @@ export default function OperationsCopilot() {
     }
   }, [messages, user?.uid]);
 
-  // Initial welcome message distinguishing Global Admin vs Manager (only if session has no prior history)
-  useEffect(() => {
-    if (!hasInitializedWelcomeRef.current && messages.length === 0 && isAuthorized && hasFetched) {
-      hasInitializedWelcomeRef.current = true;
-      setMessages([createWelcomeMessage(false)]);
-    }
-  }, [isAuthorized, messages.length, hasFetched, createWelcomeMessage]);
 
   const handleClearCopilotChat = useCallback(() => {
     if (typeof window !== 'undefined' && user?.uid) {
@@ -496,13 +464,13 @@ export default function OperationsCopilot() {
         console.warn('Could not clear session storage:', err);
       }
     }
-    setMessages([createWelcomeMessage(true)]);
+    setMessages([]);
     setInputMessage('');
     setProposalHotelSelections({});
     setShowPromptsMenu(false);
     setShowMobileMenu(false);
     toast.success('Conversation reset for current session.');
-  }, [createWelcomeMessage, user?.uid]);
+  }, [user?.uid]);
 
   // Scroll chat messages container smoothly to bottom on new messages without scrolling the background window
   useEffect(() => {
@@ -1890,6 +1858,11 @@ export default function OperationsCopilot() {
                 /* CONVERSATION STREAM                                 */
                 /* -------------------------------------------------- */
                 <>
+                  {messages.length === 0 && (
+                    <p className="text-xs text-stone-500 text-center py-6 px-4">
+                      Ask Ulendo about bookings, rates, guests or {userIsAdmin ? 'any property on the platform' : 'your properties'}.
+                    </p>
+                  )}
                   {messages.map((msg, mIdx) => (
                     <div
                       key={`${msg.id || 'msg'}-${mIdx}-${msg.timestamp || ''}`}

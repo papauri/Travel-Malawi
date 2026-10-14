@@ -21,12 +21,11 @@ const DISCOVERY_TIMEOUT_MS = 8000;
 const MAX_CANDIDATES = 6;
 
 /**
- * Last-resort models when a provider's catalog cannot be reached. Evergreen
- * aliases (e.g. gemini-flash-lite-latest, mistral-small-latest) come after the
- * pinned IDs because they always point at a live model.
+ * Last-resort models when a provider's catalog cannot be reached: current,
+ * explicitly versioned models only (aliases can silently move to excluded models).
  */
 export const FALLBACK_MODELS: Record<AIProviderId, string[]> = {
-  gemini: ['gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-flash-lite-latest', 'gemini-flash-latest'],
+  gemini: ['gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-3.5-flash'],
   openai: ['gpt-5-mini'],
   anthropic: ['claude-haiku-5-5', 'claude-sonnet-5-5'],
   deepseek: ['deepseek-chat'],
@@ -63,8 +62,20 @@ function parseVersion(text: string): number[] {
   return text.split(/[.-]/).map(n => parseInt(n, 10)).filter(n => Number.isFinite(n));
 }
 
+/**
+ * Models the platform owner has ruled out (e.g. Gemini 4.0: overloaded and slow
+ * to respond). They are never auto-picked, offered or used, even if pinned.
+ */
+const EXCLUDED_MODELS: Partial<Record<AIProviderId, RegExp>> = {
+  gemini: /^gemini-4(\.|-)/,
+};
+
+export function isExcludedModel(provider: AIProviderId, model: string): boolean {
+  return EXCLUDED_MODELS[provider]?.test(model) ?? false;
+}
+
 function classifyGemini(id: string): Classification | null {
-  if (!id.startsWith('gemini-')) return null;
+  if (!id.startsWith('gemini-') || isExcludedModel('gemini', id)) return null;
   if (/embedding|tts|audio|image|live|robotics|computer-use|aqa|native|vision|learnlm|exp|veo|imagen|banana/.test(id)) return null;
   const m = id.match(/^gemini-(\d+(?:\.\d+)?)-(.+)$/);
   if (!m) return null;
@@ -395,6 +406,7 @@ const LEGACY_PATTERNS: Record<AIProviderId, RegExp> = {
  */
 export function isModelStale(provider: AIProviderId, model: string): boolean {
   if (retiredFor(provider).has(model)) return true;
+  if (isExcludedModel(provider, model)) return true;
   if (!hasCatalog(provider)) return LEGACY_PATTERNS[provider].test(model);
 
   const catalogIds = new Set((getState().catalogs[provider]?.models || []).map(m => m.id));
@@ -475,6 +487,6 @@ export function getCandidateModels(provider: AIProviderId, stored?: string | nul
     ...FALLBACK_MODELS[provider],
   ];
   return [...new Set(ordered)]
-    .filter(m => !retired.has(m) && !isCoolingDown(provider, m))
+    .filter(m => !retired.has(m) && !isCoolingDown(provider, m) && !isExcludedModel(provider, m))
     .slice(0, MAX_CANDIDATES);
 }

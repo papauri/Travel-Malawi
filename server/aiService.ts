@@ -301,14 +301,16 @@ const PROVIDER_RATE_LIMITS_MS: Record<AIProviderId, number> = {
 };
 
 /** Hard ceiling for a single provider HTTP call. */
-const PROVIDER_TIMEOUT_MS = 30_000;
+const PROVIDER_TIMEOUT_MS = 20_000;
 /** Minimum backoff after a 429, per AGENTS.md. */
 const BACKOFF_BASE_MS = 4500;
 const MAX_RATE_LIMIT_RETRIES = 2;
 /** Longest quota reset worth waiting for inline before giving up on a model. */
 const MAX_INLINE_RATE_LIMIT_WAIT_MS = 15_000;
 /** Total time one request may spend trying candidate models. */
-const MODEL_FALLBACK_BUDGET_MS = 12_000;
+const MODEL_FALLBACK_BUDGET_MS = 30_000;
+/** How long to skip a model that timed out or reported high demand. */
+const BUSY_MODEL_COOLDOWN_MS = 2 * 60 * 1000;
 
 /** Per-request retry policy: retry inline only when no other candidate model is left. */
 const retryPolicy = new AsyncLocalStorage<{ retryHere: boolean }>();
@@ -502,6 +504,8 @@ async function modelCallError(providerId: AIProviderId, model: string, response:
   }
   if (response.status === 429) {
     coolDownModel(providerId, model, rateLimitCooldownMs(msg, parseRetryAfter(response)));
+  } else if (response.status === 503 || response.status === 529) {
+    coolDownModel(providerId, model, BUSY_MODEL_COOLDOWN_MS);
   }
   // A busy or rate-limited model may still have headroom on a sibling model with its own quota.
   const tryNext = response.status === 429 || response.status === 503 || response.status === 529;
@@ -554,6 +558,12 @@ async function withModelFallback(
         return text;
       } catch (err: any) {
         lastError = err;
+        if (err?.status === 504) {
+          // A model that hangs is skipped for a while; the next one gets the request.
+          coolDownModel(providerId, model, BUSY_MODEL_COOLDOWN_MS);
+          console.warn(`[${providerId}] ${model} timed out. Trying next candidate model...`);
+          continue;
+        }
         if (!(err instanceof ModelCallError) || !err.tryNextModel) throw err;
         console.warn(`[${providerId}] ${err.message}. Trying next candidate model...`);
       }
@@ -1584,7 +1594,7 @@ function sanitizeAssistantReply(
   }
 
   if (!clean) {
-    clean = 'Right here with you! What would you like to review, audit, or adjust next?';
+    clean = rawText.trim();
   }
 
   return clean;
@@ -1776,20 +1786,6 @@ USER MESSAGE:
       }
     }
 
-    // Fallback: If user asked to improve flow or learn how to respond, guarantee rule is captured
-    if (!newLearnedRule) {
-      const lower = (req.message || '').toLowerCase();
-      if (lower.includes('flow') || lower.includes('respond back') || lower.includes('learn constantly') || lower.includes('get way better') || lower.includes('better flow')) {
-        newLearnedRule = 'Maintain natural, adaptive conversational flow: avoid repetitive greetings on ongoing turns, answer pleasantries crisply without unsolicited data dumps, and continuously match host communication style.';
-        if (!autonomousPatch) {
-          autonomousPatch = {
-            trigger: 'Host requested improved conversational flow and continuous learning for response style',
-            patch: newLearnedRule,
-            resolution: 'Continuously tuned response flow and memory retention.',
-          };
-        }
-      }
-    }
 
     let suggestedFollowUps: string[] = [];
     const followUpsMatch = rawGenerated.match(/```suggested_follow_ups\s*([\s\S]*?)\s*```/);
@@ -1800,9 +1796,6 @@ USER MESSAGE:
           suggestedFollowUps = parsed.map(s => String(s).replace(/^[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1FA00}-\u{1FA6F}\s*✨⭐🤖]+/gu, '').trim()).filter(Boolean).slice(0, 3);
         }
       } catch {}
-    }
-    if (suggestedFollowUps.length === 0) {
-      suggestedFollowUps = ["Check today's arrivals", "Review room rates", "View active listings"];
     }
 
     const cleanReply = sanitizeAssistantReply(rawGenerated, resolvedDisplayName, req.userEmail, hasHistory);
@@ -1853,13 +1846,6 @@ USER MESSAGE:
         }
       }
 
-      // If user asked to add breakfast but type was unspecific or generic
-      if (lowerMsg.includes('breakfast') && (!actionProposal.type || actionProposal.type === 'update_property_policy')) {
-        if (!actionProposal.amenity) {
-          actionProposal.amenity = 'Breakfast Included';
-        }
-        actionProposal.type = 'add_amenity';
-      }
     } catch (e) {
     }
   }
@@ -1897,28 +1883,6 @@ USER MESSAGE:
     }
   }
 
-  // Continuous Learning Fallback: If host mentions breakfast, checkout, or communication flow/adaptation, learn it immediately
-  if (!newLearnedRule) {
-    const lower = (req.message || '').toLowerCase();
-    if (lower.includes('breakfast') && (lower.includes('all') || lower.includes('include') || lower.includes('add') || lower.includes('free'))) {
-      newLearnedRule = 'Host offers complimentary breakfast across properties.';
-    } else if (lower.includes('checkout') || lower.includes('check out') || lower.includes('check-out')) {
-      const timeMatch = lower.match(/(1[0-2]|[1-9])\s*(am|pm)?/);
-      if (timeMatch) {
-        newLearnedRule = `Lodge checkout standard set to ${timeMatch[0]}.`;
-      }
-    } else if (lower.includes('flow') || lower.includes('respond back') || lower.includes('learn constantly') || lower.includes('get way better') || lower.includes('better flow')) {
-      newLearnedRule = 'Maintain natural, adaptive conversational flow: avoid repetitive greetings on ongoing turns, answer pleasantries crisply without unsolicited data dumps, and continuously match host communication style.';
-      if (!autonomousPatch) {
-        autonomousPatch = {
-          trigger: 'Host requested improved conversational flow and continuous learning for response style',
-          patch: newLearnedRule,
-          resolution: 'Continuously tuned response flow and memory retention.',
-        };
-      }
-    }
-  }
-
   let suggestedFollowUps: string[] | undefined = undefined;
   const followUpMatch = rawGenerated.match(/```suggested_follow_ups\s*([\s\S]*?)\s*```/);
   if (followUpMatch) {
@@ -1933,46 +1897,7 @@ USER MESSAGE:
   }
 
   // Clean the text to show the user with natural flow and no repetitive greetings/names
-  let cleanReply = sanitizeAssistantReply(rawGenerated, effectiveDisplayName, req.userEmail, (req.history || []).length > 0, isUserGreeting);
-
-  // Safety net domain boundary enforcement:
-  // If user requested something out-of-scope (e.g. coding an app, buying a car, crypto)
-  // and the model generated off-topic content (like writing code or advising on vehicle purchases),
-  // intercept and provide the brief, concrete, friendly back-off & hospitality pivot!
-  const lowerUserMsg = (req.message || '').toLowerCase();
-  const isCarBuying = 
-    /\b(buy|buying|purchase|purchasing|dealership|dealer|for\s+sale|sell|selling|import|importing|used\s+car)\b/i.test(lowerUserMsg) &&
-    /\b(car|cars|vehicle|vehicles|automobile|automobiles|truck|trucks|sedan|suv)\b/i.test(lowerUserMsg) &&
-    !/\b(shuttle|transfer|hire|rent|rental|safari|lodge|airport|pick\s*up|drop\s*off)\b/i.test(lowerUserMsg);
-
-  const isCoding = 
-    /\b(code\s+an\s+app|coding|write\s+(me\s+)?(some\s+)?code|program(ming)?\s+an\s+app|write\s+a\s+python|build\s+(me\s+)?an\s+app|develop\s+an\s+app|software\s+development|debug\s+(my\s+)?code|create\s+an\s+app|python\s+script|javascript\s+code)\b/i.test(lowerUserMsg);
-
-  const isOtherOutOfScope = 
-    /\b(crypto|bitcoin|ethereum|forex|stock\s+trading|medical\s+diagnosis|legal\s+counsel)\b/i.test(lowerUserMsg);
-
-  if (isCarBuying) {
-    const alreadyRefused = /\b(can('t|not)\s+assist\s+with\s+(buying|purchasing|selling)|outside\s+(my\s+)?(scope|domain)|cannot\s+help\s+with\s+(buying|purchasing|selling)|strictly\s+within|falls\s+outside|not\s+able\s+to\s+help\s+with\s+buying)\b/i.test(cleanReply);
-    if (!alreadyRefused) {
-      cleanReply = "I can't assist with purchasing vehicles or auto sales, but if you're looking for transportation in Malawi—such as an airport shuttle, lodge transfer, or renting a 4x4 safari vehicle with a driver—I'd be glad to help arrange that! What route or destination are you planning?";
-      suggestedFollowUps = ["Arrange airport shuttle", "Book lodge transfer", "4x4 safari vehicle hire"];
-      actionProposal = null;
-    }
-  } else if (isCoding) {
-    const alreadyRefused = /\b(outside\s+(my\s+)?(scope|domain)|software\s+engineering\s+falls\s+outside|can('t|not)\s+help\s+with\s+coding|cannot\s+write\s+code|falls\s+outside|not\s+able\s+to\s+code)\b/i.test(cleanReply);
-    if (!alreadyRefused || cleanReply.includes('```')) {
-      cleanReply = "Software engineering falls outside my domain, but I'm fully equipped to help you manage your properties, room rates, bookings, and guest experiences right here on Travel Malawi. What would you like to set up on your property?";
-      suggestedFollowUps = ["Audit room rates", "Review guest bookings", "Update lodge policies"];
-      actionProposal = null;
-    }
-  } else if (isOtherOutOfScope) {
-    const alreadyRefused = /\b(outside\s+(my\s+)?(scope|domain)|falls\s+outside|not\s+able\s+to|strictly\s+dedicated)\b/i.test(cleanReply);
-    if (!alreadyRefused) {
-      cleanReply = "My expertise is strictly dedicated to Malawi tourism, accommodations, and hospitality management on Travel Malawi. I'm unable to assist with that topic, but I'm right here whenever you need help with your lodge operations, bookings, or exploring Malawi!";
-      suggestedFollowUps = ["Audit room rates", "Check arrivals", "Explore tourism guide"];
-      actionProposal = null;
-    }
-  }
+  const cleanReply = sanitizeAssistantReply(rawGenerated, effectiveDisplayName, req.userEmail, (req.history || []).length > 0, isUserGreeting);
 
   return {
     reply: cleanReply,
@@ -1990,13 +1915,13 @@ export async function executeOperationsAssistantChat(req: OperationsAssistantReq
   const classification = classifySwarmIntent(req);
 
   if (!config.enabled) {
-    return executeDeterministicSwarmReply(req, classification.primaryAgent);
+    return executeDeterministicSwarmReply(req, classification.primaryAgent, 'AI is switched off in Admin settings');
   }
 
   const providers = getAvailableProviders();
   if (providers.length === 0) {
     console.info(`[OperationsChat Swarm] No cloud AI providers active. Dispatching to Deterministic Swarm Agent (${classification.primaryAgent}).`);
-    return executeDeterministicSwarmReply(req, classification.primaryAgent);
+    return executeDeterministicSwarmReply(req, classification.primaryAgent, 'no AI provider is configured');
   }
 
   const errors: any[] = [];
@@ -2014,14 +1939,14 @@ export async function executeOperationsAssistantChat(req: OperationsAssistantReq
   }
 
   console.warn(`[OperationsChat Swarm] All cloud AI providers failed or rate limited. Seamlessly dispatching to Deterministic Swarm Agent (${classification.primaryAgent}).`, errors.map(e => e.message));
-  const fallback = executeDeterministicSwarmReply(req, classification.primaryAgent);
-  // Small talk reads fine from the local engine; for real questions, say why the answer is simpler.
-  const isSmallTalk = req.intent === 'greeting_or_chat' || classification.primaryAgent === 'swarm_coordinator';
-  if (!isSmallTalk) {
-    const busy = errors.some(isRateLimitError);
-    fallback.reply = `_${busy ? 'The AI service is at its rate limit right now' : "The AI service couldn't be reached"}, so this is a quick answer from your live data._\n\n${fallback.reply}`;
-  }
-  return fallback;
+  const reason = errors.some(isRateLimitError)
+    ? 'rate limit reached'
+    : errors.some(e => e?.status === 504)
+      ? 'it timed out'
+      : errors.some(e => e?.status === 503)
+        ? 'the provider is overloaded'
+        : 'provider error';
+  return executeDeterministicSwarmReply(req, classification.primaryAgent, reason);
 }
 
 export async function testProviderConnection(

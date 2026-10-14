@@ -52,18 +52,6 @@ export function detectOutOfScope(text: string): OutOfScopeKind | null {
   return null;
 }
 
-/** Friendly decline that steers back to stays and concierge work. */
-export function outOfScopeReply(kind: OutOfScopeKind): string {
-  switch (kind) {
-    case 'car_purchase':
-      return "Buying cars isn't something I can help with, but if you need transport in Malawi, like an airport shuttle, a lodge transfer or a 4x4 with a driver, I can sort that out. Where are you heading?";
-    case 'coding':
-      return "Software isn't my area, but I can help you run your stays on Travel Malawi: rooms, rates, bookings, guests and listings. What would you like to look at?";
-    default:
-      return "That's outside what I do. I'm here for Malawi stays, bookings and travel. Anything I can check for you on that side?";
-  }
-}
-
 /** Generic words that never identify a single property on their own. */
 const GENERIC_NAME_WORDS = new Set([
   'lodge', 'lodges', 'hotel', 'resort', 'camp', 'house', 'guest', 'guesthouse', 'beach', 'lake', 'cottage',

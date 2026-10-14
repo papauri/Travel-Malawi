@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { logSystemEvent } from '../lib/logger';
-import { buildConciergeGreeting } from '../lib/conciergeGreeting';
 
 export interface AIStatus {
   enabled: boolean;
@@ -469,89 +468,14 @@ function synthesizeClientFallback(options: AIGenerateOptions): { text: string; d
   return { text: `Comfortable and welcoming accommodation in ${location}.` };
 }
 
-function synthesizeOperationsFallback(payload: OperationsChatPayload): OperationsChatResult {
-  const msg = (payload.message || '').toLowerCase();
-  const properties = payload.context?.properties || [];
-  const bookings = (payload.context as any)?.bookings || [];
-  const todayStr = payload.context?.currentDateStr || new Date().toISOString().split('T')[0];
-  const userName = payload.displayName || payload.userName || 'Manager';
-
-  let reply = '';
-  let actionProposal: ActionProposal | null = null;
-  let suggestedFollowUps: string[] = ["Check today's arrivals", "Audit all room rates", "Review property amenities"];
-
-  if (msg.includes('arrival') || msg.includes('checkin') || msg.includes('check in')) {
-    const todayArrivals = bookings.filter((b: any) => b.checkIn === todayStr && b.status !== 'cancelled');
-    if (todayArrivals.length > 0) {
-      reply = `### 🛎️ Guest Arrivals for Today (${todayStr})\n\n| Guest | Reference | Property | Room | Status |\n| :--- | :--- | :--- | :--- | :--- |\n` +
-        todayArrivals.map((b: any) => `| **${b.guestName}** | \`${b.reference || b.id?.slice(0, 8)}\` | ${b.hotelName} | ${b.roomName || 'Room'} | Confirmed |`).join('\n') +
-        `\n\n*Rooms should be checked and solar backup ready.*`;
-    } else {
-      reply = `### 🛎️ Guest Arrivals for Today (${todayStr})\n\nThere are **no guest arrivals scheduled for today** (${todayStr}). All room units remain available for direct booking.`;
-    }
-  } else if (msg.includes('rate') || msg.includes('price') || msg.includes('cost') || msg.includes('kwacha') || msg.includes('usd')) {
-    const allRooms: any[] = [];
-    properties.forEach(p => {
-      (p.rooms || []).forEach(r => allRooms.push({ pName: p.name, ...r }));
-    });
-    if (allRooms.length > 0) {
-      reply = `### 💰 Active Room Rates\n\n| Property | Room Type | USD Rate | MWK Rate | Capacity |\n| :--- | :--- | :--- | :--- | :--- |\n` +
-        allRooms.map(r => `| ${r.pName} | **${r.name}** | $${r.priceUSD ?? '—'} | ${r.priceMWK ? `MK ${r.priceMWK.toLocaleString()}` : '—'} | ${r.maxGuests || 2} guests |`).join('\n');
-    } else {
-      reply = `Current standard room rates in Malawi average $55–$95 USD (MK 95,000–MK 165,000) for chalets with solar backup.`;
-    }
-  } else if (msg.includes('breakfast') && (msg.includes('add') || msg.includes('free') || msg.includes('include'))) {
-    if (properties.length > 0) {
-      actionProposal = {
-        type: 'add_amenity',
-        hotelId: properties[0].id,
-        hotelName: properties[0].name,
-        amenity: 'Breakfast Included',
-        targetScope: 'all',
-        hotelIds: properties.map(p => p.id),
-        hotelNames: properties.map(p => p.name),
-      };
-      reply = `I have drafted adding **Breakfast Included** across your properties. Confirm below to apply this update to your live listings.`;
-    } else {
-      reply = `Breakfast Included is a top-performing amenity for Malawian properties.`;
-    }
-  } else if (
-    msg.includes('taking so long') || 
-    msg.includes('taking ages') || 
-    msg.includes('sound natural') || 
-    msg.includes('learner') || 
-    msg.includes('friend') || 
-    msg.includes('habits') ||
-    msg.includes('get to know')
-  ) {
-    const friendlyName = userName && userName !== 'Manager' ? ` ${userName}` : '';
-    reply = `You have my word${friendlyName}. I apologize for the latency—I've turned off background reasoning delays for instant, sub-second responses.\n\nFrom here on, I'm right beside you as your learner, trusted friend, and resident concierge. I'm actively noting your habits, preferred currency, and lodge routines with every conversation so we move smoothly together.\n\nWhat can we review or tackle together right now?`;
-    suggestedFollowUps = ["Check today's arrivals", "Audit all room rates", "Review property amenities"];
-  } else if (
-    /^(hi|hello|hey|moni|muli\s+bwanji|good\s+(morning|afternoon|evening)|howdy|greetings|morning|afternoon|evening)\b/i.test(msg) ||
-    msg.includes('how are you') ||
-    msg.includes('hows it going')
-  ) {
-    reply = buildConciergeGreeting({
-      name: userName && userName !== 'Manager' ? userName : '',
-      propertyNames: properties.map((p: any) => p.name).filter(Boolean),
-      isAdmin: payload.userRole === 'admin',
-      bookings,
-      todayStr,
-      ongoing: (payload.history || []).length > 0,
-    });
-    suggestedFollowUps = ["Do I have any arrivals today?", "Show me all room rates", "Review property amenities"];
-  } else {
-    const friendlyName = userName && userName !== 'Manager' ? ` ${userName}` : '';
-    reply = `Right here with you${friendlyName}! Ready to assist with whatever is on your agenda across your properties.\n\nWhat would you like to review or update?`;
-  }
-
+/** Shown when the server itself cannot be reached: an honest notice, never a scripted reply. */
+function synthesizeOperationsFallback(_payload: OperationsChatPayload): OperationsChatResult {
   return {
-    reply,
+    reply: "_Ulendo couldn't reach the server. Check your connection and try again._",
     provider: 'local',
-    model: 'ulendo-resident-concierge',
-    actionProposal,
-    suggestedFollowUps,
+    model: 'offline',
+    actionProposal: null,
+    suggestedFollowUps: [],
   };
 }
 

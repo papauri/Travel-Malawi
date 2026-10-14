@@ -39,7 +39,10 @@
   - Admin-pinned models are honoured only while they are current; older-generation or retired IDs are replaced automatically.
   - A 404 / "no longer available" response marks the model retired (persisted in `data/model_registry.json`), records any replacement the provider suggests, and the request falls through to the next candidate model.
   - Never add a fixed model ID as a default; add to `FALLBACK_MODELS` only as a last resort for when a catalog cannot be reached.
+  - Excluded models (`EXCLUDED_MODELS` in `server/modelRegistry.ts`) are never picked, offered or used. Gemini 4.x is excluded at the owner's request.
+  - Timeouts, 503 "high demand" and 429s move the request to the next model straight away; the busy model is skipped for a while.
   - Providers: Gemini, DeepSeek, OpenAI, Mistral, Groq, Anthropic (configured via Admin Settings).
+- **No scripted conversation**: Ulendo's replies come from the AI. When no AI provider can answer, the chat shows a short notice saying so, plus plain data from context when the question maps directly onto it (arrivals, check-outs, rates, ownership, property lists). No canned greetings, small talk or hard-coded reply overrides.
 
 ### Token Efficiency (Mandatory)
 - **Route context, don't dump it**: `server/opsPrompt.ts` sends only the property sections a message touches (rooms, dining, utilities, reviews...), full detail only for properties the user names, and full booking lists only for booking/revenue questions.
@@ -48,7 +51,6 @@
 - **Never pay twice**: identical provider calls are served from a 20-minute cache or share the in-flight request; vision extraction is keyed by file hash.
 - **Size outputs to the task**: small talk 380 tokens, questions 900, analysis 1,400; JSON tasks use JSON mode so output is never wasted on parse failures.
 - Never send secrets or guest PII (Wi-Fi passwords, guest email/phone) unless the question needs them.
-- Verify with `npm run check:ai` (offline model-fallback and prompt-budget checks).
 
 ---
 
