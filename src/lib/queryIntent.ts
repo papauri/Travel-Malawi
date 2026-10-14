@@ -59,12 +59,28 @@ const GENERIC_NAME_WORDS = new Set([
   'inn', 'stay', 'stays', 'home', 'villa', 'chalet', 'chalets', 'bay', 'park',
 ]);
 
+/** Levenshtein distance, for matching misspelled property names. */
+function editDistance(a: string, b: string): number {
+  const prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    let diag = prev[0];
+    prev[0] = i;
+    for (let j = 1; j <= b.length; j++) {
+      const above = prev[j];
+      prev[j] = Math.min(prev[j] + 1, prev[j - 1] + 1, diag + (a[i - 1] === b[j - 1] ? 0 : 1));
+      diag = above;
+    }
+  }
+  return prev[b.length];
+}
+
 /**
  * Ids of properties a message names, by full name, by a distinctive word
- * ("Esthers" for "Esthers Guest House"), or by its possessive ("Esther's").
+ * ("Esthers" for "Esthers Guest House"), its possessive ("Esther's") or a close misspelling ("esters").
  */
 export function findMentionedPropertyIds(text: string, properties: Array<{ id: string; name?: string }>): Set<string> {
   const lower = (text || '').toLowerCase().replace(/['’]/g, '');
+  const messageWords = lower.split(/[^a-z0-9]+/).filter(w => w.length >= 4);
   const mentioned = new Set<string>();
   for (const p of properties) {
     const name = (p.name || '').toLowerCase().replace(/['’]/g, '').trim();
@@ -74,7 +90,10 @@ export function findMentionedPropertyIds(text: string, properties: Array<{ id: s
       continue;
     }
     const distinctive = name.split(/[^a-z0-9]+/).filter(w => w.length >= 4 && !GENERIC_NAME_WORDS.has(w));
-    if (distinctive.some(w => new RegExp(`\\b${w}s?\\b`).test(lower) || (w.endsWith('s') && new RegExp(`\\b${w.slice(0, -1)}\\b`).test(lower)))) {
+    const exact = (w: string) => new RegExp(`\\b${w}s?\\b`).test(lower) || (w.endsWith('s') && new RegExp(`\\b${w.slice(0, -1)}\\b`).test(lower));
+    // Typos count too ("esters" -> "esthers"): one edit allowed from 5 letters, two from 8.
+    const close = (w: string) => w.length >= 5 && messageWords.some(m => Math.abs(m.length - w.length) <= 2 && editDistance(m, w) <= (w.length >= 8 ? 2 : 1));
+    if (distinctive.some(w => exact(w) || close(w))) {
       mentioned.add(p.id);
     }
   }

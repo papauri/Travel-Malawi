@@ -2585,6 +2585,7 @@ CRITICAL CONVERSATIONAL RULE - 100% ADAPTIVE MIRRORING: You must dynamically ada
 
 Scope: Malawi roads, travel times, vehicle recommendations, park rules, lake safety, packing, local food (Chambo, nsima, Dedza pottery), and currency.
 Keep answers concise, direct, helpful, and formatted with clean paragraphs or brief bullet points.
+If the question is unclear, use the conversation and their stops to infer what they most likely mean and say so briefly; only if it could mean quite different things, ask one short question offering the likely options (e.g. "Driving from Lilongwe or from Blantyre?").
 ${UNTRUSTED_DATA_RULE}`;
 
   const conversation = (history || []).slice(-4).map(h => `${h.role === 'user' ? 'Traveller' : 'Concierge'}: ${clip(h.text, MAX_HISTORY_ITEM_CHARS)}`).join('\n');
