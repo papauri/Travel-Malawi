@@ -41,6 +41,15 @@
   - Never add a fixed model ID as a default; add to `FALLBACK_MODELS` only as a last resort for when a catalog cannot be reached.
   - Providers: Gemini, DeepSeek, OpenAI, Mistral, Groq, Anthropic (configured via Admin Settings).
 
+### Token Efficiency (Mandatory)
+- **Route context, don't dump it**: `server/opsPrompt.ts` sends only the property sections a message touches (rooms, dining, utilities, reviews...), full detail only for properties the user names, and full booking lists only for booking/revenue questions.
+- **Modular system prompts**: a compact core prompt plus optional modules (action proposal schemas only for change requests, Malawi knowledge only for travel/guest advice).
+- **Cache-friendly ordering**: stable content first, volatile content (time, history, message) last so provider prefix caching applies; Anthropic system prompts carry `cache_control`.
+- **Never pay twice**: identical provider calls are served from a 20-minute cache or share the in-flight request; vision extraction is keyed by file hash.
+- **Size outputs to the task**: small talk 380 tokens, questions 900, analysis 1,400; JSON tasks use JSON mode so output is never wasted on parse failures.
+- Never send secrets or guest PII (Wi-Fi passwords, guest email/phone) unless the question needs them.
+- Verify with `npm run check:ai` (offline model-fallback and prompt-budget checks).
+
 ---
 
 ## 4. Malawi Domain Knowledge & Localization Rules

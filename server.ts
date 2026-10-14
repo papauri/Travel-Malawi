@@ -1402,7 +1402,7 @@ async function startServer() {
   });
 
   // Review Scraper endpoint (admin / marketing) - ultra-lean token usage with zero-token auto-fallback
-  app.post('/api/admin/scrape-reviews', requireRole('admin', 'marketing'), async (req, res) => {
+  app.post('/api/admin/scrape-reviews', requireRole('admin', 'marketing'), aiLimiter, async (req, res) => {
     const hotelName = cleanText(req.body?.hotelName, 200, true);
     const location = cleanText(req.body?.location, 200, true);
     const category = cleanText(req.body?.category, 100, true);

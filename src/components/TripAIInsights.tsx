@@ -126,7 +126,6 @@ export default function TripAIInsights({ hotels, onOpenListing }: Props) {
         name: h.name,
         location: h.location || 'Malawi',
         category: (h as any).category || 'Lodge',
-        description: h.description ? h.description.slice(0, 200) : '',
       }));
 
       const res = await fetch('/api/ai/trip-insights', {

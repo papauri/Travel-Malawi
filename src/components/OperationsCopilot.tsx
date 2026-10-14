@@ -38,6 +38,7 @@ import { logSystemEvent } from '../lib/logger';
 import { confirmBooking, confirmErrorMessage, PriceMismatchError } from '../lib/transactions';
 import { updateBookingWithSlot, cancelBookingReminders } from '../lib/bookingWrites';
 import WalkthroughTooltip from './WalkthroughTooltip';
+import { addDays } from '../lib/dates';
 
 interface ChatMessage {
   id: string;
@@ -752,7 +753,7 @@ export default function OperationsCopilot() {
       userEmail: user?.email || undefined,
       message: text,
       intent: detectedIntent,
-      history: messages.slice(-8).map(m => ({ role: m.role, content: m.content })),
+      history: messages.slice(-6).map(m => ({ role: m.role, content: m.content })),
       context: {
         currentDateStr: todayStr,
         currentTimeStr: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -895,7 +896,11 @@ export default function OperationsCopilot() {
         }),
         bookings: isLeanSmallTalk
           ? []
-          : bookings.map(b => {
+          : bookings
+              // Only live bookings from the last 30 days to the next 120 days are useful context.
+              .filter(b => b.status !== 'cancelled' && b.status !== 'rejected'
+                && b.checkOut >= addDays(todayStr, -30) && b.checkIn <= addDays(todayStr, 120))
+              .map(b => {
           const hotel = properties.find(p => p.id === b.hotelId);
           const room = rooms.find(r => r.id === b.roomTypeId);
           return {
