@@ -1,5 +1,18 @@
 import fs from 'fs';
 import path from 'path';
+import {
+  AUTO_MODEL,
+  autoPickModel,
+  fetchProviderCatalog,
+  getRankedModels,
+  hasCatalog,
+  isModelRetired,
+  isModelStale,
+  rankModels,
+  recordCatalog,
+  refreshCatalog,
+  resolveModel,
+} from './modelRegistry';
 
 export type AIProviderId = 'deepseek' | 'openai' | 'mistral' | 'gemini' | 'groq' | 'anthropic';
 
@@ -31,153 +44,87 @@ export interface AISystemConfig {
   updatedAt?: number;
 }
 
+/** Hard-coded defaults from earlier releases; configs still holding them are moved to "auto". */
+const LEGACY_DEFAULT_MODELS = new Set([
+  'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.5-flash-lite',
+  'gpt-4o-mini', 'gpt-4o',
+  'claude-haiku-4-5-20251001',
+  'llama-3.3-70b-versatile',
+]);
+
 const CONFIG_DIR = path.join(process.cwd(), 'data');
 const CONFIG_FILE = path.join(CONFIG_DIR, 'ai_config.json');
 
 export const DEFAULT_PROVIDERS: Record<AIProviderId, ProviderConfig> = {
   mistral: {
     enabled: false,
-    model: 'mistral-small-latest',
-    defaultModel: 'mistral-small-latest',
+    model: AUTO_MODEL,
+    defaultModel: AUTO_MODEL,
     name: 'Mistral AI',
     website: 'https://console.mistral.ai',
     rateLimitNotice: 'Free Tier: 1 req/sec limit. Server queue automatically paces requests at 1.25s intervals.',
     recommendedModels: [
-      {
-        id: 'ministral-8b-latest',
-        name: 'Ministral 8B',
-        description: '⚡ Sweet Spot: Ultra-fast edge model, lowest token footprint, ideal for free tier quotas',
-        isSweetSpot: true,
-      },
-      {
-        id: 'mistral-small-latest',
-        name: 'Mistral Small 4',
-        description: '🧠 High intelligence, balanced reasoning for deep property lookups & concierge',
-        isSweetSpot: true,
-      },
-      {
-        id: 'mistral-large-latest',
-        name: 'Mistral Large',
-        description: '🌟 Flagship reasoning model for heavy multi-step planning',
-      },
+      { id: 'mistral-small-latest', name: 'Mistral Small (latest)', description: 'Cheapest capable Mistral model, always the newest Small release', isSweetSpot: true },
+      { id: 'mistral-medium-latest', name: 'Mistral Medium (latest)', description: 'Stronger reasoning for multi-step planning' },
     ],
   },
   gemini: {
     enabled: true,
-    model: 'gemini-2.5-flash',
-    defaultModel: 'gemini-2.5-flash',
+    model: AUTO_MODEL,
+    defaultModel: AUTO_MODEL,
     name: 'Google Gemini',
     website: 'https://aistudio.google.com',
-    rateLimitNotice: 'Generous free tier with ultra-fast sub-second latency, superior multimodal vision, and high throughput.',
+    rateLimitNotice: 'Free tier: 15 RPM. Server queue paces Gemini calls 4s apart with jittered backoff.',
     recommendedModels: [
-      {
-        id: 'gemini-2.5-flash',
-        name: 'Gemini 2.5 Flash',
-        description: '⚡ Flagship: Ultra-fast sub-second latency, superior multimodal vision & top-tier hospitality intelligence',
-        isSweetSpot: true,
-      },
-      {
-        id: 'gemini-2.0-flash',
-        name: 'Gemini 2.0 Flash',
-        description: '🧠 Proven workhorse: High availability, multi-turn reasoning and reliable uptime',
-        isSweetSpot: true,
-      },
-      {
-        id: 'gemini-1.5-flash',
-        name: 'Gemini 1.5 Flash',
-        description: '🚀 Generous 15 RPM / 1M TPM free tier quota',
-        isSweetSpot: true,
-      },
-      {
-        id: 'gemini-2.5-pro',
-        name: 'Gemini 2.5 Pro',
-        description: '🌟 Deep multi-step reasoning, complex hospitality strategy and long context planning',
-        isSweetSpot: false,
-      },
+      { id: 'gemini-3.5-flash-lite', name: 'Gemini 3.5 Flash-Lite', description: 'Cheapest current-generation Gemini model', isSweetSpot: true },
+      { id: 'gemini-3.8-flash', name: 'Gemini 3.8 Flash', description: 'Newest Flash release: stronger reasoning at low cost' },
     ],
   },
   groq: {
     enabled: false,
-    model: 'llama-3.3-70b-versatile',
-    defaultModel: 'llama-3.3-70b-versatile',
+    model: AUTO_MODEL,
+    defaultModel: AUTO_MODEL,
     name: 'Groq (Llama)',
     website: 'https://console.groq.com',
     rateLimitNotice: 'Free Tier: 30 req/min, blazing LPU inference speeds.',
     recommendedModels: [
-      {
-        id: 'llama-3.3-70b-versatile',
-        name: 'Llama 3.3 70B Versatile',
-        description: 'Recommended: strong reasoning for hospitality planning on Groq LPU',
-        isSweetSpot: true,
-      },
-      {
-        id: 'llama-3.1-8b-instant',
-        name: 'Llama 3.1 8B Instant',
-        description: 'Fastest and lightest option for tight free-tier quotas',
-      },
+      { id: 'meta-llama/llama-4-scout-17b-16e-instruct', name: 'Llama 4 Scout', description: 'Cheapest current-generation Llama on Groq LPU', isSweetSpot: true },
+      { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B Versatile', description: 'Proven fallback for hospitality planning' },
     ],
   },
   deepseek: {
     enabled: false,
-    model: 'deepseek-chat',
-    defaultModel: 'deepseek-chat',
+    model: AUTO_MODEL,
+    defaultModel: AUTO_MODEL,
     name: 'DeepSeek',
     website: 'https://platform.deepseek.com',
-    rateLimitNotice: 'Extremely affordable pricing ($0.14-$0.28 per 1M tokens) with high throughput.',
+    rateLimitNotice: 'Extremely affordable pricing with high throughput.',
     recommendedModels: [
-      {
-        id: 'deepseek-chat',
-        name: 'DeepSeek V3 (Chat)',
-        description: '⚡ Sweet Spot: General intelligence with top-tier coding & hospitality understanding',
-        isSweetSpot: true,
-      },
-      {
-        id: 'deepseek-reasoner',
-        name: 'DeepSeek R1 (Reasoner)',
-        description: '🧠 Chain-of-thought deep reasoning',
-      },
+      { id: 'deepseek-chat', name: 'DeepSeek Chat (latest)', description: 'Always the newest DeepSeek chat model, lowest cost', isSweetSpot: true },
+      { id: 'deepseek-reasoner', name: 'DeepSeek Reasoner (latest)', description: 'Chain-of-thought deep reasoning' },
     ],
   },
   openai: {
     enabled: false,
-    model: 'gpt-4o-mini',
-    defaultModel: 'gpt-4o-mini',
+    model: AUTO_MODEL,
+    defaultModel: AUTO_MODEL,
     name: 'OpenAI (ChatGPT)',
     website: 'https://platform.openai.com',
-    rateLimitNotice: 'Tier 1 / Free trials: 500 req/min on Mini models.',
+    rateLimitNotice: 'Tier 1: 500 req/min on Mini models.',
     recommendedModels: [
-      {
-        id: 'gpt-4o-mini',
-        name: 'GPT-4o Mini',
-        description: '⚡ Sweet Spot: Fast, highly capable, and extremely cost-efficient',
-        isSweetSpot: true,
-      },
-      {
-        id: 'gpt-4o',
-        name: 'GPT-4o (Omni)',
-        description: '🌟 Flagship OpenAI model for complex hospitality strategy',
-      },
+      { id: 'gpt-5-mini', name: 'GPT-5 Mini', description: 'Cheapest capable current-generation OpenAI model', isSweetSpot: true },
     ],
   },
   anthropic: {
     enabled: false,
-    model: 'claude-haiku-4-5-20251001',
-    defaultModel: 'claude-haiku-4-5-20251001',
+    model: AUTO_MODEL,
+    defaultModel: AUTO_MODEL,
     name: 'Anthropic Claude',
     website: 'https://console.anthropic.com',
     rateLimitNotice: 'Tier 1: 50 req/min on Haiku models.',
     recommendedModels: [
-      {
-        id: 'claude-haiku-4-5-20251001',
-        name: 'Claude Haiku 4.5',
-        description: 'Recommended: fast, natural hospitality writing and conversation',
-        isSweetSpot: true,
-      },
-      {
-        id: 'claude-sonnet-5-5',
-        name: 'Claude Sonnet 5.5',
-        description: 'Stronger writing, reasoning and tone calibration',
-      },
+      { id: 'claude-haiku-5-5', name: 'Claude Haiku 5.5', description: 'Cheapest current-generation Claude: fast, natural hospitality writing', isSweetSpot: true },
+      { id: 'claude-sonnet-5-5', name: 'Claude Sonnet 5.5', description: 'Stronger writing, reasoning and tone calibration' },
     ],
   },
 };
@@ -249,26 +196,22 @@ export function loadAIConfig(): AISystemConfig {
         };
       });
 
-      // Migrate any retired or invalid model strings to production Gemini models
-      const currentGeminiModel = inMemoryConfig!.providers.gemini?.model;
-      if (
-        !currentGeminiModel ||
-        currentGeminiModel.startsWith('gemini-3.') ||
-        currentGeminiModel === 'gemini-pro' ||
-        currentGeminiModel === 'gemini-1.0-pro'
-      ) {
-        inMemoryConfig!.providers.gemini.model = 'gemini-2.5-flash';
-        inMemoryConfig!.providers.gemini.defaultModel = 'gemini-2.5-flash';
-        saveAIConfig(inMemoryConfig!);
-      }
+      // Old hard-coded defaults and outdated models move to "auto" so each
+      // provider follows its cheapest current-generation model from now on.
+      let migrated = false;
+      (Object.keys(DEFAULT_PROVIDERS) as AIProviderId[]).forEach(pid => {
+        const provider = inMemoryConfig!.providers[pid];
+        provider.defaultModel = AUTO_MODEL;
+        const stored = (provider.model || '').trim();
+        if (!stored || LEGACY_DEFAULT_MODELS.has(stored) || isModelStale(pid, stored)) {
+          if (stored !== AUTO_MODEL) {
+            provider.model = AUTO_MODEL;
+            migrated = true;
+          }
+        }
+      });
+      if (migrated) saveAIConfig(inMemoryConfig!);
 
-      // Retired Claude 3.x model IDs no longer resolve; move them to the current Haiku.
-      const currentAnthropicModel = inMemoryConfig!.providers.anthropic?.model || '';
-      if (!currentAnthropicModel || currentAnthropicModel.startsWith('claude-3')) {
-        inMemoryConfig!.providers.anthropic.model = DEFAULT_PROVIDERS.anthropic.defaultModel;
-        saveAIConfig(inMemoryConfig!);
-      }
-      
       return inMemoryConfig;
     }
   } catch (err) {
@@ -368,7 +311,7 @@ export function getPublicAIStatus() {
     systemEnabled: !!config.enabled,
     providerEnabled: isProviderEnabled,
     activeProvider: config.activeProvider,
-    model: providerConf?.model || DEFAULT_PROVIDERS[config.activeProvider].defaultModel,
+    model: resolveModel(config.activeProvider, providerConf?.model),
     available: !!config.enabled, // AI is always functional via live LLM or curated hospitality engine
     hasLiveProvider,
     isValid: providerConf?.isValid,
@@ -390,9 +333,10 @@ export function getAdminAIConfig() {
       name: p.name || DEFAULT_PROVIDERS[pid].name,
       website: p.website || DEFAULT_PROVIDERS[pid].website,
       enabled: p.enabled !== false,
-      model: p.model || DEFAULT_PROVIDERS[pid].defaultModel,
-      defaultModel: DEFAULT_PROVIDERS[pid].defaultModel,
-      recommendedModels: DEFAULT_PROVIDERS[pid].recommendedModels || [],
+      model: p.model || AUTO_MODEL,
+      resolvedModel: resolveModel(pid, p.model),
+      defaultModel: AUTO_MODEL,
+      recommendedModels: getRecommendedModels(pid),
       rateLimitNotice: DEFAULT_PROVIDERS[pid].rateLimitNotice,
       isConfigured: !!effectiveKey && effectiveKey.length > 5,
       isValid: p.isValid,
@@ -409,6 +353,28 @@ export function getAdminAIConfig() {
     providers: providersView,
     updatedAt: config.updatedAt,
   };
+}
+
+/**
+ * The models worth suggesting right now: the live catalog's current generation
+ * when it has been discovered, otherwise the curated list. Retired models are never shown.
+ */
+function getRecommendedModels(provider: AIProviderId): RecommendedModel[] {
+  const pick = autoPickModel(provider);
+  if (hasCatalog(provider)) {
+    const current = getRankedModels(provider).filter(m => m.isLatestGeneration && m.stable).slice(0, 4);
+    if (current.length > 0) {
+      return current.map(m => ({
+        id: m.id,
+        name: m.displayName,
+        description: m.id === pick ? 'Auto pick: cheapest capable model of the latest generation' : m.description,
+        isSweetSpot: m.id === pick,
+      }));
+    }
+  }
+  return (DEFAULT_PROVIDERS[provider].recommendedModels || [])
+    .filter(m => !isModelRetired(provider, m.id))
+    .map(m => ({ ...m, isSweetSpot: m.id === pick }));
 }
 
 export interface LiveModelInfo {
@@ -432,33 +398,37 @@ export interface LiveProviderModelsResult {
   latencyMs?: number;
 }
 
+function catalogFallback(provider: AIProviderId): LiveModelInfo[] {
+  return getRecommendedModels(provider).map(m => ({
+    id: m.id,
+    name: m.name,
+    displayName: m.name,
+    description: m.description,
+    isLatest: true,
+    isSweetSpot: !!m.isSweetSpot,
+  }));
+}
+
+/**
+ * Lists the provider's live models for the admin catalog. Only usable chat
+ * models are returned (ranked cheapest-latest first); retired and
+ * older-generation models are never flagged as latest or recommended.
+ */
 export async function fetchLiveProviderModels(
   provider: AIProviderId,
   apiKey?: string
 ): Promise<LiveProviderModelsResult> {
-  const providerConf = DEFAULT_PROVIDERS[provider];
-  const providerName = providerConf?.name || provider;
+  const providerName = DEFAULT_PROVIDERS[provider]?.name || provider;
   const key = apiKey?.trim() || getEffectiveApiKey(provider, true);
-  const defaultRecommendation = providerConf?.defaultModel || '';
   const startTime = Date.now();
 
   if (!key || key.length < 5) {
-    // Return verified catalog models with notice that key is required for live endpoint
-    const fallbackModels: LiveModelInfo[] = (providerConf?.recommendedModels || []).map(m => ({
-      id: m.id,
-      name: m.name,
-      displayName: m.name,
-      description: m.description,
-      isLatest: m.id.includes('latest') || m.id.includes('3.8') || m.id.includes('3.7') || m.id.includes('4o'),
-      isSweetSpot: !!m.isSweetSpot,
-    }));
-
     return {
       provider,
       providerName,
       success: false,
-      models: fallbackModels,
-      latestRecommendation: defaultRecommendation,
+      models: catalogFallback(provider),
+      latestRecommendation: autoPickModel(provider),
       source: 'catalog',
       error: `No API key configured for ${providerName}. Please enter and save an API key to query live models directly.`,
       latencyMs: 0,
@@ -466,412 +436,40 @@ export async function fetchLiveProviderModels(
   }
 
   try {
-    if (provider === 'gemini') {
-      const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models', { headers: { 'x-goog-api-key': key }, signal: AbortSignal.timeout(15000) });
-      const latencyMs = Date.now() - startTime;
-      if (!res.ok) {
-        const errBody = await res.text();
-        return {
-          provider,
-          providerName,
-          success: false,
-          models: (providerConf.recommendedModels || []).map(m => ({
-            id: m.id,
-            name: m.name,
-            displayName: m.name,
-            description: m.description,
-            isLatest: m.id.includes('2.5') || m.id.includes('2.0'),
-            isSweetSpot: !!m.isSweetSpot,
-          })),
-          latestRecommendation: 'gemini-2.5-flash',
-          source: 'catalog',
-          error: `Google API returned ${res.status}: ${errBody.slice(0, 150)}`,
-          latencyMs,
-        };
-      }
+    const discovered = await fetchProviderCatalog(provider, key);
+    const latencyMs = Date.now() - startTime;
+    // Only the saved key's catalog drives auto-selection; a pasted test key just previews.
+    const usingSavedKey = !apiKey?.trim() || apiKey.trim() === getEffectiveApiKey(provider, true);
+    if (usingSavedKey) recordCatalog(provider, discovered);
 
-      const data = await res.json();
-      const rawList: any[] = data.models || [];
-      const liveModels: LiveModelInfo[] = rawList
-        .map(m => {
-          const id = m.name?.replace(/^models\//, '') || '';
-          const isDeprecated = id === 'gemini-pro' || id === 'gemini-1.0-pro';
-          const isLatest = id.startsWith('gemini-2.5') || id.startsWith('gemini-2.0');
-          const isSweetSpot = id === 'gemini-2.5-flash' || id === 'gemini-2.0-flash' || id === 'gemini-1.5-flash';
-          return {
-            id,
-            name: m.displayName || id,
-            displayName: m.displayName || id,
-            description: m.description || '',
-            isLatest,
-            isSweetSpot,
-            isDeprecated,
-          };
-        })
-        .filter(m => {
-          if (!m.id.startsWith('gemini')) return false;
-          if (m.id.includes('embedding') || m.id.includes('robotics') || m.id.includes('transcribe') || m.id.includes('tts') || m.id.includes('audio')) return false;
-          if (m.isDeprecated) return false;
-          return true;
-        })
-        .sort((a, b) => {
-          if (a.id === 'gemini-2.5-flash') return -1;
-          if (b.id === 'gemini-2.5-flash') return 1;
-          if (a.id === 'gemini-2.0-flash') return -1;
-          if (b.id === 'gemini-2.0-flash') return 1;
-          if (a.id === 'gemini-1.5-flash') return -1;
-          if (b.id === 'gemini-1.5-flash') return 1;
-          return a.id.localeCompare(b.id);
-        });
+    const ranked = rankModels(provider, discovered);
+    const pick = ranked.find(m => m.isLatestGeneration && m.stable)?.id || autoPickModel(provider);
 
-      return {
-        provider,
-        providerName,
-        success: true,
-        models: liveModels,
-        latestRecommendation: 'gemini-2.5-flash',
-        source: 'live_api',
-        latencyMs,
-      };
-    }
-
-    if (provider === 'openai') {
-      const res = await fetch('https://api.openai.com/v1/models', {
-        headers: { Authorization: `Bearer ${key}` },
-      });
-      const latencyMs = Date.now() - startTime;
-      if (!res.ok) {
-        const errBody = await res.text();
-        return {
-          provider,
-          providerName,
-          success: false,
-          models: (providerConf.recommendedModels || []).map(m => ({
-            id: m.id,
-            name: m.name,
-            displayName: m.name,
-            description: m.description,
-            isLatest: true,
-            isSweetSpot: !!m.isSweetSpot,
-          })),
-          latestRecommendation: 'gpt-4o-mini',
-          source: 'catalog',
-          error: `OpenAI API returned ${res.status}: ${errBody.slice(0, 150)}`,
-          latencyMs,
-        };
-      }
-
-      const data = await res.json();
-      const rawList: any[] = data.data || [];
-      const liveModels: LiveModelInfo[] = rawList
-        .filter((m: any) => {
-          const id = m.id || '';
-          if (!id.startsWith('gpt-') && !id.startsWith('o1') && !id.startsWith('o3') && !id.startsWith('chatgpt-')) return false;
-          if (id.includes('whisper') || id.includes('dall-e') || id.includes('tts') || id.includes('embedding') || id.includes('realtime') || id.includes('audio')) return false;
-          return true;
-        })
-        .map((m: any) => {
-          const id = m.id;
-          const isLatest = id.startsWith('gpt-4o') || id.startsWith('o1') || id.startsWith('o3') || id.startsWith('gpt-4.5');
-          const isSweetSpot = id === 'gpt-4o-mini' || id === 'o3-mini';
-          return {
-            id,
-            name: id.toUpperCase().replace('-', ' '),
-            displayName: id,
-            description: `Live OpenAI model (Owner: ${m.owned_by || 'system'})`,
-            isLatest,
-            isSweetSpot,
-          };
-        })
-        .sort((a, b) => {
-          if (a.id === 'gpt-4o-mini') return -1;
-          if (b.id === 'gpt-4o-mini') return 1;
-          if (a.id === 'gpt-4o') return -1;
-          if (b.id === 'gpt-4o') return 1;
-          if (a.id === 'o3-mini') return -1;
-          if (b.id === 'o3-mini') return 1;
-          return a.id.localeCompare(b.id);
-        });
-
-      return {
-        provider,
-        providerName,
-        success: true,
-        models: liveModels,
-        latestRecommendation: 'gpt-4o-mini',
-        source: 'live_api',
-        latencyMs,
-      };
-    }
-
-    if (provider === 'groq') {
-      const res = await fetch('https://api.groq.com/openai/v1/models', {
-        headers: { Authorization: `Bearer ${key}` },
-      });
-      const latencyMs = Date.now() - startTime;
-      if (!res.ok) {
-        const errBody = await res.text();
-        return {
-          provider,
-          providerName,
-          success: false,
-          models: (providerConf.recommendedModels || []).map(m => ({
-            id: m.id,
-            name: m.name,
-            displayName: m.name,
-            description: m.description,
-            isLatest: true,
-            isSweetSpot: !!m.isSweetSpot,
-          })),
-          latestRecommendation: 'llama-3.3-70b-versatile',
-          source: 'catalog',
-          error: `Groq API returned ${res.status}: ${errBody.slice(0, 150)}`,
-          latencyMs,
-        };
-      }
-
-      const data = await res.json();
-      const rawList: any[] = data.data || [];
-      const liveModels: LiveModelInfo[] = rawList
-        .filter((m: any) => {
-          const id = m.id || '';
-          if (id.includes('whisper')) return false;
-          return true;
-        })
-        .map((m: any) => {
-          const id = m.id;
-          const isLatest = id.includes('llama-3.3') || id.includes('llama-3.1') || id.includes('qwq') || id.includes('deepseek');
-          const isSweetSpot = id === 'llama-3.3-70b-versatile';
-          return {
-            id,
-            name: id,
-            displayName: id,
-            description: `Active Groq LPU model (Context: ${m.context_window ? `${m.context_window / 1024}k` : 'Standard'})`,
-            isLatest,
-            isSweetSpot,
-          };
-        })
-        .sort((a, b) => {
-          if (a.id === 'llama-3.3-70b-versatile') return -1;
-          if (b.id === 'llama-3.3-70b-versatile') return 1;
-          if (a.id === 'llama-3.1-8b-instant') return -1;
-          if (b.id === 'llama-3.1-8b-instant') return 1;
-          return a.id.localeCompare(b.id);
-        });
-
-      return {
-        provider,
-        providerName,
-        success: true,
-        models: liveModels,
-        latestRecommendation: 'llama-3.3-70b-versatile',
-        source: 'live_api',
-        latencyMs,
-      };
-    }
-
-    if (provider === 'mistral') {
-      const res = await fetch('https://api.mistral.ai/v1/models', {
-        headers: { Authorization: `Bearer ${key}` },
-      });
-      const latencyMs = Date.now() - startTime;
-      if (!res.ok) {
-        const errBody = await res.text();
-        return {
-          provider,
-          providerName,
-          success: false,
-          models: (providerConf.recommendedModels || []).map(m => ({
-            id: m.id,
-            name: m.name,
-            displayName: m.name,
-            description: m.description,
-            isLatest: true,
-            isSweetSpot: !!m.isSweetSpot,
-          })),
-          latestRecommendation: 'mistral-small-latest',
-          source: 'catalog',
-          error: `Mistral API returned ${res.status}: ${errBody.slice(0, 150)}`,
-          latencyMs,
-        };
-      }
-
-      const data = await res.json();
-      const rawList: any[] = data.data || [];
-      const liveModels: LiveModelInfo[] = rawList
-        .filter((m: any) => {
-          const id = m.id || '';
-          if (id.includes('embed') || id.includes('moderation')) return false;
-          return true;
-        })
-        .map((m: any) => {
-          const id = m.id;
-          const isLatest = id.includes('latest') || id.includes('2409') || id.includes('nemo');
-          const isSweetSpot = id === 'mistral-small-latest' || id === 'ministral-8b-latest';
-          return {
-            id,
-            name: id,
-            displayName: id,
-            description: m.description || `Mistral model (${m.capabilities?.completion_chat ? 'Chat supported' : 'Standard'})`,
-            isLatest,
-            isSweetSpot,
-          };
-        })
-        .sort((a, b) => {
-          if (a.id === 'mistral-small-latest') return -1;
-          if (b.id === 'mistral-small-latest') return 1;
-          if (a.id === 'ministral-8b-latest') return -1;
-          if (b.id === 'ministral-8b-latest') return 1;
-          if (a.id === 'mistral-large-latest') return -1;
-          if (b.id === 'mistral-large-latest') return 1;
-          return a.id.localeCompare(b.id);
-        });
-
-      return {
-        provider,
-        providerName,
-        success: true,
-        models: liveModels,
-        latestRecommendation: 'mistral-small-latest',
-        source: 'live_api',
-        latencyMs,
-      };
-    }
-
-    if (provider === 'deepseek') {
-      const res = await fetch('https://api.deepseek.com/models', {
-        headers: { Authorization: `Bearer ${key}` },
-      });
-      const latencyMs = Date.now() - startTime;
-      if (!res.ok) {
-        const errBody = await res.text();
-        return {
-          provider,
-          providerName,
-          success: false,
-          models: (providerConf.recommendedModels || []).map(m => ({
-            id: m.id,
-            name: m.name,
-            displayName: m.name,
-            description: m.description,
-            isLatest: true,
-            isSweetSpot: !!m.isSweetSpot,
-          })),
-          latestRecommendation: 'deepseek-chat',
-          source: 'catalog',
-          error: `DeepSeek API returned ${res.status}: ${errBody.slice(0, 150)}`,
-          latencyMs,
-        };
-      }
-
-      const data = await res.json();
-      const rawList: any[] = data.data || [];
-      const liveModels: LiveModelInfo[] = rawList.map((m: any) => {
-        const id = m.id;
-        const isSweetSpot = id === 'deepseek-chat';
-        return {
-          id,
-          name: id === 'deepseek-chat' ? 'DeepSeek V3 (Chat)' : id === 'deepseek-reasoner' ? 'DeepSeek R1 (Reasoner)' : id,
-          displayName: id,
-          description: id === 'deepseek-chat' ? 'Ultra-low cost high intelligence ($0.14/1M)' : 'Deep chain-of-thought mathematical reasoning',
-          isLatest: true,
-          isSweetSpot,
-        };
-      });
-
-      return {
-        provider,
-        providerName,
-        success: true,
-        models: liveModels.length > 0 ? liveModels : [
-          { id: 'deepseek-chat', name: 'DeepSeek V3 (Chat)', displayName: 'deepseek-chat', description: 'Universal chat & code', isLatest: true, isSweetSpot: true },
-          { id: 'deepseek-reasoner', name: 'DeepSeek R1 (Reasoner)', displayName: 'deepseek-reasoner', description: 'Deep reasoning model', isLatest: true, isSweetSpot: false },
-        ],
-        latestRecommendation: 'deepseek-chat',
-        source: 'live_api',
-        latencyMs,
-      };
-    }
-
-    if (provider === 'anthropic') {
-      let liveModels: LiveModelInfo[] = [];
-      let latencyMs = 0;
-      let usedLiveApi = false;
-
-      try {
-        const res = await fetch('https://api.anthropic.com/v1/models', {
-          headers: {
-            'x-api-key': key,
-            'anthropic-version': '2023-06-01',
-          },
-        });
-        latencyMs = Date.now() - startTime;
-        if (res.ok) {
-          const data = await res.json();
-          const rawList: any[] = data.data || [];
-          liveModels = rawList.map((m: any) => ({
-            id: m.id,
-            name: m.display_name || m.id,
-            displayName: m.display_name || m.id,
-            description: `Anthropic Claude model (Created: ${m.created_at || 'recent'})`,
-            isLatest: !m.id.startsWith('claude-3'),
-            isSweetSpot: m.id.includes('haiku'),
-          }));
-          usedLiveApi = liveModels.length > 0;
-        }
-      } catch {
-        // Fall back to verified modern models catalog
-      }
-
-      if (liveModels.length === 0) {
-        liveModels = [
-          {
-            id: 'claude-haiku-4-5-20251001',
-            name: 'Claude Haiku 4.5',
-            displayName: 'Claude Haiku 4.5',
-            description: 'Recommended: fast responses with low token pricing',
-            isLatest: true,
-            isSweetSpot: true,
-          },
-          {
-            id: 'claude-sonnet-5-5',
-            name: 'Claude Sonnet 5.5',
-            displayName: 'Claude Sonnet 5.5',
-            description: 'Stronger reasoning and writing',
-            isLatest: true,
-            isSweetSpot: false,
-          },
-        ];
-      }
-
-      return {
-        provider,
-        providerName,
-        success: true,
-        models: liveModels,
-        latestRecommendation: 'claude-haiku-4-5-20251001',
-        source: usedLiveApi ? 'live_api' : 'catalog',
-        latencyMs: latencyMs || (Date.now() - startTime),
-      };
-    }
-
-    throw new Error(`Unsupported provider: ${provider}`);
+    return {
+      provider,
+      providerName,
+      success: true,
+      models: ranked.map(m => ({
+        id: m.id,
+        name: m.displayName,
+        displayName: m.displayName,
+        description: m.description,
+        isLatest: m.isLatestGeneration && m.stable,
+        isSweetSpot: m.id === pick,
+      })),
+      latestRecommendation: pick,
+      source: 'live_api',
+      latencyMs,
+    };
   } catch (err: any) {
     return {
       provider,
       providerName,
       success: false,
-      models: (providerConf.recommendedModels || []).map(m => ({
-        id: m.id,
-        name: m.name,
-        displayName: m.name,
-        description: m.description,
-        isLatest: true,
-        isSweetSpot: !!m.isSweetSpot,
-      })),
-      latestRecommendation: defaultRecommendation,
+      models: catalogFallback(provider),
+      latestRecommendation: autoPickModel(provider),
       source: 'catalog',
-      error: err.message || `Failed to connect to ${providerName} API`,
+      error: `${providerName} API error ${err?.message || 'request failed'}`,
       latencyMs: Date.now() - startTime,
     };
   }
@@ -884,7 +482,7 @@ export async function fetchAllLiveProviderModels(
   const results = await Promise.all(
     providers.map(p => fetchLiveProviderModels(p, customKeys?.[p]))
   );
-  
+
   const map: Partial<Record<AIProviderId, LiveProviderModelsResult>> = {};
   results.forEach(r => {
     map[r.provider] = r;
@@ -903,4 +501,29 @@ export async function fetchLiveGeminiModels(apiKey?: string) {
   };
 }
 
+/** Refreshes the model catalog of a provider if it is stale. Never throws. */
+export function refreshProviderCatalog(provider: AIProviderId, force = false): Promise<void> {
+  return refreshCatalog(provider, getEffectiveApiKey(provider), force);
+}
+
+/** Discovers the current models of every enabled provider; run at startup and on a timer. */
+export async function warmModelCatalogs(force = false): Promise<void> {
+  const config = loadAIConfig();
+  const providers = (Object.keys(DEFAULT_PROVIDERS) as AIProviderId[]).filter(
+    pid => config.providers[pid]?.enabled !== false
+  );
+  await Promise.all(providers.map(pid => refreshProviderCatalog(pid, force)));
+
+  // Re-check stored models against the fresh catalogs.
+  let migrated = false;
+  for (const pid of providers) {
+    const stored = config.providers[pid]?.model;
+    if (stored && stored !== AUTO_MODEL && isModelStale(pid, stored)) {
+      console.warn(`[aiConfig] ${pid} model ${stored} is outdated or retired; switching to auto (${autoPickModel(pid)}).`);
+      config.providers[pid].model = AUTO_MODEL;
+      migrated = true;
+    }
+  }
+  if (migrated) saveAIConfig(config);
+}
 

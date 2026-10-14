@@ -34,9 +34,12 @@
 - **Free-Tier Limits**: Gemini free tier enforces a strict 15 RPM quota limit.
 - **Pacing Rule**: The server request queue must maintain a minimum **4000ms delay** between consecutive Gemini API requests to prevent HTTP `429 Too Many Requests` errors.
 - **Exponential Backoff**: In the event of transient rate limits, backoff retry logic must use a minimum base delay of **4500ms** with randomized jitter.
-- **Supported Models**:
-  - Primary: `gemini-2.5-flash`, `gemini-3.8-flash`
-  - Fallback / Alternatives: DeepSeek-V3, GPT-4o-mini, Mistral Small, Groq Llama-3.3-70b (configured via Admin Settings).
+- **Model Selection (no hard-coded models)**:
+  - Every provider defaults to `auto`: `server/modelRegistry.ts` polls each enabled provider's `/models` endpoint (every 6h and on startup), ranks the results and uses the **cheapest capable model of the newest generation** (e.g. Gemini 3.x Flash-Lite, GPT-5 Mini, Claude Haiku 5.5, Mistral Small latest, Llama 4 Scout on Groq).
+  - Admin-pinned models are honoured only while they are current; older-generation or retired IDs are replaced automatically.
+  - A 404 / "no longer available" response marks the model retired (persisted in `data/model_registry.json`), records any replacement the provider suggests, and the request falls through to the next candidate model.
+  - Never add a fixed model ID as a default; add to `FALLBACK_MODELS` only as a last resort for when a catalog cannot be reached.
+  - Providers: Gemini, DeepSeek, OpenAI, Mistral, Groq, Anthropic (configured via Admin Settings).
 
 ---
 

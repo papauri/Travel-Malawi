@@ -19,6 +19,8 @@ interface ProviderView {
   website: string;
   enabled: boolean;
   model: string;
+  /** The model calls actually use: "auto" and outdated settings resolve to the cheapest current model. */
+  resolvedModel?: string;
   defaultModel: string;
   recommendedModels?: RecommendedModel[];
   rateLimitNotice?: string;
@@ -55,6 +57,13 @@ interface LiveModelsResult {
   source: 'live_api' | 'catalog';
   error?: string;
   latencyMs?: number;
+}
+
+/** "auto → gemini-3.5-flash-lite" for auto mode, otherwise the model actually in use. */
+function describeModel(p?: ProviderView): string {
+  if (!p) return '';
+  if (p.model === 'auto') return p.resolvedModel ? `auto → ${p.resolvedModel}` : 'auto';
+  return p.resolvedModel || p.model;
 }
 
 export default function AdminAISettings() {
@@ -451,7 +460,7 @@ export default function AdminAISettings() {
             <div className="flex flex-wrap items-center gap-x-2 text-xs text-stone-500">
               <span>Active Provider: <strong className="text-stone-800 font-medium">{activeProvider?.name || config.activeProvider}</strong></span>
               <span aria-hidden="true" className="text-stone-300">·</span>
-              <span className="font-mono text-stone-600">{activeProvider?.model}</span>
+              <span className="font-mono text-stone-600">{describeModel(activeProvider)}</span>
               <span aria-hidden="true" className="text-stone-300">·</span>
               <span className="tabular-nums">{configuredCount} of {totalCount} providers configured</span>
             </div>
@@ -686,7 +695,7 @@ export default function AdminAISettings() {
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between text-xs">
                   <label className="font-semibold text-stone-700">
-                    Model Identifier <span className="font-normal text-stone-400">(Default: {selectedProvider.defaultModel})</span>
+                    Model Identifier <span className="font-normal text-stone-400">(Default: auto, the cheapest current model)</span>
                   </label>
                   {selectedProvider.model !== selectedProvider.defaultModel && (
                     <button
@@ -723,6 +732,12 @@ export default function AdminAISettings() {
                     Save Model
                   </button>
                 </div>
+                {selectedProvider.resolvedModel && selectedProvider.resolvedModel !== selectedProvider.model && (
+                  <p className="text-[11px] text-stone-500">
+                    {selectedProvider.model === 'auto' ? 'Auto is currently using ' : 'Outdated or retired, so calls use '}
+                    <span className="font-mono text-stone-700">{selectedProvider.resolvedModel}</span>
+                  </p>
+                )}
               </div>
             </div>
 
@@ -747,6 +762,21 @@ export default function AdminAISettings() {
                 </div>
 
                 <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setModelInputs(prev => ({ ...prev, [selectedProviderId]: 'auto' }));
+                      handleSaveProvider(selectedProviderId, 'auto');
+                    }}
+                    className={`text-xs px-3 py-1.5 rounded-lg border transition text-left cursor-pointer flex items-center gap-2 ${
+                      (modelInputs[selectedProviderId] ?? selectedProvider.model) === 'auto'
+                        ? 'bg-stone-900 text-white border-stone-900 font-medium shadow-2xs'
+                        : 'bg-stone-50 hover:bg-stone-100 text-stone-700 border-stone-200'
+                    }`}
+                    title="Always use the cheapest capable model of the newest generation"
+                  >
+                    <span className="font-mono text-[11px]">Auto</span>
+                  </button>
                   {selectedProvider.recommendedModels.map((m, mIdx) => {
                     const isCurrent = (modelInputs[selectedProviderId] ?? selectedProvider.model) === m.id;
                     return (
@@ -978,7 +1008,7 @@ export default function AdminAISettings() {
                         </td>
 
                         <td className="py-3 px-4 font-mono text-stone-800">
-                          {p.model}
+                          {describeModel(p)}
                         </td>
 
                         <td className="py-3 px-4 text-center">
@@ -1091,7 +1121,7 @@ export default function AdminAISettings() {
         <div>
           <h4 className="font-semibold text-stone-800 mb-1">Cost-Optimized Defaults</h4>
           <p className="leading-relaxed">
-            Default configurations connect to lightweight production models (Gemini 3.8 Flash, GPT-4o Mini, Mistral Small) for low token footprints.
+            In Auto mode each provider's live model catalog is checked every 6 hours and calls use the cheapest capable model of the newest generation. Retired models are skipped automatically.
           </p>
         </div>
         <div>

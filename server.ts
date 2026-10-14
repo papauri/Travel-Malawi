@@ -15,7 +15,9 @@ import {
   getEffectiveApiKey,
   fetchLiveGeminiModels,
   fetchLiveProviderModels,
-  fetchAllLiveProviderModels
+  fetchAllLiveProviderModels,
+  warmModelCatalogs,
+  refreshProviderCatalog
 } from './server/aiConfig';
 import {
   executeAIGeneration,
@@ -534,6 +536,14 @@ async function startServer() {
       }
 
       saveAIConfig(current);
+      // A new key can unlock a different model lineup; rediscover it before the next call.
+      if (providerUpdates && typeof providerUpdates === 'object') {
+        Object.entries(providerUpdates).forEach(([pid, update]: [string, any]) => {
+          if (current.providers[pid as AIProviderId] && typeof update?.apiKey === 'string' && update.apiKey.trim()) {
+            void refreshProviderCatalog(pid as AIProviderId, true);
+          }
+        });
+      }
       res.json({ success: true, config: getAdminAIConfig() });
     } catch (err) {
       sendError(res, err, 'Failed to update AI config');
@@ -1624,12 +1634,21 @@ async function startServer() {
 
   const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on http://localhost:${PORT}`);
+    // Discover each enabled provider's current models so "auto" resolves to today's cheapest capable model.
+    void warmModelCatalogs();
   });
+
+  // Providers ship and retire models constantly; re-check the catalogs every 6 hours.
+  const modelCatalogInterval = setInterval(() => {
+    void warmModelCatalogs();
+  }, 6 * 60 * 60 * 1000);
+  modelCatalogInterval.unref();
 
   // Graceful shutdown handling for Cloud Run container lifecycle
   const handleShutdown = (signal: string) => {
     console.log(`Received ${signal}, initiating graceful shutdown...`);
     clearInterval(reminderInterval);
+    clearInterval(modelCatalogInterval);
     server.close(() => {
       console.log('HTTP server closed successfully.');
       process.exit(0);

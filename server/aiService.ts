@@ -1,4 +1,12 @@
 import { AIProviderId, getEffectiveApiKey, loadAIConfig, saveAIConfig, markProviderValidity, getAvailableProviders, AISystemConfig } from './aiConfig';
+import {
+  resolveModel as registryResolveModel,
+  getCandidateModels,
+  hasCatalog,
+  isModelUnavailableMessage,
+  markModelRetired,
+} from './modelRegistry';
+import { refreshProviderCatalog } from './aiConfig';
 import { classifySwarmIntent, getSpecialistAgentPrompt, executeDeterministicSwarmReply } from './aiSwarm';
 
 export interface GenerationRequest {
@@ -282,23 +290,6 @@ const PROVIDER_TIMEOUT_MS = 30_000;
 const BACKOFF_BASE_MS = 4500;
 const MAX_RATE_LIMIT_RETRIES = 3;
 
-/** Default model per provider, used when the stored model is empty or 'default'. */
-export const DEFAULT_MODELS: Record<AIProviderId, string> = {
-  gemini: 'gemini-2.5-flash',
-  openai: 'gpt-4o-mini',
-  anthropic: 'claude-haiku-4-5-20251001',
-  deepseek: 'deepseek-chat',
-  mistral: 'mistral-small-latest',
-  groq: 'llama-3.3-70b-versatile',
-};
-
-export const GEMINI_FALLBACK_MODELS = [
-  'gemini-2.5-flash',
-  'gemini-2.0-flash',
-  'gemini-1.5-flash',
-  'gemini-2.5-flash-lite',
-];
-
 const OPENAI_COMPATIBLE_ENDPOINTS: Partial<Record<AIProviderId, string>> = {
   deepseek: 'https://api.deepseek.com/chat/completions',
   openai: 'https://api.openai.com/v1/chat/completions',
@@ -306,18 +297,8 @@ const OPENAI_COMPATIBLE_ENDPOINTS: Partial<Record<AIProviderId, string>> = {
   groq: 'https://api.groq.com/openai/v1/chat/completions',
 };
 
-const RETIRED_GEMINI_MODELS = new Set([
-  'gemini-pro', 'gemini-1.0-pro', 'gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.6-flash',
-]);
-
-/** Resolves the model to call: stored model, or the provider default; retired IDs are upgraded. */
-export function resolveModel(providerId: AIProviderId, model?: string | null): string {
-  let m = (model || '').replace(/^models\//, '').trim();
-  if (!m || m === 'default') m = DEFAULT_MODELS[providerId];
-  if (providerId === 'gemini' && RETIRED_GEMINI_MODELS.has(m)) m = DEFAULT_MODELS.gemini;
-  if (providerId === 'anthropic' && m.startsWith('claude-3')) m = DEFAULT_MODELS.anthropic;
-  return m;
-}
+/** Resolves the stored model setting ("auto", retired or outdated IDs included) to the model to call. */
+export const resolveModel = registryResolveModel;
 
 const PROVIDER_LABELS: Record<AIProviderId, string> = {
   gemini: 'Google Gemini',
@@ -455,7 +436,96 @@ function buildCacheKey(provider: string, model: string, req: GenerationRequest):
 }
 
 /**
- * OpenAI-compatible endpoints (DeepSeek, OpenAI, Mistral, Groq).
+ * Error from a single-model provider call, saying whether the next candidate
+ * model is worth trying (model retired, empty output, or this model's quota or
+ * capacity exhausted).
+ */
+class ModelCallError extends Error {
+  constructor(message: string, public status: number, public tryNextModel: boolean) {
+    super(message);
+    this.name = 'ModelCallError';
+  }
+}
+
+/**
+ * Turns a failed provider response into a ModelCallError. Retired models are
+ * recorded, together with any replacement the provider suggests.
+ */
+async function modelCallError(providerId: AIProviderId, model: string, response: Response, label: string): Promise<ModelCallError> {
+  const msg = await readErrorMessage(response, `Model ${model} returned ${response.status}`);
+  if (isModelUnavailableMessage(response.status, msg)) {
+    markModelRetired(providerId, model, msg);
+    return new ModelCallError(`${label} model ${model} is unavailable (${response.status}): ${msg}`, response.status, true);
+  }
+  const lower = msg.toLowerCase();
+  if (lower.includes('api_key_invalid') || lower.includes('invalid api key') || lower.includes('invalid_api_key')) {
+    markProviderValidity(providerId, false, msg);
+  }
+  // A busy or rate-limited model may still have headroom on a sibling model with its own quota.
+  const tryNext = response.status === 429 || response.status === 503 || response.status === 529;
+  return new ModelCallError(`${label} API error (${response.status}): ${msg}`, response.status, tryNext);
+}
+
+/**
+ * Runs `call` against each candidate model in turn (resolved model first, then
+ * provider-suggested replacements, then the next-cheapest current models) until
+ * one succeeds. Auth failures and malformed requests stop immediately.
+ */
+async function withModelFallback(
+  providerId: AIProviderId,
+  storedModel: string | undefined,
+  call: (model: string) => Promise<string>
+): Promise<string> {
+  // On a cold start, discover what the provider actually serves before choosing.
+  if (hasCatalog(providerId)) {
+    void refreshProviderCatalog(providerId);
+  } else {
+    await refreshProviderCatalog(providerId);
+  }
+
+  let lastError: any = null;
+  for (const model of getCandidateModels(providerId, storedModel)) {
+    try {
+      return await call(model);
+    } catch (err: any) {
+      lastError = err;
+      if (!(err instanceof ModelCallError) || !err.tryNextModel) throw err;
+      console.warn(`[${providerId}] ${err.message}. Trying next candidate model...`);
+    }
+  }
+  throw lastError || new Error(`No ${PROVIDER_LABELS[providerId]} model is currently available.`);
+}
+
+/** OpenAI's GPT-5 line and o-series reject max_tokens/temperature and spend tokens on reasoning. */
+function isOpenAIReasoningModel(providerId: AIProviderId, model: string): boolean {
+  return providerId === 'openai' && /^(gpt-([5-9]|\d{2})|o\d)/.test(model);
+}
+
+function openAITokenParams(providerId: AIProviderId, model: string, maxTokens: number, temperature?: number) {
+  if (isOpenAIReasoningModel(providerId, model)) {
+    return { max_completion_tokens: maxTokens + 1500, reasoning_effort: 'low' };
+  }
+  return { max_tokens: maxTokens, ...(temperature !== undefined ? { temperature } : {}) };
+}
+
+/** Gemini 2.5+ models think before answering; that budget is reserved on top of the answer length. */
+function geminiThinks(model: string): boolean {
+  if (/-latest$/.test(model)) return true;
+  const m = model.match(/^gemini-(\d+(?:\.\d+)?)/);
+  return !!m && parseFloat(m[1]) >= 2.5;
+}
+
+/** Joins the visible text parts of a Gemini response, skipping thought summaries. */
+function geminiText(data: any): string {
+  return (data?.candidates?.[0]?.content?.parts || [])
+    .filter((p: any) => !p?.thought)
+    .map((p: any) => p?.text || '')
+    .join('')
+    .trim();
+}
+
+/**
+ * OpenAI-compatible endpoints (DeepSeek, OpenAI, Mistral, Groq). Calls exactly one model.
  */
 async function callOpenAICompatible(
   providerId: AIProviderId,
@@ -474,13 +544,12 @@ async function callOpenAICompatible(
       'Authorization': `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: resolveModel(providerId, model),
+      model,
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
       ],
-      temperature,
-      max_tokens: maxTokens,
+      ...openAITokenParams(providerId, model, maxTokens, temperature),
     }),
   });
 
@@ -491,24 +560,20 @@ async function callOpenAICompatible(
   }
 
   if (!response.ok) {
-    const cleanMsg = await readErrorMessage(response, 'Request failed');
-    if (cleanMsg.toLowerCase().includes('invalid api key') || cleanMsg.toLowerCase().includes('unauthorized')) {
-      markProviderValidity(providerId, false, cleanMsg);
-    }
-    throw new Error(`API error (${response.status}): ${cleanMsg}`);
+    throw await modelCallError(providerId, model, response, PROVIDER_LABELS[providerId]);
   }
 
   const data = await response.json();
   const text = data?.choices?.[0]?.message?.content?.trim();
   if (!text) {
-    throw new Error('No text generated from model');
+    throw new ModelCallError(`No text generated by ${model}`, 200, true);
   }
   markProviderValidity(providerId, true);
   return text;
 }
 
 /**
- * Google Gemini REST caller. The key is sent in the x-goog-api-key header, not the URL.
+ * Google Gemini REST caller for one model. The key is sent in the x-goog-api-key header, not the URL.
  */
 async function callGemini(
   providerId: AIProviderId,
@@ -524,92 +589,64 @@ async function callGemini(
     thinkingBudget?: number;
   }
 ): Promise<string> {
-  const cleanModel = resolveModel('gemini', model);
-  const modelsToTry = [cleanModel];
-  for (const fallback of GEMINI_FALLBACK_MODELS) {
-    if (!modelsToTry.includes(fallback)) {
-      modelsToTry.push(fallback);
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+  const thinkingBudget = geminiThinks(model) ? (options?.thinkingBudget ?? 512) : undefined;
+
+  const send = (withThinking: boolean) =>
+    pacedFetch(providerId, url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+      body: JSON.stringify({
+        systemInstruction: {
+          parts: [{ text: systemPrompt }],
+        },
+        contents: [
+          {
+            role: 'user',
+            parts: [{ text: userPrompt }],
+          },
+        ],
+        tools: useSearch ? [{ googleSearch: {} }] : undefined,
+        generationConfig: {
+          temperature,
+          // Thinking tokens count against the output limit, so room is reserved for them.
+          maxOutputTokens: maxTokens + (withThinking && thinkingBudget ? thinkingBudget : 0),
+          ...(options?.responseMimeType && !useSearch ? { responseMimeType: options.responseMimeType } : {}),
+          ...(withThinking && thinkingBudget !== undefined ? { thinkingConfig: { thinkingBudget } } : {}),
+        },
+      }),
+    });
+
+  let response = await send(true);
+
+  // Some models cannot change their thinking budget (Pro cannot switch it off); retry on the model default.
+  if (response.status === 400 && thinkingBudget !== undefined) {
+    const msg = await readErrorMessage(response.clone(), '');
+    if (msg.toLowerCase().includes('thinking')) {
+      response = await send(false);
     }
   }
 
-  let lastError: any = null;
-
-  for (const currentModel of modelsToTry) {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent`;
-
-    try {
-      const response = await pacedFetch(providerId, url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-        body: JSON.stringify({
-          systemInstruction: {
-            parts: [{ text: systemPrompt }],
-          },
-          contents: [
-            {
-              role: 'user',
-              parts: [{ text: userPrompt }],
-            },
-          ],
-          tools: useSearch ? [{ googleSearch: {} }] : undefined,
-          generationConfig: {
-            temperature,
-            maxOutputTokens: maxTokens,
-            ...(options?.responseMimeType && !useSearch ? { responseMimeType: options.responseMimeType } : {}),
-            ...(options?.thinkingBudget !== undefined
-              ? { thinkingConfig: { thinkingBudget: options.thinkingBudget } }
-              : currentModel.includes('thinking')
-              ? { thinkingConfig: { thinkingBudget: 100 } }
-              : {}),
-          },
-        }),
-      });
-
-      if (response.status === 401 || response.status === 403) {
-        const cleanMsg = await readErrorMessage(response, 'Invalid Gemini API key.');
-        markProviderValidity(providerId, false, cleanMsg);
-        throw new Error(`Authentication failed for Gemini: ${cleanMsg}`);
-      }
-
-      if (response.status === 503 || response.status === 404 || response.status === 429) {
-        const cleanMsg = await readErrorMessage(response, `Model ${currentModel} returned ${response.status}`);
-        console.warn(`[callGemini] Model ${currentModel} returned ${response.status}: ${cleanMsg}. Trying next candidate model...`);
-        lastError = new Error(`Gemini API error (${response.status}): ${cleanMsg}`);
-        continue;
-      }
-
-      if (!response.ok) {
-        const cleanMsg = await readErrorMessage(response, 'Request failed');
-        if (cleanMsg.toLowerCase().includes('api_key_invalid') || cleanMsg.toLowerCase().includes('invalid api key')) {
-          markProviderValidity(providerId, false, cleanMsg);
-        }
-        throw new Error(`Gemini API error (${response.status}): ${cleanMsg}`);
-      }
-
-      const data = await response.json();
-      const candidate = (data?.candidates?.[0]?.content?.parts || [])
-        .map((p: any) => p?.text || '')
-        .join('')
-        .trim();
-      if (!candidate) {
-        throw new Error('No text generated by Gemini');
-      }
-      markProviderValidity(providerId, true);
-      return candidate;
-    } catch (err: any) {
-      if (err.message?.includes('Authentication failed')) {
-        throw err;
-      }
-      lastError = err;
-      console.warn(`[callGemini] Model ${currentModel} request failed:`, err?.message);
-    }
+  if (response.status === 401 || response.status === 403) {
+    const cleanMsg = await readErrorMessage(response, 'Invalid Gemini API key.');
+    markProviderValidity(providerId, false, cleanMsg);
+    throw new Error(`Authentication failed for Gemini: ${cleanMsg}`);
   }
 
-  throw lastError || new Error('No text generated by Gemini');
+  if (!response.ok) {
+    throw await modelCallError(providerId, model, response, 'Gemini');
+  }
+
+  const candidate = geminiText(await response.json());
+  if (!candidate) {
+    throw new ModelCallError(`No text generated by ${model}`, 200, true);
+  }
+  markProviderValidity(providerId, true);
+  return candidate;
 }
 
 /**
- * Anthropic Messages API caller.
+ * Anthropic Messages API caller for one model.
  */
 async function callAnthropic(
   providerId: AIProviderId,
@@ -628,7 +665,7 @@ async function callAnthropic(
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model: resolveModel('anthropic', model),
+      model,
       system: systemPrompt,
       messages: [{ role: 'user', content: userPrompt }],
       temperature,
@@ -643,23 +680,26 @@ async function callAnthropic(
   }
 
   if (!response.ok) {
-    const cleanMsg = await readErrorMessage(response, 'Request failed');
-    if (cleanMsg.toLowerCase().includes('invalid_api_key')) {
-      markProviderValidity(providerId, false, cleanMsg);
-    }
-    throw new Error(`Anthropic API error (${response.status}): ${cleanMsg}`);
+    throw await modelCallError(providerId, model, response, 'Anthropic');
   }
 
   const data = await response.json();
-  const text = data?.content?.[0]?.text?.trim();
+  const text = (data?.content || [])
+    .filter((b: any) => b?.type === 'text')
+    .map((b: any) => b.text || '')
+    .join('')
+    .trim();
   if (!text) {
-    throw new Error('No text generated by Anthropic');
+    throw new ModelCallError(`No text generated by ${model}`, 200, true);
   }
   markProviderValidity(providerId, true);
   return text;
 }
 
-/** Text completion through any configured provider, with the right default model. */
+/**
+ * Text completion through any configured provider. The stored model is resolved
+ * to a current one; retired or exhausted models fall through to the next candidate.
+ */
 async function callProvider(
   providerId: AIProviderId,
   apiKey: string,
@@ -675,19 +715,25 @@ async function callProvider(
   }
 ): Promise<string> {
   if (providerId === 'gemini') {
-    return callGemini(providerId, apiKey, resolveModel(providerId, model), systemPrompt, userPrompt, temperature, maxTokens, useSearch, options);
+    return withModelFallback(providerId, model, m =>
+      callGemini(providerId, apiKey, m, systemPrompt, userPrompt, temperature, maxTokens, useSearch, options)
+    );
   }
   if (providerId === 'anthropic') {
-    return callAnthropic(providerId, apiKey, resolveModel(providerId, model), systemPrompt, userPrompt, temperature, maxTokens);
+    return withModelFallback(providerId, model, m =>
+      callAnthropic(providerId, apiKey, m, systemPrompt, userPrompt, temperature, maxTokens)
+    );
   }
   const endpoint = OPENAI_COMPATIBLE_ENDPOINTS[providerId];
   if (!endpoint) throw new Error(`Unsupported AI provider: ${providerId}`);
-  return callOpenAICompatible(providerId, endpoint, apiKey, resolveModel(providerId, model), systemPrompt, userPrompt, temperature, maxTokens);
+  return withModelFallback(providerId, model, m =>
+    callOpenAICompatible(providerId, endpoint, apiKey, m, systemPrompt, userPrompt, temperature, maxTokens)
+  );
 }
 
 /**
  * Vision extraction (image or PDF + instruction) through Gemini, OpenAI or Anthropic.
- * Goes through the same paced, time-limited path as text calls.
+ * Goes through the same paced, time-limited, model-fallback path as text calls.
  */
 async function callVisionProvider(
   providerId: AIProviderId,
@@ -698,64 +744,71 @@ async function callVisionProvider(
   mimeType: string,
   base64: string
 ): Promise<string> {
-  let response: Response;
-  if (providerId === 'gemini') {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${resolveModel('gemini', model)}:generateContent`;
-    response = await pacedFetch(providerId, url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: mimeType, data: base64 } }] }],
-      }),
-    });
-  } else if (providerId === 'openai') {
-    response = await pacedFetch(providerId, 'https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: resolveModel('openai', model),
-        messages: [
-          { role: 'system', content: systemHint },
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: prompt },
-              { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64}` } },
-            ],
-          },
-        ],
-        max_tokens: 4096,
-      }),
-    });
-  } else if (providerId === 'anthropic') {
-    response = await pacedFetch(providerId, 'https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({
-        model: resolveModel('anthropic', model),
-        max_tokens: 4096,
-        messages: [{
-          role: 'user',
-          content: [
-            { type: 'image', source: { type: 'base64', media_type: mimeType, data: base64 } },
-            { type: 'text', text: prompt },
-          ],
-        }],
-      }),
-    });
-  } else {
+  if (providerId !== 'gemini' && providerId !== 'openai' && providerId !== 'anthropic') {
     throw new Error(`${providerId} does not support image input`);
   }
 
-  if (!response.ok) {
-    const msg = await readErrorMessage(response, 'Request failed');
-    if (response.status === 401 || response.status === 403) markProviderValidity(providerId, false, msg);
-    throw new Error(`${PROVIDER_LABELS[providerId]} vision error ${response.status}: ${msg}`);
-  }
-  const result = await response.json();
-  if (providerId === 'gemini') return result?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-  if (providerId === 'openai') return result?.choices?.[0]?.message?.content || '';
-  return result?.content?.[0]?.text || '';
+  return withModelFallback(providerId, model, async m => {
+    let response: Response;
+    if (providerId === 'gemini') {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`;
+      response = await pacedFetch(providerId, url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: mimeType, data: base64 } }] }],
+        }),
+      });
+    } else if (providerId === 'openai') {
+      response = await pacedFetch(providerId, 'https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model: m,
+          messages: [
+            { role: 'system', content: systemHint },
+            {
+              role: 'user',
+              content: [
+                { type: 'text', text: prompt },
+                { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64}` } },
+              ],
+            },
+          ],
+          ...openAITokenParams(providerId, m, 4096),
+        }),
+      });
+    } else {
+      response = await pacedFetch(providerId, 'https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({
+          model: m,
+          max_tokens: 4096,
+          messages: [{
+            role: 'user',
+            content: [
+              { type: 'image', source: { type: 'base64', media_type: mimeType, data: base64 } },
+              { type: 'text', text: prompt },
+            ],
+          }],
+        }),
+      });
+    }
+
+    if (response.status === 401 || response.status === 403) {
+      const msg = await readErrorMessage(response, 'Unauthorized');
+      markProviderValidity(providerId, false, msg);
+      throw new Error(`${PROVIDER_LABELS[providerId]} vision error ${response.status}: ${msg}`);
+    }
+    if (!response.ok) {
+      throw await modelCallError(providerId, m, response, `${PROVIDER_LABELS[providerId]} vision`);
+    }
+    const result = await response.json();
+    if (providerId === 'gemini') return geminiText(result);
+    if (providerId === 'openai') return result?.choices?.[0]?.message?.content || '';
+    return result?.content?.find((b: any) => b?.type === 'text')?.text || '';
+  });
 }
 
 /** Marks third-party text (reviews, notices, guest messages) as data the model must not obey. */
