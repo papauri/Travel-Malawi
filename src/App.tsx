@@ -37,6 +37,7 @@ import OfflineIndicator from './components/OfflineIndicator';
 import CompareWidget from './components/CompareWidget';
 import OperationsCopilot from './components/OperationsCopilot';
 import AccessRequestModal from './components/AccessRequestModal';
+import { useTrafficMonitor } from './lib/trafficMonitor';
 import { Toaster } from 'react-hot-toast';
 import Lenis from 'lenis';
 
@@ -109,6 +110,7 @@ function ScrollToTop() {
 
 function RootContent({ children }: { children?: React.ReactNode }) {
   const { user } = useAuth();
+  useTrafficMonitor();
   return (
     <div className="min-h-screen bg-stone-50 flex flex-col font-sans">
       <Navbar />

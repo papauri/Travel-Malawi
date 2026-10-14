@@ -53,6 +53,7 @@ import {
   testWhatsAppConnection,
   sendWhatsAppMessage
 } from './server/whatsappConfig';
+import { trafficTracker } from './server/trafficTracker';
 import {
   optionalAuth,
   requireAuth,
@@ -260,6 +261,24 @@ async function startServer() {
         geo: {},
         userAgent: req.headers['user-agent'] || '',
       });
+    }
+  });
+
+  // Intelligent Traffic & Waiting Telemetry (anonymous or authenticated)
+  const trafficLimiter = rateLimit({ name: 'traffic-telemetry', windowMs: 60 * 1000, max: 180 });
+  app.post('/api/telemetry/traffic', trafficLimiter, async (req, res) => {
+    try {
+      const session = await trafficTracker.ingestTrafficPing(req, req.body || {});
+      res.status(200).json({
+        ok: true,
+        sessionId: session.sessionId,
+        visitorId: session.visitorId,
+        status: session.status,
+        intent: session.intent,
+      });
+    } catch (err) {
+      // Telemetry must never crash or block the client experience
+      res.status(200).json({ ok: false });
     }
   });
 
@@ -481,6 +500,26 @@ async function startServer() {
   });
 
   const adminOnly = requireRole('admin');
+
+  // Intelligent Traffic & Waiting Intelligence (Live traffic and active sessions)
+  app.get('/api/admin/traffic/live', adminOnly, (req, res) => {
+    try {
+      const data = trafficTracker.getLiveTrafficSummary();
+      res.status(200).json(data);
+    } catch (err) {
+      sendError(res, err, 'Failed to fetch live traffic telemetry');
+    }
+  });
+
+  // Clear in-memory traffic telemetry buffer
+  app.post('/api/admin/traffic/clear', adminOnly, (req, res) => {
+    try {
+      trafficTracker.clearSessions();
+      res.status(200).json({ ok: true });
+    } catch (err) {
+      sendError(res, err, 'Failed to clear traffic buffer');
+    }
+  });
 
   // Global Admin AI Configuration (GET: view status & masked keys)
   app.get('/api/admin/ai-config', adminOnly, (req, res) => {

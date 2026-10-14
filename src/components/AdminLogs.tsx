@@ -47,12 +47,14 @@ import {
   CalendarCheck,
   Key,
   Lock,
+  Radio,
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import toast from 'react-hot-toast';
 import Pagination from './Pagination';
+import AdminTrafficMonitor from './AdminTrafficMonitor';
 
-type MainViewMode = 'intune_table' | 'session_bundles';
+type MainViewMode = 'intune_table' | 'session_bundles' | 'live_traffic';
 type DateRangeFilter = 'all' | '24h' | '7d' | '30d';
 type StatusFilter = 'all' | 'Success' | 'Failed' | 'Info';
 type BladeTab = 'summary' | 'actor' | 'target' | 'diff' | 'payload';
@@ -641,6 +643,20 @@ export default function AdminLogs() {
               }`}>
                 {userBundles.length} Users
               </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setMainView('live_traffic')}
+              className={`px-3.5 sm:px-4 py-2 rounded-lg text-xs font-semibold transition flex items-center gap-2 cursor-pointer shrink-0 ${
+                mainView === 'live_traffic'
+                  ? 'bg-stone-900 text-white shadow-2xs'
+                  : 'text-stone-600 hover:text-stone-900'
+              }`}
+            >
+              <Radio className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Live Traffic &amp; Waiting</span>
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
             </button>
           </div>
 
@@ -1303,6 +1319,11 @@ export default function AdminLogs() {
             </div>
           )}
         </div>
+      )}
+
+      {/* ================= TAB 3: LIVE TRAFFIC & WAITING INTELLIGENCE ================= */}
+      {mainView === 'live_traffic' && (
+        <AdminTrafficMonitor />
       )}
 
       {/* ================= MICROSOFT INTUNE DETAILS BLADE / DRAWER ================= */}

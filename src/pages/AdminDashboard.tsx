@@ -9,7 +9,8 @@ import {
   Shield, ShieldCheck, Building2, CheckCircle, CheckCircle2, XCircle, Clock, MapPin, 
   MapPinOff, Users, Edit2, Edit3, Key, Trash2, Star, ExternalLink, 
   MessageSquare, MessageSquareOff, LayoutDashboard, CalendarRange, FileText, 
-  Search, Activity, Cpu, Target, Download, ChevronDown, MoreHorizontal, Check, X, Eye
+  Search, Activity, Cpu, Target, Download, ChevronDown, MoreHorizontal, Check, X, Eye,
+  Radio
 } from 'lucide-react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import Pagination from '../components/Pagination';
@@ -25,6 +26,7 @@ import AdminReviewScraper from '../components/AdminReviewScraper';
 import AdminEmailSettings from '../components/AdminEmailSettings';
 import AdminWhatsAppSettings from '../components/AdminWhatsAppSettings';
 import AdminLogs from '../components/AdminLogs';
+import AdminTrafficMonitor from '../components/AdminTrafficMonitor';
 import { logSystemEvent } from '../lib/logger';
 import { getHotelImage } from '../lib/images';
 import { isAdmin, isGlobalAdmin, isMarketing, isHotelManager, userRoles, toRoleFields, isOwnerEmail } from '../lib/roles';
@@ -36,7 +38,7 @@ import { Navigation, TrendingUp, BookOpen, Mail, Settings } from 'lucide-react';
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import PriceDisplay from '../components/PriceDisplay';
 
-type Tab = 'overview' | 'analytics' | 'properties' | 'reviews' | 'users' | 'bookings' | 'destinations' | 'content' | 'ai' | 'logs' | 'docs' | 'settings';
+type Tab = 'overview' | 'traffic' | 'analytics' | 'properties' | 'reviews' | 'users' | 'bookings' | 'destinations' | 'content' | 'ai' | 'logs' | 'docs' | 'settings';
 
 export default function AdminDashboard() {
   const { user, loading: authLoading, resetPassword } = useAuth();
@@ -792,6 +794,7 @@ export default function AdminDashboard() {
   const adminTabs = useMemo(() => {
     return [
       { id: 'overview' as Tab, label: 'Overview', icon: LayoutDashboard },
+      { id: 'traffic' as Tab, label: 'Live Traffic & Waiting', icon: Radio, visible: isGlobalAdmin(user) || isMarketing(user) },
       { id: 'analytics' as Tab, label: 'Analytics', icon: TrendingUp },
       { id: 'properties' as Tab, label: 'Properties', icon: Building2 },
       { id: 'reviews' as Tab, label: 'Reviews & Scraper', icon: Star },
@@ -1119,6 +1122,43 @@ export default function AdminDashboard() {
               </button>
             </div>
 
+            {/* Compact Live Traffic & Waiting Intelligence Widget */}
+            <div className="bg-white rounded-xl p-4 sm:p-5 border border-stone-200 shadow-2xs space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-stone-100">
+                <div className="flex items-center gap-2.5">
+                  <div className="h-8 w-8 rounded-lg bg-stone-900 text-emerald-400 flex items-center justify-center shrink-0">
+                    <Radio className="w-4 h-4 animate-pulse" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-serif font-bold text-base text-stone-900 leading-tight">
+                        Live Traffic &amp; Waiting Intelligence
+                      </h3>
+                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                        Anonymous &amp; Logged-In Telemetry
+                      </span>
+                    </div>
+                    <p className="text-xs text-stone-500 mt-0.5">
+                      Intelligent traffic monitoring with real dwell and waiting metrics across Malawi.
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('traffic')}
+                  className="px-3 py-1.5 bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold rounded-lg transition inline-flex items-center gap-1.5 cursor-pointer self-start sm:self-auto shadow-2xs"
+                >
+                  <span>Open Full Monitor</span>
+                  <ExternalLink className="w-3.5 h-3.5 text-stone-300" />
+                </button>
+              </div>
+
+              {/* Render compact version of monitor */}
+              <AdminTrafficMonitor compactMode={true} />
+            </div>
+
             {/* Partner Outreach & Guides */}
             <div className="bg-white rounded-xl p-5 border border-stone-200 shadow-2xs space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-stone-100">
@@ -1227,6 +1267,11 @@ export default function AdminDashboard() {
               </div>
             )}
           </div>
+        )}
+
+        {/* ===================== LIVE TRAFFIC & WAITING TAB ===================== */}
+        {activeTab === 'traffic' && (
+          <AdminTrafficMonitor />
         )}
         
         {/* ===================== ANALYTICS TAB ===================== */}
