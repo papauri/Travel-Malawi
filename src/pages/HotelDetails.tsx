@@ -1,6 +1,6 @@
 import { getActivePromotion, calculateSlashedPrice, getSaleTypeLabel, getSaleTypeBadge, getAllActivePromotions } from '../lib/promotions';
 import PromotionIcon from '../components/PromotionIcon';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { doc, getDoc, collection, query, where, getDocs, onSnapshot } from 'firebase/firestore';
 import { createBookingWithSlot } from '../lib/bookingWrites';
@@ -244,6 +244,14 @@ export default function HotelDetails() {
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [activeGalleryRoom, setActiveGalleryRoom] = useState<RoomType | null>(null);
   const [showHotelGallery, setShowHotelGallery] = useState(false);
+  const [hotelGalleryInitialIndex, setHotelGalleryInitialIndex] = useState(0);
+  const [mobileHeroIdx, setMobileHeroIdx] = useState(0);
+  const mobileHeroScrollRef = useRef<HTMLDivElement>(null);
+  const heroTouchStartX = useRef<number | null>(null);
+  const heroTouchStartY = useRef<number | null>(null);
+  const heroTouchDeltaX = useRef<number>(0);
+  const heroIsHorizontal = useRef<boolean | null>(null);
+  const heroHasDragged = useRef<boolean>(false);
   const [selectedRoom, setSelectedRoom] = useState<RoomType | null>(null);
   const [checkIn, setCheckIn] = useState(searchParams.get('checkIn') || '');
   const [checkOut, setCheckOut] = useState(searchParams.get('checkOut') || '');
@@ -1056,6 +1064,78 @@ export default function HotelDetails() {
   const galleryImages = hotelImages.slice(1, 1 + maxHeroSupporting);
   const hasGallery = galleryImages.length > 0;
 
+  const handleMobileHeroScroll = useCallback(() => {
+    if (!mobileHeroScrollRef.current) return;
+    const { scrollLeft, clientWidth } = mobileHeroScrollRef.current;
+    if (clientWidth > 0) {
+      const idx = Math.round(scrollLeft / clientWidth);
+      const clamped = Math.max(0, Math.min(hotelImages.length - 1, idx));
+      setMobileHeroIdx(clamped);
+    }
+  }, [hotelImages.length]);
+
+  const scrollToHeroIndex = useCallback((targetIndex: number) => {
+    if (!mobileHeroScrollRef.current) return;
+    const { clientWidth } = mobileHeroScrollRef.current;
+    const clamped = Math.max(0, Math.min(hotelImages.length - 1, targetIndex));
+    mobileHeroScrollRef.current.scrollTo({
+      left: clamped * clientWidth,
+      behavior: 'smooth',
+    });
+    setMobileHeroIdx(clamped);
+  }, [hotelImages.length]);
+
+  const handleMobileHeroTouchStart = (e: React.TouchEvent) => {
+    heroTouchStartX.current = e.touches[0].clientX;
+    heroTouchStartY.current = e.touches[0].clientY;
+    heroTouchDeltaX.current = 0;
+    heroIsHorizontal.current = null;
+    heroHasDragged.current = false;
+  };
+
+  const handleMobileHeroTouchMove = (e: React.TouchEvent) => {
+    if (heroTouchStartX.current === null || heroTouchStartY.current === null) return;
+    const currentX = e.touches[0].clientX;
+    const currentY = e.touches[0].clientY;
+    const deltaX = currentX - heroTouchStartX.current;
+    const deltaY = currentY - heroTouchStartY.current;
+
+    if (heroIsHorizontal.current === null) {
+      if (Math.abs(deltaX) > 8 || Math.abs(deltaY) > 8) {
+        heroIsHorizontal.current = Math.abs(deltaX) > Math.abs(deltaY);
+      }
+    }
+
+    if (heroIsHorizontal.current) {
+      heroTouchDeltaX.current = deltaX;
+      if (Math.abs(deltaX) > 10) {
+        heroHasDragged.current = true;
+      }
+    }
+  };
+
+  const handleMobileHeroTouchEnd = () => {
+    if (heroTouchStartX.current === null) return;
+    const deltaX = heroTouchDeltaX.current;
+    const wasHorizontal = heroIsHorizontal.current;
+
+    heroTouchStartX.current = null;
+    heroTouchStartY.current = null;
+    heroTouchDeltaX.current = 0;
+    heroIsHorizontal.current = null;
+
+    if (wasHorizontal && Math.abs(deltaX) > 35) {
+      if (deltaX < 0 && mobileHeroIdx < hotelImages.length - 1) {
+        scrollToHeroIndex(mobileHeroIdx + 1);
+      } else if (deltaX > 0 && mobileHeroIdx > 0) {
+        scrollToHeroIndex(mobileHeroIdx - 1);
+      }
+    }
+    setTimeout(() => {
+      heroHasDragged.current = false;
+    }, 150);
+  };
+
   // Rich Schema.org structured data for LodgingBusiness / Hotel Knowledge Graph
   const hotelSchema = useMemo(() => {
     if (!hotel) return undefined;
@@ -1481,9 +1561,124 @@ export default function HotelDetails() {
           boxes, so a listing with one image gave over half its header to two
           empty grey panels. */}
       <div className="w-full">
-        <div className={`grid gap-0 md:h-[50vh] lg:h-[66vh] ${hasGallery ? 'grid-cols-1 md:grid-cols-4' : 'grid-cols-1'}`}>
+        {/* MOBILE ONLY: Touch-swipeable full-bleed photo gallery */}
+        <div className="block md:hidden relative w-full h-[46vh] min-h-[320px] max-h-[460px] bg-stone-950 overflow-hidden select-none">
+          <div
+            ref={mobileHeroScrollRef}
+            onScroll={handleMobileHeroScroll}
+            onTouchStart={handleMobileHeroTouchStart}
+            onTouchMove={handleMobileHeroTouchMove}
+            onTouchEnd={handleMobileHeroTouchEnd}
+            style={{ touchAction: 'pan-y' }}
+            className="w-full h-full flex overflow-x-auto snap-x snap-mandatory scrollbar-none"
+          >
+            {hotelImages.map((imgUrl, i) => (
+              <div
+                key={`mobile-hero-${imgUrl ? imgUrl.slice(-20) : 'img'}-${i}`}
+                className="min-w-full h-full shrink-0 snap-center relative cursor-pointer"
+                onClick={() => {
+                  if (!heroHasDragged.current) {
+                    setHotelGalleryInitialIndex(i);
+                    setShowHotelGallery(true);
+                  }
+                }}
+              >
+                <SmartImage
+                  src={imgUrl}
+                  alt={`${hotel.name} — photograph ${i + 1}`}
+                  loading={i === 0 ? "eager" : "lazy"}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            ))}
+          </div>
+
+          {/* Gradient Overlay for Text Readability */}
+          <div className="absolute inset-0 bg-gradient-to-t from-stone-950/90 via-stone-950/25 to-stone-950/30 pointer-events-none" />
+
+          {/* Top-Right Actions: Share and Photo Counter */}
+          <div className="absolute top-4 right-4 flex items-center gap-2 z-10 pointer-events-auto">
+            <button
+              type="button"
+              onClick={handleShare}
+              className="bg-stone-950/60 hover:bg-stone-900/80 backdrop-blur-md text-white p-2 rounded-full shadow-lg border border-white/10 active:scale-95 transition-all cursor-pointer"
+              title="Share property"
+              aria-label="Share property"
+            >
+              <Share className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setHotelGalleryInitialIndex(mobileHeroIdx);
+                setShowHotelGallery(true);
+              }}
+              className="bg-stone-950/60 hover:bg-stone-900/80 backdrop-blur-md text-white text-xs font-semibold px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1.5 border border-white/10 active:scale-95 transition-all cursor-pointer"
+              title="View all photos"
+            >
+              <Images className="h-3.5 w-3.5" />
+              <span>{mobileHeroIdx + 1} / {hotelImages.length}</span>
+            </button>
+          </div>
+
+          {/* Bottom Overlay: Title, Location, and Dot Indicators */}
+          <div className="absolute bottom-0 left-0 w-full p-5 sm:p-6 flex flex-col justify-end pointer-events-none">
+            <div className="pointer-events-auto">
+              <motion.p
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-center gap-1.5 text-white/80 text-xs sm:text-sm font-medium mb-1.5"
+              >
+                <MapPin className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">{hotel.location}</span>
+              </motion.p>
+              <motion.h1
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.05 }}
+                className="font-serif font-medium tracking-[-0.02em] text-white leading-[1.05] text-2xl sm:text-3xl line-clamp-2"
+              >
+                <MaskedPlaceName name={hotel.name} fallback="[Your Lodge Name]" />
+              </motion.h1>
+            </div>
+
+            {hotelImages.length > 1 && (
+              <div className="flex items-center justify-between mt-3 pt-1 pointer-events-auto">
+                {/* Swipeable Indicator Dots */}
+                <div className="flex items-center gap-1.5">
+                  {hotelImages.slice(0, 7).map((_, i) => (
+                    <button
+                      key={`hero-dot-${i}`}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        scrollToHeroIndex(i);
+                      }}
+                      aria-label={`Go to photo ${i + 1}`}
+                      className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
+                        i === mobileHeroIdx ? 'w-5 bg-white shadow-sm' : 'w-1.5 bg-white/50 hover:bg-white/80'
+                      }`}
+                    />
+                  ))}
+                  {hotelImages.length > 7 && (
+                    <span className="text-[10px] text-white/70 font-bold ml-0.5">•</span>
+                  )}
+                </div>
+
+                {/* Touch Swipe Hint */}
+                <span className="text-[11px] text-white/75 font-medium tracking-wide flex items-center gap-1">
+                  <span>Swipe photos</span>
+                  <span aria-hidden="true">→</span>
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* DESKTOP ONLY: Bento grid layout */}
+        <div className={`hidden md:grid gap-0 md:h-[50vh] lg:h-[66vh] ${hasGallery ? 'grid-cols-4' : 'grid-cols-1'}`}>
           {/* Main image */}
-          <div className={`relative rounded-none overflow-hidden h-[44vh] sm:h-[48vh] md:h-full group cursor-pointer ${hasGallery ? 'md:col-span-2 md:row-span-2' : ''}`} onClick={() => setShowHotelGallery(true)}>
+          <div className={`relative rounded-none overflow-hidden h-full group cursor-pointer ${hasGallery ? 'col-span-2 row-span-2' : ''}`} onClick={() => { setHotelGalleryInitialIndex(0); setShowHotelGallery(true); }}>
             <SmartImage src={hotelImages[0]} alt={hotel.name} loading="eager" className="w-full h-full object-cover transition duration-700 ease-out group-hover:scale-[1.04]" />
             <div className="absolute inset-0 bg-gradient-to-t from-stone-950/80 via-stone-950/10 to-transparent" />
             <div className="absolute bottom-0 left-0 w-full p-7 md:p-10 flex justify-between items-end">
@@ -1509,34 +1704,22 @@ export default function HotelDetails() {
               
               <div className="hidden md:flex items-center gap-2 transition-all opacity-0 group-hover:opacity-100 pointer-events-auto">
                 <button 
+                  type="button"
                   onClick={handleShare}
-                  className="bg-white/20 hover:bg-white/30 backdrop-blur text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg flex items-center gap-2 transition-all"
+                  className="bg-white/20 hover:bg-white/30 backdrop-blur text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg flex items-center gap-2 transition-all cursor-pointer"
                 >
                   <Share className="h-4 w-4" />
                   Share
                 </button>
                 <button 
-                  className="bg-white/20 hover:bg-white/30 backdrop-blur text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg flex items-center gap-2 transition-all"
+                  type="button"
+                  onClick={() => { setHotelGalleryInitialIndex(0); setShowHotelGallery(true); }}
+                  className="bg-white/20 hover:bg-white/30 backdrop-blur text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg flex items-center gap-2 transition-all cursor-pointer"
                 >
                   <Images className="h-4 w-4" />
                   {hotelImages.length} Photos
                 </button>
               </div>
-            </div>
-            
-            <div className="md:hidden absolute top-4 right-4 flex items-center gap-2 z-10 pointer-events-auto">
-              <button 
-                onClick={handleShare}
-                className="bg-white/20 hover:bg-white/30 backdrop-blur text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg flex items-center gap-2 transition-all"
-              >
-                <Share className="h-4 w-4" />
-              </button>
-              <button 
-                className="bg-white/20 hover:bg-white/30 backdrop-blur text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg flex items-center gap-2 transition-all"
-              >
-                <Images className="h-4 w-4" />
-                {hotelImages.length}
-              </button>
             </div>
           </div>
 
@@ -1545,20 +1728,20 @@ export default function HotelDetails() {
             const isLast = index === galleryImages.length - 1;
             const remainingCount = hotelImages.length - (galleryImages.length + 1);
 
-            let gridSpanClass = 'md:col-span-1 md:row-span-1';
+            let gridSpanClass = 'col-span-1 row-span-1';
             if (activeHeroLayout === 'duo-3') {
-              gridSpanClass = 'md:col-span-2 md:row-span-1';
+              gridSpanClass = 'col-span-2 row-span-1';
             } else if (activeHeroLayout === 'bento-4') {
-              gridSpanClass = index === 0 ? 'md:col-span-2 md:row-span-1' : 'md:col-span-1 md:row-span-1';
+              gridSpanClass = index === 0 ? 'col-span-2 row-span-1' : 'col-span-1 row-span-1';
             } else {
-              gridSpanClass = 'md:col-span-1 md:row-span-1';
+              gridSpanClass = 'col-span-1 row-span-1';
             }
 
             return (
               <div
                 key={`${url}-${index}`}
-                className={`relative rounded-none overflow-hidden hidden md:block group cursor-pointer ${gridSpanClass}`}
-                onClick={() => setShowHotelGallery(true)}
+                className={`relative rounded-none overflow-hidden group cursor-pointer ${gridSpanClass}`}
+                onClick={() => { setHotelGalleryInitialIndex(index + 1); setShowHotelGallery(true); }}
               >
                 <SmartImage
                   src={url}
@@ -3924,6 +4107,7 @@ export default function HotelDetails() {
       {showHotelGallery && (
         <Lightbox
           images={hotelImages}
+          initialIndex={hotelGalleryInitialIndex}
           onClose={() => setShowHotelGallery(false)}
         />
       )}

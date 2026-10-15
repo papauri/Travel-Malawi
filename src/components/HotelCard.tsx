@@ -1,5 +1,5 @@
 import { getActivePromotion, calculateSlashedPrice, getSaleTypeBadge } from '../lib/promotions';
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronLeft, ChevronRight, Star, Heart, Scale, Tag, Briefcase, Home } from 'lucide-react';
@@ -45,6 +45,8 @@ export default function HotelCard({
   rating
 }: HotelCardProps) {
   const [currentImageIdx, setCurrentImageIdx] = useState(0);
+  const isDraggingRef = useRef(false);
+  const dragTimeoutRef = useRef<any>(null);
   const { savedHotelIds, toggleSave } = useWishlist();
   const { selectedHotels, toggleHotel } = useCompare();
 
@@ -83,9 +85,17 @@ export default function HotelCard({
     }).filter(([, value]) => value !== '')
   ).toString();
 
+  const handleLinkClick = (e: React.MouseEvent) => {
+    if (isDraggingRef.current) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  };
+
   return (
     <Link
       to={searchQuery ? `/hotel/${hotel.id}?${searchQuery}` : `/hotel/${hotel.id}`}
+      onClick={handleLinkClick}
       className="group flex flex-col gap-2.5 sm:gap-3 md:gap-4 w-full"
     >
       <motion.div 
@@ -152,11 +162,24 @@ export default function HotelCard({
             drag="x"
             dragConstraints={{ left: 0, right: 0 }}
             dragElastic={1}
+            onDragStart={() => {
+              isDraggingRef.current = false;
+            }}
+            onDrag={() => {
+              isDraggingRef.current = true;
+            }}
             onDragEnd={(e, { offset, velocity }) => {
               const swipe = offset.x;
-              if (swipe < -50) {
+              if (Math.abs(swipe) > 8) {
+                isDraggingRef.current = true;
+                if (dragTimeoutRef.current) clearTimeout(dragTimeoutRef.current);
+                dragTimeoutRef.current = setTimeout(() => {
+                  isDraggingRef.current = false;
+                }, 200);
+              }
+              if (swipe < -40) {
                 nextImage();
-              } else if (swipe > 50) {
+              } else if (swipe > 40) {
                 prevImage();
               }
             }}

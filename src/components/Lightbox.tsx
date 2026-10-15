@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
@@ -12,6 +12,12 @@ interface LightboxProps {
 
 export default function Lightbox({ images, initialIndex = 0, onClose }: LightboxProps) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
+
+  // Touch gesture tracking for mobile swipe navigation
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
+  const touchDeltaX = useRef<number>(0);
+  const isHorizontalSwipe = useRef<boolean | null>(null);
 
   // Handle keyboard navigation
   useEffect(() => {
@@ -30,10 +36,61 @@ export default function Lightbox({ images, initialIndex = 0, onClose }: Lightbox
   const next = () => setCurrentIndex((prev) => (prev + 1) % images.length);
   const prev = () => setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
 
+  // Mobile Touch Handlers
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+    touchDeltaX.current = 0;
+    isHorizontalSwipe.current = null;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (touchStartX.current === null || touchStartY.current === null) return;
+    const currentX = e.touches[0].clientX;
+    const currentY = e.touches[0].clientY;
+    const deltaX = currentX - touchStartX.current;
+    const deltaY = currentY - touchStartY.current;
+
+    if (isHorizontalSwipe.current === null) {
+      if (Math.abs(deltaX) > 8 || Math.abs(deltaY) > 8) {
+        isHorizontalSwipe.current = Math.abs(deltaX) > Math.abs(deltaY);
+      }
+    }
+
+    if (isHorizontalSwipe.current) {
+      touchDeltaX.current = deltaX;
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (touchStartX.current === null) return;
+    const deltaX = touchDeltaX.current;
+    const wasHorizontal = isHorizontalSwipe.current;
+
+    touchStartX.current = null;
+    touchStartY.current = null;
+    touchDeltaX.current = 0;
+    isHorizontalSwipe.current = null;
+
+    if (wasHorizontal && Math.abs(deltaX) > 40) {
+      if (deltaX < 0) {
+        next();
+      } else {
+        prev();
+      }
+    }
+  };
+
   if (images.length === 0) return null;
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/95 backdrop-blur-xl">
+    <div 
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/95 backdrop-blur-xl select-none"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      style={{ touchAction: 'pan-y' }}
+    >
       {/* Header controls */}
       <div className="absolute top-4 left-0 right-0 px-6 flex justify-between items-center z-10 pointer-events-none">
         <span className="text-white/80 font-mono text-sm tracking-widest font-semibold bg-black/50 px-3 py-1 rounded-full backdrop-blur-md">
@@ -41,13 +98,14 @@ export default function Lightbox({ images, initialIndex = 0, onClose }: Lightbox
         </span>
         <button
           onClick={onClose}
-          className="pointer-events-auto p-2.5 bg-white/10 hover:bg-white/20 rounded-full text-white transition backdrop-blur-md active:scale-95"
+          className="pointer-events-auto p-2.5 bg-white/10 hover:bg-white/20 rounded-full text-white transition backdrop-blur-md active:scale-95 cursor-pointer"
+          aria-label="Close photo gallery"
         >
           <X className="w-6 h-6" />
         </button>
       </div>
 
-      {/* Main Image */}
+      {/* Main Image with swipe indicators on mobile */}
       <AnimatePresence mode="wait">
         <motion.div
           key={currentIndex}
@@ -55,12 +113,12 @@ export default function Lightbox({ images, initialIndex = 0, onClose }: Lightbox
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 1.02 }}
           transition={{ duration: 0.2 }}
-          className="relative w-full h-full max-w-6xl max-h-[85vh] mx-auto p-4 md:p-8 flex items-center justify-center"
+          className="relative w-full h-full max-w-6xl max-h-[85vh] mx-auto p-4 md:p-8 flex items-center justify-center cursor-grab active:cursor-grabbing"
         >
           <SmartImage
             src={images[currentIndex]}
             alt={`Gallery ${currentIndex + 1}`}
-            className="max-w-full max-h-full object-contain rounded-xl shadow-2xl"
+            className="max-w-full max-h-full object-contain rounded-xl shadow-2xl pointer-events-none"
           />
         </motion.div>
       </AnimatePresence>
