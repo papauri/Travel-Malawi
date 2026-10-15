@@ -9,6 +9,7 @@ import ImageUpload from './ImageUpload';
 import GalleryUpload from './GalleryUpload';
 import AIAssistantButton from './AIAssistantButton';
 import Pagination from './Pagination';
+import ConfirmDialog from './ConfirmDialog';
 
 interface Props {
   hotelId: string;
@@ -18,6 +19,7 @@ export default function ConferenceManager({ hotelId }: Props) {
   const [rooms, setRooms] = useState<ConferenceRoom[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingRoom, setEditingRoom] = useState<ConferenceRoom | null>(null);
+  const [roomToDelete, setRoomToDelete] = useState<ConferenceRoom | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const roomsPerPage = 4;
@@ -59,15 +61,21 @@ export default function ConferenceManager({ hotelId }: Props) {
     }
   };
 
-  const handleDelete = async (roomId: string) => {
-    if (!window.confirm('Are you sure you want to delete this conference room?')) return;
+  const handleDelete = (room: ConferenceRoom) => {
+    setRoomToDelete(room);
+  };
+
+  const confirmDeleteRoom = async () => {
+    if (!roomToDelete?.id) return;
     try {
-      await deleteDoc(doc(db, 'conference_rooms', roomId));
-      setRooms(prev => prev.filter(r => r.id !== roomId));
+      await deleteDoc(doc(db, 'conference_rooms', roomToDelete.id));
+      setRooms(prev => prev.filter(r => r.id !== roomToDelete.id));
       toast.success('Conference room deleted');
     } catch (error) {
       console.error('Error deleting conference room:', error);
       toast.error('Failed to delete conference room');
+    } finally {
+      setRoomToDelete(null);
     }
   };
 
@@ -315,7 +323,7 @@ export default function ConferenceManager({ hotelId }: Props) {
                                   type="button"
                                   onClick={() => {
                                     setOpenMenuId(null);
-                                    handleDelete(room.id!);
+                                    handleDelete(room);
                                   }}
                                   className="w-full text-left px-3.5 py-2 hover:bg-red-50 text-red-600 flex items-center gap-2 transition cursor-pointer"
                                 >
@@ -344,6 +352,17 @@ export default function ConferenceManager({ hotelId }: Props) {
           )}
         </>
       )}
+
+      <ConfirmDialog
+        isOpen={!!roomToDelete}
+        title="Delete Conference Room"
+        message={`Are you sure you want to permanently delete "${roomToDelete?.name}"? This action cannot be undone.`}
+        confirmText="Yes, delete room"
+        cancelText="Cancel"
+        isDestructive={true}
+        onConfirm={confirmDeleteRoom}
+        onCancel={() => setRoomToDelete(null)}
+      />
     </div>
   );
 }

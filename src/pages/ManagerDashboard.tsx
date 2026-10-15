@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { Booking, RoomType } from '../types';
 import { db } from '../lib/firebase';
 import { Hotel } from '../types';
@@ -8,7 +8,7 @@ import {
   Building2, Plus, ChevronRight, Clock, CheckCircle2, XCircle, 
   BedDouble, CalendarCheck, Lock, KeyRound, UserCheck, ArrowRight, 
   Check, ChevronDown, Filter, ExternalLink, SlidersHorizontal, Radio,
-  Percent
+  Percent, Trash2
 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -19,6 +19,7 @@ import { getHotelImage } from '../lib/images';
 import { isHotelManager, isAdmin, isMarketing } from '../lib/roles';
 import MaskedPlaceName from '../components/MaskedPlaceName';
 import BulkRoomEditor from '../components/BulkRoomEditor';
+import ConfirmDialog from '../components/ConfirmDialog';
 
 import Pagination from '../components/Pagination';
 
@@ -43,7 +44,32 @@ export default function ManagerDashboard() {
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const [openCardMenuId, setOpenCardMenuId] = useState<string | null>(null);
   const [bulkEditorHotelId, setBulkEditorHotelId] = useState<string | undefined>(undefined);
+  const [hotelToDelete, setHotelToDelete] = useState<Hotel | null>(null);
+  const [isDeletingHotel, setIsDeletingHotel] = useState(false);
   const itemsPerPage = 6;
+
+  const handleConfirmDeleteHotel = async () => {
+    if (!hotelToDelete?.id || isDeletingHotel) return;
+    const targetHotel = hotelToDelete;
+    setIsDeletingHotel(true);
+    try {
+      const roomsSnap = await getDocs(query(collection(db, 'room_types'), where('hotelId', '==', targetHotel.id)));
+      const batch = writeBatch(db);
+      roomsSnap.docs.forEach(rDoc => batch.delete(rDoc.ref));
+      batch.delete(doc(db, 'hotels', targetHotel.id));
+      await batch.commit();
+
+      setHotels(prev => prev.filter(h => h.id !== targetHotel.id));
+      setRooms(prev => prev.filter(r => r.hotelId !== targetHotel.id));
+      toast.success(`"${targetHotel.name}" permanently deleted.`);
+      setHotelToDelete(null);
+    } catch (err: any) {
+      console.error('Failed to delete property:', err);
+      toast.error(err?.message || 'Failed to delete property listing.');
+    } finally {
+      setIsDeletingHotel(false);
+    }
+  };
 
   const handleOpenBulkEditor = (hotelId?: string) => {
     setBulkEditorHotelId(hotelId);
@@ -793,6 +819,22 @@ export default function ManagerDashboard() {
                                 <span>{hotel.isOnline !== false ? 'Set Offline (Away)' : 'Set Online'}</span>
                               </span>
                             </button>
+
+                            <div className="my-1 border-t border-stone-100" />
+
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setOpenCardMenuId(null);
+                                setHotelToDelete(hotel);
+                              }}
+                              className="w-full px-3 py-1.5 text-xs text-rose-700 hover:bg-rose-50 flex items-center gap-2 transition cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                              <span>Delete Listing</span>
+                            </button>
                           </div>
                         </>
                       )}
@@ -816,6 +858,19 @@ export default function ManagerDashboard() {
       )}
         </>
       )}
+
+      <ConfirmDialog
+        isOpen={!!hotelToDelete}
+        title="Delete Property Listing"
+        message={`Are you sure you want to permanently delete "${hotelToDelete?.name}"? All associated room inventory and listings settings will be permanently removed. This action cannot be undone.`}
+        confirmText={isDeletingHotel ? "Deleting..." : "Yes, delete property"}
+        cancelText="Cancel"
+        isDestructive={true}
+        onConfirm={handleConfirmDeleteHotel}
+        onCancel={() => {
+          if (!isDeletingHotel) setHotelToDelete(null);
+        }}
+      />
     </div>
   );
 }

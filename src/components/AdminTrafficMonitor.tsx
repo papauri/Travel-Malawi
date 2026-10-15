@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import toast from 'react-hot-toast';
+import ConfirmDialog from './ConfirmDialog';
 import {
   fetchLiveTrafficSummary,
   clearTrafficBuffer,
@@ -53,6 +54,7 @@ export default function AdminTrafficMonitor({ compactMode = false }: AdminTraffi
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSession, setSelectedSession] = useState<TrafficSessionData | null>(null);
   const [clearing, setClearing] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
 
   const timerRef = useRef<any>(null);
@@ -81,8 +83,12 @@ export default function AdminTrafficMonitor({ compactMode = false }: AdminTraffi
     };
   }, [autoRefreshInterval]);
 
-  const handleClear = async () => {
-    if (!window.confirm('Clear all in-memory traffic and waiting telemetry records?')) return;
+  const handleClear = () => {
+    setShowClearConfirm(true);
+  };
+
+  const confirmClearBuffer = async () => {
+    setShowClearConfirm(false);
     setClearing(true);
     const success = await clearTrafficBuffer();
     if (success) {
@@ -890,6 +896,17 @@ export default function AdminTrafficMonitor({ compactMode = false }: AdminTraffi
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={showClearConfirm}
+        title="Clear Traffic Buffer"
+        message="Clear all in-memory traffic and waiting telemetry records? This cannot be undone."
+        confirmText="Clear Buffer"
+        cancelText="Cancel"
+        isDestructive={true}
+        onConfirm={confirmClearBuffer}
+        onCancel={() => setShowClearConfirm(false)}
+      />
     </div>
   );
 }

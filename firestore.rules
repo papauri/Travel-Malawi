@@ -329,7 +329,7 @@ service cloud.firestore {
                         && request.resource.data.get('status', 'approved') == resource.data.get('status', 'approved')
                         && request.resource.data.get('featured', false) == resource.data.get('featured', false)
                         && request.resource.data.get('adminChatEnabled', true) == resource.data.get('adminChatEnabled', true));
-      allow delete: if isManager(hotelId) || isAdmin();
+      allow delete: if isManager(hotelId) || isAdmin() || isMarketing();
     }
 
     match /room_types/{roomId} {
@@ -373,7 +373,7 @@ service cloud.firestore {
                         ? request.resource.data.guestId == 'anonymous'
                         : (isActive() && request.resource.data.guestId == request.auth.uid));
 
-      allow update: if isAdmin()
+      allow update: if isAdmin() || isMarketing()
         // The guest may cancel, correct their contact details, and keep the
         // chat bookkeeping current. Nothing else.
         || (isActive()
@@ -397,7 +397,7 @@ service cloud.firestore {
             && stayOkIfChanged()
             && contactOkIfChanged());
 
-      allow delete: if isAdmin() || isManager(resource.data.get('hotelId', ''));
+      allow delete: if isAdmin() || isMarketing() || isManager(resource.data.get('hotelId', ''));
     }
 
     // Public, PII-free mirror of each booking's inventory footprint. A slot
@@ -414,7 +414,7 @@ service cloud.firestore {
                     && request.resource.data.quantity == getAfter(bookingPath(bookingId)).data.get('quantity', 1)
                     && request.resource.data.status == getAfter(bookingPath(bookingId)).data.get('status', 'pending');
       allow delete: if !existsAfter(bookingPath(bookingId))
-                    && (isAdmin() || isManager(resource.data.get('hotelId', '')));
+                    && (isAdmin() || isMarketing() || isManager(resource.data.get('hotelId', '')));
     }
 
     match /bookings/{bookingId}/messages/{messageId} {
@@ -579,7 +579,7 @@ service cloud.firestore {
                     && request.resource.data.rating >= 1
                     && request.resource.data.rating <= 5;
 
-      allow delete: if isActive() && (resource.data.guestId == request.auth.uid || isAdmin());
+      allow delete: if isActive() && (resource.data.guestId == request.auth.uid || isAdmin() || isMarketing());
     }
   }
 }

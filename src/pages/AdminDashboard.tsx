@@ -134,9 +134,13 @@ export default function AdminDashboard() {
     newStatus: 'approved' | 'rejected' | 'pending';
     actionName: string;
   } | null>(null);
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [hotelToDelete, setHotelToDelete] = useState<Hotel | null>(null);
+  const [isDeletingHotel, setIsDeletingHotel] = useState(false);
+  const [bookingToDelete, setBookingToDelete] = useState<Booking | null>(null);
+  const [isDeletingBooking, setIsDeletingBooking] = useState(false);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
   const [isDeletingUser, setIsDeletingUser] = useState(false);
+  const [userToToggleSuspension, setUserToToggleSuspension] = useState<User | null>(null);
   const [resetEmailTarget, setResetEmailTarget] = useState<string | null>(null);
   const [openUserMenuId, setOpenUserMenuId] = useState<string | null>(null);
   const [openHotelMenuId, setOpenHotelMenuId] = useState<string | null>(null);
@@ -235,50 +239,7 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleDeleteHotel = async (hotelId: string) => {
-    const targetHotel = hotels.find(h => h.id === hotelId);
 
-    // A listing with guests still due to arrive cannot be deleted: those
-    // bookings would point at nothing. Cancel or move them first.
-    const today = todayStr();
-    const upcoming = bookings.filter(b =>
-      b.hotelId === hotelId &&
-      (b.status === 'confirmed' || b.status === 'pending') &&
-      (b.checkOut ?? '') >= today
-    );
-    if (upcoming.length > 0) {
-      toast.error(`This listing has ${upcoming.length} upcoming booking${upcoming.length === 1 ? '' : 's'}. Cancel or move them before deleting.`);
-      return;
-    }
-
-    try {
-      // Rooms go with the hotel so they do not linger as orphans in search.
-      const roomSnap = await getDocs(query(collection(db, 'room_types'), where('hotelId', '==', hotelId)));
-      const roomRefs = roomSnap.docs.map(d => d.ref);
-      for (let i = 0; i < roomRefs.length; i += 450) {
-        const batch = writeBatch(db);
-        roomRefs.slice(i, i + 450).forEach(ref => batch.delete(ref));
-        await batch.commit();
-      }
-      await deleteDoc(doc(db, 'hotels', hotelId));
-      try {
-        await fetch(`/api/hotels/${hotelId}/archive-images`, { method: 'POST' });
-      } catch (err) {
-        console.error('Failed to archive images:', err);
-      }
-      toast.success('Listing deleted');
-      setHotels(hotels.filter(h => h.id !== hotelId));
-
-      await logSystemEvent('action', `Admin deleted property listing: ${targetHotel?.name || hotelId}`, {
-        hotelId,
-        hotelName: targetHotel?.name,
-        location: targetHotel?.location,
-      }, user, 'property');
-    } catch (error) {
-      console.error(error);
-      toast.error('Failed to delete listing');
-    }
-  };
 
   const handleUpdateBookingStatus = async (bookingId: string, newStatus: string) => {
     const targetBooking = bookings.find(b => b.id === bookingId);
@@ -318,22 +279,26 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleDeleteBooking = async (bookingId: string) => {
-    if (!window.confirm('Are you sure you want to permanently delete this booking?')) return;
-    const targetBooking = bookings.find(b => b.id === bookingId);
+  const confirmDeleteBooking = async () => {
+    if (!bookingToDelete?.id || isDeletingBooking) return;
+    const targetBooking = bookingToDelete;
+    setIsDeletingBooking(true);
     try {
-      await deleteBookingWithSlot(bookingId);
-      cancelBookingReminders(bookingId);
-      setBookings(prev => prev.filter(b => b.id !== bookingId));
-      toast.success('Booking deleted.');
+      await deleteBookingWithSlot(targetBooking.id);
+      cancelBookingReminders(targetBooking.id);
+      setBookings(prev => prev.filter(b => b.id !== targetBooking.id));
+      toast.success('Booking permanently deleted.');
+      setBookingToDelete(null);
 
-      await logSystemEvent('action', `Admin permanently deleted booking: Ref ${targetBooking?.reference || bookingId}`, {
-        bookingId,
+      await logSystemEvent('action', `${isAdmin(user) ? 'Admin' : 'Marketing'} permanently deleted booking: Ref ${targetBooking?.reference || targetBooking.id}`, {
+        bookingId: targetBooking.id,
         reference: targetBooking?.reference,
       }, user, 'booking');
     } catch (err) {
       console.error(err);
       toast.error('Failed to delete booking.');
+    } finally {
+      setIsDeletingBooking(false);
     }
   };
 
@@ -395,6 +360,67 @@ export default function AdminDashboard() {
       toast.error('Failed to update hotel status');
     } finally {
       setUpdatingId(null);
+    }
+  };
+
+  const handleConfirmDeleteHotel = async () => {
+    if (!hotelToDelete?.id || isDeletingHotel) return;
+    const targetHotel = hotelToDelete;
+
+    // Check if property has active upcoming bookings that would become orphans
+    const today = todayStr();
+    const upcoming = bookings.filter(b =>
+      b.hotelId === targetHotel.id &&
+      (b.status === 'confirmed' || b.status === 'pending') &&
+      (b.checkOut ?? '') >= today
+    );
+    if (upcoming.length > 0) {
+      toast.error(`"${targetHotel.name}" has ${upcoming.length} active or upcoming booking${upcoming.length === 1 ? '' : 's'}. Cancel or move them before deleting.`);
+      setHotelToDelete(null);
+      return;
+    }
+
+    setIsDeletingHotel(true);
+    try {
+      // 1. Fetch & delete all associated room types for this property
+      const roomsSnap = await getDocs(query(collection(db, 'room_types'), where('hotelId', '==', targetHotel.id)));
+      const roomRefs = roomsSnap.docs.map(d => d.ref);
+      for (let i = 0; i < roomRefs.length; i += 450) {
+        const batch = writeBatch(db);
+        roomRefs.slice(i, i + 450).forEach(ref => batch.delete(ref));
+        await batch.commit();
+      }
+
+      // 2. Delete the hotel doc
+      await deleteDoc(doc(db, 'hotels', targetHotel.id));
+
+      // 3. Best-effort archive images
+      try {
+        await fetch(`/api/hotels/${targetHotel.id}/archive-images`, { method: 'POST' });
+      } catch (err) {
+        console.error('Failed to archive images:', err);
+      }
+
+      // 4. Update local state
+      setHotels(prev => prev.filter(h => h.id !== targetHotel.id));
+      setRooms(prev => prev.filter(r => r.hotelId !== targetHotel.id));
+      if (inspectingHotel && inspectingHotel.id === targetHotel.id) {
+        setInspectingHotel(null);
+      }
+      toast.success(`"${targetHotel.name}" permanently deleted.`);
+      setHotelToDelete(null);
+
+      // 5. Audit logging
+      await logSystemEvent('action', `${isAdmin(user) ? 'Admin' : 'Marketing'} permanently deleted property listing: "${targetHotel.name}"`, {
+        hotelId: targetHotel.id,
+        hotelName: targetHotel.name,
+        roomsDeleted: roomsSnap.docs.length,
+      }, user, 'property');
+    } catch (err: any) {
+      console.error('Failed to delete hotel listing:', err);
+      toast.error(err?.message || 'Failed to delete property listing.');
+    } finally {
+      setIsDeletingHotel(false);
     }
   };
 
@@ -503,15 +529,19 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleToggleUserSuspension = async (targetUser: User) => {
+  const handleToggleUserSuspension = (targetUser: User) => {
     if (targetUser.uid === user?.uid) {
       toast.error('Cannot suspend your own account.');
       return;
     }
+    setUserToToggleSuspension(targetUser);
+  };
+
+  const confirmToggleUserSuspension = async () => {
+    if (!userToToggleSuspension) return;
+    const targetUser = userToToggleSuspension;
     const isSuspended = targetUser.status === 'suspended' || targetUser.accessRevoked;
     const nextStatus = isSuspended ? 'active' : 'suspended';
-    
-    if (!window.confirm(`Are you sure you want to ${isSuspended ? 'restore' : 'suspend'} access for ${targetUser.email}?`)) return;
     
     try {
       await updateDoc(doc(db, 'users', targetUser.uid), {
@@ -550,6 +580,8 @@ export default function AdminDashboard() {
     } catch (error) {
       console.error('Error suspending user:', error);
       toast.error('Failed to update suspension status.');
+    } finally {
+      setUserToToggleSuspension(null);
     }
   };
 
@@ -1904,13 +1936,13 @@ export default function AdminDashboard() {
                                 </button>
                               )}
 
-                              {!isMarketing(user) && (
+                              {(isAdmin(user) || isMarketing(user)) && (
                                 <>
                                   <div className="my-1 border-t border-stone-100" />
                                   <button
                                     type="button"
                                     onClick={() => {
-                                      setConfirmDeleteId(hotel.id!);
+                                      setHotelToDelete(hotel);
                                       setOpenHotelMenuId(null);
                                     }}
                                     className="w-full px-3 py-1.5 text-xs text-rose-700 hover:bg-rose-50 flex items-center gap-2 transition cursor-pointer"
@@ -2173,7 +2205,7 @@ export default function AdminDashboard() {
                                           </button>
                                         )}
 
-                                        {(isGlobalAdmin(user) || (!rolesList.includes('admin') && !rolesList.includes('global_admin'))) && (
+                                        {isAdmin(user) && (isGlobalAdmin(user) || (!rolesList.includes('admin') && !rolesList.includes('global_admin'))) && (
                                           <>
                                             <div className="my-1 border-t border-stone-100" />
                                             <button
@@ -2354,7 +2386,7 @@ export default function AdminDashboard() {
                             </span>
                           </td>
                           <td className="px-5 py-3.5 text-right">
-                            <div className="flex items-center justify-end">
+                            <div className="flex items-center justify-end gap-2">
                               <select
                                 value={b.status}
                                 onChange={(e) => handleUpdateBookingStatus(b.id!, e.target.value as any)}
@@ -2365,6 +2397,14 @@ export default function AdminDashboard() {
                                 <option value="rejected">Rejected</option>
                                 <option value="cancelled">Cancelled</option>
                               </select>
+                              <button
+                                type="button"
+                                onClick={() => setBookingToDelete(b)}
+                                className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
+                                title="Permanently Delete Booking"
+                              >
+                                <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                              </button>
                             </div>
                           </td>
                         </tr>
@@ -2475,8 +2515,11 @@ export default function AdminDashboard() {
                     <div key={`custom-dest-${dest}-${i}`} className="flex items-center justify-between bg-stone-50 border border-stone-100 rounded-xl px-4 py-3 group">
                       <span className="font-bold text-stone-900">{i + 1}. {dest}</span>
                       <button
+                        type="button"
                         onClick={() => setCustomDestinations(customDestinations.filter(d => d !== dest))}
-                        className="text-stone-400 hover:text-red-500 transition opacity-0 group-hover:opacity-100"
+                        className="text-stone-400 hover:text-red-500 transition opacity-80 sm:opacity-0 sm:group-hover:opacity-100 p-1 rounded-md hover:bg-red-50 cursor-pointer"
+                        title={`Remove ${dest}`}
+                        aria-label={`Remove ${dest}`}
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -2748,6 +2791,32 @@ export default function AdminDashboard() {
         />
 
         <ConfirmDialog
+          isOpen={!!hotelToDelete}
+          title="Delete Property Listing"
+          message={`Are you sure you want to permanently delete "${hotelToDelete?.name}"? All associated room types, inventory, and configurations will be permanently deleted from the database. This action cannot be undone.`}
+          confirmText={isDeletingHotel ? "Deleting..." : "Yes, delete listing"}
+          cancelText="Cancel"
+          isDestructive={true}
+          onConfirm={handleConfirmDeleteHotel}
+          onCancel={() => {
+            if (!isDeletingHotel) setHotelToDelete(null);
+          }}
+        />
+
+        <ConfirmDialog
+          isOpen={!!bookingToDelete}
+          title="Delete Booking"
+          message={`Are you sure you want to permanently delete booking Ref #${bookingToDelete?.reference || bookingToDelete?.id?.slice(0, 8)} for ${bookingToDelete?.guestName}? Room availability will be restored and any automated reminders will be cancelled.`}
+          confirmText={isDeletingBooking ? "Deleting..." : "Yes, delete booking"}
+          cancelText="Cancel"
+          isDestructive={true}
+          onConfirm={confirmDeleteBooking}
+          onCancel={() => {
+            if (!isDeletingBooking) setBookingToDelete(null);
+          }}
+        />
+
+        <ConfirmDialog
           isOpen={!!userToDelete}
           title="Delete User Profile"
           message={`Are you sure you want to permanently delete the profile for ${userToDelete?.email || userToDelete?.displayName || userToDelete?.uid}? This will remove all their access and data.`}
@@ -2787,6 +2856,17 @@ export default function AdminDashboard() {
             }
           }}
           onCancel={() => setResetEmailTarget(null)}
+        />
+
+        <ConfirmDialog
+          isOpen={!!userToToggleSuspension}
+          title={userToToggleSuspension?.status === 'suspended' || userToToggleSuspension?.accessRevoked ? 'Restore User Access' : 'Suspend User Access'}
+          message={`Are you sure you want to ${userToToggleSuspension?.status === 'suspended' || userToToggleSuspension?.accessRevoked ? 'restore' : 'suspend'} access for ${userToToggleSuspension?.email}?`}
+          confirmText={userToToggleSuspension?.status === 'suspended' || userToToggleSuspension?.accessRevoked ? 'Restore Access' : 'Suspend Access'}
+          cancelText="Cancel"
+          isDestructive={!(userToToggleSuspension?.status === 'suspended' || userToToggleSuspension?.accessRevoked)}
+          onConfirm={confirmToggleUserSuspension}
+          onCancel={() => setUserToToggleSuspension(null)}
         />
 
         {/* Assign / Reassign Manager Modal */}
@@ -2924,6 +3004,13 @@ export default function AdminDashboard() {
           }}
           onReject={async (id, reason) => {
             await handleUpdateStatus(id, 'rejected', reason);
+          }}
+          onDelete={async (id) => {
+            const target = hotels.find(h => h.id === id);
+            if (target) {
+              setInspectingHotel(null);
+              setHotelToDelete(target);
+            }
           }}
           isUpdating={updatingId === inspectingHotel?.id}
         />

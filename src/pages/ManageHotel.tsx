@@ -7,7 +7,7 @@ import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { useParams, useNavigate, useSearchParams, Link, useLocation } from 'react-router-dom';
-import { doc, getDoc, collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, onSnapshot, writeBatch } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Hotel, RoomType, Booking, CurrencyCode, PriceMap, Restaurant, WeeklyHours } from '../types';
 import { useAuth } from '../contexts/AuthContext';
@@ -564,6 +564,41 @@ export default function ManageHotel() {
       toast.error('Failed to delete room.');
     } finally {
       setIsDeletingRoom(false);
+    }
+  };
+
+  const [showDeleteHotelModal, setShowDeleteHotelModal] = useState(false);
+  const [isDeletingHotel, setIsDeletingHotel] = useState(false);
+
+  const handleDeleteHotelListing = async () => {
+    if (!id || !hotel || isDeletingHotel) return;
+    setIsDeletingHotel(true);
+    try {
+      const roomsSnap = await getDocs(query(collection(db, 'room_types'), where('hotelId', '==', id)));
+      const batch = writeBatch(db);
+      roomsSnap.docs.forEach(rDoc => batch.delete(rDoc.ref));
+      batch.delete(doc(db, 'hotels', id));
+      await batch.commit();
+
+      toast.success(`"${hotel.name}" permanently deleted.`);
+      setShowDeleteHotelModal(false);
+
+      await logSystemEvent('action', `${isAdmin(user) ? 'Admin' : isMarketing(user) ? 'Marketing' : 'Host'} permanently deleted property listing: "${hotel.name}"`, {
+        hotelId: id,
+        hotelName: hotel.name,
+        roomsDeleted: roomsSnap.docs.length,
+      }, user, 'property');
+
+      if (isAdmin(user) || isMarketing(user)) {
+        navigate('/admin?tab=properties');
+      } else {
+        navigate('/dashboard');
+      }
+    } catch (err: any) {
+      console.error('Failed to delete property:', err);
+      toast.error(err?.message || 'Failed to delete property listing.');
+    } finally {
+      setIsDeletingHotel(false);
     }
   };
 
@@ -3211,6 +3246,31 @@ export default function ManageHotel() {
               </div>
             </div>
           </form>
+
+          {/* Danger Zone: Delete Listing */}
+          {(isAdmin(user) || isMarketing(user) || isPropertyOwner || isHotelManager(user)) && (
+            <div className="mt-8 rounded-2xl border border-rose-200 bg-rose-50/50 p-4 sm:p-6 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-sm sm:text-base font-bold text-rose-950 flex items-center gap-2">
+                    <Trash2 className="w-4 h-4 text-rose-600" />
+                    <span>Danger Zone: Delete Property Listing</span>
+                  </h3>
+                  <p className="text-xs text-rose-800/80 mt-0.5 max-w-xl">
+                    Permanently delete &ldquo;{hotel.name}&rdquo;, all room configurations, pricing maps, and media from Travel Malawi. This action cannot be reversed.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteHotelModal(true)}
+                  className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition shadow-2xs self-start sm:self-auto cursor-pointer flex items-center gap-1.5"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Delete Listing</span>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -5646,6 +5706,19 @@ export default function ManageHotel() {
         isDestructive={true}
         onConfirm={handleDeleteRoom}
         onCancel={() => setRoomToDelete(null)}
+      />
+
+      <ConfirmDialog
+        isOpen={showDeleteHotelModal}
+        title="Delete Property Listing"
+        message={`Are you sure you want to permanently delete "${hotel?.name}"? All associated room types, inventory, pricing, and configurations will be permanently removed. This action cannot be undone.`}
+        confirmText={isDeletingHotel ? "Deleting..." : "Yes, delete property"}
+        cancelText="Cancel"
+        isDestructive={true}
+        onConfirm={handleDeleteHotelListing}
+        onCancel={() => {
+          if (!isDeletingHotel) setShowDeleteHotelModal(false);
+        }}
       />
 
       {reminderModalBooking && hotel && (

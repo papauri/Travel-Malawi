@@ -31,6 +31,7 @@ import {
 } from '../lib/mapCache';
 import InteractiveMap from './InteractiveMap';
 import toast from 'react-hot-toast';
+import ConfirmDialog from './ConfirmDialog';
 
 export interface OfflineMapManagerProps {
   property: {
@@ -63,6 +64,7 @@ export default function OfflineMapManager({
   const [gpsLocation, setGpsLocation] = useState<LatLng | null>(null);
   const [isGpsLocating, setIsGpsLocating] = useState(false);
   const [copiedFormat, setCopiedFormat] = useState<'decimal' | 'dms' | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
     setIsDownloaded(isPropertyOfflineDownloaded(property.id));
@@ -109,8 +111,12 @@ export default function OfflineMapManager({
     }
   };
 
-  const handleDelete = async () => {
-    if (!window.confirm(`Remove offline map and cached road tiles for ${property.name}?`)) return;
+  const handleDelete = () => {
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDeleteMap = async () => {
+    setShowDeleteConfirm(false);
     try {
       await deletePropertyOfflineMap(property.id);
       setIsDownloaded(false);
@@ -570,6 +576,17 @@ export default function OfflineMapManager({
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        title="Remove Offline Map"
+        message={`Remove offline map and cached road tiles for ${property.name}? You will need an internet connection to re-download.`}
+        confirmText="Remove Offline Map"
+        cancelText="Cancel"
+        isDestructive={true}
+        onConfirm={confirmDeleteMap}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </>
   );
 }

@@ -9,6 +9,7 @@ import toast from 'react-hot-toast';
 import { collection, getDocs, deleteDoc, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import Pagination from './Pagination';
+import ConfirmDialog from './ConfirmDialog';
 import { parseReviewDateToTimestamp, formatReviewDate } from '../lib/reviewDates';
 
 interface AdminReviewScraperProps {
@@ -127,6 +128,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
 
   // Editing Target State
   const [editingTarget, setEditingTarget] = useState<EditingTarget | null>(null);
+  const [reviewToDelete, setReviewToDelete] = useState<UnifiedPlatformReview | null>(null);
 
   // Fetch direct platform reviews
   const fetchDirectReviews = async () => {
@@ -820,10 +822,13 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
   };
 
   // Delete Platform Review from Database
-  const handleDeletePlatformReview = async (review: UnifiedPlatformReview) => {
-    if (!window.confirm(`Delete review by "${review.author}" for "${review.hotelName}"? This action cannot be undone.`)) {
-      return;
-    }
+  const handleDeletePlatformReview = (review: UnifiedPlatformReview) => {
+    setReviewToDelete(review);
+  };
+
+  const confirmDeletePlatformReview = async () => {
+    if (!reviewToDelete) return;
+    const review = reviewToDelete;
     setIsDeletingExisting(review.id);
     try {
       if (review.reviewType === 'direct') {
@@ -861,6 +866,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
       toast.error(err.message || 'Failed to delete review');
     } finally {
       setIsDeletingExisting(null);
+      setReviewToDelete(null);
     }
   };
 
@@ -2111,6 +2117,17 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={!!reviewToDelete}
+        title="Delete Review"
+        message={`Are you sure you want to permanently delete the review by "${reviewToDelete?.author}" for "${reviewToDelete?.hotelName}"? This action cannot be undone.`}
+        confirmText="Yes, delete review"
+        cancelText="Cancel"
+        isDestructive={true}
+        onConfirm={confirmDeletePlatformReview}
+        onCancel={() => setReviewToDelete(null)}
+      />
     </div>
   );
 }

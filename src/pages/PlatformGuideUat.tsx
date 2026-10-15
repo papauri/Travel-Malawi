@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import DocQuickEditButton from '../components/DocQuickEditButton';
+import ConfirmDialog from '../components/ConfirmDialog';
 import { useDocContent } from '../hooks/useDocContent';
 
 interface TestCase {
@@ -124,6 +125,7 @@ export default function PlatformGuideUat() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submissionId, setSubmissionId] = useState<string | null>(null);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   const [formData, setFormData] = useState({
     testerName: '',
@@ -149,10 +151,13 @@ export default function PlatformGuideUat() {
   };
 
   const resetChecklist = () => {
-    if (window.confirm('Reset all verification checklist progress?')) {
-      setCompletedTests({});
-      toast.success('Checklist reset.');
-    }
+    setShowResetConfirm(true);
+  };
+
+  const confirmResetChecklist = () => {
+    setShowResetConfirm(false);
+    setCompletedTests({});
+    toast.success('Checklist reset.');
   };
 
   const completedCount = Object.values(completedTests).filter(Boolean).length;
@@ -491,6 +496,17 @@ export default function PlatformGuideUat() {
           )}
         </section>
       </main>
+
+      <ConfirmDialog
+        isOpen={showResetConfirm}
+        title="Reset Verification Checklist"
+        message="Reset all verification checklist progress? This will uncheck all items."
+        confirmText="Reset Checklist"
+        cancelText="Cancel"
+        isDestructive={true}
+        onConfirm={confirmResetChecklist}
+        onCancel={() => setShowResetConfirm(false)}
+      />
     </div>
   );
 }

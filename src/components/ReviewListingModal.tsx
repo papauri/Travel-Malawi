@@ -9,7 +9,7 @@ import {
   CheckCircle2, XCircle, Clock, MapPin, MapPinOff, ExternalLink,
   Phone, Mail, MessageSquare, Calendar, Building, Camera, Check,
   X, ShieldCheck, AlertTriangle, Eye, Edit3, Sparkles, User,
-  DollarSign, Compass, Info, ChevronRight
+  DollarSign, Compass, Info, ChevronRight, Trash2
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -20,6 +20,7 @@ interface ReviewListingModalProps {
   onClose: () => void;
   onApprove: (hotelId: string) => Promise<void>;
   onReject: (hotelId: string, reason?: string) => Promise<void>;
+  onDelete?: (hotelId: string) => Promise<void> | void;
   isUpdating: boolean;
 }
 
@@ -30,6 +31,7 @@ export default function ReviewListingModal({
   onClose,
   onApprove,
   onReject,
+  onDelete,
   isUpdating
 }: ReviewListingModalProps) {
   const [activeTab, setActiveTab] = useState<'dossier' | 'preview'>('dossier');
@@ -616,6 +618,19 @@ export default function ReviewListingModal({
               <ExternalLink className="w-3.5 h-3.5" />
               <span>View Live Link</span>
             </Link>
+
+            {onDelete && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (hotel.id) onDelete(hotel.id);
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-semibold transition cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                <span>Delete Listing</span>
+              </button>
+            )}
           </div>
 
           <div className="flex items-center gap-2 self-end sm:self-auto">

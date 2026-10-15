@@ -7,11 +7,20 @@ export type SwarmAgentId =
   | 'revenue_specialist'
   | 'operations_specialist'
   | 'tourism_concierge'
+  | 'onboarding_specialist'
+  | 'marketing_specialist'
   | 'swarm_coordinator';
 
 export interface SwarmClassification {
   primaryAgent: SwarmAgentId;
-  intent: 'arrivals_departures' | 'rate_optimization' | 'amenity_policy' | 'tourism_activities' | 'general_chat';
+  intent: 
+    | 'arrivals_departures' 
+    | 'rate_optimization' 
+    | 'amenity_policy' 
+    | 'tourism_activities' 
+    | 'onboarding_assistance' 
+    | 'marketing_outreach' 
+    | 'general_chat';
   reason: string;
 }
 
@@ -22,7 +31,38 @@ export function classifySwarmIntent(req: OperationsAssistantRequest): SwarmClass
   const cleanMsg = (req.message || '').trim().toLowerCase();
   const stripped = cleanMsg.replace(/[!.,?]/g, '');
 
-  // 1. Front Desk / Reservations / Arrivals
+  // 1. Host Onboarding & Listing Setup Specialist
+  const onboardingTerms = [
+    'onboard', 'onboarding', 'list property', 'list my property', 'list lodge',
+    'list my stay', 'new listing', 'draft listing', 'setup property', 'register lodge',
+    'create listing', 'add property', 'painless', 'listing steps', 'room setup',
+    'category setup', 'draft help', 'how to list', 'start listing', 'listing draft',
+    'setup rooms', 'how do i list', 'host signup', 'join as host', 'claim lodge'
+  ];
+  if (onboardingTerms.some(t => new RegExp(`\\b${t}\\b`, 'i').test(cleanMsg))) {
+    return {
+      primaryAgent: 'onboarding_specialist',
+      intent: 'onboarding_assistance',
+      reason: 'User is asking about property listing, host onboarding, or draft configuration.',
+    };
+  }
+
+  // 2. Marketing Team & Host Acquisition Specialist
+  const marketingTerms = [
+    'marketing', 'outreach', 'starter pack', 'field guide', 'welcome message',
+    'welcome pack', 'whatsapp template', 'audit listing', 'review pending', 'acquire',
+    'field onboarding', 'pitch deck', 'social post', 'announce lodge', 'new host pitch',
+    'brochure pitch', 'flyer', 'host acquisition', 'fast onboard', 'quick onboard'
+  ];
+  if (marketingTerms.some(t => new RegExp(`\\b${t}\\b`, 'i').test(cleanMsg))) {
+    return {
+      primaryAgent: 'marketing_specialist',
+      intent: 'marketing_outreach',
+      reason: 'User is seeking marketing strategies, host welcome templates, listing audits, or field onboarding assistance.',
+    };
+  }
+
+  // 3. Front Desk / Reservations / Arrivals
   const frontDeskTerms = [
     'arrival', 'arrivals', 'checkin', 'check in', 'check-in',
     'departure', 'departures', 'checkout', 'check out', 'check-out',
@@ -38,7 +78,7 @@ export function classifySwarmIntent(req: OperationsAssistantRequest): SwarmClass
     };
   }
 
-  // 2. Revenue / Rates / Pricing
+  // 4. Revenue / Rates / Pricing
   const revenueTerms = [
     'rate', 'rates', 'price', 'prices', 'pricing', 'rack rate',
     'cost', 'charge', 'kwacha', 'mwk', 'usd', 'dollar', 'discount',
@@ -53,7 +93,7 @@ export function classifySwarmIntent(req: OperationsAssistantRequest): SwarmClass
     };
   }
 
-  // 3. Operations / Amenities / Policies / Daily Board
+  // 5. Operations / Amenities / Policies / Daily Board
   const operationsTerms = [
     'amenity', 'amenities', 'power', 'solar', 'escom', 'inverter', 'generator',
     'water', 'borehole', 'wifi', 'internet', 'password', 'breakfast', 'meal',
@@ -69,7 +109,7 @@ export function classifySwarmIntent(req: OperationsAssistantRequest): SwarmClass
     };
   }
 
-  // 4. Tourism / Excursions / Local Concierge
+  // 6. Tourism / Excursions / Local Concierge
   const tourismTerms = [
     'lake', 'lake malawi', 'chambo', 'kampango', 'nsima', 'tour', 'tourism',
     'excursion', 'safari', 'game drive', 'liwonde', 'majete', 'nyika', 'mulanje',
@@ -85,7 +125,7 @@ export function classifySwarmIntent(req: OperationsAssistantRequest): SwarmClass
     };
   }
 
-  // 5. Default Swarm Coordinator (Greetings, Identity, Feedback, Adaptive Mirroring)
+  // 7. Default Swarm Coordinator (Greetings, Identity, Feedback, Adaptive Mirroring)
   return {
     primaryAgent: 'swarm_coordinator',
     intent: 'general_chat',
@@ -98,6 +138,41 @@ export function classifySwarmIntent(req: OperationsAssistantRequest): SwarmClass
  */
 export function getSpecialistAgentPrompt(agent: SwarmAgentId): string {
   switch (agent) {
+    case 'onboarding_specialist':
+      return `SWARM ROLE: LODGE ONBOARDING & RAPID INVENTORY SPECIALIST (ULENDO SWARM)
+You are the dedicated Host Onboarding Specialist in the Ulendo Swarm. Your mission is to make listing a Malawian property as effortless, welcoming, and painless as possible.
+Key Guidelines:
+1. Frictionless Onboarding Mindset:
+   - Reassure hosts that listing takes under 3 minutes, with 0% foreign commission and direct WhatsApp guest messaging.
+   - Draft saves automatically in their browser.
+2. Dual Currency Pricing Guidance:
+   - Malawian Kwacha (MWK): Rounded to nearest 1,000 MWK (e.g. MK 85,000 or MK 140,000 / night).
+   - US Dollars (USD): Whole dollar figures rounded to nearest $5 (e.g. $55 or $95).
+3. Malawi Infrastructure Essentials Checklist:
+   - Always encourage adding 24/7 Solar / Inverter backup (top guest priority in Malawi), purified borehole water, hot showers, and mosquito nets over beds.
+4. Auto-Fill & Document Assistance:
+   - Remind hosts that they can import photos, WhatsApp rate sheets, brochures, or paste links directly into the Property Document Importer.
+5. Empathic, Encouraging Tone:
+   - Provide concrete, ready-to-use snippets for property descriptions and room setups instead of asking the host to brainstorm from scratch.`;
+
+    case 'marketing_specialist':
+      return `SWARM ROLE: MARKETING & HOST ACQUISITION SPECIALIST (ULENDO SWARM)
+You are the expert Marketing & Field Acquisition Sub-Agent in the Ulendo Swarm. Your mission is to empower the Travel Malawi marketing team to discover, audit, and onboard independent lodges, cottages, and B&Bs with zero friction.
+Key Guidelines:
+1. Field Onboarding Speed:
+   - Help marketing officers on the road (Mangochi, Cape Maclear, Senga Bay, Lilongwe, Blantyre, Zomba, Nyika) rapid-onboard a lodge in under 60 seconds.
+2. Listing Quality Audit:
+   - Perform rapid 5-point audits on pending properties:
+     a. Geo Gate Coordinates (must be in Malawi).
+     b. Dual Currency Pricing Balance (~1,750 MWK / USD).
+     c. Power & Water Reliability (Solar / Inverter, Borehole).
+     d. Clear Room Inventory (names, guests, rates).
+     e. Photography (angles of master bed, veranda view, en-suite bathroom).
+3. Host Welcome & Starter Pack Dispatch:
+   - Generate warm, personalized WhatsApp messages that field marketing officers can send to lodge owners instantly, with their live link and the Host Starter Pack ([/host-guide](/host-guide)).
+4. Social & Launch Hooks:
+   - Craft compelling 2-3 sentence promotional features highlighting Lake Malawi views, wildlife proximity, fresh Chambo dining, and direct booking savings.`;
+
     case 'frontdesk_specialist':
       return `SWARM ROLE: FRONT DESK & RESERVATIONS SPECIALIST (ULENDO SWARM)
 You are the expert Front Desk & Reservations Sub-Agent. Your mission is to provide instantaneous, clear, and actionable visibility into guest arrivals, departures, check-in readiness, and room inventory.
@@ -229,6 +304,12 @@ function liveDataAnswer(req: OperationsAssistantRequest): string | null {
     return all.length
       ? `${isAdmin ? 'Properties on the platform' : 'Your properties'} (${all.length}):\n${all.slice(0, 25).map(p => `• **${p.name}**${p.location ? ` · ${p.location}` : ''} · ${p.status || 'active'}`).join('\n')}`
       : (isAdmin ? 'No properties on the platform yet.' : 'No properties set up yet.');
+  }
+  if (/\b(onboard|list property|list my property|how to list|create listing|add new lodge|register lodge)\b/.test(lower)) {
+    return `**Effortless Host Onboarding**\nListing takes ~3 minutes with 0% host commission, direct WhatsApp guest messaging, and instant browser auto-save.\n• [Start Listing Your Property](/list-your-property)\n• [Host Starter Pack & Field Guide](/host-guide)\n• [How Hosting Works](/how-hosting-works)`;
+  }
+  if (/\b(marketing|starter pack|field guide|field onboarding|pitch deck|prospect)\b/.test(lower)) {
+    return `**Marketing & Host Acquisition**\nEmpower your field acquisition with these live tools:\n• [Host Starter Pack & Field Guide](/host-guide) (0% commission, 4 winning photo angles, WhatsApp templates)\n• [Marketing Presentation & Deck](/marketing)\n• [Pending Properties Review Queue](/admin?tab=properties)`;
   }
   return null;
 }

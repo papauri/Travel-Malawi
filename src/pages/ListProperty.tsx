@@ -38,6 +38,7 @@ import FieldError from '../components/FieldError';
 import LocationPicker from '../components/LocationPicker';
 import AIAssistantButton from '../components/AIAssistantButton';
 import PropertyDocumentImporter from '../components/PropertyDocumentImporter';
+import ConfirmDialog from '../components/ConfirmDialog';
 import { useAIAssistant } from '../hooks/useAIAssistant';
 import { analyzeDescriptionLocal, DescriptionAnalysisResult } from '../lib/descriptionAnalyzer';
 import { DECORATIVE_IMAGE, getHotelImage, getDefaultImageForCategory, localImagesForName } from '../lib/images';
@@ -266,6 +267,7 @@ export default function ListProperty() {
   const [amenityInput, setAmenityInput] = useState('');
   const [premiumEnabled, setPremiumEnabled] = useState(false);
   const [checkingPremium, setCheckingPremium] = useState(true);
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
 
   // Real-time Database Duplicate & AI/Maps Discovery State
   const [existingMatch, setExistingMatch] = useState<ExistingPropertyMatch | null>(null);
@@ -423,24 +425,27 @@ export default function ListProperty() {
 
   // Explicitly discard draft and start fresh
   const handleDiscardDraft = () => {
-    if (window.confirm('Discard this draft and start fresh? All unsubmitted changes will be cleared.')) {
-      try {
-        localStorage.removeItem(getDraftStorageKey(user?.uid));
-      } catch {}
-      const fresh = emptyDraft();
-      if (user) {
-        fresh.managerName = user.displayName || '';
-        fresh.managerEmail = user.email || '';
-        fresh.contactEmail = user.email || '';
-        fresh.managerPhone = user.phone || '';
-        fresh.contactPhone = user.phone || '';
-      }
-      setDraft(fresh);
-      setStep(0);
-      setExistingMatch(null);
-      setAiPropertySuggestion(null);
-      toast.success('Draft cleared. Starting fresh!');
+    setShowDiscardConfirm(true);
+  };
+
+  const confirmDiscardDraft = () => {
+    setShowDiscardConfirm(false);
+    try {
+      localStorage.removeItem(getDraftStorageKey(user?.uid));
+    } catch {}
+    const fresh = emptyDraft();
+    if (user) {
+      fresh.managerName = user.displayName || '';
+      fresh.managerEmail = user.email || '';
+      fresh.contactEmail = user.email || '';
+      fresh.managerPhone = user.phone || '';
+      fresh.contactPhone = user.phone || '';
     }
+    setDraft(fresh);
+    setStep(0);
+    setExistingMatch(null);
+    setAiPropertySuggestion(null);
+    toast.success('Draft cleared. Starting fresh!');
   };
 
   // Real-time check against Firestore database for duplicate or existing property
@@ -4217,6 +4222,17 @@ export default function ListProperty() {
         open={showPropertyImporter} 
         onClose={() => setShowPropertyImporter(false)} 
         onImport={(data) => setDraft((curr) => ({ ...curr, ...data }))} 
+      />
+
+      <ConfirmDialog
+        isOpen={showDiscardConfirm}
+        title="Discard Listing Draft"
+        message="Discard this draft and start fresh? All unsubmitted changes will be cleared."
+        confirmText="Discard Draft"
+        cancelText="Keep Editing"
+        isDestructive={true}
+        onConfirm={confirmDiscardDraft}
+        onCancel={() => setShowDiscardConfirm(false)}
       />
     </div>
   );

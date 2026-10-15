@@ -8,6 +8,8 @@ import { isAdmin, isMarketing, isHotelManager } from '../lib/roles';
 import { readStoredCurrency, storeCurrency, onCurrencyChange } from '../lib/currency';
 import { CurrencyCode } from '../types';
 
+import TypewriterCredit from './TypewriterCredit';
+
 export default function Footer() {
   const { settings } = useSystemSettings();
   const { user } = useAuth();
@@ -147,6 +149,17 @@ export default function Footer() {
           <Link to="/privacy" className="hover:text-white transition py-1">Privacy Policy</Link>
           <Link to="/terms" className="hover:text-white transition py-1">Terms of Service</Link>
           <Link to="/refunds" className="hover:text-white transition py-1">Refunds &amp; Cancellations</Link>
+        </div>
+      </div>
+
+      {/* Developer credit in small print with typewriter loader loop animation */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4 pt-4 border-t border-stone-800/60 flex flex-col sm:flex-row items-center justify-between gap-2.5 text-[11px] text-stone-500">
+        <div className="flex items-center gap-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/80 shrink-0" aria-hidden="true" />
+          <TypewriterCredit />
+        </div>
+        <div className="text-stone-500/80 text-[10px] tracking-wide">
+          The Warm Heart of Africa &middot; Direct Hospitality Platform
         </div>
       </div>
     </footer>

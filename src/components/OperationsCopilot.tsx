@@ -1000,10 +1000,6 @@ export default function OperationsCopilot() {
     action: ActionProposal, 
     overrideTargetIds?: string[]
   ) => {
-    if (!window.confirm(`Are you sure you want to execute this action: ${action.type.replace(/_/g, ' ')}?`)) {
-      return;
-    }
-
     setExecutingAction(msgId);
     try {
       const targetIds = overrideTargetIds || getEffectiveHotelIds(msgId, action);
