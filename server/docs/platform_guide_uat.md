@@ -34,6 +34,7 @@ This guide sets out the test checklists, standards and acceptance criteria for T
 * **C2 Calendar and date blocking:** Blocking dates prevents double bookings, and check-out must be after check-in.
 * **C3 Bulk rate changes:** Seasonal increases or discounts apply correctly across several rooms.
 * **C4 Ulendo Concierge AI copilot chat:** Managers can chat fully with Ulendo inside the Host Dashboard for seasonal pricing proposals, daily blackboard specials (lake fish of the day), and drafted guest replies.
+* **C5 2-Way iCal & Channel Synchronization:** Room and property-level iCal (.ics) export and import feeds sync with external PMS (RoomRaccoon, Airbnb, Booking.com, NightsBridge, Google Calendar). External booking dates automatically block on the availability calendar; Travel Malawi export feed produces valid RFC 5545-compliant events with zero double bookings.
 
 ### Suite D: Partner documents
 

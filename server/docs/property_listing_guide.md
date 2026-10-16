@@ -49,3 +49,12 @@ Write directions in four parts:
 
 1. **Direct Guest-to-Host Chat:** Travellers can message your manager directly from the listing page and booking confirmation via in-app real-time messaging and direct WhatsApp. They coordinate boat transfers from Monkey Bay/Likoma Island, custom Lake Chambo meals, and road directions with zero call center delays.
 2. **Ulendo Concierge AI Copilot:** Inside your Host Dashboard, chat 24/7 with Ulendo—our resident Malawian hospitality AI concierge. Ulendo assists you in crafting inviting room descriptions, proposing competitive MWK and USD rates, updating daily restaurant specials, and optimizing amenities with 1 click.
+
+## 6. 2-Way Calendar Synchronization (RoomRaccoon, Airbnb, NightsBridge)
+
+Never worry about double bookings or juggling multiple spreadsheets:
+
+1. **Automatic Availability Import:** In your Host Dashboard under *Rooms & Rates*, click **Sync iCal** and paste your RoomRaccoon, NightsBridge, Airbnb, or Booking.com iCal link. The moment a room sells out on another platform, Travel Malawi marks those dates blocked automatically.
+2. **Direct Export to Your PMS:** Copy your dedicated Travel Malawi `.ics` feed into RoomRaccoon or Google Calendar so your front desk always sees direct guest reservations in real time.
+3. **Big Win for Operators:** Enjoy 0% commission direct bookings while keeping your existing PMS workflow 100% intact.
+

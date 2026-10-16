@@ -8,7 +8,7 @@ import { SystemSettings } from '../hooks/useSystemSettings';
 import { 
   Shield, ShieldCheck, Building2, CheckCircle, CheckCircle2, XCircle, Clock, MapPin, 
   MapPinOff, Users, Edit2, Edit3, Key, Trash2, Star, ExternalLink, 
-  MessageSquare, MessageSquareOff, LayoutDashboard, CalendarRange, FileText, 
+  MessageSquare, MessageSquareOff, LayoutDashboard, CalendarRange, CalendarSync, RefreshCw, FileText, 
   Search, Activity, Cpu, Target, Download, ChevronDown, MoreHorizontal, Check, X, Eye,
   Radio
 } from 'lucide-react';
@@ -25,6 +25,7 @@ import AdminDocsHub from '../components/AdminDocsHub';
 import AdminReviewScraper from '../components/AdminReviewScraper';
 import AdminEmailSettings from '../components/AdminEmailSettings';
 import AdminWhatsAppSettings from '../components/AdminWhatsAppSettings';
+import AdminIcalMonitor from '../components/AdminIcalMonitor';
 import AdminLogs from '../components/AdminLogs';
 import AdminTrafficMonitor from '../components/AdminTrafficMonitor';
 import { logSystemEvent } from '../lib/logger';
@@ -38,7 +39,7 @@ import { Navigation, TrendingUp, BookOpen, Mail, Settings } from 'lucide-react';
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import PriceDisplay from '../components/PriceDisplay';
 
-type Tab = 'overview' | 'traffic' | 'analytics' | 'properties' | 'reviews' | 'users' | 'bookings' | 'destinations' | 'content' | 'ai' | 'logs' | 'docs' | 'settings';
+type Tab = 'overview' | 'traffic' | 'analytics' | 'properties' | 'reviews' | 'users' | 'bookings' | 'destinations' | 'content' | 'ai' | 'logs' | 'docs' | 'settings' | 'channels';
 
 export default function AdminDashboard() {
   const { user, loading: authLoading, resetPassword } = useAuth();
@@ -47,7 +48,7 @@ export default function AdminDashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
   
   const urlTab = searchParams.get('tab') as Tab | null;
-  const validTabs: Tab[] = ['overview', 'analytics', 'properties', 'reviews', 'users', 'bookings', 'destinations', 'content', 'ai', 'logs', 'docs', 'settings'];
+  const validTabs: Tab[] = ['overview', 'analytics', 'properties', 'reviews', 'users', 'bookings', 'destinations', 'content', 'ai', 'logs', 'docs', 'settings', 'channels'];
   const initialTab = urlTab && validTabs.includes(urlTab) ? urlTab : 'overview';
   
   const [activeTab, setActiveTabState] = useState<Tab>(initialTab);
@@ -66,7 +67,7 @@ export default function AdminDashboard() {
     }
   }, [searchParams]);
 
-  const [settingsSubTab, setSettingsSubTab] = useState<'email' | 'whatsapp'>('whatsapp');
+  const [settingsSubTab, setSettingsSubTab] = useState<'channels' | 'whatsapp' | 'email'>('channels');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   const activeTabRef = useRef<HTMLButtonElement | null>(null);
@@ -157,6 +158,42 @@ export default function AdminDashboard() {
   const [assignManagerCustomName, setAssignManagerCustomName] = useState<string>('');
   const [assignManagerOwnerEmail, setAssignManagerOwnerEmail] = useState<string>('');
   const [isAssigningManager, setIsAssigningManager] = useState(false);
+  const [syncingAllFeeds, setSyncingAllFeeds] = useState(false);
+
+  const handleRunGlobalIcalSync = async () => {
+    setSyncingAllFeeds(true);
+    try {
+      const token = auth.currentUser ? await auth.currentUser.getIdToken() : '';
+      const res = await fetch('/api/calendar/sync-all', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        toast.success(`Global calendar sync complete! Synced ${data.roomsSynced} rooms, ${data.hotelsSynced} properties (${data.totalFeeds} feeds).`);
+      } else {
+        toast.error(data.error || 'Global sync failed.');
+      }
+    } catch (err: any) {
+      toast.error('Network error triggering global sync.');
+    } finally {
+      setSyncingAllFeeds(false);
+    }
+  };
+
+  const propertiesWithIcal = useMemo(() => {
+    return hotels.filter(h => (h.icalSyncUrls?.length || 0) > 0 || rooms.some(r => r.hotelId === h.id && (r.icalSyncUrls?.length || 0) > 0));
+  }, [hotels, rooms]);
+
+  const totalIcalFeedsCount = useMemo(() => {
+    let count = 0;
+    for (const h of hotels) count += (h.icalSyncUrls?.length || 0);
+    for (const r of rooms) count += (r.icalSyncUrls?.length || 0);
+    return count;
+  }, [hotels, rooms]);
   
   const itemsPerPage = 10;
 
@@ -837,6 +874,7 @@ export default function AdminDashboard() {
       { id: 'logs' as Tab, label: 'Audit & Telemetry Logs', icon: ShieldCheck, visible: isGlobalAdmin(user) },
       { id: 'ai' as Tab, label: 'Assistant & Provider Keys', icon: Cpu, visible: isGlobalAdmin(user) },
       { id: 'settings' as Tab, label: 'Channels & Settings', icon: Settings, visible: isGlobalAdmin(user) },
+      { id: 'channels' as Tab, label: 'iCal & Channel Sync', icon: CalendarSync },
       { id: 'docs' as Tab, label: 'Executive Docs & Leaflets', icon: BookOpen },
     ].filter(t => t.visible !== false);
   }, [user]);
@@ -1580,6 +1618,49 @@ export default function AdminDashboard() {
               })}
             </div>
 
+            {/* External Channel & PMS iCal Sync Monitor Banner */}
+            <div className="bg-gradient-to-r from-stone-900 to-stone-800 text-white rounded-2xl p-4 sm:p-5 shadow-sm space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-amber-500 text-stone-950 rounded-xl font-bold shrink-0">
+                    <CalendarSync className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-serif font-bold text-sm sm:text-base text-white">External Channel &amp; PMS Sync (RoomRaccoon / iCal)</h3>
+                      <span className="text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+                        2-Way Engine Active
+                      </span>
+                    </div>
+                    <p className="text-xs text-stone-300 mt-0.5 leading-relaxed">
+                      Two-way availability sync supporting <strong>RoomRaccoon, Airbnb, Booking.com, NightsBridge</strong>. Zero double bookings guaranteed across Malawi.
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleRunGlobalIcalSync}
+                  disabled={syncingAllFeeds}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-stone-950 rounded-xl text-xs font-bold transition shadow-sm shrink-0 cursor-pointer disabled:opacity-50 self-start sm:self-auto"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${syncingAllFeeds ? 'animate-spin' : ''}`} />
+                  <span>{syncingAllFeeds ? 'Syncing All Feeds...' : 'Run Global iCal Sync'}</span>
+                </button>
+              </div>
+
+              <div className="pt-2.5 border-t border-stone-700/60 flex items-center justify-between flex-wrap gap-2 text-xs text-stone-300">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <span><strong>{totalIcalFeedsCount}</strong> active channel feeds connected</span>
+                  <span>•</span>
+                  <span><strong>{propertiesWithIcal.length}</strong> properties synchronizing</span>
+                </div>
+                <span className="text-[11px] text-stone-400 font-mono">
+                  Background cron: runs every 25 mins
+                </span>
+              </div>
+            </div>
+
             {/* Attention Banner: Listings Awaiting Marketing Review */}
             {stats.pendingProperties > 0 && hotelStatusFilter !== 'pending' && (
               <div className="bg-amber-50/90 border border-amber-200 rounded-xl p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-amber-950 shadow-2xs">
@@ -1670,6 +1751,21 @@ export default function AdminDashboard() {
                               <span className="w-1.5 h-1.5 rounded-full bg-stone-400" /> Rejected
                             </span>
                           )}
+
+                          {(() => {
+                            const syncCount = (hotel.icalSyncUrls?.length || 0) +
+                              hotelRooms.reduce((acc, r) => acc + (r.icalSyncUrls?.length || 0), 0);
+                            if (syncCount === 0) return null;
+                            return (
+                              <span
+                                className="inline-flex items-center gap-1 text-xs font-semibold text-sky-800 bg-sky-50 border border-sky-200 px-2 py-0.5 rounded-md"
+                                title="Connected to RoomRaccoon, Airbnb, or external iCal channel"
+                              >
+                                <CalendarSync className="w-3.5 h-3.5 text-sky-600" />
+                                <span>{syncCount} iCal {syncCount === 1 ? 'feed' : 'feeds'}</span>
+                              </span>
+                            );
+                          })()}
                         </div>
                       </div>
                       
@@ -2734,6 +2830,20 @@ export default function AdminDashboard() {
               <button
                 type="button"
                 role="tab"
+                aria-selected={settingsSubTab === 'channels'}
+                onClick={() => setSettingsSubTab('channels')}
+                className={`pb-3 text-xs sm:text-sm font-medium border-b-2 -mb-px transition flex items-center gap-2 cursor-pointer ${
+                  settingsSubTab === 'channels'
+                    ? 'border-stone-900 text-stone-900 font-semibold'
+                    : 'border-transparent text-stone-500 hover:text-stone-800 hover:border-stone-300'
+                }`}
+              >
+                <CalendarSync className="w-3.5 h-3.5" />
+                <span>iCal &amp; Channel Manager</span>
+              </button>
+              <button
+                type="button"
+                role="tab"
                 aria-selected={settingsSubTab === 'whatsapp'}
                 onClick={() => setSettingsSubTab('whatsapp')}
                 className={`pb-3 text-xs sm:text-sm font-medium border-b-2 -mb-px transition flex items-center gap-2 cursor-pointer ${
@@ -2761,9 +2871,27 @@ export default function AdminDashboard() {
               </button>
             </div>
 
+            {settingsSubTab === 'channels' && (
+              <AdminIcalMonitor
+                hotels={hotels}
+                rooms={rooms}
+                onHotelsUpdated={setHotels}
+                onRoomsUpdated={setRooms}
+              />
+            )}
             {settingsSubTab === 'whatsapp' && <AdminWhatsAppSettings />}
             {settingsSubTab === 'email' && <AdminEmailSettings />}
           </div>
+        )}
+
+        {/* ===================== DIRECT CHANNELS & ICAL MONITOR TAB ===================== */}
+        {activeTab === 'channels' && (
+          <AdminIcalMonitor
+            hotels={hotels}
+            rooms={rooms}
+            onHotelsUpdated={setHotels}
+            onRoomsUpdated={setRooms}
+          />
         )}
 
         {/* ===================== REVIEW SCRAPER TAB ===================== */}

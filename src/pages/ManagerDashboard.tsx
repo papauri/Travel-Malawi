@@ -6,7 +6,7 @@ import { db } from '../lib/firebase';
 import { Hotel } from '../types';
 import { 
   Building2, Plus, ChevronRight, Clock, CheckCircle2, XCircle, 
-  BedDouble, CalendarCheck, Lock, KeyRound, UserCheck, ArrowRight, 
+  BedDouble, CalendarCheck, CalendarSync, Lock, KeyRound, UserCheck, ArrowRight, 
   Check, ChevronDown, Filter, ExternalLink, SlidersHorizontal, Radio,
   Percent, Trash2
 } from 'lucide-react';
@@ -715,6 +715,20 @@ export default function ManagerDashboard() {
                         0 requests
                       </span>
                     )}
+                    {(() => {
+                      const syncedFeedsCount = (hotel.icalSyncUrls?.length || 0) +
+                        rooms.filter(r => r.hotelId === hotel.id).reduce((sum, r) => sum + (r.icalSyncUrls?.length || 0), 0);
+                      if (syncedFeedsCount === 0) return null;
+                      return (
+                        <span
+                          className="inline-flex items-center gap-1 bg-sky-50 text-sky-800 border border-sky-200/90 px-2 py-0.5 rounded-lg text-[11px] font-semibold"
+                          title="2-Way Calendar Sync active with RoomRaccoon, Airbnb, or external PMS"
+                        >
+                          <CalendarSync className="w-3 h-3 text-sky-600" />
+                          <span>iCal Synced ({syncedFeedsCount})</span>
+                        </span>
+                      );
+                    })()}
                   </div>
 
                   {roomsCount === 0 && (

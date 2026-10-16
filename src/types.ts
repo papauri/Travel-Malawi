@@ -239,6 +239,14 @@ export interface Hotel {
   galleryUrls?: string[];
   /** Property-level blocked dates (e.g., full whole-house closure, maintenance, holidays) */
   blockedDates?: string[];
+  /** External iCal calendar feeds imported from RoomRaccoon, Airbnb, Booking.com, NightsBridge */
+  icalSyncUrls?: IcalFeedConfig[];
+  /** Dates automatically blocked by external iCal feeds for entire place */
+  icalBlockedDates?: string[];
+  /** Secret access token for authenticating public iCal export subscriptions */
+  icalExportToken?: string;
+  /** Timestamp when this hotel's iCal feed was last subscribed/downloaded by an external channel */
+  icalLastExportAt?: number;
   reviews?: {
     id?: string;
     author: string;
@@ -388,6 +396,26 @@ export interface RoomType {
   }[];
   blockedDates?: string[]; // Array of 'YYYY-MM-DD'
   blockedUnits?: Record<string, number>;
+  /** External iCal calendar feeds imported from RoomRaccoon, Airbnb, Booking.com, NightsBridge */
+  icalSyncUrls?: IcalFeedConfig[];
+  /** Dates automatically blocked by external iCal feeds (RoomRaccoon, Airbnb, etc.) */
+  icalBlockedDates?: string[];
+  /** Secret access token for authenticating public iCal export subscriptions */
+  icalExportToken?: string;
+  /** Timestamp when this room's iCal feed was last subscribed/downloaded by an external channel */
+  icalLastExportAt?: number;
+}
+
+export interface IcalFeedConfig {
+  id: string;
+  name: string; // e.g. 'RoomRaccoon', 'Airbnb', 'NightsBridge', 'Booking.com'
+  url: string;
+  platform?: 'roomraccoon' | 'airbnb' | 'booking' | 'nightsbridge' | 'google' | 'other';
+  lastSyncedAt?: number;
+  syncStatus?: 'idle' | 'success' | 'error' | 'syncing';
+  lastError?: string;
+  blockedCount?: number;
+  updatedAt?: number;
 }
 
 export interface Message {

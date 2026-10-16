@@ -77,12 +77,29 @@ Inside your Host Dashboard, **Ulendo** is your resident Malawian hospitality AI 
 
 ---
 
-## 4. Get Listed in 8 Minutes
+## 4. 2-Way Calendar Synchronization (RoomRaccoon, Airbnb, Booking.com, NightsBridge)
+
+Do you already use **RoomRaccoon, NightsBridge, Airbnb, Booking.com**, or Google Calendar? **You do not need to change how you work or manage multiple separate calendars.**
+
+Travel Malawi features native **2-way iCal (.ics) calendar synchronization**:
+
+### How It Works:
+1. **Import Availability (No Double Bookings):** In your Host Dashboard under *Rooms & Rates*, click **Sync iCal** next to any chalet or cottage. Paste your RoomRaccoon or Airbnb iCal export URL. Whenever a room is booked on your other channels, those dates instantly and automatically block out on Travel Malawi.
+2. **Export Travel Malawi Bookings:** Copy your unique Travel Malawi `.ics` export feed and paste it into RoomRaccoon or your personal calendar. Any direct booking confirmed on Travel Malawi syncs right back into your PMS or phone calendar.
+3. **Multi-Unit Inventory Protection:** For properties with multiple chalets or campsite spaces, the engine blocks individual unit availability or whole dates with zero manual intervention.
+
+> **Big Win for Independent Lodges:** You get the full benefit of direct bookings and 0% commission from Malawian and international travelers without any fear of double booking or tedious manual updates.
+
+---
+
+## 5. Get Listed in 8 Minutes
 
 1. **Send your 4 photos:** Bed, view, bathroom, and sunset dining/fire pit.
 2. **Send property name & rates:** Whole house rate or room rates in MWK or USD, plus any inclusions.
-3. **Share your location pin:** A WhatsApp pin taken at your vehicle gate.
+3. **Share your calendar link (optional):** If you use RoomRaccoon, NightsBridge, or Airbnb, share your room iCal link. We link it for you so your calendar is synchronized from moment one!
+4. **Share your location pin:** A WhatsApp pin taken at your vehicle gate.
 
 **Result:** Our concierge team verifies your details, builds your verified listing page, and routes guest inquiries directly to your WhatsApp phone — with 0% commission and 100% payout retention.
 
 * **Ready to list?** [Submit your property online now](/list-your-property) or message our team on WhatsApp at `+265 999 000 000`.
+

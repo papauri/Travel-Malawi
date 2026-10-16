@@ -11,7 +11,7 @@ import { doc, getDoc, collection, query, where, getDocs, addDoc, updateDoc, dele
 import { db } from '../lib/firebase';
 import { Hotel, RoomType, Booking, CurrencyCode, PriceMap, Restaurant, WeeklyHours } from '../types';
 import { useAuth } from '../contexts/AuthContext';
-import { Plus, CheckCircle2, XCircle, Clock, Save, Edit2, Trash2, Users, Calendar, Check, X, Building, BedDouble, Home, Loader2, Download, TrendingUp, Percent, Wallet, UtensilsCrossed, Eye, ChevronLeft, ExternalLink, AlertTriangle, ShieldCheck, UserCheck, User, Mail, Phone, Lock, UserCog, EyeOff, MapPin } from 'lucide-react';
+import { Plus, CheckCircle2, XCircle, Clock, Save, Edit2, Trash2, Users, Calendar, CalendarSync, Check, X, Building, BedDouble, Home, Loader2, Download, TrendingUp, Percent, Wallet, UtensilsCrossed, Eye, ChevronLeft, ExternalLink, AlertTriangle, ShieldCheck, UserCheck, User, Mail, Phone, Lock, UserCog, EyeOff, MapPin } from 'lucide-react';
 import ImageUpload from '../components/ImageUpload';
 import GalleryUpload from '../components/GalleryUpload';
 import Lightbox from '../components/Lightbox';
@@ -60,6 +60,7 @@ import { getHotelDepositInfo } from '../lib/depositInfo';
 import { useAIAssistant } from '../hooks/useAIAssistant';
 import { analyzeDescriptionLocal, DescriptionAnalysisResult } from '../lib/descriptionAnalyzer';
 import LinkDescriptionModal from '../components/LinkDescriptionModal';
+import IcalSyncManager from '../components/IcalSyncManager';
 
 
 
@@ -530,6 +531,8 @@ export default function ManageHotel() {
   const [managingBlockDate, setManagingBlockDate] = useState<string | null>(null);
   const [managerCheckIn, setManagerCheckIn] = useState<string>('');
   const [managerCheckOut, setManagerCheckOut] = useState<string>('');
+  const [syncingRoom, setSyncingRoom] = useState<RoomType | null>(null);
+  const [showHotelSyncModal, setShowHotelSyncModal] = useState(false);
   const [roomErrors, setRoomErrors] = useState<RoomErrors>({});
     const [customPackageName, setCustomPackageName] = useState('');
   const [bookingFilter, setBookingFilter] = useState<'all' | 'pending' | 'confirmed' | 'cancelled'>('all');
@@ -4098,13 +4101,28 @@ export default function ManageHotel() {
                   </p>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => requestTab('details')}
-                className="text-xs font-semibold text-emerald-900 bg-white hover:bg-emerald-100/70 border border-emerald-300 px-3 py-1.5 rounded-lg shrink-0 transition"
-              >
-                {canEditElevatedFields ? 'Edit House Specs →' : 'View House Specs (Admin Managed) →'}
-              </button>
+              <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setShowHotelSyncModal(true)}
+                  className="text-xs font-semibold text-emerald-950 bg-white hover:bg-emerald-100 border border-emerald-300 px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                  title="Connect RoomRaccoon, Airbnb, or external iCal feeds for this entire place"
+                >
+                  <CalendarSync className="w-3.5 h-3.5 text-amber-600" />
+                  <span>
+                    {hotel?.icalSyncUrls && hotel.icalSyncUrls.length > 0
+                      ? `PMS Synced (${hotel.icalSyncUrls.length})`
+                      : 'Sync iCal / PMS'}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => requestTab('details')}
+                  className="text-xs font-semibold text-emerald-900 bg-white hover:bg-emerald-100/70 border border-emerald-300 px-3 py-1.5 rounded-lg shrink-0 transition cursor-pointer"
+                >
+                  {canEditElevatedFields ? 'Edit House Specs →' : 'View House Specs →'}
+                </button>
+              </div>
             </div>
           )}
 
@@ -4783,6 +4801,24 @@ export default function ManageHotel() {
                         <div className="flex sm:flex-row items-center gap-2 border-t sm:border-t-0 sm:border-l border-stone-100 pt-2.5 sm:pt-0 sm:pl-3 md:pl-4 shrink-0 mt-1 sm:mt-0 justify-end">
                           <button 
                             type="button"
+                            onClick={() => setSyncingRoom(room)}
+                            className={`flex items-center justify-center gap-1.5 px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-lg transition text-xs font-semibold cursor-pointer shadow-2xs border ${
+                              (room.icalSyncUrls && room.icalSyncUrls.length > 0)
+                                ? 'bg-sky-50 hover:bg-sky-100 text-sky-900 border-sky-300'
+                                : 'bg-white hover:bg-stone-50 text-stone-700 border-stone-200'
+                            }`}
+                            title="2-Way Calendar Sync with RoomRaccoon, Airbnb, Booking.com"
+                          >
+                            <CalendarSync className="h-3.5 w-3.5 text-amber-600" /> 
+                            <span>
+                              {room.icalSyncUrls && room.icalSyncUrls.length > 0
+                                ? `iCal (${room.icalSyncUrls.length})`
+                                : 'Sync iCal'}
+                            </span>
+                          </button>
+
+                          <button 
+                            type="button"
                             onClick={() => startEditRoom(room)}
                             className="flex items-center justify-center gap-1.5 px-3 sm:px-3.5 py-1.5 sm:py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-lg transition text-xs font-semibold cursor-pointer shadow-2xs"
                           >
@@ -4830,6 +4866,18 @@ export default function ManageHotel() {
                                   >
                                     <Calendar className="w-3.5 h-3.5 text-stone-400" />
                                     <span>Calendar &amp; Blocks</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setOpenRoomMenuId(null);
+                                      setSyncingRoom(room);
+                                    }}
+                                    className="w-full text-left px-3.5 py-2 hover:bg-stone-50 flex items-center gap-2 text-stone-700 transition cursor-pointer"
+                                  >
+                                    <CalendarSync className="w-3.5 h-3.5 text-amber-600" />
+                                    <span>Channel Sync (RoomRaccoon / iCal)</span>
                                   </button>
                                   <div className="my-1 border-t border-stone-100" />
                                   <button
@@ -5765,6 +5813,51 @@ export default function ManageHotel() {
           onClose={() => setMediaLightboxImages(null)}
         />
       )}
+
+      {/* Room iCal / PMS Synchronization Modal */}
+      <Modal
+        open={Boolean(syncingRoom)}
+        onClose={() => setSyncingRoom(null)}
+        title={`Channel Sync — ${syncingRoom?.name || 'Room'}`}
+        description="2-way calendar sync with RoomRaccoon, Airbnb, Booking.com, and other PMS systems."
+        size="3xl"
+      >
+        {syncingRoom && hotel && (
+          <IcalSyncManager
+            room={syncingRoom}
+            hotel={hotel}
+            onRoomUpdated={(updated) => {
+              setRooms(prev => prev.map(r => r.id === updated.id ? updated : r));
+              setSyncingRoom(updated);
+            }}
+            onClose={() => setSyncingRoom(null)}
+          />
+        )}
+      </Modal>
+
+      {/* Entire Property iCal / PMS Synchronization Modal */}
+      <Modal
+        open={showHotelSyncModal}
+        onClose={() => setShowHotelSyncModal(false)}
+        title={`Property Channel Sync — ${hotel?.name || 'Property'}`}
+        description="2-way calendar sync for whole-house / entire-property reservations."
+        size="3xl"
+      >
+        {hotel && (
+          <IcalSyncManager
+            hotel={hotel}
+            onHotelUpdated={(updated) => {
+              setHotel(updated);
+              setEditHotelData(prev => ({
+                ...prev,
+                icalSyncUrls: updated.icalSyncUrls,
+                icalBlockedDates: updated.icalBlockedDates,
+              }));
+            }}
+            onClose={() => setShowHotelSyncModal(false)}
+          />
+        )}
+      </Modal>
     </div>
   );
 }

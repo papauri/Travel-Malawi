@@ -29,11 +29,11 @@ Tired of paying 15% to 25% of every booking to foreign travel websites that do n
 * It replies in English, and in Chichewa when a guest writes in Chichewa.
 * It takes booking requests and passes them to you.
 
-### 4. Calendar and room availability
+### 4. 2-Way Calendar Sync with RoomRaccoon, Airbnb & NightsBridge
 
-* Live availability that prevents double bookings.
-* Block dates in one step when rooms are booked offline or reserved for groups.
-* Change rates for several rooms at once for busy weekends (Easter, Lake of Stars, Christmas).
+* **Zero double bookings with 2-way iCal sync:** Seamlessly connects with **RoomRaccoon, Airbnb, Booking.com, NightsBridge**, and Google Calendar. When a room is booked on RoomRaccoon or Airbnb, it automatically blocks on Travel Malawi. Bookings made on Travel Malawi sync straight into your PMS calendar.
+* **Block dates in one click:** Easily block dates for private hires, renovations, or offline walk-ins.
+* **Bulk Room & Rate Editor:** Adjust rates, apply seasonal specials, and set promotional campaigns across multiple rooms in seconds.
 
 ### 5. Reviews and direct guest contact
 

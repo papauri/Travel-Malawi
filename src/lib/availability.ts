@@ -82,6 +82,16 @@ export function normalizeBlockedDates(blockedDates: unknown): DateStr[] {
   return [];
 }
 
+/**
+ * Combines manually blocked dates and external iCal-synced blocked dates for a room.
+ */
+export function allBlockedDatesForRoom(room: RoomType, additionalBlocked?: string[]): DateStr[] {
+  const manual = normalizeBlockedDates(additionalBlocked ?? room.blockedDates);
+  const ical = normalizeBlockedDates(room.icalBlockedDates);
+  const combined = new Set([...manual, ...ical]);
+  return Array.from(combined).sort();
+}
+
 export function blockedUnitsForRange(
   room: RoomType,
   checkIn: DateStr,
@@ -89,7 +99,7 @@ export function blockedUnitsForRange(
 ): number {
   let maxBlocked = 0;
   const nights = nightsInRange(checkIn, checkOut);
-  const normalizedBlocked = normalizeBlockedDates(room.blockedDates);
+  const normalizedBlocked = allBlockedDatesForRoom(room);
   
   if (normalizedBlocked.length) {
     const fullyBlocked = new Set(normalizedBlocked);
@@ -126,7 +136,7 @@ export function isRoomAvailable(
   const nights = nightsInRange(checkIn, checkOut);
   if (!nights.length) return false;
 
-  const normalizedBlocked = normalizeBlockedDates(room.blockedDates);
+  const normalizedBlocked = allBlockedDatesForRoom(room);
   const fullyBlocked = new Set(normalizedBlocked);
 
   // Compute daily booked counts across nights
@@ -171,7 +181,7 @@ export function unitsRemaining(
   const nights = nightsInRange(checkIn, checkOut);
   if (!nights.length) return 0;
 
-  const normalizedBlocked = normalizeBlockedDates(room.blockedDates);
+  const normalizedBlocked = allBlockedDatesForRoom(room);
   const fullyBlocked = new Set(normalizedBlocked);
 
   // Compute daily booked counts across nights

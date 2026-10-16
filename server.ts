@@ -53,6 +53,14 @@ import {
   testWhatsAppConnection,
   sendWhatsAppMessage
 } from './server/whatsappConfig';
+import {
+  generateRoomIcalFeed,
+  generateHotelIcalFeed,
+  testIcalFeedUrl,
+  syncRoomIcal,
+  syncHotelIcal,
+  syncAllActiveFeeds
+} from './server/icalService';
 import { trafficTracker } from './server/trafficTracker';
 import { generateSitemapXml, generateRobotsTxt } from './server/seo';
 import {
@@ -246,6 +254,121 @@ async function startServer() {
       res.send(xml);
     } catch (err) {
       sendError(res, err, 'Failed to generate sitemap');
+    }
+  });
+
+  // ---------------------------------------------------------------------------
+  // iCal / .ics 2-Way Calendar Synchronization Routes
+  // ---------------------------------------------------------------------------
+
+  // Public iCal Feed Export for Room (RoomRaccoon, Airbnb, Booking.com, Google Cal subscribe here)
+  app.get('/api/calendar/room/:roomId.ics', async (req, res) => {
+    try {
+      const { roomId } = req.params;
+      const token = typeof req.query.token === 'string' ? req.query.token : undefined;
+      const feed = await generateRoomIcalFeed(roomId, token, `${req.protocol}://${req.get('host')}`);
+      if (!feed) {
+        res.status(404).send('Calendar feed not found.');
+        return;
+      }
+      res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
+      res.setHeader('Content-Disposition', `inline; filename="travelmalawi-room-${roomId}.ics"`);
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      res.send(feed.ics);
+    } catch (err: any) {
+      console.error('[iCal Export Room Error]:', err);
+      res.status(500).send('Failed to generate calendar feed.');
+    }
+  });
+
+  // Public iCal Feed Export for Hotel / Entire Place
+  app.get('/api/calendar/hotel/:hotelId.ics', async (req, res) => {
+    try {
+      const { hotelId } = req.params;
+      const token = typeof req.query.token === 'string' ? req.query.token : undefined;
+      const feed = await generateHotelIcalFeed(hotelId, token, `${req.protocol}://${req.get('host')}`);
+      if (!feed) {
+        res.status(404).send('Calendar feed not found.');
+        return;
+      }
+      res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
+      res.setHeader('Content-Disposition', `inline; filename="travelmalawi-hotel-${hotelId}.ics"`);
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      res.send(feed.ics);
+    } catch (err: any) {
+      console.error('[iCal Export Hotel Error]:', err);
+      res.status(500).send('Failed to generate calendar feed.');
+    }
+  });
+
+  // Test an external iCal URL before saving (e.g. from RoomRaccoon or Airbnb)
+  app.post('/api/calendar/test-feed', requireAuth, async (req, res) => {
+    try {
+      const { url } = req.body || {};
+      if (!url || typeof url !== 'string') {
+        res.status(400).json({ error: 'Feed URL is required.' });
+        return;
+      }
+      const result = await testIcalFeedUrl(url);
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || 'Failed to test calendar feed.' });
+    }
+  });
+
+  // Trigger manual sync for a room's feeds
+  app.post('/api/calendar/sync-room', requireAuth, async (req, res) => {
+    try {
+      const { roomId, hotelId } = req.body || {};
+      if (!roomId || !hotelId) {
+        res.status(400).json({ error: 'roomId and hotelId are required.' });
+        return;
+      }
+      const allowed = await canManageHotel(req.authUser, hotelId);
+      if (!allowed) {
+        res.status(403).json({ error: 'You do not have permission to manage this property.' });
+        return;
+      }
+      const result = await syncRoomIcal(roomId, hotelId);
+      res.json(result);
+    } catch (err: any) {
+      console.error('[iCal Sync Room Error]:', err);
+      res.status(500).json({ error: err?.message || 'Failed to sync calendar feeds.' });
+    }
+  });
+
+  // Trigger manual sync for a whole hotel's feeds
+  app.post('/api/calendar/sync-hotel', requireAuth, async (req, res) => {
+    try {
+      const { hotelId } = req.body || {};
+      if (!hotelId) {
+        res.status(400).json({ error: 'hotelId is required.' });
+        return;
+      }
+      const allowed = await canManageHotel(req.authUser, hotelId);
+      if (!allowed) {
+        res.status(403).json({ error: 'You do not have permission to manage this property.' });
+        return;
+      }
+      const result = await syncHotelIcal(hotelId);
+      res.json(result);
+    } catch (err: any) {
+      console.error('[iCal Sync Hotel Error]:', err);
+      res.status(500).json({ error: err?.message || 'Failed to sync hotel calendar feeds.' });
+    }
+  });
+
+  // Admin global sync trigger
+  app.post('/api/calendar/sync-all', requireRole('admin', 'global_admin'), async (req, res) => {
+    try {
+      const result = await syncAllActiveFeeds();
+      res.json({ success: true, ...result });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || 'Failed to sync all feeds.' });
     }
   });
 
@@ -1361,6 +1484,14 @@ async function startServer() {
     });
   }, 60_000);
 
+  // Periodic iCal 2-Way Calendar Sync (runs every 25 minutes in background)
+  const icalSyncInterval = setInterval(() => {
+    syncAllActiveFeeds().catch(err => {
+      console.warn('[iCal] Background sync error:', err?.message || err);
+    });
+  }, 25 * 60_000);
+  icalSyncInterval.unref();
+
   // ----------------------------------------------------
   // DOCUMENTATION API
   // ----------------------------------------------------
@@ -1733,6 +1864,7 @@ async function startServer() {
   const handleShutdown = (signal: string) => {
     console.log(`Received ${signal}, initiating graceful shutdown...`);
     clearInterval(reminderInterval);
+    clearInterval(icalSyncInterval);
     clearInterval(modelCatalogInterval);
     server.close(() => {
       console.log('HTTP server closed successfully.');

@@ -29,6 +29,9 @@
         "ownerEmail": { "type": "string", "format": "email", "maxLength": 128 },
         "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
         "featured": { "type": "boolean" },
+        "icalSyncUrls": { "type": "array" },
+        "icalBlockedDates": { "type": "array" },
+        "icalExportToken": { "type": "string", "maxLength": 128 },
         "createdAt": { "type": "number" }
       },
       "required": ["name", "status", "createdAt"]
@@ -43,7 +46,10 @@
         "price": { "type": "number" },
         "priceMWK": { "type": "number" },
         "quantity": { "type": "number" },
-        "maxGuests": { "type": "number" }
+        "maxGuests": { "type": "number" },
+        "icalSyncUrls": { "type": "array" },
+        "icalBlockedDates": { "type": "array" },
+        "icalExportToken": { "type": "string", "maxLength": 128 }
       },
       "required": ["hotelId", "name"]
     },

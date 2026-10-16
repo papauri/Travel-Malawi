@@ -9,7 +9,7 @@ import { db } from '../lib/firebase';
 import { RoomType } from '../types';
 import { ChevronLeft, ChevronRight, Lock } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { BookingLike, buildOccupancyMap, normalizeBlockedDates } from '../lib/availability';
+import { BookingLike, buildOccupancyMap, normalizeBlockedDates, allBlockedDatesForRoom } from '../lib/availability';
 import { DateStr, toDateStr, todayStr, addDays, formatDateStr } from '../lib/dates';
 
 interface Props {
@@ -87,7 +87,7 @@ export default function AvailabilityCalendar({
     const totals: Record<DateStr, number> = {};
 
     if (selectedRoom) {
-      const dates = normalizeBlockedDates(blockedDates ?? selectedRoom.blockedDates);
+      const dates = allBlockedDatesForRoom(selectedRoom, blockedDates);
       const qty = selectedRoom.quantity ?? 0;
       for (const d of dates) {
         totals[d] = (totals[d] ?? 0) + qty;
@@ -101,7 +101,7 @@ export default function AvailabilityCalendar({
       }
     } else {
       for (const r of rooms) {
-        const dates = normalizeBlockedDates(r.blockedDates);
+        const dates = allBlockedDatesForRoom(r);
         const qty = r.quantity ?? 0;
         for (const d of dates) {
           totals[d] = (totals[d] ?? 0) + qty;
@@ -300,8 +300,8 @@ export default function AvailabilityCalendar({
   const legend: { avail: Availability; label: string }[] = [
     { avail: 'available', label: 'Available' },
     { avail: 'limited', label: 'Limited' },
-    { avail: 'full', label: 'Fully Booked (No availability)' },
-    { avail: 'blocked', label: 'Blocked by Host (No availability)' },
+    { avail: 'full', label: 'Fully Booked' },
+    { avail: 'blocked', label: 'Blocked / Channel Sync (RoomRaccoon, Airbnb)' },
   ];
 
   return (
