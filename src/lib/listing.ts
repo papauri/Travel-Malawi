@@ -318,6 +318,11 @@ export function validateDraft(draft: ListingDraft): DraftErrors {
   } else {
     for (let i = 0; i < draft.rooms.length; i++) {
       const r = draft.rooms[i];
+      // Defensive clamp: guests included in base rate must never exceed maximum guests
+      const maxG = Math.max(1, Number(r.maxGuests || 1));
+      if (r.baseGuests !== undefined && r.baseGuests !== null && Number(r.baseGuests) > maxG) {
+        r.baseGuests = maxG;
+      }
       const rErrors = validateRoom(r);
       if (Object.keys(rErrors).length > 0) {
         const firstErr = Object.values(rErrors)[0];
@@ -548,8 +553,12 @@ export async function createListing(draft: ListingDraft, managerId: string): Pro
     const batch = writeBatch(db);
     for (const r of roomsToWrite) {
       const primaryCurrency = (r.currencies && r.currencies.length > 0) ? r.currencies[0] : 'USD';
+      const maxG = Math.max(1, Number(r.maxGuests || 2));
+      const baseG = Math.min(Math.max(1, Number(r.baseGuests || maxG)), maxG);
       const rawRoomPayload = {
         ...r,
+        maxGuests: maxG,
+        baseGuests: baseG,
         hotelId: docId,
         currency: primaryCurrency,
         price: Number(r.prices?.[primaryCurrency] ?? 0),

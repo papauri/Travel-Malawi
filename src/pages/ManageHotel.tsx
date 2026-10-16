@@ -1086,9 +1086,13 @@ export default function ManageHotel() {
     e.preventDefault();
     if (!id) return;
 
-    // Every problem at once, keyed by field, rather than a run of early
-    // returns that each fired a toast and stopped at the first one.
-    const problems = validateRoom(editRoomData as any);
+    // Defensively clamp baseGuests so it never exceeds maxGuests if maxGuests was lowered
+    const normalizedMax = Number(editRoomData.maxGuests ?? 0);
+    const roomToValidate = {
+      ...editRoomData,
+      baseGuests: editRoomData.baseGuests ? Math.min(Number(editRoomData.baseGuests), normalizedMax > 0 ? normalizedMax : Number(editRoomData.baseGuests)) : undefined,
+    };
+    const problems = validateRoom(roomToValidate as any);
     if (hasErrors(problems)) {
       setRoomErrors(problems);
       toast.error(firstError(problems) ?? 'Check the highlighted fields.');
@@ -1100,7 +1104,7 @@ export default function ManageHotel() {
     const currencies = (editRoomData.currencies ?? []).filter(c => CURRENCY_CODES.includes(c));
     const maxGuests = Number(editRoomData.maxGuests ?? 0);
     const quantity = Number(editRoomData.quantity ?? 0);
-    const baseGuests = Number(editRoomData.baseGuests ?? maxGuests);
+    const baseGuests = Math.min(Number(editRoomData.baseGuests ?? maxGuests), maxGuests);
     const prices = editRoomData.prices ?? {};
 
     let blockedDates = editRoomData.blockedDates;
@@ -4457,7 +4461,14 @@ export default function ManageHotel() {
                   ))}
                   <div>
                     <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Max Guests</label>
-                    <input type="number" required min={1} value={editRoomData.maxGuests || 2} onChange={e => setEditRoomData({...editRoomData, maxGuests: Number(e.target.value)})} className={`w-full bg-stone-50 border p-3 rounded-xl outline-none transition ${roomErrors.maxGuests ? 'border-red-300 focus:border-red-500' : 'border-stone-200 focus:border-stone-900'}`} />
+                    <input type="number" required min={1} value={editRoomData.maxGuests || 2} onChange={e => {
+                      const val = Number(e.target.value);
+                      setEditRoomData({
+                        ...editRoomData,
+                        maxGuests: val,
+                        baseGuests: editRoomData.baseGuests ? Math.min(Number(editRoomData.baseGuests), val) : val,
+                      });
+                    }} className={`w-full bg-stone-50 border p-3 rounded-xl outline-none transition ${roomErrors.maxGuests ? 'border-red-300 focus:border-red-500' : 'border-stone-200 focus:border-stone-900'}`} />
                     <FieldError message={roomErrors.maxGuests} />
                     <FieldError message={roomErrors.baseGuests} />
                   </div>

@@ -11,7 +11,7 @@
  */
 
 import { validateRoom } from '../src/lib/validateRoom';
-import { validateProperty } from '../src/lib/listing';
+import { validateProperty, validateDraft } from '../src/lib/listing';
 import { emailProblem, phoneProblem, telLink, whatsappLink } from '../src/lib/contact';
 import { newChimeState, shouldChime } from '../src/lib/notificationSound';
 import {
@@ -200,6 +200,37 @@ check('distance to self is zero', Math.round(distanceKm(lilongwe, lilongwe)), 0)
 check('the embed uses the pin when there is one', mapEmbedUrl({ location: 'Somewhere', coordinates: kayaMawa }).includes('-12.0699,34.7239'), true);
 check('the embed falls back to the text', mapEmbedUrl({ location: 'Cape Maclear', coordinates: null }).includes('Cape%20Maclear'), true);
 
+/* ----------------------------------------------------------- onboarding -- */
+
+console.log('\n— Onboarding Draft Validation —');
+
+const validDraft: any = {
+  name: 'Sunbird Capital',
+  category: 'Hotel',
+  description: 'Premier business and leisure hotel in the heart of Lilongwe with lush landscaped gardens, swimming pool, international restaurant, conference facilities, and warm Malawian hospitality.',
+  location: 'City Centre, Lilongwe',
+  contactEmail: 'capital@sunbird.mw',
+  contactPhone: '+265 1 773 388',
+  managerName: 'General Manager',
+  stayType: 'rooms',
+  imageUrl: 'https://images.unsplash.com/capital.jpg',
+  rooms: [
+    {
+      name: 'Single Solo Room',
+      description: 'Cozy single room with ensuite shower, high-speed Wi-Fi, and working desk.',
+      maxGuests: 1,
+      baseGuests: 2, // Host originally selected a 2-guest template or changed max occupancy to 1
+      currencies: ['USD'],
+      prices: { USD: 70 },
+      quantity: 5,
+      imageUrl: 'https://images.unsplash.com/single.jpg',
+    },
+  ],
+};
+
+const draftErrors = validateDraft(validDraft);
+check('draft with max occupancy 1 and stale baseGuests 2 has no room errors', draftErrors.rooms || null, null);
+check('draft room baseGuests was clamped to 1', validDraft.rooms[0].baseGuests, 1);
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILED`);
 process.exit(failures === 0 ? 0 : 1);

@@ -23,7 +23,7 @@ import {
   Images, Loader2, LocateFixed, Mail, MapPin, MessageCircle, Phone, Plus, Send,
   Award, FileText, CheckCircle2, Wallet, X, DollarSign, Coins, Trash2, Sliders, ChevronDown, ChevronUp,
   RefreshCw, TrendingUp, HelpCircle, AlertTriangle, BookOpen,
-  User, UserCheck, Shield, Building, ConciergeBell, BedDouble, Tag, Home, Sparkles,
+  User, UserCheck, Shield, Building, ConciergeBell, BedDouble, Tag, Home, Sparkles, Globe,
 } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -279,8 +279,6 @@ export default function ListProperty() {
   const placeDropdownRef = useRef<HTMLDivElement>(null);
 
   const [aiLookupLoading, setAiLookupLoading] = useState(false);
-  const [showWebScrapeOption, setShowWebScrapeOption] = useState(false);
-  const [webScrapeInput, setWebScrapeInput] = useState('');
   const [aiCategorized, setAiCategorized] = useState(false);
   const [aiPropertySuggestion, setAiPropertySuggestion] = useState<{
     matched: boolean;
@@ -567,17 +565,20 @@ export default function ListProperty() {
         managerName: current.managerName || user?.displayName || user?.email?.split('@')[0] || 'Property Host',
         managerEmail: current.managerEmail || user?.email || '',
         rooms: (current.rooms.length === 0 || (current.rooms.length === 1 && !current.rooms[0].name?.trim())) && suggestionObj.suggestedRooms.length > 0
-          ? suggestionObj.suggestedRooms.map(r => ({
-              id: uuidv4(),
-              name: r.name,
-              description: r.description || 'Authentic and comfortable stay with ensuite bathroom and warm Malawian hospitality.',
-              currencies: ['MWK', 'USD'],
-              prices: { MWK: r.priceMwk || 120000, USD: r.priceUsd || 70 },
-              maxGuests: r.maxGuests || 2,
-              baseGuests: r.baseGuests || 2,
-              quantity: r.quantity || 3,
-              amenities: r.amenities && r.amenities.length > 0 ? r.amenities : ['Ensuite bathroom', 'Ceiling fan', 'Mosquito net', 'Hot shower'],
-            }))
+          ? suggestionObj.suggestedRooms.map(r => {
+              const maxG = Math.max(1, Number(r.maxGuests) || 2);
+              return {
+                id: uuidv4(),
+                name: r.name,
+                description: r.description || 'Authentic and comfortable stay with ensuite bathroom and warm Malawian hospitality.',
+                currencies: ['MWK', 'USD'],
+                prices: { MWK: r.priceMwk || 120000, USD: r.priceUsd || 70 },
+                maxGuests: maxG,
+                baseGuests: Math.min(Math.max(1, Number(r.baseGuests || maxG)), maxG),
+                quantity: r.quantity || 3,
+                amenities: r.amenities && r.amenities.length > 0 ? r.amenities : ['Ensuite bathroom', 'Ceiling fan', 'Mosquito net', 'Hot shower'],
+              };
+            })
           : current.rooms,
       }));
       toast.success(`Loaded verified details for "${item.name}"!`);
@@ -607,9 +608,18 @@ export default function ListProperty() {
     setAiLookupLoading(true);
     setAiPropertySuggestion(null);
 
-    const isUrl = rawInput.startsWith('http://') || rawInput.startsWith('https://') || rawInput.includes('www.') || Boolean(options?.url);
-    const targetUrl = options?.url || (rawInput.startsWith('http') ? rawInput : undefined);
-    const searchName = (isUrl && !overrideName) ? (draft.name || 'Malawi Accommodation') : (targetUrl ? (draft.name || rawInput) : rawInput);
+    const isUrl = rawInput.startsWith('http://') || rawInput.startsWith('https://') || rawInput.startsWith('www.') || Boolean(options?.url);
+    let targetUrl = options?.url;
+    if (!targetUrl) {
+      if (rawInput.startsWith('http://') || rawInput.startsWith('https://')) {
+        targetUrl = rawInput;
+      } else if (rawInput.startsWith('www.')) {
+        targetUrl = `https://${rawInput}`;
+      }
+    }
+    const searchName = (isUrl && !overrideName)
+      ? (draft.name && !draft.name.startsWith('http') && !draft.name.startsWith('www.') ? draft.name : 'Malawi Accommodation')
+      : (targetUrl && (rawInput.startsWith('http') || rawInput.startsWith('www.')) ? 'Malawi Accommodation' : rawInput);
 
     // 1. Instant check in verified Malawi Hospitality Registry (unless forceWebScrape or URL scraping is requested)
     if (!options?.forceWebScrape && !isUrl) {
@@ -691,7 +701,7 @@ export default function ListProperty() {
             url: targetUrl,
             location: locationContext,
             extraNotes: targetUrl
-              ? `Live Web Scraping Request: Scrape the website/listing at ${targetUrl}. Extract real room types with dual pricing (MWK & USD), full welcoming description, amenities, check-in/out hours, and direct phone/email contacts.`
+              ? `Live Web Extraction Request: Look up and extract authentic details from ${targetUrl}. Extract real room types with dual pricing (MWK & USD), base guests and max occupancy (baseGuests must not exceed maxGuests), welcoming description, verified amenities, check-in/out hours, and direct phone/email contacts.`
               : 'Search Google Maps, online listings, and live web sources across Malawi. Auto-categorize accurately (Bed & Breakfast, Cottage & Chalet, Guest House, Lake & Beach, Safari & Wildlife, Luxury, Romantic Escape, Family, Adventure) and fill all fields.',
           },
         }),
@@ -717,10 +727,18 @@ export default function ListProperty() {
         normalizePropertyCategory(aiData?.category) ||
         inferCategoryFromNameAndLocation(aiData?.officialName || name, aiData?.location || matchedLocation);
 
-      let rooms = aiData?.suggestedRooms;
-      if (!rooms || !Array.isArray(rooms) || rooms.length === 0) {
-        rooms = synthesizeRoomsForCategory(verifiedCategory);
+      let rawRooms = aiData?.suggestedRooms;
+      if (!rawRooms || !Array.isArray(rawRooms) || rawRooms.length === 0) {
+        rawRooms = synthesizeRoomsForCategory(verifiedCategory);
       }
+      const rooms = rawRooms.map(r => {
+        const maxG = Math.max(1, Number(r.maxGuests) || 2);
+        return {
+          ...r,
+          maxGuests: maxG,
+          baseGuests: Math.min(Math.max(1, Number(r.baseGuests || maxG)), maxG),
+        };
+      });
 
       const matchedLocal = localImagesForName(aiData?.officialName || name);
       const suggestedImageUrl = matchedLocal.length > 0 ? matchedLocal[0] : getDefaultImageForCategory(verifiedCategory);
@@ -828,20 +846,32 @@ export default function ListProperty() {
         // Auto-fill Rooms & Rates if none are configured yet
         const currentRoomsEmpty = current.rooms.length === 0 || (current.rooms.length === 1 && !current.rooms[0].name?.trim());
         if (currentRoomsEmpty && s.suggestedRooms && s.suggestedRooms.length > 0) {
-          next.rooms = s.suggestedRooms.map(r => ({
-            id: uuidv4(),
-            name: r.name,
-            description: r.description || `Authentic and comfortable stay with ensuite bathroom, ceiling fan, and warm Malawian hospitality.`,
-            currencies: ['MWK', 'USD'],
-            prices: {
-              MWK: r.priceMwk || 120000,
-              USD: r.priceUsd || 70,
-            },
-            maxGuests: r.maxGuests || 2,
-            baseGuests: r.baseGuests || 2,
-            quantity: r.quantity || 3,
-            amenities: r.amenities && r.amenities.length > 0 ? r.amenities : ['Ensuite bathroom', 'Ceiling fan', 'Mosquito net', 'Hot shower'],
-          }));
+          next.rooms = s.suggestedRooms.map(r => {
+            const maxG = Math.max(1, Number(r.maxGuests) || 2);
+            return {
+              id: uuidv4(),
+              name: r.name,
+              description: r.description || `Authentic and comfortable stay with ensuite bathroom, ceiling fan, and warm Malawian hospitality.`,
+              currencies: ['MWK', 'USD'],
+              prices: {
+                MWK: r.priceMwk || 120000,
+                USD: r.priceUsd || 70,
+              },
+              maxGuests: maxG,
+              baseGuests: Math.min(Math.max(1, Number(r.baseGuests || maxG)), maxG),
+              quantity: r.quantity || 3,
+              amenities: r.amenities && r.amenities.length > 0 ? r.amenities : ['Ensuite bathroom', 'Ceiling fan', 'Mosquito net', 'Hot shower'],
+            };
+          });
+        } else if (next.rooms && next.rooms.length > 0) {
+          next.rooms = next.rooms.map(r => {
+            const maxG = Math.max(1, Number(r.maxGuests) || 1);
+            return {
+              ...r,
+              maxGuests: maxG,
+              baseGuests: Math.min(Math.max(1, Number(r.baseGuests || maxG)), maxG),
+            };
+          });
         }
       }
 
@@ -1170,13 +1200,15 @@ export default function ListProperty() {
       prices.MWK = Number(item.suggestedPriceMwk) || convertUsdToMwk(item.suggestedPriceUsd || 60);
     }
 
+    const maxG = Math.max(1, Number(item.maxGuests) || 2);
     const newRoom: RoomInput = {
       id: crypto.randomUUID(),
       name: item.name.trim() || 'Guest Room',
       description: item.description?.trim() || '',
       currencies,
       prices,
-      maxGuests: Number(item.maxGuests) || 2,
+      maxGuests: maxG,
+      baseGuests: maxG,
       quantity: 1,
       imageUrl: '',
       galleryUrls: [],
@@ -1201,13 +1233,15 @@ export default function ListProperty() {
         prices.MWK = Number(item.suggestedPriceMwk) || convertUsdToMwk(item.suggestedPriceUsd || 60);
       }
 
+      const maxG = Math.max(1, Number(item.maxGuests) || 2);
       return {
         id: crypto.randomUUID(),
         name: item.name.trim() || 'Guest Room',
         description: item.description?.trim() || '',
         currencies,
         prices,
-        maxGuests: Number(item.maxGuests) || 2,
+        maxGuests: maxG,
+        baseGuests: maxG,
         quantity: 1,
         imageUrl: '',
         galleryUrls: [],
@@ -1677,112 +1711,28 @@ export default function ListProperty() {
         <div className="rounded-2xl sm:rounded-3xl border border-stone-200 bg-white p-4 sm:p-6 md:p-8 lg:p-10 shadow-xs">
           {step === 0 && (
             <div className="space-y-8">
-              {/* Optional Web Scraping & Auto-Fill from Internet (Shown ONLY when AI is available) */}
-              {aiStatus.enabled && aiStatus.available && (
-                <div className="rounded-2xl bg-stone-900 text-white p-4 sm:p-5 shadow-sm border border-stone-800 animate-in fade-in">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="flex items-start gap-3">
-                      <div className="p-2.5 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0 mt-0.5">
-                        <Sparkles className="w-5 h-5 text-amber-300" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="text-sm font-bold text-white">
-                            Scrape & Auto-Fill from Web (AI)
-                          </h3>
-                          <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-amber-400 text-stone-950 uppercase tracking-wide">
-                            Instant Web Scrape
-                          </span>
-                        </div>
-                        <p className="text-xs text-stone-300 mt-1 max-w-xl leading-relaxed">
-                          Already listed online? Enter your lodge website, Booking.com, Airbnb, TripAdvisor, or Google Maps URL. Ulendo scrapes the internet for your rooms, rates, amenities, and descriptions and auto-fills them in one click.
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setShowWebScrapeOption(prev => !prev)}
-                      className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-amber-500 hover:bg-amber-400 text-stone-950 shadow-xs transition active:scale-95 cursor-pointer shrink-0 self-start sm:self-center"
-                    >
-                      <Sparkles className="w-3.5 h-3.5 text-stone-950" />
-                      <span>{showWebScrapeOption ? 'Hide Web Scraper' : 'Scrape Web Details'}</span>
-                    </button>
-                  </div>
-
-                  {showWebScrapeOption && (
-                    <div className="mt-4 pt-4 border-t border-stone-800 space-y-3">
-                      <div className="flex flex-col sm:flex-row gap-2">
-                        <input
-                          type="text"
-                          value={webScrapeInput}
-                          onChange={e => setWebScrapeInput(e.target.value)}
-                          onKeyDown={e => {
-                            if (e.key === 'Enter' && webScrapeInput.trim() && !aiLookupLoading) {
-                              e.preventDefault();
-                              handleLookupPropertyAI(webScrapeInput, {
-                                forceWebScrape: true,
-                                url: webScrapeInput.startsWith('http') ? webScrapeInput : undefined,
-                              });
-                            }
-                          }}
-                          placeholder="Paste lodge website, Booking.com, TripAdvisor link, or hotel name"
-                          className="flex-1 px-3.5 py-2.5 rounded-xl border border-stone-700 bg-stone-950 text-xs text-white placeholder:text-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400"
-                          disabled={aiLookupLoading}
-                        />
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleLookupPropertyAI(webScrapeInput, {
-                              forceWebScrape: true,
-                              url: webScrapeInput.startsWith('http') ? webScrapeInput : undefined,
-                            })
-                          }
-                          disabled={aiLookupLoading || !webScrapeInput.trim()}
-                          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-stone-950 shadow-xs transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shrink-0"
-                        >
-                          {aiLookupLoading ? (
-                            <>
-                              <Loader2 className="w-3.5 h-3.5 animate-spin text-stone-950" />
-                              <span>Scraping the Web...</span>
-                            </>
-                          ) : (
-                            <>
-                              <ConciergeBell className="w-3.5 h-3.5 text-stone-950" />
-                              <span>Scrape & Pre-Fill</span>
-                            </>
-                          )}
-                        </button>
-                      </div>
-                      <p className="text-[11px] text-stone-400 flex items-center gap-1.5">
-                        <span>💡 Works with official lodge websites, Booking.com, TripAdvisor, Facebook pages, or lodge names across Malawi.</span>
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-
               <div>
                 <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                   <label className={labelClass} htmlFor="listing-name">Property name</label>
                   <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-medium text-amber-800 bg-amber-50 border border-amber-200/80 px-2 py-0.5 rounded-md hidden sm:flex items-center gap-1">
-                      <Sparkles className="w-3 h-3 text-amber-600" />
-                      Malawi Hospitality Registry & Maps
+                    <span className="text-[11px] font-medium text-stone-600 bg-stone-100 border border-stone-200 px-2 py-0.5 rounded-md hidden sm:flex items-center gap-1">
+                      <Sparkles className="w-3 h-3 text-stone-500" />
+                      Malawi Registry & Maps
                     </span>
                     {aiStatus.enabled && aiStatus.available && (
                       <button
                         type="button"
                         onClick={() => handleLookupPropertyAI(draft.name, { forceWebScrape: true })}
                         disabled={aiLookupLoading || !draft.name.trim()}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-stone-900 hover:bg-stone-800 text-white shadow-2xs transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                        title="Scrape the web and auto-fill listing fields"
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-stone-700 bg-stone-100 hover:bg-stone-200 border border-stone-200 transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                        title="Auto-fill listing details from the web or registry"
                       >
                         {aiLookupLoading ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-stone-600" />
                         ) : (
-                          <ConciergeBell className="w-3.5 h-3.5 text-amber-300" />
+                          <Globe className="w-3.5 h-3.5 text-stone-600" />
                         )}
-                        <span>Scrape Web & Auto-Fill</span>
+                        <span>{aiLookupLoading ? 'Fetching details...' : 'Auto-fill from web'}</span>
                       </button>
                     )}
                   </div>
@@ -1815,15 +1765,18 @@ export default function ListProperty() {
                         }
                         return;
                       }
-                      if ((val.startsWith('http://') || val.startsWith('https://')) && aiStatus.enabled && aiStatus.available) {
+                      const trimmedVal = val.trim();
+                      const isWebLink = trimmedVal.startsWith('http://') || trimmedVal.startsWith('https://') || trimmedVal.startsWith('www.');
+                      if (isWebLink && aiStatus.enabled && aiStatus.available) {
                         set('name', val);
-                        toast('Web URL detected! Scraping details from the web...', { icon: '🌐' });
-                        handleLookupPropertyAI(val, { forceWebScrape: true, url: val });
+                        toast('Web URL detected! Fetching details from the web...', { icon: '🌐' });
+                        const norm = trimmedVal.startsWith('www.') ? `https://${trimmedVal}` : trimmedVal;
+                        handleLookupPropertyAI(trimmedVal, { forceWebScrape: true, url: norm });
                         return;
                       }
                       set('name', val);
                     }}
-                    placeholder="e.g. Kaya Mawa, Sunbird Capital, or paste a website / Maps link"
+                    placeholder="e.g. Kaya Mawa, Sunbird Capital, or paste website / Maps link"
                     className={fieldClass}
                     autoComplete="off"
                   />
@@ -3585,8 +3538,13 @@ export default function ListProperty() {
                           type="number"
                           value={room.maxGuests || ''}
                           onChange={e => {
+                            const val = Math.max(1, Number(e.target.value) || 1);
                             const updated = [...(draft.rooms || [])];
-                            updated[idx].maxGuests = Number(e.target.value);
+                            updated[idx] = {
+                              ...updated[idx],
+                              maxGuests: val,
+                              baseGuests: Math.min(Number(updated[idx].baseGuests || val), val),
+                            };
                             set('rooms', updated);
                           }}
                           className={fieldClass}
@@ -3601,13 +3559,38 @@ export default function ListProperty() {
                     <div className="pt-4 border-t border-stone-100 space-y-3">
                       <div>
                         <label className="text-xs font-bold uppercase tracking-wider text-stone-700">
-                          Extra Guest Fees (Optional)
+                          Extra Guest Fees &amp; Base Occupancy (Optional)
                         </label>
                         <p className="text-[11px] text-stone-500">
-                          Additional charge per night for guests beyond the base occupancy.
+                          Set guests included in standard rate and optional charges for additional guests.
                         </p>
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                          <label className="block text-xs font-medium text-stone-600 mb-1">
+                            Base Guests Included
+                          </label>
+                          <input
+                            type="number"
+                            value={room.baseGuests ?? Math.min(2, room.maxGuests || 2)}
+                            onChange={e => {
+                              const maxG = Math.max(1, Number(room.maxGuests || 1));
+                              const val = Math.min(Math.max(1, Number(e.target.value) || 1), maxG);
+                              const updated = [...(draft.rooms || [])];
+                              updated[idx] = {
+                                ...updated[idx],
+                                baseGuests: val,
+                              };
+                              set('rooms', updated);
+                            }}
+                            className={fieldClass}
+                            min="1"
+                            max={room.maxGuests || 30}
+                            placeholder={`Max ${room.maxGuests || 2}`}
+                          />
+                        </div>
+
                         {hasUsd && (
                           <div>
                             <label className="block text-xs font-medium text-stone-600 mb-1">

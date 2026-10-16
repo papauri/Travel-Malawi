@@ -212,8 +212,8 @@ Return ONLY a valid JSON object with the following fields:
         "description": string (1-2 sentences on comforts, bed setup, and views),
         "priceMwk": number (realistic nightly rate in MWK, e.g. 95000 to 280000),
         "priceUsd": number (realistic nightly rate in USD, e.g. 55 to 160),
-        "maxGuests": number (e.g. 2, 3, or 4),
-        "baseGuests": number (typically 2),
+        "maxGuests": number (e.g. 1, 2, 3, or 4),
+        "baseGuests": number (guests included in base price; MUST NOT exceed maxGuests; if maxGuests is 1, baseGuests MUST be 1),
         "quantity": number (e.g. 2 to 5),
         "amenities": string[] (e.g. ["Ensuite bathroom", "Ceiling fan", "Mosquito net", "Hot shower"])
       }
@@ -998,26 +998,53 @@ export function isAuthError(message: string): boolean {
  */
 async function scrapeUrlContent(targetUrl: string): Promise<string> {
   try {
-    const res = await fetch(targetUrl, {
+    let normalized = targetUrl.trim();
+    if (normalized.startsWith('www.')) {
+      normalized = 'https://' + normalized;
+    } else if (!normalized.startsWith('http://') && !normalized.startsWith('https://')) {
+      if (normalized.includes('.') && !normalized.includes(' ')) {
+        normalized = 'https://' + normalized;
+      } else {
+        return '';
+      }
+    }
+
+    const res = await fetch(normalized, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
       },
-      signal: AbortSignal.timeout(6000),
+      redirect: 'follow',
+      signal: AbortSignal.timeout(8000),
     });
     if (!res.ok) return '';
     const html = await res.text();
+
+    const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+    const metaDescMatch = html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["']/i) ||
+                          html.match(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["']/i);
+    const metaTitle = titleMatch ? `Page Title: ${titleMatch[1].trim()}\n` : '';
+    const metaDesc = metaDescMatch ? `Page Description: ${metaDescMatch[1].trim()}\n` : '';
+
     const clean = html
       .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
       .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
       .replace(/<svg\b[^<]*(?:(?!<\/svg>)<[^<]*)*<\/svg>/gi, '')
       .replace(/<noscript\b[^<]*(?:(?!<\/noscript>)<[^<]*)*<\/noscript>/gi, '')
+      .replace(/<header\b[^<]*(?:(?!<\/header>)<[^<]*)*<\/header>/gi, ' ')
+      .replace(/<footer\b[^<]*(?:(?!<\/footer>)<[^<]*)*<\/footer>/gi, ' ')
+      .replace(/<nav\b[^<]*(?:(?!<\/nav>)<[^<]*)*<\/nav>/gi, ' ')
       .replace(/<[^>]+>/g, ' ')
       .replace(/&nbsp;/gi, ' ')
       .replace(/&amp;/gi, '&')
+      .replace(/&quot;/gi, '"')
+      .replace(/&#39;/gi, "'")
       .replace(/\s+/g, ' ')
       .trim();
-    return clean.slice(0, 10000);
+
+    const combined = `${metaTitle}${metaDesc}${clean}`.trim();
+    return combined.slice(0, 12000);
   } catch (err: any) {
     console.warn('[AI] Web scraping URL failed (falling back to search grounding):', err?.message);
     return '';
@@ -1043,8 +1070,11 @@ async function executeWithProvider(
 
   // Auto-scrape webpage content if a URL is provided for property lookup
   if (req.action === 'lookup_property') {
-    const rawTarget = req.details?.url || (req.details?.name?.startsWith('http') ? req.details.name : '');
-    if (rawTarget && (rawTarget.startsWith('http://') || rawTarget.startsWith('https://')) && !req.details?.scrapedContent) {
+    let rawTarget = req.details?.url || (req.details?.name?.startsWith('http') ? req.details.name : '');
+    if (!rawTarget && req.details?.name && (req.details.name.startsWith('www.') || (req.details.name.includes('.') && req.details.name.includes('/')))) {
+      rawTarget = req.details.name;
+    }
+    if (rawTarget && !req.details?.scrapedContent) {
       const scraped = await scrapeUrlContent(rawTarget);
       if (scraped) {
         req.details = { ...req.details, scrapedContent: scraped };
@@ -1239,6 +1269,29 @@ async function executeWithProvider(
         }
       } catch {
         // Leave structuredData as null
+      }
+    }
+
+    if (req.action === 'lookup_property' && structuredData) {
+      if (Array.isArray(structuredData.suggestedRooms)) {
+        structuredData.suggestedRooms = structuredData.suggestedRooms.map((r: any) => {
+          const maxG = Math.max(1, Number(r.maxGuests) || 2);
+          const rawBase = Number(r.baseGuests || maxG);
+          return {
+            ...r,
+            maxGuests: maxG,
+            baseGuests: Math.min(Math.max(1, rawBase), maxG),
+          };
+        });
+      }
+      if (structuredData.officialName && (structuredData.officialName.startsWith('http') || structuredData.officialName.startsWith('www.'))) {
+        try {
+          const u = new URL(structuredData.officialName.startsWith('http') ? structuredData.officialName : `https://${structuredData.officialName}`);
+          const slug = u.pathname.split('/').filter(Boolean).pop() || u.hostname.replace('www.', '');
+          structuredData.officialName = slug.replace(/[-_]/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
+        } catch {
+          structuredData.officialName = 'Malawi Accommodation';
+        }
       }
     }
   }
