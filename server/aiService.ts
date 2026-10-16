@@ -41,6 +41,8 @@ export interface GenerationRequest {
     customQuery?: string;
     targetSources?: string[];
     targetUrl?: string;
+    url?: string;
+    scrapedContent?: string;
     minRating?: number;
     count?: number;
     sentimentMode?: 'balanced' | 'critical' | 'positive' | 'all';
@@ -169,9 +171,13 @@ Do not output markdown code blocks or explanations.`);
 - Quick tip: One practical suggestion to increase inquiries.
 Keep the total response under 130 words in clear, friendly plain text without markdown headers.`);
   } else if (action === 'lookup_property') {
-    parts.push(`Look up this accommodation property in Malawi using your deep knowledge of Malawi tourism, lodges, B&Bs, cottages, guest houses, safari camps, lake retreats, and Google Maps:`);
-    parts.push(`Property Name to search: ${entityName}`);
+    parts.push(`Look up this accommodation property in Malawi using your deep knowledge of Malawi tourism, lodges, B&Bs, cottages, guest houses, safari camps, lake retreats, Google Maps, and live web sources:`);
+    parts.push(`Property Name or Search Query: ${entityName}`);
     if (location) parts.push(`Town / Area / Context: ${location}`);
+    if (details?.url) parts.push(`Target Website or Online Listing URL: ${details.url}`);
+    if (details?.scrapedContent) {
+      parts.push(`\n--- DIRECTLY SCRAPED WEBPAGE CONTENT ---\n${details.scrapedContent}\n--- END SCRAPED WEBPAGE CONTENT ---\nExtract all real amenities, room types, pricing (MWK & USD), authentic description, check-in policies, and contacts from the scraped text above.`);
+    }
     if (extraNotes) parts.push(`Additional clues: ${extraNotes}`);
     parts.push(`Your task is to identify this real Malawian property (or synthesize highly authentic, realistic Malawian hospitality data for it) and fill in almost ALL listing fields.
 CRITICAL: You MUST accurately auto-categorize the property based on its characteristics.
@@ -987,6 +993,37 @@ export function isAuthError(message: string): boolean {
   );
 }
 
+/**
+ * Scrapes clean textual content from a webpage URL for AI grounding and property extraction.
+ */
+async function scrapeUrlContent(targetUrl: string): Promise<string> {
+  try {
+    const res = await fetch(targetUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      },
+      signal: AbortSignal.timeout(6000),
+    });
+    if (!res.ok) return '';
+    const html = await res.text();
+    const clean = html
+      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+      .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+      .replace(/<svg\b[^<]*(?:(?!<\/svg>)<[^<]*)*<\/svg>/gi, '')
+      .replace(/<noscript\b[^<]*(?:(?!<\/noscript>)<[^<]*)*<\/noscript>/gi, '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/&amp;/gi, '&')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return clean.slice(0, 10000);
+  } catch (err: any) {
+    console.warn('[AI] Web scraping URL failed (falling back to search grounding):', err?.message);
+    return '';
+  }
+}
+
 async function executeWithProvider(
   providerId: AIProviderId,
   req: GenerationRequest,
@@ -1003,6 +1040,17 @@ async function executeWithProvider(
   }
 
   const model = resolveModel(providerId, config.providers[providerId]?.model);
+
+  // Auto-scrape webpage content if a URL is provided for property lookup
+  if (req.action === 'lookup_property') {
+    const rawTarget = req.details?.url || (req.details?.name?.startsWith('http') ? req.details.name : '');
+    if (rawTarget && (rawTarget.startsWith('http://') || rawTarget.startsWith('https://')) && !req.details?.scrapedContent) {
+      const scraped = await scrapeUrlContent(rawTarget);
+      if (scraped) {
+        req.details = { ...req.details, scrapedContent: scraped };
+      }
+    }
+  }
 
   // Check in-memory cache for deterministic actions to burn 0 tokens and 0 requests
   const cacheKey = buildCacheKey(providerId, model, req);

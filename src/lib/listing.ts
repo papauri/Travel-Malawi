@@ -1,4 +1,4 @@
-import { collection, doc, getDocs, query, where, limit, writeBatch } from "firebase/firestore";
+import { collection, doc, getDocs, query, where, limit, writeBatch, setDoc } from "firebase/firestore";
 /**
  * Everything the "list your property" flow needs, in one place.
  *
@@ -479,17 +479,40 @@ export function draftToHotel(draft: ListingDraft, managerId: string): Omit<Hotel
   };
 }
 
+/**
+ * Recursively strips undefined fields from an object so Firestore setDoc/batch.commit
+ * never throws "Unsupported field value: undefined".
+ */
+export function sanitizeForFirestore<T>(data: T): T {
+  if (data === null || data === undefined) {
+    return null as any;
+  }
+  if (Array.isArray(data)) {
+    return data
+      .filter(item => item !== undefined)
+      .map(item => sanitizeForFirestore(item)) as any;
+  }
+  if (typeof data === 'object') {
+    const clean: Record<string, any> = {};
+    for (const [key, val] of Object.entries(data as Record<string, any>)) {
+      if (val !== undefined) {
+        clean[key] = sanitizeForFirestore(val);
+      }
+    }
+    return clean as any;
+  }
+  return data;
+}
+
 /** Creates the listing and returns its new id. */
 export async function createListing(draft: ListingDraft, managerId: string): Promise<string> {
-  const payload: Record<string, unknown> = { ...draftToHotel(draft, managerId) };
-  if (payload.coordinates === undefined) delete payload.coordinates;
+  const rawPayload = draftToHotel(draft, managerId);
+  const payload = sanitizeForFirestore(rawPayload);
   const docId = draft.id || uuidv4();
 
-  // The hotel and its rooms are written in one batch, so a failure part-way
-  // cannot leave a listing without rooms (which `hasDuplicateListing` would
-  // then stop the host from retrying).
-  const batch = writeBatch(db);
-  batch.set(doc(db, 'hotels', docId), payload);
+  // 1. Commit the hotel document first so it exists in the database.
+  // This satisfies Firestore security rules (exists(hotelPath(docId))) for room creation.
+  await setDoc(doc(db, 'hotels', docId), payload);
 
   // If this is an entire place stay and no individual rooms were manually entered,
   // synthesize a whole-property room record so existing booking, calendar and availability logic work 100%
@@ -520,24 +543,29 @@ export async function createListing(draft: ListingDraft, managerId: string): Pro
     ];
   }
 
-  for (const r of roomsToWrite) {
-    const primaryCurrency = (r.currencies && r.currencies.length > 0) ? r.currencies[0] : 'USD';
-    const roomPayload = {
-      ...r,
-      hotelId: docId,
-      currency: primaryCurrency,
-      price: Number(r.prices?.[primaryCurrency] ?? 0),
-      priceMWK: Number(r.prices?.MWK ?? 0),
-      showDualCurrency: (r.currencies?.length ?? 0) > 1,
-      extraGuestFee: Number(r.extraGuestFees?.[primaryCurrency] ?? 0),
-      amenities: r.amenities || [],
-      galleryUrls: r.galleryUrls || [],
-      blockedDates: [],
-    };
-    delete roomPayload.id;
-    batch.set(doc(collection(db, 'room_types')), roomPayload);
+  // 2. Commit room types
+  if (roomsToWrite.length > 0) {
+    const batch = writeBatch(db);
+    for (const r of roomsToWrite) {
+      const primaryCurrency = (r.currencies && r.currencies.length > 0) ? r.currencies[0] : 'USD';
+      const rawRoomPayload = {
+        ...r,
+        hotelId: docId,
+        currency: primaryCurrency,
+        price: Number(r.prices?.[primaryCurrency] ?? 0),
+        priceMWK: Number(r.prices?.MWK ?? 0),
+        showDualCurrency: (r.currencies?.length ?? 0) > 1,
+        extraGuestFee: Number(r.extraGuestFees?.[primaryCurrency] ?? 0),
+        amenities: r.amenities || [],
+        galleryUrls: r.galleryUrls || [],
+        blockedDates: [],
+      };
+      delete (rawRoomPayload as any).id;
+      const cleanRoom = sanitizeForFirestore(rawRoomPayload);
+      batch.set(doc(collection(db, 'room_types')), cleanRoom);
+    }
+    await batch.commit();
   }
 
-  await batch.commit();
   return docId;
 }

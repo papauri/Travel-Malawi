@@ -28,6 +28,7 @@ import {
   generateCuratedMalawiReviews
 } from './server/aiService';
 import { sendOfflineNotification } from './server/notifications';
+import { sendOnboardingWelcomeEmail } from './server/onboardingEmail';
 import {
   generateAutoReminders,
   createManualReminder,
@@ -182,7 +183,7 @@ async function startServer() {
 
   const upload = multer({
     storage,
-    limits: { fileSize: 8 * 1024 * 1024 }, // 8MB limit
+    limits: { fileSize: 16 * 1024 * 1024 }, // 16MB limit
     fileFilter: (req, file, cb) => cb(null, Boolean(IMAGE_TYPES[file.mimetype])),
   });
 
@@ -458,7 +459,7 @@ async function startServer() {
         const message = err?.message === 'INVALID_FOLDER'
           ? 'Invalid upload folder.'
           : err?.code === 'LIMIT_FILE_SIZE'
-          ? 'Image is larger than 8 MB.'
+          ? 'Image is larger than 16 MB.'
           : 'Upload failed.';
         if (!['INVALID_FOLDER'].includes(err?.message) && err?.code !== 'LIMIT_FILE_SIZE') {
           console.error('[API] Upload error:', err);
@@ -1280,6 +1281,54 @@ async function startServer() {
     } catch (err) {
       console.error('[API] Password reset notice failed:', err);
       res.json({ success: true, emailSent: false });
+    }
+  });
+
+  // Property Onboarding Welcome & Login Guidance email — dispatched immediately upon listing submission
+  app.post('/api/onboarding/send-welcome', requireAuth, async (req, res) => {
+    try {
+      const {
+        hotelId,
+        propertyName,
+        ownerEmail,
+        ownerName,
+        managerEmail,
+        location,
+        category,
+        stayType
+      } = req.body || {};
+
+      if (!hotelId || !propertyName) {
+        return res.status(400).json({ error: 'hotelId and propertyName are required.' });
+      }
+
+      const effectiveEmail = ownerEmail || managerEmail || (req as any).user?.email;
+      if (!effectiveEmail || !String(effectiveEmail).includes('@')) {
+        return res.status(400).json({ error: 'Valid owner or manager email is required.' });
+      }
+
+      const hostOrigin = req.get('origin') || `${req.protocol}://${req.get('host')}`;
+      const result = await sendOnboardingWelcomeEmail({
+        hotelId: String(hotelId),
+        propertyName: String(propertyName),
+        ownerEmail: String(effectiveEmail),
+        ownerName: ownerName ? String(ownerName) : undefined,
+        managerEmail: managerEmail ? String(managerEmail) : undefined,
+        location: location ? String(location) : undefined,
+        category: category ? String(category) : undefined,
+        stayType: stayType ? String(stayType) : undefined,
+        origin: hostOrigin,
+      });
+
+      res.json({
+        success: true,
+        sent: result.success,
+        messageId: result.messageId,
+        error: result.error,
+      });
+    } catch (err: any) {
+      console.error('[API] Onboarding welcome email failed:', err);
+      res.status(500).json({ success: false, error: err?.message || 'Failed to dispatch onboarding email' });
     }
   });
 

@@ -279,6 +279,8 @@ export default function ListProperty() {
   const placeDropdownRef = useRef<HTMLDivElement>(null);
 
   const [aiLookupLoading, setAiLookupLoading] = useState(false);
+  const [showWebScrapeOption, setShowWebScrapeOption] = useState(false);
+  const [webScrapeInput, setWebScrapeInput] = useState('');
   const [aiCategorized, setAiCategorized] = useState(false);
   const [aiPropertySuggestion, setAiPropertySuggestion] = useState<{
     matched: boolean;
@@ -591,60 +593,70 @@ export default function ListProperty() {
     }
   };
 
-  // Look up property on Maps & Knowledge Base
-  const handleLookupPropertyAI = async (overrideName?: string) => {
-    const name = (overrideName || draft.name).trim();
-    if (!name) {
-      toast.error('Please enter a property name to look up with the Draft Assistant');
+  // Look up property on Maps, Knowledge Base & live Web Scraping
+  const handleLookupPropertyAI = async (
+    overrideName?: string,
+    options?: { forceWebScrape?: boolean; url?: string; location?: string }
+  ) => {
+    const rawInput = (overrideName || draft.name).trim();
+    if (!rawInput && !options?.url) {
+      toast.error('Please enter a property name or website URL to look up from the web');
       return;
     }
 
     setAiLookupLoading(true);
     setAiPropertySuggestion(null);
 
-    // 1. Instant check in verified Malawi Hospitality Registry
-    const regMatch = getRegisteredPropertyByName(name);
-    if (regMatch) {
-      const matchedLocal = localImagesForName(regMatch.name);
-      const suggestedImageUrl = matchedLocal.length > 0 ? matchedLocal[0] : getDefaultImageForCategory(regMatch.category);
+    const isUrl = rawInput.startsWith('http://') || rawInput.startsWith('https://') || rawInput.includes('www.') || Boolean(options?.url);
+    const targetUrl = options?.url || (rawInput.startsWith('http') ? rawInput : undefined);
+    const searchName = (isUrl && !overrideName) ? (draft.name || 'Malawi Accommodation') : (targetUrl ? (draft.name || rawInput) : rawInput);
 
-      setAiPropertySuggestion({
-        matched: true,
-        officialName: regMatch.name,
-        category: regMatch.category,
-        location: regMatch.location,
-        locationNotes: regMatch.locationNotes,
-        description: regMatch.description,
-        amenities: regMatch.amenities,
-        coordinates: regMatch.coordinates,
-        confidence: 'high',
-        summary: regMatch.summary,
-        checkInTime: regMatch.checkInTime,
-        checkOutTime: regMatch.checkOutTime,
-        suggestedRooms: regMatch.suggestedRooms,
-        contactPhone: regMatch.contactPhone || '+265 991 234 567',
-        contactEmail: regMatch.contactEmail || user?.email || 'reservations@property.mw',
-        contactWhatsapp: regMatch.contactWhatsapp || regMatch.contactPhone || '+265 991 234 567',
-        suggestedImageUrl,
-      });
+    // 1. Instant check in verified Malawi Hospitality Registry (unless forceWebScrape or URL scraping is requested)
+    if (!options?.forceWebScrape && !isUrl) {
+      const regMatch = getRegisteredPropertyByName(searchName);
+      if (regMatch) {
+        const matchedLocal = localImagesForName(regMatch.name);
+        const suggestedImageUrl = matchedLocal.length > 0 ? matchedLocal[0] : getDefaultImageForCategory(regMatch.category);
 
-      setDraft(prev => ({
-        ...prev,
-        category: regMatch.category || prev.category,
-        location: regMatch.location || prev.location,
-        coordinates: regMatch.coordinates || prev.coordinates,
-        locationNotes: regMatch.locationNotes || prev.locationNotes,
-      }));
-      setAiCategorized(true);
-      setAiLookupLoading(false);
-      toast.success(`Matched "${regMatch.name}" from Malawi Hospitality Registry (${regMatch.badge || regMatch.category})!`);
-      return;
+        setAiPropertySuggestion({
+          matched: true,
+          officialName: regMatch.name,
+          category: regMatch.category,
+          location: regMatch.location,
+          locationNotes: regMatch.locationNotes,
+          description: regMatch.description,
+          amenities: regMatch.amenities,
+          coordinates: regMatch.coordinates,
+          confidence: 'high',
+          summary: regMatch.summary,
+          checkInTime: regMatch.checkInTime,
+          checkOutTime: regMatch.checkOutTime,
+          suggestedRooms: regMatch.suggestedRooms,
+          contactPhone: regMatch.contactPhone || '+265 991 234 567',
+          contactEmail: regMatch.contactEmail || user?.email || 'reservations@property.mw',
+          contactWhatsapp: regMatch.contactWhatsapp || regMatch.contactPhone || '+265 991 234 567',
+          suggestedImageUrl,
+        });
+
+        setDraft(prev => ({
+          ...prev,
+          category: regMatch.category || prev.category,
+          location: regMatch.location || prev.location,
+          coordinates: regMatch.coordinates || prev.coordinates,
+          locationNotes: regMatch.locationNotes || prev.locationNotes,
+        }));
+        setAiCategorized(true);
+        setAiLookupLoading(false);
+        toast.success(`Matched "${regMatch.name}" from Malawi Hospitality Registry (${regMatch.badge || regMatch.category})!`);
+        return;
+      }
     }
 
     try {
-      // Concurrently query Nominatim/OpenStreetMap for coordinates and AI Knowledge Base for property data
+      const locationContext = options?.location || draft.location || undefined;
+      // Concurrently query Nominatim/OpenStreetMap for coordinates and AI Knowledge Base/Web Scraper for property data
       const [osmResults, aiResult] = await Promise.all([
-        searchNominatim(`${name} Malawi`, 3).catch(() => []),
+        searchNominatim(`${searchName} Malawi`, 3).catch(() => []),
         generateDetailed<{
           matched: boolean;
           officialName: string;
@@ -675,9 +687,12 @@ export default function ListProperty() {
           action: 'lookup_property',
           entityType: 'property',
           details: {
-            name,
-            location: draft.location || undefined,
-            extraNotes: 'Search Google Maps, OpenStreetMap and hospitality registries across Malawi. Auto-categorize accurately (Bed & Breakfast, Cottage & Chalet, Guest House, Lake & Beach, Safari & Wildlife, Luxury, Romantic Escape, Family, Adventure) and fill all fields.',
+            name: searchName,
+            url: targetUrl,
+            location: locationContext,
+            extraNotes: targetUrl
+              ? `Live Web Scraping Request: Scrape the website/listing at ${targetUrl}. Extract real room types with dual pricing (MWK & USD), full welcoming description, amenities, check-in/out hours, and direct phone/email contacts.`
+              : 'Search Google Maps, online listings, and live web sources across Malawi. Auto-categorize accurately (Bed & Breakfast, Cottage & Chalet, Guest House, Lake & Beach, Safari & Wildlife, Luxury, Romantic Escape, Family, Adventure) and fill all fields.',
           },
         }),
       ]);
@@ -1352,6 +1367,40 @@ export default function ListProperty() {
       }
 
       const id = await createListing(draft, user.uid);
+
+      // Immediately dispatch onboarding welcome & login instructions email to property owner
+      try {
+        const token = await user.getIdToken();
+        const ownerEmailToSend = draft.ownerEmail.trim() || draft.managerEmail.trim() || draft.contactEmail.trim() || user.email;
+        if (ownerEmailToSend) {
+          fetch('/api/onboarding/send-welcome', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              hotelId: id,
+              propertyName: draft.name,
+              ownerEmail: ownerEmailToSend,
+              ownerName: draft.ownerName || draft.managerName || user.displayName,
+              managerEmail: draft.managerEmail || user.email,
+              location: draft.location,
+              category: draft.category,
+              stayType: draft.stayType,
+            }),
+          }).then(res => res.json()).then(result => {
+            if (result?.sent) {
+              toast.success(`Login & property details sent to ${ownerEmailToSend}`, { icon: '📧', duration: 5000 });
+            }
+          }).catch(err => {
+            console.warn('[Onboarding] Could not dispatch welcome email:', err);
+          });
+        }
+      } catch (emailErr) {
+        console.warn('[Onboarding] Welcome email token error:', emailErr);
+      }
+
       try {
         localStorage.removeItem(getDraftStorageKey(user.uid));
       } catch {
@@ -1369,11 +1418,10 @@ export default function ListProperty() {
       }
     } catch (error: any) {
       console.error('Could not create listing:', error);
-      toast.error(
-        error?.code === 'permission-denied'
-          ? 'Your account is not allowed to publish listings yet.'
-          : 'Could not submit the property. Please try again.'
-      );
+      const specificError = error?.code === 'permission-denied'
+        ? 'Your account is not allowed to publish listings yet.'
+        : (error?.message ? `Submission failed: ${error.message}` : 'Could not submit the property. Please try again.');
+      toast.error(specificError);
     } finally {
       setSubmitting(false);
     }
@@ -1629,6 +1677,90 @@ export default function ListProperty() {
         <div className="rounded-2xl sm:rounded-3xl border border-stone-200 bg-white p-4 sm:p-6 md:p-8 lg:p-10 shadow-xs">
           {step === 0 && (
             <div className="space-y-8">
+              {/* Optional Web Scraping & Auto-Fill from Internet (Shown ONLY when AI is available) */}
+              {aiStatus.enabled && aiStatus.available && (
+                <div className="rounded-2xl bg-stone-900 text-white p-4 sm:p-5 shadow-sm border border-stone-800 animate-in fade-in">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2.5 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0 mt-0.5">
+                        <Sparkles className="w-5 h-5 text-amber-300" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="text-sm font-bold text-white">
+                            Scrape & Auto-Fill from Web (AI)
+                          </h3>
+                          <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-amber-400 text-stone-950 uppercase tracking-wide">
+                            Instant Web Scrape
+                          </span>
+                        </div>
+                        <p className="text-xs text-stone-300 mt-1 max-w-xl leading-relaxed">
+                          Already listed online? Enter your lodge website, Booking.com, Airbnb, TripAdvisor, or Google Maps URL. Ulendo scrapes the internet for your rooms, rates, amenities, and descriptions and auto-fills them in one click.
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowWebScrapeOption(prev => !prev)}
+                      className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-amber-500 hover:bg-amber-400 text-stone-950 shadow-xs transition active:scale-95 cursor-pointer shrink-0 self-start sm:self-center"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-stone-950" />
+                      <span>{showWebScrapeOption ? 'Hide Web Scraper' : 'Scrape Web Details'}</span>
+                    </button>
+                  </div>
+
+                  {showWebScrapeOption && (
+                    <div className="mt-4 pt-4 border-t border-stone-800 space-y-3">
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <input
+                          type="text"
+                          value={webScrapeInput}
+                          onChange={e => setWebScrapeInput(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter' && webScrapeInput.trim() && !aiLookupLoading) {
+                              e.preventDefault();
+                              handleLookupPropertyAI(webScrapeInput, {
+                                forceWebScrape: true,
+                                url: webScrapeInput.startsWith('http') ? webScrapeInput : undefined,
+                              });
+                            }
+                          }}
+                          placeholder="Paste lodge website, Booking.com, TripAdvisor link, or hotel name"
+                          className="flex-1 px-3.5 py-2.5 rounded-xl border border-stone-700 bg-stone-950 text-xs text-white placeholder:text-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400"
+                          disabled={aiLookupLoading}
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleLookupPropertyAI(webScrapeInput, {
+                              forceWebScrape: true,
+                              url: webScrapeInput.startsWith('http') ? webScrapeInput : undefined,
+                            })
+                          }
+                          disabled={aiLookupLoading || !webScrapeInput.trim()}
+                          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-stone-950 shadow-xs transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shrink-0"
+                        >
+                          {aiLookupLoading ? (
+                            <>
+                              <Loader2 className="w-3.5 h-3.5 animate-spin text-stone-950" />
+                              <span>Scraping the Web...</span>
+                            </>
+                          ) : (
+                            <>
+                              <ConciergeBell className="w-3.5 h-3.5 text-stone-950" />
+                              <span>Scrape & Pre-Fill</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                      <p className="text-[11px] text-stone-400 flex items-center gap-1.5">
+                        <span>💡 Works with official lodge websites, Booking.com, TripAdvisor, Facebook pages, or lodge names across Malawi.</span>
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div>
                 <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                   <label className={labelClass} htmlFor="listing-name">Property name</label>
@@ -1640,17 +1772,17 @@ export default function ListProperty() {
                     {aiStatus.enabled && aiStatus.available && (
                       <button
                         type="button"
-                        onClick={() => handleLookupPropertyAI()}
+                        onClick={() => handleLookupPropertyAI(draft.name, { forceWebScrape: true })}
                         disabled={aiLookupLoading || !draft.name.trim()}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-stone-900 hover:bg-stone-800 text-white shadow-2xs transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                        title="Look up property in Malawi Registry and auto-fill listing fields"
+                        title="Scrape the web and auto-fill listing fields"
                       >
                         {aiLookupLoading ? (
                           <Loader2 className="w-3.5 h-3.5 animate-spin" />
                         ) : (
                           <ConciergeBell className="w-3.5 h-3.5 text-amber-300" />
                         )}
-                        <span>Hospitality Registry Auto-Fill</span>
+                        <span>Scrape Web & Auto-Fill</span>
                       </button>
                     )}
                   </div>
@@ -1683,9 +1815,15 @@ export default function ListProperty() {
                         }
                         return;
                       }
+                      if ((val.startsWith('http://') || val.startsWith('https://')) && aiStatus.enabled && aiStatus.available) {
+                        set('name', val);
+                        toast('Web URL detected! Scraping details from the web...', { icon: '🌐' });
+                        handleLookupPropertyAI(val, { forceWebScrape: true, url: val });
+                        return;
+                      }
                       set('name', val);
                     }}
-                    placeholder="e.g. Kaya Mawa, Sunbird Capital, or paste a Google Maps link"
+                    placeholder="e.g. Kaya Mawa, Sunbird Capital, or paste a website / Maps link"
                     className={fieldClass}
                     autoComplete="off"
                   />

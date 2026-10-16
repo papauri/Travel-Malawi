@@ -113,6 +113,22 @@ service cloud.firestore {
         );
     }
 
+    function isManagerAfter(hotelId) {
+      return isActive()
+        && hotelId is string
+        && existsAfter(hotelPath(hotelId))
+        && (
+          getAfter(hotelPath(hotelId)).data.get('managerId', '') == request.auth.uid
+          || getAfter(hotelPath(hotelId)).data.get('ownerId', '') == request.auth.uid
+          || getAfter(hotelPath(hotelId)).data.get('createdBy', '') == request.auth.uid
+          || (signedIn() && request.auth.token.get('email', '') != '' && (
+               (getAfter(hotelPath(hotelId)).data.get('managerEmail', '') != '' && getAfter(hotelPath(hotelId)).data.get('managerEmail', '').lower() == request.auth.token.email.lower())
+               || (getAfter(hotelPath(hotelId)).data.get('ownerEmail', '') != '' && getAfter(hotelPath(hotelId)).data.get('ownerEmail', '').lower() == request.auth.token.email.lower())
+               || (getAfter(hotelPath(hotelId)).data.get('contactEmail', '') != '' && getAfter(hotelPath(hotelId)).data.get('contactEmail', '').lower() == request.auth.token.email.lower())
+             ))
+        );
+    }
+
     // ---- Bookings ----
 
     function bookingPath(bookingId) {
@@ -335,7 +351,7 @@ service cloud.firestore {
     match /room_types/{roomId} {
       allow read: if true;
       allow create: if request.resource.data.hotelId is string
-                    && (isManager(request.resource.data.hotelId) || isAdmin() || isMarketing());
+                    && (isManager(request.resource.data.hotelId) || isManagerAfter(request.resource.data.hotelId) || isAdmin() || isMarketing());
       // A room can never be moved onto another property.
       allow update: if resource.data.hotelId is string
                     && request.resource.data.hotelId == resource.data.hotelId
