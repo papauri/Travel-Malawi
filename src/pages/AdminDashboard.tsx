@@ -1827,7 +1827,7 @@ export default function AdminDashboard() {
                               )}
                             </span>
                           </p>
-                          {isAdmin(user) && (
+                          {(isAdmin(user) || isMarketing(user)) && (
                             <button
                               type="button"
                               onClick={() => {
@@ -1913,7 +1913,7 @@ export default function AdminDashboard() {
                                 Management &amp; Delegation
                               </div>
 
-                              {isAdmin(user) && (
+                              {(isAdmin(user) || isMarketing(user)) && (
                                 <button
                                   type="button"
                                   onClick={() => {
@@ -2004,6 +2004,33 @@ export default function AdminDashboard() {
                                 <span>Inspect &amp; Review Listing</span>
                               </button>
 
+                              {hotel.status === 'pending' && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      handleUpdateStatus(hotel.id!, 'approved');
+                                      setOpenHotelMenuId(null);
+                                    }}
+                                    className="w-full px-3 py-1.5 text-xs text-emerald-800 hover:bg-emerald-50 flex items-center gap-2 transition cursor-pointer font-semibold"
+                                  >
+                                    <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                    <span>Approve Listing (Go Live)</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      handleUpdateStatus(hotel.id!, 'rejected');
+                                      setOpenHotelMenuId(null);
+                                    }}
+                                    className="w-full px-3 py-1.5 text-xs text-rose-800 hover:bg-rose-50 flex items-center gap-2 transition cursor-pointer"
+                                  >
+                                    <X className="w-3.5 h-3.5 text-rose-600" />
+                                    <span>Reject Listing</span>
+                                  </button>
+                                </>
+                              )}
+
                               {(!hotel.status || hotel.status === 'approved') && (
                                 <button
                                   type="button"
@@ -2025,10 +2052,10 @@ export default function AdminDashboard() {
                                     handleUpdateStatus(hotel.id!, 'approved');
                                     setOpenHotelMenuId(null);
                                   }}
-                                  className="w-full px-3 py-1.5 text-xs text-emerald-800 hover:bg-emerald-50 flex items-center gap-2 transition cursor-pointer"
+                                  className="w-full px-3 py-1.5 text-xs text-emerald-800 hover:bg-emerald-50 flex items-center gap-2 transition cursor-pointer font-semibold"
                                 >
                                   <Check className="w-3.5 h-3.5 text-emerald-600" />
-                                  <span>Approve Listing</span>
+                                  <span>Approve Listing (Reactivate)</span>
                                 </button>
                               )}
 

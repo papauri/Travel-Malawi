@@ -23,7 +23,7 @@ import StayVoucherModal from '../components/StayVoucherModal';
 import { getHotelImage } from '../lib/images';
 import { formatDateStr, daysUntil, nightsBetween } from '../lib/dates';
 import { cancellationTerms, formatMoney, isStayComplete, FREE_CANCELLATION_DAYS } from '../lib/booking';
-import { isTraveller, isAdmin } from '../lib/roles';
+import { isTraveller, isAdmin, isMarketing } from '../lib/roles';
 import { updateBookingWithSlot, cancelBookingReminders } from '../lib/bookingWrites';
 import { useConfirmBooking } from '../hooks/useConfirmBooking';
 import PriceMismatchNotice from '../components/PriceMismatchNotice';
@@ -103,7 +103,7 @@ export default function MyBookings() {
         const querySnapshot = await getDocs(collection(db, 'hotels'));
         const allHotels = querySnapshot.docs.map(d => ({ id: d.id, ...d.data() } as Hotel));
         const userEmailLower = user?.email?.toLowerCase();
-        const userIsAdmin = isAdmin(user);
+        const userIsAdmin = isAdmin(user) || isMarketing(user);
 
         const hotels = allHotels.filter(h => {
           if (userIsAdmin) return true;

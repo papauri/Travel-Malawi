@@ -972,6 +972,43 @@ export default function ManageHotel() {
     }
   };
 
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+  const handleUpdateListingStatus = async (newStatus: 'approved' | 'rejected' | 'pending') => {
+    if (!hotel || !id) return;
+    if (newStatus === 'rejected') {
+      const confirmed = window.confirm(`Are you sure you want to reject the listing "${hotel.name}"? It will be hidden from travellers.`);
+      if (!confirmed) return;
+    }
+    setUpdatingStatus(true);
+    try {
+      await updateDoc(doc(db, 'hotels', id), {
+        status: newStatus,
+        updatedAt: Date.now(),
+      });
+      setHotel(prev => prev ? { ...prev, status: newStatus } : null);
+      setEditHotelData(prev => ({ ...prev, status: newStatus }));
+      toast.success(
+        newStatus === 'approved'
+          ? `Listing "${hotel.name}" approved and published live!`
+          : newStatus === 'rejected'
+          ? `Listing "${hotel.name}" has been marked as rejected.`
+          : `Listing "${hotel.name}" status reverted to pending review.`
+      );
+      await logSystemEvent(
+        'action',
+        `Elevated user (${isAdmin(user) ? 'Admin' : 'Marketing'}) set property status to ${newStatus}: ${hotel.name}`,
+        { hotelId: id, status: newStatus },
+        user,
+        'property'
+      );
+    } catch (err: any) {
+      console.error('Failed to update listing status:', err);
+      toast.error('Failed to update status: ' + (err?.message || 'Permission denied'));
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
   // Once a save has been refused, the messages follow the fields as they are
   // corrected, rather than waiting for another rejected submit to catch up.
   useEffect(() => {
@@ -1680,7 +1717,106 @@ export default function ManageHotel() {
         </div>
       )}
 
-      {hotel.status && hotel.status !== 'approved' && (
+      {/* Elevated Moderation Controls for Admins and Marketing */}
+      {canEditElevatedFields && (
+        <div className={`mb-6 p-4 sm:p-5 rounded-2xl border ${
+          hotel.status === 'approved'
+            ? 'bg-emerald-50/70 border-emerald-200 text-emerald-950'
+            : hotel.status === 'rejected'
+            ? 'bg-rose-50/70 border-rose-200 text-rose-950'
+            : 'bg-amber-50/80 border-amber-300 text-amber-950 shadow-2xs'
+        }`}>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className={`p-2 rounded-xl mt-0.5 shrink-0 ${
+                hotel.status === 'approved'
+                  ? 'bg-emerald-100 text-emerald-800'
+                  : hotel.status === 'rejected'
+                  ? 'bg-rose-100 text-rose-800'
+                  : 'bg-amber-100 text-amber-800'
+              }`}>
+                {hotel.status === 'approved' ? (
+                  <CheckCircle2 className="w-5 h-5" />
+                ) : hotel.status === 'rejected' ? (
+                  <AlertTriangle className="w-5 h-5" />
+                ) : (
+                  <ShieldCheck className="w-5 h-5" />
+                )}
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-stone-900/10">
+                    Listing Moderation: {hotel.status || 'pending'}
+                  </span>
+                  <span className="text-[11px] text-stone-500 font-medium">
+                    ({isAdmin(user) ? 'Admin Control' : 'Marketing Control'})
+                  </span>
+                </div>
+                <p className="text-sm font-semibold mt-1">
+                  {hotel.status === 'approved'
+                    ? 'This listing is Live and accepting guest bookings.'
+                    : hotel.status === 'rejected'
+                    ? 'This listing has been Rejected and is hidden from public search.'
+                    : 'This listing is Pending Review and is awaiting verification before going live.'}
+                </p>
+                <p className="text-xs text-stone-600 mt-0.5">
+                  As an elevated platform operator, you can verify property quality, preview storefront appearance, and update publishing status.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 self-start md:self-center shrink-0">
+              <a
+                href={`/hotel/${hotel.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-stone-700 bg-white hover:bg-stone-50 border border-stone-200/80 shadow-2xs transition"
+              >
+                <ExternalLink className="w-3.5 h-3.5 text-stone-500" />
+                <span>View Live Preview</span>
+              </a>
+
+              {hotel.status !== 'approved' && (
+                <button
+                  type="button"
+                  disabled={updatingStatus}
+                  onClick={() => handleUpdateListingStatus('approved')}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-white bg-emerald-700 hover:bg-emerald-600 active:scale-95 shadow-xs transition disabled:opacity-50 cursor-pointer"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>{updatingStatus ? 'Updating...' : 'Approve Listing (Go Live)'}</span>
+                </button>
+              )}
+
+              {hotel.status !== 'rejected' && (
+                <button
+                  type="button"
+                  disabled={updatingStatus}
+                  onClick={() => handleUpdateListingStatus('rejected')}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold text-rose-700 hover:text-white bg-white hover:bg-rose-600 border border-rose-200 active:scale-95 shadow-2xs transition disabled:opacity-50 cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                  <span>Reject Listing</span>
+                </button>
+              )}
+
+              {hotel.status !== 'pending' && (
+                <button
+                  type="button"
+                  disabled={updatingStatus}
+                  onClick={() => handleUpdateListingStatus('pending')}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-stone-700 bg-white hover:bg-stone-50 border border-stone-200 shadow-2xs transition disabled:opacity-50 cursor-pointer"
+                >
+                  <span>Set to Pending</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Non-elevated manager notice when not approved */}
+      {(!isElevatedUser || viewAsManager) && hotel.status && hotel.status !== 'approved' && (
         <div className="mb-5 sm:mb-6 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl sm:rounded-2xl px-4 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm">
           {hotel.status === 'pending'
             ? 'This listing is not yet visible to travellers. Our team reviews new properties before they go live — adding rooms and photos now means it can start taking bookings the moment it is approved.'
@@ -2867,12 +3003,12 @@ export default function ManageHotel() {
   <SectionCard title="Guest Messaging" description="Manage how guests can chat or call you directly through the app." collapsible>
     <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4 md:gap-6">
                   <div>
-                    {hotel?.adminChatEnabled === false && !isAdmin(user) && (
+                    {hotel?.adminChatEnabled === false && !isElevatedUser && (
                       <div className="mb-3 bg-amber-50 border border-amber-200 text-amber-800 p-2.5 sm:p-3 rounded-lg text-xs sm:text-sm">
                         <strong>Premium Feature:</strong> Chat capabilities have been disabled for this listing by an administrator. Please contact support to upgrade or re-enable.
                       </div>
                     )}
-                    {isAdmin(user) && !viewAsManager && (
+                    {canEditElevatedFields && (
                       <>
                         <label className="flex items-center gap-2.5 cursor-pointer mb-2 p-2.5 bg-red-50 border border-red-200 rounded-lg text-xs sm:text-sm">
                           <input 
@@ -2881,7 +3017,7 @@ export default function ManageHotel() {
                             onChange={(e) => setEditHotelData({...editHotelData, adminChatEnabled: e.target.checked})}
                             className="w-4 h-4 text-red-600 border-red-300 rounded focus:ring-red-600"
                           />
-                          <span className="font-bold text-red-900">Admin: Enable Chat Service Globally</span>
+                          <span className="font-bold text-red-900">Admin/Marketing: Enable Chat Service Globally</span>
                         </label>
                         <label className="flex items-center gap-2.5 cursor-pointer mb-2 p-2.5 bg-red-50 border border-red-200 rounded-lg text-xs sm:text-sm">
                           <input 
@@ -2890,7 +3026,7 @@ export default function ManageHotel() {
                             onChange={(e) => setEditHotelData({...editHotelData, adminCallsEnabled: e.target.checked})}
                             className="w-4 h-4 text-red-600 border-red-300 rounded focus:ring-red-600"
                           />
-                          <span className="font-bold text-red-900">Admin: Enable Audio &amp; Video Calling Globally</span>
+                          <span className="font-bold text-red-900">Admin/Marketing: Enable Audio &amp; Video Calling Globally</span>
                         </label>
                         <label className="flex items-center gap-2.5 cursor-pointer mb-4 p-2.5 bg-red-50 border border-red-200 rounded-lg text-xs sm:text-sm">
                           <input 

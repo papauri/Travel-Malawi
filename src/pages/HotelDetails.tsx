@@ -2,7 +2,7 @@ import { getActivePromotion, calculateSlashedPrice, getSaleTypeLabel, getSaleTyp
 import PromotionIcon from '../components/PromotionIcon';
 import React, { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { doc, getDoc, collection, query, where, getDocs, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, onSnapshot, updateDoc } from 'firebase/firestore';
 import { createBookingWithSlot } from '../lib/bookingWrites';
 import { loadHotelSlots, loadRoomSlots } from '../lib/transactions';
 import { malawiToday } from '../lib/promotions';
@@ -43,7 +43,7 @@ import { mapEmbedUrl, mapLinkUrl, resolveHotelCoordinates, isValidLatLng } from 
 import { getSingleCachedHotel, saveSingleCachedHotel, getCachedRooms } from '../lib/mapCache';
 import DatePicker from '../components/DatePicker';
 import { computeBookingPricing, formatMoney, makeBookingReference } from '../lib/booking';
-import { isTraveller, isAdmin, isHotelManager } from '../lib/roles';
+import { isTraveller, isAdmin, isHotelManager, isMarketing } from '../lib/roles';
 import { logSystemEvent } from '../lib/logger';
 import { validateBooking, errorsByField, BookingField, MAX_SPECIAL_REQUESTS } from '../lib/validateBooking';
 import { assessBooking, readSubmissionLog, recordSubmission } from '../lib/spam';
@@ -468,6 +468,62 @@ export default function HotelDetails() {
   }, [checkIn, checkOut]);
 
   const isBookable = !hotel?.status || hotel.status === 'approved';
+  const isElevatedUser = Boolean(user && (isAdmin(user) || isMarketing(user)));
+
+  const [isApproving, setIsApproving] = useState(false);
+  const [isRejecting, setIsRejecting] = useState(false);
+
+  const handleApproveListing = async () => {
+    if (!hotel || !id) return;
+    setIsApproving(true);
+    try {
+      await updateDoc(doc(db, 'hotels', id), {
+        status: 'approved',
+        updatedAt: Date.now(),
+      });
+      setHotel(prev => prev ? { ...prev, status: 'approved' } : null);
+      await logSystemEvent(
+        'action',
+        `Admin/Marketing approved hotel listing: ${hotel.name}`,
+        { hotelId: id, status: 'approved' },
+        user,
+        'property'
+      );
+      toast.success(`"${hotel.name}" is now approved and live on Travel Malawi!`);
+    } catch (err: any) {
+      console.error('Failed to approve listing:', err);
+      toast.error('Failed to approve listing: ' + (err?.message || 'Permission denied'));
+    } finally {
+      setIsApproving(false);
+    }
+  };
+
+  const handleRejectListing = async () => {
+    if (!hotel || !id) return;
+    const confirmed = window.confirm(`Are you sure you want to reject the listing "${hotel.name}"?`);
+    if (!confirmed) return;
+    setIsRejecting(true);
+    try {
+      await updateDoc(doc(db, 'hotels', id), {
+        status: 'rejected',
+        updatedAt: Date.now(),
+      });
+      setHotel(prev => prev ? { ...prev, status: 'rejected' } : null);
+      await logSystemEvent(
+        'action',
+        `Admin/Marketing rejected hotel listing: ${hotel.name}`,
+        { hotelId: id, status: 'rejected' },
+        user,
+        'property'
+      );
+      toast.success(`Listing "${hotel.name}" marked as rejected.`);
+    } catch (err: any) {
+      console.error('Failed to reject listing:', err);
+      toast.error('Failed to reject listing: ' + (err?.message || 'Permission denied'));
+    } finally {
+      setIsRejecting(false);
+    }
+  };
 
 
 
@@ -640,10 +696,12 @@ export default function HotelDetails() {
 
   /** Combined rating across imported and guest-written reviews. */
   const ratingSummary = useMemo(() => {
+    const hotelReviews = Array.isArray(hotel?.reviews) ? hotel.reviews : [];
+    const guestReviews = Array.isArray(reviews) ? reviews : [];
     const ratings = [
-      ...(hotel?.reviews ?? []).map(r => r.rating),
-      ...reviews.map(r => r.rating),
-    ].filter(r => typeof r === 'number' && r > 0);
+      ...hotelReviews.map(r => r?.rating),
+      ...guestReviews.map(r => r?.rating),
+    ].filter((r): r is number => typeof r === 'number' && r > 0);
     if (!ratings.length) return null;
     return {
       average: ratings.reduce((sum, r) => sum + r, 0) / ratings.length,
@@ -653,14 +711,15 @@ export default function HotelDetails() {
 
   /** Imported and guest-written reviews in one list, sorted by chosen sort order (most recent first by default). */
   const allReviews = useMemo(() => {
-    const written = reviews.map((r, i) => {
-      const ts = r.createdAt || Date.now();
+    const guestReviews = Array.isArray(reviews) ? reviews : [];
+    const written = guestReviews.map((r, i) => {
+      const ts = r?.createdAt || Date.now();
       return {
-        key: r.id ? `rev-${r.id}-${i}` : `review-${ts}-${i}`,
-        author: r.authorName || 'Guest',
-        rating: r.rating,
+        key: r?.id ? `rev-${r.id}-${i}` : `review-${ts}-${i}`,
+        author: r?.authorName || 'Guest',
+        rating: typeof r?.rating === 'number' ? r.rating : 5,
         title: undefined as string | undefined,
-        text: r.text,
+        text: r?.text || '',
         date: formatReviewDate(ts),
         timestamp: ts,
         source: 'Travel-Malawi',
@@ -669,22 +728,23 @@ export default function HotelDetails() {
       };
     });
 
-    const imported = (hotel?.reviews ?? []).map((r, i) => {
-      const comment = (r.text || r.comment || '').trim();
-      const rawDate = r.date || (r as any).createdAt || (r as any).scrapedAt || null;
-      const ts = parseReviewDateToTimestamp(rawDate, (r as any).createdAt || 0);
+    const hotelReviews = Array.isArray(hotel?.reviews) ? hotel.reviews : [];
+    const imported = hotelReviews.map((r, i) => {
+      const comment = ((r?.text || (r as any)?.comment || '') as string).trim();
+      const rawDate = r?.date || (r as any)?.createdAt || (r as any)?.scrapedAt || null;
+      const ts = parseReviewDateToTimestamp(rawDate, (r as any)?.createdAt || 0);
       const formattedDate = formatReviewDate(rawDate || ts);
 
       return {
-        key: r.id || `imported-${i}`,
-        author: r.author || 'Guest',
-        rating: typeof r.rating === 'number' ? r.rating : 5,
-        title: r.title || undefined,
+        key: r?.id || `imported-${i}`,
+        author: r?.author || 'Guest',
+        rating: typeof r?.rating === 'number' ? r.rating : 5,
+        title: r?.title || undefined,
         text: comment,
         date: formattedDate,
         timestamp: ts,
-        source: r.source || 'TripAdvisor',
-        sourceUrl: r.sourceUrl || undefined,
+        source: r?.source || 'TripAdvisor',
+        sourceUrl: r?.sourceUrl || undefined,
         verified: false,
       };
     });
@@ -1140,8 +1200,9 @@ export default function HotelDetails() {
   const hotelSchema = useMemo(() => {
     if (!hotel) return undefined;
     const coords = resolveHotelCoordinates(hotel);
-    const avgRating = reviews.length > 0
-      ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
+    const safeReviews = Array.isArray(reviews) ? reviews : [];
+    const avgRating = safeReviews.length > 0
+      ? (safeReviews.reduce((sum, r) => sum + (r.rating || 0), 0) / safeReviews.length).toFixed(1)
       : undefined;
 
     const roomPricesMwk = rooms
@@ -1168,11 +1229,11 @@ export default function HotelDetails() {
     }
 
     let aggregateRatingNode: Record<string, any> | undefined = undefined;
-    if (reviews.length > 0 && avgRating) {
+    if (safeReviews.length > 0 && avgRating) {
       aggregateRatingNode = {
         '@type': 'AggregateRating',
         ratingValue: avgRating,
-        reviewCount: String(reviews.length),
+        reviewCount: String(safeReviews.length),
         bestRating: '5',
         worstRating: '1',
       };
@@ -1190,7 +1251,7 @@ export default function HotelDetails() {
       '@context': 'https://schema.org',
       '@type': ['LodgingBusiness', hotel.category === 'Luxury' ? 'Resort' : 'Hotel'],
       name: hotel.name,
-      description: hotel.description,
+      description: hotel.description || '',
       image: hotelImages.slice(0, 5),
       url: `https://ulendomalawi.com/hotel/${hotel.id}`,
       telephone: hotel.contactPhone || undefined,
@@ -1248,13 +1309,61 @@ export default function HotelDetails() {
     <div className="min-h-screen bg-white pb-24">
       <SEOHead
         title={`${hotel.name} — ${hotel.category || 'Luxury'} Lodge in ${hotel.location || 'Lake Malawi'}`}
-        description={`${hotel.description.substring(0, 150)}... Book direct in MWK and USD with zero booking commissions on Travel Malawi.`}
+        description={`${((hotel.description || '').trim()).substring(0, 150)}... Book direct in MWK and USD with zero booking commissions on Travel Malawi.`}
         keywords={`Malawi lodge, ${hotel.name}, ${hotel.location || 'Lake Malawi'}, ${hotel.category || 'Lodge'}, book ${hotel.name}, Lake Malawi accommodation, safari stay`}
         image={hotel.imageUrl || hotelImages[0]}
         url={`https://ulendomalawi.com/hotel/${hotel.id}`}
         type="hotel"
         schema={hotelSchema}
       />
+      {/* Moderation Preview Banner for Admins and Marketing */}
+      {isElevatedUser && hotel.status !== 'approved' && (
+        <aside
+          aria-label="Listing Moderation Preview"
+          className="sticky top-14 sm:top-16 z-50 bg-stone-900/95 backdrop-blur-md text-white border-b border-amber-500/40 px-3.5 sm:px-6 py-2.5 sm:py-3 shadow-lg"
+        >
+          <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                {hotel.status === 'rejected' ? 'Rejected' : 'Preview • Pending Approval'}
+              </span>
+              <p className="text-xs sm:text-sm text-stone-200">
+                You are previewing this unlisted property as an authorized {isAdmin(user) ? 'Administrator' : 'Marketing Officer'}.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => navigate(`/manage/${hotel.id}`)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-stone-300 hover:text-white bg-stone-800 hover:bg-stone-700 transition cursor-pointer"
+              >
+                <Building className="w-3.5 h-3.5" />
+                <span>Edit in Hub</span>
+              </button>
+              {hotel.status !== 'rejected' && (
+                <button
+                  type="button"
+                  disabled={isRejecting || isApproving}
+                  onClick={handleRejectListing}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-rose-300 hover:text-white bg-rose-950/60 hover:bg-rose-900/80 border border-rose-800/50 transition disabled:opacity-50 cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                  <span>{isRejecting ? 'Rejecting...' : 'Reject'}</span>
+                </button>
+              )}
+              <button
+                type="button"
+                disabled={isApproving || isRejecting}
+                onClick={handleApproveListing}
+                className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 active:scale-95 shadow-sm transition disabled:opacity-50 cursor-pointer"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>{isApproving ? 'Approving...' : 'Approve Listing (Make Live)'}</span>
+              </button>
+            </div>
+          </div>
+        </aside>
+      )}
       {/* Sticky Header when scrolled past hero */}
       <div
         id="sticky-property-bar"
@@ -1804,16 +1913,31 @@ export default function HotelDetails() {
           {/* A listing awaiting moderation is reachable by direct link, so it says
               plainly that it cannot be booked rather than failing at submit. */}
           {!isBookable && (
-            <div className="mt-6 flex items-start gap-3 bg-amber-50 border border-amber-200 text-amber-900 rounded-2xl px-6 py-4">
-              <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
-              <div>
-                <p className="font-semibold">This property is not taking bookings yet</p>
-                <p className="text-sm text-amber-800/80 mt-0.5">
-                  {hotel.status === 'rejected'
-                    ? 'The listing is not currently published on Travel-Malawi.'
-                    : 'The listing is awaiting review by our team. Check back shortly.'}
-                </p>
+            <div className="mt-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-amber-50 border border-amber-200 text-amber-900 rounded-2xl px-6 py-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5 text-amber-700" />
+                <div>
+                  <p className="font-semibold">This property is not taking bookings yet</p>
+                  <p className="text-sm text-amber-800/80 mt-0.5">
+                    {hotel.status === 'rejected'
+                      ? 'The listing is not currently published on Travel-Malawi.'
+                      : 'The listing is awaiting review by our team. Check back shortly.'}
+                  </p>
+                </div>
               </div>
+              {isElevatedUser && (
+                <div className="flex items-center gap-2 self-start sm:self-center shrink-0">
+                  <button
+                    type="button"
+                    disabled={isApproving}
+                    onClick={handleApproveListing}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-white bg-emerald-700 hover:bg-emerald-600 active:scale-95 shadow-sm transition disabled:opacity-50 cursor-pointer"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>{isApproving ? 'Approving...' : 'Approve Listing (Go Live)'}</span>
+                  </button>
+                </div>
+              )}
             </div>
           )}
 

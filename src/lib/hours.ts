@@ -85,12 +85,15 @@ export interface HoursRow {
  * rather than seven near-identical ones.
  */
 export function summariseHours(hours: WeeklyHours): HoursRow[] {
+  const week = normaliseHours(hours);
+  if (!week) return [];
   const rows: HoursRow[] = [];
 
   for (const dayIndex of DISPLAY_ORDER) {
-    const day = hours[dayIndex];
+    const day = week[dayIndex];
+    if (!day) continue;
     const previous = rows[rows.length - 1];
-    const previousDay = previous ? hours[previous.days[previous.days.length - 1]] : null;
+    const previousDay = previous ? week[previous.days[previous.days.length - 1]] : null;
 
     if (previous && previousDay && sameHours(previousDay, day)) {
       previous.days.push(dayIndex);

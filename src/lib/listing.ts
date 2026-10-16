@@ -318,10 +318,14 @@ export function validateDraft(draft: ListingDraft): DraftErrors {
   } else {
     for (let i = 0; i < draft.rooms.length; i++) {
       const r = draft.rooms[i];
-      // Defensive clamp: guests included in base rate must never exceed maximum guests
+      // Defensive clamp: guests included in base rate must never exceed maximum guests, and default if unset/empty
       const maxG = Math.max(1, Number(r.maxGuests || 1));
-      if (r.baseGuests !== undefined && r.baseGuests !== null && Number(r.baseGuests) > maxG) {
+      if (r.baseGuests === undefined || r.baseGuests === null || r.baseGuests === '') {
+        r.baseGuests = Math.min(2, maxG);
+      } else if (Number(r.baseGuests) > maxG) {
         r.baseGuests = maxG;
+      } else if (Number(r.baseGuests) < 1) {
+        r.baseGuests = 1;
       }
       const rErrors = validateRoom(r);
       if (Object.keys(rErrors).length > 0) {

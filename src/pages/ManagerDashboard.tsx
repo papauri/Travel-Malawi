@@ -124,7 +124,7 @@ export default function ManagerDashboard() {
       })) as Hotel[];
 
       const userEmailLower = user?.email?.toLowerCase();
-      const userIsAdmin = isAdmin(user);
+      const userIsAdmin = isAdmin(user) || isMarketing(user);
 
       const hotelsData = allHotels.filter(h => {
         if (userIsAdmin) return true;

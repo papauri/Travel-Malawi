@@ -18,13 +18,20 @@ export function useManagerPresence(managerId?: string) {
   // Listen to Firestore
   useEffect(() => {
     if (!managerId) return;
-    const unsub = onSnapshot(doc(db, "presence", managerId), (doc) => {
-      if (doc.exists()) {
-        setPresenceData(doc.data() as Presence);
-      } else {
+    const unsub = onSnapshot(
+      doc(db, "presence", managerId),
+      (doc) => {
+        if (doc.exists()) {
+          setPresenceData(doc.data() as Presence);
+        } else {
+          setPresenceData({ status: "offline", lastActive: 0 });
+        }
+      },
+      (error) => {
+        console.warn("Manager presence subscription unavailable:", error?.message || error);
         setPresenceData({ status: "offline", lastActive: 0 });
       }
-    });
+    );
     return unsub;
   }, [managerId]);
 
@@ -63,13 +70,20 @@ export function usePresence() {
       setPresence(null);
       return;
     }
-    const unsub = onSnapshot(doc(db, 'presence', user.uid), (doc) => {
-      if (doc.exists()) {
-        setPresence(doc.data() as Presence);
-      } else {
+    const unsub = onSnapshot(
+      doc(db, 'presence', user.uid),
+      (doc) => {
+        if (doc.exists()) {
+          setPresence(doc.data() as Presence);
+        } else {
+          setPresence({ status: 'offline', lastActive: Date.now() });
+        }
+      },
+      (error) => {
+        console.warn("User presence subscription unavailable:", error?.message || error);
         setPresence({ status: 'offline', lastActive: Date.now() });
       }
-    });
+    );
     return unsub;
   }, [user]);
 
