@@ -213,8 +213,8 @@ Return ONLY a valid JSON object with the following fields:
       {
         "name": string (e.g. "Deluxe Double Room (B&B)" or "Lakeview Chalet" or "Executive Suite" or "Safari Tent"),
         "description": string (1-2 sentences on comforts, bed setup, and views),
-        "priceMwk": number (realistic nightly rate in MWK, e.g. 95000 to 280000),
-        "priceUsd": number (realistic nightly rate in USD, e.g. 55 to 160),
+        "priceMwk": number (actual nightly rate in MWK if explicitly stated in listing/dossier, or 0 if unstated. NEVER fabricate pricing!),
+        "priceUsd": number (actual nightly rate in USD if explicitly stated in listing/dossier, or 0 if unstated. NEVER fabricate pricing!),
         "maxGuests": number (e.g. 1, 2, 3, or 4),
         "baseGuests": number (guests included in base price; MUST NOT exceed maxGuests; if maxGuests is 1, baseGuests MUST be 1),
         "quantity": number (e.g. 2 to 5),
@@ -226,6 +226,11 @@ Return ONLY a valid JSON object with the following fields:
 - "contactWhatsapp": string (e.g. "+265 991 234 567")
 - "confidence": "high" | "medium" | "low"
 - "summary": string (1-sentence summary of what makes this stay special)
+
+CRITICAL PRICING INTEGRITY:
+- If the webpage, Booking.com, Airbnb, or online listing explicitly states prices or room rates, extract them accurately into priceUsd and priceMwk (rounding MWK cleanly to the nearest MK 1,000, using ~1,750 MWK/USD conversion if only one currency is stated).
+- If NO room price is explicitly published on the source listing/dossier, you MUST return "priceMwk": 0 and "priceUsd": 0.
+- DO NOT invent, hallucinate, or estimate prices when none are stated. The property manager will enter their rates manually.
 
 Do not output any markdown code blocks, backticks, or explanatory text. Return strictly valid JSON.`);
   } else if (action === 'scrape_reviews') {
@@ -1043,6 +1048,10 @@ async function scrapeUrlContent(targetUrl: string): Promise<string> {
     const html = await res.text();
     if (!html || html.length < 50) return '';
 
+    const hostLower = parsedUrl.hostname.toLowerCase();
+    const isBooking = hostLower.includes('booking.com');
+    const isAirbnb = hostLower.includes('airbnb.') || hostLower.includes('abnb.me');
+
     // 1. Extract JSON-LD structured schemas BEFORE removing <script>
     const jsonLdBlocks: any[] = [];
     const jsonLdMatches = html.matchAll(/<script\b[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi);
@@ -1077,9 +1086,13 @@ async function scrapeUrlContent(targetUrl: string): Promise<string> {
     let schemaLng: number | null = null;
     let schemaAmenities: string[] = [];
 
+    // Track explicit prices
+    let explicitPriceUsd: number | null = null;
+    let explicitPriceMwk: number | null = null;
+
     for (const block of jsonLdBlocks) {
       const typeStr = String(block['@type'] || block['type'] || '');
-      const isLodging = /hotel|resort|lodge|bedandbreakfast|lodging|hostel|motel|place|localbusiness/i.test(typeStr);
+      const isLodging = /hotel|resort|lodge|bedandbreakfast|lodging|hostel|motel|place|localbusiness|accommodation/i.test(typeStr);
       if (isLodging || !schemaName) {
         if (block.name && typeof block.name === 'string') schemaName = block.name.trim();
         if (typeStr) schemaType = typeStr;
@@ -1111,6 +1124,22 @@ async function scrapeUrlContent(targetUrl: string): Promise<string> {
         if (Array.isArray(block.amenityFeature)) {
           schemaAmenities = block.amenityFeature.map((a: any) => typeof a === 'string' ? a : a.name).filter(Boolean);
         }
+
+        // Check offers for prices
+        const offers = block.offers || block.makesOffer;
+        if (offers) {
+          const list = Array.isArray(offers) ? offers : [offers];
+          for (const off of list) {
+            const p = parseFloat(String(off?.price || '').replace(/,/g, ''));
+            const c = String(off?.priceCurrency || '').toUpperCase();
+            if (!isNaN(p) && p > 0) {
+              if (c === 'MWK') explicitPriceMwk = p;
+              else if (c === 'USD') explicitPriceUsd = p;
+              else if (c === 'EUR') explicitPriceUsd = Math.round(p * 1.08);
+              break;
+            }
+          }
+        }
       }
     }
 
@@ -1121,6 +1150,7 @@ async function scrapeUrlContent(targetUrl: string): Promise<string> {
     const ogSiteNameMatch = html.match(/<meta[^>]*property=["']og:site_name["'][^>]*content=["']([^"']+)["']/i);
     const metaDescMatch = html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["']/i) ||
                           html.match(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["']/i);
+    const rawOgDesc = metaDescMatch ? metaDescMatch[1].trim() : '';
 
     // Geo meta tags
     const geoPosMatch = html.match(/<meta[^>]*name=["']geo\.position["'][^>]*content=["']([^"']+)["']/i);
@@ -1144,16 +1174,112 @@ async function scrapeUrlContent(targetUrl: string): Promise<string> {
       }
     }
 
-    // 3. Extract Headings (H1, H2)
-    const h1Matches: string[] = [];
-    for (const h of html.matchAll(/<h1\b[^>]*>([\s\S]*?)<\/h1>/gi)) {
-      const text = h[1].replace(/<[^>]+>/g, '').trim();
-      if (text && text.length > 2 && text.length < 120) h1Matches.push(text);
-    }
-    const h2Matches: string[] = [];
-    for (const h of html.matchAll(/<h2\b[^>]*>([\s\S]*?)<\/h2>/gi)) {
-      const text = h[1].replace(/<[^>]+>/g, '').trim();
-      if (text && text.length > 2 && text.length < 120 && h2Matches.length < 5) h2Matches.push(text);
+    // 3. Platform-Specific Clean Name & Price Extraction
+    let cleanOfficialName = schemaName || '';
+    let platformCategoryHint = '';
+    let roomSpecsOrTypes: string[] = [];
+
+    if (isBooking) {
+      platformCategoryHint = /resort/i.test(schemaType || '') ? 'Resort' : 'Hotel';
+      if (!cleanOfficialName && ogTitleMatch) cleanOfficialName = ogTitleMatch[1];
+      if (!cleanOfficialName && titleMatch) cleanOfficialName = titleMatch[1];
+      cleanOfficialName = cleanOfficialName
+        .replace(/,\s*[^–—]+[–—]\s*Updated \d+ Prices.*/i, '')
+        .replace(/[–—]\s*Updated \d+ Prices.*/i, '')
+        .replace(/[–—]\s*Prices \d+.*/i, '')
+        .replace(/\s*-\s*Booking\.com.*/i, '')
+        .trim();
+
+      if (!cleanOfficialName) {
+        const slug = parsedUrl.pathname.split('/').filter(Boolean).pop() || '';
+        cleanOfficialName = slug.replace(/\.html$/i, '').replace(/^hotel-mw-/i, '').replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      }
+
+      // Check Booking.com price display patterns if not in JSON-LD
+      if (!explicitPriceUsd && !explicitPriceMwk) {
+        const usdMatch = html.match(/(?:US\$|\$)\s*([\d,]+)/i);
+        const mwkMatch = html.match(/(?:MK|MWK)\s*([\d,]+)/i);
+        if (usdMatch) {
+          const val = parseFloat(usdMatch[1].replace(/,/g, ''));
+          if (!isNaN(val) && val >= 15 && val <= 2500) explicitPriceUsd = val;
+        } else if (mwkMatch) {
+          const val = parseFloat(mwkMatch[1].replace(/,/g, ''));
+          if (!isNaN(val) && val >= 15000 && val <= 5000000) explicitPriceMwk = val;
+        }
+      }
+
+      // Extract room types from Booking.com table
+      for (const m of html.matchAll(/data-room-name=["']([^"']+)["']/gi)) {
+        if (m[1] && !roomSpecsOrTypes.includes(m[1].trim()) && roomSpecsOrTypes.length < 3) roomSpecsOrTypes.push(m[1].trim());
+      }
+      for (const m of html.matchAll(/<span\b[^>]*class=["'][^"']*hprt-roomtype-icon-link[^"']*["'][^>]*>([\s\S]*?)<\/span>/gi)) {
+        const text = m[1].replace(/<[^>]+>/g, '').trim();
+        if (text && !roomSpecsOrTypes.includes(text) && text.length > 3 && text.length < 60 && roomSpecsOrTypes.length < 3) {
+          roomSpecsOrTypes.push(text);
+        }
+      }
+    } else if (isAirbnb) {
+      platformCategoryHint = 'Cottage & Chalet';
+      if (!cleanOfficialName && ogTitleMatch) cleanOfficialName = ogTitleMatch[1];
+      if (!cleanOfficialName && titleMatch) cleanOfficialName = titleMatch[1];
+      cleanOfficialName = cleanOfficialName
+        .replace(/\s*-\s*(?:Cottages|Houses|Flats|Apartments|Villas|Rooms|Stays|Chalets|Condos|Homes)\s+for\s+Rent.*$/i, '')
+        .replace(/\s*-\s*Airbnb.*$/i, '')
+        .trim();
+
+      // Airbnb Price Meta
+      const airbnbPriceAmountMatch = html.match(/<meta[^>]*property=["']airbedandbreakfast:price:amount["'][^>]*content=["']([^"']+)["']/i);
+      const airbnbPriceCurrMatch = html.match(/<meta[^>]*property=["']airbedandbreakfast:price:currency["'][^>]*content=["']([^"']+)["']/i);
+      if (airbnbPriceAmountMatch) {
+        const amt = parseFloat(airbnbPriceAmountMatch[1].replace(/,/g, ''));
+        const curr = (airbnbPriceCurrMatch ? airbnbPriceCurrMatch[1] : 'USD').toUpperCase();
+        if (!isNaN(amt) && amt > 0) {
+          if (curr === 'MWK') explicitPriceMwk = amt;
+          else explicitPriceUsd = amt;
+        }
+      }
+      if (!explicitPriceUsd && !explicitPriceMwk) {
+        const priceNightMatch = html.match(/(?:\$|US\$)\s*(\d+)\s*(?:\/|per|\b)?\s*night/i) ||
+                                (rawOgDesc ? rawOgDesc.match(/(?:\$|US\$)\s*(\d+)/) : null);
+        if (priceNightMatch) {
+          const amt = parseFloat(priceNightMatch[1]);
+          if (!isNaN(amt) && amt >= 10 && amt <= 2500) explicitPriceUsd = amt;
+        }
+      }
+
+      // Airbnb Capacity & Specs from og:description
+      if (rawOgDesc) {
+        const g = rawOgDesc.match(/(\d+)\s*guests?/i);
+        const br = rawOgDesc.match(/(\d+)\s*bedrooms?/i);
+        const bd = rawOgDesc.match(/(\d+)\s*beds?/i);
+        const bth = rawOgDesc.match(/(\d+)\s*baths?/i);
+        const parts = [
+          g ? `${g[1]} guests` : '',
+          br ? `${br[1]} bedrooms` : '',
+          bd ? `${bd[1]} beds` : '',
+          bth ? `${bth[1]} baths` : '',
+        ].filter(Boolean);
+        if (parts.length > 0) roomSpecsOrTypes.push(parts.join(' · '));
+      }
+    } else {
+      // General lodge or hotel website
+      if (!cleanOfficialName && ogTitleMatch) cleanOfficialName = ogTitleMatch[1];
+      if (!cleanOfficialName && titleMatch) cleanOfficialName = titleMatch[1];
+      cleanOfficialName = cleanOfficialName
+        .replace(/\s*[-–|].*$/, '')
+        .replace(/^Home\s*[-–|]\s*/i, '')
+        .trim();
+
+      // Check for explicit nightly rates in text
+      const rateMatchUsd = html.match(/(?:nightly\s+rates?|rates?|from)\s*(?::|\s)\s*(?:\$|US\$)\s*(\d+)/i);
+      const rateMatchMwk = html.match(/(?:nightly\s+rates?|rates?|from)\s*(?::|\s)\s*(?:MK|MWK)\s*([\d,]+)/i);
+      if (rateMatchUsd) {
+        const val = parseFloat(rateMatchUsd[1]);
+        if (!isNaN(val) && val >= 15 && val <= 2500) explicitPriceUsd = val;
+      } else if (rateMatchMwk) {
+        const val = parseFloat(rateMatchMwk[1].replace(/,/g, ''));
+        if (!isNaN(val) && val >= 15000 && val <= 5000000) explicitPriceMwk = val;
+      }
     }
 
     // 4. Contact Extraction: Phones, Emails, WhatsApp
@@ -1165,7 +1291,7 @@ async function scrapeUrlContent(targetUrl: string): Promise<string> {
     const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b/g;
     const bodyEmails = html.match(emailRegex) || [];
     for (const em of bodyEmails) {
-      if (!em.includes('sentry') && !em.includes('wix') && !em.includes('wordpress') && !em.includes('example')) {
+      if (!em.includes('sentry') && !em.includes('wix') && !em.includes('wordpress') && !em.includes('example') && !em.includes('booking') && !em.includes('airbnb')) {
         emailsFound.add(em.toLowerCase());
       }
     }
@@ -1200,19 +1326,25 @@ async function scrapeUrlContent(targetUrl: string): Promise<string> {
     ];
     const detectedLocations = malawiLocations.filter(loc => new RegExp(`\\b${loc}\\b`, 'i').test(html));
 
-    // 6. Clean Text Extraction (Preserve Headers, Footers & Contacts!)
-    const cleanText = html
-      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, ' ')
-      .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, ' ')
-      .replace(/<svg\b[^<]*(?:(?!<\/svg>)<[^<]*)*<\/svg>/gi, ' ')
-      .replace(/<noscript\b[^<]*(?:(?!<\/noscript>)<[^<]*)*<\/noscript>/gi, ' ')
-      .replace(/<[^>]+>/g, ' ')
-      .replace(/&nbsp;/gi, ' ')
-      .replace(/&amp;/gi, '&')
-      .replace(/&quot;/gi, '"')
-      .replace(/&#39;/gi, "'")
-      .replace(/\s+/g, ' ')
-      .trim();
+    // 6. Token Minimization: Clean compact description snippet (no huge boilerplate body!)
+    let compactDescription = schemaDesc || rawOgDesc || '';
+    if (!compactDescription && !isBooking && !isAirbnb) {
+      const cleanText = html
+        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, ' ')
+        .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, ' ')
+        .replace(/<svg\b[^<]*(?:(?!<\/svg>)<[^<]*)*<\/svg>/gi, ' ')
+        .replace(/<noscript\b[^<]*(?:(?!<\/noscript>)<[^<]*)*<\/noscript>/gi, ' ')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/&nbsp;/gi, ' ')
+        .replace(/&amp;/gi, '&')
+        .replace(/&quot;/gi, '"')
+        .replace(/&#39;/gi, "'")
+        .replace(/\s+/g, ' ')
+        .trim();
+      compactDescription = cleanText.slice(0, 600);
+    } else {
+      compactDescription = compactDescription.slice(0, 450);
+    }
 
     // 7. Extract Domain Brand
     const hostParts = parsedUrl.hostname.replace(/^www\./i, '').split('.');
@@ -1220,33 +1352,32 @@ async function scrapeUrlContent(targetUrl: string): Promise<string> {
       .replace(/[-_]/g, ' ')
       .replace(/\b\w/g, c => c.toUpperCase());
 
-    // 8. Build High-Fidelity Structured Extraction Dossier
+    // 8. Explicit Pricing Directive
+    const pricingNotice = (explicitPriceUsd || explicitPriceMwk)
+      ? `EXPLICIT LISTED NIGHTLY RATE: ${explicitPriceUsd ? `USD $${explicitPriceUsd}` : ''}${explicitPriceMwk ? ` / MWK MK ${explicitPriceMwk.toLocaleString()}` : ''}`
+      : `EXPLICIT LISTED NIGHTLY RATE: NONE FOUND ON LISTING (STRICT PRICING RULE: return priceMwk: 0 and priceUsd: 0 so host enters rates manually)`;
+
+    // 9. Build High-Fidelity Ultra-Compact Extraction Dossier (<250 tokens!)
     const dossier = [
-      `[EXTRACTED WEBSITE DOSSIER]`,
-      `Website URL: ${normalized}`,
-      `Domain Brand: ${domainBrand}`,
-      schemaName ? `JSON-LD Official Name: ${schemaName}` : '',
-      schemaType ? `JSON-LD Schema Type: ${schemaType}` : '',
-      ogTitleMatch ? `OpenGraph Title: ${ogTitleMatch[1].trim()}` : '',
-      ogSiteNameMatch ? `OpenGraph Site Name: ${ogSiteNameMatch[1].trim()}` : '',
-      titleMatch ? `Page Title: ${titleMatch[1].trim()}` : '',
-      h1Matches.length > 0 ? `Main Heading (H1): ${h1Matches.join(' | ')}` : '',
-      h2Matches.length > 0 ? `Sub-Headings (H2): ${h2Matches.join(' | ')}` : '',
-      schemaAddress ? `JSON-LD Address: ${schemaAddress}` : '',
-      schemaLocality ? `Address Locality: ${schemaLocality}` : '',
-      schemaRegion ? `Address Region: ${schemaRegion}` : '',
-      geoPlacenameMatch ? `Geo Placename Meta: ${geoPlacenameMatch[1]}` : '',
-      geoRegionMatch ? `Geo Region Meta: ${geoRegionMatch[1]}` : '',
-      detectedLocations.length > 0 ? `Malawi Tourism Locations Mentioned: ${detectedLocations.join(', ')}` : '',
+      `[EXTRACTED LISTING DOSSIER]`,
+      `Source URL: ${normalized}`,
+      `Platform: ${isBooking ? 'Booking.com' : (isAirbnb ? 'Airbnb' : domainBrand)}`,
+      cleanOfficialName ? `Official Name: ${cleanOfficialName}` : `Domain Brand: ${domainBrand}`,
+      platformCategoryHint ? `Platform Category Hint: ${platformCategoryHint}` : (schemaType ? `Schema Type: ${schemaType}` : ''),
+      pricingNotice,
+      schemaAddress ? `Address: ${schemaAddress}` : '',
+      schemaLocality ? `Locality: ${schemaLocality}` : '',
+      schemaRegion ? `Region: ${schemaRegion}` : '',
+      geoPlacenameMatch ? `Geo Placename: ${geoPlacenameMatch[1]}` : '',
+      detectedLocations.length > 0 ? `Malawi Tourism Areas: ${detectedLocations.join(', ')}` : '',
       extractedLat && extractedLng ? `GPS Coordinates: lat: ${extractedLat}, lng: ${extractedLng}` : '',
-      Array.from(phonesFound).length > 0 ? `Contact Phone(s): ${Array.from(phonesFound).slice(0, 3).join(', ')}` : '',
-      Array.from(emailsFound).length > 0 ? `Contact Email(s): ${Array.from(emailsFound).slice(0, 3).join(', ')}` : '',
+      roomSpecsOrTypes.length > 0 ? `Room / Accommodation Specs: ${roomSpecsOrTypes.join(' | ')}` : '',
+      Array.from(phonesFound).length > 0 ? `Contact Phone(s): ${Array.from(phonesFound).slice(0, 2).join(', ')}` : '',
+      Array.from(emailsFound).length > 0 ? `Contact Email(s): ${Array.from(emailsFound).slice(0, 2).join(', ')}` : '',
       whatsappNumber ? `WhatsApp: ${whatsappNumber}` : '',
-      schemaDesc ? `JSON-LD Description: ${schemaDesc}` : '',
-      metaDescMatch ? `Meta Description: ${metaDescMatch[1].trim()}` : '',
-      schemaAmenities.length > 0 ? `JSON-LD Amenities: ${schemaAmenities.join(', ')}` : '',
-      `\nWebpage Text Snippet (including footer and location details):\n${cleanText.slice(0, 8000)}`,
-      `[END EXTRACTED WEBSITE DOSSIER]`
+      schemaAmenities.length > 0 ? `Amenities: ${schemaAmenities.slice(0, 10).join(', ')}` : '',
+      compactDescription ? `Listing Summary: ${compactDescription}` : '',
+      `[END EXTRACTED LISTING DOSSIER]`
     ].filter(Boolean).join('\n');
 
     return dossier;

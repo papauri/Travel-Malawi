@@ -358,6 +358,7 @@ export function refreshCatalog(provider: AIProviderId, apiKey: string | undefine
     })
     .catch(err => {
       console.warn(`[modelRegistry] ${provider} catalog refresh failed: ${err?.message || err}`);
+      throw err;
     })
     .finally(() => {
       delete inflight[provider];

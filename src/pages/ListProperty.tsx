@@ -159,35 +159,47 @@ export function authenticMalawianDescription(propName: string, category: Propert
 }
 
 export function synthesizeRoomsForCategory(category: PropertyCategory) {
+  if (category === 'Hotel') {
+    return [
+      { name: 'Standard King Room', description: 'Comfortable executive room with work desk, ensuite bathroom, and high-speed WiFi.', priceMwk: 0, priceUsd: 0, maxGuests: 2, baseGuests: 2, quantity: 4, amenities: ['Ensuite bathroom', 'Dedicated Workspace', 'Free WiFi', 'Hot shower', 'Air conditioning'] },
+      { name: 'Deluxe Suite', description: 'Spacious suite with separate seating lounge, king bed, city view, and minibar.', priceMwk: 0, priceUsd: 0, maxGuests: 2, baseGuests: 2, quantity: 2, amenities: ['Ensuite bathroom', 'Air conditioning', 'Minibar', 'City view', 'Dedicated Workspace'] }
+    ];
+  }
+  if (category === 'Resort') {
+    return [
+      { name: 'Lakeside Chalet', description: 'Scenic resort chalet steps away from the water with private veranda and king bed.', priceMwk: 0, priceUsd: 0, maxGuests: 2, baseGuests: 2, quantity: 4, amenities: ['Ensuite bathroom', 'Lake view', 'Balcony', 'Ceiling fan', 'Mosquito net'] },
+      { name: 'Beachfront Family Chalet', description: 'Multi-room resort chalet ideal for families with direct beach access and lush gardens.', priceMwk: 0, priceUsd: 0, maxGuests: 4, baseGuests: 2, quantity: 2, amenities: ['Ensuite bathroom', 'Family rooms', 'Lake view', 'Private terrace', 'Breakfast included'] }
+    ];
+  }
   if (category === 'Lake & Beach') {
     return [
-      { name: 'Standard Lakeview Chalet', description: 'Cozy private chalet overlooking Lake Malawi with ensuite bathroom and private veranda.', priceMwk: 125000, priceUsd: 75, maxGuests: 2, baseGuests: 2, quantity: 4, amenities: ['Ensuite bathroom', 'Ceiling fan', 'Mosquito net', 'Balcony', 'Hot shower'] },
-      { name: 'Executive Beach Suite', description: 'Spacious direct beach access suite with panoramic sunrise views, king bed, and mini-fridge.', priceMwk: 195000, priceUsd: 115, maxGuests: 2, baseGuests: 2, quantity: 2, amenities: ['Ensuite bathroom', 'Air conditioning', 'Lake view', 'Mini-fridge', 'Private terrace'] }
+      { name: 'Standard Lakeview Chalet', description: 'Cozy private chalet overlooking Lake Malawi with ensuite bathroom and private veranda.', priceMwk: 0, priceUsd: 0, maxGuests: 2, baseGuests: 2, quantity: 4, amenities: ['Ensuite bathroom', 'Ceiling fan', 'Mosquito net', 'Balcony', 'Hot shower'] },
+      { name: 'Executive Beach Suite', description: 'Spacious direct beach access suite with panoramic sunrise views, king bed, and mini-fridge.', priceMwk: 0, priceUsd: 0, maxGuests: 2, baseGuests: 2, quantity: 2, amenities: ['Ensuite bathroom', 'Air conditioning', 'Lake view', 'Mini-fridge', 'Private terrace'] }
     ];
   }
   if (category === 'Bed & Breakfast') {
     return [
-      { name: 'Deluxe Garden Room (B&B)', description: 'Peaceful garden room with delicious home-cooked Malawian breakfast included and ensuite bath.', priceMwk: 85000, priceUsd: 50, maxGuests: 2, baseGuests: 2, quantity: 3, amenities: ['Ensuite bathroom', 'Breakfast included', 'Ceiling fan', 'Hot water', 'Workspace'] },
-      { name: 'Heritage Queen Suite', description: 'Charming queen room with handcrafted wood furnishings, private veranda, and warm breakfast.', priceMwk: 110000, priceUsd: 65, maxGuests: 2, baseGuests: 2, quantity: 2, amenities: ['Ensuite bathroom', 'Breakfast included', 'Veranda', 'Mosquito net', 'Coffee maker'] }
+      { name: 'Deluxe Garden Room (B&B)', description: 'Peaceful garden room with delicious home-cooked Malawian breakfast included and ensuite bath.', priceMwk: 0, priceUsd: 0, maxGuests: 2, baseGuests: 2, quantity: 3, amenities: ['Ensuite bathroom', 'Breakfast included', 'Ceiling fan', 'Hot water', 'Workspace'] },
+      { name: 'Heritage Queen Suite', description: 'Charming queen room with handcrafted wood furnishings, private veranda, and warm breakfast.', priceMwk: 0, priceUsd: 0, maxGuests: 2, baseGuests: 2, quantity: 2, amenities: ['Ensuite bathroom', 'Breakfast included', 'Veranda', 'Mosquito net', 'Coffee maker'] }
     ];
   }
   if (category === 'Cottage & Chalet') {
     return [
-      { name: 'Two-Bedroom Self-Catering Cottage', description: 'Fully equipped private cottage with kitchen, dining area, fireplace, and scenic patio.', priceMwk: 160000, priceUsd: 95, maxGuests: 4, baseGuests: 2, quantity: 2, amenities: ['Kitchen', 'Ensuite bathroom', 'Fireplace', 'Dining area', 'Private patio', 'Backup power'] }
+      { name: 'Two-Bedroom Self-Catering Cottage', description: 'Fully equipped private cottage with kitchen, dining area, fireplace, and scenic patio.', priceMwk: 0, priceUsd: 0, maxGuests: 4, baseGuests: 2, quantity: 2, amenities: ['Kitchen', 'Ensuite bathroom', 'Fireplace', 'Dining area', 'Private patio', 'Backup power'] }
     ];
   }
   if (category === 'Safari & Wildlife') {
     return [
-      { name: 'Luxury Safari Tent', description: 'Raised canvas tent overlooking the bush, ensuite open-air stone bathroom, and game view deck.', priceMwk: 180000, priceUsd: 110, maxGuests: 2, baseGuests: 2, quantity: 4, amenities: ['Ensuite bathroom', 'Deck', 'Mosquito net', 'Bush view', 'Solar power'] }
+      { name: 'Luxury Safari Tent', description: 'Raised canvas tent overlooking the bush, ensuite open-air stone bathroom, and game view deck.', priceMwk: 0, priceUsd: 0, maxGuests: 2, baseGuests: 2, quantity: 4, amenities: ['Ensuite bathroom', 'Deck', 'Mosquito net', 'Bush view', 'Solar power'] }
     ];
   }
   if (category === 'Luxury') {
     return [
-      { name: 'Presidential Lake Villa', description: 'Premier private villa with personal plunge pool, open-plan lounge, and breathtaking lake vistas.', priceMwk: 380000, priceUsd: 220, maxGuests: 2, baseGuests: 2, quantity: 2, amenities: ['Private plunge pool', 'Ensuite bathroom', 'Air conditioning', 'Butler service', 'Lake view', 'Minibar'] }
+      { name: 'Presidential Lake Villa', description: 'Premier private villa with personal plunge pool, open-plan lounge, and breathtaking lake vistas.', priceMwk: 0, priceUsd: 0, maxGuests: 2, baseGuests: 2, quantity: 2, amenities: ['Private plunge pool', 'Ensuite bathroom', 'Air conditioning', 'Butler service', 'Lake view', 'Minibar'] }
     ];
   }
   return [
-    { name: 'Executive Double Room', description: 'Modern, well-appointed guest room with work desk, high-speed WiFi, and hot power shower.', priceMwk: 95000, priceUsd: 55, maxGuests: 2, baseGuests: 2, quantity: 4, amenities: ['Ensuite bathroom', 'Dedicated Workspace', 'Free WiFi', 'Hot shower', 'Backup power'] }
+    { name: 'Executive Double Room', description: 'Modern, well-appointed guest room with work desk, high-speed WiFi, and hot power shower.', priceMwk: 0, priceUsd: 0, maxGuests: 2, baseGuests: 2, quantity: 4, amenities: ['Ensuite bathroom', 'Dedicated Workspace', 'Free WiFi', 'Hot shower', 'Backup power'] }
   ];
 }
 
@@ -833,21 +845,37 @@ export default function ListProperty() {
             checkInTime: suggestion.checkInTime || prev.checkInTime,
             checkOutTime: suggestion.checkOutTime || prev.checkOutTime,
             imageUrl: suggestedImageUrl || prev.imageUrl,
-            rooms: rooms.length > 0 ? rooms.map((r, i) => ({
-              id: `room-${Date.now()}-${i}`,
-              name: r.name,
-              description: r.description || '',
-              priceMwk: r.priceMwk || 95000,
-              priceUsd: r.priceUsd || 55,
-              maxGuests: r.maxGuests || 2,
-              baseGuests: r.baseGuests || 2,
-              quantity: r.quantity || 1,
-              amenities: r.amenities || ['Ensuite bathroom'],
-              images: [],
-            })) : prev.rooms,
+            rooms: rooms.length > 0 ? rooms.map((r, i) => {
+              const usd = Number(r.priceUsd || 0);
+              const mwk = Number(r.priceMwk || 0);
+              const finalUsd = usd > 0 ? usd : (mwk > 0 ? Math.round(mwk / 1750) : 0);
+              const finalMwk = mwk > 0 ? mwk : (usd > 0 ? Math.round((usd * 1750) / 1000) * 1000 : 0);
+              return {
+                id: `room-${Date.now()}-${i}`,
+                name: r.name,
+                description: r.description || '',
+                priceMwk: finalMwk,
+                priceUsd: finalUsd,
+                currencies: ['MWK', 'USD'],
+                prices: {
+                  MWK: finalMwk,
+                  USD: finalUsd,
+                },
+                maxGuests: r.maxGuests || 2,
+                baseGuests: r.baseGuests || 2,
+                quantity: r.quantity || 1,
+                amenities: r.amenities || ['Ensuite bathroom'],
+                images: [],
+              };
+            }) : prev.rooms,
           }));
           setAiCategorized(true);
-          toast.success(`✨ Swarmed web: Imported "${finalOfficialName}" in ${finalLocation} (${verifiedCategory})!`, { duration: 6000 });
+          const hasImportedPrice = rooms.some(r => Number(r.priceUsd || 0) > 0 || Number(r.priceMwk || 0) > 0);
+          if (hasImportedPrice) {
+            toast.success(`✨ Swarmed web: Imported "${finalOfficialName}" in ${finalLocation} with listed rates (${verifiedCategory})!`, { duration: 6000 });
+          } else {
+            toast.success(`✨ Swarmed web: Imported "${finalOfficialName}" in ${finalLocation} (${verifiedCategory})! Set room rates manually on Step 4.`, { duration: 6000 });
+          }
         } else {
           toast.success(`Draft Assistant matched "${finalOfficialName}" & auto-categorized as "${verifiedCategory}"!`);
         }
@@ -941,23 +969,26 @@ export default function ListProperty() {
           next.managerEmail = user.email;
         }
 
-        // Auto-fill Rooms & Rates if none are configured yet
         const currentRoomsEmpty = current.rooms.length === 0 || (current.rooms.length === 1 && !current.rooms[0].name?.trim());
         if (currentRoomsEmpty && s.suggestedRooms && s.suggestedRooms.length > 0) {
           next.rooms = s.suggestedRooms.map(r => {
             const maxG = Math.max(1, Number(r.maxGuests) || 2);
+            const usd = Number(r.priceUsd || 0);
+            const mwk = Number(r.priceMwk || 0);
+            const finalUsd = usd > 0 ? usd : (mwk > 0 ? Math.round(mwk / 1750) : 0);
+            const finalMwk = mwk > 0 ? mwk : (usd > 0 ? Math.round((usd * 1750) / 1000) * 1000 : 0);
             return {
               id: uuidv4(),
               name: r.name,
               description: r.description || `Authentic and comfortable stay with ensuite bathroom, ceiling fan, and warm Malawian hospitality.`,
               currencies: ['MWK', 'USD'],
               prices: {
-                MWK: r.priceMwk || 120000,
-                USD: r.priceUsd || 70,
+                MWK: finalMwk,
+                USD: finalUsd,
               },
               maxGuests: maxG,
               baseGuests: Math.min(Math.max(1, Number(r.baseGuests || maxG)), maxG),
-              quantity: r.quantity || 3,
+              quantity: r.quantity || 1,
               amenities: r.amenities && r.amenities.length > 0 ? r.amenities : ['Ensuite bathroom', 'Ceiling fan', 'Mosquito net', 'Hot shower'],
             };
           });

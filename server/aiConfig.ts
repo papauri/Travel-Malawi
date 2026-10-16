@@ -304,18 +304,30 @@ export function getPublicAIStatus() {
   // Key must exist, be trimmed, non-placeholder, and not invalidated by authentication failure
   const hasValidKeyFormat = !!activeKey && activeKey.trim().length > 5 && !activeKey.includes('placeholder') && !activeKey.includes('your_');
   const isNotInvalidated = providerConf?.isValid !== false;
-  const hasLiveProvider = isProviderEnabled && hasValidKeyFormat && isNotInvalidated;
+
+  // A provider is confirmed working only once its API key connects and works:
+  // Either explicitly marked isValid === true, or catalog successfully discovered via hasCatalog()
+  const isConfirmedWorking = isProviderEnabled && hasValidKeyFormat && isNotInvalidated && (providerConf?.isValid === true || hasCatalog(config.activeProvider));
+
+  // Check if any available provider is confirmed working
+  const anyConfirmedWorking = isConfirmedWorking || getAvailableProviders().some(pid => {
+    const p = config.providers[pid];
+    const k = getEffectiveApiKey(pid);
+    return !!k && k.trim().length > 5 && p?.isValid !== false && (p?.isValid === true || hasCatalog(pid));
+  });
+
+  const isOperational = !!config.enabled && anyConfirmedWorking;
 
   return {
-    enabled: !!config.enabled && isProviderEnabled,
+    enabled: isOperational,
     systemEnabled: !!config.enabled,
     providerEnabled: isProviderEnabled,
     activeProvider: config.activeProvider,
     model: resolveModel(config.activeProvider, providerConf?.model),
-    available: !!config.enabled, // AI is always functional via live LLM or curated hospitality engine
-    hasLiveProvider,
+    available: isOperational, // Strictly only available once confirmed that our API key connects and is working
+    hasLiveProvider: isOperational,
     isValid: providerConf?.isValid,
-    validationError: providerConf?.validationError,
+    validationError: providerConf?.validationError || (!hasValidKeyFormat ? 'No API key configured' : undefined),
   };
 }
 
@@ -501,9 +513,25 @@ export async function fetchLiveGeminiModels(apiKey?: string) {
   };
 }
 
-/** Refreshes the model catalog of a provider if it is stale. Never throws. */
-export function refreshProviderCatalog(provider: AIProviderId, force = false): Promise<void> {
-  return refreshCatalog(provider, getEffectiveApiKey(provider), force);
+/** Refreshes the model catalog of a provider if it is stale and records live connectivity validity. Never throws. */
+export async function refreshProviderCatalog(provider: AIProviderId, force = false): Promise<void> {
+  const key = getEffectiveApiKey(provider);
+  if (!key || key.trim().length < 6) {
+    return;
+  }
+  try {
+    await refreshCatalog(provider, key, force);
+    if (hasCatalog(provider)) {
+      markProviderValidity(provider, true);
+    }
+  } catch (err: any) {
+    const msg = err?.message || 'Connection failed';
+    const lower = msg.toLowerCase();
+    const isAuth = lower.includes('401') || lower.includes('403') || lower.includes('unauthorized') || lower.includes('invalid api key') || lower.includes('key not found') || lower.includes('authentication') || lower.includes('invalid_api_key');
+    if (isAuth || err?.status === 401 || err?.status === 403) {
+      markProviderValidity(provider, false, msg);
+    }
+  }
 }
 
 /** Discovers the current models of every enabled provider; run at startup and on a timer. */
