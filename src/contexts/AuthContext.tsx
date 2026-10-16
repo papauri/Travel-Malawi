@@ -11,6 +11,8 @@ import {
   createUserWithEmailAndPassword,
   updateProfile,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signOut,
   sendPasswordResetEmail,
 } from 'firebase/auth';
@@ -107,6 +109,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signingUpRef = useRef(false);
 
   useEffect(() => {
+    // Process redirect credentials if returning from Google Sign-In redirect
+    getRedirectResult(auth)
+      .then(async (credential) => {
+        if (credential?.user) {
+          let pendingRoles: Role[] = ['traveller'];
+          if (typeof window !== 'undefined') {
+            try {
+              const saved = sessionStorage.getItem('tm_auth_pending_roles');
+              if (saved) {
+                pendingRoles = JSON.parse(saved);
+                sessionStorage.removeItem('tm_auth_pending_roles');
+              }
+            } catch {}
+          }
+          const appUser = await loadOrCreateUser(credential.user, pendingRoles);
+          setUser(appUser);
+          if (typeof window !== 'undefined') {
+            sessionStorage.setItem('tm_session_logged_user', appUser.uid);
+          }
+          await logAuthEvent('login', `User signed in via Google: ${appUser.displayName || appUser.email}`, appUser, {
+            method: 'google.com (redirect)',
+            email: appUser.email,
+            role: appUser.role,
+            roles: appUser.roles,
+          });
+          toast.success(`Signed in as ${appUser.displayName || appUser.email}`);
+        }
+      })
+      .catch((err) => {
+        if (err?.code !== 'auth/popup-closed-by-user' && err?.code !== 'auth/cancelled-popup-request') {
+          console.warn('[Auth] getRedirectResult notice:', err?.code, err?.message);
+        }
+      });
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       // If sign-up is currently in flight, let signUp() complete the user profile setup
       if (signingUpRef.current) {
@@ -281,7 +317,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         roles: appUser.roles,
       });
     } catch (err: any) {
-      console.error('Google sign-in error:', err);
+      console.warn('Google sign-in popup notice:', err?.code, err?.message);
+
+      // If browser blocks popups, automatically fall back to signInWithRedirect
+      if (err?.code === 'auth/popup-blocked' || err?.code === 'auth/cancelled-popup-request') {
+        try {
+          if (typeof window !== 'undefined') {
+            sessionStorage.setItem('tm_auth_pending_roles', JSON.stringify(roles));
+          }
+          toast('Browser popup was blocked. Redirecting you to Google Sign-In...', { icon: '🔄', duration: 4000 });
+          await signInWithRedirect(auth, googleProvider);
+          return;
+        } catch (redirectErr: any) {
+          console.error('Google sign-in redirect fallback failed:', redirectErr);
+          throw redirectErr;
+        }
+      }
+
       if (err?.code !== 'auth/popup-closed-by-user') {
         await logAuthEvent('login_failed', `Google sign-in failed: ${err?.message || 'Popup cancelled or failed'}`, null, {
           method: 'google.com',

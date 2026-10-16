@@ -171,6 +171,10 @@ export default function AuthDialog({ open, intent, onClose, onAuthenticated }: P
       onAuthenticated?.();
       onClose();
     } catch (err: any) {
+      if (err?.code === 'auth/popup-blocked' || err?.code === 'auth/cancelled-popup-request') {
+        setError('Browser popup was blocked. Redirecting you to Google Sign-In...');
+        return;
+      }
       const msg =
         err?.code === 'auth/popup-closed-by-user'
           ? 'Google sign-in was cancelled.'

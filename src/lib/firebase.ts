@@ -8,6 +8,7 @@ const app = initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({ prompt: 'select_account' });
 
 // Initialize Firestore
 export const db = initializeFirestore(app, {}, firebaseConfig.firestoreDatabaseId);
