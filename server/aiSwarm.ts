@@ -193,16 +193,21 @@ Key Guidelines:
 3. Actions: When the host asks to change a room price or run a discount, emit the exact \`\`\`action_proposal block with type: "update_room_price".`;
 
     case 'operations_specialist':
-      return `SWARM ROLE: OPERATIONS & AMENITIES SPECIALIST (ULENDO SWARM)
-You are the expert Property Operations & Infrastructure Sub-Agent. Your mission is to assist hosts with vital utilities, amenities, daily boards, dining menus, and operational status.
+      return `SWARM ROLE: OPERATIONS, AMENITIES & CULINARY SPECIALIST (ULENDO SWARM)
+You are the expert Property Operations, Infrastructure & Culinary Sub-Agent in the Ulendo Swarm. Your mission is to assist hosts with vital utilities, amenities, daily boards, restaurant dining menus, and operational status.
 Key Guidelines:
 1. Malawi Infrastructure Essentials:
    - 24/7 Solar Power & Inverter/Generator backup is the #1 guest satisfaction factor in Malawi.
    - Borehole / purified water, solar geyser hot water, and draped box mosquito nets are critical.
-2. Amenities & Policies:
+2. Restaurant Menus & Culinary Knowledge:
+   - Full visibility into restaurant menus: sections (Breakfast, Starters, Mains, Lake Fish & Catch, Grill, Vegetarian, Desserts, Bar & Beverages).
+   - Recognize dish ingredients, sides, prices in both USD and MWK, and dietary tags (v: vegetarian, vg: vegan, gf: gluten-free, sf: seafood, s: spicy).
+   - Grounded in Malawian cuisine: Fresh Lake Chambo (grilled or fried), Kampango fillets in garlic butter, traditional Nsima with pumpkin leaves/relish (ndiwo), Mzuzu coffee, and Satemwa tea.
+   - When asked to add or update a dish, emit an \`\`\`action_proposal block with type: "add_restaurant_dish".
+   - When asked to update daily board specials or activities, emit an \`\`\`action_proposal block with type: "update_daily_board".
+3. Amenities & Operational Status:
    - When asked to add or remove an amenity (e.g. Breakfast, Solar Backup, Wi-Fi), emit an \`\`\`action_proposal block with type: "add_amenity" or "remove_amenity".
-   - When asked to change online status or out-of-office message, emit an \`\`\`action_proposal block with type: "update_property_online".
-   - When asked to update the daily board or restaurant dish, emit an \`\`\`action_proposal block with type: "update_daily_board" or "add_restaurant_dish".`;
+   - When asked to change online status or out-of-office message, emit an \`\`\`action_proposal block with type: "update_property_online".`;
 
     case 'tourism_concierge':
       return `SWARM ROLE: MALAWI DESTINATION CONCIERGE SPECIALIST (ULENDO SWARM)
@@ -218,7 +223,12 @@ Key Guidelines:
     case 'swarm_coordinator':
     default:
       return `SWARM ROLE: ULENDO SWARM COORDINATOR
-You are Ulendo Swarm Coordinator. You assess the host's overall situation, greet them with authentic Warm Heart of Africa warmth, enforce 100% capacity adaptive personality mirroring, and orchestrate the specialized concierge swarm.`;
+You are Ulendo Swarm Coordinator. You assess the host's overall situation, greet them with authentic Warm Heart of Africa warmth, enforce 100% capacity adaptive personality mirroring, and orchestrate the specialized concierge swarm.
+You possess complete knowledge of platform permissions:
+- Global Administrator: Platform-wide scope across all properties in Malawi.
+- Property Manager: Scoped strictly to their own managed properties in context.
+- What Ulendo Can Help With: Live property operations, room rates, blocked dates, dining menus, daily board specials, guest arrivals/departures, airport transfers (LLW/BLZ), 4x4 hire with driver, boat transfers, and proposal cards.
+- Firmly Out of Scope: Raw software code, buying/selling vehicles, crypto/forex, medical, legal, politics, trivia. Pivot gracefully where natural.`;
   }
 }
 
@@ -304,6 +314,62 @@ function liveDataAnswer(req: OperationsAssistantRequest): string | null {
     return all.length
       ? `${isAdmin ? 'Properties on the platform' : 'Your properties'} (${all.length}):\n${all.slice(0, 25).map(p => `• **${p.name}**${p.location ? ` · ${p.location}` : ''} · ${p.status || 'active'}`).join('\n')}`
       : (isAdmin ? 'No properties on the platform yet.' : 'No properties set up yet.');
+  }
+  if (/\b(menu|menus|food|dishes?|dish|restaurant|dining|breakfast|lunch|dinner|meal|meals|drinks?|bar|chambo|kampango|nsima)\b/.test(lower)) {
+    const diningBlocks = properties.slice(0, 5).map(p => {
+      const lines = [`**${p.name} — Dining & Restaurant**`];
+      if (p.restaurant?.enabled) {
+        lines.push(`• Restaurant: ${p.restaurant.name || 'On-site Restaurant'}`);
+        if (p.restaurant.menuSections?.length) {
+          for (const s of p.restaurant.menuSections.slice(0, 4)) {
+            const items = (s.items || []).slice(0, 8).map(i => {
+              const pr = money(i.priceUSD, i.priceMWK);
+              const desc = i.description ? ` (${i.description})` : '';
+              return `${i.name}${desc} [${pr}${i.tags?.length ? `, ${i.tags.join(', ')}` : ''}]`;
+            }).join(', ');
+            lines.push(`  - **${s.name}**: ${items || 'no items'}`);
+          }
+        } else if (p.restaurant.sampleItems?.length) {
+          lines.push(`  - Highlights: ${p.restaurant.sampleItems.join(', ')}`);
+        }
+      } else {
+        lines.push('• Restaurant: None or not currently active');
+      }
+      if (p.dailyBoard?.dishOfTheDay || p.dailyBoard?.activities) {
+        lines.push(`• Daily Board: Dish of the day "${p.dailyBoard.dishOfTheDay || '-'}" | Activities "${p.dailyBoard.activities || '-'}"`);
+      }
+      return lines.join('\n');
+    });
+    return diningBlocks.length ? diningBlocks.join('\n\n') : 'No dining information recorded for this stay yet.';
+  }
+  if (/\b(permission|permissions|what can you (help|do)|what can i (do|change)|my role|access level|capabilities|scope|privileges)\b/.test(lower)) {
+    return [
+      `**Ulendo Concierge Scope & Role Access (${isAdmin ? 'Global Administrator' : 'Property Manager'})**`,
+      `\n**What Ulendo Can Help With:**`,
+      `• **Live Property Ops**: Room rates (USD & MWK), inventory, blocked dates, amenities, check-in/out policies, Wi-Fi & utilities, front desk status.`,
+      `• **Menus & Dining**: Restaurant menu sections, dishes, ingredients, dietary tags (v, vg, gf, sf, s), dish pricing, and Daily Board specials.`,
+      `• **Guest Logistics**: Today's arrivals and departures, in-house guests, airport transfers (LLW/BLZ), 4x4 hire with driver, boat transfers on Lake Malawi, local safari & mountain guides.`,
+      `• **Safe Action Proposals**: Prepares clear proposal cards for rate changes, promotions, amenities, menu dishes, and daily board updates (applied only when you click **Confirm & Apply**).`,
+      `• **Authentic Malawian Grounding**: Lake Malawi destinations, national parks (Liwonde, Majete, Nyika), Mount Mulanje, road navigation, and local cuisine.`,
+      `\n**Your Role Permissions (${isAdmin ? 'Global Administrator' : 'Property Manager'}):**`,
+      isAdmin
+        ? `• **Global Platform Scope**: Full access across all properties in Malawi. You can approve/reject listings, feature lodges on the homepage, manage platform users, and modify any stay.`
+        : `• **Host Scope**: Scoped strictly to your own assigned properties (${properties.map(p => p.name).join(', ') || 'your portfolio'}). You can adjust rates, rooms, menus, policies, and view your bookings. You cannot alter platform-wide listings, approve other hosts' stays, or access other users' accounts.`,
+      `\n**Firmly Out of Scope:**`,
+      `• Raw software/code execution, vehicle trading/purchases, crypto/forex, medical, legal, politics, trivia, or making database edits without your explicit review.`
+    ].join('\n');
+  }
+  if (/\b(check-?in time|check-?out time|cancellation policy|payment policy|policies|house rules)\b/.test(lower)) {
+    const policyBlocks = properties.slice(0, 5).map(p => [
+      `**${p.name} Policies**`,
+      `• Check-in: ${p.checkInTime || '14:00'} · Check-out: ${p.checkOutTime || '10:00'}`,
+      `• Cancellation: ${p.cancellationPolicy || 'Standard lodge policy'}`,
+      p.paymentPolicy ? `• Payment: ${p.paymentPolicy}` : '',
+    ].filter(Boolean).join('\n'));
+    return policyBlocks.length ? policyBlocks.join('\n\n') : null;
+  }
+  if (/\b(amenities|amenity|facilities|features)\b/.test(lower) && mentionedIds.size) {
+    return properties.slice(0, 5).map(p => `**${p.name} Amenities**\n• ${(p.amenities || []).join(', ') || 'No amenities listed yet'}`).join('\n\n');
   }
   if (/\b(onboard|list property|list my property|how to list|create listing|add new lodge|register lodge)\b/.test(lower)) {
     return `**Effortless Host Onboarding**\nListing takes ~3 minutes with 0% host commission, direct WhatsApp guest messaging, and instant browser auto-save.\n• [Start Listing Your Property](/list-your-property)\n• [Host Starter Pack & Field Guide](/host-guide)\n• [How Hosting Works](/how-hosting-works)`;

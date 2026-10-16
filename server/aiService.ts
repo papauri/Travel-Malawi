@@ -24,6 +24,7 @@ import {
 import { buildOperationsChatPrompts } from './opsPrompt';
 import { isPureSmallTalk } from '../src/lib/queryIntent';
 import { classifySwarmIntent, getSpecialistAgentPrompt, executeDeterministicSwarmReply } from './aiSwarm';
+import { parseMenuText } from './localMenuParser';
 
 export interface GenerationRequest {
   action: 'draft' | 'polish' | 'shorten' | 'highlights' | 'suggest_amenities' | 'suggest_rooms' | 'review_listing' | 'suggest_rate' | 'lookup_property' | 'scrape_reviews' | 'link_description_to_amenities_and_category';
@@ -1282,6 +1283,49 @@ async function scrapeUrlContent(targetUrl: string): Promise<string> {
       }
     }
 
+    // 3b. Crawl Dining & Menu Subpages on Hotel/Lodge Domains
+    let diningDetails = '';
+    const detectedFoodSpecialties: string[] = [];
+    if (!isBooking && !isAirbnb) {
+      // Find menu / dining link if present
+      const menuHrefMatch = html.match(/href=["']([^"']*(?:menu|dining|restaurant|food|eat|bar|bistro)[^"']*)["']/i);
+      if (menuHrefMatch && menuHrefMatch[1]) {
+        try {
+          const menuUrl = new URL(menuHrefMatch[1], parsedUrl).toString();
+          if (new URL(menuUrl).hostname === parsedUrl.hostname) {
+            const menuRes = await fetch(menuUrl, {
+              headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+                'Accept': 'text/html,*/*',
+              },
+              redirect: 'follow',
+              signal: AbortSignal.timeout(4000),
+            });
+            if (menuRes.ok) {
+              const menuHtml = await menuRes.text();
+              const cleanMenu = menuHtml
+                .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, ' ')
+                .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, ' ')
+                .replace(/<[^>]+>/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+              if (cleanMenu.length > 40) {
+                diningDetails = cleanMenu.slice(0, 500);
+              }
+            }
+          }
+        } catch {}
+      }
+
+      // Check for authentic Malawian culinary dishes & staples
+      const foodKeywords = ['chambo', 'kampango', 'nsima', 'breakfast', 'buffet', 'pizza', 'pasta', 'grill', 'barbecue', 'cocktails', 'curry', 'steak', 'vegetarian', 'vegan', 'seafood', 'mzuzu coffee', 'satemwa tea'];
+      for (const fk of foodKeywords) {
+        if (new RegExp(`\\b${fk}\\b`, 'i').test(html)) {
+          detectedFoodSpecialties.push(fk.charAt(0).toUpperCase() + fk.slice(1));
+        }
+      }
+    }
+
     // 4. Contact Extraction: Phones, Emails, WhatsApp
     const emailsFound = new Set<string>();
     if (schemaEmail) emailsFound.add(schemaEmail);
@@ -1376,6 +1420,8 @@ async function scrapeUrlContent(targetUrl: string): Promise<string> {
       Array.from(emailsFound).length > 0 ? `Contact Email(s): ${Array.from(emailsFound).slice(0, 2).join(', ')}` : '',
       whatsappNumber ? `WhatsApp: ${whatsappNumber}` : '',
       schemaAmenities.length > 0 ? `Amenities: ${schemaAmenities.slice(0, 10).join(', ')}` : '',
+      diningDetails ? `Dining & Menu Information: ${diningDetails}` : '',
+      detectedFoodSpecialties.length > 0 ? `Culinary Highlights: ${detectedFoodSpecialties.slice(0, 8).join(', ')}` : '',
       compactDescription ? `Listing Summary: ${compactDescription}` : '',
       `[END EXTRACTED LISTING DOSSIER]`
     ].filter(Boolean).join('\n');
@@ -2615,6 +2661,17 @@ Rules:
         continue;
       }
     }
+
+    // Deterministic fallback to local menu parser (handles text, tables, csv formats offline/reliably)
+    try {
+      const localParsed = parseMenuText(contentForAI, currencies);
+      if (localParsed && Array.isArray(localParsed.sections) && localParsed.sections.length > 0) {
+        return localParsed;
+      }
+    } catch (localErr) {
+      console.warn('[AI] Local menu parser deterministic fallback error:', localErr);
+    }
+
     throw failureOr(failures, 'All providers failed to extract menu data.');
   }
 }
@@ -2636,8 +2693,14 @@ Return ONLY valid JSON in this exact format (no markdown, no explanation, no cod
 {
   "extracted": {
     "name": "Property Name",
+    "category": "hotel | resort | lodge | cottage | safari_camp | guest_house | bnb",
+    "location": "Town, District or Lake Shore Area, Malawi",
+    "latitude": -14.0,
+    "longitude": 34.8,
     "description": "A detailed summary of the property",
-    "amenities": ["Wifi", "Pool"],
+    "amenities": ["Wifi", "Pool", "Restaurant", "Lake View"],
+    "diningSummary": "Restaurant / dining description",
+    "menuHighlights": ["Chambo", "Breakfast buffet", "Pizza"],
     "ownerName": "Name of the owner or manager",
     "ownerEmail": "Email if present",
     "ownerPhone": "Phone if present",
@@ -2655,6 +2718,8 @@ Return ONLY valid JSON in this exact format (no markdown, no explanation, no cod
 
 Rules:
 - Extract all property information visible.
+- Category MUST strictly be one of: "hotel", "resort", "lodge", "cottage", "safari_camp", "guest_house", "bnb". Choose "hotel" or "resort" if named or operated as such.
+- Location should be accurate for Malawi (e.g. Cape Maclear, Mangochi, Lilongwe, Blantyre, Senga Bay, Nkhata Bay, Zomba).
 - If something is not present, omit the field or leave it empty.
 - For prices, detect USD or MWK and normalize them to numbers.
 - Return ONLY the JSON object, nothing else.`;

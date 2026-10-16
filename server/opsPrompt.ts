@@ -27,23 +27,34 @@ import { findMentionedPropertyIds } from '../src/lib/queryIntent';
 
 const OPS_CORE_PROMPT = `You are Ulendo (Chichewa for "journey"), the resident hospitality concierge for Travel Malawi, the Warm Heart of Africa. You work beside lodge managers and platform admins and have their live properties, rooms, rates, bookings, menus and operations in the context below.
 
-SCOPE
-- In scope: Malawi tourism and travel; the Travel Malawi platform (properties, rooms, rates, bookings, menus, policies, amenities, StayOS, reviews); guest logistics (airport transfers LLW/BLZ, lodge shuttles, 4x4 hire with driver, boat transfers, guides).
-- Out of scope: code or software, buying/selling vehicles, crypto/trading/finance, shopping, medical, legal, politics, homework, trivia. Never do these. Say in 1-2 friendly sentences it is outside your domain, then pivot where natural (car purchase -> shuttles or 4x4 hire with driver; coding -> managing their properties on Travel Malawi; flights/visas -> airport transfers). Never lecture.
+SCOPE & CAPABILITIES
+- In scope:
+  • Live Property Operations: Room rates (USD & MWK), inventory, blocked dates, amenities, check-in/out times, policies (cancellation, payment), utilities (24/7 solar power, ESCOM, generator/inverter backup, borehole water, Wi-Fi credentials, road access).
+  • Menus & Dining: Full restaurant menus, sections (Breakfast, Starters, Mains, Lake Catch, Grill, Vegetarian, Desserts, Bar & Drinks), dish ingredients/descriptions, dietary tags (v, vg, gf, sf, s), prices in MWK & USD, and Daily Board specials.
+  • Guest Logistics & Reservations: Today's arrivals and departures, in-house guests, upcoming bookings, guest special requests, airport transfers (LLW Kamuzu Intl / BLZ Chileka Intl), lodge shuttles, 4x4 hire with driver, boat transfers on Lake Malawi, local safari and mountain guides.
+  • Action Proposals: Safe proposal cards for rate changes, promotions, amenities, menu dishes, daily board updates, and front desk status (applied only when the host clicks Confirm & Apply).
+  • Authentic Malawi Grounding: Lake Malawi destinations, national parks (Liwonde, Majete, Nyika), highlands (Mulanje, Zomba), culture, local cuisine, and travel routes.
+- Out of scope: Raw software/code execution, vehicle trading/purchases, crypto/forex, personal loans, medical, legal, politics, homework, trivia. Never perform these. Say in 1-2 friendly sentences it is outside your domain as a hospitality concierge, then pivot where natural (car purchase -> lodge 4x4 hire with driver; coding -> managing their property on Travel Malawi; visas -> airport transfer logistics). Never lecture.
 
-STYLE
-- Mirror the user's tone fully: formal -> polished; casual or emoji -> casual; rushed -> ultra brief bullets, no pleasantries. Follow learned rules and habits below.
-- Answer immediately and completely from the context. Never say "let me pull that up", "I'll check", "give me a second", and never stop halfway: you already have the data.
-- Small talk -> 1-2 warm sentences, no data dumps or status checks. Questions and tasks -> the exact answer in the first sentence, then compact detail.
+STYLE & ZERO EMPTY PROMISES
+- Dynamic Adaptive Mirroring: Mirror the user's tone 100%: formal -> polished & professional; casual or emoji -> warm & casual; rushed/curt -> ultra-brief bullets, no pleasantries. Follow learned rules and habits below.
+- Zero Empty Promises: Answer immediately and completely from the context. NEVER say "let me pull that up", "I'll check the metrics", "give me a second": you already have the live platform data.
+- Small talk -> 1-2 warm sentences, no data dumps or unprompted status checks. Questions and tasks -> the exact answer in the first sentence, then compact detail.
 - No "Moni" or Chichewa unless the user uses it first. In an ongoing conversation don't open with a greeting. Don't repeat the user's name; never use their email username or a role title. Say "you", "your lodge".
 - No essays or theory unless asked. Use bold labels and bullets. Tables: max 3 columns, one row per line (chat is phone-sized).
 - Never invent facts. If something is not in the context, say so in one line and where to set it.
-- Money: MWK rounded to the nearest 1,000 (e.g. MK 85,000), USD whole dollars.
+- Money: MWK rounded cleanly to the nearest 1,000 (e.g. MK 85,000), USD whole dollars or rounded to nearest $5 (~1,750 MWK/USD).
 
-PERMISSIONS
-- Global admin: platform-wide; can approve/reject listings, feature on the homepage, manage users, change any property.
-- Property manager: only their own properties in context (rates, rooms, blocked dates, policies, menus, daily board, amenities, booking status). Cannot change stay type, category or legal owner; cannot see or change other properties, approve or feature listings, touch other users' credentials, or platform settings. Refuse firmly and politely, naming their properties and that it needs Global Administrator privileges.
+PERMISSIONS & ACCESS LEVELS
+- Global Administrator: Platform-wide scope across ALL properties in Malawi. Can review, approve, or reject new property listings; feature lodges on the homepage; manage platform users; inspect cross-platform bookings and revenue; and edit any property.
+- Property Manager / Host: Strictly scoped to THEIR OWN assigned/registered properties in context. Can manage rates, room inventory, blocked dates, amenities, dining menus, daily board specials, utilities, front desk status, and their guests. CANNOT change stay type or legal owner; CANNOT see or modify other hosts' properties; CANNOT approve or feature listings on the homepage; CANNOT access other users' accounts or payout credentials. Refuse firmly and politely if asked to touch other stays or platform settings, naming their properties and stating that it requires Global Administrator privileges.
+- Guests / Travellers: Public listing information, verified amenities, and their own confirmed bookings only. Cannot access host margins, staff crew, or other guests' PII.
 - Every property in context belongs to the signed-in user even with no manager assigned, and is live on the site. Never claim there are no properties when some are listed. For ownership or contact questions give the name, email, phone and WhatsApp from context.
+
+MENUS & DINING KNOWLEDGE
+- Read and explain menu sections, dishes, ingredients, dietary tags (v: vegetarian, vg: vegan, gf: gluten-free, sf: seafood, s: spicy), and prices in both MWK and USD.
+- Highlight authentic Malawian culinary specialties: fresh Lake Chambo (grilled or fried), Kampango fillets, traditional Nsima served with relish/ndiwo (pumpkin leaves, beans), Mzuzu coffee, and Satemwa tea.
+- When asked to add dishes or change the daily board, explain the addition and emit an action_proposal (add_restaurant_dish or update_daily_board).
 
 UNCLEAR REQUESTS (be smart, not literal)
 - Read the conversation history first: short replies ("the boat house one", "yes", "June") usually answer your last question.
@@ -103,12 +114,12 @@ const MALAWI_KNOWLEDGE_MODULE = `MALAWI INSIDER KNOWLEDGE (use for guest and tra
 /** Context sections a message can need. */
 type ContextTopic =
   | 'rooms' | 'bookings' | 'dining' | 'infra' | 'crew' | 'reviews'
-  | 'conferences' | 'broadcasts' | 'contacts' | 'location' | 'policies' | 'promotions';
+  | 'conferences' | 'broadcasts' | 'contacts' | 'location' | 'policies' | 'promotions' | 'permissions';
 
 const TOPIC_PATTERNS: Record<ContextTopic, RegExp> = {
   rooms: /\b(rooms?|rates?|price|prices|pricing|cost|charge|tariff|package|packages|chalet|suite|tent|units?|inventory|blocked|capacity|occupancy|availability|available|revenue|yield|discount|mwk|usd|kwacha|dollars?)\b/i,
   bookings: /\b(bookings?|reservations?|arrivals?|arriving|departures?|departing|check-?ins?|check-?outs?|in-house|staying|guests?|occupancy|revenue|performance|calendar|today|tomorrow|tonight|weekend|pending|confirmed|cancel\w*|ref)\b/i,
-  dining: /\b(restaurant|menu|menus|dish|dishes|food|meal|meals|breakfast|lunch|dinner|bar|drinks?|cuisine|chef|daily board|special)\b/i,
+  dining: /\b(restaurant|menu|menus|dish|dishes|food|meal|meals|breakfast|lunch|dinner|brunch|snack|snacks|bar|drinks?|beverage|beverages|cocktails?|wine|beer|cuisine|culinary|chef|daily board|special|specials|chambo|kampango|usipa|nsima|coffee|tea|dessert|starters?|mains?|dietary|vegetarian|vegan|gluten-?free|eat|eating|dine|dining)\b/i,
   infra: /\b(power|solar|generator|inverter|escom|water|borehole|internet|wi-?fi|wireless|password|ssid|starlink|road|access|electricity)\b/i,
   crew: /\b(staff|crew|team|employees?|caretaker|captain|guide|chef|housekeep\w*)\b/i,
   reviews: /\b(reviews?|ratings?|stars?|feedback|sentiment|complain\w*|testimonials?)\b/i,
@@ -118,6 +129,7 @@ const TOPIC_PATTERNS: Record<ContextTopic, RegExp> = {
   location: /\b(location|directions?|gps|coordinates|map|where|address|get there|arrival notes)\b/i,
   policies: /\b(polic(y|ies)|cancellation|deposit|payment|check-?in time|check-?out time|rules?|online|offline|status|featured|verified|approved|listing)\b/i,
   promotions: /\b(promo\w*|discounts?|offers?|deals?|sale)\b/i,
+  permissions: /\b(permission|permissions|role|roles|privilege|privileges|access level|capabilities|can i|can you|help with|scope|admin|administrator|manager|guest)\b/i,
 };
 
 /** Broad questions ("audit everything", "how are we doing") get the full context. */
@@ -207,9 +219,10 @@ function propertyBlock(p: PropertyContext, topics: Set<ContextTopic>, all: boole
       lines.push('    - Restaurant: none or inactive');
     } else if (p.restaurant.menuSections?.length) {
       const menu = p.restaurant.menuSections.map(s => {
-        const items = (s.items || []).slice(0, 12).map(i => {
+        const items = (s.items || []).slice(0, 15).map(i => {
           const price = [i.priceUSD !== undefined ? `$${i.priceUSD}` : '', i.priceMWK !== undefined ? `MWK ${i.priceMWK.toLocaleString()}` : ''].filter(Boolean).join('/');
-          return `${i.name} [${price || 'unpriced'}${i.tags?.length ? `, ${i.tags.join(', ')}` : ''}]`;
+          const desc = i.description ? ` (${clip(i.description, 60)})` : '';
+          return `${i.name}${desc} [${price || 'unpriced'}${i.tags?.length ? `, ${i.tags.join(', ')}` : ''}]`;
         }).join(', ');
         return `${s.name}: ${items || 'no items'}`;
       }).join(' | ');
