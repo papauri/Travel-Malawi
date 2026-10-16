@@ -8,7 +8,7 @@ import {
   Building2, Plus, ChevronRight, Clock, CheckCircle2, XCircle, 
   BedDouble, CalendarCheck, CalendarSync, Lock, KeyRound, UserCheck, ArrowRight, 
   Check, ChevronDown, Filter, ExternalLink, SlidersHorizontal, Radio,
-  Percent, Trash2
+  Percent, Trash2, AlertCircle, X
 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -17,6 +17,7 @@ import { useAuthDialog } from '../contexts/AuthDialogContext';
 import SmartImage from '../components/SmartImage';
 import { getHotelImage } from '../lib/images';
 import { isHotelManager, isAdmin, isMarketing } from '../lib/roles';
+import { logSystemEvent } from '../lib/logger';
 import MaskedPlaceName from '../components/MaskedPlaceName';
 import BulkRoomEditor from '../components/BulkRoomEditor';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -37,7 +38,59 @@ export default function ManagerDashboard() {
   const [activating, setActivating] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [togglingHotelId, setTogglingHotelId] = useState<string | null>(null);
-  type DashboardTab = 'all' | 'live' | 'needs_attention' | 'bulk_editor';
+  const userIsAdmin = Boolean(user && (isAdmin(user) || isMarketing(user)));
+  const [approvingHotelId, setApprovingHotelId] = useState<string | null>(null);
+
+  const handleApproveListing = async (hotel: Hotel) => {
+    if (!hotel.id) return;
+    setApprovingHotelId(hotel.id);
+    try {
+      await updateDoc(doc(db, 'hotels', hotel.id), {
+        status: 'approved',
+        updatedAt: Date.now(),
+      });
+      setHotels(prev => prev.map(h => h.id === hotel.id ? { ...h, status: 'approved' } : h));
+      await logSystemEvent(
+        'action',
+        `Approved stay from host dashboard: ${hotel.name}`,
+        { hotelId: hotel.id, status: 'approved' },
+        user,
+        'property'
+      );
+      toast.success(`"${hotel.name}" has been approved and is now live!`);
+    } catch (err: any) {
+      console.error('Failed to approve property:', err);
+      toast.error('Failed to approve property: ' + (err?.message || 'Permission denied'));
+    } finally {
+      setApprovingHotelId(null);
+    }
+  };
+
+  const handleRejectListing = async (hotel: Hotel) => {
+    if (!hotel.id) return;
+    const confirmed = window.confirm(`Reject listing "${hotel.name}"? It will be unpublished.`);
+    if (!confirmed) return;
+    try {
+      await updateDoc(doc(db, 'hotels', hotel.id), {
+        status: 'rejected',
+        updatedAt: Date.now(),
+      });
+      setHotels(prev => prev.map(h => h.id === hotel.id ? { ...h, status: 'rejected' } : h));
+      await logSystemEvent(
+        'action',
+        `Rejected stay from host dashboard: ${hotel.name}`,
+        { hotelId: hotel.id, status: 'rejected' },
+        user,
+        'property'
+      );
+      toast.success(`"${hotel.name}" marked as rejected.`);
+    } catch (err: any) {
+      console.error('Failed to reject property:', err);
+      toast.error('Failed to reject property: ' + (err?.message || 'Permission denied'));
+    }
+  };
+
+  type DashboardTab = 'all' | 'live' | 'pending' | 'needs_attention' | 'bulk_editor';
   const [activeTab, setActiveTab] = useState<DashboardTab>('all');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [sortBy, setSortBy] = useState<SortOption>('default');
@@ -490,6 +543,31 @@ export default function ManagerDashboard() {
           </span>
         </button>
 
+        {/* Tab: Pending Review */}
+        {pendingApprovalCount > 0 && (
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'pending'}
+            onClick={() => {
+              setActiveTab('pending');
+              setStatusFilter('pending');
+              setCurrentPage(1);
+            }}
+            className={`pb-3 text-xs sm:text-sm font-medium transition whitespace-nowrap cursor-pointer border-b-2 -mb-px flex items-center gap-2 ${
+              activeTab === 'pending'
+                ? 'border-amber-600 text-amber-900 font-semibold'
+                : 'border-transparent text-amber-700 hover:text-amber-900 hover:border-amber-300'
+            }`}
+          >
+            <AlertCircle className={`w-4 h-4 ${activeTab === 'pending' ? 'text-amber-600' : 'text-amber-500'}`} />
+            <span>Pending Review</span>
+            <span className="text-[11px] font-mono ml-0.5 px-1.5 py-0.2 rounded-md bg-amber-100 text-amber-900 font-bold">
+              {pendingApprovalCount}
+            </span>
+          </button>
+        )}
+
         {/* Tab 3: Needs Attention */}
         <button
           type="button"
@@ -658,19 +736,51 @@ export default function ManagerDashboard() {
                     className="w-full h-full object-cover group-hover:scale-102 transition duration-500 ease-out"
                   />
 
-                  {/* Status Badge */}
-                  <span className="absolute top-2.5 left-2.5 z-10 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium bg-white/95 backdrop-blur-xs text-stone-800 border border-stone-200/90 shadow-2xs">
-                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                      hotel.status === 'pending' ? 'bg-amber-500' :
-                      hotel.status === 'rejected' ? 'bg-stone-400' :
-                      'bg-emerald-600'
-                    }`} />
-                    <span>
-                      {hotel.status === 'pending' ? 'Pending review' :
-                       hotel.status === 'rejected' ? 'Unpublished' :
-                       'Live'}
+                  {/* Status Badge / Quick Moderation Action */}
+                  {hotel.status === 'pending' ? (
+                    userIsAdmin ? (
+                      <button
+                        type="button"
+                        disabled={approvingHotelId === hotel.id}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleApproveListing(hotel);
+                        }}
+                        className="absolute top-2.5 left-2.5 z-20 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold bg-amber-500 hover:bg-emerald-600 active:scale-95 text-white border border-amber-600/40 hover:border-emerald-700/40 shadow-xs transition cursor-pointer select-none"
+                        title="Click to approve this stay and make it live on Travel Malawi"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                        <span>
+                          {approvingHotelId === hotel.id ? 'Approving...' : 'Pending review • Click to approve'}
+                        </span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          toast('This listing has been submitted and is awaiting administrator verification before going live.', { icon: '⏳' });
+                        }}
+                        className="absolute top-2.5 left-2.5 z-10 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium bg-white/95 backdrop-blur-xs text-amber-900 border border-amber-300 shadow-2xs hover:bg-amber-50 transition cursor-pointer"
+                        title="Listing is pending review"
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-amber-500" />
+                        <span>Pending review</span>
+                      </button>
+                    )
+                  ) : (
+                    <span className="absolute top-2.5 left-2.5 z-10 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium bg-white/95 backdrop-blur-xs text-stone-800 border border-stone-200/90 shadow-2xs">
+                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                        hotel.status === 'rejected' ? 'bg-stone-400' :
+                        'bg-emerald-600'
+                      }`} />
+                      <span>
+                        {hotel.status === 'rejected' ? 'Unpublished' : 'Live'}
+                      </span>
                     </span>
-                  </span>
+                  )}
 
                   {/* Online/Offline Toggle */}
                   <button
@@ -737,6 +847,29 @@ export default function ManagerDashboard() {
                     </p>
                   )}
 
+                  {hotel.status === 'pending' && userIsAdmin && (
+                    <div className="mb-3 flex items-center justify-between gap-2 p-2 bg-amber-50/90 border border-amber-200 rounded-xl text-xs text-amber-950">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                        <span className="font-semibold text-[11px] truncate">Pending Review</span>
+                      </div>
+                      <button
+                        type="button"
+                        disabled={approvingHotelId === hotel.id}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleApproveListing(hotel);
+                        }}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-700 hover:bg-emerald-600 active:scale-95 text-white rounded-lg font-bold text-[11px] transition shadow-2xs shrink-0 cursor-pointer"
+                        title="Approve this stay to make it live"
+                      >
+                        <CheckCircle2 className="w-3 h-3" />
+                        <span>{approvingHotelId === hotel.id ? 'Approving...' : 'Approve Stay'}</span>
+                      </button>
+                    </div>
+                  )}
+
                   {/* Quick Action Button Group */}
                   <div className="mt-auto pt-2.5 border-t border-stone-100 flex items-center justify-between gap-2">
                     <div className="flex items-center gap-1.5 flex-1 min-w-0">
@@ -784,6 +917,42 @@ export default function ManagerDashboard() {
                             }}
                           />
                           <div className="absolute right-0 bottom-full mb-1.5 w-48 bg-white rounded-xl shadow-lg border border-stone-200 py-1 z-40 text-left animate-in fade-in zoom-in-95 duration-150">
+                            {/* Elevated Moderation Actions */}
+                            {userIsAdmin && hotel.status === 'pending' && (
+                              <>
+                                <button
+                                  type="button"
+                                  disabled={approvingHotelId === hotel.id}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setOpenCardMenuId(null);
+                                    handleApproveListing(hotel);
+                                  }}
+                                  className="w-full px-3 py-2 text-xs text-emerald-800 bg-emerald-50/70 hover:bg-emerald-100 flex items-center gap-2 font-bold transition cursor-pointer"
+                                >
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                  <span>{approvingHotelId === hotel.id ? 'Approving...' : 'Approve Stay (Go Live)'}</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setOpenCardMenuId(null);
+                                    handleRejectListing(hotel);
+                                  }}
+                                  className="w-full px-3 py-1.5 text-xs text-rose-700 hover:bg-rose-50 flex items-center gap-2 font-medium transition cursor-pointer"
+                                >
+                                  <X className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                                  <span>Reject Stay</span>
+                                </button>
+
+                                <div className="my-1 border-t border-stone-100" />
+                              </>
+                            )}
+
                             <Link
                               to={`/dashboard/hotel/${hotel.id}?tab=rooms`}
                               onClick={() => setOpenCardMenuId(null)}
