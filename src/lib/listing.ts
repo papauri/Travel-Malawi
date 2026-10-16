@@ -25,6 +25,9 @@ import { emailProblem, phoneProblem } from './contact';
  * listing no filter will ever match.
  */
 export const PROPERTY_CATEGORIES = [
+  'Hotel',
+  'Resort',
+  'Lodge',
   'Lake & Beach',
   'Safari & Wildlife',
   'Romantic Escape',
@@ -40,6 +43,9 @@ export type PropertyCategory = (typeof PROPERTY_CATEGORIES)[number];
 
 /** A one-line hint per category, so the choice is not a guess. */
 export const CATEGORY_HINTS: Record<PropertyCategory, string> = {
+  Hotel: 'Full-service hotel with dedicated reception, private rooms, and dining.',
+  Resort: 'Destination retreat with expansive recreation, leisure amenities, and scenic grounds.',
+  Lodge: 'Scenic hospitality stay immersed in nature, lakeshore, or safari surroundings.',
   'Lake & Beach': 'On or near the lakeshore — sand, water, sunsets.',
   'Safari & Wildlife': 'In or beside a park or reserve.',
   'Romantic Escape': 'Quiet, adults-first, made for two.',

@@ -50,7 +50,7 @@ import {
   emptyDraft, errorsForStep, hasDuplicateListing, isStepComplete, validateDraft,
   findExistingProperty, ExistingPropertyMatch,
 } from '../lib/listing';
-import { searchNominatim, searchMalawiPlaces, MalawiPlaceSuggestion, parseGoogleMapsPlaceUrl } from '../lib/geo';
+import { searchNominatim, searchMalawiPlaces, MalawiPlaceSuggestion, parseGoogleMapsPlaceUrl, reverseGeocodeCoordinates } from '../lib/geo';
 import { getRegisteredPropertyByName, POPULAR_MALAWI_PROPERTIES_SHOWCASE } from '../lib/malawiHospitalityRegistry';
 import { RoomInput } from '../lib/validateRoom';
 import { CURRENCIES, formatMoney } from '../lib/currency';
@@ -617,9 +617,21 @@ export default function ListProperty() {
         targetUrl = `https://${rawInput}`;
       }
     }
+
+    let extractedBrandFromUrl = '';
+    if (targetUrl) {
+      try {
+        const u = new URL(targetUrl.startsWith('http') ? targetUrl : `https://${targetUrl}`);
+        const hostClean = u.hostname.replace(/^www\./i, '').split('.')[0];
+        const pathSlug = u.pathname.split('/').filter(Boolean).pop() || '';
+        const candidate = pathSlug && pathSlug.length > 3 && !/index|home|default|main/i.test(pathSlug) ? pathSlug : hostClean;
+        extractedBrandFromUrl = candidate.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).trim();
+      } catch {}
+    }
+
     const searchName = (isUrl && !overrideName)
-      ? (draft.name && !draft.name.startsWith('http') && !draft.name.startsWith('www.') ? draft.name : 'Malawi Accommodation')
-      : (targetUrl && (rawInput.startsWith('http') || rawInput.startsWith('www.')) ? 'Malawi Accommodation' : rawInput);
+      ? (draft.name && !draft.name.startsWith('http') && !draft.name.startsWith('www.') && draft.name !== 'Malawi Accommodation' ? draft.name : (extractedBrandFromUrl || 'Malawi Accommodation'))
+      : (targetUrl && (rawInput.startsWith('http') || rawInput.startsWith('www.')) ? (extractedBrandFromUrl || 'Malawi Accommodation') : rawInput);
 
     // 1. Instant check in verified Malawi Hospitality Registry (unless forceWebScrape or URL scraping is requested)
     if (!options?.forceWebScrape && !isUrl) {
@@ -650,6 +662,7 @@ export default function ListProperty() {
 
         setDraft(prev => ({
           ...prev,
+          name: regMatch.name,
           category: regMatch.category || prev.category,
           location: regMatch.location || prev.location,
           coordinates: regMatch.coordinates || prev.coordinates,
@@ -664,9 +677,11 @@ export default function ListProperty() {
 
     try {
       const locationContext = options?.location || draft.location || undefined;
+      const osmQuery = (searchName && searchName !== 'Malawi Accommodation') ? `${searchName} Malawi` : 'Malawi';
+      
       // Concurrently query Nominatim/OpenStreetMap for coordinates and AI Knowledge Base/Web Scraper for property data
       const [osmResults, aiResult] = await Promise.all([
-        searchNominatim(`${searchName} Malawi`, 3).catch(() => []),
+        searchNominatim(osmQuery, 3).catch(() => []),
         generateDetailed<{
           matched: boolean;
           officialName: string;
@@ -701,8 +716,8 @@ export default function ListProperty() {
             url: targetUrl,
             location: locationContext,
             extraNotes: targetUrl
-              ? `Live Web Extraction Request: Look up and extract authentic details from ${targetUrl}. Extract real room types with dual pricing (MWK & USD), base guests and max occupancy (baseGuests must not exceed maxGuests), welcoming description, verified amenities, check-in/out hours, and direct phone/email contacts.`
-              : 'Search Google Maps, online listings, and live web sources across Malawi. Auto-categorize accurately (Bed & Breakfast, Cottage & Chalet, Guest House, Lake & Beach, Safari & Wildlife, Luxury, Romantic Escape, Family, Adventure) and fill all fields.',
+              ? `Live Web Extraction Request: Look up and extract authentic details from ${targetUrl}. Extract the real official full name (not website title or domain name), exact category (Hotel, Resort, Lodge, Cottage, Safari Camp, etc.), town/area, arrival directions, real room types with dual pricing (MWK & USD), base guests and max occupancy, welcoming description, verified amenities, check-in/out hours, and direct phone/email contacts.`
+              : 'Search Google Maps, online listings, and live web sources across Malawi. Auto-categorize accurately (Hotel, Resort, Bed & Breakfast, Cottage & Chalet, Guest House, Lake & Beach, Safari & Wildlife, Luxury, Romantic Escape, Family, Adventure) and fill all fields.',
           },
         }),
       ]);
@@ -713,7 +728,7 @@ export default function ListProperty() {
 
       if (osmResults && osmResults.length > 0) {
         matchedCoords = osmResults[0].coordinates;
-        if (!matchedLocation) {
+        if (!matchedLocation || matchedLocation === 'Malawi') {
           const parts = osmResults[0].location.split(',');
           matchedLocation = parts.slice(0, 2).join(',').trim();
         }
@@ -721,6 +736,19 @@ export default function ListProperty() {
 
       if (aiData?.coordinates && (!matchedCoords || aiData.confidence === 'high')) {
         matchedCoords = aiData.coordinates;
+      }
+
+      // If we don't have coordinates yet, and AI gave an official name, query Nominatim for exact place
+      if (!matchedCoords && aiData?.officialName && aiData.officialName !== 'Malawi Accommodation') {
+        try {
+          const placeResults = await searchNominatim(`${aiData.officialName} Malawi`, 1);
+          if (placeResults && placeResults.length > 0) {
+            matchedCoords = placeResults[0].coordinates;
+            if (!matchedLocation || matchedLocation === 'Malawi') {
+              matchedLocation = placeResults[0].location;
+            }
+          }
+        } catch {}
       }
 
       const verifiedCategory =
@@ -740,21 +768,44 @@ export default function ListProperty() {
         };
       });
 
-      const matchedLocal = localImagesForName(aiData?.officialName || searchName);
+      const finalOfficialName = (aiData?.officialName && !aiData.officialName.startsWith('http') && !aiData.officialName.startsWith('www.') && aiData.officialName !== 'Malawi Accommodation')
+        ? aiData.officialName
+        : (extractedBrandFromUrl || (searchName !== 'Malawi Accommodation' ? searchName : 'Malawi Stay'));
+
+      let finalLocation = (aiData?.location && aiData.location !== 'Malawi')
+        ? aiData.location
+        : (matchedLocation || draft.location || 'Malawi');
+
+      let resolvedNotes = aiData?.locationNotes || '';
+
+      // If we have coordinates, reverse geocode to verify authentic Malawian town/area and arrival directions
+      if (matchedCoords) {
+        try {
+          const rev = await reverseGeocodeCoordinates(matchedCoords);
+          if (rev.location && (finalLocation === 'Malawi' || !aiData?.location)) {
+            finalLocation = rev.location;
+          }
+          if (rev.locationNotes && !resolvedNotes) {
+            resolvedNotes = rev.locationNotes;
+          }
+        } catch {}
+      }
+
+      const matchedLocal = localImagesForName(finalOfficialName);
       const suggestedImageUrl = matchedLocal.length > 0 ? matchedLocal[0] : getDefaultImageForCategory(verifiedCategory);
 
-      if (aiData && (aiData.matched || aiData.officialName)) {
-        setAiPropertySuggestion({
+      if (aiData && (aiData.matched || aiData.officialName || isUrl)) {
+        const suggestion = {
           matched: aiData.matched ?? true,
-          officialName: aiData.officialName || searchName,
+          officialName: finalOfficialName,
           category: verifiedCategory,
-          location: aiData.location || matchedLocation || 'Malawi',
-          locationNotes: aiData.locationNotes || '',
-          description: aiData.description || authenticMalawianDescription(aiData.officialName || searchName, verifiedCategory, aiData.location || matchedLocation || 'Malawi'),
+          location: finalLocation,
+          locationNotes: resolvedNotes,
+          description: aiData.description || authenticMalawianDescription(finalOfficialName, verifiedCategory, finalLocation),
           amenities: Array.isArray(aiData.amenities) && aiData.amenities.length > 0 ? aiData.amenities : COMMON_AMENITIES.slice(0, 8),
           coordinates: matchedCoords,
           confidence: aiData.confidence || 'high',
-          summary: aiData.summary || `Authentic accommodation in ${aiData.location || 'Malawi'} providing comfortable stays for leisure and business guests.`,
+          summary: aiData.summary || `Authentic accommodation in ${finalLocation} providing comfortable stays for leisure and business guests.`,
           checkInTime: aiData.checkInTime || '14:00',
           checkOutTime: aiData.checkOutTime || '10:00',
           suggestedRooms: rooms,
@@ -762,20 +813,56 @@ export default function ListProperty() {
           contactEmail: aiData.contactEmail || user?.email || 'reservations@property.mw',
           contactWhatsapp: aiData.contactWhatsapp || aiData.contactPhone || '+265 991 234 567',
           suggestedImageUrl,
-        });
-        toast.success(`Draft Assistant matched "${aiData.officialName || searchName}" & auto-categorized as "${verifiedCategory}"!`);
+        };
+        setAiPropertySuggestion(suggestion);
+
+        // Directly autofill draft if web URL was entered or forceWebScrape was requested
+        if (isUrl || options?.forceWebScrape) {
+          setDraft(prev => ({
+            ...prev,
+            name: finalOfficialName,
+            category: verifiedCategory || prev.category,
+            location: finalLocation || prev.location,
+            locationNotes: resolvedNotes || prev.locationNotes,
+            coordinates: matchedCoords || prev.coordinates,
+            description: suggestion.description || prev.description,
+            amenities: suggestion.amenities.length > 0 ? suggestion.amenities : prev.amenities,
+            contactPhone: suggestion.contactPhone || prev.contactPhone,
+            contactEmail: suggestion.contactEmail || prev.contactEmail,
+            contactWhatsapp: suggestion.contactWhatsapp || prev.contactWhatsapp,
+            checkInTime: suggestion.checkInTime || prev.checkInTime,
+            checkOutTime: suggestion.checkOutTime || prev.checkOutTime,
+            imageUrl: suggestedImageUrl || prev.imageUrl,
+            rooms: rooms.length > 0 ? rooms.map((r, i) => ({
+              id: `room-${Date.now()}-${i}`,
+              name: r.name,
+              description: r.description || '',
+              priceMwk: r.priceMwk || 95000,
+              priceUsd: r.priceUsd || 55,
+              maxGuests: r.maxGuests || 2,
+              baseGuests: r.baseGuests || 2,
+              quantity: r.quantity || 1,
+              amenities: r.amenities || ['Ensuite bathroom'],
+              images: [],
+            })) : prev.rooms,
+          }));
+          setAiCategorized(true);
+          toast.success(`✨ Swarmed web: Imported "${finalOfficialName}" in ${finalLocation} (${verifiedCategory})!`, { duration: 6000 });
+        } else {
+          toast.success(`Draft Assistant matched "${finalOfficialName}" & auto-categorized as "${verifiedCategory}"!`);
+        }
       } else if (matchedCoords || searchName) {
-        setAiPropertySuggestion({
+        const suggestion = {
           matched: true,
-          officialName: searchName,
+          officialName: finalOfficialName,
           category: verifiedCategory,
-          location: matchedLocation || draft.location || 'Malawi',
-          locationNotes: `Located in ${matchedLocation || 'Malawi'}`,
-          description: authenticMalawianDescription(searchName, verifiedCategory, matchedLocation || draft.location || 'Malawi'),
+          location: finalLocation,
+          locationNotes: resolvedNotes || `Located in ${finalLocation}`,
+          description: authenticMalawianDescription(finalOfficialName, verifiedCategory, finalLocation),
           amenities: COMMON_AMENITIES.slice(0, 6),
           coordinates: matchedCoords,
           confidence: 'medium',
-          summary: `Identified and verified stay in ${matchedLocation || 'Malawi'}.`,
+          summary: `Identified and verified stay in ${finalLocation}.`,
           checkInTime: '14:00',
           checkOutTime: '10:00',
           suggestedRooms: rooms,
@@ -783,7 +870,18 @@ export default function ListProperty() {
           contactEmail: user?.email || 'reservations@property.mw',
           contactWhatsapp: '+265 991 234 567',
           suggestedImageUrl,
-        });
+        };
+        setAiPropertySuggestion(suggestion);
+        if (isUrl) {
+          setDraft(prev => ({
+            ...prev,
+            name: finalOfficialName,
+            category: verifiedCategory || prev.category,
+            location: finalLocation || prev.location,
+            coordinates: matchedCoords || prev.coordinates,
+            locationNotes: resolvedNotes || prev.locationNotes,
+          }));
+        }
         toast.success(`Draft Assistant prepared details & auto-categorized as "${verifiedCategory}"!`);
       } else {
         toast('No verified listing found on Maps. You can enter details manually.', { icon: 'ℹ️' });
@@ -1748,15 +1846,18 @@ export default function ListProperty() {
                       const val = e.target.value;
                       const gmaps = parseGoogleMapsPlaceUrl(val);
                       if (gmaps && (gmaps.name || gmaps.coordinates)) {
-                        const extractedName = gmaps.name || draft.name;
-                        setDraft(prev => ({
-                          ...prev,
-                          name: extractedName,
-                          coordinates: gmaps.coordinates || prev.coordinates,
-                        }));
+                        const extractedName = gmaps.name || (draft.name !== 'Malawi Accommodation' ? draft.name : '');
+                        if (extractedName) set('name', extractedName);
+                        if (gmaps.coordinates) {
+                          set('coordinates', gmaps.coordinates);
+                          reverseGeocodeCoordinates(gmaps.coordinates).then(geo => {
+                            if (geo.location) set('location', geo.location);
+                            if (geo.locationNotes) set('locationNotes', geo.locationNotes);
+                          }).catch(() => {});
+                        }
                         toast.success(
                           extractedName
-                            ? `Extracted "${extractedName}" from Google Maps link (0 API calls)!`
+                            ? `Extracted "${extractedName}" & coordinates from Google Maps!`
                             : `Extracted location coordinates from Google Maps link!`,
                           { icon: '📍' }
                         );
@@ -1768,8 +1869,16 @@ export default function ListProperty() {
                       const trimmedVal = val.trim();
                       const isWebLink = trimmedVal.startsWith('http://') || trimmedVal.startsWith('https://') || trimmedVal.startsWith('www.');
                       if (isWebLink && aiStatus.enabled && aiStatus.available) {
-                        set('name', val);
-                        toast('Web URL detected! Fetching details from the web...', { icon: '🌐' });
+                        let initialBrand = '';
+                        try {
+                          const u = new URL(trimmedVal.startsWith('http') ? trimmedVal : `https://${trimmedVal}`);
+                          const hostClean = u.hostname.replace(/^www\./i, '').split('.')[0];
+                          const pathSlug = u.pathname.split('/').filter(Boolean).pop() || '';
+                          const candidate = pathSlug && pathSlug.length > 3 && !/index|home|default|main/i.test(pathSlug) ? pathSlug : hostClean;
+                          initialBrand = candidate.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).trim();
+                        } catch {}
+                        set('name', initialBrand || 'Fetching property...');
+                        toast('🌐 Website link detected! Swarming agents to extract full name, location, rates & amenities...', { icon: '🤖' });
                         const norm = trimmedVal.startsWith('www.') ? `https://${trimmedVal}` : trimmedVal;
                         handleLookupPropertyAI(trimmedVal, { forceWebScrape: true, url: norm });
                         return;
@@ -2247,11 +2356,15 @@ export default function ListProperty() {
                     if (gmaps) {
                       if (gmaps.coordinates) {
                         set('coordinates', gmaps.coordinates);
+                        reverseGeocodeCoordinates(gmaps.coordinates).then(res => {
+                          if (res.location) set('location', res.location);
+                          if (res.locationNotes && !draft.locationNotes) set('locationNotes', res.locationNotes);
+                        }).catch(() => {});
                       }
                       if (gmaps.name && !draft.name) {
                         set('name', gmaps.name);
                       }
-                      toast.success('Extracted GPS coordinates from Google Maps link (0 API calls)!', { icon: '📍' });
+                      toast.success('Extracted GPS coordinates and location from Google Maps link!', { icon: '📍' });
                       return;
                     }
                     set('location', val);
@@ -2283,12 +2396,31 @@ export default function ListProperty() {
               <div>
                 <LocationPicker
                   value={draft.coordinates}
-                  onChange={coords => set('coordinates', coords)}
+                  onChange={coords => {
+                    set('coordinates', coords);
+                    if (coords) {
+                      reverseGeocodeCoordinates(coords).then(res => {
+                        if (res.location) {
+                          set('location', res.location);
+                          toast.success(`Updated area to "${res.location}" from map pin!`, { icon: '📍' });
+                        }
+                        if (res.locationNotes && !draft.locationNotes) {
+                          set('locationNotes', res.locationNotes);
+                        }
+                      }).catch(() => {});
+                    }
+                  }}
                   locationText={draft.location || draft.name}
                   label="Search & Pin Exact Location"
                   onLocationSelect={info => {
-                    if (info.location && !draft.location) {
+                    if (info.location) {
                       set('location', info.location);
+                    }
+                    if (info.coordinates) {
+                      set('coordinates', info.coordinates);
+                    }
+                    if (info.locationNotes && !draft.locationNotes) {
+                      set('locationNotes', info.locationNotes);
                     }
                   }}
                 />

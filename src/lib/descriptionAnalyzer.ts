@@ -117,17 +117,32 @@ export function analyzeDescriptionLocal(
 
   // 2. Detect Categories
   const categoryScores: Record<PropertyCategory, number> = {
+    Hotel: 0,
+    Resort: 0,
+    Lodge: 0,
     'Lake & Beach': 0,
     'Safari & Wildlife': 0,
     'Romantic Escape': 0,
-    'Family': 0,
-    'Adventure': 0,
-    'Luxury': 0,
+    Family: 0,
+    Adventure: 0,
+    Luxury: 0,
     'Bed & Breakfast': 0,
     'Guest House': 0,
     'Cottage & Chalet': 0,
   };
 
+  // Hotel indicators
+  if (/\bhotel\b|business hotel|city hotel|reception desk|executive room|conference hotel|grand hotel/i.test(combined)) {
+    categoryScores['Hotel'] += 6;
+  }
+  // Resort indicators
+  if (/\bresort\b|beach resort|lake resort|holiday resort|spa resort|club resort|retreat resort/i.test(combined)) {
+    categoryScores['Resort'] += 6;
+  }
+  // Lodge indicators
+  if (/\blodge\b|safari lodge|country lodge|eco-lodge|wilderness lodge|bush lodge|lakeside lodge/i.test(combined)) {
+    categoryScores['Lodge'] += 5;
+  }
   // Lake & Beach indicators
   if (/lake|beach|water|shore|cape maclear|senga bay|mangochi|nkhata bay|likoma|chintheche|monkey bay/i.test(combined)) {
     categoryScores['Lake & Beach'] += 5;

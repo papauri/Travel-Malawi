@@ -184,21 +184,24 @@ CRITICAL: You MUST accurately auto-categorize the property based on its characte
 
 Return ONLY a valid JSON object with the following fields:
 - "matched": boolean (true if you recognize this specific lodge/stay in Malawi, false if proposing best-fit defaults)
-- "officialName": string (official recognized or properly formatted name of the property, e.g. "Kaya Mawa", "Kumbali Country Lodge", "Warm Heart B&B", "Mayoka Village", "Zomba Forest Lodge")
+- "officialName": string (Official recognized property name, e.g. "Kaya Mawa", "Sunbird Capital Hotel", "The Makokola Retreat", "Latitude 13°", "Mayoka Village", "Zomba Forest Lodge". DO NOT return a raw URL, generic "Malawi Accommodation", or website breadcrumbs like "Home | ...". Extract the real property brand name!)
 - "category": string (MUST be EXACTLY one of:
-    "Bed & Breakfast" | "Guest House" | "Cottage & Chalet" | "Lake & Beach" | "Safari & Wildlife" | "Romantic Escape" | "Family" | "Adventure" | "Luxury"
+    "Hotel" | "Resort" | "Lodge" | "Lake & Beach" | "Safari & Wildlife" | "Romantic Escape" | "Family" | "Adventure" | "Luxury" | "Bed & Breakfast" | "Guest House" | "Cottage & Chalet"
   Categorization guidance:
+  • "Hotel": Full-service city or business hotel with dedicated reception, private rooms, and dining (e.g. Sunbird Capital, Protea Ryalls, President Walmont, Latitude 13°).
+  • "Resort": Destination retreat with expansive grounds, leisure amenities, and recreational activities (e.g. The Makokola Retreat, Sunbird Livingstonia Beach, Sunbird Nkopola).
+  • "Lodge": Classic Malawian safari, lakeshore, or highland lodge (e.g. Chelinda Lodge, Mvuu Lodge, Pumulani, Blue Zebra).
   • "Bed & Breakfast": Properties with B&B, Bed & Breakfast, homestay, or intimate breakfast-included stays.
   • "Cottage & Chalet": Self-catering cottages, lakeside chalets, mountain cabins, private villas.
   • "Guest House": City, suburban, or transit guest houses (e.g. Area 10/43 Lilongwe, Blantyre, Mzuzu, Zomba).
-  • "Lake & Beach": Stays located on Lake Malawi (Cape Maclear, Senga Bay, Salima, Mangochi, Likoma Island, Nkhata Bay, Chintheche, Monkey Bay).
+  • "Lake & Beach": Stays located directly on Lake Malawi (Cape Maclear, Senga Bay, Salima, Mangochi, Likoma Island, Nkhata Bay, Chintheche, Monkey Bay).
   • "Safari & Wildlife": Stays in or near national parks, game reserves, or safari areas (Liwonde, Majete, Nyika, Kasungu, Lengwe, Vwaza).
   • "Luxury": High-end 5-star premier lodges/resorts with private plunge pools, fine dining, or exclusive lakeview suites.
   • "Romantic Escape": Intimate couple hideaways, honeymoon suites, secluded hillside/lakeside retreats.
   • "Family": Family resorts with multi-bedroom chalets and child-friendly amenities.
   • "Adventure": Backpackers, diving lodges, hiking bases, eco-camps.
 )
-- "location": string (Town, district or specific area name in Malawi, e.g. "Likoma Island", "Cape Maclear", "Senga Bay, Salima", "Nkhata Bay", "Area 43, Lilongwe", "Liwonde")
+- "location": string (Exact town, district or specific area name in Malawi, e.g. "Cape Maclear", "Likoma Island", "Senga Bay, Salima", "Nkhata Bay", "Area 43, Lilongwe", "Liwonde", "Mangochi", "Zomba Plateau", "Blantyre CBD". DO NOT just return "Malawi". Extract the specific town or area from the page address, footer, or body text!)
 - "locationNotes": string (practical arrival directions, road turns, landmarks, dirt road distances, or lakeside boat instructions)
 - "description": string (welcoming, authentic 1-2 paragraph description of 80 to 180 words highlighting the setting, views, hospitality, comfort, and atmosphere)
 - "amenities": string[] (array of 6 to 12 relevant amenities it offers, chosen from: "Free WiFi", "Breakfast included", "Swimming pool", "Restaurant", "Bar", "Air conditioning", "Hot water", "Backup power", "Secure parking", "Airport transfer", "Lake view", "Private beach", "Boat trips", "Room service", "Laundry", "Family rooms", "Dedicated Workspace")
@@ -994,7 +997,12 @@ export function isAuthError(message: string): boolean {
 }
 
 /**
- * Scrapes clean textual content from a webpage URL for AI grounding and property extraction.
+ * Scrapes clean textual content and rich structured metadata from a webpage URL
+ * for AI grounding and high-fidelity property extraction.
+ *
+ * Extracts JSON-LD schema.org (LodgingBusiness/Hotel/Resort), OpenGraph tags,
+ * headings, Malawian geographical mentions, and contact numbers while preserving
+ * footers and headers where addresses live.
  */
 async function scrapeUrlContent(targetUrl: string): Promise<string> {
   try {
@@ -1009,32 +1017,195 @@ async function scrapeUrlContent(targetUrl: string): Promise<string> {
       }
     }
 
+    let parsedUrl: URL;
+    try {
+      parsedUrl = new URL(normalized);
+    } catch {
+      return '';
+    }
+
     const res = await fetch(normalized, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.9',
+        'Cache-Control': 'no-cache',
       },
       redirect: 'follow',
-      signal: AbortSignal.timeout(8000),
+      signal: AbortSignal.timeout(12000),
     });
-    if (!res.ok) return '';
-    const html = await res.text();
 
+    if (!res.ok) {
+      console.warn(`[AI] Web scraper received status ${res.status} for ${normalized}`);
+      return '';
+    }
+
+    const html = await res.text();
+    if (!html || html.length < 50) return '';
+
+    // 1. Extract JSON-LD structured schemas BEFORE removing <script>
+    const jsonLdBlocks: any[] = [];
+    const jsonLdMatches = html.matchAll(/<script\b[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi);
+    for (const match of jsonLdMatches) {
+      try {
+        const rawJson = match[1].trim();
+        const parsed = JSON.parse(rawJson);
+        if (Array.isArray(parsed)) {
+          jsonLdBlocks.push(...parsed);
+        } else if (parsed && typeof parsed === 'object') {
+          if (Array.isArray(parsed['@graph'])) {
+            jsonLdBlocks.push(...parsed['@graph']);
+          } else {
+            jsonLdBlocks.push(parsed);
+          }
+        }
+      } catch {
+        // ignore parse error on invalid JSON-LD
+      }
+    }
+
+    // Find lodging schema if present
+    let schemaName = '';
+    let schemaType = '';
+    let schemaDesc = '';
+    let schemaLocality = '';
+    let schemaRegion = '';
+    let schemaAddress = '';
+    let schemaPhone = '';
+    let schemaEmail = '';
+    let schemaLat: number | null = null;
+    let schemaLng: number | null = null;
+    let schemaAmenities: string[] = [];
+
+    for (const block of jsonLdBlocks) {
+      const typeStr = String(block['@type'] || block['type'] || '');
+      const isLodging = /hotel|resort|lodge|bedandbreakfast|lodging|hostel|motel|place|localbusiness/i.test(typeStr);
+      if (isLodging || !schemaName) {
+        if (block.name && typeof block.name === 'string') schemaName = block.name.trim();
+        if (typeStr) schemaType = typeStr;
+        if (block.description && typeof block.description === 'string') schemaDesc = block.description.trim();
+        if (block.telephone) schemaPhone = String(block.telephone).trim();
+        if (block.email) schemaEmail = String(block.email).trim();
+        if (block.address) {
+          if (typeof block.address === 'string') {
+            schemaAddress = block.address;
+          } else if (typeof block.address === 'object') {
+            schemaLocality = block.address.addressLocality || '';
+            schemaRegion = block.address.addressRegion || '';
+            schemaAddress = [
+              block.address.streetAddress,
+              block.address.addressLocality,
+              block.address.addressRegion,
+              block.address.addressCountry,
+            ].filter(Boolean).join(', ');
+          }
+        }
+        if (block.geo && typeof block.geo === 'object') {
+          const lat = parseFloat(block.geo.latitude);
+          const lng = parseFloat(block.geo.longitude);
+          if (!isNaN(lat) && !isNaN(lng)) {
+            schemaLat = lat;
+            schemaLng = lng;
+          }
+        }
+        if (Array.isArray(block.amenityFeature)) {
+          schemaAmenities = block.amenityFeature.map((a: any) => typeof a === 'string' ? a : a.name).filter(Boolean);
+        }
+      }
+    }
+
+    // 2. Extract Meta Tags & Title
     const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+    const ogTitleMatch = html.match(/<meta[^>]*property=["']og:title["'][^>]*content=["']([^"']+)["']/i) ||
+                         html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:title["']/i);
+    const ogSiteNameMatch = html.match(/<meta[^>]*property=["']og:site_name["'][^>]*content=["']([^"']+)["']/i);
     const metaDescMatch = html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["']/i) ||
                           html.match(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["']/i);
-    const metaTitle = titleMatch ? `Page Title: ${titleMatch[1].trim()}\n` : '';
-    const metaDesc = metaDescMatch ? `Page Description: ${metaDescMatch[1].trim()}\n` : '';
 
-    const clean = html
-      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-      .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
-      .replace(/<svg\b[^<]*(?:(?!<\/svg>)<[^<]*)*<\/svg>/gi, '')
-      .replace(/<noscript\b[^<]*(?:(?!<\/noscript>)<[^<]*)*<\/noscript>/gi, '')
-      .replace(/<header\b[^<]*(?:(?!<\/header>)<[^<]*)*<\/header>/gi, ' ')
-      .replace(/<footer\b[^<]*(?:(?!<\/footer>)<[^<]*)*<\/footer>/gi, ' ')
-      .replace(/<nav\b[^<]*(?:(?!<\/nav>)<[^<]*)*<\/nav>/gi, ' ')
+    // Geo meta tags
+    const geoPosMatch = html.match(/<meta[^>]*name=["']geo\.position["'][^>]*content=["']([^"']+)["']/i);
+    const placeLatMatch = html.match(/<meta[^>]*property=["']place:location:latitude["'][^>]*content=["']([^"']+)["']/i);
+    const placeLngMatch = html.match(/<meta[^>]*property=["']place:location:longitude["'][^>]*content=["']([^"']+)["']/i);
+    const geoPlacenameMatch = html.match(/<meta[^>]*name=["']geo\.placename["'][^>]*content=["']([^"']+)["']/i);
+    const geoRegionMatch = html.match(/<meta[^>]*name=["']geo\.region["'][^>]*content=["']([^"']+)["']/i);
+
+    let extractedLat = schemaLat;
+    let extractedLng = schemaLng;
+    if (placeLatMatch && placeLngMatch) {
+      const lat = parseFloat(placeLatMatch[1]);
+      const lng = parseFloat(placeLngMatch[1]);
+      if (!isNaN(lat) && !isNaN(lng)) { extractedLat = lat; extractedLng = lng; }
+    } else if (geoPosMatch) {
+      const parts = geoPosMatch[1].split(/[;,]/);
+      if (parts.length >= 2) {
+        const lat = parseFloat(parts[0]);
+        const lng = parseFloat(parts[1]);
+        if (!isNaN(lat) && !isNaN(lng)) { extractedLat = lat; extractedLng = lng; }
+      }
+    }
+
+    // 3. Extract Headings (H1, H2)
+    const h1Matches: string[] = [];
+    for (const h of html.matchAll(/<h1\b[^>]*>([\s\S]*?)<\/h1>/gi)) {
+      const text = h[1].replace(/<[^>]+>/g, '').trim();
+      if (text && text.length > 2 && text.length < 120) h1Matches.push(text);
+    }
+    const h2Matches: string[] = [];
+    for (const h of html.matchAll(/<h2\b[^>]*>([\s\S]*?)<\/h2>/gi)) {
+      const text = h[1].replace(/<[^>]+>/g, '').trim();
+      if (text && text.length > 2 && text.length < 120 && h2Matches.length < 5) h2Matches.push(text);
+    }
+
+    // 4. Contact Extraction: Phones, Emails, WhatsApp
+    const emailsFound = new Set<string>();
+    if (schemaEmail) emailsFound.add(schemaEmail);
+    const mailtoMatches = html.matchAll(/href=["']mailto:([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})["']/gi);
+    for (const m of mailtoMatches) emailsFound.add(m[1].toLowerCase());
+
+    const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b/g;
+    const bodyEmails = html.match(emailRegex) || [];
+    for (const em of bodyEmails) {
+      if (!em.includes('sentry') && !em.includes('wix') && !em.includes('wordpress') && !em.includes('example')) {
+        emailsFound.add(em.toLowerCase());
+      }
+    }
+
+    const phonesFound = new Set<string>();
+    if (schemaPhone) phonesFound.add(schemaPhone);
+    const telMatches = html.matchAll(/href=["']tel:([^"']+)["']/gi);
+    for (const t of telMatches) phonesFound.add(t[1].trim());
+
+    // Look for Malawian phone numbers (+265, 099, 088, 01)
+    const malawiPhoneRegex = /(?:\+?265[\s-]?)?(?:0?[189]\d{2}[\s-]?\d{3}[\s-]?\d{3}|0?[189]\d{1}[\s-]?\d{3}[\s-]?\d{3})/g;
+    const detectedMalawiPhones = html.match(malawiPhoneRegex) || [];
+    for (const p of detectedMalawiPhones) {
+      if (p.replace(/\D/g, '').length >= 7) phonesFound.add(p.trim());
+    }
+
+    let whatsappNumber = '';
+    const waMatches = html.match(/wa\.me\/(\+?\d+)/i) || html.match(/api\.whatsapp\.com\/send\?phone=(\+?\d+)/i);
+    if (waMatches && waMatches[1]) {
+      whatsappNumber = waMatches[1].startsWith('+') ? waMatches[1] : `+${waMatches[1]}`;
+    }
+
+    // 5. Detect Malawian Geographic Entities Mentioned in Text
+    const malawiLocations = [
+      'Cape Maclear', 'Chembe', 'Mangochi', 'Senga Bay', 'Salima', 'Likoma Island', 'Chizumulu',
+      'Nkhata Bay', 'Chintheche', 'Kande Beach', 'Monkey Bay', 'Nkhotakota', 'Karonga', 'Livingstonia',
+      'Lilongwe', 'Area 10', 'Area 11', 'Area 43', 'Area 44', 'Area 3', 'City Centre', 'Old Town',
+      'Blantyre', 'Nyambadwe', 'Sunnyside', 'Mandala', 'Limbe',
+      'Zomba Plateau', 'Zomba', 'Mulanje', 'Mount Mulanje', 'Thyolo',
+      'Liwonde National Park', 'Liwonde', 'Majete Wildlife Reserve', 'Majete', 'Nyika National Park',
+      'Nyika Plateau', 'Kasungu National Park', 'Kasungu', 'Vwaza Marsh', 'Dedza', 'Mchinji', 'Ntcheu'
+    ];
+    const detectedLocations = malawiLocations.filter(loc => new RegExp(`\\b${loc}\\b`, 'i').test(html));
+
+    // 6. Clean Text Extraction (Preserve Headers, Footers & Contacts!)
+    const cleanText = html
+      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, ' ')
+      .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, ' ')
+      .replace(/<svg\b[^<]*(?:(?!<\/svg>)<[^<]*)*<\/svg>/gi, ' ')
+      .replace(/<noscript\b[^<]*(?:(?!<\/noscript>)<[^<]*)*<\/noscript>/gi, ' ')
       .replace(/<[^>]+>/g, ' ')
       .replace(/&nbsp;/gi, ' ')
       .replace(/&amp;/gi, '&')
@@ -1043,8 +1214,42 @@ async function scrapeUrlContent(targetUrl: string): Promise<string> {
       .replace(/\s+/g, ' ')
       .trim();
 
-    const combined = `${metaTitle}${metaDesc}${clean}`.trim();
-    return combined.slice(0, 12000);
+    // 7. Extract Domain Brand
+    const hostParts = parsedUrl.hostname.replace(/^www\./i, '').split('.');
+    const domainBrand = (hostParts.length > 1 ? hostParts[0] : parsedUrl.hostname)
+      .replace(/[-_]/g, ' ')
+      .replace(/\b\w/g, c => c.toUpperCase());
+
+    // 8. Build High-Fidelity Structured Extraction Dossier
+    const dossier = [
+      `[EXTRACTED WEBSITE DOSSIER]`,
+      `Website URL: ${normalized}`,
+      `Domain Brand: ${domainBrand}`,
+      schemaName ? `JSON-LD Official Name: ${schemaName}` : '',
+      schemaType ? `JSON-LD Schema Type: ${schemaType}` : '',
+      ogTitleMatch ? `OpenGraph Title: ${ogTitleMatch[1].trim()}` : '',
+      ogSiteNameMatch ? `OpenGraph Site Name: ${ogSiteNameMatch[1].trim()}` : '',
+      titleMatch ? `Page Title: ${titleMatch[1].trim()}` : '',
+      h1Matches.length > 0 ? `Main Heading (H1): ${h1Matches.join(' | ')}` : '',
+      h2Matches.length > 0 ? `Sub-Headings (H2): ${h2Matches.join(' | ')}` : '',
+      schemaAddress ? `JSON-LD Address: ${schemaAddress}` : '',
+      schemaLocality ? `Address Locality: ${schemaLocality}` : '',
+      schemaRegion ? `Address Region: ${schemaRegion}` : '',
+      geoPlacenameMatch ? `Geo Placename Meta: ${geoPlacenameMatch[1]}` : '',
+      geoRegionMatch ? `Geo Region Meta: ${geoRegionMatch[1]}` : '',
+      detectedLocations.length > 0 ? `Malawi Tourism Locations Mentioned: ${detectedLocations.join(', ')}` : '',
+      extractedLat && extractedLng ? `GPS Coordinates: lat: ${extractedLat}, lng: ${extractedLng}` : '',
+      Array.from(phonesFound).length > 0 ? `Contact Phone(s): ${Array.from(phonesFound).slice(0, 3).join(', ')}` : '',
+      Array.from(emailsFound).length > 0 ? `Contact Email(s): ${Array.from(emailsFound).slice(0, 3).join(', ')}` : '',
+      whatsappNumber ? `WhatsApp: ${whatsappNumber}` : '',
+      schemaDesc ? `JSON-LD Description: ${schemaDesc}` : '',
+      metaDescMatch ? `Meta Description: ${metaDescMatch[1].trim()}` : '',
+      schemaAmenities.length > 0 ? `JSON-LD Amenities: ${schemaAmenities.join(', ')}` : '',
+      `\nWebpage Text Snippet (including footer and location details):\n${cleanText.slice(0, 8000)}`,
+      `[END EXTRACTED WEBSITE DOSSIER]`
+    ].filter(Boolean).join('\n');
+
+    return dossier;
   } catch (err: any) {
     console.warn('[AI] Web scraping URL failed (falling back to search grounding):', err?.message);
     return '';
@@ -1315,6 +1520,20 @@ export async function executeAIGeneration(
   req: GenerationRequest,
   overrideProvider?: AIProviderId
 ): Promise<GenerationResult> {
+  // Proactively scrape web content if URL or domain is present for lookup_property
+  if (req.action === 'lookup_property') {
+    let rawTarget = req.details?.url || (req.details?.name?.startsWith('http') ? req.details.name : '');
+    if (!rawTarget && req.details?.name && (req.details.name.startsWith('www.') || (req.details.name.includes('.') && req.details.name.includes('/')))) {
+      rawTarget = req.details.name;
+    }
+    if (rawTarget && !req.details?.scrapedContent) {
+      const scraped = await scrapeUrlContent(rawTarget);
+      if (scraped) {
+        req.details = { ...req.details, scrapedContent: scraped };
+      }
+    }
+  }
+
   const config = loadAIConfig();
   if (!config.enabled) {
     return handleCuratedActionFallback(req);
@@ -3195,29 +3414,96 @@ export function generateCuratedMalawiPropertyDraft(details?: GenerationRequest['
 }
 
 export function generateCuratedMalawiPropertyLookup(details?: GenerationRequest['details']): any {
-  const name = (details?.name || 'Malawi Lodge').trim();
-  const rawLoc = (details?.location || '').trim();
+  const scraped = details?.scrapedContent || '';
+
+  // Extract from scraped webpage dossier if available
+  let extractedName = '';
+  let extractedLoc = '';
+  let extractedCategory = '';
+  let extractedPhone = '';
+  let extractedEmail = '';
+  let extractedWhatsapp = '';
+  let extractedDesc = '';
+  let extractedCoords: { lat: number; lng: number } | null = null;
+
+  if (scraped) {
+    const nameM = scraped.match(/JSON-LD Official Name:\s*(.+)/i) ||
+                  scraped.match(/OpenGraph Site Name:\s*(.+)/i) ||
+                  scraped.match(/OpenGraph Title:\s*(.+)/i) ||
+                  scraped.match(/Main Heading \(H1\):\s*(.+)/i) ||
+                  scraped.match(/Domain Brand:\s*(.+)/i);
+    if (nameM && nameM[1]) extractedName = nameM[1].trim();
+
+    const locM = scraped.match(/Address Locality:\s*(.+)/i) ||
+                 scraped.match(/JSON-LD Address:\s*(.+)/i) ||
+                 scraped.match(/Malawi Tourism Locations Mentioned:\s*([^,\n]+)/i);
+    if (locM && locM[1]) extractedLoc = locM[1].trim();
+
+    const catM = scraped.match(/JSON-LD Schema Type:\s*(.+)/i);
+    if (catM && catM[1]) {
+      const typeStr = catM[1].toLowerCase();
+      if (typeStr.includes('hotel')) extractedCategory = 'Hotel';
+      else if (typeStr.includes('resort')) extractedCategory = 'Resort';
+      else if (typeStr.includes('bedandbreakfast')) extractedCategory = 'Bed & Breakfast';
+      else if (typeStr.includes('lodge')) extractedCategory = 'Lodge';
+    }
+
+    const phoneM = scraped.match(/Contact Phone\(s\):\s*(.+)/i);
+    if (phoneM && phoneM[1]) extractedPhone = phoneM[1].split(',')[0].trim();
+
+    const emailM = scraped.match(/Contact Email\(s\):\s*(.+)/i);
+    if (emailM && emailM[1]) extractedEmail = emailM[1].split(',')[0].trim();
+
+    const waM = scraped.match(/WhatsApp:\s*(.+)/i);
+    if (waM && waM[1]) extractedWhatsapp = waM[1].trim();
+
+    const coordsM = scraped.match(/GPS Coordinates:\s*lat:\s*([-\d.]+),\s*lng:\s*([-\d.]+)/i);
+    if (coordsM && coordsM[1] && coordsM[2]) {
+      const lat = parseFloat(coordsM[1]);
+      const lng = parseFloat(coordsM[2]);
+      if (!isNaN(lat) && !isNaN(lng)) extractedCoords = { lat, lng };
+    }
+
+    const descM = scraped.match(/JSON-LD Description:\s*(.+)/i) ||
+                  scraped.match(/Meta Description:\s*(.+)/i);
+    if (descM && descM[1]) extractedDesc = descM[1].trim();
+  }
+
+  const rawName = (details?.name || '').trim();
+  const name = (extractedName && (!rawName || rawName.startsWith('http') || rawName.startsWith('www.') || rawName === 'Malawi Accommodation'))
+    ? extractedName
+    : (rawName || extractedName || 'Malawi Lodge');
+  const rawLoc = (extractedLoc || details?.location || '').trim();
   const region = detectMalawiRegion(name, rawLoc, details?.category);
 
   let officialName = name;
-  let category = 'Bed & Breakfast';
+  let category = extractedCategory || 'Bed & Breakfast';
+  if (!extractedCategory) {
+    const nLow = name.toLowerCase();
+    if (nLow.includes('hotel')) category = 'Hotel';
+    else if (nLow.includes('resort')) category = 'Resort';
+    else if (nLow.includes('lodge')) category = 'Lodge';
+    else if (region === 'lake') category = 'Lake & Beach';
+    else if (region === 'safari') category = 'Safari & Wildlife';
+  }
+
   let location = rawLoc || 'Lilongwe, Malawi';
   let locationNotes = 'Accessible via main road. Signposted entrance with secure guest parking.';
-  let coordinates = { lat: -13.9833, lng: 33.7833 };
+  let coordinates = extractedCoords || { lat: -13.9833, lng: 33.7833 };
   let amenities = ['Free WiFi', 'Breakfast included', 'Backup power', 'Hot water', 'Secure parking', 'Air conditioning'];
   let suggestedRooms: any[] = [];
   let summary = `Welcoming accommodation in ${location} known for warm hospitality and comfortable amenities.`;
 
   switch (region) {
     case 'lake':
-      category = 'Lake & Beach';
+      if (!extractedCategory) category = name.toLowerCase().includes('resort') ? 'Resort' : (name.toLowerCase().includes('hotel') ? 'Hotel' : (name.toLowerCase().includes('lodge') ? 'Lodge' : 'Lake & Beach'));
       location = rawLoc || 'Cape Maclear, Lake Malawi';
       locationNotes = 'Follow the lakeshore road toward the beach. Lodge entrance is signposted on the lake side.';
-      coordinates = location.toLowerCase().includes('senga') ? { lat: -13.7256, lng: 34.6189 }
+      coordinates = extractedCoords || (location.toLowerCase().includes('senga') ? { lat: -13.7256, lng: 34.6189 }
         : location.toLowerCase().includes('nkhata') ? { lat: -11.6067, lng: 34.2908 }
         : location.toLowerCase().includes('likoma') ? { lat: -12.0569, lng: 34.7356 }
         : location.toLowerCase().includes('mangochi') ? { lat: -14.4782, lng: 35.2645 }
-        : { lat: -14.0215, lng: 34.8482 };
+        : { lat: -14.0215, lng: 34.8482 });
       amenities = ['Lake view', 'Private beach', 'Swimming pool', 'Restaurant', 'Bar', 'Backup power', 'Free WiFi', 'Hot water', 'Boat trips', 'Mosquito nets'];
       suggestedRooms = [
         {
@@ -3377,15 +3663,15 @@ export function generateCuratedMalawiPropertyLookup(details?: GenerationRequest[
     category,
     location,
     locationNotes,
-    description,
+    description: extractedDesc || description,
     amenities,
     coordinates,
     checkInTime: '14:00',
     checkOutTime: '10:30',
     suggestedRooms,
-    contactPhone: '+265 991 234 567',
-    contactEmail: `reservations@${name.toLowerCase().replace(/[^a-z0-9]/g, '') || 'stay'}.mw`,
-    contactWhatsapp: '+265 991 234 567',
+    contactPhone: extractedPhone || '+265 991 234 567',
+    contactEmail: extractedEmail || `reservations@${name.toLowerCase().replace(/[^a-z0-9]/g, '') || 'stay'}.mw`,
+    contactWhatsapp: extractedWhatsapp || extractedPhone || '+265 991 234 567',
     confidence: 'high',
     summary,
   };

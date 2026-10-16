@@ -38,6 +38,7 @@ import {
   parseCoordinates,
   pinProblem,
   searchNominatim,
+  reverseGeocodeCoordinates,
   GeocodeResult,
   KnownPlace,
   distanceKm,
@@ -50,7 +51,7 @@ interface Props {
   /** Falls back to this on the map when there is no pin yet. */
   locationText?: string;
   label?: string;
-  onLocationSelect?: (info: { name?: string; location?: string; coordinates: LatLng }) => void;
+  onLocationSelect?: (info: { name?: string; location?: string; locationNotes?: string; coordinates: LatLng }) => void;
 }
 
 const POPULAR_REGIONS: { label: string; coords: LatLng; zoom: number }[] = [
@@ -186,7 +187,7 @@ export default function LocationPicker({
     };
   }, [searchQuery]);
 
-  const handlePickPlace = (
+  const handlePickPlace = async (
     place: { name: string; location?: string; coordinates: LatLng },
     sourceType: 'existing' | 'known' | 'osm'
   ) => {
@@ -195,10 +196,21 @@ export default function LocationPicker({
     setShowSearchResults(false);
     setSearchQuery('');
 
+    let notes = '';
+    let loc = place.location;
+    try {
+      const geo = await reverseGeocodeCoordinates(place.coordinates);
+      notes = geo.locationNotes;
+      if (!loc || loc === 'Malawi') loc = geo.location;
+    } catch {
+      // fallback
+    }
+
     if (onLocationSelect) {
       onLocationSelect({
         name: place.name,
-        location: place.location,
+        location: loc || place.location,
+        locationNotes: notes,
         coordinates: place.coordinates,
       });
     }
@@ -213,14 +225,32 @@ export default function LocationPicker({
     toast.success(`Pin set to ${place.name} (${sourceLabel})`);
   };
 
+  const handlePinUpdate = async (coords: LatLng, explicitName?: string, explicitNotes?: string) => {
+    onChange(coords);
+    try {
+      const geo = await reverseGeocodeCoordinates(coords);
+      const chosenName = explicitName || geo.location;
+      setSelectedPlaceName(chosenName);
+      if (onLocationSelect) {
+        onLocationSelect({
+          name: explicitName || geo.nearestLandmark,
+          location: geo.location,
+          locationNotes: explicitNotes || geo.locationNotes,
+          coordinates: coords,
+        });
+      }
+    } catch {
+      if (explicitName) setSelectedPlaceName(explicitName);
+    }
+  };
+
   const applyPaste = () => {
     const parsed = parseCoordinates(paste);
     if (!parsed) {
       toast.error('Could not find coordinates. Paste a Google Maps link or "-13.98, 33.78".');
       return;
     }
-    onChange(parsed);
-    setSelectedPlaceName(null);
+    handlePinUpdate(parsed);
     setPaste('');
     toast.success(`Pin set to ${formatCoordinates(parsed, 4)}.`);
   };
@@ -233,11 +263,9 @@ export default function LocationPicker({
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
       position => {
-        
         setLocating(false);
         const coords = { lat: position.coords.latitude, lng: position.coords.longitude };
-        onChange(coords);
-        setSelectedPlaceName('Your Current GPS Location');
+        handlePinUpdate(coords, 'Your Current GPS Location');
         toast.success('Pin dropped at your current position.');
       },
       () => {
@@ -257,8 +285,8 @@ export default function LocationPicker({
       return;
     }
     if (!Number.isFinite(parsed)) return;
-    onChange({ ...base, [part]: parsed });
-    setSelectedPlaceName(null);
+    const newCoords = { ...base, [part]: parsed };
+    handlePinUpdate(newCoords);
   };
 
   const totalResultsCount =
@@ -482,8 +510,7 @@ export default function LocationPicker({
               onChange={(e) => {
                 const reg = POPULAR_REGIONS.find(r => r.label === e.target.value);
                 if (reg) {
-                  onChange(reg.coords);
-                  setSelectedPlaceName(reg.label);
+                  handlePinUpdate(reg.coords, reg.label);
                   toast.success(`Jumped map to ${reg.label}`);
                 }
               }}
@@ -506,8 +533,7 @@ export default function LocationPicker({
                 key={`${reg.label}-${regIdx}`}
                 type="button"
                 onClick={() => {
-                  onChange(reg.coords);
-                  setSelectedPlaceName(reg.label);
+                  handlePinUpdate(reg.coords, reg.label);
                   toast.success(`Jumped map to ${reg.label}`);
                 }}
                 className="shrink-0 px-2.5 py-1 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-full font-medium transition"
@@ -523,8 +549,7 @@ export default function LocationPicker({
           <InteractiveMap
             markerPosition={pin}
             onMarkerChange={coords => {
-              onChange(coords);
-              setSelectedPlaceName(null);
+              handlePinUpdate(coords);
             }}
             popupText={selectedPlaceName || locationText || 'Property Location'}
             interactive={true}

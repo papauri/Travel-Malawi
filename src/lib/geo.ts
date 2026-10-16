@@ -1081,3 +1081,173 @@ export function formatLocationName(location?: string, _hotelName?: string): stri
 
   return clean;
 }
+
+export interface ReverseGeocodeResult {
+  location: string;
+  town: string;
+  district: string;
+  locationNotes: string;
+  displayName: string;
+  nearestLandmark?: string;
+}
+
+/**
+ * Reverse geocodes GPS coordinates into an authentic Malawian town/area and generates
+ * practical "finding the place" arrival directions.
+ *
+ * Utilizes OpenStreetMap Nominatim reverse geocoding with instant fallback to
+ * Malawi known landmarks and regional boundaries.
+ */
+export async function reverseGeocodeCoordinates(coords: LatLng): Promise<ReverseGeocodeResult> {
+  if (!isValidLatLng(coords)) {
+    return {
+      location: 'Malawi',
+      town: 'Malawi',
+      district: 'Malawi',
+      locationNotes: '',
+      displayName: 'Malawi',
+    };
+  }
+
+  // 1. Calculate nearest known Malawi place / landmark
+  let closestPlace = MALAWI_KNOWN_PLACES[0];
+  let minDistance = distanceKm(coords, closestPlace.coordinates);
+
+  for (const place of MALAWI_KNOWN_PLACES) {
+    const dist = distanceKm(coords, place.coordinates);
+    if (dist < minDistance) {
+      minDistance = dist;
+      closestPlace = place;
+    }
+  }
+
+  // Generate fallback Malawian arrival guidance based on closest recognized hub/landmark
+  const generateArrivalNotes = (townOrArea: string, landmark?: string): string => {
+    const lower = `${townOrArea} ${landmark || ''}`.toLowerCase();
+    if (lower.includes('cape maclear') || lower.includes('chembe')) {
+      return 'Follow the lakeshore access road into Chembe Village. Gate and property entrance are signposted on the beachside in Cape Maclear.';
+    }
+    if (lower.includes('senga bay') || lower.includes('salima')) {
+      return 'Take the M10 tar road from Salima toward Senga Bay. Follow signs turning off toward the beach.';
+    }
+    if (lower.includes('mangochi') || lower.includes('makokola') || lower.includes('nkopola')) {
+      return 'Turn off the main M3 Mangochi-Monkey Bay road onto the lodge access road. Pinned on the lake side.';
+    }
+    if (lower.includes('monkey bay')) {
+      return 'Located in Monkey Bay town near the port/lakeshore. Pinned near the harbor access.';
+    }
+    if (lower.includes('area 43') || lower.includes('area 10') || lower.includes('area 11') || lower.includes('city centre')) {
+      return `Located in ${townOrArea}, Lilongwe. Accessible via paved tar roads from Presidential Way / M1 with secure gated entrance.`;
+    }
+    if (lower.includes('lilongwe')) {
+      return `Located in ${townOrArea}, Lilongwe. Paved road access with secure parking.`;
+    }
+    if (lower.includes('blantyre')) {
+      return `Situated in ${townOrArea}, Blantyre. Convenient access from main road with dedicated on-site parking.`;
+    }
+    if (lower.includes('zomba plateau') || lower.includes('ku chawe')) {
+      return 'Take the scenic mountain road up from Zomba town. Watch for signposted gates near the plateau rim.';
+    }
+    if (lower.includes('zomba')) {
+      return `Located in ${townOrArea}, Zomba. Follow main road toward the mountain slope.`;
+    }
+    if (lower.includes('mulanje')) {
+      return 'Turn off the M2 toward the base of Mount Mulanje. Follow tea estate access roads to the property entrance.';
+    }
+    if (lower.includes('liwonde')) {
+      return 'Located in the Liwonde / Shire River wildlife corridor. High-clearance vehicle recommended.';
+    }
+    if (lower.includes('majete')) {
+      return 'Located in Chikwawa near the Majete Wildlife Reserve main gate. High-clearance vehicle recommended.';
+    }
+    if (lower.includes('nyika')) {
+      return 'Situated on the high montane grasslands of Nyika National Park. 4x4 vehicle recommended.';
+    }
+    if (lower.includes('nkhata bay') || lower.includes('mayoka')) {
+      return 'Follow the winding lakeshore road down into Nkhata Bay. Pinned on the lakeshore slopes.';
+    }
+    if (lower.includes('likoma')) {
+      return 'Located on Likoma Island, Lake Malawi. Accessible via boat transfer from Mbamba Bay / Nkhata Bay or island airstrip.';
+    }
+    if (lower.includes('chintheche')) {
+      return 'Follow the lakeshore road M5 at Chintheche. White sand beach access road leading directly to the property.';
+    }
+    if (lower.includes('nkhotakota')) {
+      return 'Turn off the M5 lakeshore highway into Nkhotakota. Follow local signposts to the property.';
+    }
+    if (lower.includes('mzuzu')) {
+      return `Located in ${townOrArea}, Mzuzu. Accessible from main road with secure guest parking.`;
+    }
+    return `Located in ${townOrArea}. Signposted entrance with secure guest parking.`;
+  };
+
+  // Default heuristic based on nearest landmark if close enough
+  let resolvedLocation = closestPlace.location;
+  let resolvedTown = closestPlace.region;
+  let resolvedDistrict = closestPlace.region;
+  let resolvedNotes = generateArrivalNotes(closestPlace.location, closestPlace.name);
+  let resolvedDisplayName = closestPlace.location;
+
+  // 2. Query OpenStreetMap Nominatim reverse geocode
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.lat}&lon=${coords.lng}&zoom=14&addressdetails=1`;
+    const res = await fetch(url, {
+      headers: {
+        'Accept-Language': 'en',
+        'User-Agent': 'TravelMalawi-HostPlatform/1.0',
+      },
+      signal: AbortSignal.timeout(3500),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.address) {
+        const addr = data.address;
+        const sub = addr.suburb || addr.neighbourhood || addr.residential || addr.village || addr.hamlet;
+        const cityOrTown = addr.town || addr.city || addr.municipality;
+        const district = addr.county || addr.state_district || addr.state || '';
+        const cleanDistrict = district.replace(/district/gi, '').trim();
+
+        // Construct town/area string
+        let formattedTown = '';
+        if (sub && cityOrTown && sub.toLowerCase() !== cityOrTown.toLowerCase()) {
+          formattedTown = `${sub}, ${cityOrTown}`;
+        } else if (sub && cleanDistrict) {
+          formattedTown = `${sub}, ${cleanDistrict}`;
+        } else if (cityOrTown && cleanDistrict && cityOrTown.toLowerCase() !== cleanDistrict.toLowerCase()) {
+          formattedTown = `${cityOrTown}, ${cleanDistrict}`;
+        } else {
+          formattedTown = cityOrTown || sub || cleanDistrict || closestPlace.location;
+        }
+
+        // Special Malawian overrides for known tourism hubs
+        if (minDistance <= 15) {
+          if (closestPlace.name.toLowerCase().includes('cape maclear') || closestPlace.location.toLowerCase().includes('cape maclear')) {
+            formattedTown = 'Cape Maclear, Mangochi';
+          } else if (closestPlace.location.toLowerCase().includes('senga bay')) {
+            formattedTown = 'Senga Bay, Salima';
+          } else if (closestPlace.location.toLowerCase().includes('likoma')) {
+            formattedTown = 'Likoma Island, Lake Malawi';
+          }
+        }
+
+        resolvedLocation = formattedTown;
+        resolvedTown = cityOrTown || sub || cleanDistrict || closestPlace.region;
+        resolvedDistrict = cleanDistrict || closestPlace.region;
+        resolvedDisplayName = data.display_name || formattedTown;
+        resolvedNotes = generateArrivalNotes(formattedTown, closestPlace.name);
+      }
+    }
+  } catch {
+    // If Nominatim timed out or failed, our proximity heuristic has already set accurate data
+  }
+
+  return {
+    location: resolvedLocation,
+    town: resolvedTown,
+    district: resolvedDistrict,
+    locationNotes: resolvedNotes,
+    displayName: resolvedDisplayName,
+    nearestLandmark: minDistance <= 20 ? closestPlace.name : undefined,
+  };
+}
