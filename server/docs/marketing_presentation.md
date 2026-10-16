@@ -31,7 +31,7 @@ Malawian lodges and cottages pay **15% to 25% commission** on bookings made thro
 
 * **What they care about:** They have invested heavily in their property and do not want to give a large share of revenue to foreign platforms.
 * **What worries them:** Empty mid-week rooms, double bookings in busy periods, and complicated technology.
-* **Our message:** 0% commission during launch, enquiries sent to your WhatsApp, and we set up your listing for you.
+* **Our message:** 0% commission during launch, 2-way PMS calendar synchronization with RoomRaccoon and Airbnb, enquiries sent straight to WhatsApp, and dedicated concierge shadow mode to assist with setup.
 
 ## 3. Comparison
 
@@ -42,6 +42,8 @@ Malawian lodges and cottages pay **15% to 25% commission** on bookings made thro
 | Guest contact | Guest details often hidden | Owner has contact, but everything is manual | Direct WhatsApp and in-app chat |
 | Directions on remote roads | Do not work without signal | Written directions, often unclear | Maps saved for offline use |
 | Enquiries out of hours | Overseas call centre | Messages missed at night | Ulendo AI concierge, available at any hour |
+| Calendar integration | Locked inside foreign silo | Manual diary (double booking risk) | 2-Way RFC 5545 iCal sync (RoomRaccoon, Airbnb, NightsBridge) + 1-click connection latency diagnostics |
+| Onboarding & support | Overseas ticket queue | None | Dedicated concierge shadow mode & direct local WhatsApp support |
 
 ## 4. Approach to property owners
 

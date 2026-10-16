@@ -60,3 +60,22 @@ Before a property is marked **Approved** in the Admin Dashboard, check:
 3. **Prices in both currencies.** MWK rounded to the nearest 1,000 and USD in whole dollars or rounded to the nearest $5.
 4. **Verified WhatsApp number.** The host replies to a test message within 15 minutes.
 5. **Chat presence configured.** Verify the host knows how to access direct guest chats and Ulendo Concierge in their dashboard.
+6. **2-Way Calendar Connection Test Verified.** Click "Test Connection" in the room settings. Verify that external iCal feeds (RoomRaccoon, Airbnb, NightsBridge) return valid RFC 5545 events with latency under 2,000ms.
+7. **One-Click Listing Approval.** Admins and Marketing staff can directly approve or reject pending stays from the preview card or host dashboard banner.
+
+## 6. Staff & Concierge "Shadow a Host" Mode SOP
+
+Admins and Marketing team members can securely shadow any property manager's dashboard in real-time to troubleshoot listings, verify calendar links, and support hosts without requiring their passwords:
+
+### How to Initiate a Shadow Session
+1. **Open Shadow Menu:** Click **"Shadow a Manager"** in the top navigation bar (available to Admins and Marketing staff).
+2. **Search Property or Host:** Use the instant search bar to find the lodge, cottage, or host by name or location.
+3. **Launch Session:** Click **"Shadow Host"**. You will immediately see the platform from the host's exact perspective.
+4. **Session Indicator:** A prominent amber banner displays across the top of the screen: *"Shadowing [Property Name] as Host"*.
+5. **Exit Cleanly:** Click **"Exit Shadow Mode"** in the banner at any time to return immediately to your administrative view.
+
+### Permitted Concierge Actions During Shadow Mode
+* **PMS Feed Diagnostics:** Run the "Test Connection" tool on the host's RoomRaccoon or Airbnb iCal feed to inspect response times and ensure date-blocking is working smoothly.
+* **Pricing & Room Configuration:** Help the host configure room inventory, seasonal pricing, and amenity tags.
+* **Payment Rails Verification:** Double-check that the host's Airtel Money, TNM Mpamba, and local bank account details (National Bank, Standard Bank, FDH Bank, Centenary Bank) are formatted clearly for guest deposits.
+* **Audit Trail:** Every shadow session and configuration update is cryptographically logged with your staff user ID and timestamp for security and compliance.

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  ArrowLeft, MessageSquare, Printer, Send, Download, Copy, Check
+  ArrowLeft, MessageSquare, Printer, Send, Download, Copy, Check,
+  Calendar, UserCheck, ShieldCheck
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -261,9 +262,50 @@ export default function PropertyListingGuide() {
             </div>
           </section>
 
-          {/* Section 5: listing request form */}
+          {/* Section 5: 2-Way Calendar Synchronization & Live Diagnostics */}
+          <section className="mt-10">
+            <h2 className="text-xl font-semibold text-stone-900 flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-emerald-700" />
+              <span>5. 2-Way calendar synchronization &amp; connection diagnostics</span>
+            </h2>
+            <p className="mt-3 text-stone-700 text-sm leading-relaxed">
+              Never worry about double bookings or juggling multiple software tools. Travel Malawi natively synchronizes room calendars via standard RFC 5545 iCal feeds:
+            </p>
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="p-4 bg-stone-50 border border-stone-200 rounded-xl space-y-2">
+                <p className="font-semibold text-stone-900 text-sm">Automated Feed Import &amp; Zero Double-Bookings</p>
+                <p className="text-xs text-stone-600 leading-relaxed">
+                  In your Host Dashboard under <em>Rooms &amp; Rates</em>, click <strong>Sync iCal</strong> on any room. Paste your RoomRaccoon, NightsBridge, Airbnb, or Booking.com export feed. Dates booked elsewhere block out immediately on Travel Malawi.
+                </p>
+              </div>
+              <div className="p-4 bg-stone-50 border border-stone-200 rounded-xl space-y-2">
+                <p className="font-semibold text-stone-900 text-sm">On-Demand Connection Testing &amp; Latency Ping</p>
+                <p className="text-xs text-stone-600 leading-relaxed">
+                  Click the <strong>Test Connection</strong> button on any room card to verify feed health in real-time. Travel Malawi checks server response latency (e.g. 142ms), validates feed formatting, and previews upcoming blocked reservations.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* Section 6: Concierge Onboarding & Support Shadow Assistance */}
+          <section className="mt-10 p-5 bg-amber-50/70 border border-amber-200/80 rounded-2xl">
+            <h2 className="text-xl font-semibold text-stone-900 flex items-center gap-2">
+              <UserCheck className="w-5 h-5 text-amber-800" />
+              <span>6. Concierge onboarding &amp; support shadow assistance</span>
+            </h2>
+            <p className="mt-2 text-stone-700 text-sm leading-relaxed">
+              You never have to configure your listing alone. Our verified Malawian operations team provides high-touch concierge onboarding:
+            </p>
+            <ul className="mt-3 text-xs text-stone-700 space-y-2 list-disc pl-5">
+              <li><strong>Live Shadow Support:</strong> If you need assistance linking your PMS calendar feeds, setting up room categories, adjusting seasonal rates, or writing meal descriptions, our verified concierge support staff can securely shadow your host dashboard view live.</li>
+              <li><strong>Zero Password Sharing:</strong> You never share your password. Staff shadow sessions are strictly authenticated, audit-logged, and clearly marked with a golden session banner on screen.</li>
+              <li><strong>One-Click Moderation:</strong> Once verified, listings are approved and live immediately.</li>
+            </ul>
+          </section>
+
+          {/* Section 7: listing request form */}
           <section id="listing-form" className="mt-12 pt-8 border-t border-stone-200">
-            <h2 className="text-xl font-semibold text-stone-900">Submit your property for listing curation</h2>
+            <h2 className="text-xl font-semibold text-stone-900">7. Submit your property for listing curation</h2>
             <p className="mt-2 text-stone-500">
               Prefer our hospitality team to write your room names and format your listing? Submit your property details below for free curation.
             </p>

@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import {
   ArrowLeft, MessageSquare, Copy, Check, Printer, Send, Download, Mail,
   ExternalLink, Bed, Compass, Bath, Utensils, CheckCircle2, ChevronRight,
-  X, Share2, Smartphone, FileText, Home, Camera, ShieldCheck, Tag
+  X, Share2, Smartphone, FileText, Home, Camera, ShieldCheck, Tag,
+  Calendar, Activity, UserCheck
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -88,11 +89,18 @@ Key Summary for Property Owners & Caretakers:
    - Guests chat directly with you via in-app real-time messaging and WhatsApp (no masked numbers or call centers).
    - Managers chat with Ulendo Concierge AI inside the dashboard for 24/7 seasonal rate guidance, daily restaurant board updates, and drafted guest notes.
 
-4. Dual Pricing Guidelines:
+4. 2-Way Calendar Sync & Live Diagnostics:
+   - Connect RoomRaccoon, Airbnb, NightsBridge, Booking.com, and Google Calendar.
+   - On-demand "Test Connection" button checks feed response latency, validates RFC 5545 compliance, and previews upcoming blocked reservations. Zero double bookings guaranteed.
+
+5. Concierge Onboarding & Support Shadow Mode:
+   - Verified Travel Malawi support staff can securely shadow your manager view in real-time to troubleshoot PMS links or adjust rates with you live, without requiring your password.
+
+6. Fair Dual Pricing Guidelines:
    - Malawian Kwacha (MWK): Clean round thousands (e.g. MK 85,000 / night or MK 280,000 for whole cottages).
    - US Dollars (USD): Whole figures rounded to nearest $5 (e.g. $55 or $180).
 
-5. Zero Commission Ledger:
+7. Zero Commission Ledger:
    - Foreign OTAs take ~18% commission + forex remittance fees (e.g. MK 77,500 payout delayed 30 days).
    - Travel Malawi Direct: 100% retained (MK 100,000 net) paid instantly to your Airtel Money, TNM Mpamba, or National Bank of Malawi account.
 
@@ -969,15 +977,62 @@ ${window.location.origin}/list-your-property`;
               </div>
             </section>
 
-            {/* SECTION 4: Widened 0% Commission Reconciliation Ledger (Never Colliding) */}
-            <section id="section-get-listed" className="pt-4 border-t border-stone-200/80">
+            {/* SECTION 4: 2-Way Calendar Synchronization & Live Diagnostics */}
+            <section id="section-calendar-sync" className="pt-6 border-t border-stone-200/80">
               <div className="flex items-center gap-2 mb-1 text-xs font-mono text-stone-400 uppercase tracking-wider">
                 <span>Rule 04</span>
+                <span>·</span>
+                <span>PMS Integration &amp; Zero Double Bookings</span>
+              </div>
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-serif font-bold text-stone-900">
+                4. 2-Way Calendar Synchronization &amp; Live Connection Diagnostics
+              </h2>
+              <p className="mt-2 text-stone-600 max-w-4xl text-sm leading-relaxed">
+                Already manage reservations with <strong>RoomRaccoon, NightsBridge, Airbnb, Booking.com</strong>, or Google Calendar? You never have to juggle multiple systems or risk painful double bookings. Travel Malawi supports native 2-way RFC 5545 iCal synchronization with instant live diagnostic testing.
+              </p>
+
+              {/* Two Feature Highlights */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-6">
+                <div className="p-5 rounded-2xl border border-stone-200 bg-stone-50/70 space-y-3">
+                  <div className="flex items-center gap-2 text-stone-900 font-bold text-sm sm:text-base">
+                    <Calendar className="w-4 h-4 text-emerald-700" />
+                    <span>On-Demand Feed Testing &amp; Latency Ping</span>
+                  </div>
+                  <p className="text-xs sm:text-sm text-stone-600 leading-relaxed">
+                    Click <strong>Test Connection</strong> next to any room in your Host Dashboard. The system pings your external PMS calendar feed in real time, verifies RFC 5545 compliance, measures round-trip response time (e.g. 142ms), and displays a live preview of upcoming blocked dates.
+                  </p>
+                  <div className="flex items-center gap-2 pt-1">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-emerald-100 text-emerald-800 text-[11px] font-mono font-semibold">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span> Connected &amp; Syncing
+                    </span>
+                    <span className="text-[11px] font-mono text-stone-500">Latency: ~140ms</span>
+                  </div>
+                </div>
+
+                <div className="p-5 rounded-2xl border border-stone-200 bg-stone-50/70 space-y-3">
+                  <div className="flex items-center gap-2 text-stone-900 font-bold text-sm sm:text-base">
+                    <UserCheck className="w-4 h-4 text-amber-700" />
+                    <span>Hands-On Concierge &amp; Shadow Mode</span>
+                  </div>
+                  <p className="text-xs sm:text-sm text-stone-600 leading-relaxed">
+                    Need help setting up? Verified Travel Malawi operations staff can securely <strong>shadow your manager view</strong> in real-time to troubleshoot PMS links or adjust rates with you live. You never share your password, and every shadow session is audit-logged with an on-screen session banner.
+                  </p>
+                  <div className="flex items-center gap-2 pt-1 text-[11px] font-mono text-amber-900 bg-amber-50 px-2.5 py-1 rounded-md border border-amber-200/80">
+                    <span>100% Confidential · Zero Password Sharing</span>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* SECTION 5: Widened 0% Commission Reconciliation Ledger (Never Colliding) */}
+            <section id="section-get-listed" className="pt-4 border-t border-stone-200/80">
+              <div className="flex items-center gap-2 mb-1 text-xs font-mono text-stone-400 uppercase tracking-wider">
+                <span>Rule 05</span>
                 <span>·</span>
                 <span>Revenue Retention &amp; Local Payouts</span>
               </div>
               <h2 className="text-xl sm:text-2xl md:text-3xl font-serif font-bold text-stone-900">
-                4. Zero Commission Ledger: 100% Host Revenue Retention
+                5. Zero Commission Ledger: 100% Host Revenue Retention
               </h2>
               <p className="mt-2 text-stone-600 max-w-4xl">
                 Foreign booking platforms charge 15% to 18% commission and impose cross-border forex fees that take weeks to arrive. With Travel Malawi, you keep every Kwacha and dollar you earn, paid directly to your local account:
@@ -1109,7 +1164,7 @@ ${window.location.origin}/list-your-property`;
               </div>
             </section>
 
-            {/* SECTION 5: Quick Property Submission Form — Supports Whole Houses & Rooms */}
+            {/* SECTION 6: Quick Property Submission Form — Supports Whole Houses & Rooms */}
             <section id="onboarding-form" className="pt-6 border-t border-stone-200/90 print:hidden">
               <div className="flex items-center gap-2 mb-1 text-xs font-mono text-stone-400 uppercase tracking-wider">
                 <span>Fast Submission</span>
@@ -1117,7 +1172,7 @@ ${window.location.origin}/list-your-property`;
                 <span>Free Onboarding</span>
               </div>
               <h2 className="text-xl sm:text-2xl md:text-3xl font-serif font-bold text-stone-900">
-                5. Submit Your Property Directly
+                6. Submit Your Property Directly
               </h2>
               <p className="mt-1.5 text-stone-600 text-xs sm:text-sm max-w-4xl">
                 Prefer our concierge team to configure your listing for you? Fill out the brief details below. We set up your listing page, verify your photos, and message you on WhatsApp within 24 hours.

@@ -101,6 +101,50 @@ const UAT_TESTS: TestCase[] = [
       'Ask Ulendo to update daily restaurant blackboard special or draft guest confirmation'
     ],
     expected: 'Ulendo provides instant Malawian hospitality copilot assistance with 1-click action proposals.'
+  },
+  {
+    id: 'C3',
+    suite: 'Calendar & Channel Integration',
+    title: '2-Way iCal (.ics) Calendar Synchronization',
+    steps: [
+      'In Host Dashboard under Rooms & Rates, click "Sync iCal"',
+      'Paste external calendar feed (RoomRaccoon, Airbnb, NightsBridge, Booking.com, Google Calendar)',
+      'Verify Travel Malawi export feed URL generates RFC 5545 valid calendar'
+    ],
+    expected: 'External bookings block dates automatically on Travel Malawi; Travel Malawi bookings export cleanly to external PMS with zero double bookings.'
+  },
+  {
+    id: 'C4',
+    suite: 'Calendar & Channel Integration',
+    title: 'iCal Connection Diagnostics & Latency Ping',
+    steps: [
+      'Click "Test Connection" button on any room card with an active iCal link',
+      'Verify real-time diagnostic latency display (e.g. ~142ms)',
+      'Inspect upcoming blocked events preview list and status badges'
+    ],
+    expected: 'Returns HTTP status, confirms feed validity, measures response time, and shows preview of next 3 booked dates.'
+  },
+  {
+    id: 'C5',
+    suite: 'Staff Support & Operations',
+    title: 'Staff & Support Shadow Mode ("Shadow a Manager")',
+    steps: [
+      'Sign in as Admin or Marketing user and click "Shadow a Manager" in top navigation',
+      'Search and select a property or host by name',
+      'Confirm active session banner: "Shadowing [Property Name] as Host"',
+      'Click "Exit Shadow Mode" to return to administrative session'
+    ],
+    expected: 'Staff can securely view and troubleshoot host dashboard without passwords; session banner displays and exit restores admin profile.'
+  },
+  {
+    id: 'C6',
+    suite: 'Stay Moderation',
+    title: 'Direct Listing Moderation & Host Approvals',
+    steps: [
+      'Locate a stay in "Pending Review" status',
+      'Click "Approve Listing" directly on the preview card or host dashboard banner'
+    ],
+    expected: 'Stay updates immediately to Published/Approved with real-time UI reflect and audit record.'
   }
 ];
 
@@ -387,13 +431,25 @@ export default function PlatformGuideUat() {
                     Full compatibility with Airtel Money, TNM Mpamba, National Bank of Malawi, Standard Bank, and FDH Bank transfers.
                   </p>
                 </div>
+                <div>
+                  <h3 className="text-base font-semibold text-stone-900">2-Way iCal synchronization &amp; live diagnostics</h3>
+                  <p className="text-stone-700">
+                    Native RFC 5545 feed sync with RoomRaccoon, Airbnb, NightsBridge, and Google Calendar. Features on-demand connection testing with latency benchmarking and reservation previews.
+                  </p>
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold text-stone-900">Staff &amp; concierge support shadow mode</h3>
+                  <p className="text-stone-700">
+                    Secure role-based dashboard shadowing for Admin and Marketing staff to assist hosts with setup, test channel feeds, and configure rates without sharing passwords.
+                  </p>
+                </div>
               </div>
             </section>
 
             <section>
               <h2 className="text-xl font-semibold text-stone-900 mt-10">2. Verification protocols &amp; standard test suites</h2>
               <p className="mt-3 text-stone-700">
-                Prior to approving any release or production update, the 6 core suites in the checklist must be validated across both desktop and mobile viewports (iOS Safari and Android Chrome).
+                Prior to approving any release or production update, the core test suites in the checklist must be validated across both desktop and mobile viewports (iOS Safari and Android Chrome).
               </p>
             </section>
           </div>

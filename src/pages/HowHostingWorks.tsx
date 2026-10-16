@@ -99,15 +99,16 @@ const STEPS: Step[] = [
   {
     id: 'calendar',
     number: '05',
-    title: 'Availability Lock & Warm Arrival',
-    subtitle: 'Never double-book; welcome guests with true Malawian warmth',
+    title: '2-Way PMS Sync & Warm Arrival',
+    subtitle: 'Zero double-booking with RoomRaccoon, Airbnb & NightsBridge',
     summary:
-      'Block dates in two taps when your family visits or when performing maintenance. When check-in day arrives, your guest has turn-by-turn directions and your manager’s phone number ready.',
+      'Automatically synchronize your availability with RoomRaccoon, Airbnb, NightsBridge, and Google Calendar via native RFC 5545 feeds. Run live connection diagnostics with latency testing, or have our concierge team securely shadow your setup without sharing passwords.',
     keyPoints: [
+      '2-Way RFC 5545 iCal synchronization with RoomRaccoon, Airbnb, NightsBridge & Google Calendar',
+      'On-demand "Test Connection" button benchmarks latency and previews upcoming bookings',
+      'Concierge onboarding & shadow mode: verified staff assist your setup live without passwords',
       'One-tap calendar date blocking prevents awkward overlaps',
-      'Bulk seasonal rate editor for Easter, Christmas, and lake festivals',
       'GPS gate coordinate links right into Google Maps and Apple Maps',
-      'Genuine Malawian hospitality: Takulandirani ku Malawi',
     ],
     sketchType: 'calendar',
   },

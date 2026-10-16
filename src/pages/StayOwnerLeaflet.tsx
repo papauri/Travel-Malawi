@@ -29,20 +29,20 @@ const BENEFITS = [
   },
   {
     num: '4',
-    title: 'Live Room Calendar & Overbooking Lock',
-    desc: 'Easily block dates when your cottage is booked privately or undergoing maintenance. Never suffer from awkward double-bookings.'
+    title: '2-Way Calendar Sync & Live Diagnostics',
+    desc: 'Seamlessly syncs with RoomRaccoon, Airbnb, NightsBridge, and Google Calendar. Features 1-click connection health diagnostics with latency measurement and zero double-booking guarantee.'
   },
   {
     num: '5',
-    title: 'Ulendo 24/7 AI Concierge',
-    desc: 'Our local digital assistant answers traveler questions day and night in English and Chichewa regarding solar power, menus, and boat trips.'
+    title: 'Ulendo 24/7 AI Concierge & Concierge Shadow Support',
+    desc: 'Our local digital assistant answers traveler questions day and night in English and Chichewa. Plus, our verified concierge support staff can securely shadow your manager view in real-time to help configure rates or test feeds without passwords.'
   }
 ];
 
 const STEPS = [
   { title: 'Step 1: Send 4 Photos', desc: 'Send photos of your bed, view, bathroom, and dining table on WhatsApp.' },
-  { title: 'Step 2: Share Rate Card', desc: 'Share your room names and nightly rates in MWK or USD.' },
-  { title: 'Step 3: Start Welcoming Guests', desc: 'Your verified profile goes live with direct WhatsApp inquiry routing.' }
+  { title: 'Step 2: Share Rate Card & Calendar', desc: 'Share your room names, nightly rates in MWK or USD, and PMS calendar export link (optional).' },
+  { title: 'Step 3: Start Welcoming Guests', desc: 'Your verified profile goes live with tested calendar sync and direct guest inquiry routing.' }
 ];
 
 export default function StayOwnerLeaflet() {

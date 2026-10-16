@@ -35,6 +35,9 @@ This guide sets out the test checklists, standards and acceptance criteria for T
 * **C3 Bulk rate changes:** Seasonal increases or discounts apply correctly across several rooms.
 * **C4 Ulendo Concierge AI copilot chat:** Managers can chat fully with Ulendo inside the Host Dashboard for seasonal pricing proposals, daily blackboard specials (lake fish of the day), and drafted guest replies.
 * **C5 2-Way iCal & Channel Synchronization:** Room and property-level iCal (.ics) export and import feeds sync with external PMS (RoomRaccoon, Airbnb, Booking.com, NightsBridge, Google Calendar). External booking dates automatically block on the availability calendar; Travel Malawi export feed produces valid RFC 5545-compliant events with zero double bookings.
+* **C6 iCal Connection Diagnostics & Latency Testing:** Clicking "Test Connection" on any room card pings the external calendar feed, calculates round-trip latency in ms, verifies RFC 5545 validity, and displays next upcoming blocked events with diagnostic status badges.
+* **C7 Staff & Support Shadow Mode:** Admin and Marketing staff can click "Shadow a Manager" from the top navigation menu, search and select any property, verify the amber banner ("Shadowing [Property Name] as Host"), perform operations checks, and exit cleanly.
+* **C8 Direct Stay Moderation & Host Approval:** Pending stays can be approved or rejected directly from the host dashboard banner or preview cards with instant status persistence.
 
 ### Suite D: Partner documents
 

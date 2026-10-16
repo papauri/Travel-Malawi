@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Platform Guide and UAT Checklist — Travel Malawi</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #ffffff; color: #44403c; font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 15px; line-height: 1.6; }
+    main { max-width: 720px; margin: 48px auto; padding: 0 20px; }
+    .category { margin: 0 0 4px; font-size: 13px; color: #78716c; }
+    h1, h2, h3 { color: #1c1917; font-weight: 600; line-height: 1.3; }
+    h1 { margin: 0 0 8px; font-size: 28px; }
+    .subtitle { margin: 0; color: #78716c; }
+    .rule { margin: 20px 0 0; border: 0; border-top: 1px solid #e7e5e4; }
+    h2 { margin: 36px 0 12px; font-size: 20px; }
+    h3 { margin: 24px 0 8px; font-size: 16px; }
+    p { margin: 0 0 12px; }
+    ul, ol { margin: 0 0 12px; padding-left: 24px; }
+    li { margin: 4px 0; }
+    strong { color: #1c1917; font-weight: 600; }
+    a { color: #1c1917; }
+    table { width: 100%; margin: 0 0 16px; border-collapse: collapse; font-size: 14px; }
+    th, td { padding: 8px 12px; border: 1px solid #e7e5e4; text-align: left; vertical-align: top; }
+    th { background: #fafaf9; color: #1c1917; font-weight: 600; }
+    .note { margin: 0 0 16px; padding: 12px 16px; background: #fafaf9; border-left: 2px solid #d6d3d1; }
+    .note p:last-child { margin-bottom: 0; }
+    code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; }
+    pre { margin: 24px 0 0; white-space: pre-wrap; word-break: break-word; color: #44403c; }
+    fieldset { margin: 0 0 16px; padding: 0; border: 0; }
+    legend { margin: 0 0 4px; padding: 0; color: #1c1917; font-weight: 600; }
+    label { display: block; margin: 12px 0 4px; color: #1c1917; font-weight: 600; font-size: 14px; }
+    label.option { margin: 4px 0; color: #44403c; font-weight: 400; }
+    input, select, textarea, button { font: inherit; }
+    input[type="text"], input[type="email"], input[type="tel"], input[type="number"], select, textarea { width: 100%; padding: 8px 10px; color: #1c1917; background: #ffffff; border: 1px solid #d6d3d1; border-radius: 4px; }
+    button { margin-top: 16px; padding: 8px 16px; color: #ffffff; background: #1c1917; border: 1px solid #1c1917; border-radius: 4px; cursor: pointer; }
+    footer { display: flex; justify-content: space-between; gap: 16px; margin-top: 48px; padding-top: 12px; border-top: 1px solid #e7e5e4; font-size: 13px; color: #78716c; }
+    @media (max-width: 600px) { h1 { font-size: 24px; } }
+    @media print { main { max-width: none; margin: 0; padding: 0; } body, h1, h2, h3, strong, a, .category, .subtitle, footer { color: #000000; } button { display: none; } }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <p class="category">Platform Standards &amp; QA</p>
+    <h1>Platform Guide and UAT Checklist</h1>
+    <p class="subtitle">Quality checks, test checklists and acceptance criteria for Travel Malawi</p>
+    <hr class="rule">
+  </header>
+  <h2>1. Purpose and audience</h2>
+  <p>This guide sets out the test checklists, standards and acceptance criteria for Travel Malawi. It is for the operations team, field inspectors, marketing and partner onboarding staff.</p>
+  <h2>2. Platform principles</h2>
+  <ul>
+    <li><strong>Built for Malawi:</strong> Supports mobile money, local bank transfers and offline maps for areas with poor connectivity.</li>
+    <li><strong>No host commission during launch:</strong> Guests deal directly with the property manager, with 0% platform commission during the launch period.</li>
+    <li><strong>Two currencies:</strong> Malawian Kwacha (MWK) rounded to the nearest 1,000; US dollars (USD) in whole dollars or rounded to the nearest $5.</li>
+    <li><strong>Payment options:</strong> Airtel Money, TNM Mpamba, bank transfer (NBM, Standard Bank, FDH Bank, Centenary Bank), Visa and Mastercard, and cash on arrival where the property allows it.</li>
+    <li><strong>Ulendo AI concierge:</strong> Answers guest and host questions at any hour, using local knowledge of Malawi.</li>
+  </ul>
+  <h2>3. User acceptance tests</h2>
+  <h3>Suite A: Search and listings</h3>
+  <ul>
+    <li><strong>A1 Destination search:</strong> Typing filters results immediately for Lilongwe, Blantyre, Cape Maclear, Mangochi, Nkhata Bay, Nyika, Liwonde, Majete and Mulanje.</li>
+    <li><strong>A2 View modes:</strong> Switching between photo grid, compact list and map works without errors.</li>
+    <li><strong>A3 Currency switch:</strong> Switching between MWK and USD updates all prices correctly, with no layout shift.</li>
+  </ul>
+  <h3>Suite B: Booking and guest messages</h3>
+  <ul>
+    <li><strong>B1 WhatsApp enquiries:</strong> The WhatsApp button opens a message with dates, number of guests and room already filled in.</li>
+    <li><strong>B2 Offline directions:</strong> GPS coordinates open the phone's own navigation app (Google Maps or OsmAnd) and work without mobile data when maps have been saved.</li>
+    <li><strong>B3 Booking confirmation:</strong> The confirmation shows clear payment details (Airtel Money, TNM Mpamba or bank transfer).</li>
+    <li><strong>B4 Two-way direct guest chat:</strong> Guests can open real-time in-app chat with the property manager directly on the listing page or booking. Verify typing indicators, manager presence, and instant messaging.</li>
+  </ul>
+  <h3>Suite C: Property manager tools</h3>
+  <ul>
+    <li><strong>C1 Property page:</strong> Photos, amenities and check-in and check-out policies display clearly.</li>
+    <li><strong>C2 Calendar and date blocking:</strong> Blocking dates prevents double bookings, and check-out must be after check-in.</li>
+    <li><strong>C3 Bulk rate changes:</strong> Seasonal increases or discounts apply correctly across several rooms.</li>
+    <li><strong>C4 Ulendo Concierge AI copilot chat:</strong> Managers can chat fully with Ulendo inside the Host Dashboard for seasonal pricing proposals, daily blackboard specials (lake fish of the day), and drafted guest replies.</li>
+    <li><strong>C5 2-Way iCal &amp; Channel Synchronization:</strong> Room and property-level iCal (.ics) export and import feeds sync with external PMS (RoomRaccoon, Airbnb, Booking.com, NightsBridge, Google Calendar). External booking dates automatically block on the availability calendar; Travel Malawi export feed produces valid RFC 5545-compliant events with zero double bookings.</li>
+    <li><strong>C6 iCal Connection Diagnostics &amp; Latency Testing:</strong> Clicking "Test Connection" on any room card pings the external calendar feed, calculates round-trip latency in ms, verifies RFC 5545 validity, and displays next upcoming blocked events with diagnostic status badges.</li>
+    <li><strong>C7 Staff &amp; Support Shadow Mode:</strong> Admin and Marketing staff can click "Shadow a Manager" from the top navigation menu, search and select any property, verify the amber banner ("Shadowing [Property Name] as Host"), perform operations checks, and exit cleanly.</li>
+    <li><strong>C8 Direct Stay Moderation &amp; Host Approval:</strong> Pending stays can be approved or rejected directly from the host dashboard banner or preview cards with instant status persistence.</li>
+  </ul>
+  <h3>Suite D: Partner documents</h3>
+  <ul>
+    <li><strong>D1 Sharing:</strong> WhatsApp sharing, copy link and print or save as PDF work on all partner documents.</li>
+    <li><strong>D2 Partner submissions:</strong> Survey responses, listing requests and field notes arrive in the Admin Documentation Hub.</li>
+  </ul>
+  <h2>4. Reporting issues</h2>
+  <p>Report test results, bugs or incorrect property details through the form at <code>/uat</code>, or contact the Travel Malawi operations team.</p>
+  <footer>
+    <span>Travel Malawi</span>
+    <span>Updated October 2026</span>
+  </footer>
+</main>
+</body>
+</html>

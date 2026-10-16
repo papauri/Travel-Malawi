@@ -50,11 +50,21 @@ Write directions in four parts:
 1. **Direct Guest-to-Host Chat:** Travellers can message your manager directly from the listing page and booking confirmation via in-app real-time messaging and direct WhatsApp. They coordinate boat transfers from Monkey Bay/Likoma Island, custom Lake Chambo meals, and road directions with zero call center delays.
 2. **Ulendo Concierge AI Copilot:** Inside your Host Dashboard, chat 24/7 with Ulendo—our resident Malawian hospitality AI concierge. Ulendo assists you in crafting inviting room descriptions, proposing competitive MWK and USD rates, updating daily restaurant specials, and optimizing amenities with 1 click.
 
-## 6. 2-Way Calendar Synchronization (RoomRaccoon, Airbnb, NightsBridge)
+## 6. 2-Way Calendar Synchronization & Connection Diagnostics
 
 Never worry about double bookings or juggling multiple spreadsheets:
 
 1. **Automatic Availability Import:** In your Host Dashboard under *Rooms & Rates*, click **Sync iCal** and paste your RoomRaccoon, NightsBridge, Airbnb, or Booking.com iCal link. The moment a room sells out on another platform, Travel Malawi marks those dates blocked automatically.
-2. **Direct Export to Your PMS:** Copy your dedicated Travel Malawi `.ics` feed into RoomRaccoon or Google Calendar so your front desk always sees direct guest reservations in real time.
-3. **Big Win for Operators:** Enjoy 0% commission direct bookings while keeping your existing PMS workflow 100% intact.
+2. **On-Demand Connection Diagnostics:** Click the **Test Connection** button on any room card. Travel Malawi instantly pings your external calendar feed, measures network latency in milliseconds, validates RFC 5545 format compliance, and provides a preview of the next 3 upcoming blocked reservations.
+3. **Real-Time Sync Status Badges:** Visual indicators ("Connected & Syncing", "Connection Error / Feed Unreachable", "No Feed Configured") keep you confident that your inventory is always current.
+4. **Direct Export to Your PMS:** Copy your dedicated Travel Malawi `.ics` feed into RoomRaccoon, NightsBridge, or Google Calendar so your front desk always sees direct guest reservations in real time.
+5. **Big Win for Operators:** Enjoy 0% commission direct bookings while keeping your existing PMS workflow 100% intact.
+
+## 7. Concierge Onboarding & Support Shadow Assistance
+
+You never have to configure your listing alone:
+
+* **Live Shadow Support:** If you need assistance linking your PMS calendar feeds, setting up room categories, adjusting seasonal rates, or writing meal descriptions, our verified concierge support staff can securely shadow your host dashboard view live.
+* **100% Secure & Private:** You never share your password. Staff shadow sessions are strictly authenticated, audit-logged, and clearly marked with a golden session banner on screen.
+* **One-Click Moderation & Launch:** Once your photos and details are verified, your listing can be approved and published immediately.
 

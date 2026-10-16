@@ -32,18 +32,20 @@ Tired of paying 15% to 25% of every booking to foreign travel websites that do n
 ### 4. 2-Way Calendar Sync with RoomRaccoon, Airbnb & NightsBridge
 
 * **Zero double bookings with 2-way iCal sync:** Seamlessly connects with **RoomRaccoon, Airbnb, Booking.com, NightsBridge**, and Google Calendar. When a room is booked on RoomRaccoon or Airbnb, it automatically blocks on Travel Malawi. Bookings made on Travel Malawi sync straight into your PMS calendar.
+* **Live Connection Diagnostics:** Test your external calendar feed anytime with one click. Verifies server latency (ms), confirms format validity, and previews upcoming blocked dates.
 * **Block dates in one click:** Easily block dates for private hires, renovations, or offline walk-ins.
 * **Bulk Room & Rate Editor:** Adjust rates, apply seasonal specials, and set promotional campaigns across multiple rooms in seconds.
 
-### 5. Reviews and direct guest contact
+### 5. Reviews, direct guest contact & concierge shadow support
 
-* Show your TripAdvisor and Google reviews on your listing.
-* Chat directly with guests, so returning travellers come straight back to you.
+* **Show your reviews:** Display TripAdvisor and Google reviews directly on your listing.
+* **Direct two-way guest chat:** Real-time messaging and WhatsApp so returning travellers come straight back to you.
+* **Dedicated concierge shadow support:** Our verified team can securely shadow your manager view in real-time to assist with setup, PMS links, or rate tuning without requiring your passwords.
 
 ## How to join (about 10 minutes)
 
 1. **Send your details.** Send four photos (bed, view, bathroom, dining), your room names and rates in MWK or USD, and your WhatsApp number.
-2. **We build your page.** Our team sets up your listing at no cost.
+2. **We build and test your page.** Our team sets up your listing, links your calendar, and runs connection diagnostics at no cost.
 3. **Receive guests directly.** Guests find you and pay you directly, and you keep 100% of the room rate during the launch period.
 
 ## Founding partner offer

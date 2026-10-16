@@ -34,7 +34,8 @@ From early conversations with operators in the Southern, Central and Northern re
 * **A property page with no technical setup.** Each property gets a mobile-friendly booking page with photos, a map pin and clear policies.
 * **Local payment options.** Guests pay deposits directly to the property by Airtel Money, TNM Mpamba, or bank transfer to National Bank of Malawi (NBM), Standard Bank, FDH Bank or Centenary Bank. Visa and Mastercard, and cash on arrival where the property allows it, are also accepted.
 * **Ulendo, the AI concierge.** Ulendo answers guest questions at any hour about rooms, meals and excursions, and passes booking requests to the property manager. It replies in English, and in Chichewa when a guest writes in Chichewa.
-* **Availability calendar.** Room availability is kept up to date and dates can be blocked for private bookings or maintenance, which prevents double bookings.
+* **2-Way Calendar Synchronization & Diagnostics.** Seamlessly syncs with RoomRaccoon, Airbnb, NightsBridge, and Google Calendar via native RFC 5545 feeds. Includes 1-click live connection diagnostics (latency test and reservation preview) to prevent double bookings.
+* **Concierge Onboarding & Support Shadow Mode.** Verified operations staff can securely shadow your manager dashboard live to help configure rates, test feeds, or upload photos without requiring passwords.
 * **Reviews.** Verified reviews from TripAdvisor and Google can be shown on the property page.
 
 ## Part 3: Founding partner offer
@@ -64,12 +65,13 @@ Rate each statement from 1 (disagree) to 5 (strongly agree).
 
 ### Section C: Most useful features
 
-Rank these from 1 (most useful) to 5 (least useful).
+Rank these from 1 (most useful) to 6 (least useful).
 
 * Direct guest bookings with no foreign commission
 * Kwacha payments by Airtel Money and TNM Mpamba
+* 2-Way PMS Calendar sync (RoomRaccoon, Airbnb, NightsBridge) with live connection diagnostics
 * Ulendo answering guest questions at any hour
-* Live room availability calendar with date blocking
+* Concierge onboarding with live host shadow support
 * Verified TripAdvisor and Google reviews on our page
 
 ### Section D: Interest

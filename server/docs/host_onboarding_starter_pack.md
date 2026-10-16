@@ -77,29 +77,43 @@ Inside your Host Dashboard, **Ulendo** is your resident Malawian hospitality AI 
 
 ---
 
-## 4. 2-Way Calendar Synchronization (RoomRaccoon, Airbnb, Booking.com, NightsBridge)
+## 4. 2-Way Calendar Synchronization & Connection Diagnostics
 
 Do you already use **RoomRaccoon, NightsBridge, Airbnb, Booking.com**, or Google Calendar? **You do not need to change how you work or manage multiple separate calendars.**
 
-Travel Malawi features native **2-way iCal (.ics) calendar synchronization**:
+Travel Malawi features native **2-way iCal (.ics) calendar synchronization with live connection diagnostics**:
 
 ### How It Works:
-1. **Import Availability (No Double Bookings):** In your Host Dashboard under *Rooms & Rates*, click **Sync iCal** next to any chalet or cottage. Paste your RoomRaccoon or Airbnb iCal export URL. Whenever a room is booked on your other channels, those dates instantly and automatically block out on Travel Malawi.
-2. **Export Travel Malawi Bookings:** Copy your unique Travel Malawi `.ics` export feed and paste it into RoomRaccoon or your personal calendar. Any direct booking confirmed on Travel Malawi syncs right back into your PMS or phone calendar.
-3. **Multi-Unit Inventory Protection:** For properties with multiple chalets or campsite spaces, the engine blocks individual unit availability or whole dates with zero manual intervention.
+1. **Import Availability (No Double Bookings):** In your Host Dashboard under *Rooms & Rates*, click **Sync iCal** next to any chalet or cottage. Paste your RoomRaccoon, NightsBridge, or Airbnb iCal export URL. Whenever a room is booked on your other channels, those dates instantly and automatically block out on Travel Malawi.
+2. **On-Demand Connection Testing & Diagnostics:** Click the **Test Connection** button anytime to verify your external calendar feed. Travel Malawi runs an instant diagnostic ping:
+   * **Latency & Health Check:** Verifies server response time in milliseconds (e.g. 142ms) and confirms valid RFC 5545 calendar formatting.
+   * **Live Reservation Preview:** Previews the next upcoming blocked dates directly from your external PMS so you can be 100% confident your feeds are actively talking to each other.
+   * **Status Badges:** Clearly displays "Connected & Syncing" (Green), "Connection Error / Unreachable" (Red with troubleshooting diagnostics), or "No Feed Configured" (Amber).
+3. **Export Travel Malawi Bookings:** Copy your unique Travel Malawi `.ics` export feed and paste it into RoomRaccoon, NightsBridge, or your personal phone calendar. Any direct booking confirmed on Travel Malawi syncs right back into your PMS calendar.
+4. **Multi-Unit Inventory Protection:** For properties with multiple chalets, whole cottages, or campsite spaces, the engine blocks individual unit availability or whole dates with zero manual intervention.
 
 > **Big Win for Independent Lodges:** You get the full benefit of direct bookings and 0% commission from Malawian and international travelers without any fear of double booking or tedious manual updates.
 
 ---
 
-## 5. Get Listed in 8 Minutes
+## 5. Hands-On Concierge Onboarding & Support Shadow Mode
+
+Never feel stuck with setup. Travel Malawi provides high-touch concierge onboarding for every partner property:
+
+* **Live Shadow Support:** If you ever need help linking your PMS calendar, configuring room types, adjusting seasonal pricing, or uploading photos, our verified support team can securely **shadow your host dashboard** live.
+* **No Passwords Shared:** You never share passwords. Staff shadow sessions are strictly authenticated, audit-logged, and clearly indicated by a golden session banner on the screen.
+* **One-on-One Field Assistance:** We assist you directly over WhatsApp or phone to ensure your lodge is operating smoothly and receiving direct inquiries.
+
+---
+
+## 6. Get Listed in 8 Minutes
 
 1. **Send your 4 photos:** Bed, view, bathroom, and sunset dining/fire pit.
 2. **Send property name & rates:** Whole house rate or room rates in MWK or USD, plus any inclusions.
-3. **Share your calendar link (optional):** If you use RoomRaccoon, NightsBridge, or Airbnb, share your room iCal link. We link it for you so your calendar is synchronized from moment one!
+3. **Share your calendar link (optional):** If you use RoomRaccoon, NightsBridge, or Airbnb, share your room iCal link. We link and test it for you so your calendar is synchronized from moment one!
 4. **Share your location pin:** A WhatsApp pin taken at your vehicle gate.
 
-**Result:** Our concierge team verifies your details, builds your verified listing page, and routes guest inquiries directly to your WhatsApp phone — with 0% commission and 100% payout retention.
+**Result:** Our concierge team verifies your details, builds your verified listing page, tests your calendar sync, and routes guest inquiries directly to your WhatsApp phone — with 0% commission and 100% payout retention.
 
 * **Ready to list?** [Submit your property online now](/list-your-property) or message our team on WhatsApp at `+265 999 000 000`.
 

@@ -307,7 +307,9 @@ export default function ConceptValidationSurvey() {
                 {[
                   { id: 'payouts', label: 'Local Kwacha Payouts', sub: 'Instant Airtel Money, TNM Mpamba, NBM, or Standard Bank' },
                   { id: 'zero_comm', label: '0% Launch Commission', sub: 'Keep 100% of your listed room rate during launch' },
-                  { id: 'ai_concierge', label: '24/7 Guest Chat Assistant', sub: 'Answers common questions about power, boat trips, and menus' },
+                  { id: 'ical_sync', label: '2-Way PMS Calendar Sync & Diagnostics', sub: 'Sync RoomRaccoon, Airbnb, NightsBridge with 1-click latency testing' },
+                  { id: 'ai_concierge', label: '24/7 Guest Chat & Ulendo AI', sub: 'Answers common questions about power, boat trips, and menus' },
+                  { id: 'shadow_support', label: 'Concierge Shadow Onboarding', sub: 'Verified operations staff assist with setup live without sharing passwords' },
                   { id: 'calendar', label: 'Room Calendar & Date Blocker', sub: 'Easily block dates for offline bookings or maintenance' }
                 ].map(item => {
                   const isChecked = formData.features.includes(item.id);

@@ -1,33 +1,207 @@
-<!-- Public copy of clean concept survey -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Travel Malawi — Pre-Launch Partner Survey</title>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,600&display=swap" rel="stylesheet">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pre-Launch Concept Validation Survey — Travel Malawi</title>
   <style>
-    body { font-family: 'Plus Jakarta Sans', sans-serif; background: #f5f5f4; color: #1c1917; margin: 0; padding: 24px; line-height: 1.6; }
-    .container { max-width: 800px; margin: 0 auto; background: #fff; border: 1px solid #e7e5e4; border-radius: 16px; padding: 36px; }
-    .toolbar { display: flex; justify-content: space-between; border-bottom: 1px solid #e7e5e4; padding-bottom: 16px; margin-bottom: 24px; }
-    .btn { background: #1c1917; color: #fff; border: none; padding: 8px 14px; border-radius: 8px; font-weight: 600; cursor: pointer; }
-    .input { width: 100%; padding: 8px 12px; border: 1px solid #e7e5e4; border-radius: 6px; margin-bottom: 12px; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #ffffff; color: #44403c; font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 15px; line-height: 1.6; }
+    main { max-width: 720px; margin: 48px auto; padding: 0 20px; }
+    .category { margin: 0 0 4px; font-size: 13px; color: #78716c; }
+    h1, h2, h3 { color: #1c1917; font-weight: 600; line-height: 1.3; }
+    h1 { margin: 0 0 8px; font-size: 28px; }
+    .subtitle { margin: 0; color: #78716c; }
+    .rule { margin: 20px 0 0; border: 0; border-top: 1px solid #e7e5e4; }
+    h2 { margin: 36px 0 12px; font-size: 20px; }
+    h3 { margin: 24px 0 8px; font-size: 16px; }
+    p { margin: 0 0 12px; }
+    ul, ol { margin: 0 0 12px; padding-left: 24px; }
+    li { margin: 4px 0; }
+    strong { color: #1c1917; font-weight: 600; }
+    a { color: #1c1917; }
+    table { width: 100%; margin: 0 0 16px; border-collapse: collapse; font-size: 14px; }
+    th, td { padding: 8px 12px; border: 1px solid #e7e5e4; text-align: left; vertical-align: top; }
+    th { background: #fafaf9; color: #1c1917; font-weight: 600; }
+    .note { margin: 0 0 16px; padding: 12px 16px; background: #fafaf9; border-left: 2px solid #d6d3d1; }
+    .note p:last-child { margin-bottom: 0; }
+    code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; }
+    pre { margin: 24px 0 0; white-space: pre-wrap; word-break: break-word; color: #44403c; }
+    fieldset { margin: 0 0 16px; padding: 0; border: 0; }
+    legend { margin: 0 0 4px; padding: 0; color: #1c1917; font-weight: 600; }
+    label { display: block; margin: 12px 0 4px; color: #1c1917; font-weight: 600; font-size: 14px; }
+    label.option { margin: 4px 0; color: #44403c; font-weight: 400; }
+    input, select, textarea, button { font: inherit; }
+    input[type="text"], input[type="email"], input[type="tel"], input[type="number"], select, textarea { width: 100%; padding: 8px 10px; color: #1c1917; background: #ffffff; border: 1px solid #d6d3d1; border-radius: 4px; }
+    button { margin-top: 16px; padding: 8px 16px; color: #ffffff; background: #1c1917; border: 1px solid #1c1917; border-radius: 4px; cursor: pointer; }
+    footer { display: flex; justify-content: space-between; gap: 16px; margin-top: 48px; padding-top: 12px; border-top: 1px solid #e7e5e4; font-size: 13px; color: #78716c; }
+    @media (max-width: 600px) { h1 { font-size: 24px; } }
+    @media print { main { max-width: none; margin: 0; padding: 0; } body, h1, h2, h3, strong, a, .category, .subtitle, footer { color: #000000; } button { display: none; } }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="toolbar">
-      <div style="font-weight: 700;">TRAVEL MALAWI &bull; PARTNER SURVEY</div>
-      <button class="btn" onclick="window.print()">Print / Save PDF</button>
-    </div>
-    <h1 style="font-family: 'Playfair Display', serif; font-size: 26px;">Pre-Launch Partner Survey: Direct Bookings &amp; Local Payments</h1>
-    <p style="color: #57534e; font-size: 13px;">Collecting feedback from lodge managers and cottage owners across Malawi.</p>
-    <div style="margin-top: 24px;">
-      <label style="font-size: 12px; font-weight: 600;">Lodge / Cottage Name</label>
-      <input type="text" id="propName" class="input" placeholder="e.g. Cape Maclear Sunset Lodge">
-      <label style="font-size: 12px; font-weight: 600;">WhatsApp Number</label>
-      <input type="text" id="phone" class="input" placeholder="+265 999 00 00 00">
-      <button class="btn" style="background: #059669; width: 100%; padding: 12px;" onclick="alert('Thank you! Responses submitted.');">Submit Response</button>
-    </div>
-  </div>
+<main>
+  <header>
+    <p class="category">Concept Discovery</p>
+    <h1>Pre-Launch Concept Validation Survey</h1>
+    <p class="subtitle">Partner discovery framework and survey for lodges, cottages, hotels and camps in Malawi</p>
+    <hr class="rule">
+  </header>
+  <h2>Summary</h2>
+  <p>Before opening Travel Malawi to domestic and international travellers, we are speaking with property operators first. Rather than asking lodge owners, boutique hoteliers, lakeside cottage hosts and safari camp managers to adopt another piece of software, we want to understand how they work today. We are talking to operators in Lilongwe, Blantyre, Mangochi, Cape Maclear, Nkhata Bay, Nyika, Majete and Liwonde.</p>
+  <h3>Why we are starting this way</h3>
+  <ol>
+    <li><strong>Listen first.</strong> We want to hear about real day-to-day problems before proposing anything.</li>
+    <li><strong>Design with property owners.</strong> Partners help shape features around how business works in Malawi: Airtel Money and TNM Mpamba reconciliation, generator and solar backup, seasonal road access, and foreign exchange.</li>
+    <li><strong>Benefits for early partners.</strong> Founding properties get a commission-free introductory period and help with marketing.</li>
+  </ol>
+  <h2>Part 1: Current habits and pain points</h2>
+  <h3>1.1 How properties in Malawi get bookings today</h3>
+  <p>From early conversations with operators in the Southern, Central and Northern regions, bookings usually come through four channels:</p>
+  <ul>
+    <li><strong>WhatsApp and phone calls (about 55–70%).</strong> A lot of back-and-forth about availability, photos and account numbers, often at odd hours.</li>
+    <li><strong>Foreign online travel agencies such as Booking.com and Airbnb (about 20–30%).</strong> Commission of 15% to 25%, payouts in foreign currency that need a foreign bank account or carry wire fees, and limited local support.</li>
+    <li><strong>Corporate, NGO and government purchase orders (about 10–20%).</strong> Payment cycles of 30 to 90 days and paper-based vouchers.</li>
+    <li><strong>Walk-ins and referrals (about 5–15%).</strong> Unpredictable and affected by weather and holidays.</li>
+  </ul>
+  <h3>1.2 Main operational problems</h3>
+  <ol>
+    <li><strong>Commission.</strong> Properties can lose up to a quarter of their revenue to foreign platforms that offer no support on the ground in Malawi.</li>
+    <li><strong>Payment delays.</strong> Foreign platforms do not handle Malawian Kwacha (MWK) well, which means conversion costs or payouts that take weeks.</li>
+    <li><strong>Double bookings.</strong> Keeping calendars in sync across WhatsApp, phone logs and foreign booking sites leads to double bookings in busy periods (Easter, Christmas, Lake of Stars).</li>
+    <li><strong>Repeated guest questions.</strong> Managers spend hours each day answering the same questions about road conditions, boat transfers, power, Wi-Fi and meals.</li>
+  </ol>
+  <h2>Part 2: What Travel Malawi offers</h2>
+  <ul>
+    <li><strong>A property page with no technical setup.</strong> Each property gets a mobile-friendly booking page with photos, a map pin and clear policies.</li>
+    <li><strong>Local payment options.</strong> Guests pay deposits directly to the property by Airtel Money, TNM Mpamba, or bank transfer to National Bank of Malawi (NBM), Standard Bank, FDH Bank or Centenary Bank. Visa and Mastercard, and cash on arrival where the property allows it, are also accepted.</li>
+    <li><strong>Ulendo, the AI concierge.</strong> Ulendo answers guest questions at any hour about rooms, meals and excursions, and passes booking requests to the property manager. It replies in English, and in Chichewa when a guest writes in Chichewa.</li>
+    <li><strong>2-Way Calendar Synchronization &amp; Live Diagnostics.</strong> Seamlessly syncs with RoomRaccoon, Airbnb, NightsBridge, and Google Calendar via native RFC 5545 feeds. Includes 1-click live connection diagnostics (latency test and reservation preview) to prevent double bookings.</li>
+    <li><strong>Concierge Onboarding &amp; Support Shadow Mode.</strong> Verified operations staff can securely shadow your manager dashboard live to help configure rates, test feeds, or upload photos without requiring passwords.</li>
+    <li><strong>Reviews.</strong> Verified reviews from TripAdvisor and Google can be shown on the property page.</li>
+  </ul>
+  <h2>Part 3: Founding partner offer</h2>
+  <ul>
+    <li><strong>0% commission for 90 days.</strong> Founding properties keep all room revenue for their first 90 days of bookings.</li>
+    <li><strong>Free listing setup.</strong> Our team helps with photos, room categories and menus at no cost.</li>
+    <li><strong>Featured placement.</strong> Founding properties are featured on the Travel Malawi homepage and in destination searches such as &quot;Cape Maclear cottages&quot; or &quot;Liwonde safari camps&quot;.</li>
+    <li><strong>Input into the roadmap.</strong> Monthly contact with the Travel Malawi team to discuss which features matter most to your property.</li>
+  </ul>
+  <h2>Partner survey</h2>
+  <form id="surveyForm">
+    <h3>Section A: Property profile</h3>
+    <label for="propName">Property name</label>
+    <input type="text" id="propName" name="propName" required>
+    <label for="propLoc">Region</label>
+    <select id="propLoc" name="propLoc">
+      <option value="">Choose a region</option>
+      <option>Lakeshore (Mangochi, Cape Maclear, Nkhata Bay, Likoma)</option>
+      <option>City (Lilongwe, Blantyre, Mzuzu, Zomba)</option>
+      <option>Safari and wildlife (Liwonde, Majete, Nyika, Kasungu)</option>
+      <option>Highlands (Mulanje, Zomba Plateau, Dedza)</option>
+    </select>
+    <label for="roomCount">Number of rooms or units</label>
+    <input type="number" id="roomCount" name="roomCount" min="1">
+    <label for="avgRate">Average nightly rate (MWK or USD)</label>
+    <input type="text" id="avgRate" name="avgRate">
+
+    <h3>Section B: Current habits</h3>
+    <p>Rate each statement from 1 (disagree) to 5 (strongly agree).</p>
+    <label for="q1">Managing direct enquiries on WhatsApp takes too much time.</label>
+    <select id="q1" name="q1"><option value="">-</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
+    <label for="q2">Foreign booking site commissions (15–25%) take too much of our profit.</label>
+    <select id="q2" name="q2"><option value="">-</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
+    <label for="q3">Receiving payouts from foreign platforms is slow or expensive.</label>
+    <select id="q3" name="q3"><option value="">-</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
+    <label for="q4">We sometimes get double bookings because we track availability by hand.</label>
+    <select id="q4" name="q4"><option value="">-</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
+
+    <h3>Section C: Most useful features</h3>
+    <p>Rank these from 1 (most useful) to 6 (least useful).</p>
+    <label for="f1">Direct guest bookings with no foreign commission</label>
+    <input type="number" id="f1" name="f1" min="1" max="6" data-feature="Direct guest bookings with no foreign commission">
+    <label for="f2">Kwacha payments by Airtel Money and TNM Mpamba</label>
+    <input type="number" id="f2" name="f2" min="1" max="6" data-feature="Kwacha payments by Airtel Money and TNM Mpamba">
+    <label for="f3">2-Way PMS Calendar sync (RoomRaccoon, Airbnb, NightsBridge) with connection diagnostics</label>
+    <input type="number" id="f3" name="f3" min="1" max="6" data-feature="2-Way PMS Calendar sync with connection diagnostics">
+    <label for="f4">Ulendo answering guest questions at any hour</label>
+    <input type="number" id="f4" name="f4" min="1" max="6" data-feature="Ulendo answering guest questions at any hour">
+    <label for="f5">Concierge onboarding with live host shadow support</label>
+    <input type="number" id="f5" name="f5" min="1" max="6" data-feature="Concierge onboarding with live host shadow support">
+    <label for="f6">Verified TripAdvisor and Google reviews on our page</label>
+    <input type="number" id="f6" name="f6" min="1" max="6" data-feature="Verified TripAdvisor and Google reviews on our page">
+
+    <h3>Section D: Interest</h3>
+    <fieldset>
+      <legend>Would you like to join the founding partner group (0% commission for the first 90 days)?</legend>
+      <label class="option"><input type="radio" name="pilotInterest" value="yes"> Yes, please sign us up.</label>
+      <label class="option"><input type="radio" name="pilotInterest" value="briefing"> Yes, but we would like a 15-minute briefing first.</label>
+      <label class="option"><input type="radio" name="pilotInterest" value="later"> Not right now, please keep us updated.</label>
+    </fieldset>
+    <label for="contactName">Contact person</label>
+    <input type="text" id="contactName" name="contactName">
+    <label for="contactPhone">WhatsApp or mobile number</label>
+    <input type="tel" id="contactPhone" name="contactPhone">
+    <label for="contactEmail">Email address</label>
+    <input type="email" id="contactEmail" name="contactEmail">
+    <label for="notes">Notes or questions for our team (optional)</label>
+    <textarea id="notes" name="notes" rows="3"></textarea>
+
+    <button type="submit">Submit response</button>
+    <p id="formStatus" role="status"></p>
+  </form>
+  <script>
+    (function () {
+      var form = document.getElementById('surveyForm');
+      var status = document.getElementById('formStatus');
+      function val(id) { var el = document.getElementById(id); return el ? String(el.value || '').trim() : ''; }
+      form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        if (!val('propName') && !val('contactPhone')) {
+          status.textContent = 'Please enter your property name or WhatsApp number.';
+          return;
+        }
+        var ranked = Array.prototype.slice.call(form.querySelectorAll('input[data-feature]'))
+          .filter(function (el) { return el.value; })
+          .sort(function (a, b) { return Number(a.value) - Number(b.value); })
+          .map(function (el) { return el.value + '. ' + el.getAttribute('data-feature'); });
+        var interest = form.querySelector('input[name="pilotInterest"]:checked');
+        var details = [];
+        if (val('roomCount')) details.push(val('roomCount') + ' rooms');
+        if (val('avgRate')) details.push('average rate ' + val('avgRate'));
+        var payload = {
+          type: 'concept_survey',
+          sourceDoc: 'Pre-Launch Concept Validation Survey',
+          propName: val('propName'),
+          propLoc: val('propLoc'),
+          roomTypes: details.join(', '),
+          painPoints: { whatsappTime: val('q1'), commission: val('q2'), payoutDelays: val('q3'), doubleBookings: val('q4') },
+          features: ranked,
+          pilotInterest: interest ? interest.value : '',
+          contactName: val('contactName'),
+          contactPhone: val('contactPhone'),
+          contactEmail: val('contactEmail'),
+          notes: val('notes')
+        };
+        status.textContent = 'Sending...';
+        fetch('/api/surveys/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        }).then(function (res) {
+          if (!res.ok) throw new Error('Request failed');
+          form.reset();
+          status.textContent = 'Zikomo. Your response has been sent to the Travel Malawi operations team.';
+        }).catch(function () {
+          status.textContent = 'Your response could not be sent. Please try again, or contact the Travel Malawi operations team.';
+        });
+      });
+    })();
+  </script>
+  <footer>
+    <span>Travel Malawi</span>
+    <span>Updated October 2026</span>
+  </footer>
+</main>
 </body>
 </html>

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  ArrowLeft, MessageSquare, Printer, Send, Download, Copy, Check
+  ArrowLeft, MessageSquare, Printer, Send, Download, Copy, Check,
+  ShieldCheck, Calendar, UserCheck, CheckCircle2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -284,9 +285,104 @@ export default function OperationsStarterPack() {
             </div>
           </section>
 
-          {/* Section 5: field scout form */}
+          {/* Section 5: Listing Quality Checks */}
+          <section className="mt-10">
+            <h2 className="text-xl font-semibold text-stone-900 flex items-center gap-2">
+              <ShieldCheck className="w-5 h-5 text-emerald-700" />
+              <span>5. Seven-point listing quality checklist</span>
+            </h2>
+            <p className="mt-3 text-stone-700 text-sm">
+              Before marking any property as <strong>Approved</strong> in the Admin Dashboard, field officers and concierge staff must verify all 7 points:
+            </p>
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div className="p-3.5 bg-stone-50 border border-stone-200 rounded-xl text-xs space-y-1">
+                <div className="font-semibold text-stone-900 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>1. Exact Gate GPS Pin</span>
+                </div>
+                <p className="text-stone-600">The coordinate must be at the vehicle entry gate, not the district post office. Offline navigation relies on this.</p>
+              </div>
+              <div className="p-3.5 bg-stone-50 border border-stone-200 rounded-xl text-xs space-y-1">
+                <div className="font-semibold text-stone-900 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>2. Four Crisp Daytime Photos</span>
+                </div>
+                <p className="text-stone-600">Master bed (sleep), veranda/horizon (aspiration), clean en-suite shower (hygiene), and evening sunset/dining.</p>
+              </div>
+              <div className="p-3.5 bg-stone-50 border border-stone-200 rounded-xl text-xs space-y-1">
+                <div className="font-semibold text-stone-900 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>3. Clean Dual Pricing</span>
+                </div>
+                <p className="text-stone-600">MWK cleanly rounded to nearest MK 1,000 (e.g. MK 85,000); USD in whole figures or nearest $5 (e.g. $60).</p>
+              </div>
+              <div className="p-3.5 bg-stone-50 border border-stone-200 rounded-xl text-xs space-y-1">
+                <div className="font-semibold text-stone-900 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>4. Verified WhatsApp Number</span>
+                </div>
+                <p className="text-stone-600">The host or resident manager responds to a test ping within 15 minutes.</p>
+              </div>
+              <div className="p-3.5 bg-stone-50 border border-stone-200 rounded-xl text-xs space-y-1">
+                <div className="font-semibold text-stone-900 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>5. Ulendo AI &amp; Direct Chat Briefed</span>
+                </div>
+                <p className="text-stone-600">Host understands how direct guest inquiries arrive and how to ask Ulendo for rate guidance and menu updates.</p>
+              </div>
+              <div className="p-3.5 bg-stone-50 border border-stone-200 rounded-xl text-xs space-y-1">
+                <div className="font-semibold text-stone-900 flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>6. 2-Way Calendar Connection Test Verified</span>
+                </div>
+                <p className="text-stone-600">Click &ldquo;Test Connection&rdquo; in room settings. Confirm valid RFC 5545 events, latency &lt; 2,000ms, and zero double-booking risk.</p>
+              </div>
+              <div className="p-3.5 bg-stone-50 border border-stone-200 rounded-xl text-xs space-y-1 sm:col-span-2">
+                <div className="font-semibold text-stone-900 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>7. Direct Listing Moderation &amp; Publishing</span>
+                </div>
+                <p className="text-stone-600">Admins and Marketing team members can approve or reject pending stays directly from the preview card or host dashboard banner.</p>
+              </div>
+            </div>
+          </section>
+
+          {/* Section 6: Staff & Support Shadow Mode SOP */}
+          <section className="mt-10 p-5 bg-amber-50/70 border border-amber-200/80 rounded-2xl">
+            <h2 className="text-xl font-semibold text-stone-900 flex items-center gap-2">
+              <UserCheck className="w-5 h-5 text-amber-800" />
+              <span>6. Staff &amp; Concierge &ldquo;Shadow a Host&rdquo; Mode SOP</span>
+            </h2>
+            <p className="mt-2 text-stone-700 text-sm leading-relaxed">
+              Admins and Marketing staff have direct access to securely shadow any property manager's dashboard in real-time. This allows support staff to inspect room calendars, verify iCal feeds, and adjust pricing alongside the host without requiring host passwords.
+            </p>
+            <div className="mt-4 space-y-2.5 text-xs text-stone-700">
+              <div className="flex items-start gap-2">
+                <span className="font-mono font-bold text-amber-900 bg-amber-200/60 px-1.5 py-0.5 rounded">Step 1</span>
+                <span>Click <strong>&ldquo;Shadow a Manager&rdquo;</strong> in the top navigation menu.</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="font-mono font-bold text-amber-900 bg-amber-200/60 px-1.5 py-0.5 rounded">Step 2</span>
+                <span>Search by property name or host name and click <strong>&ldquo;Shadow Host&rdquo;</strong>.</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="font-mono font-bold text-amber-900 bg-amber-200/60 px-1.5 py-0.5 rounded">Step 3</span>
+                <span>Verify the amber session banner: <em>&ldquo;Shadowing [Property Name] as Host&rdquo;</em> is visible across the top of the screen.</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="font-mono font-bold text-amber-900 bg-amber-200/60 px-1.5 py-0.5 rounded">Step 4</span>
+                <span>Perform needed troubleshooting (e.g. click &ldquo;Test Connection&rdquo; on iCal links, verify Airtel Money / Mpamba payment text, review room inventory).</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="font-mono font-bold text-amber-900 bg-amber-200/60 px-1.5 py-0.5 rounded">Step 5</span>
+                <span>Click <strong>&ldquo;Exit Shadow Mode&rdquo;</strong> in the banner to return cleanly to your administrative account. Every shadow action is logged for security.</span>
+              </div>
+            </div>
+          </section>
+
+          {/* Section 7: field scout form */}
           <section id="scout-form" className="mt-12 pt-8 border-t border-stone-200">
-            <h2 className="text-xl font-semibold text-stone-900">Log a new lodge lead or field observation</h2>
+            <h2 className="text-xl font-semibold text-stone-900">7. Log a new lodge lead or field observation</h2>
             <p className="mt-2 text-stone-500">
               Met a lodge manager or identified a promising cottage along the lake? Enter their contact info below to dispatch the concierge onboarding sequence.
             </p>

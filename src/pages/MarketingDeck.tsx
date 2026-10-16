@@ -229,6 +229,18 @@ export default function MarketingDeck() {
                   <td className={td}>Vague text directions</td>
                   <td className={`${td} font-medium text-stone-900`}>Cached Offline Satellite GPS &amp; Gate Pin</td>
                 </tr>
+                <tr>
+                  <td className={`${td} font-medium text-stone-900`}>Calendar Synchronization</td>
+                  <td className={td}>Isolated in foreign platform silo</td>
+                  <td className={td}>Manual diary (Double-booking risk)</td>
+                  <td className={`${td} font-medium text-stone-900`}>2-Way iCal Sync (RoomRaccoon, Airbnb) + Live Latency Diagnostics</td>
+                </tr>
+                <tr>
+                  <td className={`${td} font-medium text-stone-900`}>Host Onboarding &amp; Support</td>
+                  <td className={td}>Overseas ticketing queue</td>
+                  <td className={td}>Zero assistance</td>
+                  <td className={`${td} font-medium text-stone-900`}>Concierge Shadow Mode &amp; Local Phone Support</td>
+                </tr>
               </tbody>
             </table>
           </div>
