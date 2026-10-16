@@ -247,6 +247,12 @@ export interface Hotel {
   icalExportToken?: string;
   /** Timestamp when this hotel's iCal feed was last subscribed/downloaded by an external channel */
   icalLastExportAt?: number;
+  /** Timestamp of the last incoming iCal sync attempt from external channels (RoomRaccoon, Airbnb, etc.) */
+  icalLastSyncAt?: number;
+  /** Overall status of external iCal calendar sync for this property */
+  icalSyncStatus?: 'idle' | 'active' | 'success' | 'failed' | 'error';
+  /** Last error message encountered during iCal synchronization, if any */
+  icalLastError?: string;
   reviews?: {
     id?: string;
     author: string;

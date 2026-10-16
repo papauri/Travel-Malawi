@@ -546,16 +546,102 @@ export async function syncHotelIcal(
   }
 
   const combinedBlocked = Array.from(allBlockedSet).sort();
+  const hasErrors = feeds.some(f => f.syncStatus === 'error');
+  const allSuccess = feeds.length > 0 && feeds.every(f => f.syncStatus === 'success');
+  const syncStatus = feeds.length === 0 ? 'idle' : hasErrors ? 'failed' : allSuccess ? 'success' : 'active';
+  const lastError = feeds.find(f => f.lastError)?.lastError || '';
 
   await hotelRef.update({
     icalSyncUrls: feeds,
     icalBlockedDates: combinedBlocked,
+    icalLastSyncAt: now,
+    icalSyncStatus: syncStatus,
+    icalLastError: lastError,
   });
 
   return {
-    success: true,
+    success: !hasErrors,
     totalBlockedDates: combinedBlocked.length,
     feeds,
+    syncStatus,
+    lastSyncedAt: now,
+    lastError,
+  };
+}
+
+/**
+ * Synchronizes both the hotel-level feeds AND all room-level feeds for a property.
+ * Updates the hotel document with aggregated sync status, timestamp, and errors.
+ */
+export async function syncEntirePropertyIcal(hotelId: string): Promise<{
+  success: boolean;
+  totalBlockedDates: number;
+  hotelFeeds: IcalFeedItem[];
+  roomsSyncedCount: number;
+  syncStatus: 'idle' | 'active' | 'success' | 'failed';
+  lastSyncedAt: number;
+  lastError: string;
+}> {
+  const db = getDb();
+  const now = Date.now();
+  let totalBlocked = 0;
+  let roomsSyncedCount = 0;
+  const errors: string[] = [];
+
+  // 1. Sync hotel-level feeds
+  let hotelFeeds: IcalFeedItem[] = [];
+  try {
+    const hotelResult = await syncHotelIcal(hotelId);
+    hotelFeeds = hotelResult.feeds || [];
+    totalBlocked += hotelResult.totalBlockedDates || 0;
+    if (hotelResult.lastError) {
+      errors.push(hotelResult.lastError);
+    }
+  } catch (err: any) {
+    errors.push(err?.message || 'Hotel sync failed');
+  }
+
+  // 2. Sync all room feeds for this hotel
+  try {
+    const roomsSnap = await db.collection('room_types').where('hotelId', '==', hotelId).get();
+    for (const doc of roomsSnap.docs) {
+      const roomData = doc.data() || {};
+      const roomFeeds: IcalFeedItem[] = Array.isArray(roomData.icalSyncUrls) ? roomData.icalSyncUrls : [];
+      if (roomFeeds.length > 0) {
+        try {
+          const roomRes = await syncRoomIcal(doc.id, hotelId);
+          roomsSyncedCount++;
+          totalBlocked += roomRes.totalBlockedDates || 0;
+          const roomErr = roomRes.feeds?.find(f => f.syncStatus === 'error')?.lastError;
+          if (roomErr) errors.push(`[${roomData.name || 'Room'}]: ${roomErr}`);
+        } catch (rErr: any) {
+          errors.push(`[${roomData.name || 'Room'}]: ${rErr?.message || 'Sync failed'}`);
+        }
+      }
+    }
+  } catch (err: any) {
+    errors.push(err?.message || 'Failed to query room feeds');
+  }
+
+  const hasErrors = errors.length > 0;
+  const syncStatus: 'idle' | 'active' | 'success' | 'failed' = hasErrors ? 'failed' : 'success';
+  const lastError = errors.join('; ');
+
+  // Update hotel master document with overall status
+  await db.collection('hotels').doc(hotelId).update({
+    icalLastSyncAt: now,
+    icalSyncStatus: syncStatus,
+    icalLastError: lastError,
+  }).catch(() => {});
+
+  return {
+    success: !hasErrors,
+    totalBlockedDates: totalBlocked,
+    hotelFeeds,
+    roomsSyncedCount,
+    syncStatus,
+    lastSyncedAt: now,
+    lastError,
   };
 }
 
