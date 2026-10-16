@@ -20,10 +20,6 @@ import { isHotelManager, isAdmin, isMarketing } from '../lib/roles';
 import MaskedPlaceName from '../components/MaskedPlaceName';
 import BulkRoomEditor from '../components/BulkRoomEditor';
 import ConfirmDialog from '../components/ConfirmDialog';
-import IcalSyncStatusBadge from '../components/IcalSyncStatusBadge';
-import IcalSyncManager from '../components/IcalSyncManager';
-import Modal from '../components/Modal';
-import { getPropertyIcalSyncStatus } from '../lib/ical';
 
 import Pagination from '../components/Pagination';
 
@@ -48,7 +44,6 @@ export default function ManagerDashboard() {
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const [openCardMenuId, setOpenCardMenuId] = useState<string | null>(null);
   const [bulkEditorHotelId, setBulkEditorHotelId] = useState<string | undefined>(undefined);
-  const [icalSyncHotel, setIcalSyncHotel] = useState<Hotel | null>(null);
   const [hotelToDelete, setHotelToDelete] = useState<Hotel | null>(null);
   const [isDeletingHotel, setIsDeletingHotel] = useState(false);
   const itemsPerPage = 6;
@@ -226,8 +221,7 @@ export default function ManagerDashboard() {
   const offlineCount = hotels.filter(h => h.isOnline === false).length;
   const needsAttentionCount = hotels.filter(h => {
     const s = summaryByHotel.get(h.id!);
-    const icalSummary = getPropertyIcalSyncStatus(h, rooms);
-    return (s?.pending ?? 0) > 0 || (s?.rooms ?? 0) === 0 || h.status === 'pending' || icalSummary.state === 'failed';
+    return (s?.pending ?? 0) > 0 || (s?.rooms ?? 0) === 0 || h.status === 'pending';
   }).length;
 
   const filteredHotels = useMemo(() => {
@@ -241,8 +235,7 @@ export default function ManagerDashboard() {
     } else if (statusFilter === 'needs_attention') {
       list = list.filter(h => {
         const s = summaryByHotel.get(h.id!);
-        const icalSummary = getPropertyIcalSyncStatus(h, rooms);
-        return (s?.pending ?? 0) > 0 || (s?.rooms ?? 0) === 0 || h.status === 'pending' || icalSummary.state === 'failed';
+        return (s?.pending ?? 0) > 0 || (s?.rooms ?? 0) === 0 || h.status === 'pending';
       });
     }
 
@@ -722,14 +715,20 @@ export default function ManagerDashboard() {
                         0 requests
                       </span>
                     )}
-                    <IcalSyncStatusBadge
-                      hotel={hotel}
-                      rooms={rooms}
-                      onOpenSyncModal={(h) => setIcalSyncHotel(h)}
-                      onSyncComplete={(updatedHotel) => {
-                        setHotels(prev => prev.map(h => h.id === updatedHotel.id ? { ...h, ...updatedHotel } : h));
-                      }}
-                    />
+                    {(() => {
+                      const syncedFeedsCount = (hotel.icalSyncUrls?.length || 0) +
+                        rooms.filter(r => r.hotelId === hotel.id).reduce((sum, r) => sum + (r.icalSyncUrls?.length || 0), 0);
+                      if (syncedFeedsCount === 0) return null;
+                      return (
+                        <span
+                          className="inline-flex items-center gap-1 bg-sky-50 text-sky-800 border border-sky-200/90 px-2 py-0.5 rounded-lg text-[11px] font-semibold"
+                          title="2-Way Calendar Sync active with RoomRaccoon, Airbnb, or external PMS"
+                        >
+                          <CalendarSync className="w-3 h-3 text-sky-600" />
+                          <span>iCal Synced ({syncedFeedsCount})</span>
+                        </span>
+                      );
+                    })()}
                   </div>
 
                   {roomsCount === 0 && (
@@ -819,20 +818,6 @@ export default function ManagerDashboard() {
                               <span>Preview Listing</span>
                             </a>
 
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setOpenCardMenuId(null);
-                                setIcalSyncHotel(hotel);
-                              }}
-                              className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center gap-2 transition cursor-pointer"
-                            >
-                              <CalendarSync className="w-3.5 h-3.5 text-stone-400" />
-                              <span>Sync iCal Calendars</span>
-                            </button>
-
                             <div className="my-1 border-t border-stone-100" />
 
                             <button
@@ -900,31 +885,6 @@ export default function ManagerDashboard() {
           if (!isDeletingHotel) setHotelToDelete(null);
         }}
       />
-
-      {/* 2-Way iCal Calendar Synchronization Modal */}
-      {icalSyncHotel && (
-        <Modal
-          open={!!icalSyncHotel}
-          onClose={() => setIcalSyncHotel(null)}
-          title={`2-Way Calendar Sync — ${icalSyncHotel.name}`}
-          description="Sync reservations automatically with RoomRaccoon, Airbnb, Booking.com, NightsBridge, or personal calendars."
-          size="3xl"
-        >
-          <div className="p-1 sm:p-2">
-            <IcalSyncManager
-              hotel={icalSyncHotel}
-              onClose={() => setIcalSyncHotel(null)}
-              onHotelUpdated={(updated) => {
-                setHotels(prev => prev.map(h => h.id === updated.id ? updated : h));
-                setIcalSyncHotel(updated);
-              }}
-              onRoomUpdated={(updatedRoom) => {
-                setRooms(prev => prev.map(r => r.id === updatedRoom.id ? updatedRoom : r));
-              }}
-            />
-          </div>
-        </Modal>
-      )}
     </div>
   );
 }

@@ -59,7 +59,6 @@ import {
   testIcalFeedUrl,
   syncRoomIcal,
   syncHotelIcal,
-  syncEntirePropertyIcal,
   syncAllActiveFeeds
 } from './server/icalService';
 import { trafficTracker } from './server/trafficTracker';
@@ -355,7 +354,7 @@ async function startServer() {
         res.status(403).json({ error: 'You do not have permission to manage this property.' });
         return;
       }
-      const result = await syncEntirePropertyIcal(hotelId);
+      const result = await syncHotelIcal(hotelId);
       res.json(result);
     } catch (err: any) {
       console.error('[iCal Sync Hotel Error]:', err);
