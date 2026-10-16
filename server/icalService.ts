@@ -356,9 +356,13 @@ export function parseIcalToBlockedDates(icsContent: string): {
  * Fetches an external .ics URL with safety guards (timeout, status check, user-agent).
  */
 export async function fetchExternalIcal(url: string): Promise<string> {
-  const cleanUrl = url.trim();
+  let cleanUrl = (url || '').trim();
+  // Support webcal:// (commonly exported by Apple Calendar, Google Calendar, and Airbnb)
+  if (cleanUrl.toLowerCase().startsWith('webcal://')) {
+    cleanUrl = 'https://' + cleanUrl.slice(9);
+  }
   if (!/^https?:\/\//i.test(cleanUrl)) {
-    throw new Error('Invalid URL format. Feed URL must begin with http:// or https://');
+    throw new Error('Invalid URL format. Feed URL must begin with http://, https://, or webcal://');
   }
 
   const response = await fetch(cleanUrl, {
@@ -423,6 +427,7 @@ export async function syncRoomIcal(
   success: boolean;
   totalBlockedDates: number;
   feeds: IcalFeedItem[];
+  combinedBlocked: string[];
 }> {
   const db = getDb();
   const roomRef = db.collection('room_types').doc(roomId);
@@ -439,7 +444,7 @@ export async function syncRoomIcal(
     await roomRef.update({
       icalBlockedDates: [],
     });
-    return { success: true, totalBlockedDates: 0, feeds: [] };
+    return { success: true, totalBlockedDates: 0, feeds: [], combinedBlocked: [] };
   }
 
   const allBlockedSet = new Set<string>();
@@ -484,6 +489,7 @@ export async function syncRoomIcal(
     success: true,
     totalBlockedDates: combinedBlocked.length,
     feeds,
+    combinedBlocked,
   };
 }
 
@@ -496,6 +502,7 @@ export async function syncHotelIcal(
   success: boolean;
   totalBlockedDates: number;
   feeds: IcalFeedItem[];
+  combinedBlocked: string[];
 }> {
   const db = getDb();
   const hotelRef = db.collection('hotels').doc(hotelId);
@@ -511,7 +518,7 @@ export async function syncHotelIcal(
     await hotelRef.update({
       icalBlockedDates: [],
     });
-    return { success: true, totalBlockedDates: 0, feeds: [] };
+    return { success: true, totalBlockedDates: 0, feeds: [], combinedBlocked: [] };
   }
 
   const allBlockedSet = new Set<string>();
@@ -556,6 +563,7 @@ export async function syncHotelIcal(
     success: true,
     totalBlockedDates: combinedBlocked.length,
     feeds,
+    combinedBlocked,
   };
 }
 

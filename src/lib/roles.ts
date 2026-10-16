@@ -56,6 +56,13 @@ export const isGlobalAdmin = (user: Pick<User, 'role' | 'roles' | 'email'> | nul
 export const isAdmin = (user: Pick<User, 'role' | 'roles' | 'email'> | null | undefined) => hasRole(user, 'admin') || isGlobalAdmin(user);
 export const isMarketing = (user: Pick<User, 'role' | 'roles'> | null | undefined) => hasRole(user, 'marketing');
 
+/**
+ * Marketing and Global/System Administrators can shadow property managers
+ * to troubleshoot, configure stays, inspect integrations, and provide live concierge support.
+ */
+export const canShadowManager = (user: Pick<User, 'role' | 'roles' | 'email'> | null | undefined): boolean =>
+  Boolean(user && (isAdmin(user) || isMarketing(user) || isGlobalAdmin(user)));
+
 /** Human-readable summary for a profile menu, e.g. "Traveller & Property Manager". */
 export function describeRoles(user: Pick<User, 'role' | 'roles'> | null | undefined): string {
   const labels = userRoles(user).map(r => ROLE_LABELS[r]);

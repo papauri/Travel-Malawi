@@ -268,7 +268,7 @@ export function hotelEmails(hotel: Record<string, any> | null): string[] {
  */
 export async function canManageHotel(user: AuthUser | undefined, hotelId: unknown): Promise<boolean> {
   if (!user) return false;
-  if (isAdminUser(user)) return true;
+  if (isAdminUser(user) || hasAnyRole(user, 'marketing')) return true;
   if (!isSafeId(hotelId)) return false;
   const hotel = await readDoc('hotels', hotelId, user.token);
   if (!hotel) return false;

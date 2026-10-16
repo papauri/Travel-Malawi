@@ -7,10 +7,10 @@ import React, { useEffect, useState, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useAuthDialog } from '../contexts/AuthDialogContext';
-import { LogOut, Bell, Palmtree, ChevronDown, LayoutDashboard, Briefcase, ShieldCheck, Building2, Volume2, VolumeX, Heart, UserCircle, BookOpen, MessageSquare, WifiOff } from 'lucide-react';
+import { LogOut, Bell, Palmtree, ChevronDown, LayoutDashboard, Briefcase, ShieldCheck, Building2, Volume2, VolumeX, Heart, UserCircle, BookOpen, MessageSquare, WifiOff, UserCheck } from 'lucide-react';
 import { isSoundEnabled, onSoundPreferenceChange, setSoundEnabled } from '../lib/notificationSound';
 import { requestBrowserNotifications } from './GlobalNotificationManager';
-import { describeRoles, isAdmin, isGlobalAdmin, isMarketing, isHotelManager, isTraveller } from '../lib/roles';
+import { describeRoles, isAdmin, isGlobalAdmin, isMarketing, isHotelManager, isTraveller, canShadowManager } from '../lib/roles';
 import { useUnreadBroadcasts } from '../hooks/useUnreadBroadcasts';
 import { useUnreadMessages } from '../contexts/UnreadMessagesContext';
 import { usePresence, PresenceStatus } from '../hooks/usePresence';
@@ -19,21 +19,25 @@ import { collection, query, where, onSnapshot, getDocs, limit } from 'firebase/f
 import { db } from '../lib/firebase';
 import NotificationBell from './NotificationBell';
 import ActiveChatsMenu from './ActiveChatsMenu';
+import ShadowManagerModal from './ShadowManagerModal';
 
 export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logOut } = useAuth();
+  const { user, actualUser, logOut } = useAuth();
   const { openAuth } = useAuthDialog();
   const unreadBroadcasts = useUnreadBroadcasts();
   const { activeChatsCount } = useUnreadMessages();
   const { presence, setManualStatus } = usePresence();
   const { isOnline } = useNetworkStatus();
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showShadowModal, setShowShadowModal] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const [soundOn, setSoundOn] = useState(isSoundEnabled);
   const menuRef = useRef<HTMLDivElement>(null);
   const activeChatsMenuRef = useRef<{ openMenu: () => void }>(null);
+
+  const canShadow = canShadowManager(actualUser || user);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent | TouchEvent) {
@@ -170,6 +174,18 @@ export default function Navbar() {
                       Admin
                     </Link>
                   )}
+                  {canShadow && (
+                    <button
+                      type="button"
+                      onClick={() => setShowShadowModal(true)}
+                      className="inline-flex items-center gap-1.5 px-2 py-1 xl:px-2.5 xl:py-1 rounded-full border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-950 text-xs font-semibold transition shadow-2xs whitespace-nowrap cursor-pointer"
+                      title="Shadow a Property Manager for support and operations"
+                    >
+                      <UserCheck className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                      <span className="hidden xl:inline">Shadow Host</span>
+                      <span className="xl:hidden">Shadow</span>
+                    </button>
+                  )}
                   <Link
                     to="/saved"
                     className={`text-xs xl:text-sm font-medium transition-colors px-2 py-1 xl:px-2.5 xl:py-1.5 rounded-lg whitespace-nowrap ${
@@ -285,9 +301,40 @@ export default function Navbar() {
                             <ShieldCheck className="h-3.5 w-3.5" /> Admin
                           </Link>
                         )}
+                        {canShadow && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowUserMenu(false);
+                              setShowShadowModal(true);
+                            }}
+                            className="w-full flex items-center gap-2 px-3.5 py-2 text-xs sm:text-sm text-amber-900 hover:bg-amber-50 transition text-left cursor-pointer font-medium"
+                          >
+                            <UserCheck className="h-3.5 w-3.5 text-amber-600" />
+                            <span>Shadow a Host</span>
+                          </button>
+                        )}
                       </div>
 
                       <div className="py-1 border-b border-stone-100">
+                        {canShadow && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowUserMenu(false);
+                              setShowShadowModal(true);
+                            }}
+                            className="w-full flex items-center justify-between px-3.5 py-2 text-xs sm:text-sm text-amber-900 bg-amber-50/70 hover:bg-amber-100 transition text-left cursor-pointer font-medium"
+                          >
+                            <span className="flex items-center gap-2">
+                              <UserCheck className="h-3.5 w-3.5 text-amber-600" />
+                              <span>Shadow a Host</span>
+                            </span>
+                            <span className="text-[10px] bg-amber-200/80 text-amber-950 font-bold px-1.5 py-0.5 rounded">
+                              Support
+                            </span>
+                          </button>
+                        )}
                         <Link
                           to="/profile"
                           onClick={() => setShowUserMenu(false)}
@@ -380,6 +427,13 @@ export default function Navbar() {
           </div>
         </div>
       </div>
+
+      {canShadow && (
+        <ShadowManagerModal
+          open={showShadowModal}
+          onClose={() => setShowShadowModal(false)}
+        />
+      )}
     </nav>
   );
 }

@@ -9,6 +9,7 @@ import { CompareProvider } from './contexts/CompareContext';
 import { WishlistProvider } from './contexts/WishlistContext';
 import Breadcrumbs, { BreadcrumbProvider } from './components/Breadcrumbs';
 import Navbar from './components/Navbar';
+import ShadowBanner from './components/ShadowBanner';
 import MobileNav from './components/MobileNav';
 import Footer from './components/Footer';
 import Home from './pages/Home';
@@ -113,6 +114,7 @@ function RootContent({ children }: { children?: React.ReactNode }) {
   useTrafficMonitor();
   return (
     <div className="min-h-screen bg-stone-50 flex flex-col font-sans">
+      <ShadowBanner />
       <Navbar />
       <Breadcrumbs />
       <Toaster 

@@ -93,6 +93,49 @@ async function runTests() {
     throw new Error('Availability logic mismatch!');
   }
 
+  console.log('--- Testing RFC 5545 Line Unfolding and TZID Formats ---');
+  const complexIcal = `BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Apple Inc.//macOS 14.5//EN
+BEGIN:VEVENT
+UID:complex-event-1@travelmalawi.app
+DTSTART;TZID=Africa/Blantyre:20261205T140000
+DTEND;TZID=Africa/Blantyre:20261208T100000
+SUMMARY:Long summary that was folded
+  across multiple lines by the
+	originating PMS or channel manager
+STATUS:CONFIRMED
+END:VEVENT
+BEGIN:VEVENT
+UID:single-day-block@nightsbridge.com
+DTSTART;VALUE=DATE:20261215
+DTEND;VALUE=DATE:20261215
+SUMMARY:Single Night Block
+STATUS:CONFIRMED
+END:VEVENT
+END:VCALENDAR`;
+
+  const complexResult = parseIcalToBlockedDates(complexIcal);
+  console.log(`Complex parsed event count: ${complexResult.eventCount}`);
+  console.log('Complex blocked dates:', complexResult.blockedDates);
+
+  if (complexResult.eventCount !== 2) {
+    throw new Error(`Expected 2 complex events, got ${complexResult.eventCount}`);
+  }
+
+  // Dec 5 to Dec 8 should block Dec 5, Dec 6, Dec 7
+  if (!complexResult.blockedDates.includes('2026-12-05') ||
+      !complexResult.blockedDates.includes('2026-12-06') ||
+      !complexResult.blockedDates.includes('2026-12-07') ||
+      complexResult.blockedDates.includes('2026-12-08')) {
+    throw new Error('Multi-day timezone-bounded event blocked dates calculation error');
+  }
+
+  // Single-day block (Dec 15)
+  if (!complexResult.blockedDates.includes('2026-12-15')) {
+    throw new Error('Single-day event blocked date missing');
+  }
+
   console.log('\n✓ ALL ICAL INTEGRATION TESTS PASSED PERFECTLY!\n');
 }
 

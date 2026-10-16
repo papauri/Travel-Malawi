@@ -19,7 +19,7 @@ import {
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db, googleProvider } from '../lib/firebase';
 import { User, Role } from '../types';
-import { isHotelManager, isOwnerEmail, toRoleFields, userRoles } from '../lib/roles';
+import { isHotelManager, isOwnerEmail, toRoleFields, userRoles, canShadowManager } from '../lib/roles';
 import toast from 'react-hot-toast';
 import {
   logAuthEvent,
@@ -30,6 +30,9 @@ import {
 
 interface AuthContextType {
   user: User | null;
+  actualUser: User | null;
+  isShadowing: boolean;
+  shadowedUser: User | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, displayName: string, roles: Role[]) => Promise<void>;
@@ -39,10 +42,17 @@ interface AuthContextType {
   becomeHost: () => Promise<void>;
   refreshUser: () => Promise<User | null>;
   logOut: () => Promise<void>;
+  /** Allows Marketing & Global Admins to shadow any property manager for support */
+  shadowManager: (target: User) => Promise<void>;
+  /** Exits shadow mode and restores the original admin session */
+  exitShadowMode: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
+  actualUser: null,
+  isShadowing: false,
+  shadowedUser: null,
   loading: true,
   signIn: async () => {},
   signUp: async () => {},
@@ -51,6 +61,8 @@ const AuthContext = createContext<AuthContextType>({
   becomeHost: async () => {},
   refreshUser: async () => null,
   logOut: async () => {},
+  shadowManager: async () => {},
+  exitShadowMode: async () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -104,9 +116,46 @@ async function loadOrCreateUser(
 }
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [actualUser, setActualUser] = useState<User | null>(null);
+  const [shadowedUser, setShadowedUser] = useState<User | null>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = sessionStorage.getItem('tm_shadow_user');
+        if (saved) return JSON.parse(saved);
+      } catch {}
+    }
+    return null;
+  });
+  const [isShadowing, setIsShadowing] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return Boolean(sessionStorage.getItem('tm_shadow_user'));
+    }
+    return false;
+  });
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const signingUpRef = useRef(false);
+
+  const applyEffectiveUser = (realUser: User | null, shadow: User | null = shadowedUser) => {
+    setActualUser(realUser);
+    if (realUser && shadow && canShadowManager(realUser)) {
+      const effective: User = {
+        ...shadow,
+        isShadowed: true,
+        shadowedBy: realUser,
+      };
+      setShadowedUser(effective);
+      setIsShadowing(true);
+      setUser(effective);
+    } else {
+      setShadowedUser(null);
+      setIsShadowing(false);
+      setUser(realUser);
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('tm_shadow_user');
+      }
+    }
+  };
 
   useEffect(() => {
     // Process redirect credentials if returning from Google Sign-In redirect
@@ -124,7 +173,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             } catch {}
           }
           const appUser = await loadOrCreateUser(credential.user, pendingRoles);
-          setUser(appUser);
+          applyEffectiveUser(appUser);
           if (typeof window !== 'undefined') {
             sessionStorage.setItem('tm_session_logged_user', appUser.uid);
           }
@@ -152,7 +201,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (firebaseUser) {
         try {
           const appUser = await loadOrCreateUser(firebaseUser);
-          setUser(appUser);
+          applyEffectiveUser(appUser);
 
           // Track session in system logs once per browser session per user
           if (typeof window !== 'undefined') {
@@ -172,14 +221,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (err instanceof AccountSuspendedError) {
             // loadOrCreateUser has already signed them out; never fall back
             // to a traveller session for a suspended account.
-            setUser(null);
+            applyEffectiveUser(null);
             toast.error(err.message);
             setLoading(false);
             return;
           }
           console.error('Error loading user profile:', err);
           // Fallback to basic user profile so UI loads seamlessly
-          setUser({
+          applyEffectiveUser({
             uid: firebaseUser.uid,
             email: firebaseUser.email,
             displayName: firebaseUser.displayName || (firebaseUser.email ? firebaseUser.email.split('@')[0] : 'User'),
@@ -192,7 +241,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (typeof window !== 'undefined') {
           sessionStorage.removeItem('tm_session_logged_user');
         }
-        setUser(null);
+        applyEffectiveUser(null);
       }
       setLoading(false);
     });
@@ -206,7 +255,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       let appUser: User;
       try {
         appUser = await loadOrCreateUser(result.user);
-        setUser(appUser);
+        applyEffectiveUser(appUser);
       } catch (err) {
         // A suspended account must fail the sign-in, not log in as a traveller.
         if (err instanceof AccountSuspendedError) throw err;
@@ -219,7 +268,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           roles: ['traveller'],
           createdAt: Date.now(),
         };
-        setUser(appUser);
+        applyEffectiveUser(appUser);
       }
 
       if (typeof window !== 'undefined') {
@@ -395,8 +444,53 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   };
 
+  const shadowManager = async (target: User) => {
+    const currentActual = actualUser || (user?.isShadowed ? user.shadowedBy : user);
+    if (!currentActual || !canShadowManager(currentActual)) {
+      toast.error('Only administrators and marketing team can shadow property managers.');
+      throw new Error('Unauthorized shadow request');
+    }
+    const effectiveShadow: User = {
+      ...target,
+      isShadowed: true,
+      shadowedBy: currentActual,
+    };
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('tm_shadow_user', JSON.stringify(target));
+    }
+    setShadowedUser(effectiveShadow);
+    setIsShadowing(true);
+    setUser(effectiveShadow);
+
+    await logAuthEvent('role_change', `Staff member ${currentActual.email} entered shadow mode as ${target.displayName || target.email} (${target.uid})`, currentActual, {
+      action: 'shadow_manager',
+      targetUid: target.uid,
+      targetEmail: target.email,
+    });
+    toast.success(`Shadow mode active: Viewing as ${target.displayName || target.email}`);
+  };
+
+  const exitShadowMode = async () => {
+    const currentActual = actualUser || (user?.isShadowed ? user.shadowedBy : null);
+    const currentShadow = shadowedUser;
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('tm_shadow_user');
+    }
+    setShadowedUser(null);
+    setIsShadowing(false);
+    setUser(currentActual);
+
+    if (currentActual) {
+      await logAuthEvent('role_change', `Staff member ${currentActual.email} exited shadow mode for ${currentShadow?.email || 'manager'}`, currentActual, {
+        action: 'exit_shadow_manager',
+        targetUid: currentShadow?.uid,
+      });
+    }
+    toast.success('Exited shadow mode. Restored admin account.');
+  };
+
   const logOut = async () => {
-    const currentUser = user;
+    const currentUser = actualUser || user;
     if (currentUser) {
       const duration = getSessionDurationMinutes();
       await logAuthEvent('logout', `User signed out: ${currentUser.displayName || currentUser.email} (${duration}m active session)`, currentUser, {
@@ -405,12 +499,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
     }
     clearSessionTracking();
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('tm_shadow_user');
+    }
+    setShadowedUser(null);
+    setIsShadowing(false);
+    setActualUser(null);
     await signOut(auth);
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signUp, signInWithGoogle, resetPassword, becomeHost, refreshUser, logOut }}>
+    <AuthContext.Provider value={{
+      user,
+      actualUser,
+      isShadowing,
+      shadowedUser,
+      loading,
+      signIn,
+      signUp,
+      signInWithGoogle,
+      resetPassword,
+      becomeHost,
+      refreshUser,
+      logOut,
+      shadowManager,
+      exitShadowMode,
+    }}>
       {children}
     </AuthContext.Provider>
   );

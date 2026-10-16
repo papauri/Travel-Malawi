@@ -42,6 +42,10 @@ export interface User {
   accessRevokedAt?: number;
   revokedBy?: string;
   notificationPreferences?: UserNotificationPreferences;
+  /** True when an admin or marketing user is temporarily shadowing this account */
+  isShadowed?: boolean;
+  /** The actual admin or marketing user who is shadowing this account */
+  shadowedBy?: User | null;
 }
 
 /** One day's trading hours. Times are 'HH:MM' in the property's local time. */

@@ -10,7 +10,7 @@ import {
 import { 
   CalendarSync, Copy, Check, ExternalLink, RefreshCw, Plus, 
   Trash2, AlertCircle, CheckCircle2, ShieldCheck, HelpCircle, 
-  Sparkles, Calendar as CalendarIcon, Info
+  Sparkles, Calendar as CalendarIcon, Info, Wifi, WifiOff, Activity
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { doc, updateDoc } from 'firebase/firestore';
@@ -51,8 +51,21 @@ export default function IcalSyncManager({
     success: boolean;
     eventCount: number;
     blockedNightsCount: number;
+    previewDates?: string[];
     summary: string;
+    latencyMs?: number;
   } | null>(null);
+
+  // Real-time on-demand test results for existing feeds
+  const [existingFeedTests, setExistingFeedTests] = useState<Record<string, {
+    testing: boolean;
+    success?: boolean;
+    summary?: string;
+    latencyMs?: number;
+    eventCount?: number;
+    blockedNightsCount?: number;
+    previewDates?: string[];
+  }>>({});
 
   const [isSaving, setIsSaving] = useState(false);
   const [isSyncingFeedId, setIsSyncingFeedId] = useState<string | null>(null);
@@ -81,13 +94,23 @@ export default function IcalSyncManager({
     setTestResult(null);
   };
 
+  const cleanFeedUrl = (raw: string) => {
+    let clean = (raw || '').trim();
+    if (clean.toLowerCase().startsWith('webcal://')) {
+      clean = 'https://' + clean.slice(9);
+    }
+    return clean;
+  };
+
   const handleTestFeed = async () => {
-    if (!feedUrl.trim()) {
+    const targetUrl = cleanFeedUrl(feedUrl);
+    if (!targetUrl) {
       toast.error('Please enter the .ics calendar URL first.');
       return;
     }
     setIsTesting(true);
     setTestResult(null);
+    const startTime = performance.now();
     try {
       const token = auth.currentUser ? await auth.currentUser.getIdToken() : '';
       const res = await fetch('/api/calendar/test-feed', {
@@ -96,27 +119,31 @@ export default function IcalSyncManager({
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ url: feedUrl.trim() }),
+        body: JSON.stringify({ url: targetUrl }),
       });
       const data = await res.json();
+      const latencyMs = Math.round(performance.now() - startTime);
       if (data.success) {
-        setTestResult(data);
-        toast.success(`Connection verified! Found ${data.eventCount} reservations.`);
+        setTestResult({ ...data, latencyMs });
+        toast.success(`Connection verified (${latencyMs}ms)! Found ${data.eventCount} reservations.`);
       } else {
         setTestResult({
           success: false,
           eventCount: 0,
           blockedNightsCount: 0,
           summary: data.summary || 'Failed to connect to calendar.',
+          latencyMs,
         });
         toast.error(data.summary || 'Could not parse external feed.');
       }
     } catch (err: any) {
+      const latencyMs = Math.round(performance.now() - startTime);
       setTestResult({
         success: false,
         eventCount: 0,
         blockedNightsCount: 0,
         summary: err?.message || 'Network error while testing feed.',
+        latencyMs,
       });
       toast.error('Network error testing feed.');
     } finally {
@@ -124,9 +151,72 @@ export default function IcalSyncManager({
     }
   };
 
+  const handleTestExistingFeed = async (feed: IcalFeedConfig) => {
+    setExistingFeedTests(prev => ({
+      ...prev,
+      [feed.id]: { testing: true },
+    }));
+
+    const targetUrl = cleanFeedUrl(feed.url);
+    const startTime = performance.now();
+    try {
+      const token = auth.currentUser ? await auth.currentUser.getIdToken() : '';
+      const res = await fetch('/api/calendar/test-feed', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ url: targetUrl }),
+      });
+      const data = await res.json();
+      const latencyMs = Math.round(performance.now() - startTime);
+
+      if (data.success) {
+        setExistingFeedTests(prev => ({
+          ...prev,
+          [feed.id]: {
+            testing: false,
+            success: true,
+            summary: data.summary,
+            latencyMs,
+            eventCount: data.eventCount,
+            blockedNightsCount: data.blockedNightsCount,
+            previewDates: data.previewDates,
+          },
+        }));
+        toast.success(`Connected (${latencyMs}ms)! ${data.eventCount} active events found.`);
+      } else {
+        setExistingFeedTests(prev => ({
+          ...prev,
+          [feed.id]: {
+            testing: false,
+            success: false,
+            summary: data.summary || 'Failed to connect to external feed.',
+            latencyMs,
+          },
+        }));
+        toast.error(data.summary || 'Feed connection test failed.');
+      }
+    } catch (err: any) {
+      const latencyMs = Math.round(performance.now() - startTime);
+      setExistingFeedTests(prev => ({
+        ...prev,
+        [feed.id]: {
+          testing: false,
+          success: false,
+          summary: err?.message || 'Network error while testing connection.',
+          latencyMs,
+        },
+      }));
+      toast.error('Network error testing feed connection.');
+    }
+  };
+
   const handleAddFeed = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!feedUrl.trim()) {
+    const finalUrl = cleanFeedUrl(feedUrl);
+    if (!finalUrl) {
       toast.error('Feed URL is required.');
       return;
     }
@@ -135,7 +225,7 @@ export default function IcalSyncManager({
       const newFeed: IcalFeedConfig = {
         id: `feed_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
         name: feedName.trim() || 'External Calendar',
-        url: feedUrl.trim(),
+        url: finalUrl,
         platform: selectedPlatform as any,
         syncStatus: 'syncing',
         updatedAt: Date.now(),
@@ -402,61 +492,141 @@ export default function IcalSyncManager({
                 const isSuccess = feed.syncStatus === 'success';
                 const isError = feed.syncStatus === 'error';
 
+                const feedTest = existingFeedTests[feed.id];
+
                 return (
                   <div
                     key={feed.id}
-                    className="border border-stone-200 rounded-xl p-3.5 bg-stone-50/80 hover:bg-stone-50 transition flex items-center justify-between gap-3 flex-wrap"
+                    className="border border-stone-200 rounded-xl p-3.5 bg-stone-50/80 hover:bg-stone-50 transition space-y-2.5"
                   >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${preset.badgeBg}`}>
-                          {preset.badgeText}
-                        </span>
-                        <span className="text-xs font-bold text-stone-900 truncate">
-                          {feed.name}
-                        </span>
-                        {isSuccess && (
-                          <span className="inline-flex items-center gap-1 text-[11px] text-emerald-700 font-medium">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                            {feed.blockedCount || 0} dates blocked
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${preset.badgeBg}`}>
+                            {preset.badgeText}
                           </span>
-                        )}
-                        {isError && (
-                          <span className="inline-flex items-center gap-1 text-[11px] text-rose-700 font-medium" title={feed.lastError}>
-                            <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
-                            Sync error
+                          <span className="text-xs font-bold text-stone-900 truncate">
+                            {feed.name}
                           </span>
-                        )}
-                      </div>
-
-                      <div className="text-[11px] text-stone-500 font-mono truncate mt-1 max-w-md">
-                        {feed.url}
-                      </div>
-
-                      {feed.lastSyncedAt && (
-                        <div className="text-[10px] text-stone-400 mt-0.5">
-                          Last synchronized: {new Date(feed.lastSyncedAt).toLocaleTimeString()} · {new Date(feed.lastSyncedAt).toLocaleDateString()}
+                          {isSuccess && (
+                            <span className="inline-flex items-center gap-1 text-[11px] text-emerald-700 font-medium bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>{feed.blockedCount || 0} dates blocked</span>
+                            </span>
+                          )}
+                          {isError && (
+                            <span className="inline-flex items-center gap-1 text-[11px] text-rose-700 font-medium bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200">
+                              <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
+                              <span>Sync error</span>
+                            </span>
+                          )}
                         </div>
-                      )}
+
+                        <div className="text-[11px] text-stone-500 font-mono truncate mt-1 max-w-md">
+                          {feed.url}
+                        </div>
+
+                        {feed.lastSyncedAt && (
+                          <div className="text-[10px] text-stone-400 mt-0.5">
+                            Last synchronized: {new Date(feed.lastSyncedAt).toLocaleTimeString()} · {new Date(feed.lastSyncedAt).toLocaleDateString()}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleTestExistingFeed(feed)}
+                          disabled={feedTest?.testing || isSyncing}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-stone-200 bg-white hover:bg-stone-100 text-stone-700 text-xs font-medium transition cursor-pointer disabled:opacity-50 shadow-2xs"
+                          title="Verify live connection status with external PMS"
+                        >
+                          {feedTest?.testing ? (
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-600" />
+                          ) : (
+                            <Wifi className="w-3.5 h-3.5 text-emerald-600" />
+                          )}
+                          <span>{feedTest?.testing ? 'Testing...' : 'Test Connection'}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => triggerLiveSync(feed.id)}
+                          disabled={isSyncing}
+                          className="p-1.5 hover:bg-stone-200/80 rounded-lg text-stone-600 transition cursor-pointer"
+                          title="Sync this feed now"
+                        >
+                          <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin text-amber-600' : ''}`} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveFeed(feed.id)}
+                          className="p-1.5 hover:bg-rose-100 rounded-lg text-stone-400 hover:text-rose-600 transition cursor-pointer"
+                          title="Remove feed"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button
-                        onClick={() => triggerLiveSync(feed.id)}
-                        disabled={isSyncing}
-                        className="p-1.5 hover:bg-stone-200/80 rounded-lg text-stone-600 transition"
-                        title="Sync this feed now"
-                      >
-                        <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin text-amber-600' : ''}`} />
-                      </button>
-                      <button
-                        onClick={() => handleRemoveFeed(feed.id)}
-                        className="p-1.5 hover:bg-rose-100 rounded-lg text-stone-400 hover:text-rose-600 transition"
-                        title="Remove feed"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+                    {/* Live Test Status Result for Existing Feed */}
+                    {feedTest && !feedTest.testing && (
+                      <div className={`p-2.5 rounded-lg border text-xs ${
+                        feedTest.success
+                          ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                          : 'bg-rose-50 border-rose-200 text-rose-900'
+                      }`}>
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <div className="flex items-center gap-1.5 font-bold text-[11px]">
+                            {feedTest.success ? (
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                            ) : (
+                              <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                            )}
+                            <span>
+                              {feedTest.success ? 'Feed Online & Connected' : 'Feed Connection Failed'}
+                            </span>
+                            {typeof feedTest.latencyMs === 'number' && (
+                              <span className="text-[10px] font-normal text-stone-500 font-mono">
+                                ({feedTest.latencyMs}ms)
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-[11px] font-medium">
+                            {feedTest.summary}
+                          </span>
+                        </div>
+                        {feedTest.previewDates && feedTest.previewDates.length > 0 && (
+                          <div className="mt-1.5 pt-1.5 border-t border-emerald-200/60 text-[11px]">
+                            <span className="font-semibold text-emerald-950">Active blocked dates: </span>
+                            <span className="font-mono text-emerald-800">
+                              {feedTest.previewDates.slice(0, 8).join(', ')}
+                              {feedTest.previewDates.length > 8 ? ` (+${feedTest.previewDates.length - 8} more)` : ''}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Inline Sync Error if sync previously failed */}
+                    {isError && feed.lastError && (!feedTest || feedTest.testing) && (
+                      <div className="text-xs bg-rose-50 border border-rose-200 text-rose-800 rounded-lg p-2.5 flex items-start justify-between gap-2">
+                        <div className="flex items-start gap-1.5 min-w-0">
+                          <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0 mt-0.5" />
+                          <div className="min-w-0">
+                            <span className="font-bold text-[11px]">Sync Issue: </span>
+                            <span className="text-[11px] font-mono break-all">{feed.lastError}</span>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleTestExistingFeed(feed)}
+                          className="text-[11px] font-semibold text-rose-700 hover:text-rose-900 underline shrink-0 cursor-pointer"
+                        >
+                          Diagnose
+                        </button>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -548,10 +718,26 @@ export default function IcalSyncManager({
                     ? 'bg-emerald-50 border-emerald-300 text-emerald-900'
                     : 'bg-rose-50 border-rose-300 text-rose-900'
                 }`}>
-                  <div className="flex items-center gap-2 font-bold">
-                    {testResult.success ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : <AlertCircle className="w-4 h-4 text-rose-600" />}
-                    <span>{testResult.summary}</span>
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="flex items-center gap-2 font-bold">
+                      {testResult.success ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : <AlertCircle className="w-4 h-4 text-rose-600" />}
+                      <span>{testResult.summary}</span>
+                    </div>
+                    {typeof testResult.latencyMs === 'number' && (
+                      <span className="text-[10px] font-mono bg-white/80 px-2 py-0.5 rounded border border-emerald-200 text-emerald-800">
+                        {testResult.latencyMs}ms response
+                      </span>
+                    )}
                   </div>
+                  {testResult.previewDates && testResult.previewDates.length > 0 && (
+                    <div className="mt-2 pt-2 border-t border-emerald-200/80 text-[11px]">
+                      <span className="font-semibold text-emerald-950">Sample upcoming blocked dates: </span>
+                      <span className="font-mono text-emerald-800">
+                        {testResult.previewDates.slice(0, 8).join(', ')}
+                        {testResult.previewDates.length > 8 ? ` (+${testResult.previewDates.length - 8} more)` : ''}
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
 

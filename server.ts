@@ -363,8 +363,8 @@ async function startServer() {
     }
   });
 
-  // Admin global sync trigger
-  app.post('/api/calendar/sync-all', requireRole('admin', 'global_admin'), async (req, res) => {
+  // Admin & Marketing global sync trigger
+  app.post('/api/calendar/sync-all', requireRole('admin', 'global_admin', 'marketing'), async (req, res) => {
     try {
       const result = await syncAllActiveFeeds();
       res.json({ success: true, ...result });
