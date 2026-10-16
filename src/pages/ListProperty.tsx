@@ -42,7 +42,7 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import { useAIAssistant } from '../hooks/useAIAssistant';
 import { analyzeDescriptionLocal, DescriptionAnalysisResult } from '../lib/descriptionAnalyzer';
 import { DECORATIVE_IMAGE, getHotelImage, getDefaultImageForCategory, localImagesForName } from '../lib/images';
-import { db } from '../lib/firebase';
+import { db, auth } from '../lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import {
   CATEGORY_HINTS, COMMON_AMENITIES, DESCRIPTION_MAX, DESCRIPTION_MIN, ListingDraft,
@@ -725,7 +725,7 @@ export default function ListProperty() {
 
       const verifiedCategory =
         normalizePropertyCategory(aiData?.category) ||
-        inferCategoryFromNameAndLocation(aiData?.officialName || name, aiData?.location || matchedLocation);
+        inferCategoryFromNameAndLocation(aiData?.officialName || searchName, aiData?.location || matchedLocation);
 
       let rawRooms = aiData?.suggestedRooms;
       if (!rawRooms || !Array.isArray(rawRooms) || rawRooms.length === 0) {
@@ -740,17 +740,17 @@ export default function ListProperty() {
         };
       });
 
-      const matchedLocal = localImagesForName(aiData?.officialName || name);
+      const matchedLocal = localImagesForName(aiData?.officialName || searchName);
       const suggestedImageUrl = matchedLocal.length > 0 ? matchedLocal[0] : getDefaultImageForCategory(verifiedCategory);
 
       if (aiData && (aiData.matched || aiData.officialName)) {
         setAiPropertySuggestion({
           matched: aiData.matched ?? true,
-          officialName: aiData.officialName || name,
+          officialName: aiData.officialName || searchName,
           category: verifiedCategory,
           location: aiData.location || matchedLocation || 'Malawi',
           locationNotes: aiData.locationNotes || '',
-          description: aiData.description || authenticMalawianDescription(aiData.officialName || name, verifiedCategory, aiData.location || matchedLocation || 'Malawi'),
+          description: aiData.description || authenticMalawianDescription(aiData.officialName || searchName, verifiedCategory, aiData.location || matchedLocation || 'Malawi'),
           amenities: Array.isArray(aiData.amenities) && aiData.amenities.length > 0 ? aiData.amenities : COMMON_AMENITIES.slice(0, 8),
           coordinates: matchedCoords,
           confidence: aiData.confidence || 'high',
@@ -763,15 +763,15 @@ export default function ListProperty() {
           contactWhatsapp: aiData.contactWhatsapp || aiData.contactPhone || '+265 991 234 567',
           suggestedImageUrl,
         });
-        toast.success(`Draft Assistant matched "${aiData.officialName || name}" & auto-categorized as "${verifiedCategory}"!`);
-      } else if (matchedCoords || name) {
+        toast.success(`Draft Assistant matched "${aiData.officialName || searchName}" & auto-categorized as "${verifiedCategory}"!`);
+      } else if (matchedCoords || searchName) {
         setAiPropertySuggestion({
           matched: true,
-          officialName: name,
+          officialName: searchName,
           category: verifiedCategory,
           location: matchedLocation || draft.location || 'Malawi',
           locationNotes: `Located in ${matchedLocation || 'Malawi'}`,
-          description: authenticMalawianDescription(name, verifiedCategory, matchedLocation || draft.location || 'Malawi'),
+          description: authenticMalawianDescription(searchName, verifiedCategory, matchedLocation || draft.location || 'Malawi'),
           amenities: COMMON_AMENITIES.slice(0, 6),
           coordinates: matchedCoords,
           confidence: 'medium',
@@ -1404,7 +1404,7 @@ export default function ListProperty() {
 
       // Immediately dispatch onboarding welcome & login instructions email to property owner
       try {
-        const token = await user.getIdToken();
+        const token = await auth.currentUser?.getIdToken();
         const ownerEmailToSend = draft.ownerEmail.trim() || draft.managerEmail.trim() || draft.contactEmail.trim() || user.email;
         if (ownerEmailToSend) {
           fetch('/api/onboarding/send-welcome', {
@@ -3573,7 +3573,7 @@ export default function ListProperty() {
                           </label>
                           <input
                             type="number"
-                            value={room.baseGuests ?? Math.min(2, room.maxGuests || 2)}
+                            value={room.baseGuests !== undefined && room.baseGuests !== '' ? Number(room.baseGuests) : Math.min(2, Math.max(1, Number(room.maxGuests) || 2))}
                             onChange={e => {
                               const maxG = Math.max(1, Number(room.maxGuests || 1));
                               const val = Math.min(Math.max(1, Number(e.target.value) || 1), maxG);

@@ -28,6 +28,8 @@ export interface AIGenerateOptions {
     property?: string;
     type?: string;
     instructions?: string;
+    url?: string;
+    scrapedContent?: string;
   };
 }
 
