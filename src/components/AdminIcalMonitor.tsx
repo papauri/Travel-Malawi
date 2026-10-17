@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Hotel, RoomType, IcalFeedConfig } from '../types';
 import { 
   CalendarSync, RefreshCw, CheckCircle2, AlertCircle, ExternalLink, 
-  Copy, Check, Search, ShieldCheck, HelpCircle, Sparkles, Filter, 
+  Copy, Check, Search, ShieldCheck, HelpCircle, Activity, Filter, 
   ArrowRight, Radio, Clock, Eye, Layers, Settings, Calendar
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -316,7 +316,7 @@ export default function AdminIcalMonitor({
       {/* External Feed Diagnostic / Tester Tool */}
       <div className="bg-white border border-stone-200/90 rounded-2xl p-5 shadow-2xs">
         <div className="flex items-center gap-2 mb-2">
-          <Sparkles className="h-4 w-4 text-amber-600" />
+          <Activity className="h-4 w-4 text-amber-600" />
           <h3 className="text-sm sm:text-base font-serif font-bold text-stone-900">
             External Feed Diagnostic &amp; Link Tester
           </h3>

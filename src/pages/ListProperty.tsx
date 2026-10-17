@@ -23,7 +23,7 @@ import {
   Images, Loader2, LocateFixed, Mail, MapPin, MessageCircle, Phone, Plus, Send,
   Award, FileText, CheckCircle2, Wallet, X, DollarSign, Coins, Trash2, Sliders, ChevronDown, ChevronUp,
   RefreshCw, TrendingUp, HelpCircle, AlertTriangle, BookOpen,
-  User, UserCheck, Shield, Building, ConciergeBell, BedDouble, Tag, Home, Sparkles, Globe,
+  User, UserCheck, Shield, Building, ConciergeBell, BedDouble, Tag, Home, Compass, Globe,
 } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -1611,10 +1611,10 @@ export default function ListProperty() {
           } catch {}
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
-        onImportDocument={aiStatus.enabled && aiStatus.available ? () => {
+        onImportDocument={() => {
           setShowWelcomeWalkthrough(false);
           setShowPropertyImporter(true);
-        } : undefined}
+        }}
       />
     );
   }
@@ -1673,17 +1673,15 @@ export default function ListProperty() {
           </div>
 
           <div className="flex items-center gap-2">
-            {aiStatus.enabled && aiStatus.available && (
-              <button
-                type="button"
-                onClick={() => setShowPropertyImporter(true)}
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-700 bg-white border border-stone-200 hover:border-stone-300 transition px-2.5 sm:px-3 py-1.5 rounded-full shadow-xs cursor-pointer"
-                title="Import property details from a document"
-              >
-                <FileText className="w-3.5 h-3.5" />
-                <span>Import Document</span>
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => setShowPropertyImporter(true)}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-700 bg-white border border-stone-200 hover:border-stone-300 transition px-2.5 sm:px-3 py-1.5 rounded-full shadow-xs cursor-pointer"
+              title="Import property details from a document or rate sheet"
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span>Import Document</span>
+            </button>
             <button
               type="button"
               onClick={handleDiscardDraft}
@@ -1845,7 +1843,7 @@ export default function ListProperty() {
                   <label className={labelClass} htmlFor="listing-name">Property name</label>
                   <div className="flex items-center gap-2">
                     <span className="text-[11px] font-medium text-stone-600 bg-stone-100 border border-stone-200 px-2 py-0.5 rounded-md hidden sm:flex items-center gap-1">
-                      <Sparkles className="w-3 h-3 text-stone-500" />
+                      <MapPin className="w-3 h-3 text-stone-500" />
                       Malawi Registry & Maps
                     </span>
                     {aiStatus.enabled && aiStatus.available && (
@@ -1936,7 +1934,7 @@ export default function ListProperty() {
                     >
                       <div className="px-4 py-2 bg-stone-900 text-stone-200 border-b border-stone-800 flex items-center justify-between text-[11px] font-semibold tracking-wider">
                         <span className="flex items-center gap-1.5 text-stone-200">
-                          <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                          <Compass className="w-3.5 h-3.5 text-amber-400" />
                           <span>Malawi Hospitality & Location Registry</span>
                         </span>
                         <div className="flex items-center gap-2">
@@ -1980,7 +1978,7 @@ export default function ListProperty() {
                                   {isReg ? (
                                     <Award className="w-4 h-4 text-amber-800" />
                                   ) : isIdea ? (
-                                    <Sparkles className="w-4 h-4 text-emerald-700" />
+                                    <Building2 className="w-4 h-4 text-emerald-700" />
                                   ) : (
                                     <MapPin className="w-4 h-4 text-stone-600" />
                                   )}
@@ -2041,7 +2039,7 @@ export default function ListProperty() {
                   <div className="mt-3 pt-3 border-t border-stone-100">
                     <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
                       <div className="flex items-center gap-1.5 text-xs text-stone-600">
-                        <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                        <CheckCircle2 className="w-3.5 h-3.5 text-amber-600" />
                         <span className="font-semibold text-stone-800">Verified Malawian Properties:</span>
                         <span className="text-stone-500 text-[11px] hidden sm:inline">Tap to explore instant auto-fill</span>
                       </div>
@@ -4502,10 +4500,42 @@ export default function ListProperty() {
           )}
         </div>
       </div>
-      <PropertyDocumentImporter 
-        open={showPropertyImporter} 
-        onClose={() => setShowPropertyImporter(false)} 
-        onImport={(data) => setDraft((curr) => ({ ...curr, ...data }))} 
+      <PropertyDocumentImporter
+        open={showPropertyImporter}
+        onClose={() => setShowPropertyImporter(false)}
+        onImport={(data) =>
+          setDraft((curr) => {
+            const resolvedCategory =
+              normalizePropertyCategory(data.category || data.categories?.[0]) || curr.category;
+            const mergedAmenities =
+              data.amenities && data.amenities.length > 0
+                ? Array.from(new Set([...(curr.amenities || []), ...data.amenities]))
+                : curr.amenities;
+
+            return {
+              ...curr,
+              ...(data.name ? { name: data.name } : {}),
+              ...(resolvedCategory ? { category: resolvedCategory } : {}),
+              ...(data.stayType ? { stayType: data.stayType } : {}),
+              ...(data.location ? { location: data.location } : {}),
+              ...(data.locationNotes ? { locationNotes: data.locationNotes } : {}),
+              ...(data.description ? { description: data.description } : {}),
+              ...(data.ownerName ? { ownerName: data.ownerName } : {}),
+              ...(data.ownerEmail ? { ownerEmail: data.ownerEmail } : {}),
+              ...(data.ownerPhone ? { ownerPhone: data.ownerPhone } : {}),
+              ...(data.managerName ? { managerName: data.managerName } : {}),
+              ...(data.managerEmail ? { managerEmail: data.managerEmail } : {}),
+              ...(data.managerPhone ? { managerPhone: data.managerPhone } : {}),
+              ...(data.contactPhone ? { contactPhone: data.contactPhone } : {}),
+              ...(data.contactWhatsapp ? { contactWhatsapp: data.contactWhatsapp } : {}),
+              ...(data.contactEmail ? { contactEmail: data.contactEmail } : {}),
+              ...(data.checkInTime ? { checkInTime: data.checkInTime } : {}),
+              ...(data.checkOutTime ? { checkOutTime: data.checkOutTime } : {}),
+              amenities: mergedAmenities,
+              ...(data.rooms && data.rooms.length > 0 ? { rooms: data.rooms } : {}),
+            };
+          })
+        }
       />
 
       <ConfirmDialog
@@ -4624,7 +4654,7 @@ function OnboardingWelcomeWalkthrough({
                 <ArrowRight className="w-4 h-4" />
               </button>
 
-              {hasAI && onImportDocument && (
+              {onImportDocument && (
                 <button
                   type="button"
                   onClick={onImportDocument}
@@ -4759,7 +4789,7 @@ function OnboardingWelcomeWalkthrough({
             <section className="bg-amber-50/80 border border-amber-200/90 rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-2xs">
               <div className="flex items-start gap-3.5">
                 <div className="p-2.5 bg-amber-100 text-amber-800 rounded-xl shrink-0 mt-0.5">
-                  <Sparkles className="w-5 h-5 text-amber-700" />
+                  <FileText className="w-5 h-5 text-amber-700" />
                 </div>
                 <div className="space-y-1">
                   <div className="flex items-center gap-2 flex-wrap">

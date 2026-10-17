@@ -232,17 +232,26 @@ export interface TravelEstimate {
 
 export function isCrossingLakeMalawi(origin: LatLng, destination: LatLng): boolean {
   if (!isValidLatLng(origin) || !isValidLatLng(destination)) return false;
-  // West to East across Lake Malawi (e.g., Lilongwe/Salima/Dedza to Cape Maclear/Mangochi/Monkey Bay/Likoma)
-  const isWestA = origin.lng < 34.72;
+
+  // Both points must be north of the southern tip of Lake Malawi (~-14.35 near Monkey Bay/Mangochi).
+  // Routes to Southern Malawi (Mangochi town, Liwonde, Zomba, Blantyre, Mulanje) travel via the M1/M3 land corridor.
+  if (origin.lat < -14.35 || destination.lat < -14.35) return false;
+  if (origin.lat > -9.4 || destination.lat > -9.4) return false;
+
+  // Check if either endpoint is on Likoma / Chizumulu Island (and they aren't on the same island)
+  const isLikoma = (pt: LatLng) =>
+    pt.lat >= -12.25 && pt.lat <= -11.95 && pt.lng >= 34.55 && pt.lng <= 34.82;
+  if (isLikoma(origin) || isLikoma(destination)) {
+    return distanceKm(origin, destination) > 12;
+  }
+
+  // West shore / central plateau to East shore / Cape Maclear peninsula across the water body
+  const isWestA = origin.lng < 34.68;
   const isEastB = destination.lng > 34.75;
-  const isWestB = destination.lng < 34.72;
+  const isWestB = destination.lng < 34.68;
   const isEastA = origin.lng > 34.75;
 
-  const inLakeLatSpan =
-    (origin.lat >= -14.48 && origin.lat <= -11.5) ||
-    (destination.lat >= -14.48 && destination.lat <= -11.5);
-
-  return inLakeLatSpan && ((isWestA && isEastB) || (isWestB && isEastA));
+  return (isWestA && isEastB) || (isWestB && isEastA);
 }
 
 /**

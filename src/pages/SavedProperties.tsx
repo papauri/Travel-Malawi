@@ -5,8 +5,8 @@ import { db } from '../lib/firebase';
 import { Hotel } from '../types';
 import HotelCard from '../components/HotelCard';
 import { useWishlist } from '../hooks/useWishlist';
-import { Link } from 'react-router-dom';
-import { Search, Heart, Map } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { Search, Heart, Compass, Navigation, MapPin } from 'lucide-react';
 import { motion } from 'motion/react';
 import TripPlannerD3 from '../components/TripPlannerD3';
 
@@ -15,7 +15,19 @@ export default function SavedProperties() {
   const { savedHotelIds, loading: wishlistLoading } = useWishlist();
   const [savedHotels, setSavedHotels] = useState<Hotel[]>([]);
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<'grid' | 'planner'>('grid');
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const viewMode: 'grid' | 'planner' = searchParams.get('tab') === 'planner' ? 'planner' : 'grid';
+
+  const handleTabChange = (mode: 'grid' | 'planner') => {
+    if (mode === 'planner') {
+      setSearchParams({ tab: 'planner' }, { replace: true });
+    } else {
+      const next = new URLSearchParams(searchParams);
+      next.delete('tab');
+      setSearchParams(next, { replace: true });
+    }
+  };
 
   const uid = user?.uid ?? null;
   // Cache is per account so a shared device never shows one user's saved
@@ -83,8 +95,8 @@ export default function SavedProperties() {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center text-center px-6">
         <Heart className="w-16 h-16 text-stone-200 mb-6" />
-        <h1 className="text-3xl font-serif text-stone-900 mb-4 tracking-tight">Saved Properties</h1>
-        <p className="text-stone-500 max-w-md mb-8">Sign in to view your saved properties.</p>
+        <h1 className="text-3xl font-serif text-stone-900 mb-4 tracking-tight">Saved Stays</h1>
+        <p className="text-stone-500 max-w-md mb-8">Sign in to view your saved properties and build your Malawi route.</p>
       </div>
     );
   }
@@ -93,45 +105,96 @@ export default function SavedProperties() {
     <div className="mx-auto max-w-7xl px-3.5 sm:px-6 lg:px-8 py-5 sm:py-8 md:py-10 mb-20 md:mb-0">
       <div className="mb-5 sm:mb-7 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-serif font-bold text-stone-900 tracking-tight">Saved Properties</h1>
-          <p className="text-stone-500 mt-0.5 sm:mt-1 text-xs sm:text-sm">Your bookmarked lodges, cottages, and safari stays across Malawi.</p>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-serif font-bold text-stone-900 tracking-tight">Saved</h1>
+          <p className="text-stone-500 mt-0.5 sm:mt-1 text-xs sm:text-sm">Your bookmarked lodges, cottages, and road-trip route across Malawi.</p>
         </div>
-        {savedHotels.length > 0 && (
-          <div className="grid grid-cols-2 sm:flex items-center gap-1 bg-stone-100 p-1 rounded-2xl w-full sm:w-fit border border-stone-200">
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-bold rounded-xl transition flex items-center justify-center gap-1 cursor-pointer ${viewMode === 'grid' ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-600 hover:text-stone-900'}`}
+        <div className="grid grid-cols-2 sm:flex items-center gap-1 bg-stone-100 p-1 rounded-2xl w-full sm:w-fit border border-stone-200">
+          <button
+            type="button"
+            onClick={() => handleTabChange('grid')}
+            className={`px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-bold rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer ${
+              viewMode === 'grid'
+                ? 'bg-stone-900 text-white shadow-xs'
+                : 'text-stone-600 hover:text-stone-900'
+            }`}
+          >
+            <Heart className="w-3.5 h-3.5 shrink-0" />
+            <span>Saved Stays</span>
+            <span
+              className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                viewMode === 'grid'
+                  ? 'bg-stone-800 text-stone-200'
+                  : 'bg-stone-200 text-stone-700'
+              }`}
             >
-              <span>Saved Grid</span>
-              <span className="text-[10px] bg-stone-200 text-stone-700 px-1.5 py-0.2 rounded-full font-bold">({savedHotels.length})</span>
-            </button>
-            <button
-              onClick={() => setViewMode('planner')}
-              className={`px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-bold rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer ${viewMode === 'planner' ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-600 hover:text-stone-900'}`}
-            >
-              <Map className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-              <span>Trip Planner</span>
-              <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-1.5 py-0.2 rounded-full">Route</span>
-            </button>
-          </div>
-        )}
+              {savedHotels.length}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleTabChange('planner')}
+            className={`px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-bold rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer ${
+              viewMode === 'planner'
+                ? 'bg-stone-900 text-white shadow-xs'
+                : 'text-stone-600 hover:text-stone-900'
+            }`}
+          >
+            <Compass className="w-3.5 h-3.5 shrink-0" />
+            <span>Trip Planner</span>
+          </button>
+        </div>
       </div>
 
       {savedHotels.length === 0 ? (
-        <div className="py-12 sm:py-16 text-center border border-dashed border-stone-200 rounded-2xl sm:rounded-3xl bg-stone-50/50 px-4">
-          <Heart className="w-10 h-10 text-stone-300 mx-auto mb-3" />
-          <h2 className="text-base sm:text-lg font-bold text-stone-900 mb-1">No saved properties yet</h2>
-          <p className="text-stone-500 text-xs sm:text-sm mb-6 max-w-sm mx-auto">
-            When you see a property you like, tap the heart icon to save it here.
-          </p>
-          <Link
-            to="/"
-            className="inline-flex items-center justify-center gap-2 rounded-xl sm:rounded-full bg-stone-900 px-5 sm:px-6 py-2.5 text-xs sm:text-sm font-bold text-white transition hover:bg-stone-800 shadow-2xs"
-          >
-            <Search className="w-4 h-4" />
-            Explore properties
-          </Link>
-        </div>
+        viewMode === 'planner' ? (
+          <div className="py-12 sm:py-16 text-center border border-dashed border-stone-200 rounded-2xl sm:rounded-3xl bg-stone-50/50 px-4">
+            <div className="w-12 h-12 rounded-2xl bg-stone-900 text-white flex items-center justify-center mx-auto mb-4 shadow-xs">
+              <Compass className="w-6 h-6" />
+            </div>
+            <h2 className="text-base sm:text-lg font-serif font-bold text-stone-900 mb-1.5">
+              Build your Malawi route from saved stays
+            </h2>
+            <p className="text-stone-500 text-xs sm:text-sm mb-6 max-w-md mx-auto leading-relaxed">
+              Tap the heart icon on any lodge, beach cottage, or safari camp on the Explore page. Your saved stays automatically connect here with real driving distances, highway notes, and day-by-day sequencing.
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-2 mb-6 text-[11px] text-stone-600">
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white border border-stone-200">
+                <MapPin className="w-3 h-3 text-emerald-700" />
+                Lake Malawi Shores
+              </span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white border border-stone-200">
+                <Navigation className="w-3 h-3 text-amber-700" />
+                National Parks &amp; Safari
+              </span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white border border-stone-200">
+                <Compass className="w-3 h-3 text-stone-700" />
+                Highlands &amp; Plateaus
+              </span>
+            </div>
+            <Link
+              to="/"
+              className="inline-flex items-center justify-center gap-2 rounded-xl sm:rounded-full bg-stone-900 px-5 sm:px-6 py-2.5 text-xs sm:text-sm font-bold text-white transition hover:bg-stone-800 shadow-2xs"
+            >
+              <Search className="w-4 h-4" />
+              Explore stays to heart
+            </Link>
+          </div>
+        ) : (
+          <div className="py-12 sm:py-16 text-center border border-dashed border-stone-200 rounded-2xl sm:rounded-3xl bg-stone-50/50 px-4">
+            <Heart className="w-10 h-10 text-stone-300 mx-auto mb-3" />
+            <h2 className="text-base sm:text-lg font-bold text-stone-900 mb-1">No saved stays yet</h2>
+            <p className="text-stone-500 text-xs sm:text-sm mb-6 max-w-sm mx-auto">
+              When you see a property you like on the Explore page, tap the heart icon to save it here and unlock your Trip Planner route.
+            </p>
+            <Link
+              to="/"
+              className="inline-flex items-center justify-center gap-2 rounded-xl sm:rounded-full bg-stone-900 px-5 sm:px-6 py-2.5 text-xs sm:text-sm font-bold text-white transition hover:bg-stone-800 shadow-2xs"
+            >
+              <Search className="w-4 h-4" />
+              Explore properties
+            </Link>
+          </div>
+        )
       ) : (
         <>
           {viewMode === 'planner' ? (

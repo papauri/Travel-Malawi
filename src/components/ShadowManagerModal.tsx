@@ -7,7 +7,7 @@ import { Hotel, User, Role } from '../types';
 import Modal from './Modal';
 import { 
   Search, UserCheck, Building2, MapPin, Shield, CheckCircle2, 
-  AlertCircle, Users, ArrowRight, Eye, RefreshCw, Sparkles 
+  AlertCircle, Users, ArrowRight, Eye, RefreshCw 
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 

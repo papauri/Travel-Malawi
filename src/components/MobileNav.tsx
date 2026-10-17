@@ -166,7 +166,7 @@ export default function MobileNav() {
                         className={`flex items-center gap-4 px-4 py-3.5 rounded-2xl transition ${pathname === '/saved' ? 'bg-stone-100 text-stone-900 font-bold' : 'text-stone-600 hover:bg-stone-50 hover:text-stone-900'}`}
                       >
                         <Heart className="w-5 h-5" />
-                        <span>Saved Properties</span>
+                        <span>Saved</span>
                       </Link>
                       <Link
                         to="/my-bookings"

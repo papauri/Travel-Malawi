@@ -10,7 +10,7 @@ import {
 import { 
   CalendarSync, Copy, Check, ExternalLink, RefreshCw, Plus, 
   Trash2, AlertCircle, CheckCircle2, ShieldCheck, HelpCircle, 
-  Sparkles, Calendar as CalendarIcon, Info, Wifi, WifiOff, Activity
+  Calendar as CalendarIcon, Info, Wifi, WifiOff, Activity
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { doc, updateDoc } from 'firebase/firestore';
@@ -638,7 +638,7 @@ export default function IcalSyncManager({
             <form onSubmit={handleAddFeed} className="border border-amber-300 bg-amber-50/40 rounded-xl p-4 space-y-3.5">
               <div className="flex items-center justify-between">
                 <h5 className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
-                  <Sparkles className="w-4 h-4 text-amber-600" />
+                  <CheckCircle2 className="w-4 h-4 text-amber-600" />
                   Connect New Calendar Feed
                 </h5>
                 <button

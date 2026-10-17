@@ -25,6 +25,7 @@ import { buildOperationsChatPrompts } from './opsPrompt';
 import { isPureSmallTalk } from '../src/lib/queryIntent';
 import { classifySwarmIntent, getSpecialistAgentPrompt, executeDeterministicSwarmReply } from './aiSwarm';
 import { parseMenuText } from './localMenuParser';
+import { parsePropertyText } from '../src/lib/localPropertyParser';
 
 export interface GenerationRequest {
   action: 'draft' | 'polish' | 'shorten' | 'highlights' | 'suggest_amenities' | 'suggest_rooms' | 'review_listing' | 'suggest_rate' | 'lookup_property' | 'scrape_reviews' | 'link_description_to_amenities_and_category';
@@ -2683,9 +2684,6 @@ export async function parsePropertyDocContent(
 ): Promise<{ extracted: any }> {
   const config = loadAIConfig();
   const failures: any[] = [];
-  if (!config.enabled) {
-    throw new Error('Document scanning is currently disabled.');
-  }
 
   const propertyPrompt = `You are a property data extraction expert. Extract hotel/property details from the provided content and return them as structured JSON.
 
@@ -2728,6 +2726,9 @@ Rules:
   const isImage = mimeType.startsWith('image/') || mimeType === 'application/pdf';
 
   if (isImage) {
+    if (!config.enabled) {
+      throw new Error('Document scanning is currently disabled.');
+    }
     const visionProviders: AIProviderId[] = ['gemini', 'openai', 'anthropic'];
     const base64 = fileBuffer.toString('base64');
 
@@ -2779,11 +2780,7 @@ Rules:
       contentForAI = fileBuffer.toString('utf-8');
     }
 
-    const providers = getAvailableProviders();
-    if (providers.length === 0) {
-      throw new Error('No provider configured.');
-    }
-
+    const providers = config.enabled ? getAvailableProviders() : [];
     const fullPrompt = `${propertyPrompt}\n\n--- PROPERTY CONTENT ---\n${contentForAI.slice(0, 8000)}`;
 
     for (const providerId of providers) {
@@ -2810,6 +2807,17 @@ Rules:
         continue;
       }
     }
+
+    // Deterministic fallback to local property parser (handles text, rate sheets, CSV, and Excel text offline/reliably)
+    try {
+      const localParsed = parsePropertyText(contentForAI);
+      if (localParsed && (localParsed.name || (localParsed.rooms && localParsed.rooms.length > 0) || (localParsed.amenities && localParsed.amenities.length > 0))) {
+        return { extracted: localParsed };
+      }
+    } catch (localErr) {
+      console.warn('[AI] Local property parser deterministic fallback error:', localErr);
+    }
+
     throw failureOr(failures, 'All providers failed to extract property data.');
   }
 }

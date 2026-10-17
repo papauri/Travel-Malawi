@@ -1728,7 +1728,7 @@ export default function OperationsCopilot() {
             <div
               ref={chatScrollContainerRef}
               data-lenis-prevent="true"
-              className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden break-words p-4 sm:p-4.5 space-y-4 bg-stone-100/40 overscroll-contain"
+              className="flex-1 min-h-0 min-w-0 max-w-full overflow-y-auto overflow-x-hidden break-words p-4 sm:p-4.5 space-y-4 bg-stone-100/40 overscroll-contain"
             >
               {viewingMemory ? (
                 /* -------------------------------------------------- */
@@ -1862,25 +1862,25 @@ export default function OperationsCopilot() {
                   {messages.map((msg, mIdx) => (
                     <div
                       key={`${msg.id || 'msg'}-${mIdx}-${msg.timestamp || ''}`}
-                      className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} max-w-full min-w-0`}
+                      className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} max-w-full min-w-0 overflow-x-hidden`}
                     >
                       <div
-                        className={`min-w-0 rounded-2xl break-words [word-break:break-word] overflow-hidden ${
+                        className={`min-w-0 rounded-2xl break-words [overflow-wrap:anywhere] overflow-hidden ${
                           msg.role === 'user'
                             ? 'max-w-[88%] p-3 sm:p-3.5 text-sm sm:text-[14.5px] leading-relaxed bg-stone-900 text-white rounded-br-xs shadow-xs'
                             : 'w-full max-w-full p-3 sm:p-3.5 text-xs sm:text-[13.5px] leading-relaxed bg-white text-stone-800 border border-stone-200/90 shadow-2xs rounded-tl-xs'
                         }`}
                       >
                         {msg.role === 'assistant' ? (
-                          <div className="flex flex-col space-y-2 max-w-full">
+                          <div className="flex flex-col space-y-2 max-w-full min-w-0 overflow-x-hidden">
                             {/* Executive Assistant Header Bar */}
                             <div className="flex items-center justify-between gap-2 pb-1.5 mb-0.5 border-b border-stone-100 text-xs select-none">
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 min-w-0">
                                 <div className="w-5 h-5 rounded-md bg-stone-900 text-amber-400 flex items-center justify-center shrink-0 shadow-2xs">
                                   <ConciergeBell className="w-3.5 h-3.5 text-amber-400" />
                                 </div>
-                                <span className="font-semibold text-stone-900 tracking-tight">Ulendo Concierge</span>
-                                <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-stone-100 text-stone-500 font-medium">
+                                <span className="font-semibold text-stone-900 tracking-tight truncate">Ulendo Concierge</span>
+                                <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-stone-100 text-stone-500 font-medium shrink-0">
                                   Live Data
                                 </span>
                               </div>
@@ -1888,7 +1888,7 @@ export default function OperationsCopilot() {
                                 type="button"
                                 onClick={() => handleCopyMessage(msg.id, msg.content)}
                                 title="Copy content to clipboard"
-                                className="inline-flex items-center gap-1 text-[11px] font-medium text-stone-500 hover:text-stone-900 px-2 py-0.5 rounded-md hover:bg-stone-100 border border-transparent hover:border-stone-200 transition"
+                                className="inline-flex items-center gap-1 text-[11px] font-medium text-stone-500 hover:text-stone-900 px-2 py-0.5 rounded-md hover:bg-stone-100 border border-transparent hover:border-stone-200 transition shrink-0"
                               >
                                 {copiedMsgId === msg.id ? (
                                   <>
@@ -1905,27 +1905,27 @@ export default function OperationsCopilot() {
                             </div>
 
                             {/* Arranged Markdown Body */}
-                            <div className="space-y-2 text-stone-800 break-words [word-break:break-word] overflow-hidden max-w-full min-w-0 text-xs sm:text-[13.5px] leading-relaxed">
+                            <div className="space-y-2 text-stone-800 break-words [overflow-wrap:anywhere] overflow-x-hidden max-w-full min-w-0 text-xs sm:text-[13.5px] leading-relaxed">
                               <ReactMarkdown
                                 remarkPlugins={[remarkGfm]}
                                 components={{
                                   h1: ({ children }) => (
-                                    <h3 className="text-sm sm:text-base font-bold text-stone-900 mt-2.5 mb-1 pb-1 border-b border-stone-100 flex items-center gap-1.5">
+                                    <h3 className="text-sm sm:text-base font-bold text-stone-900 mt-2.5 mb-1 pb-1 border-b border-stone-100 flex items-center gap-1.5 break-words [overflow-wrap:anywhere]">
                                       {children}
                                     </h3>
                                   ),
                                   h2: ({ children }) => (
-                                    <h4 className="text-xs sm:text-sm font-bold text-stone-900 mt-2 mb-1 flex items-center gap-1.5">
+                                    <h4 className="text-xs sm:text-sm font-bold text-stone-900 mt-2 mb-1 flex items-center gap-1.5 break-words [overflow-wrap:anywhere]">
                                       {children}
                                     </h4>
                                   ),
                                   h3: ({ children }) => (
-                                    <h5 className="text-[11px] sm:text-xs font-bold text-stone-800 mt-1.5 mb-0.5">
+                                    <h5 className="text-[11px] sm:text-xs font-bold text-stone-800 mt-1.5 mb-0.5 break-words [overflow-wrap:anywhere]">
                                       {children}
                                     </h5>
                                   ),
                                   p: ({ children }) => (
-                                    <p className="leading-relaxed break-words [word-break:break-word] text-stone-800 my-1">
+                                    <p className="leading-relaxed break-words [overflow-wrap:anywhere] text-stone-800 my-1">
                                       {children}
                                     </p>
                                   ),
@@ -1950,7 +1950,7 @@ export default function OperationsCopilot() {
                                             e.preventDefault();
                                             navigate(targetHref);
                                           }}
-                                          className="text-amber-800 underline font-semibold hover:text-amber-900 inline-flex items-center gap-0.5 break-all cursor-pointer"
+                                          className="text-amber-800 underline font-semibold hover:text-amber-900 inline-flex items-center gap-0.5 break-words [overflow-wrap:anywhere] cursor-pointer"
                                         >
                                           {children}
                                         </a>
@@ -1962,7 +1962,7 @@ export default function OperationsCopilot() {
                                         href={targetHref}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="text-amber-800 underline font-semibold hover:text-amber-900 inline-flex items-center gap-0.5 break-all"
+                                        className="text-amber-800 underline font-semibold hover:text-amber-900 inline-flex items-center gap-0.5 break-words [overflow-wrap:anywhere]"
                                       >
                                         {children}
                                         <ExternalLink className="w-2.5 h-2.5 inline opacity-70 shrink-0" />
@@ -1970,7 +1970,7 @@ export default function OperationsCopilot() {
                                     );
                                   },
                                   table: ({ children }) => (
-                                    <div className="my-2 overflow-hidden rounded-xl border border-stone-200 bg-white shadow-2xs w-full max-w-full">
+                                    <div className="my-2 overflow-x-auto scrollbar-thin rounded-xl border border-stone-200 bg-white shadow-2xs w-full max-w-full">
                                       <table className="w-full border-collapse text-left text-xs table-auto">
                                         {children}
                                       </table>
@@ -1992,37 +1992,37 @@ export default function OperationsCopilot() {
                                     </tr>
                                   ),
                                   th: ({ children }) => (
-                                    <th className="px-2.5 py-1.5 text-left text-[10.5px] font-bold text-stone-700 uppercase tracking-tight bg-stone-100/90 break-words leading-tight">
+                                    <th className="px-2.5 py-1.5 text-left text-[10.5px] font-bold text-stone-700 uppercase tracking-tight bg-stone-100/90 break-words [overflow-wrap:anywhere] max-w-[150px] sm:max-w-[200px] leading-tight">
                                       {children}
                                     </th>
                                   ),
                                   td: ({ children }) => (
-                                    <td className="px-2.5 py-1.5 text-[11px] sm:text-xs text-stone-800 leading-snug align-top break-words">
+                                    <td className="px-2.5 py-1.5 text-[11px] sm:text-xs text-stone-800 leading-snug align-top break-words [overflow-wrap:anywhere] max-w-[150px] sm:max-w-[200px]">
                                       <FormattedTableCell>{children}</FormattedTableCell>
                                     </td>
                                   ),
                                   ul: ({ children }) => (
-                                    <ul className="list-disc pl-5 space-y-1.5 my-2 break-words text-stone-800">
+                                    <ul className="list-disc pl-5 space-y-1.5 my-2 break-words [overflow-wrap:anywhere] text-stone-800">
                                       {children}
                                     </ul>
                                   ),
                                   ol: ({ children }) => (
-                                    <ol className="list-decimal pl-5 space-y-1.5 my-2 break-words text-stone-800">
+                                    <ol className="list-decimal pl-5 space-y-1.5 my-2 break-words [overflow-wrap:anywhere] text-stone-800">
                                       {children}
                                     </ol>
                                   ),
                                   li: ({ children }) => (
-                                    <li className="leading-relaxed">
+                                    <li className="leading-relaxed break-words [overflow-wrap:anywhere]">
                                       {children}
                                     </li>
                                   ),
                                   blockquote: ({ children }) => (
-                                    <blockquote className="border-l-3 border-amber-600 bg-amber-50/60 pl-3 py-1.5 my-2 rounded-r-lg text-xs sm:text-sm text-stone-700 italic">
+                                    <blockquote className="border-l-3 border-amber-600 bg-amber-50/60 pl-3 py-1.5 my-2 rounded-r-lg text-xs sm:text-sm text-stone-700 italic break-words [overflow-wrap:anywhere]">
                                       {children}
                                     </blockquote>
                                   ),
                                   code: ({ children }) => (
-                                    <code className="bg-stone-100 text-stone-800 px-1.5 py-0.5 rounded text-xs font-mono font-medium border border-stone-200/60 break-all">
+                                    <code className="bg-stone-100 text-stone-800 px-1.5 py-0.5 rounded text-xs font-mono font-medium border border-stone-200/60 break-words [overflow-wrap:anywhere]">
                                       {children}
                                     </code>
                                   ),
@@ -2041,19 +2041,19 @@ export default function OperationsCopilot() {
                             </div>
                           </div>
                         ) : (
-                          <p className="whitespace-pre-wrap break-words [word-break:break-word] min-w-0 text-sm sm:text-[15px] leading-relaxed">{msg.content}</p>
+                          <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere] min-w-0 text-sm sm:text-[15px] leading-relaxed">{msg.content}</p>
                         )}
                       </div>
 
                       {/* RULE CONFIRMATION: nothing is remembered without the user's say-so */}
                       {msg.pendingRule && (
-                        <div className="mt-2 bg-stone-50 border-l-2 border-stone-300 px-3 py-2 text-sm text-stone-700">
+                        <div className="mt-2 bg-stone-50 border-l-2 border-stone-300 px-3 py-2 text-sm text-stone-700 min-w-0 max-w-full overflow-hidden">
                           {msg.ruleDecision ? (
                             <p className="text-stone-500">{msg.ruleDecision === 'saved' ? "Saved to Ulendo's memory." : 'Not saved.'}</p>
                           ) : (
                             <>
                               <p>Remember this for future replies?</p>
-                              <p className="mt-1 text-stone-900">"{msg.pendingRule.text}"</p>
+                              <p className="mt-1 text-stone-900 break-words [overflow-wrap:anywhere]">"{msg.pendingRule.text}"</p>
                               <div className="mt-2 flex gap-2">
                                 <button
                                   type="button"
@@ -2089,15 +2089,15 @@ export default function OperationsCopilot() {
                           Boolean(proposal.amenity);
 
                         return (
-                          <div className="w-full max-w-full mt-2 p-3 bg-stone-50 border border-stone-300/80 rounded-2xl space-y-2.5 animate-in fade-in shadow-2xs">
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="flex items-center gap-1.5 text-stone-900 font-bold text-xs uppercase tracking-wider">
+                          <div className="w-full min-w-0 max-w-full overflow-hidden mt-2 p-3 bg-stone-50 border border-stone-300/80 rounded-2xl space-y-2.5 animate-in fade-in shadow-2xs">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <div className="flex items-center gap-1.5 text-stone-900 font-bold text-xs uppercase tracking-wider min-w-0">
                                 {isAmenityProposal ? (
-                                  <Utensils className="w-3.5 h-3.5 text-amber-700" />
+                                  <Utensils className="w-3.5 h-3.5 text-amber-700 shrink-0" />
                                 ) : (
-                                  <CheckCircle2 className="w-3.5 h-3.5 text-stone-700" />
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-stone-700 shrink-0" />
                                 )}
-                                <span>
+                                <span className="truncate">
                                   {isAmenityProposal && (proposal.type === 'remove_amenity' ? 'Proposed Amenity Removal' : 'Proposed Amenity Addition')}
                                   {proposal.type === 'update_room_price' && 'Proposed Rate Change'}
                                   {proposal.type === 'update_property_online' && 'Proposed Status Change'}
@@ -2109,7 +2109,7 @@ export default function OperationsCopilot() {
                                   {proposal.type === 'toggle_featured' && 'Homepage Featured Listing'}
                                 </span>
                               </div>
-                              <div className="flex items-center gap-1.5">
+                              <div className="flex flex-wrap items-center gap-1.5">
                                 <span className="text-[10px] bg-amber-100/90 text-amber-900 border border-amber-300/80 px-2 py-0.5 rounded-md font-semibold">
                                   Confirmation Required
                                 </span>
@@ -2190,18 +2190,18 @@ export default function OperationsCopilot() {
                             )}
 
                             {/* DETAIL PREVIEW BOX */}
-                            <div className="p-2.5 bg-white rounded-xl border border-stone-200 text-xs space-y-1.5">
+                            <div className="p-2.5 bg-white rounded-xl border border-stone-200 text-xs space-y-1.5 min-w-0 max-w-full overflow-hidden">
                               {/* Amenity Details */}
                               {isAmenityProposal && (
                                 <div className="space-y-1">
-                                  <div className="flex items-center gap-2">
+                                  <div className="flex flex-wrap items-center gap-2">
                                     <span className="text-stone-500 font-medium">Amenity:</span>
                                     <span className="font-bold text-stone-900 text-xs bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md flex items-center gap-1">
-                                      <Coffee className="w-3 h-3 text-amber-700" />
-                                      {proposal.amenity || 'Breakfast Included'}
+                                      <Coffee className="w-3 h-3 text-amber-700 shrink-0" />
+                                      <span className="break-words [overflow-wrap:anywhere]">{proposal.amenity || 'Breakfast Included'}</span>
                                     </span>
                                   </div>
-                                  <div className="text-[11px] text-stone-500">
+                                  <div className="text-[11px] text-stone-500 break-words [overflow-wrap:anywhere]">
                                     Target lodges: <strong className="text-stone-800">{targetProps.map(p => p.name).join(', ') || 'Selected properties'}</strong>
                                   </div>
                                   <p className="text-[11px] text-emerald-700 font-medium pt-0.5 flex items-center gap-1">
@@ -2214,16 +2214,16 @@ export default function OperationsCopilot() {
                               {/* Price update details */}
                               {proposal.type === 'update_room_price' && (
                                 <div className="space-y-1">
-                                  <div className="font-semibold text-stone-900">
+                                  <div className="font-semibold text-stone-900 break-words [overflow-wrap:anywhere]">
                                     {proposal.hotelName} → {proposal.roomName || 'Room'}
                                   </div>
-                                  <div className="flex items-center gap-2 text-stone-600">
+                                  <div className="flex flex-wrap items-center gap-2 text-stone-600">
                                     {proposal.oldPrice !== undefined && (
                                       <span className="line-through text-stone-400">
                                         {proposal.currency || 'USD'} {proposal.oldPrice}
                                       </span>
                                     )}
-                                    <ArrowRight className="w-3 h-3 text-stone-400" />
+                                    <ArrowRight className="w-3 h-3 text-stone-400 shrink-0" />
                                     <span className="font-bold text-stone-900 text-sm">
                                       {proposal.currency || 'USD'} {proposal.newPrice?.toLocaleString()}
                                     </span>
@@ -2234,7 +2234,7 @@ export default function OperationsCopilot() {
 
                               {/* Online / Offline toggle details */}
                               {proposal.type === 'update_property_online' && (
-                                <div className="text-stone-700 text-xs space-y-0.5">
+                                <div className="text-stone-700 text-xs space-y-0.5 break-words [overflow-wrap:anywhere]">
                                   <p>Front Desk Status: <strong className={proposal.isOnline ? 'text-emerald-700' : 'text-amber-700'}>{proposal.isOnline ? '🟢 Online (Accepting Bookings)' : '🌙 Offline'}</strong></p>
                                   {proposal.outOfOfficeMessage && (
                                     <p className="text-[11px] text-stone-500 italic">"{proposal.outOfOfficeMessage}"</p>
@@ -2247,7 +2247,7 @@ export default function OperationsCopilot() {
 
                               {/* Policy update details */}
                               {proposal.type === 'update_property_policy' && (
-                                <div className="text-stone-700 text-xs space-y-0.5">
+                                <div className="text-stone-700 text-xs space-y-0.5 break-words [overflow-wrap:anywhere]">
                                   <p>Update <strong className="text-stone-900">{proposal.policyField}</strong> to: <strong className="text-stone-900 font-semibold">{String(proposal.policyValue)}</strong></p>
                                   <div className="text-[11px] text-stone-500">
                                     Properties: <strong className="text-stone-800">{targetProps.map(p => p.name).join(', ')}</strong>
@@ -2257,7 +2257,7 @@ export default function OperationsCopilot() {
 
                               {/* Daily board update */}
                               {proposal.type === 'update_daily_board' && (
-                                <div className="text-stone-700 text-xs space-y-0.5">
+                                <div className="text-stone-700 text-xs space-y-0.5 break-words [overflow-wrap:anywhere]">
                                   {proposal.dishOfTheDay && <p>Dish of the Day: <strong className="text-stone-900">{proposal.dishOfTheDay}</strong></p>}
                                   {proposal.activities && (
                                     <p>Activities: <strong className="text-stone-900">{Array.isArray(proposal.activities) ? proposal.activities.join(', ') : String(proposal.activities)}</strong></p>
@@ -2267,7 +2267,7 @@ export default function OperationsCopilot() {
 
                               {/* Restaurant dish */}
                               {proposal.type === 'add_restaurant_dish' && (
-                                <div className="text-stone-700 text-xs space-y-0.5">
+                                <div className="text-stone-700 text-xs space-y-0.5 break-words [overflow-wrap:anywhere]">
                                   <p>Menu Dish: <strong className="text-stone-900">{proposal.dishName}</strong> ({proposal.dishSection || 'Breakfast'})</p>
                                   {proposal.dishPriceUSD && <p className="text-[11px] text-stone-500">Price: USD ${proposal.dishPriceUSD}</p>}
                                 </div>
@@ -2275,7 +2275,7 @@ export default function OperationsCopilot() {
 
                               {/* Booking status details */}
                               {proposal.type === 'update_booking_status' && (
-                                <div className="text-stone-700 text-xs">
+                                <div className="text-stone-700 text-xs break-words [overflow-wrap:anywhere]">
                                   Set Booking <strong className="text-stone-900">{proposal.bookingRef || proposal.bookingId}</strong> status to:{' '}
                                   <strong className="capitalize text-stone-900">{proposal.newStatus}</strong>
                                 </div>
@@ -2283,14 +2283,14 @@ export default function OperationsCopilot() {
 
                               {/* Property status details */}
                               {proposal.type === 'update_property_status' && (
-                                <div className="text-stone-700 text-xs">
+                                <div className="text-stone-700 text-xs break-words [overflow-wrap:anywhere]">
                                   Set listing status to: <strong className="capitalize text-stone-900">{proposal.newStatus}</strong>
                                 </div>
                               )}
 
                               {/* Featured status details */}
                               {proposal.type === 'toggle_featured' && (
-                                <div className="text-stone-700 text-xs">
+                                <div className="text-stone-700 text-xs break-words [overflow-wrap:anywhere]">
                                   {proposal.featured ? 'Feature lodge on homepage' : 'Remove from featured row'}
                                 </div>
                               )}
@@ -2298,7 +2298,7 @@ export default function OperationsCopilot() {
 
                             {msg.actionApplied ? (
                               <div className="flex items-center gap-1.5 text-emerald-700 font-bold text-xs pt-1">
-                                <CheckCircle2 className="w-4 h-4" />
+                                <CheckCircle2 className="w-4 h-4 shrink-0" />
                                 <span>Action applied to live system</span>
                               </div>
                             ) : msg.actionRejected ? (
@@ -2306,22 +2306,22 @@ export default function OperationsCopilot() {
                                 Action dismissed
                               </div>
                             ) : (
-                              <div className="flex items-center gap-2 pt-1">
+                              <div className="flex items-center gap-2 pt-1 min-w-0">
                                 <button
                                   type="button"
                                   onClick={() => handleApplyAction(msg.id, proposal, effectiveTargetIds)}
                                   disabled={executingAction === msg.id}
-                                  className="flex-1 py-2 px-3 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition disabled:opacity-50 cursor-pointer shadow-xs"
+                                  className="flex-1 min-w-0 py-2 px-3 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition disabled:opacity-50 cursor-pointer shadow-xs text-center leading-tight whitespace-normal"
                                 >
                                   {executingAction === msg.id ? (
                                     <>
-                                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                      <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
                                       <span>Applying Changes...</span>
                                     </>
                                   ) : (
                                     <>
-                                      <Check className="w-3.5 h-3.5 text-emerald-400" />
-                                      <span>
+                                      <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                                      <span className="break-words [overflow-wrap:anywhere]">
                                         Confirm & Apply to {isAllSelected && properties.length > 1 ? `All ${properties.length} Properties` : effectiveTargetIds.length > 1 ? `${effectiveTargetIds.length} Selected Lodges` : (targetProps[0]?.name || 'Property')}
                                       </span>
                                     </>
@@ -2330,7 +2330,7 @@ export default function OperationsCopilot() {
                                 <button
                                   type="button"
                                   onClick={() => handleDismissAction(msg.id)}
-                                  className="py-2 px-3 bg-white hover:bg-stone-100 text-stone-600 border border-stone-200 rounded-xl text-xs font-medium transition cursor-pointer"
+                                  className="py-2 px-3 bg-white hover:bg-stone-100 text-stone-600 border border-stone-200 rounded-xl text-xs font-medium transition cursor-pointer shrink-0"
                                 >
                                   Cancel
                                 </button>

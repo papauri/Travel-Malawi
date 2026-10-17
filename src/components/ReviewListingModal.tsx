@@ -8,7 +8,7 @@ import { formatMoney } from '../lib/currency';
 import {
   CheckCircle2, XCircle, Clock, MapPin, MapPinOff, ExternalLink,
   Phone, Mail, MessageSquare, Calendar, Building, Camera, Check,
-  X, ShieldCheck, AlertTriangle, Eye, Edit3, Sparkles, User,
+  X, ShieldCheck, AlertTriangle, Eye, Edit3, User,
   DollarSign, Compass, Info, ChevronRight, Trash2
 } from 'lucide-react';
 import { Link } from 'react-router-dom';

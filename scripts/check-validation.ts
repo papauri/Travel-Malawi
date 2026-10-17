@@ -15,8 +15,9 @@ import { validateProperty, validateDraft } from '../src/lib/listing';
 import { emailProblem, phoneProblem, telLink, whatsappLink } from '../src/lib/contact';
 import { newChimeState, shouldChime } from '../src/lib/notificationSound';
 import {
-  distanceKm, isWithinMalawi, looksSwapped, mapEmbedUrl, parseCoordinates, pinProblem,
+  distanceKm, estimateTravelTime, isCrossingLakeMalawi, isWithinMalawi, looksSwapped, mapEmbedUrl, parseCoordinates, pinProblem,
 } from '../src/lib/geo';
+import { parsePropertyText } from '../src/lib/localPropertyParser';
 
 let failures = 0;
 
@@ -231,6 +232,51 @@ const validDraft: any = {
 const draftErrors = validateDraft(validDraft);
 check('draft with max occupancy 1 and stale baseGuests 2 has no room errors', draftErrors.rooms || null, null);
 check('draft room baseGuests was clamped to 1', validDraft.rooms[0].baseGuests, 1);
+
+/* -------------------------------------------- local property doc parser -- */
+
+console.log('\n— Local Property Document Importer & Route Geo Math —');
+
+const sampleBrochure = `
+Property Name: Nankoma Island Eco Lodge
+Location: Cape Maclear, Mangochi
+Owner: Chisomo Banda (+265 999 123 456, chisomo@nankoma.mw)
+General Manager: Tiwonge Phiri (+265 888 654 321)
+WhatsApp: +265 999 111 222
+Email: bookings@nankoma.mw
+Check-in: 2:00 PM
+Check-out: 10:30 AM
+Directions: Boat transfer from Cape Maclear beach jetty.
+Features: Solar inverter backup, Starlink Wi-Fi, Private beach, Swimming pool, Breakfast included.
+
+Rooms & 2026 Rates:
+Lakeview Deluxe Chalet - $120 / MK 210,000 per night (Sleeps 2, 4 units) - Private deck overlooking the water
+Family Beach Villa - $220 per night (Sleeps 5, 2 units) - Two bedrooms and lounge
+Garden Standard Room - MK 140,000 per night (2 guests, 3 rooms)
+Presidential Island Suite (Sleeps 2, 1 unit) - Rate on request
+`;
+
+const parsedDoc = parsePropertyText(sampleBrochure);
+check('deciphers property name', parsedDoc.name, 'Nankoma Island Eco Lodge');
+check('deciphers Cape Maclear location', parsedDoc.location, 'Cape Maclear, Mangochi');
+check('deciphers owner name', parsedDoc.ownerName, 'Chisomo Banda');
+check('deciphers manager name', parsedDoc.managerName, 'Tiwonge Phiri');
+check('deciphers booking email', parsedDoc.contactEmail, 'bookings@nankoma.mw');
+check('normalises 2:00 PM check-in to 14:00', parsedDoc.checkInTime, '14:00');
+check('normalises 10:30 AM check-out to 10:30', parsedDoc.checkOutTime, '10:30');
+check('detects backup power & wifi amenities', parsedDoc.amenities?.includes('Backup power') && parsedDoc.amenities?.includes('Free WiFi'), true);
+check('extracts all 4 room types', parsedDoc.rooms?.length, 4);
+check('extracts explicit dual-currency prices', parsedDoc.rooms?.[0]?.prices, { USD: 120, MWK: 210000 });
+check('extracts room quantity and maxGuests', { g: parsedDoc.rooms?.[0]?.maxGuests, q: parsedDoc.rooms?.[0]?.quantity }, { g: 2, q: 4 });
+check('converts USD-only room to dual currency', parsedDoc.rooms?.[1]?.prices?.USD, 220);
+check('converts MWK-only room to dual currency', parsedDoc.rooms?.[2]?.prices?.MWK, 140000);
+check('does not invent fake prices for unpriced room', parsedDoc.rooms?.[3]?.prices, { USD: 0, MWK: 0 });
+
+const sengaBay = { lat: -13.7333, lng: 34.6167 };
+check('detects Lake Malawi crossing to Likoma Island', isCrossingLakeMalawi(sengaBay, kayaMawa), true);
+check('road leg Lilongwe -> Blantyre does not cross lake', isCrossingLakeMalawi(lilongwe, blantyre), false);
+const legEstimate = estimateTravelTime(distanceKm(lilongwe, blantyre), lilongwe, blantyre);
+check('estimates realistic road drive minutes (> 180m)', legEstimate.drivingMinutes > 180 && legEstimate.travelMode === 'driving', true);
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILED`);
 process.exit(failures === 0 ? 0 : 1);

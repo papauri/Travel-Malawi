@@ -11,7 +11,7 @@ import { doc, getDoc, collection, query, where, getDocs, addDoc, updateDoc, dele
 import { db } from '../lib/firebase';
 import { Hotel, RoomType, Booking, CurrencyCode, PriceMap, Restaurant, WeeklyHours } from '../types';
 import { useAuth } from '../contexts/AuthContext';
-import { Plus, CheckCircle2, XCircle, Clock, Save, Edit2, Trash2, Users, Calendar, CalendarSync, Check, X, Building, BedDouble, Home, Loader2, Download, TrendingUp, Percent, Wallet, UtensilsCrossed, Eye, ChevronLeft, ExternalLink, AlertTriangle, ShieldCheck, UserCheck, User, Mail, Phone, Lock, UserCog, EyeOff, MapPin } from 'lucide-react';
+import { Plus, CheckCircle2, XCircle, Clock, Save, Edit2, Trash2, Users, Calendar, CalendarSync, Check, X, Building, BedDouble, Home, Loader2, Download, TrendingUp, Percent, Wallet, UtensilsCrossed, Eye, ChevronLeft, ExternalLink, AlertTriangle, ShieldCheck, UserCheck, User, Mail, Phone, Lock, UserCog, EyeOff, MapPin, FileText } from 'lucide-react';
 import ImageUpload from '../components/ImageUpload';
 import GalleryUpload from '../components/GalleryUpload';
 import Lightbox from '../components/Lightbox';
@@ -49,7 +49,7 @@ import { CURRENCIES, CURRENCY_CODES, currenciesForRooms, roomCurrencies, roomPri
 import { defaultWeek, allDayWeek, isWeekAllDay } from '../lib/hours';
 import { SPAM_REASON_LABELS } from '../lib/spam';
 import { isHotelManager, isAdmin, isMarketing } from '../lib/roles';
-import { PROPERTY_CATEGORIES, COMMON_AMENITIES, PropertyCategory } from '../lib/listing';
+import { PROPERTY_CATEGORIES, COMMON_AMENITIES, PropertyCategory, ListingDraft } from '../lib/listing';
 import { emailProblem, phoneProblem } from '../lib/contact';
 import { validateProperty } from '../lib/listing';
 import { RoomErrors, firstError, hasErrors, validateRoom } from '../lib/validateRoom';
@@ -61,6 +61,7 @@ import { useAIAssistant } from '../hooks/useAIAssistant';
 import { analyzeDescriptionLocal, DescriptionAnalysisResult } from '../lib/descriptionAnalyzer';
 import LinkDescriptionModal from '../components/LinkDescriptionModal';
 import IcalSyncManager from '../components/IcalSyncManager';
+import PropertyDocumentImporter from '../components/PropertyDocumentImporter';
 
 
 
@@ -421,6 +422,7 @@ export default function ManageHotel() {
   const [linkModalOpen, setLinkModalOpen] = useState(false);
   const [linkModalLoading, setLinkModalLoading] = useState(false);
   const [linkAnalysisResult, setLinkAnalysisResult] = useState<DescriptionAnalysisResult | null>(null);
+  const [docImporterOpen, setDocImporterOpen] = useState(false);
 
   const handleTriggerLinkAnalysis = async () => {
     const desc = editHotelData.description?.trim();
@@ -482,6 +484,97 @@ export default function ManageHotel() {
     }));
 
     toast.success(`Linked ${selectedAmens.length + customAmens.length} amenities and ${selectedCats.length} category tags to your property!`);
+  };
+
+  const handleDocumentImport = async (extracted: Partial<ListingDraft>) => {
+    setEditHotelData(prev => {
+      const currentAmens = Array.isArray(prev.amenities)
+        ? prev.amenities
+        : String(prev.amenities ?? '').split(',').map(s => s.trim()).filter(Boolean);
+      const importedAmens = Array.isArray(extracted.amenities) ? extracted.amenities : [];
+      const mergedAmenities = Array.from(new Set([...currentAmens, ...importedAmens]));
+
+      return {
+        ...prev,
+        description: extracted.description || prev.description,
+        locationNotes: extracted.locationNotes || prev.locationNotes,
+        checkInTime: extracted.checkInTime || prev.checkInTime,
+        checkOutTime: extracted.checkOutTime || prev.checkOutTime,
+        contactPhone: extracted.contactPhone || prev.contactPhone,
+        contactWhatsapp: extracted.contactWhatsapp || prev.contactWhatsapp,
+        contactEmail: extracted.contactEmail || prev.contactEmail,
+        ownerName: extracted.ownerName || prev.ownerName,
+        ownerPhone: extracted.ownerPhone || prev.ownerPhone,
+        ownerEmail: extracted.ownerEmail || prev.ownerEmail,
+        managerName: extracted.managerName || prev.managerName,
+        managerPhone: extracted.managerPhone || prev.managerPhone,
+        managerEmail: extracted.managerEmail || prev.managerEmail,
+        amenities: mergedAmenities,
+      };
+    });
+
+    const importedRooms = Array.isArray(extracted.rooms) ? extracted.rooms : [];
+    if (importedRooms.length > 0 && id) {
+      if (importedRooms.length === 1 && editingRoomId !== null) {
+        const r = importedRooms[0] as any;
+        const usd = Number(r.prices?.USD ?? r.priceUSD) || 50;
+        const mwk = Number(r.prices?.MWK ?? r.priceMWK) || 85000;
+        setEditRoomData(prev => ({
+          ...prev,
+          name: r.name || prev.name || 'Standard Room',
+          description: r.description || prev.description || '',
+          maxGuests: Number(r.maxGuests) || prev.maxGuests || 2,
+          baseGuests: Number(r.maxGuests) || prev.baseGuests || 2,
+          quantity: Number(r.quantity) || prev.quantity || 1,
+          currencies: ['USD', 'MWK'],
+          prices: { USD: usd, MWK: mwk },
+          price: usd,
+          priceMWK: mwk,
+        }));
+        toast.success('Imported property details and 1 room type!');
+        return;
+      }
+
+      try {
+        const createdRooms: RoomType[] = [];
+        for (const rawRoom of importedRooms) {
+          const r = rawRoom as any;
+          const usd = Number(r.prices?.USD ?? r.priceUSD) || 50;
+          const mwk = Number(r.prices?.MWK ?? r.priceMWK) || 85000;
+          const maxGuests = Number(r.maxGuests) || 2;
+          const roomPayload = {
+            hotelId: id,
+            name: r.name || 'Standard Room',
+            description: r.description || `${r.name || 'Standard Room'} at ${editHotelData.name || hotel?.name || 'our property'}.`,
+            maxGuests,
+            baseGuests: maxGuests,
+            quantity: Number(r.quantity) || 1,
+            currencies: ['USD', 'MWK'] as CurrencyCode[],
+            prices: { USD: usd, MWK: mwk } as PriceMap,
+            currency: 'USD' as CurrencyCode,
+            price: usd,
+            priceMWK: mwk,
+            showDualCurrency: true,
+            extraGuestFees: {},
+            extraGuestFee: 0,
+            amenities: Array.isArray(r.amenities) ? r.amenities : [],
+            imageUrl: r.imageUrl || editHotelData.imageUrl || hotel?.imageUrl || '',
+            galleryUrls: [],
+            blockedDates: [],
+            packages: [],
+          };
+          const docRef = await addDoc(collection(db, 'room_types'), roomPayload);
+          createdRooms.push({ id: docRef.id, ...roomPayload } as RoomType);
+        }
+        setRooms(prev => [...prev, ...createdRooms]);
+        toast.success(`Imported property details and ${createdRooms.length} room type(s)!`);
+      } catch (err) {
+        console.error('Failed to save imported rooms:', err);
+        toast.error('Imported property details, but failed to save rooms.');
+      }
+    } else {
+      toast.success('Imported property details and 0 room type(s)!');
+    }
   };
 
   const handleSaveBookingWhatsapp = async (bookingId: string) => {
@@ -1894,30 +1987,66 @@ export default function ManageHotel() {
         {(() => {
           const tabsList = [
             { id: 'details' as Tab, label: 'Details', icon: Building },
+            { id: 'rooms' as Tab, label: editHotelData.stayType === 'entire_place' ? 'Whole space' : 'Rooms & pricing', icon: editHotelData.stayType === 'entire_place' ? Home : BedDouble },
+            { id: 'bookings' as Tab, label: 'Bookings', icon: Calendar },
+            { id: 'inquiries' as Tab, label: 'Inquiries', icon: MessageSquare },
             { id: 'media' as Tab, label: 'Media', icon: Eye },
+            { id: 'restaurant' as Tab, label: 'Restaurant', icon: UtensilsCrossed },
+            { id: 'conferences' as Tab, label: 'Conferences', icon: Presentation },
             { id: 'promotions' as Tab, label: 'Promotions', icon: Percent },
             { id: 'stayos' as Tab, label: 'Stay OS', icon: ShieldCheck },
             { id: 'broadcasts' as Tab, label: 'Broadcasts', icon: Megaphone },
-            { id: 'rooms' as Tab, label: editHotelData.stayType === 'entire_place' ? 'Whole space' : 'Rooms & pricing', icon: editHotelData.stayType === 'entire_place' ? Home : BedDouble },
-            { id: 'conferences' as Tab, label: 'Conferences', icon: Presentation },
-            { id: 'restaurant' as Tab, label: 'Restaurant', icon: UtensilsCrossed },
-            { id: 'bookings' as Tab, label: 'Bookings', icon: Calendar },
-            { id: 'inquiries' as Tab, label: 'Inquiries', icon: MessageSquare },
             { id: 'templates' as Tab, label: 'Automation', icon: Mail },
           ];
           const currentTabObj = tabsList.find(t => t.id === activeTab) || tabsList[0];
           const CurrentIcon = currentTabObj.icon;
-          const currentPendingCount = activeTab === 'bookings' ? bookings.filter(b => b.status === 'pending').length : 0;
-          const currentUnreadCount = activeTab === 'inquiries' ? inquiries.filter(i => 
+          const totalPendingBookings = bookings.filter(b => b.status === 'pending').length;
+          const totalUnreadInquiries = inquiries.filter(i => 
             i.lastSenderId !== user?.uid && 
             i.updatedAt && 
             (!i.managerLastOpenedAt || i.updatedAt > i.managerLastOpenedAt)
-          ).length : 0;
+          ).length;
 
           return (
             <>
-              {/* Mobile Section Navigation (< md): Foldable accordion allowing full-page scrolling without obstruction */}
+              {/* Mobile Section Navigation (< md): Quick-switch row + foldable accordion */}
               <div className="md:hidden space-y-2">
+                {/* 1-Tap Quick Switch Row for Top 4 Daily Operational Tabs */}
+                <div className="grid grid-cols-4 gap-1 p-1 bg-white border border-stone-200/90 rounded-xl shadow-2xs">
+                  {tabsList.slice(0, 4).map(tab => {
+                    const Icon = tab.icon;
+                    const isActive = activeTab === tab.id;
+                    const badge = tab.id === 'bookings' ? totalPendingBookings : tab.id === 'inquiries' ? totalUnreadInquiries : 0;
+                    const shortLabel = tab.id === 'rooms' ? (editHotelData.stayType === 'entire_place' ? 'Space' : 'Rooms') : tab.label;
+
+                    return (
+                      <button
+                        key={`mobile-quick-${tab.id}`}
+                        type="button"
+                        onClick={() => {
+                          requestTab(tab.id);
+                          setIsMobileNavOpen(false);
+                        }}
+                        className={`flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-semibold transition cursor-pointer select-none ${
+                          isActive
+                            ? 'bg-stone-900 text-white shadow-2xs'
+                            : 'text-stone-600 hover:bg-stone-100'
+                        }`}
+                      >
+                        <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-white' : 'text-stone-500'}`} />
+                        <span className="truncate">{shortLabel}</span>
+                        {badge > 0 && (
+                          <span className={`text-[9px] px-1 py-0.2 rounded-full font-bold shrink-0 ${
+                            isActive ? 'bg-amber-400 text-stone-950' : 'bg-amber-100 text-amber-900'
+                          }`}>
+                            {badge}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
                 {/* Active Section Header Indicator — Tapping toggles open/closed state */}
                 <button
                   type="button"
@@ -1930,26 +2059,26 @@ export default function ManageHotel() {
                     <div className="w-6 h-6 rounded-lg bg-stone-100 flex items-center justify-center shrink-0 text-stone-800">
                       <CurrentIcon className="w-3.5 h-3.5" />
                     </div>
-                    <div className="flex items-center gap-1.5 min-w-0">
+                    <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
                       <span className="font-bold text-stone-900 truncate">{currentTabObj.label}</span>
                       {dirtyOn(activeTab) && (
                         <span title="Unsaved changes" className="h-2 w-2 rounded-full bg-amber-500 shrink-0" />
                       )}
-                      {currentPendingCount > 0 && (
-                        <span className="bg-amber-100 text-amber-900 text-[10px] px-1.5 py-0.2 rounded-md font-bold">
-                          {currentPendingCount} pending
+                      {totalPendingBookings > 0 && (
+                        <span className="bg-amber-100 text-amber-900 text-[10px] px-1.5 py-0.2 rounded-md font-bold shrink-0">
+                          {totalPendingBookings} pending
                         </span>
                       )}
-                      {currentUnreadCount > 0 && (
-                        <span className="bg-stone-900 text-white text-[10px] px-1.5 py-0.2 rounded-md font-bold">
-                          {currentUnreadCount} new
+                      {totalUnreadInquiries > 0 && (
+                        <span className="bg-stone-900 text-white text-[10px] px-1.5 py-0.2 rounded-md font-bold shrink-0">
+                          {totalUnreadInquiries} new
                         </span>
                       )}
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5 text-stone-500 shrink-0">
                     <span className="text-[11px] font-semibold text-stone-600">
-                      {isMobileNavOpen ? 'Close Menu' : 'Switch Section'}
+                      {isMobileNavOpen ? 'Close Menu' : 'All 11 Sections'}
                     </span>
                     <ChevronDown className={`w-4 h-4 text-stone-400 transition-transform duration-200 ${isMobileNavOpen ? 'rotate-180' : ''}`} />
                   </div>
@@ -1964,12 +2093,8 @@ export default function ManageHotel() {
                   >
                     {tabsList.map(tab => {
                       const Icon = tab.icon;
-                      const pendingCount = tab.id === 'bookings' ? bookings.filter(b => b.status === 'pending').length : 0;
-                      const unreadInquiryCount = tab.id === 'inquiries' ? inquiries.filter(i => 
-                        i.lastSenderId !== user?.uid && 
-                        i.updatedAt && 
-                        (!i.managerLastOpenedAt || i.updatedAt > i.managerLastOpenedAt)
-                      ).length : 0;
+                      const pendingCount = tab.id === 'bookings' ? totalPendingBookings : 0;
+                      const unreadInquiryCount = tab.id === 'inquiries' ? totalUnreadInquiries : 0;
                       const isActive = activeTab === tab.id;
 
                       return (
@@ -2018,22 +2143,18 @@ export default function ManageHotel() {
                 )}
               </div>
 
-              {/* Tablet & Desktop Navigation Bar (>= md): Wrapped & fully visible within container */}
+              {/* Tablet & Desktop Navigation Bar (>= md): Uniform responsive grid so all 11 tabs are 100% visible */}
               <div className="hidden md:block">
                 <div
                   ref={desktopNavRef}
-                  className="w-full flex flex-wrap items-center gap-1.5 lg:gap-2 p-1.5 bg-white border border-stone-200/90 rounded-2xl shadow-2xs"
+                  className="grid grid-cols-4 lg:grid-cols-6 xl:grid-cols-11 gap-1.5 p-1.5 bg-white border border-stone-200/90 rounded-2xl shadow-2xs"
                   role="tablist"
                   aria-label="Property management sections"
                 >
                   {tabsList.map(tab => {
                     const Icon = tab.icon;
-                    const pendingCount = tab.id === 'bookings' ? bookings.filter(b => b.status === 'pending').length : 0;
-                    const unreadInquiryCount = tab.id === 'inquiries' ? inquiries.filter(i => 
-                      i.lastSenderId !== user?.uid && 
-                      i.updatedAt && 
-                      (!i.managerLastOpenedAt || i.updatedAt > i.managerLastOpenedAt)
-                    ).length : 0;
+                    const pendingCount = tab.id === 'bookings' ? totalPendingBookings : 0;
+                    const unreadInquiryCount = tab.id === 'inquiries' ? totalUnreadInquiries : 0;
                     const isActive = activeTab === tab.id;
                     
                     return (
@@ -2044,39 +2165,43 @@ export default function ManageHotel() {
                         role="tab"
                         aria-selected={isActive}
                         onClick={() => requestTab(tab.id)}
-                        className={`flex items-center shrink-0 whitespace-nowrap gap-1.5 lg:gap-2 px-2.5 py-1.5 lg:px-3 lg:py-2 rounded-xl text-xs sm:text-sm font-medium transition cursor-pointer select-none ${
+                        className={`flex items-center justify-between gap-1.5 px-2.5 py-2 rounded-xl text-xs font-semibold transition cursor-pointer select-none min-w-0 ${
                           isActive
-                            ? 'bg-stone-900 text-white font-semibold shadow-xs ring-1 ring-stone-900'
-                            : 'bg-stone-50/90 text-stone-600 hover:text-stone-950 hover:bg-stone-100 border border-transparent hover:border-stone-200/80'
+                            ? 'bg-stone-900 text-white shadow-xs ring-1 ring-stone-900'
+                            : 'bg-stone-50/90 text-stone-600 hover:text-stone-950 hover:bg-stone-100 border border-stone-200/50 hover:border-stone-200'
                         }`}
                       >
-                        <Icon className={`h-3.5 w-3.5 lg:h-4 lg:w-4 shrink-0 ${isActive ? 'text-white' : 'text-stone-500'}`} />
-                        <span>{tab.label}</span>
-                        {dirtyOn(tab.id) && (
-                          <span title="Unsaved changes" className={`h-2 w-2 rounded-full shrink-0 ${isActive ? 'bg-amber-400' : 'bg-amber-500'}`} />
-                        )}
-                        {tab.id === 'restaurant' && hotel.restaurant?.enabled && (
-                          <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded-md shrink-0 font-medium ${
-                            isActive ? 'bg-white/20 text-emerald-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200/80'
-                          }`}>
-                            Live
-                          </span>
-                        )}
-                        {pendingCount > 0 && (
-                          <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded-md shrink-0 font-bold ${
-                            isActive ? 'bg-amber-400 text-stone-950' : 'bg-amber-100 text-amber-900 border border-amber-200'
-                          }`}>
-                            {pendingCount}
-                          </span>
-                        )}
-                        {unreadInquiryCount > 0 && (
-                          <span className={`inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded-md shrink-0 font-bold ${
-                            isActive ? 'bg-white/20 text-white' : 'bg-stone-900 text-white'
-                          }`}>
-                            <Bell className="w-3 h-3 text-current animate-bell-ring" />
-                            {unreadInquiryCount} new
-                          </span>
-                        )}
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <Icon className={`h-3.5 w-3.5 shrink-0 ${isActive ? 'text-white' : 'text-stone-500'}`} />
+                          <span className="truncate">{tab.label}</span>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          {dirtyOn(tab.id) && (
+                            <span title="Unsaved changes" className={`h-2 w-2 rounded-full shrink-0 ${isActive ? 'bg-amber-400' : 'bg-amber-500'}`} />
+                          )}
+                          {tab.id === 'restaurant' && hotel.restaurant?.enabled && (
+                            <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-md shrink-0 font-medium ${
+                              isActive ? 'bg-white/20 text-emerald-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200/80'
+                            }`}>
+                              Live
+                            </span>
+                          )}
+                          {pendingCount > 0 && (
+                            <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-md shrink-0 font-bold ${
+                              isActive ? 'bg-amber-400 text-stone-950' : 'bg-amber-100 text-amber-900 border border-amber-200'
+                            }`}>
+                              {pendingCount}
+                            </span>
+                          )}
+                          {unreadInquiryCount > 0 && (
+                            <span className={`inline-flex items-center gap-0.5 text-[10px] font-mono px-1.5 py-0.2 rounded-md shrink-0 font-bold ${
+                              isActive ? 'bg-white/20 text-white' : 'bg-stone-900 text-white'
+                            }`}>
+                              <Bell className="w-2.5 h-2.5 text-current animate-bell-ring" />
+                              {unreadInquiryCount}
+                            </span>
+                          )}
+                        </div>
                       </button>
                     );
                   })}
@@ -2090,7 +2215,22 @@ export default function ManageHotel() {
       {/* TAB CONTENT: DETAILS */}
       {activeTab === 'details' && (
         <div className="space-y-6">
-          
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border border-stone-200/90 rounded-2xl p-4 shadow-2xs">
+            <div>
+              <h2 className="text-sm sm:text-base font-bold text-stone-900">Property Profile &amp; Contact Information</h2>
+              <p className="text-xs text-stone-500 mt-0.5">
+                Auto-fill descriptions, policies, contacts, and rooms from a PDF, rate sheet photo, or pasted text.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setDocImporterOpen(true)}
+              className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 border border-stone-200/90 text-xs font-semibold transition cursor-pointer shrink-0 self-start sm:self-auto shadow-2xs"
+            >
+              <FileText className="w-3.5 h-3.5 text-stone-600" />
+              <span>Import from Document / Rate Sheet</span>
+            </button>
+          </div>
 
           <form onSubmit={handleSaveHotel} className="space-y-4 sm:space-y-6">
   <SectionCard title="Basic Information" description="The core details about your property shown to guests." collapsible>
@@ -4279,6 +4419,14 @@ export default function ManageHotel() {
             </div>
             {!editingRoomId && (
               <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDocImporterOpen(true)}
+                  className="flex items-center justify-center gap-1.5 px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-full text-xs sm:text-sm font-semibold bg-white hover:bg-stone-100 text-stone-800 border border-stone-200 transition shadow-2xs cursor-pointer"
+                >
+                  <FileText className="h-4 w-4 text-stone-600" />
+                  <span>Import from Document / Rate Sheet</span>
+                </button>
                 {rooms.length > 0 && (
                   <button
                     type="button"
@@ -5951,6 +6099,12 @@ export default function ManageHotel() {
         loading={linkModalLoading}
         aiPowered={Boolean(aiStatus.enabled && aiStatus.available)}
         onApply={handleApplyLinkedData}
+      />
+
+      <PropertyDocumentImporter
+        open={docImporterOpen}
+        onClose={() => setDocImporterOpen(false)}
+        onImport={handleDocumentImport}
       />
 
       {mediaLightboxImages && (
