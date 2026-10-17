@@ -885,19 +885,18 @@ export default function AdminDashboard() {
   const adminTabs = useMemo(() => {
     return [
       { id: 'overview' as Tab, label: 'Overview', icon: LayoutDashboard },
-      { id: 'traffic' as Tab, label: 'Live Traffic & Waiting', icon: Radio, visible: isGlobalAdmin(user) || isMarketing(user) },
-      { id: 'analytics' as Tab, label: 'Analytics', icon: TrendingUp },
       { id: 'properties' as Tab, label: 'Properties', icon: Building2 },
-      { id: 'reviews' as Tab, label: 'Reviews & Scraper', icon: Star },
+      { id: 'bookings' as Tab, label: 'Bookings', icon: CalendarRange },
       { id: 'users' as Tab, label: 'Users', icon: Users, visible: isAdmin(user) || isMarketing(user) },
-      { id: 'bookings' as Tab, label: 'All Bookings', icon: CalendarRange },
+      { id: 'analytics' as Tab, label: 'Analytics', icon: TrendingUp },
+      { id: 'traffic' as Tab, label: 'Live Visitors', icon: Radio, visible: isGlobalAdmin(user) || isMarketing(user) },
+      { id: 'reviews' as Tab, label: 'Reviews', icon: Star },
       { id: 'destinations' as Tab, label: 'Destinations', icon: Navigation },
-      { id: 'content' as Tab, label: 'Content & Legal', icon: FileText },
-      { id: 'logs' as Tab, label: 'Audit & Telemetry Logs', icon: ShieldCheck, visible: isGlobalAdmin(user) },
-      { id: 'ai' as Tab, label: 'Assistant & Provider Keys', icon: Cpu, visible: isGlobalAdmin(user) },
       { id: 'settings' as Tab, label: 'Channels & Settings', icon: Settings, visible: isGlobalAdmin(user) },
-      { id: 'channels' as Tab, label: 'iCal & Channel Sync', icon: CalendarSync },
-      { id: 'docs' as Tab, label: 'Executive Docs & Leaflets', icon: BookOpen },
+      { id: 'ai' as Tab, label: 'AI Providers', icon: Cpu, visible: isGlobalAdmin(user) },
+      { id: 'content' as Tab, label: 'Content & Legal', icon: FileText },
+      { id: 'logs' as Tab, label: 'Audit Logs', icon: ShieldCheck, visible: isGlobalAdmin(user) },
+      { id: 'docs' as Tab, label: 'Partner Docs', icon: BookOpen },
     ].filter(t => t.visible !== false);
   }, [user]);
 
@@ -990,7 +989,7 @@ export default function AdminDashboard() {
 
               {/* Team Resources inside mobile drawer */}
               <div className="pt-2 border-t border-stone-100 space-y-1.5">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 px-2 block">Pre-Launch &amp; Team Resources</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 px-2 block">Partner Resources</span>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                   <Link
                     to="/concept-validation"
@@ -1042,14 +1041,14 @@ export default function AdminDashboard() {
           )}
         </div>
 
-        {/* Desktop Vertical Navigation with ONE single scrollbar */}
+        {/* Desktop Vertical Navigation */}
         <nav 
           className="hidden lg:flex lg:flex-col flex-1 min-h-0 overflow-y-auto overflow-x-hidden scrollbar-slim pr-1.5 space-y-4 pt-1 w-full min-w-0 overscroll-contain"
           role="tablist"
           aria-label="Admin Sections"
         >
           {/* Navigation Tabs */}
-          <div className="flex flex-col gap-1 w-full min-w-0">
+          <div className="flex flex-col gap-0.5 w-full min-w-0">
             {adminTabs.map(tab => {
               const TabIcon = tab.icon;
               const isSelected = activeTab === tab.id;
@@ -1058,79 +1057,65 @@ export default function AdminDashboard() {
                   key={`desk-tab-${tab.id}`}
                   ref={isSelected ? activeTabRef : undefined}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs sm:text-[13px] font-medium transition cursor-pointer min-h-[38px] text-left min-w-0 ${
+                  className={`w-full flex items-center justify-between gap-2.5 px-3 py-2 rounded-xl text-xs sm:text-[13px] font-medium transition cursor-pointer min-h-[36px] text-left min-w-0 ${
                     isSelected
                       ? 'bg-stone-900 text-white font-semibold shadow-xs'
                       : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100/80'
                   }`}
                 >
-                  <TabIcon className="w-4 h-4 shrink-0" />
-                  <span className="truncate">{tab.label}</span>
+                  <span className="flex items-center gap-2.5 truncate">
+                    <TabIcon className="w-4 h-4 shrink-0" />
+                    <span className="truncate">{tab.label}</span>
+                  </span>
+                  {tab.id === 'properties' && stats.pendingProperties > 0 && (
+                    <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-semibold ${
+                      isSelected ? 'bg-amber-400 text-stone-950' : 'bg-amber-100 text-amber-900'
+                    }`}>
+                      {stats.pendingProperties}
+                    </span>
+                  )}
                 </button>
               );
             })}
           </div>
 
-          {/* Pre-Launch & Team Resources integrated into SAME navbar */}
+          {/* Partner Resources */}
           <div className="pt-3 border-t border-stone-200/70 space-y-1 w-full min-w-0 pb-4">
             <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 px-3 block">
-              Pre-Launch &amp; Team Resources
+              Partner Resources
             </span>
             <Link
               to="/concept-validation"
               target="_blank"
-              className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-xs text-stone-600 hover:text-stone-900 hover:bg-stone-100/80 transition min-w-0"
+              className="w-full flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl text-xs text-stone-600 hover:text-stone-900 hover:bg-stone-100/80 transition min-w-0"
             >
-              <div className="flex items-center gap-2 truncate">
-                <FileText className="w-3.5 h-3.5 text-stone-500 shrink-0" />
-                <span className="truncate">Concept Survey (PDF)</span>
-              </div>
+              <span className="truncate">Concept Survey (PDF)</span>
               <ExternalLink className="w-3 h-3 text-stone-400 shrink-0" />
             </Link>
             <Link
               to="/stay-owner-leaflet"
               target="_blank"
-              className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-xs text-stone-600 hover:text-stone-900 hover:bg-stone-100/80 transition min-w-0"
+              className="w-full flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl text-xs text-stone-600 hover:text-stone-900 hover:bg-stone-100/80 transition min-w-0"
             >
-              <div className="flex items-center gap-2 truncate">
-                <Building2 className="w-3.5 h-3.5 text-stone-500 shrink-0" />
-                <span className="truncate">Stay Owner Leaflet</span>
-              </div>
+              <span className="truncate">Stay Owner Leaflet</span>
               <ExternalLink className="w-3 h-3 text-stone-400 shrink-0" />
             </Link>
             <Link
               to="/marketing"
               target="_blank"
-              className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-xs text-stone-600 hover:text-stone-900 hover:bg-stone-100/80 transition min-w-0"
+              className="w-full flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl text-xs text-stone-600 hover:text-stone-900 hover:bg-stone-100/80 transition min-w-0"
             >
-              <div className="flex items-center gap-2 truncate">
-                <Target className="w-3.5 h-3.5 text-stone-500 shrink-0" />
-                <span className="truncate">Marketing Playbook</span>
-              </div>
+              <span className="truncate">Marketing Playbook</span>
               <ExternalLink className="w-3 h-3 text-stone-400 shrink-0" />
             </Link>
             <Link
               to="/host-guide"
               target="_blank"
-              className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-xs text-stone-600 hover:text-stone-900 hover:bg-stone-100/80 transition min-w-0"
+              className="w-full flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl text-xs text-stone-600 hover:text-stone-900 hover:bg-stone-100/80 transition min-w-0"
             >
-              <div className="flex items-center gap-2 truncate">
-                <Building2 className="w-3.5 h-3.5 text-stone-500 shrink-0" />
-                <span className="truncate">Host Starter Pack</span>
-              </div>
+              <span className="truncate">Host Starter Pack</span>
               <ExternalLink className="w-3 h-3 text-stone-400 shrink-0" />
             </Link>
-            <button
-              type="button"
-              onClick={() => setActiveTab('docs')}
-              className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-xs text-stone-600 hover:text-stone-900 hover:bg-stone-100/80 transition cursor-pointer text-left min-w-0"
-              title="Read or download executive docs in HTML, plain text, or markdown"
-            >
-              <div className="flex items-center gap-2 truncate">
-                <BookOpen className="w-3.5 h-3.5 text-stone-500 shrink-0" />
-                <span className="truncate">Executive Docs &amp; Leaflets</span>
-              </div>
-            </button>
           </div>
         </nav>
       </div>
@@ -1156,7 +1141,7 @@ export default function AdminDashboard() {
                   <Building2 className="w-4 h-4 text-stone-400" />
                 </div>
                 <p className="text-2xl font-serif font-bold text-stone-900 tabular-nums">{stats.totalProperties}</p>
-                <p className="text-[11px] text-stone-400 mt-0.5">Across Malawi</p>
+                <p className="text-[11px] text-stone-400 mt-0.5">{stats.approvedProperties} live · {stats.pendingProperties} pending</p>
               </button>
               
               <button
@@ -1169,9 +1154,9 @@ export default function AdminDashboard() {
                 </div>
                 <div className="flex items-baseline gap-1.5">
                   <p className="text-2xl font-serif font-bold text-stone-900 tabular-nums">{stats.totalUsers}</p>
-                  <span className="text-xs text-stone-400 font-normal">· {stats.managersCount} mgrs</span>
+                  <span className="text-xs text-stone-400 font-normal">· {stats.managersCount} hosts</span>
                 </div>
-                <p className="text-[11px] text-stone-400 mt-0.5">Guests &amp; managers</p>
+                <p className="text-[11px] text-stone-400 mt-0.5">Guests &amp; property managers</p>
               </button>
               
               <button
@@ -1183,7 +1168,7 @@ export default function AdminDashboard() {
                   <CalendarRange className="w-4 h-4 text-stone-400" />
                 </div>
                 <p className="text-2xl font-serif font-bold text-stone-900 tabular-nums">{stats.totalBookings}</p>
-                <p className="text-[11px] text-stone-400 mt-0.5">Itineraries recorded</p>
+                <p className="text-[11px] text-stone-400 mt-0.5">Recorded reservations</p>
               </button>
               
               <button
@@ -1194,60 +1179,54 @@ export default function AdminDashboard() {
                 }}
                 className={`p-4 rounded-xl border shadow-2xs text-left transition cursor-pointer ${
                   stats.pendingProperties > 0 
-                    ? 'bg-amber-50/60 border-amber-300 hover:border-amber-400 ring-1 ring-amber-300/50' 
+                    ? 'bg-amber-50/50 border-amber-200 hover:border-amber-300' 
                     : 'bg-white border-stone-200 hover:border-stone-300'
                 }`}
               >
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-stone-500 text-xs font-medium">Pending Review</span>
-                  <Activity className={`w-4 h-4 ${stats.pendingProperties > 0 ? 'text-amber-600 animate-pulse' : 'text-stone-400'}`} />
+                  <Clock className={`w-4 h-4 ${stats.pendingProperties > 0 ? 'text-amber-600' : 'text-stone-400'}`} />
                 </div>
                 <div className="flex items-baseline gap-1.5">
-                  <p className={`text-2xl font-serif font-bold tabular-nums ${stats.pendingProperties > 0 ? 'text-amber-800' : 'text-stone-900'}`}>
+                  <p className={`text-2xl font-serif font-bold tabular-nums ${stats.pendingProperties > 0 ? 'text-amber-900' : 'text-stone-900'}`}>
                     {stats.pendingProperties}
                   </p>
                   {stats.pendingProperties > 0 && (
-                    <span className="text-xs text-amber-700 font-semibold">awaiting review</span>
+                    <span className="text-xs text-amber-700 font-medium">awaiting approval</span>
                   )}
                 </div>
-                <p className="text-[11px] text-stone-400 mt-0.5">Click to inspect review queue</p>
+                <p className="text-[11px] text-stone-400 mt-0.5">Click to open review queue</p>
               </button>
             </div>
 
-            {/* Compact Live Traffic & Waiting Intelligence Widget */}
-            <div className="bg-white rounded-xl p-4 sm:p-5 border border-stone-200 shadow-2xs space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-stone-100">
-                <div className="flex items-center gap-2.5">
-                  <div className="h-8 w-8 rounded-lg bg-stone-900 text-emerald-400 flex items-center justify-center shrink-0">
-                    <Radio className="w-4 h-4 animate-pulse" />
+            {/* Active Visitors Summary */}
+            <div className="bg-white rounded-xl p-5 border border-stone-200 shadow-2xs space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-stone-100">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-serif font-bold text-base text-stone-900">
+                      Live Visitors
+                    </h3>
+                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-50 text-emerald-800 border border-emerald-200">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                      Active
+                    </span>
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-serif font-bold text-base text-stone-900 leading-tight">
-                        Live Traffic &amp; Waiting Intelligence
-                      </h3>
-                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                        Anonymous &amp; Logged-In Telemetry
-                      </span>
-                    </div>
-                    <p className="text-xs text-stone-500 mt-0.5">
-                      Intelligent traffic monitoring with real dwell and waiting metrics across Malawi.
-                    </p>
-                  </div>
+                  <p className="text-xs text-stone-500 mt-0.5">
+                    Current visitors browsing stays and pages across the platform.
+                  </p>
                 </div>
 
                 <button
                   type="button"
                   onClick={() => setActiveTab('traffic')}
-                  className="px-3 py-1.5 bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold rounded-lg transition inline-flex items-center gap-1.5 cursor-pointer self-start sm:self-auto shadow-2xs"
+                  className="text-xs text-stone-700 hover:text-stone-900 font-medium inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-stone-200 hover:bg-stone-50 transition cursor-pointer self-start sm:self-auto"
                 >
-                  <span>Open Full Monitor</span>
-                  <ExternalLink className="w-3.5 h-3.5 text-stone-300" />
+                  <span>View All Visitors</span>
+                  <ExternalLink className="w-3.5 h-3.5 text-stone-400" />
                 </button>
               </div>
 
-              {/* Render compact version of monitor */}
               <AdminTrafficMonitor compactMode={true} />
             </div>
 
@@ -1644,613 +1623,535 @@ export default function AdminDashboard() {
 
         {/* ===================== PROPERTIES TAB ===================== */}
         {activeTab === 'properties' && (
-          <div className="space-y-6 animate-in fade-in duration-200">
-            {/* Header & Search */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-stone-200">
+          <div className="space-y-4 animate-in fade-in duration-200">
+            {/* Header & Inline Actions */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-stone-200">
               <div>
                 <h2 className="text-2xl font-serif font-bold text-stone-900 tracking-tight">Properties</h2>
-                <p className="text-stone-500 text-xs sm:text-sm mt-0.5">Review, approve, and verify partner listings across Malawi.</p>
+                <p className="text-stone-500 text-xs sm:text-sm mt-0.5">
+                  Review, approve, and manage partner listings across Malawi.
+                </p>
               </div>
               
-              <div className="flex items-center gap-2">
-                <div className="relative">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-400" />
-                  <input
-                    type="text"
-                    placeholder="Search properties or city..."
-                    value={hotelSearch}
-                    onChange={e => { setHotelSearch(e.target.value); setCurrentHotelPage(1); }}
-                    className="pl-8 pr-3 py-1.5 border border-stone-200 bg-white rounded-lg text-xs focus:outline-none focus:border-stone-900 w-full sm:w-56"
-                  />
-                </div>
-                {badPinCount > 0 && (
-                  <button
-                    onClick={() => { setOnlyBadPins(v => !v); setCurrentHotelPage(1); }}
-                    className={`shrink-0 inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition cursor-pointer ${
-                      onlyBadPins ? 'bg-amber-800 text-white' : 'bg-amber-50 text-amber-900 border border-amber-200'
-                    }`}
-                  >
-                    <MapPinOff className="h-3.5 w-3.5" />
-                    <span>{badPinCount} broken pins</span>
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Editorial Status Filter Pills */}
-            <div className="flex flex-wrap items-center gap-2 pt-1">
-              {[
-                { id: 'all', label: 'All Properties', count: stats.totalProperties },
-                { id: 'pending', label: 'Pending Review', count: stats.pendingProperties, badgeClass: 'bg-amber-200 text-amber-950 font-bold' },
-                { id: 'approved', label: 'Live & Approved', count: stats.approvedProperties },
-                { id: 'rejected', label: 'Unpublished / Rejected', count: stats.rejectedProperties },
-              ].map(pill => {
-                const isSelected = hotelStatusFilter === pill.id;
-                return (
-                  <button
-                    key={pill.id}
-                    type="button"
-                    onClick={() => {
-                      setHotelStatusFilter(pill.id as any);
-                      setCurrentHotelPage(1);
-                    }}
-                    className={`px-3 py-1.5 rounded-lg text-xs transition cursor-pointer flex items-center gap-1.5 ${
-                      isSelected
-                        ? 'bg-stone-900 text-white font-semibold shadow-2xs'
-                        : 'bg-white border border-stone-200 text-stone-600 hover:text-stone-900 hover:border-stone-300'
-                    }`}
-                  >
-                    <span>{pill.label}</span>
-                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] leading-none ${
-                      isSelected
-                        ? 'bg-stone-800 text-white'
-                        : pill.badgeClass || 'bg-stone-100 text-stone-600'
-                    }`}>
-                      {pill.count}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* External Channel & PMS iCal Sync Monitor Banner */}
-            <div className="bg-gradient-to-r from-stone-900 to-stone-800 text-white rounded-2xl p-4 sm:p-5 shadow-sm space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 bg-amber-500 text-stone-950 rounded-xl font-bold shrink-0">
-                    <CalendarSync className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-serif font-bold text-sm sm:text-base text-white">External Channel &amp; PMS Sync (RoomRaccoon / iCal)</h3>
-                      <span className="text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full">
-                        2-Way Engine Active
-                      </span>
-                    </div>
-                    <p className="text-xs text-stone-300 mt-0.5 leading-relaxed">
-                      Two-way availability sync supporting <strong>RoomRaccoon, Airbnb, Booking.com, NightsBridge</strong>. Zero double bookings guaranteed across Malawi.
-                    </p>
-                  </div>
-                </div>
-
+              <div className="flex items-center gap-2 flex-wrap">
                 <button
                   type="button"
                   onClick={handleRunGlobalIcalSync}
                   disabled={syncingAllFeeds}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-stone-950 rounded-xl text-xs font-bold transition shadow-sm shrink-0 cursor-pointer disabled:opacity-50 self-start sm:self-auto"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-stone-50 text-stone-700 border border-stone-200 rounded-lg text-xs font-medium transition cursor-pointer disabled:opacity-50"
+                  title={`${totalIcalFeedsCount} external iCal feeds connected across ${propertiesWithIcal.length} properties`}
                 >
-                  <RefreshCw className={`w-3.5 h-3.5 ${syncingAllFeeds ? 'animate-spin' : ''}`} />
-                  <span>{syncingAllFeeds ? 'Syncing All Feeds...' : 'Run Global iCal Sync'}</span>
+                  <RefreshCw className={`w-3.5 h-3.5 text-stone-500 ${syncingAllFeeds ? 'animate-spin' : ''}`} />
+                  <span>{syncingAllFeeds ? 'Syncing iCal…' : `Sync iCal (${totalIcalFeedsCount})`}</span>
                 </button>
-              </div>
 
-              <div className="pt-2.5 border-t border-stone-700/60 flex items-center justify-between flex-wrap gap-2 text-xs text-stone-300">
-                <div className="flex items-center gap-3 flex-wrap">
-                  <span><strong>{totalIcalFeedsCount}</strong> active channel feeds connected</span>
-                  <span>•</span>
-                  <span><strong>{propertiesWithIcal.length}</strong> properties synchronizing</span>
-                </div>
-                <span className="text-[11px] text-stone-400 font-mono">
-                  Background cron: runs every 25 mins
-                </span>
+                {badPinCount > 0 && (
+                  <button
+                    onClick={() => { setOnlyBadPins(v => !v); setCurrentHotelPage(1); }}
+                    className={`shrink-0 inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition cursor-pointer ${
+                      onlyBadPins ? 'bg-amber-800 text-white' : 'bg-amber-50 text-amber-900 border border-amber-200 hover:bg-amber-100/70'
+                    }`}
+                  >
+                    <MapPinOff className="h-3.5 w-3.5" />
+                    <span>{badPinCount} missing pin{badPinCount === 1 ? '' : 's'}</span>
+                  </button>
+                )}
               </div>
             </div>
 
-            {/* Attention Banner: Listings Awaiting Marketing Review */}
-            {stats.pendingProperties > 0 && hotelStatusFilter !== 'pending' && (
-              <div className="bg-amber-50/90 border border-amber-200 rounded-xl p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-amber-950 shadow-2xs">
-                <div className="flex items-start sm:items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-amber-200/80 flex items-center justify-center shrink-0 text-amber-900 mt-0.5 sm:mt-0">
-                    <Clock className="w-4 h-4 animate-pulse" />
-                  </div>
-                  <div>
-                    <p className="text-xs sm:text-sm font-bold text-amber-950">
-                      {stats.pendingProperties} propert{stats.pendingProperties === 1 ? 'y' : 'ies'} awaiting marketing &amp; editorial review
-                    </p>
-                    <p className="text-[11px] sm:text-xs text-amber-800/80 mt-0.5">
-                      Verify high-res imagery, dual-currency pricing (MWK &amp; USD), and GPS gate coordinates before ads go live.
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setHotelStatusFilter('pending');
-                    setCurrentHotelPage(1);
-                  }}
-                  className="px-3.5 py-1.5 bg-amber-800 hover:bg-amber-900 text-white rounded-lg text-xs font-semibold shrink-0 cursor-pointer transition shadow-2xs self-start sm:self-auto"
-                >
-                  Review Pending Queue ({stats.pendingProperties})
-                </button>
-              </div>
-            )}
-
-            <div className="space-y-3">
-              {visibleHotels.slice((currentHotelPage - 1) * itemsPerPage, currentHotelPage * itemsPerPage).map((hotel, index) => {
-                const hotelRooms = rooms.filter(r => r.hotelId === hotel.id);
-                const minPriceUsd = hotelRooms.length > 0 
-                  ? Math.min(...hotelRooms.map(r => r.prices?.USD ?? r.price ?? 0).filter(p => p > 0))
-                  : (hotel.entirePlaceDetails?.ratePerNightUsd || 0);
-                const minPriceMwk = hotelRooms.length > 0 
-                  ? Math.min(...hotelRooms.map(r => r.prices?.MWK ?? r.priceMWK ?? 0).filter(p => p > 0))
-                  : (hotel.entirePlaceDetails?.ratePerNightMwk || 0);
-
-                return (
-                <div 
-                  key={`admin-hotel-${hotel.id || index}-${index}`} 
-                  className={`rounded-xl p-4 shadow-2xs border flex flex-col sm:flex-row gap-4 transition ${
-                    hotel.status === 'pending'
-                      ? 'bg-amber-50/30 border-amber-300 ring-1 ring-amber-300/40 hover:border-amber-400'
-                      : 'bg-white border-stone-200 hover:border-stone-300'
-                  }`}
-                >
-                  <div className="w-full aspect-[16/10] sm:aspect-auto sm:h-36 sm:w-48 bg-stone-100 rounded-lg overflow-hidden shrink-0 relative">
-                    <SmartImage src={getHotelImage(hotel)} alt={hotel.name} className="w-full h-full object-cover" />
-                    {hotel.stayType === 'entire_place' && (
-                      <span className="absolute top-2 left-2 bg-stone-900/80 backdrop-blur-xs text-white text-[10px] font-medium px-2 py-0.5 rounded">
-                        Entire Place
+            {/* Unified Filter & Search Toolbar */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-1.5">
+                {[
+                  { id: 'all', label: 'All', count: stats.totalProperties },
+                  { id: 'pending', label: 'Pending Review', count: stats.pendingProperties, highlight: stats.pendingProperties > 0 },
+                  { id: 'approved', label: 'Live', count: stats.approvedProperties },
+                  { id: 'rejected', label: 'Unpublished', count: stats.rejectedProperties },
+                ].map(pill => {
+                  const isSelected = hotelStatusFilter === pill.id;
+                  return (
+                    <button
+                      key={pill.id}
+                      type="button"
+                      onClick={() => {
+                        setHotelStatusFilter(pill.id as any);
+                        setCurrentHotelPage(1);
+                      }}
+                      className={`px-3 py-1.5 rounded-lg text-xs transition cursor-pointer flex items-center gap-1.5 ${
+                        isSelected
+                          ? 'bg-stone-900 text-white font-semibold shadow-2xs'
+                          : 'bg-white border border-stone-200 text-stone-600 hover:text-stone-900 hover:border-stone-300'
+                      }`}
+                    >
+                      <span>{pill.label}</span>
+                      <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-medium ${
+                        isSelected
+                          ? 'bg-stone-800 text-stone-200'
+                          : pill.highlight
+                            ? 'bg-amber-100 text-amber-900 font-semibold'
+                            : 'bg-stone-100 text-stone-600'
+                      }`}>
+                        {pill.count}
                       </span>
-                    )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="relative w-full sm:w-64">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-400" />
+                <input
+                  type="text"
+                  placeholder="Search property, city, or host..."
+                  value={hotelSearch}
+                  onChange={e => { setHotelSearch(e.target.value); setCurrentHotelPage(1); }}
+                  className="pl-8 pr-7 py-1.5 border border-stone-200 bg-white rounded-lg text-xs focus:outline-none focus:border-stone-900 w-full"
+                />
+                {hotelSearch && (
+                  <button
+                    type="button"
+                    onClick={() => { setHotelSearch(''); setCurrentHotelPage(1); }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 cursor-pointer"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Clean Property Directory Table */}
+            <div className="bg-white rounded-xl border border-stone-200 shadow-2xs overflow-visible">
+              {visibleHotels.length === 0 ? (
+                <div className="p-10 text-center text-stone-500 text-xs">
+                  No properties found matching your filter.
+                </div>
+              ) : (
+                <>
+                  {/* Desktop Column Header */}
+                  <div className="hidden lg:grid lg:grid-cols-12 gap-4 px-4 py-2.5 bg-stone-50/80 border-b border-stone-200 text-[11px] font-semibold text-stone-500 rounded-t-xl">
+                    <div className="col-span-4">Property</div>
+                    <div className="col-span-2">Rooms &amp; Rates</div>
+                    <div className="col-span-2">Host / Manager</div>
+                    <div className="col-span-1">Status</div>
+                    <div className="col-span-3 text-right">Actions</div>
                   </div>
-                  
-                  <div className="flex-1 min-w-0 flex flex-col justify-between">
-                    <div>
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-1 gap-1">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <h3 className="text-base font-bold text-stone-900 truncate">{hotel.name}</h3>
-                          {hotel.categories?.[0] && (
-                            <span className="text-[10px] font-medium bg-stone-100 text-stone-600 px-1.5 py-0.5 rounded shrink-0">
-                              {hotel.categories[0]}
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          {hotel.featured && (
-                            <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-800">
-                              <Star className="h-3 w-3 fill-amber-500 text-amber-500" /> Featured
-                            </span>
-                          )}
-                          
-                          {(!hotel.status || hotel.status === 'approved') && (
-                            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Approved
-                            </span>
-                          )}
-                          {hotel.status === 'pending' && (
-                            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-800 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-md animate-pulse">
-                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" /> Pending Review
-                            </span>
-                          )}
-                          {hotel.status === 'rejected' && (
-                            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-stone-500 bg-stone-100 border border-stone-200 px-2 py-0.5 rounded-md">
-                              <span className="w-1.5 h-1.5 rounded-full bg-stone-400" /> Rejected
-                            </span>
-                          )}
 
-                          {(() => {
-                            const syncCount = (hotel.icalSyncUrls?.length || 0) +
-                              hotelRooms.reduce((acc, r) => acc + (r.icalSyncUrls?.length || 0), 0);
-                            if (syncCount === 0) return null;
-                            return (
-                              <span
-                                className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-900 bg-emerald-50/80 border border-emerald-200 px-2 py-0.5 rounded-md"
-                                title="Connected to RoomRaccoon, Airbnb, or external iCal channel"
-                              >
-                                <CalendarSync className="w-3.5 h-3.5 text-emerald-700" />
-                                <span>{syncCount} iCal {syncCount === 1 ? 'feed' : 'feeds'}</span>
-                              </span>
-                            );
-                          })()}
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-1 text-xs text-stone-500">
-                        <p className="flex items-center gap-1.5">
-                          <MapPin className="h-3.5 w-3.5 text-stone-400 shrink-0" /> <span className="truncate">{hotel.location}</span>
-                        </p>
-                        
-                        {/* Room inventory & dual pricing snapshot */}
-                        <div className="flex items-center gap-2 pt-0.5 font-mono text-stone-600">
-                          <Building2 className="h-3.5 w-3.5 text-stone-400 shrink-0" />
-                          <span>
-                            {hotelRooms.length} room unit{hotelRooms.length === 1 ? '' : 's'}
-                          </span>
-                          {(minPriceMwk > 0 || minPriceUsd > 0) && (
-                            <>
-                              <span>&middot;</span>
-                              <span className="font-bold text-stone-900">
-                                {minPriceMwk > 0 ? `MK ${minPriceMwk.toLocaleString()}` : `$${minPriceUsd}`}
-                              </span>
-                              {minPriceMwk > 0 && minPriceUsd > 0 && (
-                                <span className="text-stone-400 font-normal">(${minPriceUsd})</span>
-                              )}
-                              <span>/ night</span>
-                            </>
-                          )}
-                        </div>
+                  <div className="divide-y divide-stone-100">
+                    {visibleHotels.slice((currentHotelPage - 1) * itemsPerPage, currentHotelPage * itemsPerPage).map((hotel, index) => {
+                      const hotelRooms = rooms.filter(r => r.hotelId === hotel.id);
+                      const minPriceUsd = hotelRooms.length > 0 
+                        ? Math.min(...hotelRooms.map(r => r.prices?.USD ?? r.price ?? 0).filter(p => p > 0))
+                        : (hotel.entirePlaceDetails?.ratePerNightUsd || 0);
+                      const minPriceMwk = hotelRooms.length > 0 
+                        ? Math.min(...hotelRooms.map(r => r.prices?.MWK ?? r.priceMWK ?? 0).filter(p => p > 0))
+                        : (hotel.entirePlaceDetails?.ratePerNightMwk || 0);
+                      const syncCount = (hotel.icalSyncUrls?.length || 0) +
+                        hotelRooms.reduce((acc, r) => acc + (r.icalSyncUrls?.length || 0), 0);
+                      const problem = pinProblem(hotel.coordinates);
+                      const hostDisplay =
+                        hotel.managerName ||
+                        (hotel.managerId && users.find(u => u.uid === hotel.managerId)?.email) ||
+                        hotel.managerEmail ||
+                        hotel.ownerName ||
+                        hotel.ownerEmail ||
+                        null;
 
-                        {(() => {
-                          const problem = pinProblem(hotel.coordinates);
-                          return problem ? (
-                            <p className="text-amber-800 flex items-center gap-1.5 font-medium">
-                              <MapPinOff className="h-3.5 w-3.5 shrink-0" /> {PIN_PROBLEM_LABELS[problem]}
-                            </p>
-                          ) : (
-                            <a
-                              href={mapLinkUrl(hotel)}
-                              target="_blank"
-                              rel="noreferrer noopener"
-                              className="text-stone-500 flex items-center gap-1.5 hover:text-stone-900 transition w-fit font-mono"
-                            >
-                              <MapPin className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                              <span className="tabular-nums">{hotel.coordinates!.lat.toFixed(4)}, {hotel.coordinates!.lng.toFixed(4)}</span>
-                              <ExternalLink className="h-2.5 w-2.5" />
-                            </a>
-                          );
-                        })()}
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="flex items-center gap-1.5 truncate">
-                            <Users className="h-3.5 w-3.5 text-stone-400 shrink-0" />
-                            <span className="truncate">
-                              <strong className="text-stone-700 font-medium">Host:</strong>{' '}
-                              {hotel.managerName ? (
-                                <span>{hotel.managerName}</span>
-                              ) : (
-                                (hotel.managerId && users.find(u => u.uid === hotel.managerId)?.email) ||
-                                hotel.managerEmail ||
-                                <span className="text-stone-400 italic">Self-managed</span>
-                              )}
-                            </span>
-                          </p>
-                          {(isAdmin(user) || isMarketing(user)) && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setHotelToAssignManager(hotel);
-                                setAssignManagerSelectedUid(hotel.managerId || '');
-                                setAssignManagerCustomEmail(hotel.managerEmail || '');
-                                setAssignManagerCustomName(hotel.managerName || '');
-                                setAssignManagerOwnerEmail(hotel.ownerEmail || '');
-                              }}
-                              className="text-[11px] font-semibold text-stone-600 hover:text-stone-900 underline shrink-0 cursor-pointer"
-                            >
-                              Assign / Change
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="flex flex-wrap items-center justify-between gap-2 mt-3 pt-2.5 border-t border-stone-100">
-                      <div className="flex items-center gap-2">
-                        {/* Primary Review & Inspect Button */}
-                        <button
-                          type="button"
-                          onClick={() => setInspectingHotel(hotel)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs ${
-                            hotel.status === 'pending'
-                              ? 'bg-amber-800 hover:bg-amber-900 text-white'
-                              : 'bg-stone-900 hover:bg-stone-800 text-white'
+                      return (
+                        <div
+                          key={`admin-hotel-${hotel.id || index}-${index}`}
+                          className={`p-3.5 sm:px-4 sm:py-3.5 transition hover:bg-stone-50/70 lg:grid lg:grid-cols-12 lg:items-center lg:gap-4 flex flex-col gap-3 ${
+                            hotel.status === 'pending' ? 'bg-amber-50/20' : ''
                           }`}
                         >
-                          <Eye className="h-3.5 w-3.5" />
-                          <span>{hotel.status === 'pending' ? 'Review & Inspect' : 'Inspect Dossier'}</span>
-                        </button>
-
-                        {hotel.status === 'pending' && (
-                          <div className="flex items-center gap-1.5">
-                            <button 
-                              type="button"
-                              onClick={() => handleUpdateStatus(hotel.id!, 'approved')}
-                              className="bg-emerald-700 text-white px-2.5 py-1.5 rounded-lg text-xs font-semibold hover:bg-emerald-800 transition flex items-center justify-center cursor-pointer shadow-2xs"
-                            >
-                              Quick Approve
-                            </button>
-                            <button 
-                              type="button"
-                              onClick={() => handleUpdateStatus(hotel.id!, 'rejected')}
-                              className="bg-stone-100 text-stone-700 hover:bg-stone-200 px-2.5 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer"
-                            >
-                              Reject
-                            </button>
+                          {/* Col 1: Thumbnail + Name + Location */}
+                          <div className="lg:col-span-4 flex items-center gap-3 min-w-0">
+                            <div className="w-16 h-12 sm:w-20 sm:h-14 rounded-lg bg-stone-100 overflow-hidden shrink-0 border border-stone-200/70">
+                              <SmartImage src={getHotelImage(hotel)} alt={hotel.name} className="w-full h-full object-cover" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <h3 className="text-sm font-semibold text-stone-900 truncate">{hotel.name}</h3>
+                                {hotel.featured && (
+                                  <span title="Featured on home page" className="shrink-0">
+                                    <Star className="h-3.5 w-3.5 fill-amber-500 text-amber-500" />
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-1.5 text-xs text-stone-500 mt-0.5 truncate">
+                                <span className="truncate">{hotel.location}</span>
+                                {hotel.categories?.[0] && (
+                                  <>
+                                    <span>·</span>
+                                    <span className="text-stone-400 shrink-0">{hotel.categories[0]}</span>
+                                  </>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 mt-1 text-[11px]">
+                                {problem ? (
+                                  <span className="text-amber-700 inline-flex items-center gap-1 font-medium">
+                                    <MapPinOff className="h-3 w-3 shrink-0" />
+                                    <span>{PIN_PROBLEM_LABELS[problem]}</span>
+                                  </span>
+                                ) : (
+                                  <a
+                                    href={mapLinkUrl(hotel)}
+                                    target="_blank"
+                                    rel="noreferrer noopener"
+                                    className="text-stone-400 hover:text-stone-700 inline-flex items-center gap-1 transition"
+                                  >
+                                    <MapPin className="h-3 w-3 text-emerald-600 shrink-0" />
+                                    <span>Map pin verified</span>
+                                  </a>
+                                )}
+                                {syncCount > 0 && (
+                                  <span className="text-emerald-700 inline-flex items-center gap-1">
+                                    <span>·</span>
+                                    <CalendarSync className="w-3 h-3" />
+                                    <span>{syncCount} iCal</span>
+                                  </span>
+                                )}
+                              </div>
+                            </div>
                           </div>
-                        )}
 
-                        <Link 
-                          to={`/admin/hotel/${hotel.id}`}
-                          className="bg-stone-100 hover:bg-stone-200 text-stone-800 px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5"
-                        >
-                          <Edit3 className="h-3 w-3" />
-                          <span>Manage</span>
-                        </Link>
-                      </div>
-
-                      {/* Property Actions Dropdown */}
-                      <div className="relative inline-block text-left">
-                        <button
-                          type="button"
-                          onClick={() => setOpenHotelMenuId(openHotelMenuId === hotel.id ? null : hotel.id!)}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 text-xs font-medium shadow-2xs transition cursor-pointer"
-                          aria-label="Property actions"
-                        >
-                          <span>Actions</span>
-                          <ChevronDown className={`w-3.5 h-3.5 text-stone-400 transition-transform ${openHotelMenuId === hotel.id ? 'rotate-180' : ''}`} />
-                        </button>
-
-                        {openHotelMenuId === hotel.id && (
-                          <>
-                            <div 
-                              className="fixed inset-0 z-30" 
-                              onClick={() => setOpenHotelMenuId(null)} 
-                            />
-                            <div className="absolute right-0 bottom-full mb-1.5 sm:bottom-auto sm:top-full sm:mt-1.5 w-56 bg-white rounded-xl shadow-lg border border-stone-200 py-1.5 z-40 text-left animate-in fade-in zoom-in-95 duration-150">
-                              <div className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-stone-400">
-                                Management &amp; Delegation
+                          {/* Col 2: Rooms & Rates */}
+                          <div className="lg:col-span-2 text-xs text-stone-600 flex lg:block items-center justify-between">
+                            <span className="text-stone-400 lg:hidden">Inventory:</span>
+                            <div>
+                              <div className="font-medium text-stone-900">
+                                {hotel.stayType === 'entire_place'
+                                  ? 'Entire place'
+                                  : `${hotelRooms.length} room type${hotelRooms.length === 1 ? '' : 's'}`}
                               </div>
+                              <div className="text-[11px] text-stone-500 font-mono mt-0.5">
+                                {minPriceMwk > 0 || minPriceUsd > 0 ? (
+                                  <>
+                                    {minPriceMwk > 0 ? `MK ${minPriceMwk.toLocaleString()}` : `$${minPriceUsd}`}
+                                    {minPriceMwk > 0 && minPriceUsd > 0 ? ` ($${minPriceUsd})` : ''}
+                                    <span className="font-sans text-stone-400"> / night</span>
+                                  </>
+                                ) : (
+                                  <span className="font-sans text-stone-400">No rates set</span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
 
+                          {/* Col 3: Host / Manager */}
+                          <div className="lg:col-span-2 text-xs min-w-0 flex lg:block items-center justify-between">
+                            <span className="text-stone-400 lg:hidden">Host:</span>
+                            <div className="min-w-0">
+                              <div className="text-stone-800 truncate font-medium">
+                                {hostDisplay || <span className="text-stone-400 font-normal">Unassigned</span>}
+                              </div>
                               {(isAdmin(user) || isMarketing(user)) && (
-                                <>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setHotelToAssignManager(hotel);
-                                      setAssignManagerSelectedUid(hotel.managerId || '');
-                                      setAssignManagerCustomEmail(hotel.managerEmail || '');
-                                      setAssignManagerCustomName(hotel.managerName || '');
-                                      setAssignManagerOwnerEmail(hotel.ownerEmail || '');
-                                      setOpenHotelMenuId(null);
-                                    }}
-                                    className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center gap-2 transition cursor-pointer"
-                                  >
-                                    <Users className="w-3.5 h-3.5 text-stone-400" />
-                                    <span>Assign / Change Manager</span>
-                                  </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setHotelToAssignManager(hotel);
+                                    setAssignManagerSelectedUid(hotel.managerId || '');
+                                    setAssignManagerCustomEmail(hotel.managerEmail || '');
+                                    setAssignManagerCustomName(hotel.managerName || '');
+                                    setAssignManagerOwnerEmail(hotel.ownerEmail || '');
+                                  }}
+                                  className="text-[11px] text-stone-500 hover:text-stone-900 underline cursor-pointer mt-0.5 block"
+                                >
+                                  {hostDisplay ? 'Change host' : 'Assign host'}
+                                </button>
+                              )}
+                            </div>
+                          </div>
 
-                                  <button
-                                    type="button"
-                                    onClick={async () => {
-                                      setOpenHotelMenuId(null);
-                                      const targetEmail =
-                                        hotel.ownerEmail ||
-                                        hotel.managerEmail ||
-                                        hotel.contactEmail ||
-                                        (hotel.managerId && users.find(u => u.uid === hotel.managerId)?.email);
-                                      if (!targetEmail) {
-                                        toast.error('No owner, manager, or contact email on this listing. Assign an email first.');
-                                        return;
-                                      }
-                                      const toastId = toast.loading(`Sending login credentials to ${targetEmail}…`);
-                                      try {
-                                        const res = await fetch('/api/onboarding/welcome-email', {
-                                          method: 'POST',
-                                          headers: { 'Content-Type': 'application/json' },
-                                          body: JSON.stringify({
-                                            hotelId: hotel.id,
-                                            hotelName: hotel.name,
-                                            location: hotel.location,
-                                            category: hotel.category,
-                                            status: hotel.status || 'pending',
-                                            ownerName: hotel.ownerName,
-                                            ownerEmail: hotel.ownerEmail,
-                                            ownerPhone: hotel.ownerPhone,
-                                            managerName: hotel.managerName,
-                                            managerEmail: hotel.managerEmail || targetEmail,
-                                            managerPhone: hotel.managerPhone,
-                                            contactEmail: hotel.contactEmail,
-                                            contactPhone: hotel.contactPhone,
-                                            contactWhatsapp: hotel.contactWhatsapp,
-                                            submittedByEmail: user?.email,
-                                          }),
-                                        });
-                                        const data = await res.json();
-                                        if (data.ok && data.sentCount > 0) {
-                                          toast.success(`Host login credentials sent via SMTP (${data.sentCount} email${data.sentCount > 1 ? 's' : ''})!`, { id: toastId });
-                                        } else {
-                                          toast.error(data.error || 'Could not dispatch SMTP email. Verify SMTP settings.', { id: toastId });
+                          {/* Col 4: Status */}
+                          <div className="lg:col-span-1 flex items-center">
+                            {(!hotel.status || hotel.status === 'approved') && (
+                              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                Live
+                              </span>
+                            )}
+                            {hotel.status === 'pending' && (
+                              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-900 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md">
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                Pending
+                              </span>
+                            )}
+                            {hotel.status === 'rejected' && (
+                              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-stone-600 bg-stone-100 border border-stone-200 px-2 py-0.5 rounded-md">
+                                <span className="w-1.5 h-1.5 rounded-full bg-stone-400" />
+                                Rejected
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Col 5: Actions */}
+                          <div className="lg:col-span-3 flex items-center justify-end gap-1.5 pt-2 lg:pt-0 border-t lg:border-t-0 border-stone-100">
+                            {hotel.status === 'pending' && (
+                              <button
+                                type="button"
+                                onClick={() => handleUpdateStatus(hotel.id!, 'approved')}
+                                className="bg-emerald-700 hover:bg-emerald-800 text-white px-2.5 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer"
+                              >
+                                Approve
+                              </button>
+                            )}
+
+                            <button
+                              type="button"
+                              onClick={() => setInspectingHotel(hotel)}
+                              className="px-2.5 py-1.5 rounded-lg text-xs font-medium border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 transition cursor-pointer"
+                            >
+                              Review
+                            </button>
+
+                            <Link
+                              to={`/admin/hotel/${hotel.id}`}
+                              className="px-2.5 py-1.5 rounded-lg text-xs font-medium border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 transition"
+                            >
+                              Edit
+                            </Link>
+
+                            {/* Property Actions Dropdown */}
+                            <div className="relative inline-block text-left">
+                              <button
+                                type="button"
+                                onClick={() => setOpenHotelMenuId(openHotelMenuId === hotel.id ? null : hotel.id!)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 text-xs font-medium transition cursor-pointer"
+                                aria-label="More property actions"
+                              >
+                                <span>More</span>
+                                <ChevronDown className={`w-3.5 h-3.5 text-stone-400 transition-transform ${openHotelMenuId === hotel.id ? 'rotate-180' : ''}`} />
+                              </button>
+
+                              {openHotelMenuId === hotel.id && (
+                                <>
+                                  <div
+                                    className="fixed inset-0 z-30"
+                                    onClick={() => setOpenHotelMenuId(null)}
+                                  />
+                                  <div className="absolute right-0 bottom-full mb-1.5 sm:bottom-auto sm:top-full sm:mt-1.5 w-56 bg-white rounded-xl shadow-lg border border-stone-200 py-1.5 z-40 text-left animate-in fade-in zoom-in-95 duration-150">
+                                    {(isAdmin(user) || isMarketing(user)) && (
+                                      <>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setHotelToAssignManager(hotel);
+                                            setAssignManagerSelectedUid(hotel.managerId || '');
+                                            setAssignManagerCustomEmail(hotel.managerEmail || '');
+                                            setAssignManagerCustomName(hotel.managerName || '');
+                                            setAssignManagerOwnerEmail(hotel.ownerEmail || '');
+                                            setOpenHotelMenuId(null);
+                                          }}
+                                          className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center gap-2 transition cursor-pointer"
+                                        >
+                                          <Users className="w-3.5 h-3.5 text-stone-400" />
+                                          <span>Assign / Change Host</span>
+                                        </button>
+
+                                        <button
+                                          type="button"
+                                          onClick={async () => {
+                                            setOpenHotelMenuId(null);
+                                            const targetEmail =
+                                              hotel.ownerEmail ||
+                                              hotel.managerEmail ||
+                                              hotel.contactEmail ||
+                                              (hotel.managerId && users.find(u => u.uid === hotel.managerId)?.email);
+                                            if (!targetEmail) {
+                                              toast.error('No owner, manager, or contact email on this listing. Assign an email first.');
+                                              return;
+                                            }
+                                            const toastId = toast.loading(`Sending login credentials to ${targetEmail}…`);
+                                            try {
+                                              const res = await fetch('/api/onboarding/welcome-email', {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({
+                                                  hotelId: hotel.id,
+                                                  hotelName: hotel.name,
+                                                  location: hotel.location,
+                                                  category: hotel.category,
+                                                  status: hotel.status || 'pending',
+                                                  ownerName: hotel.ownerName,
+                                                  ownerEmail: hotel.ownerEmail,
+                                                  ownerPhone: hotel.ownerPhone,
+                                                  managerName: hotel.managerName,
+                                                  managerEmail: hotel.managerEmail || targetEmail,
+                                                  managerPhone: hotel.managerPhone,
+                                                  contactEmail: hotel.contactEmail,
+                                                  contactPhone: hotel.contactPhone,
+                                                  contactWhatsapp: hotel.contactWhatsapp,
+                                                  submittedByEmail: user?.email,
+                                                }),
+                                              });
+                                              const data = await res.json();
+                                              if (data.ok && data.sentCount > 0) {
+                                                toast.success(`Host login credentials sent via SMTP (${data.sentCount} email${data.sentCount > 1 ? 's' : ''})!`, { id: toastId });
+                                              } else {
+                                                toast.error(data.error || 'Could not dispatch SMTP email. Verify SMTP settings.', { id: toastId });
+                                              }
+                                            } catch (err: any) {
+                                              toast.error(err?.message || 'Failed to send host credentials.', { id: toastId });
+                                            }
+                                          }}
+                                          className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center gap-2 transition cursor-pointer"
+                                        >
+                                          <Mail className="w-3.5 h-3.5 text-emerald-700" />
+                                          <span>Send Host Login Details (SMTP)</span>
+                                        </button>
+                                        <div className="my-1 border-t border-stone-100" />
+                                      </>
+                                    )}
+
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        handleToggleFeatured(hotel);
+                                        setOpenHotelMenuId(null);
+                                      }}
+                                      className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center justify-between transition cursor-pointer"
+                                    >
+                                      <span className="flex items-center gap-2">
+                                        <Star className={`w-3.5 h-3.5 ${hotel.featured ? 'fill-amber-500 text-amber-500' : 'text-stone-400'}`} />
+                                        <span>{hotel.featured ? 'Remove from Featured' : 'Feature on Home'}</span>
+                                      </span>
+                                      {hotel.featured && <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      onClick={async () => {
+                                        try {
+                                          const nextState = hotel.adminChatEnabled === false ? true : false;
+                                          await updateDoc(doc(db, 'hotels', hotel.id!), { adminChatEnabled: nextState });
+                                          setHotels(hotels.map(h => h.id === hotel.id ? { ...h, adminChatEnabled: nextState } : h));
+                                          toast.success(`Chat has been ${nextState ? 'enabled' : 'disabled'} for ${hotel.name}`);
+                                          setOpenHotelMenuId(null);
+                                        } catch (error) {
+                                          console.error(error);
+                                          toast.error('Failed to update chat status');
                                         }
-                                      } catch (err: any) {
-                                        toast.error(err?.message || 'Failed to send host credentials.', { id: toastId });
-                                      }
-                                    }}
-                                    className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center gap-2 transition cursor-pointer"
-                                  >
-                                    <Mail className="w-3.5 h-3.5 text-emerald-700" />
-                                    <span>Send Host Login Details (SMTP)</span>
-                                  </button>
-                                </>
-                              )}
+                                      }}
+                                      className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center justify-between transition cursor-pointer"
+                                    >
+                                      <span className="flex items-center gap-2">
+                                        <MessageSquare className="w-3.5 h-3.5 text-stone-400" />
+                                        <span>{hotel.adminChatEnabled === false ? 'Enable Guest Chat' : 'Disable Guest Chat'}</span>
+                                      </span>
+                                      {hotel.adminChatEnabled !== false && <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                                    </button>
 
-                              <div className="my-1 border-t border-stone-100" />
-                              <div className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-stone-400">
-                                Listing Visibility
-                              </div>
+                                    <a
+                                      href={`/hotel/${hotel.id}`}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      onClick={() => setOpenHotelMenuId(null)}
+                                      className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center justify-between transition cursor-pointer"
+                                    >
+                                      <span className="flex items-center gap-2">
+                                        <ExternalLink className="w-3.5 h-3.5 text-stone-400" />
+                                        <span>View Public Page</span>
+                                      </span>
+                                    </a>
 
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  handleToggleFeatured(hotel);
-                                  setOpenHotelMenuId(null);
-                                }}
-                                className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center justify-between transition cursor-pointer"
-                              >
-                                <span className="flex items-center gap-2">
-                                  <Star className={`w-3.5 h-3.5 ${hotel.featured ? 'fill-amber-500 text-amber-500' : 'text-stone-400'}`} />
-                                  <span>{hotel.featured ? 'Remove from Featured' : 'Feature on Home'}</span>
-                                </span>
-                                {hotel.featured && <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
-                              </button>
+                                    <div className="my-1 border-t border-stone-100" />
 
-                              <button
-                                type="button"
-                                onClick={async () => {
-                                  try {
-                                    const nextState = hotel.adminChatEnabled === false ? true : false;
-                                    await updateDoc(doc(db, 'hotels', hotel.id!), { adminChatEnabled: nextState });
-                                    setHotels(hotels.map(h => h.id === hotel.id ? { ...h, adminChatEnabled: nextState } : h));
-                                    toast.success(`Chat has been ${nextState ? 'enabled' : 'disabled'} for ${hotel.name}`);
-                                    setOpenHotelMenuId(null);
-                                  } catch (error) {
-                                    console.error(error);
-                                    toast.error('Failed to update chat status');
-                                  }
-                                }}
-                                className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center justify-between transition cursor-pointer"
-                              >
-                                <span className="flex items-center gap-2">
-                                  <MessageSquare className="w-3.5 h-3.5 text-stone-400" />
-                                  <span>{hotel.adminChatEnabled === false ? 'Enable Guest Chat' : 'Disable Guest Chat'}</span>
-                                </span>
-                                {hotel.adminChatEnabled !== false && <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
-                              </button>
+                                    {hotel.status === 'pending' && (
+                                      <>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            handleUpdateStatus(hotel.id!, 'approved');
+                                            setOpenHotelMenuId(null);
+                                          }}
+                                          className="w-full px-3 py-1.5 text-xs text-emerald-800 hover:bg-emerald-50 flex items-center gap-2 transition cursor-pointer font-medium"
+                                        >
+                                          <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                          <span>Approve Listing</span>
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            handleUpdateStatus(hotel.id!, 'rejected');
+                                            setOpenHotelMenuId(null);
+                                          }}
+                                          className="w-full px-3 py-1.5 text-xs text-rose-800 hover:bg-rose-50 flex items-center gap-2 transition cursor-pointer"
+                                        >
+                                          <X className="w-3.5 h-3.5 text-rose-600" />
+                                          <span>Reject Listing</span>
+                                        </button>
+                                      </>
+                                    )}
 
-                              <a
-                                href={`/hotel/${hotel.id}`}
-                                target="_blank"
-                                rel="noreferrer"
-                                onClick={() => setOpenHotelMenuId(null)}
-                                className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center justify-between transition cursor-pointer"
-                              >
-                                <span className="flex items-center gap-2">
-                                  <ExternalLink className="w-3.5 h-3.5 text-stone-400" />
-                                  <span>View Live Listing</span>
-                                </span>
-                              </a>
+                                    {(!hotel.status || hotel.status === 'approved') && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          handleUpdateStatus(hotel.id!, 'pending');
+                                          setOpenHotelMenuId(null);
+                                        }}
+                                        className="w-full px-3 py-1.5 text-xs text-amber-800 hover:bg-amber-50 flex items-center gap-2 transition cursor-pointer"
+                                      >
+                                        <Clock className="w-3.5 h-3.5 text-amber-600" />
+                                        <span>Move to Pending</span>
+                                      </button>
+                                    )}
 
-                              <div className="my-1 border-t border-stone-100" />
-                              <div className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-stone-400">
-                                Moderation &amp; Review
-                              </div>
+                                    {hotel.status === 'rejected' && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          handleUpdateStatus(hotel.id!, 'approved');
+                                          setOpenHotelMenuId(null);
+                                        }}
+                                        className="w-full px-3 py-1.5 text-xs text-emerald-800 hover:bg-emerald-50 flex items-center gap-2 transition cursor-pointer font-medium"
+                                      >
+                                        <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                        <span>Approve Listing</span>
+                                      </button>
+                                    )}
 
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setInspectingHotel(hotel);
-                                  setOpenHotelMenuId(null);
-                                }}
-                                className="w-full px-3 py-1.5 text-xs text-amber-900 hover:bg-amber-50 flex items-center gap-2 transition cursor-pointer font-semibold"
-                              >
-                                <Eye className="w-3.5 h-3.5 text-amber-700" />
-                                <span>Inspect &amp; Review Listing</span>
-                              </button>
-
-                              {hotel.status === 'pending' && (
-                                <>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      handleUpdateStatus(hotel.id!, 'approved');
-                                      setOpenHotelMenuId(null);
-                                    }}
-                                    className="w-full px-3 py-1.5 text-xs text-emerald-800 hover:bg-emerald-50 flex items-center gap-2 transition cursor-pointer font-semibold"
-                                  >
-                                    <Check className="w-3.5 h-3.5 text-emerald-600" />
-                                    <span>Approve Listing (Go Live)</span>
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      handleUpdateStatus(hotel.id!, 'rejected');
-                                      setOpenHotelMenuId(null);
-                                    }}
-                                    className="w-full px-3 py-1.5 text-xs text-rose-800 hover:bg-rose-50 flex items-center gap-2 transition cursor-pointer"
-                                  >
-                                    <X className="w-3.5 h-3.5 text-rose-600" />
-                                    <span>Reject Listing</span>
-                                  </button>
-                                </>
-                              )}
-
-                              {(!hotel.status || hotel.status === 'approved') && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    handleUpdateStatus(hotel.id!, 'pending');
-                                    setOpenHotelMenuId(null);
-                                  }}
-                                  className="w-full px-3 py-1.5 text-xs text-amber-800 hover:bg-amber-50 flex items-center gap-2 transition cursor-pointer"
-                                >
-                                  <Clock className="w-3.5 h-3.5 text-amber-600" />
-                                  <span>Suspend Listing</span>
-                                </button>
-                              )}
-
-                              {hotel.status === 'rejected' && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    handleUpdateStatus(hotel.id!, 'approved');
-                                    setOpenHotelMenuId(null);
-                                  }}
-                                  className="w-full px-3 py-1.5 text-xs text-emerald-800 hover:bg-emerald-50 flex items-center gap-2 transition cursor-pointer font-semibold"
-                                >
-                                  <Check className="w-3.5 h-3.5 text-emerald-600" />
-                                  <span>Approve Listing (Reactivate)</span>
-                                </button>
-                              )}
-
-                              {(isAdmin(user) || isMarketing(user)) && (
-                                <>
-                                  <div className="my-1 border-t border-stone-100" />
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setHotelToDelete(hotel);
-                                      setOpenHotelMenuId(null);
-                                    }}
-                                    className="w-full px-3 py-1.5 text-xs text-rose-700 hover:bg-rose-50 flex items-center gap-2 transition cursor-pointer"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5 text-rose-500" />
-                                    <span>Delete Listing</span>
-                                  </button>
+                                    {(isAdmin(user) || isMarketing(user)) && (
+                                      <>
+                                        <div className="my-1 border-t border-stone-100" />
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setHotelToDelete(hotel);
+                                            setOpenHotelMenuId(null);
+                                          }}
+                                          className="w-full px-3 py-1.5 text-xs text-rose-700 hover:bg-rose-50 flex items-center gap-2 transition cursor-pointer"
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                                          <span>Delete Listing</span>
+                                        </button>
+                                      </>
+                                    )}
+                                  </div>
                                 </>
                               )}
                             </div>
-                          </>
-                        )}
-                      </div>
-                    </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                </div>
-              ); })}
-              
-              {visibleHotels.length === 0 && (
-                <div className="bg-stone-50 rounded-xl p-8 text-center text-stone-500 border border-stone-200 text-xs">
-                  No hotel listings found matching criteria.
-                </div>
+                </>
               )}
-              <div className="bg-white rounded-xl border border-stone-200 p-3 sm:px-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-stone-500 shadow-2xs">
-                <div>
-                  Showing <span className="font-semibold text-stone-900 font-mono">{visibleHotels.length === 0 ? 0 : (currentHotelPage - 1) * itemsPerPage + 1}</span>–<span className="font-semibold text-stone-900 font-mono">{Math.min(currentHotelPage * itemsPerPage, visibleHotels.length)}</span> of <span className="font-semibold text-stone-900 font-mono">{visibleHotels.length}</span> properties
-                </div>
-                {visibleHotels.length > itemsPerPage && (
-                  <Pagination
-                    currentPage={currentHotelPage}
-                    totalPages={Math.ceil(visibleHotels.length / itemsPerPage)}
-                    onPageChange={setCurrentHotelPage}
-                    className="flex items-center gap-1.5 my-0"
-                  />
-                )}
+            </div>
+
+            <div className="bg-white rounded-xl border border-stone-200 p-3 sm:px-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-stone-500 shadow-2xs">
+              <div>
+                Showing <span className="font-semibold text-stone-900 font-mono">{visibleHotels.length === 0 ? 0 : (currentHotelPage - 1) * itemsPerPage + 1}</span>–<span className="font-semibold text-stone-900 font-mono">{Math.min(currentHotelPage * itemsPerPage, visibleHotels.length)}</span> of <span className="font-semibold text-stone-900 font-mono">{visibleHotels.length}</span> properties
               </div>
+              {visibleHotels.length > itemsPerPage && (
+                <Pagination
+                  currentPage={currentHotelPage}
+                  totalPages={Math.ceil(visibleHotels.length / itemsPerPage)}
+                  onPageChange={setCurrentHotelPage}
+                  className="flex items-center gap-1.5 my-0"
+                />
+              )}
             </div>
           </div>
         )}
@@ -2847,137 +2748,141 @@ export default function AdminDashboard() {
         {/* ===================== CONTENT TAB ===================== */}
         {activeTab === 'content' && (
           <div className="space-y-6 animate-in fade-in duration-200 pb-20">
-            <div className="pb-2 border-b border-stone-200">
-              <h2 className="text-xl sm:text-2xl font-serif font-bold text-stone-900 tracking-tight">Content &amp; Legal</h2>
-              <p className="text-stone-500 text-xs sm:text-sm mt-0.5">Global platform domain, footer contact signatures, social links, and legal policies.</p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-stone-200">
+              <div>
+                <h2 className="text-2xl font-serif font-bold text-stone-900 tracking-tight">Content &amp; Legal</h2>
+                <p className="text-stone-500 text-xs sm:text-sm mt-0.5">
+                  Platform domain, footer contact details, social links, and legal policies.
+                </p>
+              </div>
+              <button
+                onClick={handleSaveContent}
+                disabled={savingContent}
+                className="bg-stone-900 hover:bg-stone-800 text-white px-4 py-2 rounded-lg text-xs font-semibold transition flex items-center gap-2 disabled:opacity-50 shadow-2xs cursor-pointer self-start sm:self-auto"
+              >
+                {savingContent ? 'Saving…' : 'Save Changes'}
+              </button>
             </div>
             
-            <div className="bg-white rounded-2xl border border-stone-200 shadow-2xs p-5 sm:p-6 md:p-8 space-y-8">
+            <div className="bg-white rounded-xl border border-stone-200 shadow-2xs p-5 space-y-6">
               <div>
-                <h3 className="text-lg font-bold text-stone-900 mb-4 border-b border-stone-100 pb-2">Global Domain Settings</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <h3 className="text-sm font-semibold text-stone-900 mb-3 pb-2 border-b border-stone-100">Domain &amp; Footer Contact</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Platform Domain</label>
+                    <label className="block text-xs font-medium text-stone-700 mb-1">Platform Domain</label>
                     <input
                       type="url"
                       value={contentSettings.platformDomain || ''}
                       onChange={e => setContentSettings({...contentSettings, platformDomain: e.target.value})}
                       placeholder="https://ulendomalawi.com"
-                      className="w-full bg-stone-50 border border-stone-200 px-4 py-3 rounded-xl focus:outline-none focus:border-stone-900"
+                      className="w-full bg-stone-50 border border-stone-200 px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-stone-900"
                     />
-                    <p className="text-xs text-stone-400 mt-1">This domain updates dynamically across all system documents, emails, and scripts.</p>
+                    <p className="text-[11px] text-stone-400 mt-1">Used across outbound emails and partner guides.</p>
                   </div>
-                </div>
-              </div>
-
-              <div>
-                <h3 className="text-lg font-bold text-stone-900 mb-4 border-b border-stone-100 pb-2">Global Signature (Website Footer)</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Contact Email</label>
+                    <label className="block text-xs font-medium text-stone-700 mb-1">Support Email</label>
                     <input
                       type="email"
                       value={contentSettings.contactEmail || ''}
                       onChange={e => setContentSettings({...contentSettings, contactEmail: e.target.value})}
                       placeholder="info@ulendomalawi.com"
-                      className="w-full bg-stone-50 border border-stone-200 px-4 py-3 rounded-xl focus:outline-none focus:border-stone-900"
+                      className="w-full bg-stone-50 border border-stone-200 px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-stone-900"
                     />
-                    <p className="text-xs text-stone-400 mt-1">Leave blank to use platform default (info@ulendomalawi.com).</p>
+                    <p className="text-[11px] text-stone-400 mt-1">Displayed in website footer and receipts.</p>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Contact Phone</label>
+                    <label className="block text-xs font-medium text-stone-700 mb-1">Support Phone</label>
                     <input
                       type="text"
                       value={contentSettings.contactPhone || ''}
                       onChange={e => setContentSettings({...contentSettings, contactPhone: e.target.value})}
                       placeholder="+265 99 123 4567"
-                      className="w-full bg-stone-50 border border-stone-200 px-4 py-3 rounded-xl focus:outline-none focus:border-stone-900"
+                      className="w-full bg-stone-50 border border-stone-200 px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-stone-900"
                     />
-                    <p className="text-xs text-stone-400 mt-1">Leave blank to hide from footer.</p>
+                    <p className="text-[11px] text-stone-400 mt-1">Leave blank to hide from footer.</p>
                   </div>
                 </div>
               </div>
 
               <div>
-                <h3 className="text-lg font-bold text-stone-900 mb-4 border-b border-stone-100 pb-2">Social Media Links</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <h3 className="text-sm font-semibold text-stone-900 mb-3 pb-2 border-b border-stone-100">Social Media Links</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Facebook URL</label>
+                    <label className="block text-xs font-medium text-stone-700 mb-1">Facebook URL</label>
                     <input
                       type="url"
                       value={contentSettings.socialFacebook || ''}
                       onChange={e => setContentSettings({...contentSettings, socialFacebook: e.target.value})}
                       placeholder="https://facebook.com/..."
-                      className="w-full bg-stone-50 border border-stone-200 px-4 py-3 rounded-xl focus:outline-none focus:border-stone-900"
+                      className="w-full bg-stone-50 border border-stone-200 px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-stone-900"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Instagram URL</label>
+                    <label className="block text-xs font-medium text-stone-700 mb-1">Instagram URL</label>
                     <input
                       type="url"
                       value={contentSettings.socialInstagram || ''}
                       onChange={e => setContentSettings({...contentSettings, socialInstagram: e.target.value})}
                       placeholder="https://instagram.com/..."
-                      className="w-full bg-stone-50 border border-stone-200 px-4 py-3 rounded-xl focus:outline-none focus:border-stone-900"
+                      className="w-full bg-stone-50 border border-stone-200 px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-stone-900"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Twitter/X URL</label>
+                    <label className="block text-xs font-medium text-stone-700 mb-1">X / Twitter URL</label>
                     <input
                       type="url"
                       value={contentSettings.socialTwitter || ''}
                       onChange={e => setContentSettings({...contentSettings, socialTwitter: e.target.value})}
                       placeholder="https://twitter.com/..."
-                      className="w-full bg-stone-50 border border-stone-200 px-4 py-3 rounded-xl focus:outline-none focus:border-stone-900"
+                      className="w-full bg-stone-50 border border-stone-200 px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-stone-900"
                     />
                   </div>
                 </div>
               </div>
 
               <div>
-                <h3 className="text-lg font-bold text-stone-900 mb-4 border-b border-stone-100 pb-2">Legal Documents</h3>
-                
-                <div className="space-y-6">
+                <h3 className="text-sm font-semibold text-stone-900 mb-3 pb-2 border-b border-stone-100">Legal Policies (Markdown Supported)</h3>
+                <div className="space-y-4">
                   <div>
-                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Privacy Policy</label>
+                    <label className="block text-xs font-medium text-stone-700 mb-1">Privacy Policy</label>
                     <textarea
                       value={contentSettings.privacyPolicy || ''}
                       onChange={e => setContentSettings({...contentSettings, privacyPolicy: e.target.value})}
-                      rows={6}
+                      rows={5}
                       placeholder="Markdown supported (**bold**, 1. list, ## Heading). Leave blank to use default..."
-                      className="w-full bg-stone-50 border border-stone-200 px-4 py-3 rounded-xl focus:outline-none focus:border-stone-900"
+                      className="w-full bg-stone-50 border border-stone-200 px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-stone-900"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Terms of Service</label>
+                    <label className="block text-xs font-medium text-stone-700 mb-1">Terms of Service</label>
                     <textarea
                       value={contentSettings.termsOfService || ''}
                       onChange={e => setContentSettings({...contentSettings, termsOfService: e.target.value})}
-                      rows={6}
+                      rows={5}
                       placeholder="Markdown supported (**bold**, 1. list, ## Heading). Leave blank to use default..."
-                      className="w-full bg-stone-50 border border-stone-200 px-4 py-3 rounded-xl focus:outline-none focus:border-stone-900"
+                      className="w-full bg-stone-50 border border-stone-200 px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-stone-900"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Refund Policy</label>
+                    <label className="block text-xs font-medium text-stone-700 mb-1">Refund Policy</label>
                     <textarea
                       value={contentSettings.refundPolicy || ''}
                       onChange={e => setContentSettings({...contentSettings, refundPolicy: e.target.value})}
-                      rows={6}
+                      rows={5}
                       placeholder="Markdown supported (**bold**, 1. list, ## Heading). Leave blank to use default..."
-                      className="w-full bg-stone-50 border border-stone-200 px-4 py-3 rounded-xl focus:outline-none focus:border-stone-900"
+                      className="w-full bg-stone-50 border border-stone-200 px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-stone-900"
                     />
                   </div>
                 </div>
               </div>
 
-              <div className="flex justify-end pt-4">
+              <div className="flex justify-end pt-2 border-t border-stone-100">
                 <button
                   onClick={handleSaveContent}
                   disabled={savingContent}
-                  className="bg-stone-900 hover:bg-stone-800 text-white px-6 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center gap-2 disabled:opacity-50 shadow-2xs cursor-pointer"
+                  className="bg-stone-900 hover:bg-stone-800 text-white px-5 py-2 rounded-lg text-xs font-semibold transition flex items-center gap-2 disabled:opacity-50 shadow-2xs cursor-pointer"
                 >
-                  {savingContent ? 'Saving...' : 'Save Content'}
+                  {savingContent ? 'Saving…' : 'Save Content'}
                 </button>
               </div>
             </div>

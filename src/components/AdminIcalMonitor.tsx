@@ -246,83 +246,74 @@ export default function AdminIcalMonitor({
 
   return (
     <div className="space-y-6">
-      {/* Top Banner & Global Action */}
-      <div className="bg-white border border-stone-200/90 rounded-2xl p-5 sm:p-6 shadow-2xs">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-amber-50 border border-amber-200/80 text-amber-800 flex items-center justify-center shrink-0">
-              <CalendarSync className="h-5 w-5 sm:h-6 sm:w-6" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-lg sm:text-xl font-serif font-bold text-stone-900">
-                  Channel Sync &amp; iCal Engine
-                </h2>
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-200/80">
-                  2-Way Active
-                </span>
-              </div>
-              <p className="text-stone-500 text-xs sm:text-sm mt-0.5">
-                Real-time 2-way availability sync with RoomRaccoon, Airbnb, Booking.com, NightsBridge &amp; Google Cal.
-              </p>
-            </div>
+      {/* Header & Global Action */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-stone-200">
+        <div>
+          <div className="flex items-center gap-2.5">
+            <h2 className="text-xl sm:text-2xl font-serif font-bold text-stone-900">
+              iCal &amp; Channel Sync
+            </h2>
+            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-50 text-emerald-800 border border-emerald-200">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+              Active
+            </span>
           </div>
-
-          <button
-            type="button"
-            onClick={handleSyncAll}
-            disabled={isSyncingAll}
-            className="inline-flex items-center justify-center gap-2 bg-stone-900 hover:bg-stone-800 text-white font-semibold text-xs sm:text-sm px-4 sm:px-5 py-2.5 rounded-xl transition shadow-2xs disabled:opacity-50 cursor-pointer w-full sm:w-auto"
-          >
-            <RefreshCw className={`h-4 w-4 ${isSyncingAll ? 'animate-spin' : ''}`} />
-            <span>{isSyncingAll ? 'Synchronizing All Channels…' : 'Sync All Feeds Now'}</span>
-          </button>
+          <p className="text-stone-500 text-xs sm:text-sm mt-0.5">
+            Two-way calendar sync with RoomRaccoon, Airbnb, Booking.com, NightsBridge, and Google Calendar.
+          </p>
         </div>
 
-        {/* KPI Quick Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mt-5 pt-5 border-t border-stone-100">
-          <div className="bg-stone-50 rounded-xl p-3 border border-stone-200/80">
-            <div className="text-[11px] font-medium text-stone-500 uppercase tracking-wider">Connected Feeds</div>
-            <div className="text-xl sm:text-2xl font-bold font-serif text-stone-900 mt-1">{totalFeeds}</div>
-            <div className="text-[11px] text-stone-500 mt-0.5">Across all properties</div>
-          </div>
+        <button
+          type="button"
+          onClick={handleSyncAll}
+          disabled={isSyncingAll}
+          className="inline-flex items-center justify-center gap-1.5 bg-stone-900 hover:bg-stone-800 text-white font-semibold text-xs px-4 py-2 rounded-lg transition shadow-2xs disabled:opacity-50 cursor-pointer self-start sm:self-auto"
+        >
+          <RefreshCw className={`h-3.5 w-3.5 ${isSyncingAll ? 'animate-spin' : ''}`} />
+          <span>{isSyncingAll ? 'Syncing All Feeds…' : 'Sync All Feeds'}</span>
+        </button>
+      </div>
 
-          <div className="bg-stone-50 rounded-xl p-3 border border-stone-200/80">
-            <div className="text-[11px] font-medium text-stone-500 uppercase tracking-wider">Synced Properties</div>
-            <div className="text-xl sm:text-2xl font-bold font-serif text-stone-900 mt-1">{uniquePropertiesWithSync}</div>
-            <div className="text-[11px] text-stone-500 mt-0.5">Out of {hotels.length} stays</div>
-          </div>
+      {/* KPI Quick Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+        <div className="bg-white rounded-xl p-4 border border-stone-200 shadow-2xs">
+          <div className="text-xs font-medium text-stone-500">Connected Feeds</div>
+          <div className="text-2xl font-bold font-serif text-stone-900 mt-1 tabular-nums">{totalFeeds}</div>
+          <div className="text-[11px] text-stone-400 mt-0.5">Active iCal links</div>
+        </div>
 
-          <div className="bg-emerald-50/60 rounded-xl p-3 border border-emerald-200/80">
-            <div className="text-[11px] font-medium text-emerald-800 uppercase tracking-wider">Healthy Feeds</div>
-            <div className="text-xl sm:text-2xl font-bold font-serif text-emerald-900 mt-1">{healthyFeeds}</div>
-            <div className="text-[11px] text-emerald-700 mt-0.5">Syncing successfully</div>
-          </div>
+        <div className="bg-white rounded-xl p-4 border border-stone-200 shadow-2xs">
+          <div className="text-xs font-medium text-stone-500">Synced Properties</div>
+          <div className="text-2xl font-bold font-serif text-stone-900 mt-1 tabular-nums">{uniquePropertiesWithSync}</div>
+          <div className="text-[11px] text-stone-400 mt-0.5">Out of {hotels.length} properties</div>
+        </div>
 
-          <div className={`rounded-xl p-3 border ${errorFeeds > 0 ? 'bg-red-50 border-red-200' : 'bg-stone-50 border-stone-200/80'}`}>
-            <div className={`text-[11px] font-medium uppercase tracking-wider ${errorFeeds > 0 ? 'text-red-700' : 'text-stone-500'}`}>
-              Sync Errors
-            </div>
-            <div className={`text-xl sm:text-2xl font-bold font-serif mt-1 ${errorFeeds > 0 ? 'text-red-900' : 'text-stone-900'}`}>
-              {errorFeeds}
-            </div>
-            <div className={`text-[11px] mt-0.5 ${errorFeeds > 0 ? 'text-red-600' : 'text-stone-500'}`}>
-              {errorFeeds > 0 ? 'Requires attention' : 'All channels optimal'}
-            </div>
+        <div className="bg-white rounded-xl p-4 border border-stone-200 shadow-2xs">
+          <div className="text-xs font-medium text-stone-500">Healthy Feeds</div>
+          <div className="text-2xl font-bold font-serif text-emerald-700 mt-1 tabular-nums">{healthyFeeds}</div>
+          <div className="text-[11px] text-stone-400 mt-0.5">Syncing normally</div>
+        </div>
+
+        <div className={`rounded-xl p-4 border shadow-2xs ${errorFeeds > 0 ? 'bg-red-50/60 border-red-200' : 'bg-white border-stone-200'}`}>
+          <div className={`text-xs font-medium ${errorFeeds > 0 ? 'text-red-700' : 'text-stone-500'}`}>
+            Sync Errors
+          </div>
+          <div className={`text-2xl font-bold font-serif mt-1 tabular-nums ${errorFeeds > 0 ? 'text-red-800' : 'text-stone-900'}`}>
+            {errorFeeds}
+          </div>
+          <div className={`text-[11px] mt-0.5 ${errorFeeds > 0 ? 'text-red-600' : 'text-stone-400'}`}>
+            {errorFeeds > 0 ? 'Needs attention' : 'No sync errors'}
           </div>
         </div>
       </div>
 
-      {/* External Feed Diagnostic / Tester Tool */}
-      <div className="bg-white border border-stone-200/90 rounded-2xl p-5 shadow-2xs">
-        <div className="flex items-center gap-2 mb-2">
-          <Activity className="h-4 w-4 text-amber-600" />
-          <h3 className="text-sm sm:text-base font-serif font-bold text-stone-900">
-            External Feed Diagnostic &amp; Link Tester
-          </h3>
-        </div>
+      {/* External Feed Tester */}
+      <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-2xs">
+        <h3 className="text-sm font-semibold text-stone-900 mb-1">
+          Test External iCal Feed URL
+        </h3>
         <p className="text-xs text-stone-500 mb-3">
-          Paste any external iCal feed URL from RoomRaccoon, Airbnb, Booking.com, or NightsBridge to test parsing, event extraction, and date range formatting.
+          Paste an external `.ics` URL to verify calendar reachability and preview blocked dates before attaching it to a room.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-2">
@@ -331,21 +322,21 @@ export default function AdminIcalMonitor({
             value={testUrl}
             onChange={(e) => setTestUrl(e.target.value)}
             placeholder="https://app.roomraccoon.com/export/calendar/...ics"
-            className="flex-1 bg-stone-50 border border-stone-200 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm focus:outline-none focus:border-stone-900 font-mono"
+            className="flex-1 bg-stone-50 border border-stone-200 px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-stone-900 font-mono"
           />
           <button
             type="button"
             onClick={handleTestFeedUrl}
             disabled={isTestingUrl}
-            className="inline-flex items-center justify-center gap-1.5 bg-stone-900 hover:bg-stone-800 text-white font-semibold text-xs sm:text-sm px-5 py-2.5 rounded-xl transition shadow-2xs disabled:opacity-50 cursor-pointer shrink-0"
+            className="inline-flex items-center justify-center gap-1.5 bg-stone-900 hover:bg-stone-800 text-white font-semibold text-xs px-4 py-2 rounded-lg transition shadow-2xs disabled:opacity-50 cursor-pointer shrink-0"
           >
             {isTestingUrl ? (
               <>
-                <RefreshCw className="h-4 w-4 animate-spin" />
+                <RefreshCw className="h-3.5 w-3.5 animate-spin" />
                 <span>Testing…</span>
               </>
             ) : (
-              <span>Test Feed URL</span>
+              <span>Test Feed</span>
             )}
           </button>
         </div>

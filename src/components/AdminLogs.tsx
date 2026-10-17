@@ -446,181 +446,156 @@ export default function AdminLogs() {
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      
-      {/* Header */}
-      <div className="bg-white rounded-2xl border border-stone-200 shadow-2xs p-4 sm:p-6">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div className="flex items-start sm:items-center gap-3.5">
-            <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-xl bg-stone-900 text-amber-400 flex items-center justify-center shrink-0 shadow-2xs">
-              <ShieldCheck className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-xl sm:text-2xl font-serif font-bold text-stone-900 tracking-tight">Audit &amp; Telemetry Logs</h2>
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-800 border border-emerald-200/60">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                  Live Stream
-                </span>
-              </div>
-              <p className="text-xs sm:text-sm text-stone-500 mt-0.5">
-                Real-time compliance tracking, IP geolocation, user session bundling, and resource audits across Malawi.
-              </p>
-            </div>
+    <div className="space-y-5">
+      {/* Header & Actions */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-stone-200">
+        <div>
+          <div className="flex items-center gap-2.5">
+            <h2 className="text-2xl font-serif font-bold text-stone-900 tracking-tight">Audit Logs</h2>
+            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-50 text-emerald-800 border border-emerald-200">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+              Live
+            </span>
           </div>
-
-          {/* Action Toolbar */}
-          <div className="flex items-center gap-2 flex-wrap self-stretch lg:self-auto justify-end">
-            
-            {/* Export Dropdown */}
-            <div className="relative flex-1 sm:flex-initial">
-              <button
-                type="button"
-                onClick={() => setShowExportMenu(!showExportMenu)}
-                className="w-full sm:w-auto px-3.5 py-2 bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-semibold rounded-xl transition flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
-                title="Export Audit Data"
-              >
-                <Download className="w-3.5 h-3.5 text-stone-600" />
-                <span>Export Audit</span>
-                <ChevronDown className="w-3.5 h-3.5 text-stone-500" />
-              </button>
-
-              {showExportMenu && (
-                <>
-                  <div className="fixed inset-0 z-20" onClick={() => setShowExportMenu(false)} />
-                  <div className="absolute right-0 mt-1.5 w-60 bg-white rounded-xl shadow-lg border border-stone-200 p-1.5 z-30 space-y-1">
-                    <button
-                      type="button"
-                      onClick={handleExportCSV}
-                      className="w-full text-left px-3 py-2 text-xs font-medium text-stone-800 hover:bg-stone-100 rounded-lg flex items-center gap-2.5 transition cursor-pointer"
-                    >
-                      <FileSpreadsheet className="w-4 h-4 text-emerald-600 shrink-0" />
-                      <div>
-                        <div className="font-semibold text-stone-900">Export as CSV</div>
-                        <div className="text-[10px] text-stone-400">Columns with IP, location, activity</div>
-                      </div>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleExportJSON}
-                      className="w-full text-left px-3 py-2 text-xs font-medium text-stone-800 hover:bg-stone-100 rounded-lg flex items-center gap-2.5 transition cursor-pointer"
-                    >
-                      <Download className="w-4 h-4 text-stone-500 shrink-0" />
-                      <div>
-                        <div className="font-semibold text-stone-900">Export as JSON</div>
-                        <div className="text-[10px] text-stone-400">Full audit payloads &amp; raw events</div>
-                      </div>
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-
-            {/* Clear All Logs */}
-            {logs.length > 0 && (
-              confirmClear ? (
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <button
-                    type="button"
-                    onClick={handleClearAllLogs}
-                    disabled={clearing}
-                    className="px-3 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer shadow-xs animate-pulse"
-                    title="Click to permanently delete all logs"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    <span>{clearing ? 'Deleting All...' : 'Confirm Delete All?'}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setConfirmClear(false)}
-                    disabled={clearing}
-                    className="px-2.5 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold rounded-xl transition cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setConfirmClear(true)}
-                  disabled={clearing}
-                  className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold rounded-xl transition disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer border border-rose-200/60 shadow-2xs shrink-0"
-                  title="Clear all stored logs"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>Clear All</span>
-                </button>
-              )
-            )}
-          </div>
+          <p className="text-xs sm:text-sm text-stone-500 mt-0.5">
+            System activity, authentication events, and administrative actions across the platform.
+          </p>
         </div>
 
-        {/* METRICS STRIP */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3.5 mt-5">
-          {/* Total Events */}
-          <div className="p-3 sm:p-3.5 rounded-xl border border-stone-200 bg-stone-50/70">
-            <div className="flex items-center justify-between text-stone-500 mb-1">
-              <span className="text-[11px] font-medium uppercase tracking-wider text-stone-500">Total Audited</span>
-              <Activity className="w-3.5 h-3.5 text-stone-400" />
-            </div>
-            <div className="text-xl sm:text-2xl font-serif font-bold text-stone-900 tabular-nums">{metrics.totalEvents}</div>
-            <div className="text-[11px] text-stone-400 mt-0.5">Historical event stream</div>
+        {/* Action Toolbar */}
+        <div className="flex items-center gap-2 flex-wrap self-start sm:self-auto">
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowExportMenu(!showExportMenu)}
+              className="px-3 py-1.5 bg-white hover:bg-stone-50 text-stone-700 border border-stone-200 text-xs font-medium rounded-lg transition flex items-center gap-1.5 cursor-pointer"
+              title="Export Audit Data"
+            >
+              <Download className="w-3.5 h-3.5 text-stone-500" />
+              <span>Export</span>
+              <ChevronDown className="w-3 h-3 text-stone-400" />
+            </button>
+
+            {showExportMenu && (
+              <>
+                <div className="fixed inset-0 z-20" onClick={() => setShowExportMenu(false)} />
+                <div className="absolute right-0 mt-1.5 w-48 bg-white rounded-xl shadow-lg border border-stone-200 p-1 z-30 space-y-0.5">
+                  <button
+                    type="button"
+                    onClick={handleExportCSV}
+                    className="w-full text-left px-2.5 py-1.5 text-xs text-stone-800 hover:bg-stone-100 rounded-lg flex items-center gap-2 transition cursor-pointer"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span>Export CSV</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleExportJSON}
+                    className="w-full text-left px-2.5 py-1.5 text-xs text-stone-800 hover:bg-stone-100 rounded-lg flex items-center gap-2 transition cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5 text-stone-500 shrink-0" />
+                    <span>Export JSON</span>
+                  </button>
+                </div>
+              </>
+            )}
           </div>
 
-          {/* Success Rate */}
-          <div className="p-3 sm:p-3.5 rounded-xl border border-stone-200 bg-stone-50/70">
-            <div className="flex items-center justify-between text-stone-500 mb-1">
-              <span className="text-[11px] font-medium uppercase tracking-wider text-stone-500">Success Rate</span>
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-            </div>
-            <div className="text-xl sm:text-2xl font-serif font-bold text-stone-900 tabular-nums">{metrics.successRate}%</div>
-            <div className="text-[11px] text-stone-400 mt-0.5">{metrics.successCount} successful operations</div>
-          </div>
+          {logs.length > 0 && (
+            confirmClear ? (
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={handleClearAllLogs}
+                  disabled={clearing}
+                  className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-lg transition disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>{clearing ? 'Deleting…' : 'Confirm Clear'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmClear(false)}
+                  disabled={clearing}
+                  className="px-2.5 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-medium rounded-lg transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setConfirmClear(true)}
+                disabled={clearing}
+                className="px-3 py-1.5 bg-white hover:bg-rose-50 text-stone-600 hover:text-rose-700 text-xs font-medium rounded-lg transition disabled:opacity-50 flex items-center gap-1.5 cursor-pointer border border-stone-200 shrink-0"
+                title="Clear all stored logs"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Clear Logs</span>
+              </button>
+            )
+          )}
+        </div>
+      </div>
 
-          {/* Active Sessions */}
-          <div className="p-3 sm:p-3.5 rounded-xl border border-stone-200 bg-stone-50/70">
-            <div className="flex items-center justify-between text-stone-500 mb-1">
-              <span className="text-[11px] font-medium uppercase tracking-wider text-stone-500">Active Sessions</span>
-              <Monitor className="w-3.5 h-3.5 text-stone-400" />
-            </div>
-            <div className="text-xl sm:text-2xl font-serif font-bold text-stone-900 tabular-nums">{metrics.activeSessions}</div>
-            <div className="text-[11px] text-stone-400 mt-0.5">Active in last 15 mins</div>
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-2xs">
+          <div className="flex items-center justify-between text-stone-500 text-xs font-medium mb-1">
+            <span>Total Events</span>
+            <Activity className="w-4 h-4 text-stone-400" />
           </div>
+          <div className="text-2xl font-serif font-bold text-stone-900 tabular-nums">{metrics.totalEvents}</div>
+          <div className="text-[11px] text-stone-400 mt-0.5">Recorded audit entries</div>
+        </div>
 
-          {/* Locations & Flag Footprint */}
-          <div className="p-3 sm:p-3.5 rounded-xl border border-stone-200 bg-stone-50/70">
-            <div className="flex items-center justify-between text-stone-500 mb-1">
-              <span className="text-[11px] font-medium uppercase tracking-wider text-stone-500">Geolocations</span>
-              <Globe className="w-3.5 h-3.5 text-stone-400" />
-            </div>
-            <div className="text-xl sm:text-2xl font-serif font-bold text-stone-900 tabular-nums">
-              {metrics.distinctCountries > 0 ? `${metrics.distinctCountries} Countries` : '1 Region'}
-            </div>
-            <div className="text-[11px] text-stone-400 mt-0.5 truncate">
-              {metrics.sampleLocations.length > 0 ? metrics.sampleLocations.join(' · ') : '🇲🇼 Malawi'}
-            </div>
+        <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-2xs">
+          <div className="flex items-center justify-between text-stone-500 text-xs font-medium mb-1">
+            <span>Success Rate</span>
+            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+          </div>
+          <div className="text-2xl font-serif font-bold text-stone-900 tabular-nums">{metrics.successRate}%</div>
+          <div className="text-[11px] text-stone-400 mt-0.5">{metrics.successCount} completed actions</div>
+        </div>
+
+        <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-2xs">
+          <div className="flex items-center justify-between text-stone-500 text-xs font-medium mb-1">
+            <span>Active Sessions</span>
+            <Monitor className="w-4 h-4 text-stone-400" />
+          </div>
+          <div className="text-2xl font-serif font-bold text-stone-900 tabular-nums">{metrics.activeSessions}</div>
+          <div className="text-[11px] text-stone-400 mt-0.5">Active in last 15 mins</div>
+        </div>
+
+        <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-2xs">
+          <div className="flex items-center justify-between text-stone-500 text-xs font-medium mb-1">
+            <span>Locations</span>
+            <Globe className="w-4 h-4 text-stone-400" />
+          </div>
+          <div className="text-2xl font-serif font-bold text-stone-900 tabular-nums">
+            {metrics.distinctCountries > 0 ? `${metrics.distinctCountries}` : '1'}
+          </div>
+          <div className="text-[11px] text-stone-400 mt-0.5 truncate">
+            {metrics.sampleLocations.length > 0 ? metrics.sampleLocations.join(' · ') : 'Malawi'}
           </div>
         </div>
       </div>
 
-      {/* VIEW MODE SELECTOR */}
-      <div className="bg-white rounded-2xl border border-stone-200 shadow-2xs p-3.5 sm:p-4 space-y-3">
+      {/* View Switcher & Filters */}
+      <div className="bg-white rounded-xl border border-stone-200 shadow-2xs p-4 space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-100 pb-3">
-          
-          {/* Main Mode Tabs */}
-          <div className="flex items-center gap-1.5 p-1 bg-stone-100 rounded-xl max-w-full overflow-x-auto no-scrollbar">
+          <div className="flex items-center gap-1.5">
             <button
               type="button"
               onClick={() => setMainView('intune_table')}
-              className={`px-3.5 sm:px-4 py-2 rounded-lg text-xs font-semibold transition flex items-center gap-2 cursor-pointer shrink-0 ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5 cursor-pointer ${
                 mainView === 'intune_table'
-                  ? 'bg-stone-900 text-white shadow-2xs'
-                  : 'text-stone-600 hover:text-stone-900'
+                  ? 'bg-stone-900 text-white font-semibold shadow-2xs'
+                  : 'bg-stone-100 text-stone-600 hover:text-stone-900'
               }`}
             >
-              <Shield className="w-3.5 h-3.5" />
               <span>Activity Log</span>
-              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
                 mainView === 'intune_table' ? 'bg-stone-800 text-stone-200' : 'bg-stone-200 text-stone-600'
               }`}>
                 {filteredLogs.length}
@@ -630,99 +605,79 @@ export default function AdminLogs() {
             <button
               type="button"
               onClick={() => setMainView('session_bundles')}
-              className={`px-3.5 sm:px-4 py-2 rounded-lg text-xs font-semibold transition flex items-center gap-2 cursor-pointer shrink-0 ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5 cursor-pointer ${
                 mainView === 'session_bundles'
-                  ? 'bg-stone-900 text-white shadow-2xs'
-                  : 'text-stone-600 hover:text-stone-900'
+                  ? 'bg-stone-900 text-white font-semibold shadow-2xs'
+                  : 'bg-stone-100 text-stone-600 hover:text-stone-900'
               }`}
             >
-              <Layers className="w-3.5 h-3.5" />
-              <span>User Session Bundles</span>
-              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+              <span>Sessions by User</span>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
                 mainView === 'session_bundles' ? 'bg-stone-800 text-stone-200' : 'bg-stone-200 text-stone-600'
               }`}>
-                {userBundles.length} Users
+                {userBundles.length}
               </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setMainView('live_traffic')}
-              className={`px-3.5 sm:px-4 py-2 rounded-lg text-xs font-semibold transition flex items-center gap-2 cursor-pointer shrink-0 ${
-                mainView === 'live_traffic'
-                  ? 'bg-stone-900 text-white shadow-2xs'
-                  : 'text-stone-600 hover:text-stone-900'
-              }`}
-            >
-              <Radio className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Live Traffic &amp; Waiting</span>
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
             </button>
           </div>
 
-          {/* If Intune Table view: Mobile style toggle (Cards vs Dense Table) */}
           {mainView === 'intune_table' && (
-            <div className="flex items-center gap-2 self-end sm:self-auto">
-              <span className="text-[11px] font-medium text-stone-400 hidden md:inline">Layout:</span>
-              <div className="flex items-center gap-1 bg-stone-100 p-1 rounded-xl">
+            <div className="flex items-center gap-1.5 self-end sm:self-auto">
+              <span className="text-[11px] text-stone-400 hidden md:inline">Mobile view:</span>
+              <div className="flex items-center gap-1 bg-stone-100 p-0.5 rounded-lg">
                 <button
                   type="button"
                   onClick={() => setMobileTableStyle('responsive_cards')}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-medium transition flex items-center gap-1.5 cursor-pointer ${
+                  className={`px-2 py-1 rounded-md text-xs font-medium transition cursor-pointer ${
                     mobileTableStyle === 'responsive_cards'
                       ? 'bg-white text-stone-900 shadow-2xs font-semibold'
                       : 'text-stone-500 hover:text-stone-800'
                   }`}
-                  title="Card list with complete touch accessibility on phones"
                 >
-                  <span>Cards</span>
+                  Cards
                 </button>
                 <button
                   type="button"
                   onClick={() => setMobileTableStyle('dense_table')}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-medium transition flex items-center gap-1.5 cursor-pointer ${
+                  className={`px-2 py-1 rounded-md text-xs font-medium transition cursor-pointer ${
                     mobileTableStyle === 'dense_table'
                       ? 'bg-white text-stone-900 shadow-2xs font-semibold'
                       : 'text-stone-500 hover:text-stone-800'
                   }`}
-                  title="Horizontal scrollable table"
                 >
-                  <span>Table</span>
+                  Table
                 </button>
               </div>
             </div>
           )}
         </div>
 
-        {/* ================= FILTER AND SEARCH BAR ================= */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 pt-1">
-          {/* Search Box */}
+        {/* Filter Bar */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
           <div className="relative sm:col-span-2 lg:col-span-2">
-            <Search className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <Search className="w-3.5 h-3.5 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search activity, target, user, IP, location, session..."
-              className="w-full min-h-[44px] pl-9 pr-8 py-2 bg-stone-50 hover:bg-stone-100/80 focus:bg-white text-stone-900 text-xs rounded-xl border border-stone-200 focus:outline-none focus:ring-2 focus:ring-stone-900 transition"
+              placeholder="Search activity, target, user, IP..."
+              className="w-full pl-8 pr-7 py-1.5 bg-stone-50 focus:bg-white text-stone-900 text-xs rounded-lg border border-stone-200 focus:outline-none focus:border-stone-900 transition"
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-stone-400 hover:text-stone-600 rounded cursor-pointer"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 cursor-pointer"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
 
-          {/* Date Range */}
           <div>
             <select
               value={dateRange}
               onChange={(e) => setDateRange(e.target.value as DateRangeFilter)}
-              className="w-full min-h-[44px] px-3 py-2 bg-stone-50 text-stone-800 text-xs font-medium rounded-xl border border-stone-200 focus:outline-none focus:ring-2 focus:ring-stone-900 cursor-pointer"
+              className="w-full px-3 py-1.5 bg-stone-50 text-stone-800 text-xs font-medium rounded-lg border border-stone-200 focus:outline-none focus:border-stone-900 cursor-pointer"
             >
               <option value="all">All Dates</option>
               <option value="24h">Past 24 Hours</option>
@@ -731,30 +686,28 @@ export default function AdminLogs() {
             </select>
           </div>
 
-          {/* Category */}
           <div>
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="w-full min-h-[44px] px-3 py-2 bg-stone-50 text-stone-800 text-xs font-medium rounded-xl border border-stone-200 focus:outline-none focus:ring-2 focus:ring-stone-900 cursor-pointer"
+              className="w-full px-3 py-1.5 bg-stone-50 text-stone-800 text-xs font-medium rounded-lg border border-stone-200 focus:outline-none focus:border-stone-900 cursor-pointer"
             >
               <option value="all">All Categories</option>
-              <option value="admin">Role-Based Access Control</option>
-              <option value="property">Property Management</option>
-              <option value="booking">Reservations & Bookings</option>
-              <option value="security">Security & Suspensions</option>
+              <option value="admin">Access &amp; Roles</option>
+              <option value="property">Properties</option>
+              <option value="booking">Bookings</option>
+              <option value="security">Security</option>
               <option value="auth">Authentication</option>
-              <option value="session">Session & Device</option>
-              <option value="ai">Ulendo Concierge AI</option>
+              <option value="session">Sessions</option>
+              <option value="ai">Assistant &amp; Automation</option>
             </select>
           </div>
 
-          {/* Result / Status */}
           <div>
             <select
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value as StatusFilter)}
-              className="w-full min-h-[44px] px-3 py-2 bg-stone-50 text-stone-800 text-xs font-medium rounded-xl border border-stone-200 focus:outline-none focus:ring-2 focus:ring-stone-900 cursor-pointer"
+              className="w-full px-3 py-1.5 bg-stone-50 text-stone-800 text-xs font-medium rounded-lg border border-stone-200 focus:outline-none focus:border-stone-900 cursor-pointer"
             >
               <option value="all">All Statuses</option>
               <option value="Success">Success Only</option>
@@ -764,17 +717,11 @@ export default function AdminLogs() {
         </div>
 
         {/* Filter feedback & reset */}
-        <div className="flex items-center justify-between text-xs text-stone-500 pt-1 flex-wrap gap-2">
-          <div>
-            Showing <strong className="text-stone-900">{filteredLogs.length}</strong> matching records
-            {searchQuery && (
-              <span className="ml-1 text-amber-800">
-                for query: <code className="bg-amber-50 px-1 py-0.5 rounded font-mono">{searchQuery}</code>
-              </span>
-            )}
-          </div>
-
-          {(searchQuery || dateRange !== 'all' || selectedCategory !== 'all' || selectedStatus !== 'all' || selectedRole !== 'all') && (
+        {(searchQuery || dateRange !== 'all' || selectedCategory !== 'all' || selectedStatus !== 'all' || selectedRole !== 'all') && (
+          <div className="flex items-center justify-between text-xs text-stone-500 pt-1 flex-wrap gap-2">
+            <div>
+              Showing <strong className="text-stone-900">{filteredLogs.length}</strong> matching records
+            </div>
             <button
               type="button"
               onClick={() => {
@@ -784,12 +731,12 @@ export default function AdminLogs() {
                 setSelectedStatus('all');
                 setSelectedRole('all');
               }}
-              className="text-xs font-bold text-amber-800 hover:underline cursor-pointer min-h-[32px] flex items-center"
+              className="text-xs font-semibold text-stone-700 hover:text-stone-900 underline cursor-pointer"
             >
-              Reset All Filters
+              Reset filters
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* ================= TAB 1: INTUNE AUDIT LOG TABLE ================= */}
