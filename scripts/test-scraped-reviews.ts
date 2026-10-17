@@ -9,9 +9,14 @@ console.log(`\n[Balanced Mode - Lake] Count: ${balancedLake.length}`);
 balancedLake.forEach((r, idx) => {
   console.log(`  ${idx + 1}. [${r.rating}★] [${r.sentiment}] "${r.title}"`);
   console.log(`     Author: ${r.author} | Date: ${r.date} | Source: ${r.source}`);
-  console.log(`     Link: ${r.sourceUrl}`);
+  console.log(`     Link: ${r.sourceUrl || '(Physical Guest Book - In-person ledger)'}`);
   assert.ok(r.date, 'Review must have date');
-  assert.ok(r.sourceUrl && r.sourceUrl.startsWith('http'), 'Review must have valid http sourceUrl');
+  if (r.source === 'Guest Book') {
+    assert.strictEqual(r.sourceUrl || '', '', 'Physical guest book must not have fake web URL');
+  } else {
+    assert.ok(r.sourceUrl && r.sourceUrl.startsWith('http'), 'Review must have valid http sourceUrl');
+    assert.ok(!r.sourceUrl.includes('/maps/reviews'), 'Must not contain fake Google review path');
+  }
 });
 
 const hasConstructiveOrCritical = balancedLake.some(r => r.rating <= 3.8);

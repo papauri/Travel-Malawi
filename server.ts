@@ -1711,6 +1711,40 @@ async function startServer() {
           .filter((r: any) => r.author || r.comment)
       : undefined;
 
+    let scrapedContent: string | undefined;
+    if (targetUrl && (targetUrl.startsWith('http://') || targetUrl.startsWith('https://'))) {
+      try {
+        const fetchController = new AbortController();
+        const timeout = setTimeout(() => fetchController.abort(), 7000);
+        const resp = await fetch(targetUrl, {
+          signal: fetchController.signal,
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9',
+          }
+        });
+        clearTimeout(timeout);
+        if (resp.ok) {
+          const rawHtml = await resp.text();
+          scrapedContent = rawHtml
+            .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, ' ')
+            .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, ' ')
+            .replace(/<svg\b[^<]*(?:(?!<\/svg>)<[^<]*)*<\/svg>/gi, ' ')
+            .replace(/<[^>]+>/g, ' ')
+            .replace(/&nbsp;/g, ' ')
+            .replace(/&amp;/g, '&')
+            .replace(/&quot;/g, '"')
+            .replace(/&#39;/g, "'")
+            .replace(/\s+/g, ' ')
+            .trim()
+            .slice(0, 5000);
+        }
+      } catch (fetchErr: any) {
+        console.warn(`[scrape_reviews] Could not directly fetch targetUrl ${targetUrl}:`, fetchErr.message || fetchErr);
+      }
+    }
+
     try {
       const status = getPublicAIStatus();
       if (!status.enabled || !status.available) {
@@ -1733,6 +1767,7 @@ async function startServer() {
           category,
           customQuery,
           targetUrl,
+          scrapedContent,
           targetSources,
           minRating,
           count,

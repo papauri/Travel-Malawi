@@ -10,7 +10,7 @@ import { collection, getDocs, deleteDoc, doc, getDoc, updateDoc } from 'firebase
 import { db } from '../lib/firebase';
 import Pagination from './Pagination';
 import ConfirmDialog from './ConfirmDialog';
-import { parseReviewDateToTimestamp, formatReviewDate } from '../lib/reviewDates';
+import { parseReviewDateToTimestamp, formatReviewDate, sanitizeReviewSourceUrl, getReviewSourceLabel, isBrokenOrFakeReviewUrl } from '../lib/reviewDates';
 
 interface AdminReviewScraperProps {
   hotels: Hotel[];
@@ -577,7 +577,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
           comment,
           text: comment,
           source: r.source || 'TripAdvisor',
-          sourceUrl: r.sourceUrl || '',
+          sourceUrl: sanitizeReviewSourceUrl(r.sourceUrl, r.source, selectedHotel.name, selectedHotel.location, targetUrl) || '',
           date: r.date || new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
           travellerType: r.travellerType || 'Leisure traveller',
           travellerOrigin: r.travellerOrigin || '',
@@ -1257,20 +1257,30 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
                     {/* Footer: External Verification Link & Moderation Actions */}
                     <div className="pt-2 border-t border-stone-100 flex items-center justify-between text-[11px] gap-2 flex-wrap">
                       <div>
-                        {review.sourceUrl ? (
-                          <a
-                            href={review.sourceUrl}
-                            target="_blank"
-                            rel="noreferrer noopener"
-                            className="inline-flex items-center gap-1 text-emerald-700 hover:text-emerald-800 font-semibold transition hover:underline text-[10px]"
-                            title={`Verify original review on ${review.source}`}
-                          >
-                            <span>Verify on {review.source}</span>
-                            <ExternalLink className="w-2.5 h-2.5" />
-                          </a>
-                        ) : (
-                          <span className="text-stone-400 text-[10px]">Direct Malawian booking</span>
-                        )}
+                        {(() => {
+                          const isGuestBook = (review.source || '').toLowerCase().includes('guest book') || (review.source || '').toLowerCase().includes('guestbook');
+                          if (isGuestBook) {
+                            return <span className="text-stone-500 text-[10px]">Lodge Reception Guest Book</span>;
+                          }
+                          const cleanUrl = review.sourceUrl && !isBrokenOrFakeReviewUrl(review.sourceUrl)
+                            ? review.sourceUrl
+                            : sanitizeReviewSourceUrl(review.sourceUrl, review.source, review.hotelName, review.hotelLocation);
+                          if (!cleanUrl) {
+                            return <span className="text-stone-400 text-[10px]">Verified stay</span>;
+                          }
+                          return (
+                            <a
+                              href={cleanUrl}
+                              target="_blank"
+                              rel="noreferrer noopener"
+                              className="inline-flex items-center gap-1 text-emerald-700 hover:text-emerald-800 font-semibold transition hover:underline text-[10px]"
+                              title={`Verify on ${review.source}`}
+                            >
+                              <span>{getReviewSourceLabel(review.source)}</span>
+                              <ExternalLink className="w-2.5 h-2.5" />
+                            </a>
+                          );
+                        })()}
                       </div>
 
                       <div className="flex items-center gap-1.5">
@@ -1802,19 +1812,33 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
                             Constructive
                           </span>
                         )}
-                        {review.sourceUrl && (
-                          <a
-                            href={review.sourceUrl}
-                            target="_blank"
-                            rel="noreferrer noopener"
-                            onClick={(e) => e.stopPropagation()}
-                            className="inline-flex items-center gap-1 text-emerald-700 hover:text-emerald-800 font-semibold transition hover:underline"
-                            title="Verify original review on source site"
-                          >
-                            <span>Direct Link</span>
-                            <ExternalLink className="w-3 h-3" />
-                          </a>
-                        )}
+                        {(() => {
+                          const isGuestBook = (review.source || '').toLowerCase().includes('guest book') || (review.source || '').toLowerCase().includes('guestbook');
+                          if (isGuestBook) {
+                            return (
+                              <span className="text-[10px] font-semibold text-stone-600 bg-stone-100 border border-stone-200 px-1.5 py-0.2 rounded">
+                                Reception Ledger
+                              </span>
+                            );
+                          }
+                          const cleanUrl = review.sourceUrl && !isBrokenOrFakeReviewUrl(review.sourceUrl)
+                            ? review.sourceUrl
+                            : sanitizeReviewSourceUrl(review.sourceUrl, review.source, selectedHotel?.name, selectedHotel?.location, targetUrl);
+                          if (!cleanUrl) return null;
+                          return (
+                            <a
+                              href={cleanUrl}
+                              target="_blank"
+                              rel="noreferrer noopener"
+                              onClick={(e) => e.stopPropagation()}
+                              className="inline-flex items-center gap-1 text-emerald-700 hover:text-emerald-800 font-semibold transition hover:underline"
+                              title={`Verify on ${review.source}`}
+                            >
+                              <span>{getReviewSourceLabel(review.source)}</span>
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                          );
+                        })()}
                       </div>
 
                       <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition">
@@ -1978,18 +2002,28 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
                   <div className="flex items-center justify-between text-[11px] text-stone-500 border-t border-stone-200/60 pt-2 flex-wrap gap-2">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-medium text-stone-700">{review.date || 'Recent stay'}</span>
-                      {review.sourceUrl && (
-                        <a
-                          href={review.sourceUrl}
-                          target="_blank"
-                          rel="noreferrer noopener"
-                          className="inline-flex items-center gap-1 text-emerald-700 hover:text-emerald-800 font-semibold transition hover:underline"
-                          title="Open original review source"
-                        >
-                          <span>Direct Link</span>
-                          <ExternalLink className="w-3 h-3" />
-                        </a>
-                      )}
+                      {(() => {
+                        const isGuestBook = (review.source || '').toLowerCase().includes('guest book') || (review.source || '').toLowerCase().includes('guestbook');
+                        if (isGuestBook) {
+                          return <span className="text-stone-500 text-[10px]">Lodge Reception Ledger</span>;
+                        }
+                        const cleanUrl = review.sourceUrl && !isBrokenOrFakeReviewUrl(review.sourceUrl)
+                          ? review.sourceUrl
+                          : sanitizeReviewSourceUrl(review.sourceUrl, review.source, selectedHotel?.name, selectedHotel?.location);
+                        if (!cleanUrl) return null;
+                        return (
+                          <a
+                            href={cleanUrl}
+                            target="_blank"
+                            rel="noreferrer noopener"
+                            className="inline-flex items-center gap-1 text-emerald-700 hover:text-emerald-800 font-semibold transition hover:underline"
+                            title={`Verify on ${review.source}`}
+                          >
+                            <span>{getReviewSourceLabel(review.source)}</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        );
+                      })()}
                     </div>
                     <div className="flex items-center gap-1.5">
                       <button

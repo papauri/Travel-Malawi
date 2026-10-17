@@ -26,6 +26,7 @@ import { isPureSmallTalk } from '../src/lib/queryIntent';
 import { classifySwarmIntent, getSpecialistAgentPrompt, executeDeterministicSwarmReply } from './aiSwarm';
 import { parseMenuText } from './localMenuParser';
 import { parsePropertyText } from '../src/lib/localPropertyParser';
+import { isBrokenOrFakeReviewUrl, sanitizeReviewSourceUrl } from '../src/lib/reviewDates';
 
 export interface GenerationRequest {
   action: 'draft' | 'polish' | 'shorten' | 'highlights' | 'suggest_amenities' | 'suggest_rooms' | 'review_listing' | 'suggest_rate' | 'lookup_property' | 'scrape_reviews' | 'link_description_to_amenities_and_category';
@@ -263,6 +264,9 @@ When other channels are selected, attribute appropriately as "TripAdvisor", "Goo
     if (details?.targetUrl) {
       parts.push(`Target listing reference: "${details.targetUrl}"`);
     }
+    if (details?.scrapedContent) {
+      parts.push(`--- DIRECT SCRAPED WEBPAGE CONTENT ---\n${details.scrapedContent.slice(0, 3000)}\n--- END DIRECT SCRAPED CONTENT ---\nExtract actual, real guest reviews, ratings, and quotes from the scraped webpage text above whenever available.`);
+    }
 
     if (Array.isArray(details?.existingReviews) && details.existingReviews.length > 0) {
       const existingSnippets = details.existingReviews
@@ -272,8 +276,19 @@ When other channels are selected, attribute appropriately as "TripAdvisor", "Goo
       parts.push(`CRITICAL DEDUPLICATION RULE: The following reviews have ALREADY been scraped and attached to this property. Do NOT return or duplicate any of these reviews, authors, or stories:\n${existingSnippets}\nReturn strictly NEW, different reviews from other travellers.`);
     }
 
-    parts.push(`Format strictly as JSON array of review objects with no markdown fences, backticks, or intro/outro conversational text:
-[{"author":"Name","rating":5,"title":"Title","comment":"Review text","source":"TripAdvisor","sourceUrl":"https://www.tripadvisor.com/...","date":"October 2024","travellerType":"Couple","travellerOrigin":"UK","highlights":["Lake view"]}]`);
+    const safeEncName = encodeURIComponent(`${entityName} ${location || 'Malawi'}`);
+    parts.push(`CRITICAL URL INTEGRITY MANDATE:
+- Do NOT hallucinate, guess, or invent fake direct review URLs or review IDs (NEVER output fake paths like /ShowUserReviews-..., /hotel/mw/fake.html, /maps/reviews/..., or fake CIDs).
+- If a verified targetUrl was provided above, you may use it if relevant.
+- For "Google Reviews", use: "https://www.google.com/maps/search/?api=1&query=${safeEncName}"
+- For "TripAdvisor", use: "https://www.tripadvisor.com/Search?q=${encodeURIComponent(`${entityName} Malawi`)}"
+- For "Booking.com", use: "https://www.booking.com/searchresults.html?ss=${encodeURIComponent(`${entityName} Malawi`)}"
+- For "SafariBookings", use: "https://www.safaribookings.com/search?q=${encodeURIComponent(entityName)}"
+- For "Guest Book", leave sourceUrl as "" (in-person physical guest ledger at reception has no web URL).
+- For "Facebook", use: "https://www.facebook.com/search/top?q=${encodeURIComponent(entityName)}"
+
+Format strictly as a valid JSON array of review objects with no markdown fences, backticks, or intro/outro text:
+[{"author":"Name","rating":5,"title":"Title","comment":"Review text","source":"TripAdvisor","sourceUrl":"https://www.tripadvisor.com/Search?q=...","date":"October 2024","travellerType":"Couple","travellerOrigin":"UK","highlights":["Lake view"]}]`);
   } else if (action === 'link_description_to_amenities_and_category') {
     parts.push(`Analyze the following property description for an accommodation in Malawi, and extract all matching amenities and the single best fitting property category (or categories):`);
     parts.push(`Property Name: ${entityName}`);
@@ -1464,9 +1479,9 @@ async function executeWithProvider(
 
   const model = resolveModel(providerId, config.providers[providerId]?.model);
 
-  // Auto-scrape webpage content if a URL is provided for property lookup
-  if (req.action === 'lookup_property') {
-    let rawTarget = req.details?.url || (req.details?.name?.startsWith('http') ? req.details.name : '');
+  // Auto-scrape webpage content if a URL is provided for property lookup or review scraping
+  if (req.action === 'lookup_property' || req.action === 'scrape_reviews') {
+    let rawTarget = req.details?.targetUrl || req.details?.url || (req.details?.name?.startsWith('http') ? req.details.name : '');
     if (!rawTarget && req.details?.name && (req.details.name.startsWith('www.') || (req.details.name.includes('.') && req.details.name.includes('/')))) {
       rawTarget = req.details.name;
     }
@@ -1602,23 +1617,9 @@ async function executeWithProvider(
         const rating = typeof r.rating === 'number' ? Math.min(Math.max(r.rating, 1), 5) : 5;
         const source = (r.source || 'TripAdvisor').trim();
 
-        let sourceUrl = typeof r.sourceUrl === 'string' ? r.sourceUrl.trim() : '';
-        if (!sourceUrl.startsWith('http://') && !sourceUrl.startsWith('https://')) {
-          const srcLower = source.toLowerCase();
-          if (srcLower.includes('google')) {
-            sourceUrl = `https://www.google.com/maps/search/?api=1&query=${safeQuery}`;
-          } else if (srcLower.includes('booking')) {
-            sourceUrl = `https://www.booking.com/searchresults.html?ss=${safeQuery}`;
-          } else if (srcLower.includes('safari')) {
-            sourceUrl = `https://www.safaribookings.com/search?q=${encodeURIComponent(entityName)}`;
-          } else if (srcLower.includes('facebook')) {
-            sourceUrl = `https://www.facebook.com/search/top?q=${encodeURIComponent(entityName)}`;
-          } else if (srcLower.includes('guest') || srcLower.includes('book') || srcLower.includes('social')) {
-            sourceUrl = `https://www.google.com/search?q=${safeQuery}+Malawi+guest+book`;
-          } else {
-            sourceUrl = `https://www.tripadvisor.com/Search?q=${safeQuery}`;
-          }
-        }
+        const rawSourceUrl = typeof r.sourceUrl === 'string' ? r.sourceUrl.trim() : '';
+        const sourceUrl = sanitizeReviewSourceUrl(rawSourceUrl, source, entityName, entityLoc, req.details?.targetUrl) || '';
+
 
         let dateStr = typeof r.date === 'string' && r.date.trim() && r.date.trim().toLowerCase() !== 'recent stay'
           ? r.date.trim()
@@ -3399,7 +3400,7 @@ export function generateCuratedMalawiReviews(
       title: 'Warm memories penned in the lodge guest book',
       comment: `Such a tranquil oasis away from city bustle. The sunset views, fresh lake fish dinner, and attentive hospitality made our anniversary weekend unforgettable. Zikomo kwambiri to the wonderful staff!`,
       source: 'Guest Book',
-      sourceUrl: `https://www.google.com/search?q=${safeQuery}+reviews`,
+      sourceUrl: '',
       date: 'January 2025',
       travellerType: 'Couple',
       travellerOrigin: 'Blantyre, Malawi',
@@ -3425,7 +3426,7 @@ export function generateCuratedMalawiReviews(
       title: 'Peaceful stay noted in guest book, but evening Wi-Fi was weak',
       comment: `A lovely, authentic Malawian setting with generous breakfast and courteous team. Future visitors should note that evening Wi-Fi drops when the lodge is full, and hot water takes a few minutes on overcast mornings. Overall a very relaxing retreat.`,
       source: 'Guest Book',
-      sourceUrl: `https://www.google.com/search?q=${safeQuery}+reviews`,
+      sourceUrl: '',
       date: 'November 2024',
       travellerType: 'Business traveller',
       travellerOrigin: 'Mzuzu, Malawi',
@@ -3506,7 +3507,7 @@ export function generateCuratedMalawiReviews(
       title: 'Restful weekend escape with authentic warmth',
       comment: `We loved every minute of our weekend getaway here. Quiet nights, delicious lake fish dinner, and genuinely hospitable Malawian service. We will definitely return!`,
       source: 'Guest Book',
-      sourceUrl: `https://www.google.com/search?q=${safeQuery}+reviews`,
+      sourceUrl: '',
       date: 'January 2025',
       travellerType: 'Couple',
       travellerOrigin: 'Blantyre, Malawi',

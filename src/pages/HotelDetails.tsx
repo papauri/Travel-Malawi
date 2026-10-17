@@ -56,7 +56,7 @@ import Lightbox from '../components/Lightbox';
 import PriceDisplay from '../components/PriceDisplay';
 import RoomGallery from '../components/RoomGallery';
 import { useWhatsAppSettings } from '../hooks/useWhatsAppSettings';
-import { parseReviewDateToTimestamp, formatReviewDate } from '../lib/reviewDates';
+import { parseReviewDateToTimestamp, formatReviewDate, sanitizeReviewSourceUrl, getReviewSourceLabel, isBrokenOrFakeReviewUrl } from '../lib/reviewDates';
 
 interface CompactReviewItem {
   key: string;
@@ -71,11 +71,23 @@ interface CompactReviewItem {
   verified: boolean;
 }
 
-function CompactReviewCard({ review }: { review: CompactReviewItem }) {
+function CompactReviewCard({ review, hotelName, hotelLocation }: { review: CompactReviewItem; hotelName?: string; hotelLocation?: string }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const textLength = (review.text || '').length;
   // Consider long if body text exceeds 120 characters or if has title and exceeds 90 chars
   const isLong = textLength > 120 || (Boolean(review.title) && textLength > 90);
+
+  const isGuestBook = (review.source || '').toLowerCase().includes('guest book') || (review.source || '').toLowerCase().includes('guestbook');
+
+  // URL integrity: Never display broken, fake, or bare root URLs.
+  // If invalid or empty, synthesize guaranteed authentic search/verification query URL on that platform.
+  const cleanUrl = isGuestBook
+    ? undefined
+    : review.sourceUrl && !isBrokenOrFakeReviewUrl(review.sourceUrl)
+    ? review.sourceUrl
+    : sanitizeReviewSourceUrl(review.sourceUrl, review.source, hotelName, hotelLocation);
+
+  const sourceLabel = getReviewSourceLabel(review.source);
 
   const handleCardClick = (e: React.MouseEvent) => {
     if (!isLong) return;
@@ -176,6 +188,11 @@ function CompactReviewCard({ review }: { review: CompactReviewItem }) {
             <span className="text-emerald-700 uppercase tracking-wider font-semibold flex items-center gap-1 text-[10px]">
               <ShieldCheck className="h-3 w-3 shrink-0" /> Verified stay
             </span>
+          ) : isGuestBook ? (
+            <span className="text-stone-600 uppercase tracking-wider font-semibold text-[10px] flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+              Lodge Reception Guest Book
+            </span>
           ) : (
             <span className="text-stone-500 uppercase tracking-wider font-semibold text-[10px]">
               Imported from {review.source}
@@ -193,16 +210,16 @@ function CompactReviewCard({ review }: { review: CompactReviewItem }) {
           )}
         </div>
 
-        {review.sourceUrl && (
+        {cleanUrl && !isGuestBook && (
           <a
-            href={review.sourceUrl}
+            href={cleanUrl}
             target="_blank"
             rel="noreferrer noopener"
             onClick={(e) => e.stopPropagation()}
             className="inline-flex items-center gap-1 text-emerald-700 hover:text-emerald-800 font-semibold transition hover:underline text-[10px] sm:text-[11px]"
-            title={`Verify original review on ${review.source}`}
+            title={`Verify on ${review.source}`}
           >
-            <span>View original on {review.source}</span>
+            <span>{sourceLabel}</span>
             <ExternalLink className="w-2.5 h-2.5 sm:w-3 sm:h-3 shrink-0" />
           </a>
         )}
@@ -734,6 +751,10 @@ export default function HotelDetails() {
       const rawDate = r?.date || (r as any)?.createdAt || (r as any)?.scrapedAt || null;
       const ts = parseReviewDateToTimestamp(rawDate, (r as any)?.createdAt || 0);
       const formattedDate = formatReviewDate(rawDate || ts);
+      const isGb = (r?.source || '').toLowerCase().includes('guest book') || (r?.source || '').toLowerCase().includes('guestbook');
+      const sanitizedUrl = isGb
+        ? undefined
+        : sanitizeReviewSourceUrl(r?.sourceUrl, r?.source, hotel?.name, hotel?.location);
 
       return {
         key: r?.id || `imported-${i}`,
@@ -744,7 +765,7 @@ export default function HotelDetails() {
         date: formattedDate,
         timestamp: ts,
         source: r?.source || 'TripAdvisor',
-        sourceUrl: r?.sourceUrl || undefined,
+        sourceUrl: sanitizedUrl,
         verified: false,
       };
     });
@@ -3655,7 +3676,12 @@ export default function HotelDetails() {
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                   {allReviews.slice((currentReviewPage - 1) * reviewsPerPage, currentReviewPage * reviewsPerPage).map((review, rIdx) => (
-                    <CompactReviewCard key={`${review.key}-${rIdx}`} review={review} />
+                    <CompactReviewCard
+                      key={`${review.key}-${rIdx}`}
+                      review={review}
+                      hotelName={hotel?.name}
+                      hotelLocation={hotel?.location}
+                    />
                   ))}
                 </div>
                 {allReviews.length > reviewsPerPage && (
