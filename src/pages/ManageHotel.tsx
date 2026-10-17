@@ -1717,21 +1717,21 @@ export default function ManageHotel() {
 
   return (
     <div className="max-w-6xl mx-auto px-3 sm:px-5 lg:px-8 py-4 sm:py-6 md:py-10">
-      <div className="mb-5 sm:mb-7 flex flex-col md:flex-row md:items-start md:justify-between gap-3 sm:gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-serif font-bold text-stone-900">{hotel.name}</h1>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 sm:mt-1.5">
-            <p className="text-stone-500 text-xs sm:text-sm md:text-base">{hotel.location}</p>
-            <span className="text-stone-300 hidden sm:inline">·</span>
+      <div className="mb-5 sm:mb-6 bg-white border border-stone-200 rounded-2xl p-4 sm:p-5 shadow-2xs flex flex-col md:flex-row md:items-center md:justify-between gap-3.5 sm:gap-4">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-serif font-bold text-stone-900 truncate">{hotel.name}</h1>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
+            <p className="text-stone-500 text-xs sm:text-sm">{hotel.location}</p>
+            <span className="text-stone-300 hidden sm:inline">&middot;</span>
             <a
               href={`/hotel/${hotel.id}`}
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-1 text-xs sm:text-sm font-semibold text-stone-600 hover:text-emerald-700 transition"
             >
-              View live listing <ExternalLink className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+              View live listing <ExternalLink className="h-3.5 w-3.5" />
             </a>
-            <span className="text-stone-300 hidden sm:inline">·</span>
+            <span className="text-stone-300 hidden sm:inline">&middot;</span>
             <a
               href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${hotel.name} ${hotel.location || 'Malawi'}`)}`}
               target="_blank"
@@ -1739,13 +1739,14 @@ export default function ManageHotel() {
               className="inline-flex items-center gap-1 text-xs sm:text-sm font-semibold text-stone-600 hover:text-amber-800 transition"
               title="View Google Maps community reviews, photos and star rating"
             >
-              <MapPin className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-stone-400" />
+              <MapPin className="h-3.5 w-3.5 text-stone-400" />
               <span>Google Maps &amp; Reviews</span>
-              <ExternalLink className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-stone-400" />
+              <ExternalLink className="h-3 w-3 text-stone-400" />
             </a>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 shrink-0 self-start md:self-auto">
+
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
           {/* Troubleshooting Mode: Admin / Marketing can view as manager */}
           {isElevatedUser && (
             <button
@@ -1763,14 +1764,12 @@ export default function ManageHotel() {
                   return copy;
                 }, { replace: true });
                 if (next) {
-                  toast('Switched to Manager View mode for troubleshooting.', {
-                    icon: '👁️',
-                  });
+                  toast('Switched to Manager View mode for troubleshooting.');
                 } else {
                   toast.success('Exited Manager View mode. Elevated admin/marketing controls restored.');
                 }
               }}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition shadow-2xs cursor-pointer border ${
+              className={`inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-xl text-xs font-semibold transition shadow-2xs cursor-pointer border ${
                 viewAsManager
                   ? 'bg-amber-600 text-white border-amber-600 hover:bg-amber-700 ring-2 ring-amber-300'
                   : 'bg-stone-900 text-white border-stone-900 hover:bg-stone-800'
@@ -1787,83 +1786,55 @@ export default function ManageHotel() {
             type="button"
             onClick={handleToggleOnlineStatus}
             disabled={togglingStatus}
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition shadow-2xs cursor-pointer select-none ${
+            className={`inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-xl text-xs font-semibold border transition shadow-2xs cursor-pointer select-none ${
               hotel.isOnline !== false
-                ? 'bg-white hover:bg-stone-50 text-stone-800 border-stone-200/90'
+                ? 'bg-white hover:bg-stone-50 text-stone-800 border-stone-200'
                 : 'bg-stone-100 hover:bg-stone-200 text-stone-600 border-stone-200'
             }`}
             title="Toggle whether guests see you as Online or Away"
           >
-            <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${hotel.isOnline !== false ? 'bg-emerald-600' : 'bg-stone-400'}`} />
+            <span className={`h-2 w-2 rounded-full shrink-0 ${hotel.isOnline !== false ? 'bg-emerald-600' : 'bg-stone-400'}`} />
             <span>{hotel.isOnline !== false ? 'Online' : 'Offline'}</span>
           </button>
 
           {hotel.status === 'pending' ? (
-            <span className="inline-flex items-center gap-1.5 bg-white border border-stone-200/90 text-stone-800 px-2.5 py-1.5 rounded-lg text-xs font-medium shadow-2xs">
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
+            <span className="inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-semibold shadow-2xs">
+              <span className="h-2 w-2 rounded-full bg-amber-500 shrink-0" />
               <span>Pending review</span>
             </span>
           ) : hotel.status === 'rejected' ? (
-            <span className="inline-flex items-center gap-1.5 bg-white border border-stone-200/90 text-stone-600 px-2.5 py-1.5 rounded-lg text-xs font-medium shadow-2xs">
-              <span className="h-1.5 w-1.5 rounded-full bg-stone-400 shrink-0" />
+            <span className="inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-xl bg-stone-100 border border-stone-200 text-stone-600 text-xs font-semibold shadow-2xs">
+              <span className="h-2 w-2 rounded-full bg-stone-400 shrink-0" />
               <span>Unpublished</span>
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1.5 bg-white border border-stone-200/90 text-stone-800 px-2.5 py-1.5 rounded-lg text-xs font-medium shadow-2xs">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-600 shrink-0" />
+            <span className="inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-semibold shadow-2xs">
+              <span className="h-2 w-2 rounded-full bg-emerald-600 shrink-0" />
               <span>Live</span>
             </span>
           )}
         </div>
       </div>
 
-      {/* Pending Review Reassurance Banner for Property Owner / Manager */}
-      {hotel.status === 'pending' && (
-        <div className="mb-5 sm:mb-6 rounded-xl sm:rounded-2xl border border-amber-200 bg-amber-50/70 p-3.5 sm:p-4 text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-start sm:items-center gap-3">
-            <div className="p-2 rounded-xl bg-amber-100 text-amber-800 shrink-0">
-              <Clock className="w-4 h-4" />
-            </div>
-            <div>
-              <h3 className="text-xs sm:text-sm font-bold text-stone-900">
-                Listing Pending Verification &bull; Full Preview &amp; Editing Active
-              </h3>
-              <p className="text-xs text-stone-600 mt-0.5 leading-relaxed">
-                Your property is currently under standard verification review (typically completed within 24 hours). You can view your live listing preview and configure rooms, rates, and photos right now.
-              </p>
-            </div>
-          </div>
-          <a
-            href={`/hotel/${hotel.id}`}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-stone-900 text-white text-xs font-bold hover:bg-stone-800 transition shrink-0"
-          >
-            <span>Preview Listing</span>
-            <ExternalLink className="w-3.5 h-3.5" />
-          </a>
-        </div>
-      )}
-
       {/* Simulation / Troubleshooting Banner when viewing as manager */}
       {isElevatedUser && viewAsManager && (
-        <div className="mb-5 sm:mb-6 rounded-xl sm:rounded-2xl border-2 border-amber-400 bg-amber-50/90 p-4 sm:p-5 text-amber-950 shadow-sm animate-in fade-in duration-200">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-start sm:items-center gap-3">
-              <div className="p-2 rounded-xl bg-amber-200 text-amber-900 shrink-0 mt-0.5 sm:mt-0">
-                <UserCog className="w-5 h-5" />
+        <div className="mb-5 sm:mb-6 rounded-2xl border border-amber-300 bg-amber-50/90 p-4 sm:p-5 text-amber-950 shadow-2xs animate-in fade-in duration-200">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-xl bg-amber-200/80 text-amber-900 flex items-center justify-center shrink-0">
+                <UserCog className="w-4 h-4" />
               </div>
               <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-sm sm:text-base font-bold text-amber-950">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-sm font-bold text-amber-950">
                     Troubleshooting Mode: Viewing as Property Manager
                   </h3>
-                  <span className="text-[10px] font-bold uppercase tracking-wider bg-amber-200 text-amber-900 px-2 py-0.5 rounded-full">
+                  <span className="text-[10px] font-bold uppercase tracking-wider bg-amber-200 text-amber-900 px-2 py-0.5 rounded-md">
                     Read-Only Protected
                   </span>
                 </div>
                 <p className="text-xs text-amber-900/80 mt-0.5 leading-relaxed">
-                  You are previewing this property with exact manager permissions. Protected fields (Stay &amp; Accommodation type, Categories, Owner legal entity, and admin-only messaging switches) are greyed out and locked just as an assigned manager sees them.
+                  You are previewing this property with exact manager permissions. Protected fields (Stay &amp; Accommodation type, Categories, Owner legal entity, and admin-only messaging switches) are locked just as an assigned manager sees them.
                 </p>
               </div>
             </div>
@@ -1878,7 +1849,7 @@ export default function ManageHotel() {
                 }, { replace: true });
                 toast.success('Exited Manager View mode. Elevated controls restored.');
               }}
-              className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-amber-900 text-white hover:bg-amber-800 text-xs font-bold transition shadow-2xs shrink-0 cursor-pointer self-start sm:self-auto"
+              className="inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-xl bg-stone-900 text-white hover:bg-stone-800 text-xs font-semibold transition shadow-2xs shrink-0 cursor-pointer self-start sm:self-center"
             >
               <EyeOff className="w-3.5 h-3.5" />
               <span>Exit &amp; Restore Admin View</span>
@@ -1887,18 +1858,18 @@ export default function ManageHotel() {
         </div>
       )}
 
-      {/* Elevated Moderation Controls for Admins and Marketing */}
-      {canEditElevatedFields && (
-        <div className={`mb-6 p-4 sm:p-5 rounded-2xl border ${
+      {/* Unified Status & Moderation Banner (Single uniform banner for either Elevated Operator or Property Manager) */}
+      {canEditElevatedFields ? (
+        <div className={`mb-5 sm:mb-6 p-4 sm:p-5 rounded-2xl border shadow-2xs ${
           hotel.status === 'approved'
             ? 'bg-emerald-50/70 border-emerald-200 text-emerald-950'
             : hotel.status === 'rejected'
             ? 'bg-rose-50/70 border-rose-200 text-rose-950'
-            : 'bg-amber-50/80 border-amber-300 text-amber-950 shadow-2xs'
+            : 'bg-amber-50/80 border-amber-200 text-amber-950'
         }`}>
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div className="flex items-start gap-3">
-              <div className={`p-2 rounded-xl mt-0.5 shrink-0 ${
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
                 hotel.status === 'approved'
                   ? 'bg-emerald-100 text-emerald-800'
                   : hotel.status === 'rejected'
@@ -1906,44 +1877,44 @@ export default function ManageHotel() {
                   : 'bg-amber-100 text-amber-800'
               }`}>
                 {hotel.status === 'approved' ? (
-                  <CheckCircle2 className="w-5 h-5" />
+                  <CheckCircle2 className="w-4 h-4" />
                 ) : hotel.status === 'rejected' ? (
-                  <AlertTriangle className="w-5 h-5" />
+                  <AlertTriangle className="w-4 h-4" />
                 ) : (
-                  <ShieldCheck className="w-5 h-5" />
+                  <ShieldCheck className="w-4 h-4" />
                 )}
               </div>
               <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-stone-900/10">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-stone-900/10">
                     Listing Moderation: {hotel.status || 'pending'}
                   </span>
                   <span className="text-[11px] text-stone-500 font-medium">
                     ({isAdmin(user) ? 'Admin Control' : 'Marketing Control'})
                   </span>
                 </div>
-                <p className="text-sm font-semibold mt-1">
+                <p className="text-sm font-bold text-stone-900 mt-1">
                   {hotel.status === 'approved'
                     ? 'This listing is Live and accepting guest bookings.'
                     : hotel.status === 'rejected'
-                    ? 'This listing has been Rejected and is hidden from public search.'
-                    : 'This listing is Pending Review and is awaiting verification before going live.'}
+                    ? 'This listing is Unpublished and hidden from public search.'
+                    : 'This listing is Pending Verification before going live.'}
                 </p>
-                <p className="text-xs text-stone-600 mt-0.5">
-                  As an elevated platform operator, you can verify property quality, preview storefront appearance, and update publishing status.
+                <p className="text-xs text-stone-600 mt-0.5 leading-relaxed">
+                  Verify property details, preview the guest storefront, or update publishing status below.
                 </p>
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 self-start md:self-center shrink-0">
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
               <a
                 href={`/hotel/${hotel.id}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-stone-700 bg-white hover:bg-stone-50 border border-stone-200/80 shadow-2xs transition"
+                className="inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-xl text-xs font-semibold text-stone-700 bg-white hover:bg-stone-50 border border-stone-200 shadow-2xs transition"
               >
                 <ExternalLink className="w-3.5 h-3.5 text-stone-500" />
-                <span>View Live Preview</span>
+                <span>Preview Listing</span>
               </a>
 
               {hotel.status !== 'approved' && (
@@ -1951,9 +1922,9 @@ export default function ManageHotel() {
                   type="button"
                   disabled={updatingStatus}
                   onClick={() => handleUpdateListingStatus('approved')}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-white bg-emerald-700 hover:bg-emerald-600 active:scale-95 shadow-xs transition disabled:opacity-50 cursor-pointer"
+                  className="inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-xl text-xs font-semibold text-white bg-emerald-700 hover:bg-emerald-600 shadow-2xs transition disabled:opacity-50 cursor-pointer"
                 >
-                  <CheckCircle2 className="w-4 h-4" />
+                  <CheckCircle2 className="w-3.5 h-3.5" />
                   <span>{updatingStatus ? 'Updating...' : 'Approve Listing (Go Live)'}</span>
                 </button>
               )}
@@ -1963,9 +1934,9 @@ export default function ManageHotel() {
                   type="button"
                   disabled={updatingStatus}
                   onClick={() => handleUpdateListingStatus('rejected')}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold text-rose-700 hover:text-white bg-white hover:bg-rose-600 border border-rose-200 active:scale-95 shadow-2xs transition disabled:opacity-50 cursor-pointer"
+                  className="inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-xl text-xs font-semibold text-rose-700 hover:text-white bg-white hover:bg-rose-600 border border-rose-200 shadow-2xs transition disabled:opacity-50 cursor-pointer"
                 >
-                  <X className="w-4 h-4" />
+                  <X className="w-3.5 h-3.5" />
                   <span>Reject Listing</span>
                 </button>
               )}
@@ -1975,7 +1946,7 @@ export default function ManageHotel() {
                   type="button"
                   disabled={updatingStatus}
                   onClick={() => handleUpdateListingStatus('pending')}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-stone-700 bg-white hover:bg-stone-50 border border-stone-200 shadow-2xs transition disabled:opacity-50 cursor-pointer"
+                  className="inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-xl text-xs font-semibold text-stone-700 bg-white hover:bg-stone-50 border border-stone-200 shadow-2xs transition disabled:opacity-50 cursor-pointer"
                 >
                   <span>Set to Pending</span>
                 </button>
@@ -1983,21 +1954,41 @@ export default function ManageHotel() {
             </div>
           </div>
         </div>
-      )}
-
-      {/* Non-elevated manager notice when not approved */}
-      {(!isElevatedUser || viewAsManager) && hotel.status && hotel.status !== 'approved' && (
-        <div className="mb-5 sm:mb-6 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl sm:rounded-2xl px-4 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm">
-          {hotel.status === 'pending'
-            ? 'This listing is not yet visible to travellers. Our team reviews new properties before they go live — adding rooms and photos now means it can start taking bookings the moment it is approved.'
-            : 'This listing is not currently published. Contact the Travel-Malawi team if you believe this is a mistake.'}
+      ) : hotel.status && hotel.status !== 'approved' ? (
+        <div className="mb-5 sm:mb-6 rounded-2xl border border-amber-200 bg-amber-50/80 p-4 sm:p-5 text-amber-950 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+              <Clock className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-stone-900">
+                {hotel.status === 'pending'
+                  ? 'Listing Pending Verification · Full Preview & Editing Active'
+                  : 'Listing Currently Unpublished'}
+              </h3>
+              <p className="text-xs text-stone-600 mt-0.5 leading-relaxed">
+                {hotel.status === 'pending'
+                  ? 'Your property is under standard verification review. You can preview your listing and configure rooms, rates, and photos right now so it is ready to accept bookings the moment it is approved.'
+                  : 'This listing is not currently published in public search. Contact the Travel-Malawi support team if you need assistance.'}
+              </p>
+            </div>
+          </div>
+          <a
+            href={`/hotel/${hotel.id}`}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-xl bg-stone-900 text-white text-xs font-semibold hover:bg-stone-800 transition shadow-2xs shrink-0 self-start sm:self-center"
+          >
+            <span>Preview Listing</span>
+            <ExternalLink className="w-3.5 h-3.5" />
+          </a>
         </div>
-      )}
+      ) : null}
 
       {/* Performance snapshot with mobile dropdown / toggle */}
       {canSeeFinancials && (
-        <div className="mb-5 sm:mb-7">
-          <div className="flex items-center justify-between mb-2">
+        <div className="mb-5 sm:mb-6">
+          <div className="flex items-center justify-between mb-2.5">
             <button
               type="button"
               onClick={() => setShowPerformanceStats(!showPerformanceStats)}
@@ -2006,61 +1997,62 @@ export default function ManageHotel() {
               <span>Performance Snapshot</span>
               <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${showPerformanceStats ? 'rotate-180' : ''}`} />
             </button>
-            <span className="text-[11px] text-stone-400 hidden sm:inline">Last 30 days & financial overview</span>
+            <span className="text-[11px] text-stone-400 hidden sm:inline">Last 30 days &amp; financial overview</span>
           </div>
 
           {showPerformanceStats && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 md:gap-3.5">
-              <div className="bg-white border border-stone-200 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-2xs">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-3.5">
+              <div className="bg-white border border-stone-200 rounded-2xl p-3.5 sm:p-4 shadow-2xs">
                 <div className="flex items-center gap-1.5 text-stone-400 mb-1">
                   <Percent className="h-3.5 w-3.5" />
-                  <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider">Occupancy · 30d</span>
+                  <span className="text-[11px] font-bold uppercase tracking-wider">Occupancy &middot; 30d</span>
                 </div>
-                <p className="text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-stone-900">{stats.occupancy.toFixed(0)}%</p>
-                <p className="text-[10px] sm:text-xs text-stone-400 mt-0.5">{stats.occupiedNights} of {stats.availableNights} nights</p>
+                <p className="text-xl sm:text-2xl font-bold tracking-tight text-stone-900">{stats.occupancy.toFixed(0)}%</p>
+                <p className="text-xs text-stone-400 mt-0.5">{stats.occupiedNights} of {stats.availableNights} nights</p>
               </div>
-              <div className="bg-white border border-stone-200 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-2xs">
+              <div className="bg-white border border-stone-200 rounded-2xl p-3.5 sm:p-4 shadow-2xs">
                 <div className="flex items-center gap-1.5 text-stone-400 mb-1">
                   <Wallet className="h-3.5 w-3.5" />
-                  <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider">Upcoming rev</span>
+                  <span className="text-[11px] font-bold uppercase tracking-wider">Upcoming rev</span>
                 </div>
                 <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
                   {stats.upcomingRevenue.length === 0
-                    ? <p className="text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-stone-900">&mdash;</p>
+                    ? <p className="text-xl sm:text-2xl font-bold tracking-tight text-stone-900">&mdash;</p>
                     : stats.upcomingRevenue.map(([code, total], idx) => (
-                        <p key={`up-rev-${code}-${idx}`} className="text-lg sm:text-xl md:text-2xl font-bold text-stone-900"><PriceDisplay amount={total} currency={code} /></p>
+                        <p key={`up-rev-${code}-${idx}`} className="text-xl sm:text-2xl font-bold text-stone-900"><PriceDisplay amount={total} currency={code} /></p>
                       ))}
                 </div>
-                <p className="text-[10px] sm:text-xs text-stone-400 mt-0.5">Confirmed stays ahead</p>
+                <p className="text-xs text-stone-400 mt-0.5">Confirmed stays ahead</p>
               </div>
-              <div className="bg-white border border-stone-200 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-2xs">
+              <div className="bg-white border border-stone-200 rounded-2xl p-3.5 sm:p-4 shadow-2xs">
                 <div className="flex items-center gap-1.5 text-stone-400 mb-1">
                   <TrendingUp className="h-3.5 w-3.5" />
-                  <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider">All-time rev</span>
+                  <span className="text-[11px] font-bold uppercase tracking-wider">All-time rev</span>
                 </div>
                 <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
                   {stats.allTimeRevenue.length === 0
-                    ? <p className="text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-stone-900">&mdash;</p>
+                    ? <p className="text-xl sm:text-2xl font-bold tracking-tight text-stone-900">&mdash;</p>
                     : stats.allTimeRevenue.map(([code, total], idx) => (
-                        <p key={`all-rev-${code}-${idx}`} className="text-lg sm:text-xl md:text-2xl font-bold text-stone-900"><PriceDisplay amount={total} currency={code} /></p>
+                        <p key={`all-rev-${code}-${idx}`} className="text-xl sm:text-2xl font-bold text-stone-900"><PriceDisplay amount={total} currency={code} /></p>
                       ))}
                 </div>
-                <p className="text-[10px] sm:text-xs text-stone-400 mt-0.5">{stats.confirmedCount} booking{stats.confirmedCount === 1 ? '' : 's'}</p>
+                <p className="text-xs text-stone-400 mt-0.5">{stats.confirmedCount} booking{stats.confirmedCount === 1 ? '' : 's'}</p>
               </div>
-              <div className="bg-white border border-stone-200 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-2xs">
+              <div className="bg-white border border-stone-200 rounded-2xl p-3.5 sm:p-4 shadow-2xs">
                 <div className="flex items-center gap-1.5 text-stone-400 mb-1">
                   <Clock className="h-3.5 w-3.5" />
-                  <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider">Awaiting reply</span>
+                  <span className="text-[11px] font-bold uppercase tracking-wider">Awaiting reply</span>
                 </div>
-                <p className="text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-stone-900">{stats.pending}</p>
-                <p className="text-[10px] sm:text-xs text-stone-400 mt-0.5">Avg stay {stats.averageStay.toFixed(1)} nights</p>
+                <p className="text-xl sm:text-2xl font-bold tracking-tight text-stone-900">{stats.pending}</p>
+                <p className="text-xs text-stone-400 mt-0.5">Avg stay {stats.averageStay.toFixed(1)} nights</p>
               </div>
             </div>
           )}
         </div>
       )}
-      {/* Dashboard Section Navigation */}
-      <div className="relative md:sticky md:top-[100px] lg:top-[108px] z-30 bg-stone-50/95 backdrop-blur-md py-2 sm:py-2.5 mb-5 sm:mb-7 border-b border-stone-200/80">
+
+      {/* Dashboard Section Navigation — Uniform wrapping grid with zero horizontal scroll or label truncation */}
+      <div className="relative z-20 mb-5 sm:mb-6">
         {(() => {
           const tabsList = [
             { id: 'details' as Tab, label: 'Details', icon: Building },
@@ -2075,8 +2067,6 @@ export default function ManageHotel() {
             { id: 'broadcasts' as Tab, label: 'Broadcasts', icon: Megaphone },
             { id: 'templates' as Tab, label: 'Automation', icon: Mail },
           ];
-          const currentTabObj = tabsList.find(t => t.id === activeTab) || tabsList[0];
-          const CurrentIcon = currentTabObj.icon;
           const totalPendingBookings = bookings.filter(b => b.status === 'pending').length;
           const totalUnreadInquiries = inquiries.filter(i => 
             i.lastSenderId !== user?.uid && 
@@ -2085,206 +2075,70 @@ export default function ManageHotel() {
           ).length;
 
           return (
-            <>
-              {/* Mobile Section Navigation (< md): Quick-switch row + foldable accordion */}
-              <div className="md:hidden space-y-2">
-                {/* 1-Tap Quick Switch Row for Top 4 Daily Operational Tabs */}
-                <div className="grid grid-cols-4 gap-1 p-1 bg-white border border-stone-200/90 rounded-xl shadow-2xs">
-                  {tabsList.slice(0, 4).map(tab => {
-                    const Icon = tab.icon;
-                    const isActive = activeTab === tab.id;
-                    const badge = tab.id === 'bookings' ? totalPendingBookings : tab.id === 'inquiries' ? totalUnreadInquiries : 0;
-                    const shortLabel = tab.id === 'rooms' ? (editHotelData.stayType === 'entire_place' ? 'Space' : 'Rooms') : tab.label;
+            <div
+              ref={desktopNavRef}
+              className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-1.5 sm:gap-2 p-2 bg-white border border-stone-200 rounded-2xl shadow-2xs"
+              role="tablist"
+              aria-label="Property management sections"
+            >
+              {tabsList.map(tab => {
+                const Icon = tab.icon;
+                const pendingCount = tab.id === 'bookings' ? totalPendingBookings : 0;
+                const unreadInquiryCount = tab.id === 'inquiries' ? totalUnreadInquiries : 0;
+                const isActive = activeTab === tab.id;
 
-                    return (
-                      <button
-                        key={`mobile-quick-${tab.id}`}
-                        type="button"
-                        onClick={() => {
-                          requestTab(tab.id);
-                          setIsMobileNavOpen(false);
-                        }}
-                        className={`flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-semibold transition cursor-pointer select-none ${
-                          isActive
-                            ? 'bg-stone-900 text-white shadow-2xs'
-                            : 'text-stone-600 hover:bg-stone-100'
-                        }`}
-                      >
-                        <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-white' : 'text-stone-500'}`} />
-                        <span className="truncate">{shortLabel}</span>
-                        {badge > 0 && (
-                          <span className={`text-[9px] px-1 py-0.2 rounded-full font-bold shrink-0 ${
-                            isActive ? 'bg-amber-400 text-stone-950' : 'bg-amber-100 text-amber-900'
-                          }`}>
-                            {badge}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Active Section Header Indicator — Tapping toggles open/closed state */}
-                <button
-                  type="button"
-                  onClick={() => setIsMobileNavOpen(!isMobileNavOpen)}
-                  aria-expanded={isMobileNavOpen}
-                  aria-label="Toggle section navigation menu"
-                  className="w-full flex items-center justify-between px-3.5 py-2.5 bg-white border border-stone-200/90 rounded-xl text-xs shadow-2xs hover:bg-stone-50 transition cursor-pointer select-none"
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className="w-6 h-6 rounded-lg bg-stone-100 flex items-center justify-center shrink-0 text-stone-800">
-                      <CurrentIcon className="w-3.5 h-3.5" />
-                    </div>
-                    <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
-                      <span className="font-bold text-stone-900 truncate">{currentTabObj.label}</span>
-                      {dirtyOn(activeTab) && (
-                        <span title="Unsaved changes" className="h-2 w-2 rounded-full bg-amber-500 shrink-0" />
-                      )}
-                      {totalPendingBookings > 0 && (
-                        <span className="bg-amber-100 text-amber-900 text-[10px] px-1.5 py-0.2 rounded-md font-bold shrink-0">
-                          {totalPendingBookings} pending
-                        </span>
-                      )}
-                      {totalUnreadInquiries > 0 && (
-                        <span className="bg-stone-900 text-white text-[10px] px-1.5 py-0.2 rounded-md font-bold shrink-0">
-                          {totalUnreadInquiries} new
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-stone-500 shrink-0">
-                    <span className="text-[11px] font-semibold text-stone-600">
-                      {isMobileNavOpen ? 'Close Menu' : 'All 11 Sections'}
-                    </span>
-                    <ChevronDown className={`w-4 h-4 text-stone-400 transition-transform duration-200 ${isMobileNavOpen ? 'rotate-180' : ''}`} />
-                  </div>
-                </button>
-
-                {/* 11 Section Buttons: Foldable grid that smoothly appears when unfolded */}
-                {isMobileNavOpen && (
-                  <div
-                    className="p-1.5 bg-white border border-stone-200/90 rounded-2xl shadow-md grid grid-cols-2 sm:grid-cols-3 gap-1.5 animate-in fade-in duration-150"
-                    role="tablist"
-                    aria-label="Property management sections"
+                return (
+                  <button
+                    key={tab.id}
+                    data-tab-id={tab.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    onClick={() => {
+                      requestTab(tab.id);
+                      setIsMobileNavOpen(false);
+                    }}
+                    className={`flex items-center justify-between gap-1.5 h-10 px-3 rounded-xl text-xs font-semibold transition cursor-pointer select-none min-w-0 ${
+                      isActive
+                        ? 'bg-stone-900 text-white shadow-2xs'
+                        : 'bg-stone-50/90 text-stone-700 hover:text-stone-950 hover:bg-stone-100 border border-stone-200/70'
+                    }`}
                   >
-                    {tabsList.map(tab => {
-                      const Icon = tab.icon;
-                      const pendingCount = tab.id === 'bookings' ? totalPendingBookings : 0;
-                      const unreadInquiryCount = tab.id === 'inquiries' ? totalUnreadInquiries : 0;
-                      const isActive = activeTab === tab.id;
-
-                      return (
-                        <button
-                          key={tab.id}
-                          type="button"
-                          role="tab"
-                          aria-selected={isActive}
-                          onClick={() => {
-                            requestTab(tab.id);
-                            setIsMobileNavOpen(false);
-                          }}
-                          className={`flex items-center justify-between gap-1 px-2.5 py-2 rounded-xl text-xs font-semibold transition cursor-pointer text-left min-h-[42px] select-none ${
-                            isActive
-                              ? 'bg-stone-900 text-white shadow-xs ring-1 ring-stone-900'
-                              : 'bg-stone-50 hover:bg-stone-100 text-stone-700 border border-stone-200/60'
-                          }`}
-                        >
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-white' : 'text-stone-500'}`} />
-                            <span className="truncate">{tab.label}</span>
-                          </div>
-                          <div className="flex items-center gap-1 shrink-0">
-                            {dirtyOn(tab.id) && (
-                              <span title="Unsaved changes" className="h-1.5 w-1.5 rounded-full bg-amber-400" />
-                            )}
-                            {pendingCount > 0 && (
-                              <span className={`text-[10px] px-1 py-0.2 rounded-full font-bold ${
-                                isActive ? 'bg-amber-400 text-stone-950' : 'bg-amber-100 text-amber-900'
-                              }`}>
-                                {pendingCount}
-                              </span>
-                            )}
-                            {unreadInquiryCount > 0 && (
-                              <span className={`text-[10px] px-1 py-0.2 rounded-full font-bold ${
-                                isActive ? 'bg-white/20 text-white' : 'bg-stone-900 text-white'
-                              }`}>
-                                {unreadInquiryCount}
-                              </span>
-                            )}
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              {/* Tablet & Desktop Navigation Bar (>= md): Uniform responsive grid so all 11 tabs are 100% visible */}
-              <div className="hidden md:block">
-                <div
-                  ref={desktopNavRef}
-                  className="grid grid-cols-4 lg:grid-cols-6 xl:grid-cols-11 gap-1.5 p-1.5 bg-white border border-stone-200/90 rounded-2xl shadow-2xs"
-                  role="tablist"
-                  aria-label="Property management sections"
-                >
-                  {tabsList.map(tab => {
-                    const Icon = tab.icon;
-                    const pendingCount = tab.id === 'bookings' ? totalPendingBookings : 0;
-                    const unreadInquiryCount = tab.id === 'inquiries' ? totalUnreadInquiries : 0;
-                    const isActive = activeTab === tab.id;
-                    
-                    return (
-                      <button
-                        key={tab.id}
-                        data-tab-id={tab.id}
-                        type="button"
-                        role="tab"
-                        aria-selected={isActive}
-                        onClick={() => requestTab(tab.id)}
-                        className={`flex items-center justify-between gap-1.5 px-2.5 py-2 rounded-xl text-xs font-semibold transition cursor-pointer select-none min-w-0 ${
-                          isActive
-                            ? 'bg-stone-900 text-white shadow-xs ring-1 ring-stone-900'
-                            : 'bg-stone-50/90 text-stone-600 hover:text-stone-950 hover:bg-stone-100 border border-stone-200/50 hover:border-stone-200'
-                        }`}
-                      >
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <Icon className={`h-3.5 w-3.5 shrink-0 ${isActive ? 'text-white' : 'text-stone-500'}`} />
-                          <span className="truncate">{tab.label}</span>
-                        </div>
-                        <div className="flex items-center gap-1 shrink-0">
-                          {dirtyOn(tab.id) && (
-                            <span title="Unsaved changes" className={`h-2 w-2 rounded-full shrink-0 ${isActive ? 'bg-amber-400' : 'bg-amber-500'}`} />
-                          )}
-                          {tab.id === 'restaurant' && hotel.restaurant?.enabled && (
-                            <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-md shrink-0 font-medium ${
-                              isActive ? 'bg-white/20 text-emerald-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200/80'
-                            }`}>
-                              Live
-                            </span>
-                          )}
-                          {pendingCount > 0 && (
-                            <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-md shrink-0 font-bold ${
-                              isActive ? 'bg-amber-400 text-stone-950' : 'bg-amber-100 text-amber-900 border border-amber-200'
-                            }`}>
-                              {pendingCount}
-                            </span>
-                          )}
-                          {unreadInquiryCount > 0 && (
-                            <span className={`inline-flex items-center gap-0.5 text-[10px] font-mono px-1.5 py-0.2 rounded-md shrink-0 font-bold ${
-                              isActive ? 'bg-white/20 text-white' : 'bg-stone-900 text-white'
-                            }`}>
-                              <Bell className="w-2.5 h-2.5 text-current animate-bell-ring" />
-                              {unreadInquiryCount}
-                            </span>
-                          )}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Icon className={`h-3.5 w-3.5 shrink-0 ${isActive ? 'text-white' : 'text-stone-500'}`} />
+                      <span className="truncate">{tab.label}</span>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {dirtyOn(tab.id) && (
+                        <span title="Unsaved changes" className={`h-2 w-2 rounded-full shrink-0 ${isActive ? 'bg-amber-400' : 'bg-amber-500'}`} />
+                      )}
+                      {tab.id === 'restaurant' && hotel.restaurant?.enabled && (
+                        <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-md shrink-0 font-semibold ${
+                          isActive ? 'bg-white/20 text-emerald-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200/80'
+                        }`}>
+                          Live
+                        </span>
+                      )}
+                      {pendingCount > 0 && (
+                        <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-md shrink-0 font-bold ${
+                          isActive ? 'bg-amber-400 text-stone-950' : 'bg-amber-100 text-amber-900 border border-amber-200'
+                        }`}>
+                          {pendingCount}
+                        </span>
+                      )}
+                      {unreadInquiryCount > 0 && (
+                        <span className={`inline-flex items-center gap-0.5 text-[10px] font-mono px-1.5 py-0.2 rounded-md shrink-0 font-bold ${
+                          isActive ? 'bg-white/20 text-white' : 'bg-stone-900 text-white'
+                        }`}>
+                          <Bell className="w-2.5 h-2.5 text-current" />
+                          {unreadInquiryCount}
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           );
         })()}
       </div>
@@ -2292,9 +2146,9 @@ export default function ManageHotel() {
       {/* TAB CONTENT: DETAILS */}
       {activeTab === 'details' && (
         <div className="space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border border-stone-200/90 rounded-2xl p-4 shadow-2xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 bg-white border border-stone-200 rounded-2xl p-4 sm:p-5 shadow-2xs">
             <div>
-              <h2 className="text-sm sm:text-base font-bold text-stone-900">Property Profile &amp; Contact Information</h2>
+              <h2 className="text-base sm:text-lg font-serif font-bold text-stone-900">Property Profile &amp; Contact Information</h2>
               <p className="text-xs text-stone-500 mt-0.5">
                 Auto-fill descriptions, policies, contacts, and rooms from a PDF, rate sheet photo, or pasted text.
               </p>
@@ -2302,9 +2156,9 @@ export default function ManageHotel() {
             <button
               type="button"
               onClick={() => setDocImporterOpen(true)}
-              className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 border border-stone-200/90 text-xs font-semibold transition cursor-pointer shrink-0 self-start sm:self-auto shadow-2xs"
+              className="inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold transition cursor-pointer shrink-0 self-start sm:self-center shadow-2xs"
             >
-              <FileText className="w-3.5 h-3.5 text-stone-600" />
+              <FileText className="w-3.5 h-3.5" />
               <span>Import from Document / Rate Sheet</span>
             </button>
           </div>
@@ -3320,7 +3174,7 @@ export default function ManageHotel() {
       {/* Mobile/Tablet method filter tabs */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-100 pb-2.5 sm:pb-3">
         <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-stone-500">Deposit Accounts</span>
-        <div className="flex items-center gap-1 bg-stone-100 p-1 rounded-xl text-xs font-semibold">
+        <div className="flex flex-wrap items-center gap-1 bg-stone-100 p-1 rounded-xl text-xs font-semibold">
           <button
             type="button"
             onClick={() => setDepositViewTab('all')}
@@ -3333,14 +3187,14 @@ export default function ManageHotel() {
             onClick={() => setDepositViewTab('mobile_money')}
             className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${depositViewTab === 'mobile_money' ? 'bg-white text-stone-900 shadow-2xs' : 'text-stone-600 hover:text-stone-900'}`}
           >
-            📱 Mobile Money
+            Mobile Money
           </button>
           <button
             type="button"
             onClick={() => setDepositViewTab('bank_transfer')}
             className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${depositViewTab === 'bank_transfer' ? 'bg-white text-stone-900 shadow-2xs' : 'text-stone-600 hover:text-stone-900'}`}
           >
-            🏦 Bank Wire
+            Bank Wire
           </button>
         </div>
       </div>
@@ -3349,7 +3203,7 @@ export default function ManageHotel() {
       {(depositViewTab === 'all' || depositViewTab === 'mobile_money') && (
         <div className="animate-in fade-in duration-150">
           <h4 className="text-xs font-bold uppercase tracking-wider text-stone-700 mb-2.5 flex items-center gap-1.5">
-            <span>📱 Airtel Money &amp; TNM Mpamba</span>
+            <span>Airtel Money &amp; TNM Mpamba</span>
           </h4>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
@@ -3412,7 +3266,7 @@ export default function ManageHotel() {
       {(depositViewTab === 'all' || depositViewTab === 'bank_transfer') && (
         <div className={`pt-3 ${depositViewTab === 'all' ? 'border-t border-stone-100' : ''} animate-in fade-in duration-150`}>
           <h4 className="text-xs font-bold uppercase tracking-wider text-stone-700 mb-2.5 flex items-center gap-1.5">
-            <span>🏦 Direct Bank Wire Transfer</span>
+            <span>Direct Bank Wire Transfer</span>
           </h4>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
             <div>
@@ -3729,33 +3583,33 @@ export default function ManageHotel() {
         return (
           <div className="space-y-6">
             {/* Top Hub Header & Sub-Navigation */}
-            <div className="bg-white border border-stone-200/90 rounded-2xl p-5 sm:p-6 shadow-xs">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-5 border-b border-stone-100">
+            <div className="bg-white border border-stone-200 rounded-2xl p-4 sm:p-5 shadow-2xs">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3.5 pb-4 border-b border-stone-100">
                 <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-xl sm:text-2xl font-serif font-bold text-stone-900">Media &amp; Photography</h2>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="text-lg sm:text-xl font-serif font-bold text-stone-900">Media &amp; Photography</h2>
                     <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-stone-100 text-stone-700">
                       {totalMediaCount} photos total
                     </span>
                   </div>
-                  <p className="text-xs sm:text-sm text-stone-500 mt-1">
+                  <p className="text-xs text-stone-500 mt-0.5">
                     Manage high-resolution photography for your property header, listing library, and room units.
                   </p>
                 </div>
 
                 {/* Header Action: Save Property Media Button */}
-                <div className="flex items-center gap-2 self-start md:self-auto">
+                <div className="flex items-center gap-2 self-start md:self-center shrink-0">
                   <button
                     type="button"
                     onClick={handleSaveHotel}
                     disabled={saving || !hotelDirty}
-                    className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer ${
+                    className={`inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
                       hotelDirty
-                        ? "bg-stone-900 text-white hover:bg-stone-800 shadow-xs"
+                        ? "bg-stone-900 text-white hover:bg-stone-800 shadow-2xs"
                         : "bg-stone-100 text-stone-400 cursor-not-allowed"
                     }`}
                   >
-                    {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
                     <span>Save Property Media</span>
                   </button>
                 </div>
@@ -3763,13 +3617,13 @@ export default function ManageHotel() {
 
               {/* Sub-Navigation Tabs */}
               <div className="flex items-center justify-between gap-3 pt-4 flex-wrap">
-                <div className="inline-flex items-center bg-stone-100 p-1 rounded-xl border border-stone-200/80">
+                <div className="flex flex-wrap items-center gap-1 bg-stone-100 p-1 rounded-xl border border-stone-200/80">
                   <button
                     type="button"
                     onClick={() => setMediaView('property')}
-                    className={`px-3.5 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition cursor-pointer ${
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer ${
                       mediaView === 'property'
-                        ? 'bg-white text-stone-900 shadow-xs'
+                        ? 'bg-white text-stone-900 shadow-2xs'
                         : 'text-stone-600 hover:text-stone-900'
                     }`}
                   >
@@ -3782,9 +3636,9 @@ export default function ManageHotel() {
                   <button
                     type="button"
                     onClick={() => setMediaView('rooms')}
-                    className={`px-3.5 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition cursor-pointer ${
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer ${
                       mediaView === 'rooms'
-                        ? 'bg-white text-stone-900 shadow-xs'
+                        ? 'bg-white text-stone-900 shadow-2xs'
                         : 'text-stone-600 hover:text-stone-900'
                     }`}
                   >
@@ -3797,9 +3651,9 @@ export default function ManageHotel() {
                   <button
                     type="button"
                     onClick={() => setMediaView('preview')}
-                    className={`px-3.5 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition cursor-pointer ${
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer ${
                       mediaView === 'preview'
-                        ? 'bg-white text-stone-900 shadow-xs'
+                        ? 'bg-white text-stone-900 shadow-2xs'
                         : 'text-stone-600 hover:text-stone-900'
                     }`}
                   >
@@ -3827,10 +3681,10 @@ export default function ManageHotel() {
             {mediaView === 'property' && (
               <div className="space-y-6">
                 {/* 1. Interactive Hero Collage Studio */}
-                <div className="bg-white border border-stone-200/90 rounded-2xl p-5 sm:p-6 shadow-xs space-y-4">
+                <div className="bg-white border border-stone-200 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-4">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-stone-100">
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-stone-900 text-white flex items-center gap-1">
                           <Layers className="w-3 h-3 text-amber-400" />
                           <span>Listing Header Preview</span>
@@ -3844,7 +3698,7 @@ export default function ManageHotel() {
 
                     {/* Bento Layout Switcher */}
                     <div className="flex items-center gap-2 flex-wrap self-start sm:self-auto shrink-0">
-                      <div className="inline-flex items-center bg-stone-100 p-1 rounded-xl border border-stone-200/80">
+                      <div className="flex flex-wrap items-center gap-1 bg-stone-100 p-1 rounded-xl border border-stone-200/80">
                         <button
                           type="button"
                           onClick={() => {
@@ -3853,7 +3707,7 @@ export default function ManageHotel() {
                           }}
                           className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer ${
                             activeHeroLayout === 'duo-3'
-                              ? "bg-white text-stone-900 shadow-xs"
+                              ? "bg-white text-stone-900 shadow-2xs"
                               : "text-stone-600 hover:text-stone-900"
                           }`}
                           title="Hero with 3 photos: 1 large left cover + 2 stacked right photos"
@@ -3869,7 +3723,7 @@ export default function ManageHotel() {
                           }}
                           className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer ${
                             activeHeroLayout === 'bento-4'
-                              ? "bg-white text-stone-900 shadow-xs"
+                              ? "bg-white text-stone-900 shadow-2xs"
                               : "text-stone-600 hover:text-stone-900"
                           }`}
                           title="Hero with 4 photos: 1 large left cover + 3 right bento tiles"
@@ -3885,7 +3739,7 @@ export default function ManageHotel() {
                           }}
                           className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer ${
                             activeHeroLayout === 'bento-5'
-                              ? "bg-white text-stone-900 shadow-xs"
+                              ? "bg-white text-stone-900 shadow-2xs"
                               : "text-stone-600 hover:text-stone-900"
                           }`}
                           title="Hero with 5 photos: 1 large left cover + 4 right tiles in 2x2 grid"
@@ -4043,7 +3897,7 @@ export default function ManageHotel() {
                 </div>
 
                 {/* 2. Unified Property Media Library */}
-                <div className="bg-white border border-stone-200/90 rounded-2xl p-5 sm:p-6 shadow-xs space-y-4">
+                <div className="bg-white border border-stone-200 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-4">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-stone-100">
                     <div>
                       <div className="flex items-center gap-2">
@@ -4072,7 +3926,7 @@ export default function ManageHotel() {
                 </div>
 
                 {/* Bottom Save Bar */}
-                <div className="flex items-center justify-between p-4 bg-stone-50 border border-stone-200 rounded-2xl">
+                <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-stone-50 border border-stone-200 rounded-2xl">
                   <div className="flex items-center gap-2">
                     {hotelDirty ? (
                       <span className="flex h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
@@ -4087,7 +3941,7 @@ export default function ManageHotel() {
                     type="button"
                     onClick={handleSaveHotel}
                     disabled={saving || !hotelDirty}
-                    className="bg-stone-900 text-white px-5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-stone-800 disabled:opacity-50 transition cursor-pointer"
+                    className="inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-xl bg-stone-900 text-white text-xs font-semibold hover:bg-stone-800 disabled:opacity-50 transition cursor-pointer shadow-2xs"
                   >
                     {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
                     <span>Save Property Media</span>
@@ -4100,7 +3954,7 @@ export default function ManageHotel() {
             {mediaView === 'rooms' && (
               <div className="space-y-6">
                 {rooms.length === 0 ? (
-                  <div className="bg-white p-10 rounded-2xl text-center border border-stone-200 shadow-xs">
+                  <div className="bg-white p-10 rounded-2xl text-center border border-stone-200 shadow-2xs">
                     <BedDouble className="h-10 w-10 text-stone-300 mx-auto mb-3" />
                     <h3 className="text-base font-bold text-stone-800">No rooms configured yet</h3>
                     <p className="text-xs text-stone-500 mt-1 max-w-sm mx-auto">
@@ -4108,7 +3962,7 @@ export default function ManageHotel() {
                     </p>
                     <button 
                       onClick={() => requestTab('rooms')} 
-                      className="mt-4 px-4 py-2 bg-stone-900 text-white text-xs font-bold rounded-xl hover:bg-stone-800 transition"
+                      className="mt-4 inline-flex items-center justify-center h-9 px-3.5 bg-stone-900 text-white text-xs font-semibold rounded-xl hover:bg-stone-800 transition"
                     >
                       Go to Rooms Tab
                     </button>
@@ -4116,7 +3970,7 @@ export default function ManageHotel() {
                 ) : (
                   <>
                     {/* Room Quick-Selector Bar */}
-                    <div className="bg-white border border-stone-200/90 rounded-2xl p-4 shadow-xs">
+                    <div className="bg-white border border-stone-200 rounded-2xl p-4 shadow-2xs">
                       <div className="flex items-center justify-between mb-3">
                         <span className="text-xs font-bold text-stone-500 uppercase tracking-wider">
                           Select Room Unit
@@ -4131,7 +3985,7 @@ export default function ManageHotel() {
                           onClick={() => setSelectedRoomMediaId('all')}
                           className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
                             selectedRoomMediaId === 'all'
-                              ? 'bg-stone-900 text-white shadow-xs'
+                              ? 'bg-stone-900 text-white shadow-2xs'
                               : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
                           }`}
                         >
@@ -4151,7 +4005,7 @@ export default function ManageHotel() {
                               onClick={() => setSelectedRoomMediaId(rId)}
                               className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap flex items-center gap-2 transition cursor-pointer ${
                                 isSelected
-                                  ? 'bg-stone-900 text-white shadow-xs'
+                                  ? 'bg-stone-900 text-white shadow-2xs'
                                   : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
                               }`}
                             >
@@ -4191,7 +4045,7 @@ export default function ManageHotel() {
             {/* VIEW 3: GUEST PRESENTATION PREVIEW */}
             {mediaView === 'preview' && (
               <div className="space-y-6">
-                <div className="bg-white rounded-2xl border border-stone-200 p-5 sm:p-6 md:p-8 shadow-xs space-y-8">
+                <div className="bg-white rounded-2xl border border-stone-200 p-5 sm:p-6 md:p-8 shadow-2xs space-y-8">
                   <div>
                     <h3 className="text-lg font-serif font-bold text-stone-900">Live Guest Presentation</h3>
                     <p className="text-xs text-stone-500 mt-1">
@@ -4209,7 +4063,7 @@ export default function ManageHotel() {
                       <span className="text-[11px] text-stone-400">Uses Cover Photo (Hero Slot 1)</span>
                     </div>
                     
-                    <div className="max-w-xs bg-white rounded-2xl border border-stone-200 overflow-hidden shadow-xs">
+                    <div className="max-w-xs bg-white rounded-2xl border border-stone-200 overflow-hidden shadow-2xs">
                       <div className="relative aspect-[4/3] bg-stone-100 overflow-hidden">
                         <SmartImage
                           src={allPropertyPhotos[0] || getHotelImage(editHotelData)}
@@ -4240,7 +4094,7 @@ export default function ManageHotel() {
                       </div>
                       
                       {/* Bento grid small tab switcher */}
-                      <div className="inline-flex items-center bg-stone-100 p-1 rounded-xl border border-stone-200 shrink-0">
+                      <div className="flex flex-wrap items-center gap-1 bg-stone-100 p-1 rounded-xl border border-stone-200 shrink-0">
                         <button
                           type="button"
                           onClick={() => {
@@ -4248,7 +4102,7 @@ export default function ManageHotel() {
                             toast.success("Switched to 3-Photo Bento (Duo)");
                           }}
                           className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition cursor-pointer ${
-                            activeHeroLayout === 'duo-3' ? "bg-white text-stone-900 shadow-xs" : "text-stone-600 hover:text-stone-900"
+                            activeHeroLayout === 'duo-3' ? "bg-white text-stone-900 shadow-2xs" : "text-stone-600 hover:text-stone-900"
                           }`}
                           title="Show 3 photos in Hero (1 large cover + 2 stacked)"
                         >
@@ -4262,7 +4116,7 @@ export default function ManageHotel() {
                             toast.success("Switched to 4-Photo Bento");
                           }}
                           className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition cursor-pointer ${
-                            activeHeroLayout === 'bento-4' ? "bg-white text-stone-900 shadow-xs" : "text-stone-600 hover:text-stone-900"
+                            activeHeroLayout === 'bento-4' ? "bg-white text-stone-900 shadow-2xs" : "text-stone-600 hover:text-stone-900"
                           }`}
                           title="Show 4 photos in Hero (1 large cover + 3 bento tiles)"
                         >
@@ -4276,7 +4130,7 @@ export default function ManageHotel() {
                             toast.success("Switched to 5-Photo Bento (2x2 Grid)");
                           }}
                           className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition cursor-pointer ${
-                            activeHeroLayout === 'bento-5' ? "bg-white text-stone-900 shadow-xs" : "text-stone-600 hover:text-stone-900"
+                            activeHeroLayout === 'bento-5' ? "bg-white text-stone-900 shadow-2xs" : "text-stone-600 hover:text-stone-900"
                           }`}
                           title="Show 5 photos in Hero (1 large cover + 4 right 2x2 grid)"
                         >
@@ -4401,11 +4255,17 @@ export default function ManageHotel() {
       {activeTab === 'promotions' && (
         <div className="space-y-6">
           {rooms.length > 0 && (
-            <div className="flex justify-end">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 bg-white border border-stone-200 rounded-2xl p-4 sm:p-5 shadow-2xs">
+              <div>
+                <h2 className="text-base sm:text-lg font-serif font-bold text-stone-900">Promotions &amp; Seasonal Rates</h2>
+                <p className="text-xs text-stone-500 mt-0.5">
+                  Configure percentage discounts, seasonal rate adjustments, and bulk pricing rules across your rooms.
+                </p>
+              </div>
               <button
                 type="button"
                 onClick={() => setShowBulkEditor(prev => !prev)}
-                className="inline-flex items-center gap-1.5 bg-stone-900 hover:bg-stone-800 text-white font-bold px-4 py-2 rounded-xl text-xs transition cursor-pointer shadow-2xs"
+                className="inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-semibold text-xs transition cursor-pointer shadow-2xs shrink-0 self-start sm:self-center"
               >
                 <SlidersHorizontal className="w-3.5 h-3.5" />
                 <span>{showBulkEditor ? 'Close Bulk Room Editor' : 'Bulk Room Rates & Promos Editor'}</span>
@@ -4445,15 +4305,15 @@ export default function ManageHotel() {
       {activeTab === 'rooms' && (
         <div className="space-y-4 sm:space-y-6">
           {editHotelData.stayType === 'entire_place' && (
-            <div className="p-4 rounded-xl sm:rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-950 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-emerald-100 text-emerald-700 shrink-0">
-                  <Home className="w-5 h-5" />
+            <div className="p-4 sm:p-5 rounded-2xl bg-emerald-50/80 border border-emerald-200 text-emerald-950 flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 shadow-2xs">
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
+                  <Home className="w-4 h-4" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold">Entire Place / Whole Space Stay Active</h4>
-                  <p className="text-xs text-emerald-800/90 mt-0.5">
-                    This property is booked exclusively as a whole space ({editHotelData.entirePlaceDetails?.bedrooms || 2} Bedrooms · Up to {editHotelData.entirePlaceDetails?.maxGuests || 6} Guests).
+                  <h4 className="text-sm font-bold text-stone-900">Entire Place / Whole Space Stay Active</h4>
+                  <p className="text-xs text-stone-600 mt-0.5 leading-relaxed">
+                    This property is booked exclusively as a whole space ({editHotelData.entirePlaceDetails?.bedrooms || 2} Bedrooms &middot; Up to {editHotelData.entirePlaceDetails?.maxGuests || 6} Guests).
                     The entry below represents the whole-property inventory and nightly rate for guests.
                   </p>
                 </div>
@@ -4462,7 +4322,7 @@ export default function ManageHotel() {
                 <button
                   type="button"
                   onClick={() => setShowHotelSyncModal(true)}
-                  className="text-xs font-semibold text-emerald-950 bg-white hover:bg-emerald-100 border border-emerald-300 px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                  className="inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-xl text-xs font-semibold text-emerald-950 bg-white hover:bg-emerald-100 border border-emerald-300 transition shadow-2xs cursor-pointer"
                   title="Connect RoomRaccoon, Airbnb, or external iCal feeds for this entire place"
                 >
                   <CalendarSync className="w-3.5 h-3.5 text-amber-600" />
@@ -4475,7 +4335,7 @@ export default function ManageHotel() {
                 <button
                   type="button"
                   onClick={() => requestTab('details')}
-                  className="text-xs font-semibold text-emerald-900 bg-white hover:bg-emerald-100/70 border border-emerald-300 px-3 py-1.5 rounded-lg shrink-0 transition cursor-pointer"
+                  className="inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-xl text-xs font-semibold text-emerald-900 bg-white hover:bg-emerald-100/70 border border-emerald-300 shrink-0 transition cursor-pointer shadow-2xs"
                 >
                   {canEditElevatedFields ? 'Edit House Specs →' : 'View House Specs →'}
                 </button>
@@ -4483,43 +4343,48 @@ export default function ManageHotel() {
             </div>
           )}
 
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-stone-200 mb-4 sm:mb-6">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3.5 bg-white border border-stone-200 rounded-2xl p-4 sm:p-5 shadow-2xs">
             <div>
-              <h2 className="text-xl sm:text-2xl font-serif font-bold text-stone-900 tracking-tight">
+              <h2 className="text-lg sm:text-xl font-serif font-bold text-stone-900 tracking-tight">
                 {editHotelData.stayType === 'entire_place' ? 'Whole Space & Rates' : 'Rooms & Pricing'}
               </h2>
-              <p className="text-stone-500 text-xs sm:text-sm mt-0.5">
+              <p className="text-stone-500 text-xs mt-0.5">
                 {editHotelData.stayType === 'entire_place'
                   ? 'Manage whole-property inventory, nightly tariffs, inclusions, and availability blocks.'
                   : 'Manage room units, nightly rates, amenities, and availability blocks.'}
               </p>
             </div>
             {!editingRoomId && (
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
                 <button
                   type="button"
                   onClick={() => setDocImporterOpen(true)}
-                  className="flex items-center justify-center gap-1.5 px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-full text-xs sm:text-sm font-semibold bg-white hover:bg-stone-100 text-stone-800 border border-stone-200 transition shadow-2xs cursor-pointer"
+                  className="inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-xl text-xs font-semibold bg-white hover:bg-stone-50 text-stone-800 border border-stone-200 transition shadow-2xs cursor-pointer"
                 >
-                  <FileText className="h-4 w-4 text-stone-600" />
+                  <FileText className="h-3.5 w-3.5 text-stone-600" />
                   <span>Import from Document / Rate Sheet</span>
                 </button>
                 {rooms.length > 0 && (
                   <button
                     type="button"
                     onClick={() => setShowBulkEditor(prev => !prev)}
-                    className={`flex items-center justify-center gap-1.5 px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-full text-xs sm:text-sm font-semibold transition shadow-2xs cursor-pointer ${
+                    className={`inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-xl text-xs font-semibold transition shadow-2xs cursor-pointer border ${
                       showBulkEditor
-                        ? 'bg-stone-900 text-white hover:bg-stone-800 ring-2 ring-stone-900/50'
-                        : 'bg-white hover:bg-stone-100 text-stone-800 border border-stone-200'
+                        ? 'bg-stone-900 text-white border-stone-900 hover:bg-stone-800'
+                        : 'bg-white hover:bg-stone-50 text-stone-800 border-stone-200'
                     }`}
                   >
-                    <SlidersHorizontal className="h-4 w-4" />
+                    <SlidersHorizontal className="h-3.5 w-3.5" />
                     <span>{showBulkEditor ? 'Close Bulk Editor' : 'Bulk Edit Rates & Promos'}</span>
                   </button>
                 )}
-                <button onClick={startNewRoom} className="flex items-center justify-center gap-2 bg-stone-900 text-white px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl sm:rounded-full text-xs sm:text-sm font-medium hover:bg-stone-800 transition shadow-2xs cursor-pointer">
-                  <Plus className="h-4 w-4" /> Add Room
+                <button
+                  type="button"
+                  onClick={startNewRoom}
+                  className="inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-xl bg-stone-900 text-white text-xs font-semibold hover:bg-stone-800 transition shadow-2xs cursor-pointer"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>Add Room</span>
                 </button>
               </div>
             )}
@@ -5170,11 +5035,11 @@ export default function ManageHotel() {
                         </div>
 
                         {/* Room Card Actions */}
-                        <div className="flex sm:flex-row items-center gap-2 border-t sm:border-t-0 sm:border-l border-stone-100 pt-2.5 sm:pt-0 sm:pl-3 md:pl-4 shrink-0 mt-1 sm:mt-0 justify-end">
+                        <div className="flex flex-wrap sm:flex-row items-center gap-2 border-t sm:border-t-0 sm:border-l border-stone-100 pt-2.5 sm:pt-0 sm:pl-3 md:pl-4 shrink-0 mt-1 sm:mt-0 justify-end">
                           <button 
                             type="button"
                             onClick={() => setSyncingRoom(room)}
-                            className={`flex items-center justify-center gap-1.5 px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-lg transition text-xs font-semibold cursor-pointer shadow-2xs border ${
+                            className={`inline-flex items-center justify-center gap-1.5 h-9 px-3 rounded-xl transition text-xs font-semibold cursor-pointer shadow-2xs border ${
                               (room.icalSyncUrls && room.icalSyncUrls.length > 0)
                                 ? 'bg-sky-50 hover:bg-sky-100 text-sky-900 border-sky-300'
                                 : 'bg-white hover:bg-stone-50 text-stone-700 border-stone-200'
@@ -5192,7 +5057,7 @@ export default function ManageHotel() {
                           <button 
                             type="button"
                             onClick={() => startEditRoom(room)}
-                            className="flex items-center justify-center gap-1.5 px-3 sm:px-3.5 py-1.5 sm:py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-lg transition text-xs font-semibold cursor-pointer shadow-2xs"
+                            className="inline-flex items-center justify-center gap-1.5 h-9 px-3.5 bg-stone-900 hover:bg-stone-800 text-white rounded-xl transition text-xs font-semibold cursor-pointer shadow-2xs"
                           >
                             <Edit2 className="h-3.5 w-3.5" /> 
                             <span>Edit Room</span>
@@ -5206,7 +5071,7 @@ export default function ManageHotel() {
                                 e.stopPropagation();
                                 setOpenRoomMenuId(isMenuOpen ? null : room.id || `room-${rIdx}`);
                               }}
-                              className="inline-flex items-center justify-center gap-1 px-2.5 py-1.5 sm:py-2 rounded-lg border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 text-xs font-medium shadow-2xs transition cursor-pointer"
+                              className="inline-flex items-center justify-center gap-1 h-9 px-3 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 text-xs font-semibold shadow-2xs transition cursor-pointer"
                               aria-label="Room actions"
                             >
                               <span>Actions</span>
@@ -5292,16 +5157,17 @@ export default function ManageHotel() {
       {activeTab === 'restaurant' && (
         <div className="space-y-8">
           {!restaurant ? (
-            <div className="bg-white rounded-2xl border border-stone-200 p-12 text-center">
+            <div className="bg-white rounded-2xl border border-stone-200 p-10 sm:p-12 text-center shadow-2xs">
               <UtensilsCrossed className="h-10 w-10 mx-auto mb-4 text-stone-300" />
-              <h3 className="text-2xl font-serif text-stone-900 mb-2">No restaurant yet</h3>
-              <p className="text-stone-500 max-w-md mx-auto mb-8">
+              <h3 className="text-xl sm:text-2xl font-serif font-bold text-stone-900 mb-2">No restaurant yet</h3>
+              <p className="text-stone-500 text-xs sm:text-sm max-w-md mx-auto mb-6">
                 Add one to publish a menu on your listing. Guests get a Menu tab with the
                 design you choose, priced in the same currencies as your rooms.
               </p>
               <button
+                type="button"
                 onClick={() => setRestaurant(emptyRestaurant())}
-                className="bg-stone-900 text-white px-8 py-3 rounded-full font-medium hover:bg-stone-800 transition"
+                className="inline-flex items-center justify-center h-10 px-5 bg-stone-900 text-white rounded-xl text-xs sm:text-sm font-semibold hover:bg-stone-800 transition shadow-2xs cursor-pointer"
               >
                 Add a restaurant
               </button>
@@ -5315,24 +5181,26 @@ export default function ManageHotel() {
               />
 
               <div className="sticky bottom-4 z-10 bg-white/95 backdrop-blur border border-stone-200 shadow-lg rounded-2xl px-5 py-4 flex flex-wrap items-center justify-between gap-3">
-                <p className="text-sm text-stone-500">
+                <p className="text-xs sm:text-sm text-stone-600 font-medium">
                   {restaurantDirty ? 'Unsaved changes to your menu' : 'Menu is saved'}
                 </p>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2.5">
                   {restaurantDirty && (
                     <button
+                      type="button"
                       onClick={() => setRestaurant(hotel.restaurant ?? null)}
-                      className="px-5 py-2.5 rounded-xl font-medium text-stone-600 hover:bg-stone-100 transition"
+                      className="inline-flex items-center justify-center h-9 px-4 rounded-xl text-xs font-semibold text-stone-600 hover:bg-stone-100 transition cursor-pointer"
                     >
                       Discard
                     </button>
                   )}
                   <button
+                    type="button"
                     onClick={handleSaveRestaurant}
                     disabled={savingRestaurant || !restaurantDirty}
-                    className="flex items-center gap-2 bg-stone-900 text-white px-7 py-2.5 rounded-xl font-medium hover:bg-stone-800 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="inline-flex items-center justify-center gap-1.5 h-9 px-4 bg-stone-900 text-white rounded-xl text-xs font-semibold hover:bg-stone-800 transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-2xs"
                   >
-                    {savingRestaurant ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    {savingRestaurant ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
                     {savingRestaurant ? 'Saving…' : 'Save menu'}
                   </button>
                 </div>
@@ -5359,9 +5227,9 @@ export default function ManageHotel() {
 
       {/* TAB CONTENT: BOOKINGS */}
       {activeTab === 'bookings' && (
-        <div className="bg-white rounded-xl sm:rounded-2xl border border-stone-200 overflow-hidden shadow-2xs">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-4 sm:px-6 md:px-8 py-3.5 sm:py-4 border-b border-stone-100">
-            <div className="flex flex-wrap gap-1.5 sm:gap-2">
+        <div className="bg-white rounded-2xl border border-stone-200 overflow-hidden shadow-2xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 sm:px-6 py-4 border-b border-stone-100">
+            <div className="flex flex-wrap items-center gap-1.5">
               {([
                 { key: 'all', label: 'All' },
                 { key: 'pending', label: 'Pending' },
@@ -5370,13 +5238,14 @@ export default function ManageHotel() {
               ] as const).map(tab => (
                 <button
                   key={tab.key}
+                  type="button"
                   onClick={() => {
-                  setBookingFilter(tab.key);
-                  setCurrentBookingPage(1);
-                }}
-                  className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-[11px] sm:text-xs font-bold uppercase tracking-wider transition cursor-pointer ${
+                    setBookingFilter(tab.key);
+                    setCurrentBookingPage(1);
+                  }}
+                  className={`h-8 px-3.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
                     bookingFilter === tab.key
-                      ? 'bg-stone-900 text-white'
+                      ? 'bg-stone-900 text-white shadow-2xs'
                       : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
                   }`}
                 >
@@ -5385,10 +5254,11 @@ export default function ManageHotel() {
               ))}
             </div>
             <button
+              type="button"
               onClick={exportBookingsCsv}
-              className="flex items-center justify-center gap-1.5 text-xs sm:text-sm font-semibold text-stone-600 border border-stone-200 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl hover:bg-stone-50 hover:border-stone-400 transition shrink-0 cursor-pointer"
+              className="inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-xl text-xs font-semibold text-stone-700 bg-white border border-stone-200 hover:bg-stone-50 hover:border-stone-300 transition shrink-0 cursor-pointer shadow-2xs self-start sm:self-center"
             >
-              <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> Export CSV
+              <Download className="h-3.5 w-3.5" /> Export CSV
             </button>
           </div>
 
@@ -5409,10 +5279,10 @@ export default function ManageHotel() {
               {visibleBookings.slice((currentBookingPage - 1) * bookingsPerPage, currentBookingPage * bookingsPerPage).map((booking, bIdx) => {
                 const isMenuOpen = openBookingMenuId === booking.id;
                 return (
-                <li key={`mgmt-booking-${booking.id}`} className="p-3.5 sm:p-5 md:p-6 bg-white border border-stone-200 rounded-xl sm:rounded-2xl shadow-2xs hover:shadow-xs transition">
+                <li key={`mgmt-booking-${booking.id}`} className="p-4 sm:p-5 bg-white border border-stone-200 rounded-2xl shadow-2xs hover:shadow-xs transition">
                   <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 pb-3 border-b border-stone-100">
                     <div className="min-w-0">
-                      <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                      <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
                         <span className="font-bold text-stone-900 text-base sm:text-lg flex items-center gap-1.5">
                           {booking.guestName}
                         </span>
@@ -5457,11 +5327,11 @@ export default function ManageHotel() {
 
                       {/* Primary Quick Actions for Pending Bookings */}
                       {booking.status === 'pending' && (
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex flex-wrap items-center gap-1.5">
                           <button
                             type="button"
                             onClick={() => setConfirmModalBooking(booking.id!)}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold shadow-2xs transition cursor-pointer"
+                            className="inline-flex items-center justify-center gap-1 h-8 px-3 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold shadow-2xs transition cursor-pointer"
                           >
                             <Check className="w-3.5 h-3.5" />
                             <span>Confirm</span>
@@ -5469,7 +5339,7 @@ export default function ManageHotel() {
                           <button
                             type="button"
                             onClick={() => updateBookingStatus(booking.id!, 'rejected')}
-                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 text-xs font-semibold transition cursor-pointer"
+                            className="inline-flex items-center justify-center gap-1 h-8 px-3 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 text-xs font-semibold transition cursor-pointer border border-red-200/70"
                           >
                             <X className="w-3.5 h-3.5" />
                             <span>Decline</span>
@@ -5482,7 +5352,7 @@ export default function ManageHotel() {
                         <button
                           type="button"
                           onClick={() => openBookingChat(booking)}
-                          className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-stone-200 bg-white hover:bg-stone-50 text-stone-800 text-xs font-semibold transition cursor-pointer shadow-2xs"
+                          className="inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 text-stone-800 text-xs font-semibold transition cursor-pointer shadow-2xs"
                         >
                           <MessageSquare className="w-3.5 h-3.5 text-stone-600" />
                           <span>Message</span>
@@ -5494,7 +5364,7 @@ export default function ManageHotel() {
                         <button
                           type="button"
                           onClick={() => setOpenBookingMenuId(isMenuOpen ? null : booking.id!)}
-                          className="inline-flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 text-xs font-medium shadow-2xs transition cursor-pointer"
+                          className="inline-flex items-center justify-center gap-1 h-8 px-3 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 text-xs font-semibold shadow-2xs transition cursor-pointer"
                           aria-label="Booking actions"
                         >
                           <span>Actions</span>
@@ -5733,7 +5603,7 @@ export default function ManageHotel() {
                           <button
                             type="button"
                             onClick={() => setReminderModalBooking(booking)}
-                            className="px-3.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-xs shrink-0 cursor-pointer"
+                            className="inline-flex items-center justify-center gap-1.5 h-9 px-3.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-semibold transition shadow-2xs shrink-0 cursor-pointer"
                           >
                             <Mail className="w-3.5 h-3.5" />
                             Open Templates
@@ -5816,26 +5686,27 @@ export default function ManageHotel() {
       {activeTab === 'inquiries' && (
         <div className="space-y-4 sm:space-y-6">
           {/* Host Status & Overview Card */}
-          <div className="bg-white rounded-xl sm:rounded-2xl border border-stone-200 p-4 sm:p-6 md:p-8 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+          <div className="bg-white rounded-2xl border border-stone-200 p-4 sm:p-5 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
             <div>
               <div className="flex items-center gap-2.5">
                 <span className={`h-2.5 w-2.5 rounded-full ${hotel.isOnline !== false ? 'bg-emerald-500 animate-pulse' : 'bg-stone-400'}`} />
-                <h3 className="text-base sm:text-lg md:text-xl font-serif font-bold text-stone-900">
+                <h3 className="text-base sm:text-lg font-serif font-bold text-stone-900">
                   {hotel.isOnline !== false ? 'You are Online' : 'You are Offline (Away)'}
                 </h3>
               </div>
-              <p className="text-xs sm:text-sm text-stone-500 mt-1">
+              <p className="text-xs text-stone-500 mt-1">
                 {hotel.isOnline !== false
                   ? 'Guests can see you are ready for instant inquiries.'
                   : `Out-of-office message active: "${hotel.outOfOfficeMessage || "We're currently away. Leave a message and we'll reply soon!"}"`}
               </p>
             </div>
             <button
+              type="button"
               onClick={handleToggleOnlineStatus}
               disabled={togglingStatus}
-              className={`px-3.5 py-2 rounded-lg font-medium text-xs transition cursor-pointer shrink-0 border ${
+              className={`inline-flex items-center justify-center h-9 px-3.5 rounded-xl font-semibold text-xs transition cursor-pointer shrink-0 border self-start sm:self-center ${
                 hotel.isOnline !== false
-                  ? 'bg-white hover:bg-stone-50 text-stone-800 border-stone-200/90 shadow-2xs'
+                  ? 'bg-white hover:bg-stone-50 text-stone-800 border-stone-200 shadow-2xs'
                   : 'bg-stone-900 hover:bg-stone-800 text-white border-stone-900 shadow-2xs'
               }`}
             >

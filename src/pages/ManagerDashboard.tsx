@@ -481,17 +481,19 @@ export default function ManagerDashboard() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 py-5 sm:py-8 md:py-10 pb-24 w-full">
+    <div className="max-w-6xl mx-auto px-3.5 sm:px-6 lg:px-8 py-5 sm:py-8 md:py-10 pb-24 w-full">
       {isShadowing && (
-        <div className="mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-300 text-amber-950 flex items-center justify-between gap-3 flex-wrap shadow-xs">
-          <div className="flex items-center gap-2.5">
-            <UserCheck className="w-5 h-5 text-amber-700 shrink-0" />
+        <div className="mb-5 sm:mb-6 p-4 sm:p-5 rounded-2xl bg-stone-900 border border-stone-800 text-stone-100 flex items-center justify-between gap-3.5 flex-wrap shadow-2xs">
+          <div className="flex items-start sm:items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-stone-800 border border-stone-700 text-stone-200 flex items-center justify-center shrink-0">
+              <UserCheck className="w-4 h-4" />
+            </div>
             <div>
-              <p className="text-xs sm:text-sm font-bold">
+              <p className="text-xs sm:text-sm font-bold text-white">
                 Shadowing Host: {user?.displayName || user?.email}
               </p>
-              <p className="text-[11px] sm:text-xs text-amber-800">
-                Viewing dashboard and listings from this property manager's perspective. Actions taken are securely logged for support.
+              <p className="text-xs text-stone-300 mt-0.5">
+                Viewing dashboard and listings from this property manager&apos;s perspective. Actions taken are securely logged for support.
               </p>
             </div>
           </div>
@@ -499,43 +501,44 @@ export default function ManagerDashboard() {
       )}
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-5 sm:mb-7 gap-3">
+      <div className="mb-5 sm:mb-6 bg-white border border-stone-200 rounded-2xl p-4 sm:p-5 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
         <div>
           <h1 className="text-xl sm:text-2xl md:text-3xl font-serif font-bold text-stone-900">Host Dashboard</h1>
-          <p className="text-stone-500 mt-0.5 sm:mt-1 text-xs sm:text-sm">
+          <p className="text-stone-500 mt-0.5 text-xs sm:text-sm">
             {totalPending > 0
               ? `${totalPending} booking request${totalPending === 1 ? '' : 's'} waiting for your reply.`
               : 'Overview of your listings, units, and booking requests.'}
           </p>
         </div>
-        <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3 w-full sm:w-auto">
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
           {rooms.length > 0 && (
             <button
               type="button"
               onClick={() => setActiveTab(activeTab === 'bulk_editor' ? 'all' : 'bulk_editor')}
-              className={`inline-flex items-center justify-center gap-1.5 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl sm:rounded-full text-xs sm:text-sm font-semibold transition cursor-pointer shadow-2xs ${
+              className={`inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-xl text-xs font-semibold transition cursor-pointer shadow-2xs border ${
                 activeTab === 'bulk_editor'
-                  ? 'bg-stone-900 text-white hover:bg-stone-800 ring-2 ring-stone-900/30'
-                  : 'bg-white hover:bg-stone-100 text-stone-800 border border-stone-200'
+                  ? 'bg-stone-900 text-white border-stone-900 hover:bg-stone-800'
+                  : 'bg-white hover:bg-stone-50 text-stone-800 border-stone-200'
               }`}
             >
-              <SlidersHorizontal className="h-4 w-4" />
+              <SlidersHorizontal className="h-3.5 w-3.5" />
               <span>{activeTab === 'bulk_editor' ? 'View Properties' : 'Bulk Room & Rates Editor'}</span>
             </button>
           )}
 
           <Link
             to="/list-your-property"
-            className="inline-flex items-center justify-center gap-1.5 bg-stone-900 text-white px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl sm:rounded-full text-xs sm:text-sm font-semibold hover:bg-stone-800 transition shadow-2xs w-full sm:w-auto"
+            className="inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-xl bg-stone-900 text-white text-xs font-semibold hover:bg-stone-800 transition shadow-2xs"
           >
-            <Plus className="h-4 w-4" /> Add a property
+            <Plus className="h-3.5 w-3.5" />
+            <span>Add a property</span>
           </Link>
         </div>
       </div>
 
       {/* Host Telemetry & Performance Summary Strip */}
       {hotels.length > 0 && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-3.5 mb-5 sm:mb-6">
           <button
             type="button"
             onClick={() => {
@@ -543,17 +546,17 @@ export default function ManagerDashboard() {
               setStatusFilter('all');
               setCurrentPage(1);
             }}
-            className="bg-white p-3.5 sm:p-4 rounded-xl border border-stone-200 shadow-2xs text-left hover:border-stone-300 transition cursor-pointer"
+            className="bg-white p-3.5 sm:p-4 rounded-2xl border border-stone-200 shadow-2xs text-left hover:border-stone-300 transition cursor-pointer"
           >
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-stone-500 text-xs font-medium">Portfolio &amp; Status</span>
-              <Building2 className="w-4 h-4 text-stone-400" />
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-stone-500 text-[11px] font-bold uppercase tracking-wider">Portfolio &amp; Status</span>
+              <Building2 className="w-3.5 h-3.5 text-stone-400" />
             </div>
             <div className="flex items-baseline gap-1.5">
-              <p className="text-2xl font-serif font-bold text-stone-900 tabular-nums">{hotels.length}</p>
+              <p className="text-xl sm:text-2xl font-bold text-stone-900 tabular-nums">{hotels.length}</p>
               <span className="text-xs text-emerald-700 font-semibold">{liveCount} live</span>
             </div>
-            <p className="text-[11px] text-stone-400 mt-0.5">
+            <p className="text-xs text-stone-400 mt-0.5">
               {pendingApprovalCount > 0
                 ? `${pendingApprovalCount} pending review`
                 : offlineCount > 0
@@ -565,17 +568,17 @@ export default function ManagerDashboard() {
           <button
             type="button"
             onClick={() => handleOpenBulkEditor()}
-            className="bg-white p-3.5 sm:p-4 rounded-xl border border-stone-200 shadow-2xs text-left hover:border-stone-300 transition cursor-pointer"
+            className="bg-white p-3.5 sm:p-4 rounded-2xl border border-stone-200 shadow-2xs text-left hover:border-stone-300 transition cursor-pointer"
           >
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-stone-500 text-xs font-medium">Room Inventory &amp; Sync</span>
-              <BedDouble className="w-4 h-4 text-stone-400" />
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-stone-500 text-[11px] font-bold uppercase tracking-wider">Room Inventory &amp; Sync</span>
+              <BedDouble className="w-3.5 h-3.5 text-stone-400" />
             </div>
             <div className="flex items-baseline gap-1.5">
-              <p className="text-2xl font-serif font-bold text-stone-900 tabular-nums">{totalRoomUnits}</p>
+              <p className="text-xl sm:text-2xl font-bold text-stone-900 tabular-nums">{totalRoomUnits}</p>
               <span className="text-xs text-stone-500 font-normal">units ({rooms.length} types)</span>
             </div>
-            <p className="text-[11px] text-stone-400 mt-0.5">
+            <p className="text-xs text-stone-400 mt-0.5">
               {syncedPropertiesCount > 0
                 ? `${syncedPropertiesCount} ${syncedPropertiesCount === 1 ? 'stay' : 'stays'} iCal synced`
                 : 'Click to manage rooms & rates'}
@@ -589,38 +592,38 @@ export default function ManagerDashboard() {
               setStatusFilter('needs_attention');
               setCurrentPage(1);
             }}
-            className={`p-3.5 sm:p-4 rounded-xl border shadow-2xs text-left transition cursor-pointer ${
+            className={`p-3.5 sm:p-4 rounded-2xl border shadow-2xs text-left transition cursor-pointer ${
               totalPending > 0
-                ? 'bg-amber-50/60 border-amber-300 hover:border-amber-400'
+                ? 'bg-amber-50/70 border-amber-300 hover:border-amber-400'
                 : 'bg-white border-stone-200 hover:border-stone-300'
             }`}
           >
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-stone-500 text-xs font-medium">Reservation Requests</span>
-              <CalendarCheck className={`w-4 h-4 ${totalPending > 0 ? 'text-amber-600 animate-pulse' : 'text-stone-400'}`} />
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-stone-500 text-[11px] font-bold uppercase tracking-wider">Reservation Requests</span>
+              <CalendarCheck className={`w-3.5 h-3.5 ${totalPending > 0 ? 'text-amber-600 animate-pulse' : 'text-stone-400'}`} />
             </div>
             <div className="flex items-baseline gap-1.5">
-              <p className={`text-2xl font-serif font-bold tabular-nums ${totalPending > 0 ? 'text-amber-900' : 'text-stone-900'}`}>
+              <p className={`text-xl sm:text-2xl font-bold tabular-nums ${totalPending > 0 ? 'text-amber-900' : 'text-stone-900'}`}>
                 {bookings.length}
               </p>
               <span className="text-xs text-emerald-700 font-semibold">
                 {confirmedBookingsCount} confirmed
               </span>
             </div>
-            <p className="text-[11px] text-stone-400 mt-0.5">
+            <p className="text-xs text-stone-400 mt-0.5">
               {totalPending > 0 ? `${totalPending} awaiting host reply` : '0 pending requests'}
             </p>
           </button>
 
-          <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-stone-200 shadow-2xs text-left">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-stone-500 text-xs font-medium">Confirmed Volume (0% Fee)</span>
-              <TrendingUp className="w-4 h-4 text-emerald-700" />
+          <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-stone-200 shadow-2xs text-left">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-stone-500 text-[11px] font-bold uppercase tracking-wider">Confirmed Volume (0% Fee)</span>
+              <TrendingUp className="w-3.5 h-3.5 text-emerald-700" />
             </div>
-            <p className="text-lg sm:text-xl font-serif font-bold text-stone-900 tabular-nums truncate">
+            <p className="text-lg sm:text-xl font-bold text-stone-900 tabular-nums truncate">
               MK {revenueMWK.toLocaleString()}
             </p>
-            <div className="flex items-center justify-between mt-0.5 text-[11px]">
+            <div className="flex items-center justify-between mt-0.5 text-xs">
               <span className="font-mono font-semibold text-emerald-800">
                 + USD ${revenueUSD.toLocaleString()}
               </span>
@@ -630,8 +633,12 @@ export default function ManagerDashboard() {
         </div>
       )}
 
-      {/* Minimal Underline-Based Dashboard Navigation Tabs */}
-      <div className="border-b border-stone-200/90 mb-6 flex flex-wrap items-center gap-x-6 sm:gap-x-8 gap-y-2" role="tablist" aria-label="Dashboard views">
+      {/* Uniform Wrapping Grid Navigation Tabs (Matching ManageHotel) */}
+      <div
+        className="grid grid-cols-2 sm:grid-cols-3 lg:flex lg:flex-wrap items-center gap-1.5 sm:gap-2 p-2 bg-white border border-stone-200 rounded-2xl shadow-2xs mb-5 sm:mb-6"
+        role="tablist"
+        aria-label="Dashboard views"
+      >
         {/* Tab 1: All Properties */}
         <button
           type="button"
@@ -642,16 +649,18 @@ export default function ManagerDashboard() {
             setStatusFilter('all');
             setCurrentPage(1);
           }}
-          className={`pb-3 text-xs sm:text-sm font-medium transition whitespace-nowrap cursor-pointer border-b-2 -mb-px flex items-center gap-2 ${
+          className={`flex items-center justify-between gap-2 h-10 px-3.5 rounded-xl text-xs font-semibold transition cursor-pointer select-none min-w-0 ${
             activeTab === 'all'
-              ? 'border-stone-900 text-stone-900 font-semibold'
-              : 'border-transparent text-stone-500 hover:text-stone-800 hover:border-stone-300'
+              ? 'bg-stone-900 text-white shadow-2xs'
+              : 'bg-stone-50/90 text-stone-700 hover:text-stone-950 hover:bg-stone-100 border border-stone-200/70'
           }`}
         >
-          <Building2 className={`w-4 h-4 ${activeTab === 'all' ? 'text-stone-900' : 'text-stone-400'}`} />
-          <span>All Properties</span>
-          <span className={`text-[11px] font-mono ml-0.5 px-1.5 py-0.2 rounded-md ${
-            activeTab === 'all' ? 'bg-stone-100 text-stone-900 font-semibold' : 'text-stone-400'
+          <div className="flex items-center gap-2 min-w-0">
+            <Building2 className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'all' ? 'text-white' : 'text-stone-500'}`} />
+            <span className="truncate">All Properties</span>
+          </div>
+          <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-md shrink-0 font-bold ${
+            activeTab === 'all' ? 'bg-white/20 text-white' : 'bg-stone-200/70 text-stone-700'
           }`}>
             {hotels.length}
           </span>
@@ -667,16 +676,18 @@ export default function ManagerDashboard() {
             setStatusFilter('live');
             setCurrentPage(1);
           }}
-          className={`pb-3 text-xs sm:text-sm font-medium transition whitespace-nowrap cursor-pointer border-b-2 -mb-px flex items-center gap-2 ${
+          className={`flex items-center justify-between gap-2 h-10 px-3.5 rounded-xl text-xs font-semibold transition cursor-pointer select-none min-w-0 ${
             activeTab === 'live'
-              ? 'border-stone-900 text-stone-900 font-semibold'
-              : 'border-transparent text-stone-500 hover:text-stone-800 hover:border-stone-300'
+              ? 'bg-stone-900 text-white shadow-2xs'
+              : 'bg-stone-50/90 text-stone-700 hover:text-stone-950 hover:bg-stone-100 border border-stone-200/70'
           }`}
         >
-          <CheckCircle2 className={`w-4 h-4 ${activeTab === 'live' ? 'text-emerald-700' : 'text-stone-400'}`} />
-          <span>Live &amp; Online</span>
-          <span className={`text-[11px] font-mono ml-0.5 px-1.5 py-0.2 rounded-md ${
-            activeTab === 'live' ? 'bg-stone-100 text-stone-900 font-semibold' : 'text-stone-400'
+          <div className="flex items-center gap-2 min-w-0">
+            <CheckCircle2 className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'live' ? 'text-emerald-300' : 'text-emerald-600'}`} />
+            <span className="truncate">Live &amp; Online</span>
+          </div>
+          <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-md shrink-0 font-bold ${
+            activeTab === 'live' ? 'bg-white/20 text-white' : 'bg-emerald-50 text-emerald-800 border border-emerald-200/80'
           }`}>
             {liveCount}
           </span>
@@ -693,15 +704,19 @@ export default function ManagerDashboard() {
               setStatusFilter('pending');
               setCurrentPage(1);
             }}
-            className={`pb-3 text-xs sm:text-sm font-medium transition whitespace-nowrap cursor-pointer border-b-2 -mb-px flex items-center gap-2 ${
+            className={`flex items-center justify-between gap-2 h-10 px-3.5 rounded-xl text-xs font-semibold transition cursor-pointer select-none min-w-0 ${
               activeTab === 'pending'
-                ? 'border-amber-600 text-amber-900 font-semibold'
-                : 'border-transparent text-amber-700 hover:text-amber-900 hover:border-amber-300'
+                ? 'bg-stone-900 text-white shadow-2xs'
+                : 'bg-amber-50/80 text-amber-900 hover:bg-amber-100/80 border border-amber-200'
             }`}
           >
-            <AlertCircle className={`w-4 h-4 ${activeTab === 'pending' ? 'text-amber-600' : 'text-amber-500'}`} />
-            <span>Pending Review</span>
-            <span className="text-[11px] font-mono ml-0.5 px-1.5 py-0.2 rounded-md bg-amber-100 text-amber-900 font-bold">
+            <div className="flex items-center gap-2 min-w-0">
+              <AlertCircle className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'pending' ? 'text-amber-300' : 'text-amber-600'}`} />
+              <span className="truncate">Pending Review</span>
+            </div>
+            <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-md shrink-0 font-bold ${
+              activeTab === 'pending' ? 'bg-amber-400 text-stone-950' : 'bg-amber-100 text-amber-900 border border-amber-200'
+            }`}>
               {pendingApprovalCount}
             </span>
           </button>
@@ -717,24 +732,30 @@ export default function ManagerDashboard() {
             setStatusFilter('needs_attention');
             setCurrentPage(1);
           }}
-          className={`pb-3 text-xs sm:text-sm font-medium transition whitespace-nowrap cursor-pointer border-b-2 -mb-px flex items-center gap-2 ${
+          className={`flex items-center justify-between gap-2 h-10 px-3.5 rounded-xl text-xs font-semibold transition cursor-pointer select-none min-w-0 ${
             activeTab === 'needs_attention'
-              ? 'border-stone-900 text-stone-900 font-semibold'
-              : 'border-transparent text-stone-500 hover:text-stone-800 hover:border-stone-300'
+              ? 'bg-stone-900 text-white shadow-2xs'
+              : 'bg-stone-50/90 text-stone-700 hover:text-stone-950 hover:bg-stone-100 border border-stone-200/70'
           }`}
         >
-          <Clock className={`w-4 h-4 ${activeTab === 'needs_attention' ? 'text-stone-900' : 'text-stone-400'}`} />
-          <span>Needs Attention</span>
-          <span className={`text-[11px] font-mono ml-0.5 px-1.5 py-0.2 rounded-md ${
-            activeTab === 'needs_attention' ? 'bg-stone-100 text-stone-900 font-semibold' : 'text-stone-400'
-          }`}>
-            {needsAttentionCount}
-          </span>
-          {totalPending > 0 && (
-            <span className="text-[10px] font-medium text-stone-600 bg-stone-100 px-1.5 py-0.2 rounded-md">
-              {totalPending} req
+          <div className="flex items-center gap-2 min-w-0">
+            <Clock className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'needs_attention' ? 'text-white' : 'text-stone-500'}`} />
+            <span className="truncate">Needs Attention</span>
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
+            <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-md font-bold ${
+              activeTab === 'needs_attention' ? 'bg-white/20 text-white' : 'bg-stone-200/70 text-stone-700'
+            }`}>
+              {needsAttentionCount}
             </span>
-          )}
+            {totalPending > 0 && (
+              <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-md ${
+                activeTab === 'needs_attention' ? 'bg-amber-400 text-stone-950' : 'bg-amber-100 text-amber-900'
+              }`}>
+                {totalPending} req
+              </span>
+            )}
+          </div>
         </button>
 
         {/* Tab 4: Room Inventory & Bulk Rates */}
@@ -745,17 +766,19 @@ export default function ManagerDashboard() {
           onClick={() => {
             handleOpenBulkEditor();
           }}
-          className={`pb-3 text-xs sm:text-sm font-medium transition whitespace-nowrap cursor-pointer border-b-2 -mb-px flex items-center gap-2 ${
+          className={`flex items-center justify-between gap-2 h-10 px-3.5 rounded-xl text-xs font-semibold transition cursor-pointer select-none min-w-0 ${
             activeTab === 'bulk_editor'
-              ? 'border-stone-900 text-stone-900 font-semibold'
-              : 'border-transparent text-stone-500 hover:text-stone-800 hover:border-stone-300'
+              ? 'bg-stone-900 text-white shadow-2xs'
+              : 'bg-stone-50/90 text-stone-700 hover:text-stone-950 hover:bg-stone-100 border border-stone-200/70'
           }`}
           title="Open Bulk Room & Rates Editor"
         >
-          <BedDouble className={`w-4 h-4 ${activeTab === 'bulk_editor' ? 'text-stone-900' : 'text-stone-400'}`} />
-          <span>Rooms &amp; Rates</span>
-          <span className={`text-[11px] font-mono ml-0.5 px-1.5 py-0.2 rounded-md ${
-            activeTab === 'bulk_editor' ? 'bg-stone-100 text-stone-900 font-semibold' : 'text-stone-400'
+          <div className="flex items-center gap-2 min-w-0">
+            <BedDouble className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'bulk_editor' ? 'text-white' : 'text-stone-500'}`} />
+            <span className="truncate">Rooms &amp; Rates</span>
+          </div>
+          <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-md shrink-0 font-bold ${
+            activeTab === 'bulk_editor' ? 'bg-white/20 text-white' : 'bg-stone-200/70 text-stone-700'
           }`}>
             {rooms.length}
           </span>
@@ -788,7 +811,7 @@ export default function ManagerDashboard() {
             <button
               type="button"
               onClick={() => setSortMenuOpen(!sortMenuOpen)}
-              className="w-full flex items-center justify-between bg-white border border-stone-200 rounded-xl px-3 py-2 text-xs font-semibold text-stone-700 shadow-2xs hover:bg-stone-50 transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-stone-900"
+              className="w-full flex items-center justify-between h-9 bg-white border border-stone-200 rounded-xl px-3.5 text-xs font-semibold text-stone-700 shadow-2xs hover:bg-stone-50 transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-stone-900"
             >
               <span>
                 {sortBy === 'default' && 'Sort: Default'}
@@ -834,14 +857,14 @@ export default function ManagerDashboard() {
         {hotels.length === 0 ? (
           <div className="col-span-full bg-white p-6 sm:p-10 md:p-12 text-center rounded-2xl border border-stone-200 shadow-2xs">
             <Building2 className="h-10 w-10 sm:h-12 sm:w-12 text-stone-300 mx-auto mb-3 sm:mb-4" />
-            <h3 className="text-lg sm:text-xl font-serif text-stone-900 mb-1.5">Nothing listed yet</h3>
+            <h3 className="text-lg sm:text-xl font-serif font-bold text-stone-900 mb-1.5">Nothing listed yet</h3>
             <p className="text-stone-500 text-xs sm:text-sm max-w-md mx-auto mb-5 sm:mb-6">
               Walk through your first listing in four steps — the basics, the description,
               your photographs, then rooms and rates.
             </p>
             <Link
               to="/list-your-property"
-              className="inline-block bg-stone-900 text-white px-5 sm:px-6 py-2.5 rounded-xl sm:rounded-full text-xs sm:text-sm font-semibold hover:bg-stone-800 transition"
+              className="inline-flex items-center justify-center h-10 bg-stone-900 text-white px-5 rounded-xl text-xs sm:text-sm font-semibold hover:bg-stone-800 transition shadow-2xs"
             >
               List your first property
             </Link>
@@ -886,7 +909,7 @@ export default function ManagerDashboard() {
                           e.stopPropagation();
                           handleApproveListing(hotel);
                         }}
-                        className="absolute top-2.5 left-2.5 z-20 max-w-[calc(100%-6rem)] inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold bg-amber-500 hover:bg-emerald-600 active:scale-95 text-white border border-amber-600/40 hover:border-emerald-700/40 shadow-xs transition cursor-pointer select-none"
+                        className="absolute top-2.5 left-2.5 z-20 max-w-[calc(100%-6rem)] inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-amber-500 hover:bg-emerald-600 active:scale-95 text-white border border-amber-600/40 hover:border-emerald-700/40 shadow-xs transition cursor-pointer select-none"
                         title="Click to approve this stay and make it live on Travel Malawi"
                       >
                         <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
@@ -900,9 +923,9 @@ export default function ManagerDashboard() {
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          toast('This listing has been submitted and is awaiting administrator verification before going live.', { icon: '⏳' });
+                          toast('This listing has been submitted and is awaiting administrator verification before going live.');
                         }}
-                        className="absolute top-2.5 left-2.5 z-10 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium bg-white/95 backdrop-blur-xs text-amber-900 border border-amber-300 shadow-2xs hover:bg-amber-50 transition cursor-pointer"
+                        className="absolute top-2.5 left-2.5 z-10 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-white/95 backdrop-blur-xs text-amber-900 border border-amber-300 shadow-2xs hover:bg-amber-50 transition cursor-pointer"
                         title="Listing is pending review"
                       >
                         <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-amber-500" />
@@ -910,7 +933,7 @@ export default function ManagerDashboard() {
                       </button>
                     )
                   ) : (
-                    <span className="absolute top-2.5 left-2.5 z-10 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium bg-white/95 backdrop-blur-xs text-stone-800 border border-stone-200/90 shadow-2xs">
+                    <span className="absolute top-2.5 left-2.5 z-10 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-white/95 backdrop-blur-xs text-stone-800 border border-stone-200/90 shadow-2xs">
                       <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
                         hotel.status === 'rejected' ? 'bg-stone-400' :
                         'bg-emerald-600'
@@ -926,7 +949,7 @@ export default function ManagerDashboard() {
                     type="button"
                     onClick={(e) => handleToggleHotelOnline(e, hotel)}
                     disabled={togglingHotelId === hotel.id}
-                    className={`absolute top-2.5 right-2.5 z-10 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium transition cursor-pointer select-none shadow-2xs border ${
+                    className={`absolute top-2.5 right-2.5 z-10 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition cursor-pointer select-none shadow-2xs border ${
                       hotel.isOnline !== false
                         ? 'bg-white/95 hover:bg-white text-stone-800 border-stone-200/90'
                         : 'bg-white/90 hover:bg-white text-stone-500 border-stone-200/70'
@@ -939,27 +962,27 @@ export default function ManagerDashboard() {
                 </div>
 
                 {/* Card Body */}
-                <div className="p-3 sm:p-3.5 md:p-4 flex-1 flex flex-col min-w-0">
-                  <div className="mb-1.5 min-w-0">
+                <div className="p-3.5 sm:p-4 flex-1 flex flex-col min-w-0">
+                  <div className="mb-2 min-w-0">
                     <h3 className="text-sm sm:text-base font-serif font-bold text-stone-900 truncate">
                       <MaskedPlaceName name={hotel.name} fallback="[Your Listed Lodge]" />
                     </h3>
-                    <p className="text-stone-500 text-[11px] sm:text-xs truncate">{hotel.location || 'Malawi'}</p>
+                    <p className="text-stone-500 text-xs truncate">{hotel.location || 'Malawi'}</p>
                   </div>
 
                   {/* Room & Booking Badges */}
                   <div className="flex flex-wrap items-center gap-1.5 text-xs mb-3">
-                    <span className="inline-flex items-center gap-1 bg-stone-100 text-stone-700 px-2 py-0.5 rounded-lg font-medium text-[11px] sm:text-xs">
+                    <span className="inline-flex items-center gap-1 bg-stone-100 text-stone-700 px-2 py-0.5 rounded-lg font-medium text-[11px]">
                       <BedDouble className="w-3 h-3 text-stone-400" />
                       {roomsCount} {roomsCount === 1 ? 'room type' : 'room types'}
                     </span>
                     {pendingCount > 0 ? (
-                      <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-800 px-2 py-0.5 rounded-lg font-bold text-[11px] sm:text-xs">
+                      <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-800 px-2 py-0.5 rounded-lg font-bold text-[11px]">
                         <CalendarCheck className="w-3 h-3 text-amber-600" />
                         {pendingCount} awaiting reply
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 bg-stone-50 text-stone-500 px-2 py-0.5 rounded-lg text-[11px] sm:text-xs border border-stone-100">
+                      <span className="inline-flex items-center gap-1 bg-stone-50 text-stone-500 px-2 py-0.5 rounded-lg text-[11px] border border-stone-100">
                         <CalendarCheck className="w-3 h-3 text-stone-400" />
                         0 requests
                       </span>
@@ -1004,13 +1027,13 @@ export default function ManagerDashboard() {
                   </div>
 
                   {roomsCount === 0 && (
-                    <p className="mb-3 text-[11px] sm:text-xs bg-amber-50 border border-amber-200 text-amber-900 rounded-lg px-2.5 py-1.5">
+                    <p className="mb-3 text-xs bg-amber-50 border border-amber-200 text-amber-900 rounded-xl px-3 py-1.5">
                       Add a room to accept bookings.
                     </p>
                   )}
 
                   {hotel.status === 'pending' && userIsAdmin && (
-                    <div className="mb-3 flex items-center justify-between gap-2 p-2 bg-amber-50/90 border border-amber-200 rounded-xl text-xs text-amber-950">
+                    <div className="mb-3 flex items-center justify-between gap-2 p-2.5 bg-amber-50/90 border border-amber-200 rounded-xl text-xs text-amber-950">
                       <div className="flex items-center gap-1.5 min-w-0">
                         <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                         <span className="font-semibold text-[11px] truncate">Pending Review</span>
@@ -1023,7 +1046,7 @@ export default function ManagerDashboard() {
                           e.stopPropagation();
                           handleApproveListing(hotel);
                         }}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-700 hover:bg-emerald-600 active:scale-95 text-white rounded-lg font-bold text-[11px] transition shadow-2xs shrink-0 cursor-pointer"
+                        className="inline-flex items-center gap-1 h-7 px-2.5 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg font-semibold text-[11px] transition shadow-2xs shrink-0 cursor-pointer"
                         title="Approve this stay to make it live"
                       >
                         <CheckCircle2 className="w-3 h-3" />
@@ -1033,18 +1056,18 @@ export default function ManagerDashboard() {
                   )}
 
                   {/* Quick Action Button Group */}
-                  <div className="mt-auto pt-2.5 border-t border-stone-100 flex items-center justify-between gap-2">
+                  <div className="mt-auto pt-3 border-t border-stone-100 flex items-center justify-between gap-2">
                     <div className="flex items-center gap-1.5 flex-1 min-w-0">
                       <Link
                         to={`/dashboard/hotel/${hotel.id}`}
-                        className="bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold py-1.5 px-3 rounded-lg flex items-center justify-center gap-1 transition shadow-2xs flex-1 truncate"
+                        className="bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold h-9 px-3 rounded-xl flex items-center justify-center gap-1 transition shadow-2xs flex-1 truncate"
                       >
                         <span>Manage</span>
-                        <ChevronRight className="w-3 h-3 shrink-0" />
+                        <ChevronRight className="w-3.5 h-3.5 shrink-0" />
                       </Link>
                       <Link
                         to={`/dashboard/hotel/${hotel.id}?tab=bookings`}
-                        className="bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-semibold py-1.5 px-2.5 rounded-lg flex items-center justify-center gap-1.5 transition shrink-0"
+                        className="bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-semibold h-9 px-3 rounded-xl flex items-center justify-center gap-1.5 transition shrink-0"
                         title="View Bookings"
                       >
                         <span>Bookings</span>
@@ -1062,7 +1085,7 @@ export default function ManagerDashboard() {
                           e.stopPropagation();
                           setOpenCardMenuId(openCardMenuId === hotel.id ? null : hotel.id!);
                         }}
-                        className="px-2 py-1.5 rounded-lg border border-stone-200 hover:bg-stone-50 text-stone-600 transition cursor-pointer flex items-center gap-1 text-xs font-medium shadow-2xs"
+                        className="h-9 px-2.5 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 transition cursor-pointer flex items-center gap-1 text-xs font-semibold shadow-2xs"
                         aria-label="More actions"
                       >
                         <span>Actions</span>
