@@ -28,7 +28,7 @@ import {
   generateCuratedMalawiReviews
 } from './server/aiService';
 import { sendOfflineNotification } from './server/notifications';
-import { sendOnboardingWelcomeEmail } from './server/onboardingEmail';
+import { sendOnboardingWelcomeEmail, sendSmtpPasswordResetEmail } from './server/onboardingEmail';
 import {
   generateAutoReminders,
   createManualReminder,
@@ -1253,8 +1253,8 @@ async function startServer() {
     }
   });
 
-  // Password reset email notice via SMTP (aligned with auth flows). Public, so
-  // it is rate limited per IP and per address and only ever sends fixed text.
+  // Password reset email notice & credential recovery via SMTP (aligned with auth flows). Public, so
+  // it is rate limited per IP and per address.
   app.post('/api/auth/notify-password-reset', resetIpLimiter, resetEmailLimiter, async (req, res) => {
     try {
       const cleanEmail = lower(cleanText(req.body?.email, 254, true));
@@ -1262,31 +1262,10 @@ async function startServer() {
         return res.status(400).json({ error: 'Email is required.' });
       }
 
-      const result = await sendSystemEmail({
-        to: cleanEmail,
-        subject: 'Security Alert: Password Reset Requested — Ulendo Malawi',
-        text: `Hello,\n\nA password reset request was initiated for your Ulendo Travel Malawi account (${cleanEmail}).\n\nIf you requested this change, please check your inbox for the reset verification link.\n\nIf you did not make this request or have questions, contact us at info@ulendomalawi.com.`,
-        html: `
-          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 560px; margin: 0 auto; padding: 28px 24px; border: 1px solid #e7e5e4; border-radius: 12px; background: #ffffff; color: #1c1917;">
-            <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #78716c; margin-bottom: 6px;">
-              Ulendo Travel Malawi
-            </div>
-            <h2 style="margin: 0 0 6px; font-size: 20px; font-weight: 700; color: #1c1917;">Password reset requested</h2>
-            <p style="margin: 0 0 16px; font-size: 13px; color: #78716c;">Account Security · ulendomalawi.com</p>
-            <p style="margin: 0 0 10px; font-size: 14px; line-height: 1.5; color: #44403c;">
-              A password reset request was initiated for <strong>${escapeHtml(cleanEmail)}</strong>.
-            </p>
-            <p style="margin: 0; font-size: 13px; color: #57534e; line-height: 1.6;">
-              Check your inbox for the reset link. If you did not request this, you can safely ignore this message.
-            </p>
-            <div style="margin-top: 24px; padding-top: 14px; border-top: 1px solid #f5f5f4; font-size: 11px; color: #a8a29e; text-align: center;">
-              Ulendo Travel Malawi · <a href="https://ulendomalawi.com" style="color: #78716c; text-decoration: none;">ulendomalawi.com</a> · <a href="mailto:info@ulendomalawi.com" style="color: #78716c; text-decoration: none;">info@ulendomalawi.com</a>
-            </div>
-          </div>
-        `,
-      });
+      const hostOrigin = req.get('origin') || `${req.protocol}://${req.get('host')}`;
+      const result = await sendSmtpPasswordResetEmail(cleanEmail, hostOrigin);
 
-      res.json({ success: true, emailSent: result.success });
+      res.json({ success: true, emailSent: result.emailSent });
     } catch (err) {
       console.error('[API] Password reset notice failed:', err);
       res.json({ success: true, emailSent: false });
@@ -1302,6 +1281,7 @@ async function startServer() {
         ownerEmail,
         ownerName,
         managerEmail,
+        managerName,
         location,
         category,
         stayType
@@ -1311,7 +1291,7 @@ async function startServer() {
         return res.status(400).json({ error: 'hotelId and propertyName are required.' });
       }
 
-      const effectiveEmail = ownerEmail || managerEmail || (req as any).user?.email;
+      const effectiveEmail = ownerEmail || managerEmail || (req as any).user?.email || req.authUser?.email;
       if (!effectiveEmail || !String(effectiveEmail).includes('@')) {
         return res.status(400).json({ error: 'Valid owner or manager email is required.' });
       }
@@ -1323,6 +1303,7 @@ async function startServer() {
         ownerEmail: String(effectiveEmail),
         ownerName: ownerName ? String(ownerName) : undefined,
         managerEmail: managerEmail ? String(managerEmail) : undefined,
+        managerName: managerName ? String(managerName) : undefined,
         location: location ? String(location) : undefined,
         category: category ? String(category) : undefined,
         stayType: stayType ? String(stayType) : undefined,
@@ -1333,6 +1314,7 @@ async function startServer() {
         success: true,
         sent: result.success,
         messageId: result.messageId,
+        recipients: result.recipients,
         error: result.error,
       });
     } catch (err: any) {

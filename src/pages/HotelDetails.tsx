@@ -1334,7 +1334,7 @@ export default function HotelDetails() {
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => navigate(`/manage/${hotel.id}`)}
+                onClick={() => navigate(`/dashboard/hotel/${hotel.id}`)}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-stone-300 hover:text-white bg-stone-800 hover:bg-stone-700 transition cursor-pointer"
               >
                 <Building className="w-3.5 h-3.5" />
@@ -1359,6 +1359,36 @@ export default function HotelDetails() {
               >
                 <CheckCircle2 className="w-4 h-4" />
                 <span>{isApproving ? 'Approving...' : 'Approve Listing (Make Live)'}</span>
+              </button>
+            </div>
+          </div>
+        </aside>
+      )}
+      {/* Owner / Host Preview Banner when viewing a Pending Listing */}
+      {!isElevatedUser && hotel.status && hotel.status !== 'approved' && (
+        <aside
+          aria-label="Property Owner Listing Preview"
+          className="sticky top-14 sm:top-16 z-50 bg-stone-900/95 backdrop-blur-md text-white border-b border-amber-500/40 px-3.5 sm:px-6 py-2.5 sm:py-3 shadow-lg"
+        >
+          <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                {hotel.status === 'rejected' ? 'Unpublished' : 'Owner Preview • Pending Verification'}
+              </span>
+              <p className="text-xs sm:text-sm text-stone-200">
+                {hotel.status === 'rejected'
+                  ? 'This listing is currently unpublished. Open your Property Hub to update details.'
+                  : 'Your listing is live for preview while our team completes standard verification. You can edit rooms, rates, and photos anytime.'}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => navigate(`/dashboard/hotel/${hotel.id}`)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold text-white bg-amber-700 hover:bg-amber-600 transition cursor-pointer"
+              >
+                <Building className="w-3.5 h-3.5" />
+                <span>Manage Property &amp; Rooms</span>
               </button>
             </div>
           </div>

@@ -11,6 +11,7 @@ import { doc, getDoc, collection, query, where, getDocs, addDoc, updateDoc, dele
 import { db } from '../lib/firebase';
 import { Hotel, RoomType, Booking, CurrencyCode, PriceMap, Restaurant, WeeklyHours } from '../types';
 import { useAuth } from '../contexts/AuthContext';
+import { useAuthDialog } from '../contexts/AuthDialogContext';
 import { Plus, CheckCircle2, XCircle, Clock, Save, Edit2, Trash2, Users, Calendar, CalendarSync, Check, X, Building, BedDouble, Home, Loader2, Download, TrendingUp, Percent, Wallet, UtensilsCrossed, Eye, ChevronLeft, ExternalLink, AlertTriangle, ShieldCheck, UserCheck, User, Mail, Phone, Lock, UserCog, EyeOff, MapPin, FileText } from 'lucide-react';
 import ImageUpload from '../components/ImageUpload';
 import GalleryUpload from '../components/GalleryUpload';
@@ -365,7 +366,8 @@ export default function ManageHotel() {
   const isAdminRoute = location.pathname.startsWith('/admin/');
   const backUrl = isAdminRoute ? '/admin' : '/dashboard';
   const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, becomeHost } = useAuth();
+  const { openAuth } = useAuthDialog();
 
   // Certain critical property fields (Stay & Accommodation type, Categories, Owner/Holding entity)
   // are protected so property managers cannot modify them; only Admins or Marketing roles can.
@@ -756,8 +758,10 @@ export default function ManageHotel() {
   useEffect(() => {
     if (authLoading) return;
 
-    if (!user || (!isHotelManager(user) && !isAdmin(user) && !isMarketing(user))) {
-      navigate('/');
+    if (!user) {
+      setLoading(false);
+      const emailFromUrl = searchParams.get('email') || undefined;
+      openAuth('signin', undefined, emailFromUrl);
       return;
     }
 
@@ -768,6 +772,7 @@ export default function ManageHotel() {
 
     async function fetchData() {
       if (!id) return;
+      setLoading(true);
       try {
         const docRef = doc(db, 'hotels', id);
         const docSnap = await getDoc(docRef);
@@ -781,7 +786,7 @@ export default function ManageHotel() {
         const userEmailLower = user?.email?.toLowerCase();
         const canManage = Boolean(
           isAdmin(user) || isMarketing(user) ||
-          // Unassigned properties are managed by admins only.
+          // Unassigned properties are managed by admins only unless email matches owner/manager.
           (hasAssignedManager && hRaw?.managerId === user?.uid) ||
           (userEmailLower && (
             (hRaw?.managerEmail && hRaw.managerEmail.toLowerCase() === userEmailLower) ||
@@ -794,6 +799,10 @@ export default function ManageHotel() {
 
         if (cancelled) return;
         if (docSnap.exists() && canManage) {
+          // Auto-ensure the user has the hotel_manager role when they manage this property
+          if (user && !isHotelManager(user) && !isAdmin(user) && !isMarketing(user)) {
+            becomeHost().catch(() => {});
+          }
           const rawHotel = { id: docSnap.id, ...docSnap.data() } as Hotel;
           const hData = { ...rawHotel } as Hotel;
           
@@ -1663,7 +1672,40 @@ export default function ManageHotel() {
     }
   };
 
-  if (loading) return <div className="p-8 text-center text-stone-500">Loading...</div>;
+  if (loading || authLoading) return <div className="p-8 text-center text-stone-500">Loading...</div>;
+  if (!user) {
+    const emailFromUrl = searchParams.get('email') || undefined;
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center text-center px-6 py-16">
+        <div className="w-14 h-14 rounded-2xl bg-stone-100 border border-stone-200 flex items-center justify-center mb-5 text-stone-700">
+          <Lock className="w-6 h-6" />
+        </div>
+        <h1 className="text-2xl sm:text-3xl font-serif font-bold text-stone-900 mb-2">
+          Sign in to Manage Your Property
+        </h1>
+        <p className="text-stone-500 text-sm max-w-md mb-6 leading-relaxed">
+          Sign in with your registered owner or manager email{emailFromUrl ? ` (${emailFromUrl})` : ''} to view and edit your property, rooms, and rates—even while your listing is pending verification.
+        </p>
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <button
+            type="button"
+            onClick={() => openAuth('signin', undefined, emailFromUrl)}
+            className="bg-stone-900 text-white px-6 py-3 rounded-xl text-sm font-bold hover:bg-stone-800 transition cursor-pointer"
+          >
+            Sign In to Property Hub
+          </button>
+          {id && (
+            <Link
+              to={`/hotel/${id}`}
+              className="bg-white border border-stone-200 text-stone-700 px-5 py-3 rounded-xl text-sm font-semibold hover:bg-stone-50 transition"
+            >
+              Preview Public Listing
+            </Link>
+          )}
+        </div>
+      </div>
+    );
+  }
   if (!hotel) return null;
 
   return (
@@ -1767,6 +1809,34 @@ export default function ManageHotel() {
           )}
         </div>
       </div>
+
+      {/* Pending Review Reassurance Banner for Property Owner / Manager */}
+      {hotel.status === 'pending' && (
+        <div className="mb-5 sm:mb-6 rounded-xl sm:rounded-2xl border border-amber-200 bg-amber-50/70 p-3.5 sm:p-4 text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-start sm:items-center gap-3">
+            <div className="p-2 rounded-xl bg-amber-100 text-amber-800 shrink-0">
+              <Clock className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-xs sm:text-sm font-bold text-stone-900">
+                Listing Pending Verification &bull; Full Preview &amp; Editing Active
+              </h3>
+              <p className="text-xs text-stone-600 mt-0.5 leading-relaxed">
+                Your property is currently under standard verification review (typically completed within 24 hours). You can view your live listing preview and configure rooms, rates, and photos right now.
+              </p>
+            </div>
+          </div>
+          <a
+            href={`/hotel/${hotel.id}`}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-stone-900 text-white text-xs font-bold hover:bg-stone-800 transition shrink-0"
+          >
+            <span>Preview Listing</span>
+            <ExternalLink className="w-3.5 h-3.5" />
+          </a>
+        </div>
+      )}
 
       {/* Simulation / Troubleshooting Banner when viewing as manager */}
       {isElevatedUser && viewAsManager && (

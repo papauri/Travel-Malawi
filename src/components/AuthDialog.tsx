@@ -29,19 +29,20 @@ import { emailProblem } from '../lib/contact';
 import { Role } from '../types';
 
 /** What brought the visitor here; it decides the mode and the copy. */
-export type AuthIntent = 'signin' | 'signup' | 'host';
+export type AuthIntent = 'signin' | 'signup' | 'host' | 'reset';
 
 type AuthMode = 'signin' | 'signup' | 'reset';
 
 interface Props {
   open: boolean;
   intent: AuthIntent;
+  initialEmail?: string;
   onClose: () => void;
   /** Called after a successful sign-in or sign-up. */
   onAuthenticated?: () => void;
 }
 
-export default function AuthDialog({ open, intent, onClose, onAuthenticated }: Props) {
+export default function AuthDialog({ open, intent, initialEmail, onClose, onAuthenticated }: Props) {
   const { signIn, signUp, signInWithGoogle, resetPassword } = useAuth();
 
   const [mode, setMode] = useState<AuthMode>('signin');
@@ -58,7 +59,7 @@ export default function AuthDialog({ open, intent, onClose, onAuthenticated }: P
   // Re-arm the form each time it opens, for the intent it was opened with.
   useEffect(() => {
     if (!open) return;
-    setEmail('');
+    setEmail(initialEmail?.trim() || '');
     setPassword('');
     setShowPassword(false);
     setDisplayName('');
@@ -69,11 +70,14 @@ export default function AuthDialog({ open, intent, onClose, onAuthenticated }: P
       setMode('signup');
       // Hosts travel too, so the traveller role stays selected alongside.
       setRoles(['traveller', 'hotel_manager']);
+    } else if (intent === 'reset') {
+      setMode('reset');
+      setRoles(['traveller']);
     } else {
       setMode(intent === 'signup' ? 'signup' : 'signin');
       setRoles(['traveller']);
     }
-  }, [open, intent]);
+  }, [open, intent, initialEmail]);
 
   const hosting = roles.includes('hotel_manager');
 

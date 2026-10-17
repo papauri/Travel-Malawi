@@ -204,6 +204,9 @@ export default function ManagerDashboard() {
       });
 
       setHotels(hotelsData);
+      if (hotelsData.length > 0 && user && !isHotelManager(user) && !isAdmin(user) && !isMarketing(user)) {
+        becomeHost().catch(() => {});
+      }
 
       // A dashboard that only lists names cannot tell you which property needs
       // you today, so each card carries its room count and pending requests.
@@ -239,7 +242,7 @@ export default function ManagerDashboard() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user || (!isHotelManager(user) && !isAdmin(user) && !isMarketing(user))) {
+    if (!user) {
       setLoading(false);
       return;
     }

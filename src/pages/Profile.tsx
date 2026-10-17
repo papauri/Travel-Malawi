@@ -1,16 +1,34 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useAuthDialog } from '../contexts/AuthDialogContext';
 import { doc, updateDoc } from 'firebase/firestore';
-import { updateProfile } from 'firebase/auth';
+import { EmailAuthProvider, reauthenticateWithCredential, updatePassword, updateProfile } from 'firebase/auth';
 import { auth, db } from '../lib/firebase';
-import { User, CurrencyCode, UserNotificationPreferences } from '../types';
-import { UserCircle, Save, Loader2, Key, Bell } from 'lucide-react';
+import { CurrencyCode, UserNotificationPreferences } from '../types';
+import {
+  UserCircle,
+  Save,
+  Loader2,
+  Key,
+  Bell,
+  Lock,
+  Eye,
+  EyeOff,
+  Building2,
+  ShieldCheck,
+  CheckCircle2,
+  ArrowRight,
+  Plus,
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 import { CURRENCIES } from '../lib/currency';
+import { isAdmin, isHotelManager, isMarketing } from '../lib/roles';
 
 export default function Profile() {
-  const { user, resetPassword } = useAuth();
-  
+  const { user, resetPassword, becomeHost } = useAuth();
+  const { openAuth } = useAuthDialog();
+
   const [displayName, setDisplayName] = useState(user?.displayName || '');
   const [phone, setPhone] = useState(user?.phone || '');
   const [whatsapp, setWhatsapp] = useState(user?.whatsapp || '');
@@ -18,14 +36,26 @@ export default function Profile() {
   const [country, setCountry] = useState(user?.country || '');
   const [bio, setBio] = useState(user?.bio || '');
   const [preferredCurrency, setPreferredCurrency] = useState<CurrencyCode>(user?.preferredCurrency || 'USD');
-  const [notifications, setNotifications] = useState<UserNotificationPreferences>(user?.notificationPreferences || {
-    emailBookings: true,
-    whatsappUpdates: false,
-    marketingEmails: false
-  });
-  
+  const [notifications, setNotifications] = useState<UserNotificationPreferences>(
+    user?.notificationPreferences || {
+      emailBookings: true,
+      whatsappUpdates: false,
+      marketingEmails: false,
+    }
+  );
+
   const [isSaving, setIsSaving] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
+  const [isActivatingHost, setIsActivatingHost] = useState(false);
+
+  // Direct in-app password change state
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [needsReauth, setNeedsReauth] = useState(false);
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+
   // The uid whose stored profile the form currently holds. Saving is blocked
   // until this matches the signed-in user, so a reload (where `user` is still
   // null on the first render) can never write blank fields over real data.
@@ -40,20 +70,31 @@ export default function Profile() {
     setCountry(user.country || '');
     setBio(user.bio || '');
     setPreferredCurrency(user.preferredCurrency || 'USD');
-    setNotifications(user.notificationPreferences || {
-      emailBookings: true,
-      whatsappUpdates: false,
-      marketingEmails: false
-    });
+    setNotifications(
+      user.notificationPreferences || {
+        emailBookings: true,
+        whatsappUpdates: false,
+        marketingEmails: false,
+      }
+    );
     setHydratedUid(user.uid);
   }, [user, hydratedUid]);
 
   if (!user) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center text-center px-6">
-        <UserCircle className="w-16 h-16 text-stone-200 mb-6" />
-        <h1 className="text-3xl font-serif text-stone-900 mb-4 tracking-tight">Account Profile</h1>
-        <p className="text-stone-500 max-w-md mb-8">Sign in to manage your account settings.</p>
+        <UserCircle className="w-16 h-16 text-stone-300 mb-5" />
+        <h1 className="text-3xl font-serif text-stone-900 mb-3 tracking-tight">Account Profile</h1>
+        <p className="text-stone-500 max-w-md mb-6 text-sm">
+          Sign in to manage your personal details, password, and property host settings.
+        </p>
+        <button
+          type="button"
+          onClick={() => openAuth('signin')}
+          className="bg-stone-900 text-white px-6 py-3 rounded-xl text-sm font-bold hover:bg-stone-800 transition cursor-pointer"
+        >
+          Sign In to Your Account
+        </button>
       </div>
     );
   }
@@ -62,7 +103,7 @@ export default function Profile() {
     e.preventDefault();
     if (hydratedUid !== user.uid) return;
     setIsSaving(true);
-    
+
     try {
       if (auth.currentUser) {
         await updateProfile(auth.currentUser, { displayName });
@@ -76,7 +117,7 @@ export default function Profile() {
         country,
         bio,
         preferredCurrency,
-        notificationPreferences: notifications
+        notificationPreferences: notifications,
       });
 
       toast.success('Profile updated successfully');
@@ -93,7 +134,7 @@ export default function Profile() {
     setIsResetting(true);
     try {
       await resetPassword(user.email);
-      toast.success('Password reset email sent! Check your inbox.');
+      toast.success('Password reset & recovery email sent! Check your inbox.');
     } catch (err: any) {
       toast.error(err.message || 'Failed to send password reset email');
     } finally {
@@ -101,27 +142,170 @@ export default function Profile() {
     }
   };
 
+  const handleDirectPasswordUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!auth.currentUser) {
+      toast.error('Please sign in again to update your password.');
+      return;
+    }
+    if (newPassword.length < 6) {
+      toast.error('New password must be at least 6 characters.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error('New password and confirmation do not match.');
+      return;
+    }
+
+    setIsUpdatingPassword(true);
+    try {
+      if (needsReauth && currentPassword && user.email) {
+        const credential = EmailAuthProvider.credential(user.email, currentPassword);
+        await reauthenticateWithCredential(auth.currentUser, credential);
+      }
+      await updatePassword(auth.currentUser, newPassword);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setNeedsReauth(false);
+      toast.success('Your password has been updated!');
+    } catch (err: any) {
+      if (err?.code === 'auth/requires-recent-login') {
+        setNeedsReauth(true);
+        toast.error('For security, please enter your current/temporary password to confirm this change.');
+      } else if (err?.code === 'auth/wrong-password' || err?.code === 'auth/invalid-credential') {
+        toast.error('Current password is incorrect. You can also click "Email Reset Link" instead.');
+      } else {
+        toast.error(err?.message || 'Could not update password. Try sending a reset email instead.');
+      }
+    } finally {
+      setIsUpdatingPassword(false);
+    }
+  };
+
+  const handleBecomeHost = async () => {
+    setIsActivatingHost(true);
+    try {
+      await becomeHost();
+      toast.success('Property Host tools activated on your account!');
+    } catch (err: any) {
+      toast.error(err?.message || 'Could not activate host tools');
+    } finally {
+      setIsActivatingHost(false);
+    }
+  };
+
+  const userIsHost = isHotelManager(user);
+  const userIsAdmin = isAdmin(user);
+  const userIsMarketing = isMarketing(user);
+
   return (
-    <div className="mx-auto max-w-4xl px-3.5 sm:px-6 lg:px-8 py-5 sm:py-8 md:py-10 mb-20 md:mb-0">
-      <div className="mb-5 sm:mb-7 border-b border-stone-200 pb-3.5 sm:pb-5 flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+    <div className="mx-auto max-w-4xl px-3.5 sm:px-6 lg:px-8 py-5 sm:py-8 md:py-10 mb-20 md:mb-0 space-y-6">
+      <div className="border-b border-stone-200 pb-3.5 sm:pb-5 flex flex-col sm:flex-row sm:items-end justify-between gap-3">
         <div>
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-serif font-bold text-stone-900 tracking-tight">Profile Settings</h1>
-          <p className="text-stone-500 mt-0.5 sm:mt-1 text-xs sm:text-sm">Manage your personal information and preferences.</p>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-serif font-bold text-stone-900 tracking-tight">
+            Account &amp; Profile Settings
+          </h1>
+          <p className="text-stone-500 mt-0.5 sm:mt-1 text-xs sm:text-sm">
+            Manage your personal information, security credentials, and property host tools.
+          </p>
         </div>
-        <button
-          onClick={handlePasswordReset}
-          disabled={isResetting}
-          className="flex items-center justify-center gap-1.5 rounded-xl sm:rounded-full border border-stone-300 bg-white px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-stone-700 hover:bg-stone-50 transition disabled:opacity-50 cursor-pointer w-full sm:w-auto shadow-2xs"
-        >
-          {isResetting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Key className="w-3.5 h-3.5" />}
-          Send Password Reset
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {userIsHost && (
+            <Link
+              to="/dashboard"
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl sm:rounded-full bg-stone-900 px-4 py-2 text-xs sm:text-sm font-bold text-white hover:bg-stone-800 transition shadow-2xs"
+            >
+              <Building2 className="w-3.5 h-3.5" />
+              Property Hub
+            </Link>
+          )}
+          <button
+            type="button"
+            onClick={handlePasswordReset}
+            disabled={isResetting}
+            className="flex items-center justify-center gap-1.5 rounded-xl sm:rounded-full border border-stone-300 bg-white px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-stone-700 hover:bg-stone-50 transition disabled:opacity-50 cursor-pointer shadow-2xs"
+          >
+            {isResetting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Key className="w-3.5 h-3.5" />}
+            Email Password Reset
+          </button>
+        </div>
       </div>
 
-      <form onSubmit={handleSave} className="space-y-5 sm:space-y-7 bg-white p-3.5 sm:p-6 md:p-8 rounded-2xl sm:rounded-3xl border border-stone-200 shadow-2xs">
+      {/* Account Role & Property Host Access Card */}
+      <div className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-stone-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-1.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-stone-400">Account Access</span>
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-stone-100 text-stone-800 border border-stone-200">
+              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+              Traveller
+            </span>
+            {userIsHost && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                <Building2 className="w-3 h-3 text-emerald-700" />
+                Property Host / Manager
+              </span>
+            )}
+            {userIsMarketing && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+                <ShieldCheck className="w-3 h-3 text-amber-700" />
+                Marketing
+              </span>
+            )}
+            {userIsAdmin && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-stone-900 text-white">
+                <ShieldCheck className="w-3 h-3 text-amber-400" />
+                Administrator
+              </span>
+            )}
+          </div>
+          <p className="text-xs sm:text-sm text-stone-600">
+            {userIsHost
+              ? 'Your account has full Property Host & Manager access. You can view and manage both live and pending listings.'
+              : 'Want to list a lodge, guest house, or cottage on Ulendo Travel Malawi? Activate free host tools anytime.'}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          {userIsHost ? (
+            <>
+              <Link
+                to="/dashboard"
+                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-stone-900 text-white text-xs font-bold hover:bg-stone-800 transition"
+              >
+                <span>Manage Properties</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+              <Link
+                to="/list-your-property"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-stone-200 bg-stone-50 text-stone-800 text-xs font-semibold hover:bg-stone-100 transition"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add Property</span>
+              </Link>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={handleBecomeHost}
+              disabled={isActivatingHost}
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-stone-900 text-white text-xs font-bold hover:bg-stone-800 transition disabled:opacity-50 cursor-pointer"
+            >
+              {isActivatingHost ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Building2 className="w-3.5 h-3.5" />}
+              <span>Activate Property Host Tools</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Personal Information & Preferences Form */}
+      <form
+        onSubmit={handleSave}
+        className="space-y-5 sm:space-y-7 bg-white p-3.5 sm:p-6 md:p-8 rounded-2xl sm:rounded-3xl border border-stone-200 shadow-2xs"
+      >
         <div className="space-y-4 sm:space-y-5">
           <h2 className="text-base sm:text-lg font-bold text-stone-900">Personal Information</h2>
-          
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-5">
             <div>
               <label className="block text-xs sm:text-sm font-semibold text-stone-900 mb-1.5">Display Name</label>
@@ -133,7 +317,7 @@ export default function Profile() {
                 placeholder="How we should call you"
               />
             </div>
-            
+
             <div>
               <label className="block text-xs sm:text-sm font-semibold text-stone-900 mb-1.5">Email Address</label>
               <input
@@ -142,7 +326,7 @@ export default function Profile() {
                 disabled
                 className="w-full rounded-xl border border-stone-200 bg-stone-100 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm text-stone-500 cursor-not-allowed"
               />
-              <p className="text-[11px] text-stone-400 mt-1">Email address cannot be changed</p>
+              <p className="text-[11px] text-stone-400 mt-1">Primary login email address</p>
             </div>
 
             <div>
@@ -204,7 +388,7 @@ export default function Profile() {
 
         <div className="pt-5 border-t border-stone-100 space-y-4 sm:space-y-5">
           <h2 className="text-base sm:text-lg font-bold text-stone-900">Preferences</h2>
-          
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6">
             <div className="space-y-4">
               <div>
@@ -235,7 +419,7 @@ export default function Profile() {
                   <input
                     type="checkbox"
                     checked={notifications.emailBookings}
-                    onChange={(e) => setNotifications(prev => ({ ...prev, emailBookings: e.target.checked }))}
+                    onChange={(e) => setNotifications((prev) => ({ ...prev, emailBookings: e.target.checked }))}
                     className="mt-0.5 rounded border-stone-300 text-stone-900 focus:ring-stone-900"
                   />
                   <div>
@@ -247,7 +431,7 @@ export default function Profile() {
                   <input
                     type="checkbox"
                     checked={notifications.whatsappUpdates}
-                    onChange={(e) => setNotifications(prev => ({ ...prev, whatsappUpdates: e.target.checked }))}
+                    onChange={(e) => setNotifications((prev) => ({ ...prev, whatsappUpdates: e.target.checked }))}
                     className="mt-0.5 rounded border-stone-300 text-stone-900 focus:ring-stone-900"
                   />
                   <div>
@@ -259,7 +443,7 @@ export default function Profile() {
                   <input
                     type="checkbox"
                     checked={notifications.marketingEmails}
-                    onChange={(e) => setNotifications(prev => ({ ...prev, marketingEmails: e.target.checked }))}
+                    onChange={(e) => setNotifications((prev) => ({ ...prev, marketingEmails: e.target.checked }))}
                     className="mt-0.5 rounded border-stone-300 text-stone-900 focus:ring-stone-900"
                   />
                   <div>
@@ -279,7 +463,93 @@ export default function Profile() {
             className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl sm:rounded-full bg-stone-900 px-5 sm:px-6 py-2.5 text-xs sm:text-sm font-bold text-white transition hover:bg-stone-800 disabled:opacity-50 disabled:cursor-not-allowed shadow-2xs cursor-pointer"
           >
             {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-            Save Changes
+            Save Profile Changes
+          </button>
+        </div>
+      </form>
+
+      {/* Security & Direct Password Change Card */}
+      <form
+        onSubmit={handleDirectPasswordUpdate}
+        className="space-y-4 sm:space-y-5 bg-white p-3.5 sm:p-6 md:p-8 rounded-2xl sm:rounded-3xl border border-stone-200 shadow-2xs"
+      >
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h2 className="text-base sm:text-lg font-bold text-stone-900 flex items-center gap-2">
+              <Lock className="w-4 h-4 text-stone-600" />
+              Security &amp; Password Management
+            </h2>
+            <p className="text-xs text-stone-500 mt-0.5">
+              Signed in with a temporary onboarding password? Set your own personal password below, or request a reset link via email.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-5">
+          {needsReauth && (
+            <div className="sm:col-span-2">
+              <label className="block text-xs sm:text-sm font-semibold text-stone-900 mb-1.5">
+                Current / Temporary Password
+              </label>
+              <input
+                type={showNewPassword ? 'text' : 'password'}
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                className="w-full rounded-xl border border-amber-300 bg-amber-50/40 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm focus:border-stone-900 focus:ring-1 focus:ring-stone-900 transition"
+                placeholder="Enter your current or temporary password"
+              />
+            </div>
+          )}
+
+          <div>
+            <label className="block text-xs sm:text-sm font-semibold text-stone-900 mb-1.5">New Password</label>
+            <div className="relative">
+              <input
+                type={showNewPassword ? 'text' : 'password'}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full rounded-xl border border-stone-200 bg-stone-50 pl-3 sm:pl-4 pr-10 py-2 sm:py-2.5 text-xs sm:text-sm focus:border-stone-900 focus:ring-1 focus:ring-stone-900 transition"
+                placeholder="At least 6 characters"
+              />
+              <button
+                type="button"
+                onClick={() => setShowNewPassword((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 cursor-pointer"
+                aria-label={showNewPassword ? 'Hide password' : 'Show password'}
+              >
+                {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs sm:text-sm font-semibold text-stone-900 mb-1.5">Confirm New Password</label>
+            <input
+              type={showNewPassword ? 'text' : 'password'}
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="w-full rounded-xl border border-stone-200 bg-stone-50 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm focus:border-stone-900 focus:ring-1 focus:ring-stone-900 transition"
+              placeholder="Re-enter new password"
+            />
+          </div>
+        </div>
+
+        <div className="pt-3 border-t border-stone-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={handlePasswordReset}
+            disabled={isResetting}
+            className="text-xs font-semibold text-stone-600 hover:text-stone-900 underline text-left cursor-pointer"
+          >
+            {isResetting ? 'Sending reset email...' : `Prefer an email link? Send reset email to ${user.email}`}
+          </button>
+          <button
+            type="submit"
+            disabled={isUpdatingPassword || !newPassword}
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl sm:rounded-full bg-stone-900 px-5 sm:px-6 py-2.5 text-xs sm:text-sm font-bold text-white transition hover:bg-stone-800 disabled:opacity-50 disabled:cursor-not-allowed shadow-2xs cursor-pointer"
+          >
+            {isUpdatingPassword ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Key className="w-3.5 h-3.5" />}
+            Update Password
           </button>
         </div>
       </form>

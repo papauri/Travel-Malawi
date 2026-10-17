@@ -1548,13 +1548,17 @@ export default function ListProperty() {
               ownerEmail: ownerEmailToSend,
               ownerName: draft.ownerName || draft.managerName || user.displayName,
               managerEmail: draft.managerEmail || user.email,
+              managerName: draft.managerName || user.displayName,
               location: draft.location,
               category: draft.category,
               stayType: draft.stayType,
             }),
           }).then(res => res.json()).then(result => {
             if (result?.sent) {
-              toast.success(`Login & property details sent to ${ownerEmailToSend}`, { icon: '📧', duration: 5000 });
+              const sentTo = Array.isArray(result.recipients) && result.recipients.length > 0
+                ? result.recipients.join(', ')
+                : ownerEmailToSend;
+              toast.success(`Login credentials & listing preview sent to ${sentTo}`, { duration: 5000 });
             }
           }).catch(err => {
             console.warn('[Onboarding] Could not dispatch welcome email:', err);

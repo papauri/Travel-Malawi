@@ -8,12 +8,14 @@
  * call `openAuth('host')` and get the right form, in place.
  */
 
-import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import AuthDialog, { AuthIntent } from '../components/AuthDialog';
+import { useAuth } from './AuthContext';
 
 interface AuthDialogContextValue {
   /** Opens the dialog. `onDone` runs once, after a successful sign-in. */
-  openAuth: (intent?: AuthIntent, onDone?: () => void) => void;
+  openAuth: (intent?: AuthIntent, onDone?: () => void, prefillEmail?: string) => void;
   closeAuth: () => void;
   isOpen: boolean;
 }
@@ -27,14 +29,18 @@ const AuthDialogContext = createContext<AuthDialogContextValue>({
 export const useAuthDialog = () => useContext(AuthDialogContext);
 
 export const AuthDialogProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, loading: authLoading } = useAuth();
+  const location = useLocation();
   const [open, setOpen] = useState(false);
   const [intent, setIntent] = useState<AuthIntent>('signin');
+  const [initialEmail, setInitialEmail] = useState<string>('');
   // A ref, not state: the callback belongs to one opening of the dialog and
   // must not cause a re-render of every consumer when it is replaced.
   const onDoneRef = useRef<(() => void) | undefined>(undefined);
 
-  const openAuth = useCallback((next: AuthIntent = 'signin', onDone?: () => void) => {
+  const openAuth = useCallback((next: AuthIntent = 'signin', onDone?: () => void, prefillEmail?: string) => {
     setIntent(next);
+    setInitialEmail(prefillEmail?.trim() || '');
     onDoneRef.current = onDone;
     setOpen(true);
   }, []);
@@ -44,6 +50,22 @@ export const AuthDialogProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     onDoneRef.current = undefined;
   }, []);
 
+  // Automatically open the AuthDialog when arriving from an onboarding or password reset email link (?auth=signin&email=...)
+  useEffect(() => {
+    if (authLoading) return;
+    const params = new URLSearchParams(location.search);
+    const authParam = params.get('auth')?.toLowerCase();
+    const emailParam = params.get('email')?.trim() || '';
+
+    if (authParam === 'signin' || authParam === 'signup' || authParam === 'host' || authParam === 'reset') {
+      if (authParam === 'reset' || !user) {
+        setIntent(authParam as AuthIntent);
+        if (emailParam) setInitialEmail(emailParam);
+        setOpen(true);
+      }
+    }
+  }, [location.search, authLoading, user]);
+
   const value = useMemo(() => ({ openAuth, closeAuth, isOpen: open }), [openAuth, closeAuth, open]);
 
   return (
@@ -52,6 +74,7 @@ export const AuthDialogProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       <AuthDialog
         open={open}
         intent={intent}
+        initialEmail={initialEmail}
         onClose={() => setOpen(false)}
         onAuthenticated={() => {
           const done = onDoneRef.current;

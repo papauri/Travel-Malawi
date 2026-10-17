@@ -16,7 +16,7 @@ import {
   signOut,
   sendPasswordResetEmail,
 } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, limit, query, setDoc, where } from 'firebase/firestore';
 import { auth, db, googleProvider } from '../lib/firebase';
 import { User, Role } from '../types';
 import { isHotelManager, isOwnerEmail, toRoleFields, userRoles, canShadowManager } from '../lib/roles';
@@ -99,6 +99,8 @@ async function loadOrCreateUser(
     };
   }
 
+  let needsWrite = !userDoc.exists();
+
   // Force global admin role for the requested email
   if (isOwnerEmail(userData.email)) {
     const roles = Array.isArray(userData.roles) ? userData.roles : (userData.role ? [userData.role] : []);
@@ -106,10 +108,32 @@ async function loadOrCreateUser(
       const updatedRoles = [...roles, 'admin'] as Role[];
       const roleFields = toRoleFields(updatedRoles);
       userData = { ...userData, ...roleFields };
-      await setDoc(userDocRef, { ...userData }, { merge: true });
+      needsWrite = true;
     }
-  } else if (!userDoc.exists()) {
-    await setDoc(userDocRef, userData, { merge: true });
+  }
+
+  // Auto-recognize property owners/managers whose email or uid is attached to an onboarded hotel (including pending listings)
+  if (!isHotelManager(userData) && firebaseUser.email) {
+    try {
+      const cleanEmail = firebaseUser.email.trim().toLowerCase();
+      const [byUid, byOwnerEmail, byManagerEmail] = await Promise.all([
+        getDocs(query(collection(db, 'hotels'), where('managerId', '==', firebaseUser.uid), limit(1))),
+        getDocs(query(collection(db, 'hotels'), where('ownerEmail', '==', cleanEmail), limit(1))),
+        getDocs(query(collection(db, 'hotels'), where('managerEmail', '==', cleanEmail), limit(1))),
+      ]);
+      if (!byUid.empty || !byOwnerEmail.empty || !byManagerEmail.empty) {
+        const currentRoles = Array.isArray(userData.roles) ? userData.roles : (userData.role ? [userData.role] : ['traveller']);
+        const roleFields = toRoleFields([...currentRoles, 'hotel_manager'] as Role[]);
+        userData = { ...userData, ...roleFields };
+        needsWrite = true;
+      }
+    } catch {
+      // Non-fatal; ManageHotel / ManagerDashboard also verify per-property email match
+    }
+  }
+
+  if (needsWrite) {
+    await setDoc(userDocRef, { ...userData }, { merge: true });
   }
 
   return userData;
@@ -396,16 +420,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const resetPassword = async (email: string) => {
     const cleanEmail = email.trim();
     if (!cleanEmail) throw new Error('Please provide an email address.');
-    await sendPasswordResetEmail(auth, cleanEmail);
+
+    // 1. Trigger SMTP password recovery & auto-provisioning on the server first
+    let smtpSent = false;
+    try {
+      const res = await fetch('/api/auth/notify-password-reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: cleanEmail }),
+      });
+      const data = await res.json().catch(() => ({}));
+      smtpSent = Boolean(data?.emailSent);
+    } catch {
+      // Fallback to Firebase client reset below
+    }
+
+    // 2. Also send Firebase Auth standard reset link
+    try {
+      await sendPasswordResetEmail(auth, cleanEmail);
+    } catch (err) {
+      if (!smtpSent) throw err;
+    }
+
     await logAuthEvent('password_reset', `Password reset requested for: ${cleanEmail}`, null, {
       email: cleanEmail,
+      smtpSent,
     });
-    // Background notification via server SMTP if configured
-    fetch('/api/auth/notify-password-reset', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: cleanEmail }),
-    }).catch(() => {});
   };
 
   const refreshUser = async (): Promise<User | null> => {
