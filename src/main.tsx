@@ -67,6 +67,21 @@ if ('serviceWorker' in navigator && !window.location.host.includes('ais-dev-')) 
   });
 }
 
+// Suppress benign Vite HMR websocket connection errors when running in remote hosted dev environments (e.g. Cloud Run)
+if (typeof window !== 'undefined') {
+  window.addEventListener('unhandledrejection', (event) => {
+    const reason = event.reason;
+    const msg = String(reason?.message || reason || '');
+    if (
+      msg.includes('WebSocket closed without opened') ||
+      msg.includes('failed to connect to websocket') ||
+      (typeof reason?.stack === 'string' && reason.stack.includes('@vite/client'))
+    ) {
+      event.preventDefault();
+    }
+  });
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>

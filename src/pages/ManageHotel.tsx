@@ -645,6 +645,7 @@ export default function ManageHotel() {
   const [isDeletingRoom, setIsDeletingRoom] = useState(false);
   const { openInquiryChat, openBookingChat } = useChatModal();
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
+  const restaurantBaselineRef = useRef<string>('null');
   const [savingRestaurant, setSavingRestaurant] = useState(false);
   const [togglingStatus, setTogglingStatus] = useState(false);
 
@@ -832,6 +833,7 @@ export default function ManageHotel() {
           setEditHotelData(rawHotel);
           editBaselineRef.current = rawHotel;
           setRestaurant(hData.restaurant ?? null);
+          restaurantBaselineRef.current = JSON.stringify(hData.restaurant ?? null);
         } else {
           navigate(backUrl);
           return;
@@ -1146,9 +1148,14 @@ export default function ManageHotel() {
   const contactProblems = detailProblems;
 
   /** Unsaved work, per tab. Each editor holds local state until it is saved. */
-  const hotelDirty = !!hotel && hotelFormSnapshot(editHotelData) !== hotelFormSnapshot(hotel);
+  const hotelDirty = Boolean(
+    hotel &&
+    editBaselineRef.current &&
+    Object.keys(editBaselineRef.current).length > 0 &&
+    hotelFormSnapshot(editHotelData) !== hotelFormSnapshot(editBaselineRef.current)
+  );
   const restaurantDirty =
-    JSON.stringify(restaurant ?? null) !== JSON.stringify(hotel?.restaurant ?? null);
+    Boolean(hotel) && JSON.stringify(restaurant ?? null) !== (restaurantBaselineRef.current || 'null');
   const roomDirty = editingRoomId !== null;
 
   const dirtyOn = (tab: Tab) =>
@@ -1170,9 +1177,16 @@ export default function ManageHotel() {
 
   const discardAndSwitch = () => {
     if (!pendingTab || !hotel) return;
-    if (activeTab === 'details') { setEditHotelData(hotel); editBaselineRef.current = hotel; }
-    if (activeTab === 'restaurant') setRestaurant(hotel.restaurant ?? null);
-    if (activeTab === 'rooms') { setEditingRoomId(null); setShowAddRoom(false); }
+    if (activeTab === 'details' || activeTab === 'media') {
+      setEditHotelData(editBaselineRef.current);
+    }
+    if (activeTab === 'restaurant') {
+      setRestaurant(restaurantBaselineRef.current ? JSON.parse(restaurantBaselineRef.current) : null);
+    }
+    if (activeTab === 'rooms') {
+      setEditingRoomId(null);
+      setShowAddRoom(false);
+    }
     goToTab(pendingTab);
     setPendingTab(null);
   };
@@ -1223,6 +1237,7 @@ export default function ManageHotel() {
       await updateDoc(doc(db, 'hotels', id), { restaurant: cleaned });
       setHotel({ ...hotel, restaurant: cleaned });
       setRestaurant(cleaned);
+      restaurantBaselineRef.current = JSON.stringify(cleaned);
       toast.success(cleaned.enabled ? 'Menu saved and published.' : 'Menu saved. The tab is hidden from guests.');
     } catch (error) {
       console.error('Error saving restaurant:', error);
@@ -3481,7 +3496,7 @@ export default function ManageHotel() {
                 {hotelDirty && (
                   <button
                     type="button"
-                    onClick={() => setEditHotelData(hotel)}
+                    onClick={() => setEditHotelData(editBaselineRef.current)}
                     className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold text-stone-600 hover:bg-stone-100 transition cursor-pointer"
                   >
                     Discard
@@ -5226,7 +5241,7 @@ export default function ManageHotel() {
                   {restaurantDirty && (
                     <button
                       type="button"
-                      onClick={() => setRestaurant(hotel.restaurant ?? null)}
+                      onClick={() => setRestaurant(restaurantBaselineRef.current ? JSON.parse(restaurantBaselineRef.current) : null)}
                       className="inline-flex items-center justify-center h-9 px-4 rounded-xl text-xs font-semibold text-stone-600 hover:bg-stone-100 transition cursor-pointer"
                     >
                       Discard

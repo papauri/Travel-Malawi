@@ -5,7 +5,8 @@ import type { Response } from 'express';
 import path from 'path';
 import multer from 'multer';
 import fs from 'fs';
-import { createServer as createViteServer } from 'vite';
+import http from 'http';
+import { createServer as createViteServer, type ViteDevServer } from 'vite';
 import {
   getPublicAIStatus,
   getAdminAIConfig,
@@ -1898,10 +1899,16 @@ async function startServer() {
     next();
   });
 
+  const server = http.createServer(app);
+
   // Vite middleware for development
+  let vite: ViteDevServer | null = null;
   if (process.env.NODE_ENV !== 'production') {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
+    vite = await createViteServer({
+      server: {
+        middlewareMode: true,
+        hmr: { server },
+      },
       appType: 'spa',
     });
     app.use(vite.middlewares);
@@ -1913,7 +1920,7 @@ async function startServer() {
     });
   }
 
-  const server = app.listen(PORT, '0.0.0.0', () => {
+  server.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on http://localhost:${PORT}`);
     // Discover each enabled provider's current models so "auto" resolves to today's cheapest capable model.
     void warmModelCatalogs();
