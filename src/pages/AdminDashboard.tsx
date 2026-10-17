@@ -914,7 +914,7 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 w-full flex flex-col lg:flex-row gap-6 lg:gap-8 min-h-screen">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 pb-24 w-full flex flex-col lg:flex-row gap-6 lg:gap-8 min-h-screen">
       
       <PriceMismatchNotice
         mismatch={confirmFlow.mismatch}
@@ -1719,74 +1719,573 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            {/* Clean Property Directory Table */}
+            {/* Clean Property Directory (Table on md+, Stacked Cards on <md) */}
             <div className="bg-white rounded-xl border border-stone-200 shadow-2xs overflow-visible">
               {visibleHotels.length === 0 ? (
                 <div className="p-10 text-center text-stone-500 text-xs">
                   No properties found matching your filter.
                 </div>
-              ) : (
-                <>
-                  {/* Desktop Column Header */}
-                  <div className="hidden lg:grid lg:grid-cols-12 gap-4 px-4 py-2.5 bg-stone-50/80 border-b border-stone-200 text-[11px] font-semibold text-stone-500 rounded-t-xl">
-                    <div className="col-span-4">Property</div>
-                    <div className="col-span-2">Rooms &amp; Rates</div>
-                    <div className="col-span-2">Host / Manager</div>
-                    <div className="col-span-1">Status</div>
-                    <div className="col-span-3 text-right">Actions</div>
-                  </div>
+              ) : (() => {
+                const pageHotels = visibleHotels.slice(
+                  (currentHotelPage - 1) * itemsPerPage,
+                  currentHotelPage * itemsPerPage
+                );
 
-                  <div className="divide-y divide-stone-100">
-                    {visibleHotels.slice((currentHotelPage - 1) * itemsPerPage, currentHotelPage * itemsPerPage).map((hotel, index) => {
-                      const hotelRooms = rooms.filter(r => r.hotelId === hotel.id);
-                      const minPriceUsd = hotelRooms.length > 0 
-                        ? Math.min(...hotelRooms.map(r => r.prices?.USD ?? r.price ?? 0).filter(p => p > 0))
-                        : (hotel.entirePlaceDetails?.ratePerNightUsd || 0);
-                      const minPriceMwk = hotelRooms.length > 0 
-                        ? Math.min(...hotelRooms.map(r => r.prices?.MWK ?? r.priceMWK ?? 0).filter(p => p > 0))
-                        : (hotel.entirePlaceDetails?.ratePerNightMwk || 0);
-                      const syncCount = (hotel.icalSyncUrls?.length || 0) +
-                        hotelRooms.reduce((acc, r) => acc + (r.icalSyncUrls?.length || 0), 0);
-                      const problem = pinProblem(hotel.coordinates);
-                      const hostDisplay =
-                        hotel.managerName ||
-                        (hotel.managerId && users.find(u => u.uid === hotel.managerId)?.email) ||
-                        hotel.managerEmail ||
-                        hotel.ownerName ||
-                        hotel.ownerEmail ||
-                        null;
+                const renderStatusBadge = (hotel: Hotel) => {
+                  if (!hotel.status || hotel.status === 'approved') {
+                    return (
+                      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md whitespace-nowrap shrink-0">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                        Live
+                      </span>
+                    );
+                  }
+                  if (hotel.status === 'pending') {
+                    return (
+                      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-900 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md whitespace-nowrap shrink-0">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                        Pending
+                      </span>
+                    );
+                  }
+                  return (
+                    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-stone-600 bg-stone-100 border border-stone-200 px-2 py-0.5 rounded-md whitespace-nowrap shrink-0">
+                      <span className="w-1.5 h-1.5 rounded-full bg-stone-400 shrink-0" />
+                      Rejected
+                    </span>
+                  );
+                };
 
-                      return (
+                const renderMoreMenu = (hotel: Hotel, menuKey: string, openUpwards: boolean) => (
+                  <div className="relative inline-block text-left shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setOpenHotelMenuId(openHotelMenuId === menuKey ? null : menuKey)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 text-xs font-medium transition cursor-pointer whitespace-nowrap"
+                      aria-label="More property actions"
+                    >
+                      <span>More</span>
+                      <ChevronDown className={`w-3.5 h-3.5 text-stone-400 transition-transform ${openHotelMenuId === menuKey ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {openHotelMenuId === menuKey && (
+                      <>
                         <div
-                          key={`admin-hotel-${hotel.id || index}-${index}`}
-                          className={`p-3.5 sm:px-4 sm:py-3.5 transition hover:bg-stone-50/70 lg:grid lg:grid-cols-12 lg:items-center lg:gap-4 flex flex-col gap-3 ${
-                            hotel.status === 'pending' ? 'bg-amber-50/20' : ''
+                          className="fixed inset-0 z-30"
+                          onClick={() => setOpenHotelMenuId(null)}
+                        />
+                        <div
+                          className={`absolute right-0 w-56 bg-white rounded-xl shadow-lg border border-stone-200 py-1.5 z-40 text-left animate-in fade-in zoom-in-95 duration-150 ${
+                            openUpwards ? 'bottom-full mb-1.5' : 'top-full mt-1.5'
                           }`}
                         >
-                          {/* Col 1: Thumbnail + Name + Location */}
-                          <div className="lg:col-span-4 flex items-center gap-3 min-w-0">
-                            <div className="w-16 h-12 sm:w-20 sm:h-14 rounded-lg bg-stone-100 overflow-hidden shrink-0 border border-stone-200/70">
-                              <SmartImage src={getHotelImage(hotel)} alt={hotel.name} className="w-full h-full object-cover" />
+                          {(isAdmin(user) || isMarketing(user)) && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setHotelToAssignManager(hotel);
+                                  setAssignManagerSelectedUid(hotel.managerId || '');
+                                  setAssignManagerCustomEmail(hotel.managerEmail || '');
+                                  setAssignManagerCustomName(hotel.managerName || '');
+                                  setAssignManagerOwnerEmail(hotel.ownerEmail || '');
+                                  setOpenHotelMenuId(null);
+                                }}
+                                className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center gap-2 transition cursor-pointer"
+                              >
+                                <Users className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                                <span>Assign / Change Host</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  setOpenHotelMenuId(null);
+                                  const targetEmail =
+                                    hotel.ownerEmail ||
+                                    hotel.managerEmail ||
+                                    hotel.contactEmail ||
+                                    (hotel.managerId && users.find(u => u.uid === hotel.managerId)?.email);
+                                  if (!targetEmail) {
+                                    toast.error('No owner, manager, or contact email on this listing. Assign an email first.');
+                                    return;
+                                  }
+                                  const toastId = toast.loading(`Sending login credentials to ${targetEmail}…`);
+                                  try {
+                                    const res = await fetch('/api/onboarding/welcome-email', {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({
+                                        hotelId: hotel.id,
+                                        hotelName: hotel.name,
+                                        location: hotel.location,
+                                        category: hotel.category,
+                                        status: hotel.status || 'pending',
+                                        ownerName: hotel.ownerName,
+                                        ownerEmail: hotel.ownerEmail,
+                                        ownerPhone: hotel.ownerPhone,
+                                        managerName: hotel.managerName,
+                                        managerEmail: hotel.managerEmail || targetEmail,
+                                        managerPhone: hotel.managerPhone,
+                                        contactEmail: hotel.contactEmail,
+                                        contactPhone: hotel.contactPhone,
+                                        contactWhatsapp: hotel.contactWhatsapp,
+                                        submittedByEmail: user?.email,
+                                      }),
+                                    });
+                                    const data = await res.json();
+                                    if (data.ok && data.sentCount > 0) {
+                                      toast.success(`Host login credentials sent via SMTP (${data.sentCount} email${data.sentCount > 1 ? 's' : ''})!`, { id: toastId });
+                                    } else {
+                                      toast.error(data.error || 'Could not dispatch SMTP email. Verify SMTP settings.', { id: toastId });
+                                    }
+                                  } catch (err: any) {
+                                    toast.error(err?.message || 'Failed to send host credentials.', { id: toastId });
+                                  }
+                                }}
+                                className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center gap-2 transition cursor-pointer"
+                              >
+                                <Mail className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                                <span>Send Host Login Details (SMTP)</span>
+                              </button>
+                              <div className="my-1 border-t border-stone-100" />
+                            </>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleToggleFeatured(hotel);
+                              setOpenHotelMenuId(null);
+                            }}
+                            className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center justify-between transition cursor-pointer"
+                          >
+                            <span className="flex items-center gap-2">
+                              <Star className={`w-3.5 h-3.5 shrink-0 ${hotel.featured ? 'fill-amber-500 text-amber-500' : 'text-stone-400'}`} />
+                              <span>{hotel.featured ? 'Remove from Featured' : 'Feature on Home'}</span>
+                            </span>
+                            {hotel.featured && <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                const nextState = hotel.adminChatEnabled === false ? true : false;
+                                await updateDoc(doc(db, 'hotels', hotel.id!), { adminChatEnabled: nextState });
+                                setHotels(hotels.map(h => h.id === hotel.id ? { ...h, adminChatEnabled: nextState } : h));
+                                toast.success(`Chat has been ${nextState ? 'enabled' : 'disabled'} for ${hotel.name}`);
+                                setOpenHotelMenuId(null);
+                              } catch (error) {
+                                console.error(error);
+                                toast.error('Failed to update chat status');
+                              }
+                            }}
+                            className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center justify-between transition cursor-pointer"
+                          >
+                            <span className="flex items-center gap-2">
+                              <MessageSquare className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                              <span>{hotel.adminChatEnabled === false ? 'Enable Guest Chat' : 'Disable Guest Chat'}</span>
+                            </span>
+                            {hotel.adminChatEnabled !== false && <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                          </button>
+
+                          <a
+                            href={`/hotel/${hotel.id}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            onClick={() => setOpenHotelMenuId(null)}
+                            className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center justify-between transition cursor-pointer"
+                          >
+                            <span className="flex items-center gap-2">
+                              <ExternalLink className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                              <span>View Public Page</span>
+                            </span>
+                          </a>
+
+                          <div className="my-1 border-t border-stone-100" />
+
+                          {hotel.status === 'pending' && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  handleUpdateStatus(hotel.id!, 'approved');
+                                  setOpenHotelMenuId(null);
+                                }}
+                                className="w-full px-3 py-1.5 text-xs text-emerald-800 hover:bg-emerald-50 flex items-center gap-2 transition cursor-pointer font-medium"
+                              >
+                                <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                <span>Approve Listing</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  handleUpdateStatus(hotel.id!, 'rejected');
+                                  setOpenHotelMenuId(null);
+                                }}
+                                className="w-full px-3 py-1.5 text-xs text-rose-800 hover:bg-rose-50 flex items-center gap-2 transition cursor-pointer"
+                              >
+                                <X className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                                <span>Reject Listing</span>
+                              </button>
+                            </>
+                          )}
+
+                          {(!hotel.status || hotel.status === 'approved') && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleUpdateStatus(hotel.id!, 'pending');
+                                setOpenHotelMenuId(null);
+                              }}
+                              className="w-full px-3 py-1.5 text-xs text-amber-800 hover:bg-amber-50 flex items-center gap-2 transition cursor-pointer"
+                            >
+                              <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                              <span>Move to Pending</span>
+                            </button>
+                          )}
+
+                          {hotel.status === 'rejected' && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleUpdateStatus(hotel.id!, 'approved');
+                                setOpenHotelMenuId(null);
+                              }}
+                              className="w-full px-3 py-1.5 text-xs text-emerald-800 hover:bg-emerald-50 flex items-center gap-2 transition cursor-pointer font-medium"
+                            >
+                              <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                              <span>Approve Listing</span>
+                            </button>
+                          )}
+
+                          {(isAdmin(user) || isMarketing(user)) && (
+                            <>
+                              <div className="my-1 border-t border-stone-100" />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setHotelToDelete(hotel);
+                                  setOpenHotelMenuId(null);
+                                }}
+                                className="w-full px-3 py-1.5 text-xs text-rose-700 hover:bg-rose-50 flex items-center gap-2 transition cursor-pointer"
+                              >
+                                <Trash2 className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                                <span>Delete Listing</span>
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                );
+
+                return (
+                  <>
+                    {/* Desktop & Laptop Native Table (md+) — Guaranteed Zero Overlap */}
+                    <div className="hidden md:block">
+                      <table className="w-full text-left border-collapse text-xs">
+                        <thead>
+                          <tr className="bg-stone-50/80 border-b border-stone-200 text-[11px] font-semibold text-stone-500">
+                            <th className="py-2.5 pl-4 pr-3 rounded-tl-xl">Property</th>
+                            <th className="py-2.5 px-3 whitespace-nowrap">Rooms &amp; Rates</th>
+                            <th className="hidden xl:table-cell py-2.5 px-3 whitespace-nowrap">Host / Manager</th>
+                            <th className="py-2.5 px-3 whitespace-nowrap">Status</th>
+                            <th className="py-2.5 pl-3 pr-4 text-right whitespace-nowrap rounded-tr-xl">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-stone-100">
+                          {pageHotels.map((hotel, index) => {
+                            const hotelRooms = rooms.filter(r => r.hotelId === hotel.id);
+                            const minPriceUsd = hotelRooms.length > 0
+                              ? Math.min(...hotelRooms.map(r => r.prices?.USD ?? r.price ?? 0).filter(p => p > 0))
+                              : (hotel.entirePlaceDetails?.ratePerNightUsd || 0);
+                            const minPriceMwk = hotelRooms.length > 0
+                              ? Math.min(...hotelRooms.map(r => r.prices?.MWK ?? r.priceMWK ?? 0).filter(p => p > 0))
+                              : (hotel.entirePlaceDetails?.ratePerNightMwk || 0);
+                            const syncCount = (hotel.icalSyncUrls?.length || 0) +
+                              hotelRooms.reduce((acc, r) => acc + (r.icalSyncUrls?.length || 0), 0);
+                            const problem = pinProblem(hotel.coordinates);
+                            const hostDisplay =
+                              hotel.managerName ||
+                              (hotel.managerId && users.find(u => u.uid === hotel.managerId)?.email) ||
+                              hotel.managerEmail ||
+                              hotel.ownerName ||
+                              hotel.ownerEmail ||
+                              null;
+                            const openUpwards = index >= Math.max(0, pageHotels.length - 2) && pageHotels.length > 2;
+
+                            return (
+                              <tr
+                                key={`admin-hotel-row-${hotel.id || index}-${index}`}
+                                className={`transition hover:bg-stone-50/70 ${
+                                  hotel.status === 'pending' ? 'bg-amber-50/20' : ''
+                                }`}
+                              >
+                                {/* Col 1: Property */}
+                                <td className="py-3 pl-4 pr-3 align-middle min-w-0">
+                                  <div className="flex items-center gap-3 min-w-0">
+                                    <div className="w-14 h-11 xl:w-16 xl:h-12 rounded-lg bg-stone-100 overflow-hidden shrink-0 border border-stone-200/70">
+                                      <SmartImage src={getHotelImage(hotel)} alt={hotel.name} className="w-full h-full object-cover" />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                      <div className="flex items-center gap-1.5 min-w-0">
+                                        <h3 className="text-xs sm:text-sm font-semibold text-stone-900 truncate max-w-[175px] lg:max-w-[210px] xl:max-w-[280px]" title={hotel.name}>
+                                          {hotel.name}
+                                        </h3>
+                                        {hotel.featured && (
+                                          <span title="Featured on home page" className="shrink-0">
+                                            <Star className="h-3.5 w-3.5 fill-amber-500 text-amber-500" />
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div className="flex items-center gap-1.5 text-xs text-stone-500 mt-0.5 truncate max-w-[190px] lg:max-w-[230px] xl:max-w-[300px]">
+                                        <span className="truncate">{hotel.location}</span>
+                                        {hotel.categories?.[0] && (
+                                          <>
+                                            <span className="shrink-0">·</span>
+                                            <span className="text-stone-400 shrink-0">{hotel.categories[0]}</span>
+                                          </>
+                                        )}
+                                      </div>
+                                      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1 text-[11px]">
+                                        {problem ? (
+                                          <span className="text-amber-700 inline-flex items-center gap-1 font-medium whitespace-nowrap">
+                                            <MapPinOff className="h-3 w-3 shrink-0" />
+                                            <span>{PIN_PROBLEM_LABELS[problem]}</span>
+                                          </span>
+                                        ) : (
+                                          <a
+                                            href={mapLinkUrl(hotel)}
+                                            target="_blank"
+                                            rel="noreferrer noopener"
+                                            className="text-stone-400 hover:text-stone-700 inline-flex items-center gap-1 transition whitespace-nowrap"
+                                          >
+                                            <MapPin className="h-3 w-3 text-emerald-600 shrink-0" />
+                                            <span>Map pin verified</span>
+                                          </a>
+                                        )}
+                                        {syncCount > 0 && (
+                                          <span className="text-emerald-700 inline-flex items-center gap-1 whitespace-nowrap">
+                                            <span>·</span>
+                                            <CalendarSync className="w-3 h-3 shrink-0" />
+                                            <span>{syncCount} iCal</span>
+                                          </span>
+                                        )}
+                                        {/* Inline Host info on md/lg screens where dedicated Host column is hidden */}
+                                        <span className="xl:hidden inline-flex items-center gap-1 text-stone-500 truncate max-w-[190px]">
+                                          <span>·</span>
+                                          <span className="truncate">Host: {hostDisplay || 'Unassigned'}</span>
+                                          {(isAdmin(user) || isMarketing(user)) && (
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                setHotelToAssignManager(hotel);
+                                                setAssignManagerSelectedUid(hotel.managerId || '');
+                                                setAssignManagerCustomEmail(hotel.managerEmail || '');
+                                                setAssignManagerCustomName(hotel.managerName || '');
+                                                setAssignManagerOwnerEmail(hotel.ownerEmail || '');
+                                              }}
+                                              className="text-stone-700 hover:text-stone-950 underline cursor-pointer shrink-0 ml-0.5"
+                                            >
+                                              ({hostDisplay ? 'Change' : 'Assign'})
+                                            </button>
+                                          )}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </td>
+
+                                {/* Col 2: Rooms & Rates */}
+                                <td className="py-3 px-3 align-middle whitespace-nowrap">
+                                  <div className="font-medium text-stone-900">
+                                    {hotel.stayType === 'entire_place'
+                                      ? 'Entire place'
+                                      : `${hotelRooms.length} room type${hotelRooms.length === 1 ? '' : 's'}`}
+                                  </div>
+                                  <div className="text-[11px] text-stone-500 font-mono mt-0.5">
+                                    {minPriceMwk > 0 || minPriceUsd > 0 ? (
+                                      <>
+                                        {minPriceMwk > 0 ? `MK ${minPriceMwk.toLocaleString()}` : `$${minPriceUsd}`}
+                                        {minPriceMwk > 0 && minPriceUsd > 0 ? ` ($${minPriceUsd})` : ''}
+                                        <span className="font-sans text-stone-400"> / night</span>
+                                      </>
+                                    ) : (
+                                      <span className="font-sans text-stone-400">No rates set</span>
+                                    )}
+                                  </div>
+                                </td>
+
+                                {/* Col 3: Host / Manager (xl+) */}
+                                <td className="hidden xl:table-cell py-3 px-3 align-middle max-w-[180px]">
+                                  <div className="text-stone-800 truncate font-medium" title={hostDisplay || 'Unassigned'}>
+                                    {hostDisplay || <span className="text-stone-400 font-normal">Unassigned</span>}
+                                  </div>
+                                  {(isAdmin(user) || isMarketing(user)) && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setHotelToAssignManager(hotel);
+                                        setAssignManagerSelectedUid(hotel.managerId || '');
+                                        setAssignManagerCustomEmail(hotel.managerEmail || '');
+                                        setAssignManagerCustomName(hotel.managerName || '');
+                                        setAssignManagerOwnerEmail(hotel.ownerEmail || '');
+                                      }}
+                                      className="text-[11px] text-stone-500 hover:text-stone-900 underline cursor-pointer mt-0.5 block whitespace-nowrap"
+                                    >
+                                      {hostDisplay ? 'Change host' : 'Assign host'}
+                                    </button>
+                                  )}
+                                </td>
+
+                                {/* Col 4: Status */}
+                                <td className="py-3 px-3 align-middle whitespace-nowrap">
+                                  {renderStatusBadge(hotel)}
+                                </td>
+
+                                {/* Col 5: Actions */}
+                                <td className="py-3 pl-3 pr-4 align-middle text-right whitespace-nowrap">
+                                  <div className="inline-flex items-center justify-end gap-1.5 whitespace-nowrap">
+                                    {hotel.status === 'pending' && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleUpdateStatus(hotel.id!, 'approved')}
+                                        className="bg-emerald-700 hover:bg-emerald-800 text-white px-2.5 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer whitespace-nowrap shrink-0"
+                                      >
+                                        Approve
+                                      </button>
+                                    )}
+
+                                    <button
+                                      type="button"
+                                      onClick={() => setInspectingHotel(hotel)}
+                                      className="px-2.5 py-1.5 rounded-lg text-xs font-medium border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 transition cursor-pointer whitespace-nowrap shrink-0"
+                                    >
+                                      Review
+                                    </button>
+
+                                    <Link
+                                      to={`/admin/hotel/${hotel.id}`}
+                                      className="px-2.5 py-1.5 rounded-lg text-xs font-medium border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 transition whitespace-nowrap shrink-0"
+                                    >
+                                      Edit
+                                    </Link>
+
+                                    {renderMoreMenu(hotel, `table-${hotel.id}`, openUpwards)}
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Mobile & Small Screen Stacked Card List (<md) */}
+                    <div className="md:hidden divide-y divide-stone-100">
+                      {pageHotels.map((hotel, index) => {
+                        const hotelRooms = rooms.filter(r => r.hotelId === hotel.id);
+                        const minPriceUsd = hotelRooms.length > 0
+                          ? Math.min(...hotelRooms.map(r => r.prices?.USD ?? r.price ?? 0).filter(p => p > 0))
+                          : (hotel.entirePlaceDetails?.ratePerNightUsd || 0);
+                        const minPriceMwk = hotelRooms.length > 0
+                          ? Math.min(...hotelRooms.map(r => r.prices?.MWK ?? r.priceMWK ?? 0).filter(p => p > 0))
+                          : (hotel.entirePlaceDetails?.ratePerNightMwk || 0);
+                        const syncCount = (hotel.icalSyncUrls?.length || 0) +
+                          hotelRooms.reduce((acc, r) => acc + (r.icalSyncUrls?.length || 0), 0);
+                        const problem = pinProblem(hotel.coordinates);
+                        const hostDisplay =
+                          hotel.managerName ||
+                          (hotel.managerId && users.find(u => u.uid === hotel.managerId)?.email) ||
+                          hotel.managerEmail ||
+                          hotel.ownerName ||
+                          hotel.ownerEmail ||
+                          null;
+                        const openUpwards = index >= Math.max(0, pageHotels.length - 2) && pageHotels.length > 2;
+
+                        return (
+                          <div
+                            key={`admin-hotel-card-${hotel.id || index}-${index}`}
+                            className={`p-3.5 space-y-2.5 ${
+                              hotel.status === 'pending' ? 'bg-amber-50/20' : ''
+                            }`}
+                          >
+                            {/* Top Row: Image + Name/Location + Status Badge */}
+                            <div className="flex items-start justify-between gap-2.5">
+                              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                <div className="w-14 h-11 rounded-lg bg-stone-100 overflow-hidden shrink-0 border border-stone-200/70">
+                                  <SmartImage src={getHotelImage(hotel)} alt={hotel.name} className="w-full h-full object-cover" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-1 min-w-0">
+                                    <h3 className="text-sm font-semibold text-stone-900 truncate">{hotel.name}</h3>
+                                    {hotel.featured && (
+                                      <Star className="h-3.5 w-3.5 fill-amber-500 text-amber-500 shrink-0" />
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-stone-500 truncate mt-0.5">
+                                    {hotel.location}
+                                    {hotel.categories?.[0] ? ` · ${hotel.categories[0]}` : ''}
+                                  </p>
+                                </div>
+                              </div>
+                              {renderStatusBadge(hotel)}
                             </div>
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-1.5 min-w-0">
-                                <h3 className="text-sm font-semibold text-stone-900 truncate">{hotel.name}</h3>
-                                {hotel.featured && (
-                                  <span title="Featured on home page" className="shrink-0">
-                                    <Star className="h-3.5 w-3.5 fill-amber-500 text-amber-500" />
-                                  </span>
+
+                            {/* Middle Info Strip: Rooms & Rates + Host */}
+                            <div className="grid grid-cols-2 gap-2 bg-stone-50/80 border border-stone-200/60 rounded-lg px-3 py-2 text-xs">
+                              <div className="min-w-0">
+                                <span className="text-[10px] font-semibold uppercase tracking-wider text-stone-400 block">
+                                  Rooms &amp; Rates
+                                </span>
+                                <div className="font-medium text-stone-900 truncate mt-0.5">
+                                  {hotel.stayType === 'entire_place'
+                                    ? 'Entire place'
+                                    : `${hotelRooms.length} room type${hotelRooms.length === 1 ? '' : 's'}`}
+                                </div>
+                                <div className="text-[11px] text-stone-500 font-mono truncate">
+                                  {minPriceMwk > 0 || minPriceUsd > 0 ? (
+                                    <>
+                                      {minPriceMwk > 0 ? `MK ${minPriceMwk.toLocaleString()}` : `$${minPriceUsd}`}
+                                      {minPriceMwk > 0 && minPriceUsd > 0 ? ` ($${minPriceUsd})` : ''}
+                                    </>
+                                  ) : (
+                                    <span className="font-sans text-stone-400">No rates set</span>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="min-w-0">
+                                <span className="text-[10px] font-semibold uppercase tracking-wider text-stone-400 block">
+                                  Host / Manager
+                                </span>
+                                <div className="text-stone-800 font-medium truncate mt-0.5">
+                                  {hostDisplay || <span className="text-stone-400 font-normal">Unassigned</span>}
+                                </div>
+                                {(isAdmin(user) || isMarketing(user)) && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setHotelToAssignManager(hotel);
+                                      setAssignManagerSelectedUid(hotel.managerId || '');
+                                      setAssignManagerCustomEmail(hotel.managerEmail || '');
+                                      setAssignManagerCustomName(hotel.managerName || '');
+                                      setAssignManagerOwnerEmail(hotel.ownerEmail || '');
+                                    }}
+                                    className="text-[11px] text-stone-600 hover:text-stone-900 underline cursor-pointer"
+                                  >
+                                    {hostDisplay ? 'Change host' : 'Assign host'}
+                                  </button>
                                 )}
                               </div>
-                              <div className="flex items-center gap-1.5 text-xs text-stone-500 mt-0.5 truncate">
-                                <span className="truncate">{hotel.location}</span>
-                                {hotel.categories?.[0] && (
-                                  <>
-                                    <span>·</span>
-                                    <span className="text-stone-400 shrink-0">{hotel.categories[0]}</span>
-                                  </>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2 mt-1 text-[11px]">
+                            </div>
+
+                            {/* Map Pin & Action Footer */}
+                            <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                              <div className="flex items-center gap-2 text-[11px]">
                                 {problem ? (
                                   <span className="text-amber-700 inline-flex items-center gap-1 font-medium">
                                     <MapPinOff className="h-3 w-3 shrink-0" />
@@ -1797,347 +2296,57 @@ export default function AdminDashboard() {
                                     href={mapLinkUrl(hotel)}
                                     target="_blank"
                                     rel="noreferrer noopener"
-                                    className="text-stone-400 hover:text-stone-700 inline-flex items-center gap-1 transition"
+                                    className="text-stone-500 hover:text-stone-800 inline-flex items-center gap-1"
                                   >
                                     <MapPin className="h-3 w-3 text-emerald-600 shrink-0" />
-                                    <span>Map pin verified</span>
+                                    <span>Pin OK</span>
                                   </a>
                                 )}
                                 {syncCount > 0 && (
                                   <span className="text-emerald-700 inline-flex items-center gap-1">
                                     <span>·</span>
-                                    <CalendarSync className="w-3 h-3" />
+                                    <CalendarSync className="w-3 h-3 shrink-0" />
                                     <span>{syncCount} iCal</span>
                                   </span>
                                 )}
                               </div>
-                            </div>
-                          </div>
 
-                          {/* Col 2: Rooms & Rates */}
-                          <div className="lg:col-span-2 text-xs text-stone-600 flex lg:block items-center justify-between">
-                            <span className="text-stone-400 lg:hidden">Inventory:</span>
-                            <div>
-                              <div className="font-medium text-stone-900">
-                                {hotel.stayType === 'entire_place'
-                                  ? 'Entire place'
-                                  : `${hotelRooms.length} room type${hotelRooms.length === 1 ? '' : 's'}`}
-                              </div>
-                              <div className="text-[11px] text-stone-500 font-mono mt-0.5">
-                                {minPriceMwk > 0 || minPriceUsd > 0 ? (
-                                  <>
-                                    {minPriceMwk > 0 ? `MK ${minPriceMwk.toLocaleString()}` : `$${minPriceUsd}`}
-                                    {minPriceMwk > 0 && minPriceUsd > 0 ? ` ($${minPriceUsd})` : ''}
-                                    <span className="font-sans text-stone-400"> / night</span>
-                                  </>
-                                ) : (
-                                  <span className="font-sans text-stone-400">No rates set</span>
+                              <div className="flex items-center gap-1.5 ml-auto">
+                                {hotel.status === 'pending' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleUpdateStatus(hotel.id!, 'approved')}
+                                    className="bg-emerald-700 hover:bg-emerald-800 text-white px-2.5 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer whitespace-nowrap"
+                                  >
+                                    Approve
+                                  </button>
                                 )}
-                              </div>
-                            </div>
-                          </div>
 
-                          {/* Col 3: Host / Manager */}
-                          <div className="lg:col-span-2 text-xs min-w-0 flex lg:block items-center justify-between">
-                            <span className="text-stone-400 lg:hidden">Host:</span>
-                            <div className="min-w-0">
-                              <div className="text-stone-800 truncate font-medium">
-                                {hostDisplay || <span className="text-stone-400 font-normal">Unassigned</span>}
-                              </div>
-                              {(isAdmin(user) || isMarketing(user)) && (
                                 <button
                                   type="button"
-                                  onClick={() => {
-                                    setHotelToAssignManager(hotel);
-                                    setAssignManagerSelectedUid(hotel.managerId || '');
-                                    setAssignManagerCustomEmail(hotel.managerEmail || '');
-                                    setAssignManagerCustomName(hotel.managerName || '');
-                                    setAssignManagerOwnerEmail(hotel.ownerEmail || '');
-                                  }}
-                                  className="text-[11px] text-stone-500 hover:text-stone-900 underline cursor-pointer mt-0.5 block"
+                                  onClick={() => setInspectingHotel(hotel)}
+                                  className="px-2.5 py-1.5 rounded-lg text-xs font-medium border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 transition cursor-pointer whitespace-nowrap"
                                 >
-                                  {hostDisplay ? 'Change host' : 'Assign host'}
+                                  Review
                                 </button>
-                              )}
+
+                                <Link
+                                  to={`/admin/hotel/${hotel.id}`}
+                                  className="px-2.5 py-1.5 rounded-lg text-xs font-medium border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 transition whitespace-nowrap"
+                                >
+                                  Edit
+                                </Link>
+
+                                {renderMoreMenu(hotel, `card-${hotel.id}`, openUpwards)}
+                              </div>
                             </div>
                           </div>
-
-                          {/* Col 4: Status */}
-                          <div className="lg:col-span-1 flex items-center">
-                            {(!hotel.status || hotel.status === 'approved') && (
-                              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                                Live
-                              </span>
-                            )}
-                            {hotel.status === 'pending' && (
-                              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-900 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md">
-                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                                Pending
-                              </span>
-                            )}
-                            {hotel.status === 'rejected' && (
-                              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-stone-600 bg-stone-100 border border-stone-200 px-2 py-0.5 rounded-md">
-                                <span className="w-1.5 h-1.5 rounded-full bg-stone-400" />
-                                Rejected
-                              </span>
-                            )}
-                          </div>
-
-                          {/* Col 5: Actions */}
-                          <div className="lg:col-span-3 flex items-center justify-end gap-1.5 pt-2 lg:pt-0 border-t lg:border-t-0 border-stone-100">
-                            {hotel.status === 'pending' && (
-                              <button
-                                type="button"
-                                onClick={() => handleUpdateStatus(hotel.id!, 'approved')}
-                                className="bg-emerald-700 hover:bg-emerald-800 text-white px-2.5 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer"
-                              >
-                                Approve
-                              </button>
-                            )}
-
-                            <button
-                              type="button"
-                              onClick={() => setInspectingHotel(hotel)}
-                              className="px-2.5 py-1.5 rounded-lg text-xs font-medium border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 transition cursor-pointer"
-                            >
-                              Review
-                            </button>
-
-                            <Link
-                              to={`/admin/hotel/${hotel.id}`}
-                              className="px-2.5 py-1.5 rounded-lg text-xs font-medium border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 transition"
-                            >
-                              Edit
-                            </Link>
-
-                            {/* Property Actions Dropdown */}
-                            <div className="relative inline-block text-left">
-                              <button
-                                type="button"
-                                onClick={() => setOpenHotelMenuId(openHotelMenuId === hotel.id ? null : hotel.id!)}
-                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 text-xs font-medium transition cursor-pointer"
-                                aria-label="More property actions"
-                              >
-                                <span>More</span>
-                                <ChevronDown className={`w-3.5 h-3.5 text-stone-400 transition-transform ${openHotelMenuId === hotel.id ? 'rotate-180' : ''}`} />
-                              </button>
-
-                              {openHotelMenuId === hotel.id && (
-                                <>
-                                  <div
-                                    className="fixed inset-0 z-30"
-                                    onClick={() => setOpenHotelMenuId(null)}
-                                  />
-                                  <div className="absolute right-0 bottom-full mb-1.5 sm:bottom-auto sm:top-full sm:mt-1.5 w-56 bg-white rounded-xl shadow-lg border border-stone-200 py-1.5 z-40 text-left animate-in fade-in zoom-in-95 duration-150">
-                                    {(isAdmin(user) || isMarketing(user)) && (
-                                      <>
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            setHotelToAssignManager(hotel);
-                                            setAssignManagerSelectedUid(hotel.managerId || '');
-                                            setAssignManagerCustomEmail(hotel.managerEmail || '');
-                                            setAssignManagerCustomName(hotel.managerName || '');
-                                            setAssignManagerOwnerEmail(hotel.ownerEmail || '');
-                                            setOpenHotelMenuId(null);
-                                          }}
-                                          className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center gap-2 transition cursor-pointer"
-                                        >
-                                          <Users className="w-3.5 h-3.5 text-stone-400" />
-                                          <span>Assign / Change Host</span>
-                                        </button>
-
-                                        <button
-                                          type="button"
-                                          onClick={async () => {
-                                            setOpenHotelMenuId(null);
-                                            const targetEmail =
-                                              hotel.ownerEmail ||
-                                              hotel.managerEmail ||
-                                              hotel.contactEmail ||
-                                              (hotel.managerId && users.find(u => u.uid === hotel.managerId)?.email);
-                                            if (!targetEmail) {
-                                              toast.error('No owner, manager, or contact email on this listing. Assign an email first.');
-                                              return;
-                                            }
-                                            const toastId = toast.loading(`Sending login credentials to ${targetEmail}…`);
-                                            try {
-                                              const res = await fetch('/api/onboarding/welcome-email', {
-                                                method: 'POST',
-                                                headers: { 'Content-Type': 'application/json' },
-                                                body: JSON.stringify({
-                                                  hotelId: hotel.id,
-                                                  hotelName: hotel.name,
-                                                  location: hotel.location,
-                                                  category: hotel.category,
-                                                  status: hotel.status || 'pending',
-                                                  ownerName: hotel.ownerName,
-                                                  ownerEmail: hotel.ownerEmail,
-                                                  ownerPhone: hotel.ownerPhone,
-                                                  managerName: hotel.managerName,
-                                                  managerEmail: hotel.managerEmail || targetEmail,
-                                                  managerPhone: hotel.managerPhone,
-                                                  contactEmail: hotel.contactEmail,
-                                                  contactPhone: hotel.contactPhone,
-                                                  contactWhatsapp: hotel.contactWhatsapp,
-                                                  submittedByEmail: user?.email,
-                                                }),
-                                              });
-                                              const data = await res.json();
-                                              if (data.ok && data.sentCount > 0) {
-                                                toast.success(`Host login credentials sent via SMTP (${data.sentCount} email${data.sentCount > 1 ? 's' : ''})!`, { id: toastId });
-                                              } else {
-                                                toast.error(data.error || 'Could not dispatch SMTP email. Verify SMTP settings.', { id: toastId });
-                                              }
-                                            } catch (err: any) {
-                                              toast.error(err?.message || 'Failed to send host credentials.', { id: toastId });
-                                            }
-                                          }}
-                                          className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center gap-2 transition cursor-pointer"
-                                        >
-                                          <Mail className="w-3.5 h-3.5 text-emerald-700" />
-                                          <span>Send Host Login Details (SMTP)</span>
-                                        </button>
-                                        <div className="my-1 border-t border-stone-100" />
-                                      </>
-                                    )}
-
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        handleToggleFeatured(hotel);
-                                        setOpenHotelMenuId(null);
-                                      }}
-                                      className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center justify-between transition cursor-pointer"
-                                    >
-                                      <span className="flex items-center gap-2">
-                                        <Star className={`w-3.5 h-3.5 ${hotel.featured ? 'fill-amber-500 text-amber-500' : 'text-stone-400'}`} />
-                                        <span>{hotel.featured ? 'Remove from Featured' : 'Feature on Home'}</span>
-                                      </span>
-                                      {hotel.featured && <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
-                                    </button>
-
-                                    <button
-                                      type="button"
-                                      onClick={async () => {
-                                        try {
-                                          const nextState = hotel.adminChatEnabled === false ? true : false;
-                                          await updateDoc(doc(db, 'hotels', hotel.id!), { adminChatEnabled: nextState });
-                                          setHotels(hotels.map(h => h.id === hotel.id ? { ...h, adminChatEnabled: nextState } : h));
-                                          toast.success(`Chat has been ${nextState ? 'enabled' : 'disabled'} for ${hotel.name}`);
-                                          setOpenHotelMenuId(null);
-                                        } catch (error) {
-                                          console.error(error);
-                                          toast.error('Failed to update chat status');
-                                        }
-                                      }}
-                                      className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center justify-between transition cursor-pointer"
-                                    >
-                                      <span className="flex items-center gap-2">
-                                        <MessageSquare className="w-3.5 h-3.5 text-stone-400" />
-                                        <span>{hotel.adminChatEnabled === false ? 'Enable Guest Chat' : 'Disable Guest Chat'}</span>
-                                      </span>
-                                      {hotel.adminChatEnabled !== false && <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
-                                    </button>
-
-                                    <a
-                                      href={`/hotel/${hotel.id}`}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                      onClick={() => setOpenHotelMenuId(null)}
-                                      className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center justify-between transition cursor-pointer"
-                                    >
-                                      <span className="flex items-center gap-2">
-                                        <ExternalLink className="w-3.5 h-3.5 text-stone-400" />
-                                        <span>View Public Page</span>
-                                      </span>
-                                    </a>
-
-                                    <div className="my-1 border-t border-stone-100" />
-
-                                    {hotel.status === 'pending' && (
-                                      <>
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            handleUpdateStatus(hotel.id!, 'approved');
-                                            setOpenHotelMenuId(null);
-                                          }}
-                                          className="w-full px-3 py-1.5 text-xs text-emerald-800 hover:bg-emerald-50 flex items-center gap-2 transition cursor-pointer font-medium"
-                                        >
-                                          <Check className="w-3.5 h-3.5 text-emerald-600" />
-                                          <span>Approve Listing</span>
-                                        </button>
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            handleUpdateStatus(hotel.id!, 'rejected');
-                                            setOpenHotelMenuId(null);
-                                          }}
-                                          className="w-full px-3 py-1.5 text-xs text-rose-800 hover:bg-rose-50 flex items-center gap-2 transition cursor-pointer"
-                                        >
-                                          <X className="w-3.5 h-3.5 text-rose-600" />
-                                          <span>Reject Listing</span>
-                                        </button>
-                                      </>
-                                    )}
-
-                                    {(!hotel.status || hotel.status === 'approved') && (
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          handleUpdateStatus(hotel.id!, 'pending');
-                                          setOpenHotelMenuId(null);
-                                        }}
-                                        className="w-full px-3 py-1.5 text-xs text-amber-800 hover:bg-amber-50 flex items-center gap-2 transition cursor-pointer"
-                                      >
-                                        <Clock className="w-3.5 h-3.5 text-amber-600" />
-                                        <span>Move to Pending</span>
-                                      </button>
-                                    )}
-
-                                    {hotel.status === 'rejected' && (
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          handleUpdateStatus(hotel.id!, 'approved');
-                                          setOpenHotelMenuId(null);
-                                        }}
-                                        className="w-full px-3 py-1.5 text-xs text-emerald-800 hover:bg-emerald-50 flex items-center gap-2 transition cursor-pointer font-medium"
-                                      >
-                                        <Check className="w-3.5 h-3.5 text-emerald-600" />
-                                        <span>Approve Listing</span>
-                                      </button>
-                                    )}
-
-                                    {(isAdmin(user) || isMarketing(user)) && (
-                                      <>
-                                        <div className="my-1 border-t border-stone-100" />
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            setHotelToDelete(hotel);
-                                            setOpenHotelMenuId(null);
-                                          }}
-                                          className="w-full px-3 py-1.5 text-xs text-rose-700 hover:bg-rose-50 flex items-center gap-2 transition cursor-pointer"
-                                        >
-                                          <Trash2 className="w-3.5 h-3.5 text-rose-500" />
-                                          <span>Delete Listing</span>
-                                        </button>
-                                      </>
-                                    )}
-                                  </div>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </>
-              )}
+                        );
+                      })}
+                    </div>
+                  </>
+                );
+              })()}
             </div>
 
             <div className="bg-white rounded-xl border border-stone-200 p-3 sm:px-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-stone-500 shadow-2xs">
@@ -2189,233 +2398,294 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            <div className="bg-white rounded-xl border border-stone-200 shadow-2xs overflow-hidden flex flex-col">
-              <div className="overflow-x-auto min-h-[340px]">
-                <table className="w-full text-left border-collapse min-w-[800px]">
-                  <thead>
-                    <tr className="border-b border-stone-200">
-                      <th className="px-5 py-3 text-[11px] font-semibold text-stone-500 uppercase tracking-wider bg-stone-50">User</th>
-                      <th className="px-5 py-3 text-[11px] font-semibold text-stone-500 uppercase tracking-wider bg-stone-50">Joined</th>
-                      <th className="px-5 py-3 text-[11px] font-semibold text-stone-500 uppercase tracking-wider bg-stone-50">Roles</th>
-                      <th className="px-5 py-3 text-[11px] font-semibold text-stone-500 uppercase tracking-wider text-right bg-stone-50">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-stone-100">
-                    {visibleUsers.slice((currentUserPage - 1) * itemsPerPage, currentUserPage * itemsPerPage).map((u, index) => {
-                      const rolesList = userRoles(u);
-                      const userMenuKey = u.uid || `user-${index}`;
-                      return (
-                        <tr key={`admin-user-${u.uid || index}-${index}`} className={`hover:bg-stone-50/70 transition ${u.status === 'suspended' || u.accessRevoked ? 'opacity-50 grayscale' : ''}`}>
-                          <td className="px-5 py-3.5">
-                            <p className="font-semibold text-stone-900 flex items-center gap-2 text-xs sm:text-sm">
-                              {u.displayName || 'No Name'}
-                              {(u.status === 'suspended' || u.accessRevoked) && (
-                                <span className="text-[10px] font-semibold text-rose-600 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded">
-                                  Suspended
-                                </span>
-                              )}
-                            </p>
-                            <p className="text-xs text-stone-500">{u.email}</p>
-                            <p className="text-[11px] text-stone-400 mt-0.5 font-mono">{u.uid}</p>
-                          </td>
-                          <td className="px-5 py-3.5 text-xs text-stone-600">
-                            {new Date(u.createdAt).toLocaleDateString()}
-                          </td>
-                          <td className="px-5 py-3.5">
-                            <div className="flex flex-wrap items-center gap-1.5">
-                              {rolesList.includes('global_admin') && (
-                                <span className="bg-stone-900 text-white px-2 py-0.5 rounded text-[11px] font-medium tracking-wide">
-                                  Global Admin
-                                </span>
-                              )}
-                              {rolesList.includes('admin') && !rolesList.includes('global_admin') && (
-                                <span className="bg-amber-50 text-amber-900 border border-amber-200/60 px-2 py-0.5 rounded text-[11px] font-medium">
-                                  Admin
-                                </span>
-                              )}
-                              {rolesList.includes('marketing') && (
-                                <span className="bg-stone-100 text-stone-700 px-2 py-0.5 rounded text-[11px] font-medium">
-                                  Marketing
-                                </span>
-                              )}
-                              {rolesList.includes('hotel_manager') && (
-                                <span className="bg-stone-100 text-stone-700 px-2 py-0.5 rounded text-[11px] font-medium">
-                                  Manager
-                                </span>
-                              )}
-                              {rolesList.includes('traveller') && !rolesList.includes('hotel_manager') && !rolesList.includes('admin') && !rolesList.includes('global_admin') && !rolesList.includes('marketing') && (
-                                <span className="text-xs text-stone-400">
-                                  Traveller
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                          <td className="px-5 py-3.5 text-right">
-                            <div className="relative inline-block text-left">
+            <div className="bg-white rounded-xl border border-stone-200 shadow-2xs overflow-visible flex flex-col">
+              {(() => {
+                const pageUsers = visibleUsers.slice(
+                  (currentUserPage - 1) * itemsPerPage,
+                  currentUserPage * itemsPerPage
+                );
+
+                const renderRoleBadges = (rolesList: string[]) => (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {rolesList.includes('global_admin') && (
+                      <span className="bg-stone-900 text-white px-2 py-0.5 rounded text-[11px] font-medium tracking-wide whitespace-nowrap">
+                        Global Admin
+                      </span>
+                    )}
+                    {rolesList.includes('admin') && !rolesList.includes('global_admin') && (
+                      <span className="bg-amber-50 text-amber-900 border border-amber-200/60 px-2 py-0.5 rounded text-[11px] font-medium whitespace-nowrap">
+                        Admin
+                      </span>
+                    )}
+                    {rolesList.includes('marketing') && (
+                      <span className="bg-stone-100 text-stone-700 px-2 py-0.5 rounded text-[11px] font-medium whitespace-nowrap">
+                        Marketing
+                      </span>
+                    )}
+                    {rolesList.includes('hotel_manager') && (
+                      <span className="bg-stone-100 text-stone-700 px-2 py-0.5 rounded text-[11px] font-medium whitespace-nowrap">
+                        Manager
+                      </span>
+                    )}
+                    {rolesList.includes('traveller') && !rolesList.includes('hotel_manager') && !rolesList.includes('admin') && !rolesList.includes('global_admin') && !rolesList.includes('marketing') && (
+                      <span className="text-xs text-stone-400">
+                        Traveller
+                      </span>
+                    )}
+                  </div>
+                );
+
+                const renderUserActions = (u: any, rolesList: string[], menuKey: string, openUpwards: boolean) => (
+                  <div className="relative inline-block text-left shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setOpenUserMenuId(openUserMenuId === menuKey ? null : menuKey)}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 text-xs font-medium shadow-2xs transition cursor-pointer whitespace-nowrap"
+                      aria-label="User actions"
+                    >
+                      <span>Actions</span>
+                      <ChevronDown className={`w-3.5 h-3.5 text-stone-400 transition-transform ${openUserMenuId === menuKey ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {openUserMenuId === menuKey && (
+                      <>
+                        <div
+                          className="fixed inset-0 z-30"
+                          onClick={() => setOpenUserMenuId(null)}
+                        />
+                        <div className={`absolute right-0 w-52 bg-white rounded-xl shadow-lg border border-stone-200 py-1.5 z-40 text-left animate-in fade-in zoom-in-95 duration-150 ${
+                          openUpwards ? 'bottom-full mb-1.5' : 'top-full mt-1.5'
+                        }`}>
+                          <div className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-stone-400">
+                            Toggle Role
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleToggleUserRole(u, 'hotel_manager');
+                              setOpenUserMenuId(null);
+                            }}
+                            className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center justify-between transition cursor-pointer"
+                          >
+                            <span>Host / Property Manager</span>
+                            {rolesList.includes('hotel_manager') && (
+                              <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                            )}
+                          </button>
+
+                          {isAdmin(user) && (
+                            <>
                               <button
                                 type="button"
-                                onClick={() => setOpenUserMenuId(openUserMenuId === userMenuKey ? null : userMenuKey)}
-                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 text-xs font-medium shadow-2xs transition cursor-pointer"
-                                aria-label="User actions"
+                                onClick={() => {
+                                  handleToggleUserRole(u, 'marketing');
+                                  setOpenUserMenuId(null);
+                                }}
+                                className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center justify-between transition cursor-pointer"
                               >
-                                <span>Actions</span>
-                                <ChevronDown className={`w-3.5 h-3.5 text-stone-400 transition-transform ${openUserMenuId === userMenuKey ? 'rotate-180' : ''}`} />
+                                <span>Marketing</span>
+                                {rolesList.includes('marketing') && (
+                                  <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                )}
                               </button>
 
-                              {openUserMenuId === userMenuKey && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  handleToggleUserRole(u, 'admin');
+                                  setOpenUserMenuId(null);
+                                }}
+                                className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center justify-between transition cursor-pointer"
+                              >
+                                <span>Administrator</span>
+                                {rolesList.includes('admin') && (
+                                  <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                )}
+                              </button>
+                            </>
+                          )}
+
+                          {isGlobalAdmin(user) && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleToggleUserRole(u, 'global_admin');
+                                setOpenUserMenuId(null);
+                              }}
+                              className="w-full px-3 py-1.5 text-xs text-stone-900 font-semibold hover:bg-stone-50 flex items-center justify-between transition cursor-pointer"
+                            >
+                              <span>Global Admin</span>
+                              {rolesList.includes('global_admin') && (
+                                <Check className="w-3.5 h-3.5 text-stone-950 shrink-0" />
+                              )}
+                            </button>
+                          )}
+
+                          {isAdmin(user) && (
+                            <>
+                              <div className="my-1 border-t border-stone-100" />
+                              <div className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-stone-400">
+                                Account
+                              </div>
+
+                              {u.email && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setResetEmailTarget(u.email!);
+                                    setOpenUserMenuId(null);
+                                  }}
+                                  className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center gap-2 transition cursor-pointer"
+                                >
+                                  <Key className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                                  <span>Reset Password</span>
+                                </button>
+                              )}
+
+                              {(!rolesList.includes('global_admin') || isGlobalAdmin(user)) && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    handleToggleUserSuspension(u);
+                                    setOpenUserMenuId(null);
+                                  }}
+                                  className={`w-full px-3 py-1.5 text-xs flex items-center gap-2 transition cursor-pointer ${
+                                    (u.status === 'suspended' || u.accessRevoked)
+                                      ? 'text-emerald-700 hover:bg-emerald-50'
+                                      : 'text-amber-800 hover:bg-amber-50'
+                                  }`}
+                                >
+                                  <Shield className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                                  <span>{(u.status === 'suspended' || u.accessRevoked) ? 'Restore Access' : 'Revoke Access'}</span>
+                                </button>
+                              )}
+
+                              {isAdmin(user) && (isGlobalAdmin(user) || (!rolesList.includes('admin') && !rolesList.includes('global_admin'))) && (
                                 <>
-                                  <div 
-                                    className="fixed inset-0 z-30" 
-                                    onClick={() => setOpenUserMenuId(null)} 
-                                  />
-                                  <div className={`absolute right-0 w-52 bg-white rounded-xl shadow-lg border border-stone-200 py-1.5 z-40 text-left animate-in fade-in zoom-in-95 duration-150 ${
-                                    index >= Math.max(0, Math.min(visibleUsers.length, itemsPerPage) - 2) && Math.min(visibleUsers.length, itemsPerPage) > 2
-                                      ? 'bottom-full mb-1.5'
-                                      : 'top-full mt-1.5'
-                                  }`}>
-                                    <div className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-stone-400">
-                                      Toggle Role
-                                    </div>
-
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        handleToggleUserRole(u, 'hotel_manager');
-                                        setOpenUserMenuId(null);
-                                      }}
-                                      className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center justify-between transition cursor-pointer"
-                                    >
-                                      <span>Host / Property Manager</span>
-                                      {rolesList.includes('hotel_manager') && (
-                                        <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                                      )}
-                                    </button>
-
-                                    {isAdmin(user) && (
-                                      <>
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            handleToggleUserRole(u, 'marketing');
-                                            setOpenUserMenuId(null);
-                                          }}
-                                          className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center justify-between transition cursor-pointer"
-                                        >
-                                          <span>Marketing</span>
-                                          {rolesList.includes('marketing') && (
-                                            <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                                          )}
-                                        </button>
-
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            handleToggleUserRole(u, 'admin');
-                                            setOpenUserMenuId(null);
-                                          }}
-                                          className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center justify-between transition cursor-pointer"
-                                        >
-                                          <span>Administrator</span>
-                                          {rolesList.includes('admin') && (
-                                            <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                                          )}
-                                        </button>
-                                      </>
-                                    )}
-
-                                    {isGlobalAdmin(user) && (
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          handleToggleUserRole(u, 'global_admin');
-                                          setOpenUserMenuId(null);
-                                        }}
-                                        className="w-full px-3 py-1.5 text-xs text-stone-900 font-semibold hover:bg-stone-50 flex items-center justify-between transition cursor-pointer"
-                                      >
-                                        <span>Global Admin</span>
-                                        {rolesList.includes('global_admin') && (
-                                          <Check className="w-3.5 h-3.5 text-stone-950 shrink-0" />
-                                        )}
-                                      </button>
-                                    )}
-
-                                    {isAdmin(user) && (
-                                      <>
-                                        <div className="my-1 border-t border-stone-100" />
-                                        <div className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-stone-400">
-                                          Account
-                                        </div>
-
-                                        {u.email && (
-                                          <button
-                                            type="button"
-                                            onClick={() => {
-                                              setResetEmailTarget(u.email!);
-                                              setOpenUserMenuId(null);
-                                            }}
-                                            className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center gap-2 transition cursor-pointer"
-                                          >
-                                            <Key className="w-3.5 h-3.5 text-stone-400" />
-                                            <span>Reset Password</span>
-                                          </button>
-                                        )}
-
-                                        {(!rolesList.includes('global_admin') || isGlobalAdmin(user)) && (
-                                          <button
-                                            type="button"
-                                            onClick={() => {
-                                              handleToggleUserSuspension(u);
-                                              setOpenUserMenuId(null);
-                                            }}
-                                            className={`w-full px-3 py-1.5 text-xs flex items-center gap-2 transition cursor-pointer ${
-                                              (u.status === 'suspended' || u.accessRevoked) 
-                                                ? 'text-emerald-700 hover:bg-emerald-50' 
-                                                : 'text-amber-800 hover:bg-amber-50'
-                                            }`}
-                                          >
-                                            <Shield className="w-3.5 h-3.5 text-stone-400" />
-                                            <span>{(u.status === 'suspended' || u.accessRevoked) ? 'Restore Access' : 'Revoke Access'}</span>
-                                          </button>
-                                        )}
-
-                                        {isAdmin(user) && (isGlobalAdmin(user) || (!rolesList.includes('admin') && !rolesList.includes('global_admin'))) && (
-                                          <>
-                                            <div className="my-1 border-t border-stone-100" />
-                                            <button
-                                              type="button"
-                                              onClick={() => {
-                                                handleDeleteUser(u);
-                                                setOpenUserMenuId(null);
-                                              }}
-                                              className="w-full px-3 py-1.5 text-xs text-rose-700 hover:bg-rose-50 flex items-center gap-2 transition cursor-pointer"
-                                            >
-                                              <Trash2 className="w-3.5 h-3.5 text-rose-500" />
-                                              <span>Delete Profile</span>
-                                            </button>
-                                          </>
-                                        )}
-                                      </>
-                                    )}
-                                  </div>
+                                  <div className="my-1 border-t border-stone-100" />
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      handleDeleteUser(u);
+                                      setOpenUserMenuId(null);
+                                    }}
+                                    className="w-full px-3 py-1.5 text-xs text-rose-700 hover:bg-rose-50 flex items-center gap-2 transition cursor-pointer"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                                    <span>Delete Profile</span>
+                                  </button>
                                 </>
                               )}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                    {visibleUsers.length === 0 && (
-                      <tr>
-                        <td colSpan={4} className="px-6 py-12 text-center text-stone-500">
-                          No users found matching "{userSearch}".
-                        </td>
-                      </tr>
+                            </>
+                          )}
+                        </div>
+                      </>
                     )}
-                  </tbody>
-                </table>
-              </div>
+                  </div>
+                );
+
+                return (
+                  <>
+                    {/* Desktop & Laptop Table (md+) */}
+                    <div className="hidden md:block min-h-[300px]">
+                      <table className="w-full text-left border-collapse text-xs">
+                        <thead>
+                          <tr className="border-b border-stone-200 bg-stone-50/80 text-[11px] font-semibold text-stone-500">
+                            <th className="px-4 py-3 rounded-tl-xl">User</th>
+                            <th className="px-4 py-3 whitespace-nowrap">Joined</th>
+                            <th className="px-4 py-3">Roles</th>
+                            <th className="px-4 py-3 text-right whitespace-nowrap rounded-tr-xl">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-stone-100">
+                          {pageUsers.map((u, index) => {
+                            const rolesList = userRoles(u);
+                            const userMenuKey = `table-${u.uid || index}`;
+                            const openUpwards = index >= Math.max(0, pageUsers.length - 2) && pageUsers.length > 2;
+                            return (
+                              <tr key={`admin-user-${u.uid || index}-${index}`} className={`hover:bg-stone-50/70 transition ${u.status === 'suspended' || u.accessRevoked ? 'opacity-50 grayscale' : ''}`}>
+                                <td className="px-4 py-3.5 min-w-0">
+                                  <p className="font-semibold text-stone-900 flex items-center gap-2 text-xs sm:text-sm">
+                                    <span className="truncate max-w-[240px]">{u.displayName || 'No Name'}</span>
+                                    {(u.status === 'suspended' || u.accessRevoked) && (
+                                      <span className="text-[10px] font-semibold text-rose-600 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded shrink-0">
+                                        Suspended
+                                      </span>
+                                    )}
+                                  </p>
+                                  <p className="text-xs text-stone-500 truncate max-w-[260px]">{u.email}</p>
+                                  <p className="text-[11px] text-stone-400 mt-0.5 font-mono truncate max-w-[260px]">{u.uid}</p>
+                                </td>
+                                <td className="px-4 py-3.5 text-xs text-stone-600 whitespace-nowrap">
+                                  {new Date(u.createdAt).toLocaleDateString()}
+                                </td>
+                                <td className="px-4 py-3.5">
+                                  {renderRoleBadges(rolesList)}
+                                </td>
+                                <td className="px-4 py-3.5 text-right whitespace-nowrap">
+                                  {renderUserActions(u, rolesList, userMenuKey, openUpwards)}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                          {visibleUsers.length === 0 && (
+                            <tr>
+                              <td colSpan={4} className="px-6 py-12 text-center text-stone-500">
+                                No users found matching "{userSearch}".
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Mobile Stacked Card List (<md) */}
+                    <div className="md:hidden divide-y divide-stone-100">
+                      {pageUsers.map((u, index) => {
+                        const rolesList = userRoles(u);
+                        const userMenuKey = `card-${u.uid || index}`;
+                        const openUpwards = index >= Math.max(0, pageUsers.length - 2) && pageUsers.length > 2;
+                        return (
+                          <div
+                            key={`admin-user-card-${u.uid || index}-${index}`}
+                            className={`p-3.5 space-y-2.5 ${u.status === 'suspended' || u.accessRevoked ? 'opacity-50 grayscale' : ''}`}
+                          >
+                            <div className="flex items-start justify-between gap-2.5">
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <p className="font-semibold text-stone-900 text-sm truncate">{u.displayName || 'No Name'}</p>
+                                  {(u.status === 'suspended' || u.accessRevoked) && (
+                                    <span className="text-[10px] font-semibold text-rose-600 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded shrink-0">
+                                      Suspended
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-xs text-stone-500 truncate mt-0.5">{u.email}</p>
+                              </div>
+                              {renderUserActions(u, rolesList, userMenuKey, openUpwards)}
+                            </div>
+
+                            <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs">
+                              {renderRoleBadges(rolesList)}
+                              <span className="text-[11px] text-stone-400 whitespace-nowrap">
+                                Joined {new Date(u.createdAt).toLocaleDateString()}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {visibleUsers.length === 0 && (
+                        <div className="px-6 py-12 text-center text-stone-500 text-xs">
+                          No users found matching "{userSearch}".
+                        </div>
+                      )}
+                    </div>
+                  </>
+                );
+              })()}
               
-              <div className="px-5 py-3 border-t border-stone-200 bg-stone-50/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-stone-500 shrink-0">
+              <div className="px-4 sm:px-5 py-3 border-t border-stone-200 bg-stone-50/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-stone-500 shrink-0 rounded-b-xl">
                 <div>
                   Showing <span className="font-semibold text-stone-900 font-mono">{visibleUsers.length === 0 ? 0 : (currentUserPage - 1) * itemsPerPage + 1}</span>–<span className="font-semibold text-stone-900 font-mono">{Math.min(currentUserPage * itemsPerPage, visibleUsers.length)}</span> of <span className="font-semibold text-stone-900 font-mono">{visibleUsers.length}</span> users
                 </div>
@@ -2517,17 +2787,18 @@ export default function AdminDashboard() {
             </div>
 
             <div className="bg-white rounded-xl border border-stone-200 shadow-2xs overflow-hidden flex flex-col">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse min-w-[900px]">
+              {/* Desktop & Laptop Table (md+) */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
                   <thead>
-                    <tr className="border-b border-stone-200">
-                      <th className="px-5 py-3 text-[11px] font-semibold text-stone-500 uppercase tracking-wider bg-stone-50">Ref</th>
-                      <th className="px-5 py-3 text-[11px] font-semibold text-stone-500 uppercase tracking-wider bg-stone-50">Property</th>
-                      <th className="px-5 py-3 text-[11px] font-semibold text-stone-500 uppercase tracking-wider bg-stone-50">Guest</th>
-                      <th className="px-5 py-3 text-[11px] font-semibold text-stone-500 uppercase tracking-wider bg-stone-50">Dates</th>
-                      <th className="px-5 py-3 text-[11px] font-semibold text-stone-500 uppercase tracking-wider bg-stone-50">Amount</th>
-                      <th className="px-5 py-3 text-[11px] font-semibold text-stone-500 uppercase tracking-wider bg-stone-50">Status</th>
-                      <th className="px-5 py-3 text-[11px] font-semibold text-stone-500 uppercase tracking-wider text-right bg-stone-50">Actions</th>
+                    <tr className="border-b border-stone-200 bg-stone-50/80 text-[11px] font-semibold text-stone-500">
+                      <th className="px-4 py-3 whitespace-nowrap">Ref</th>
+                      <th className="px-4 py-3">Property</th>
+                      <th className="px-4 py-3">Guest</th>
+                      <th className="px-4 py-3 whitespace-nowrap">Dates</th>
+                      <th className="px-4 py-3 whitespace-nowrap">Amount</th>
+                      <th className="px-4 py-3 whitespace-nowrap">Status</th>
+                      <th className="px-4 py-3 text-right whitespace-nowrap">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-stone-100">
@@ -2535,21 +2806,20 @@ export default function AdminDashboard() {
                       const hotelName = hotels.find(h => h.id === b.hotelId)?.name || 'Unknown Property';
                       return (
                         <tr key={`admin-booking-${b.id || index}-${index}`} className="hover:bg-stone-50/70 transition">
-                          <td className="px-5 py-3.5 text-xs font-mono text-stone-500">{b.reference || 'N/A'}</td>
-                          <td className="px-5 py-3.5 text-xs font-semibold text-stone-900">{hotelName}</td>
-                          <td className="px-5 py-3.5 text-xs text-stone-700">
-                            {b.guestName}
-                            <br/>
-                            <span className="text-[11px] text-stone-400">{b.guestEmail || 'No Email'}</span>
+                          <td className="px-4 py-3.5 text-xs font-mono text-stone-500 whitespace-nowrap">{b.reference || 'N/A'}</td>
+                          <td className="px-4 py-3.5 text-xs font-semibold text-stone-900 max-w-[180px] truncate" title={hotelName}>{hotelName}</td>
+                          <td className="px-4 py-3.5 text-xs text-stone-700 max-w-[180px]">
+                            <div className="truncate font-medium">{b.guestName}</div>
+                            <div className="text-[11px] text-stone-400 truncate">{b.guestEmail || 'No Email'}</div>
                           </td>
-                          <td className="px-5 py-3.5 text-xs text-stone-600 whitespace-nowrap">
+                          <td className="px-4 py-3.5 text-xs text-stone-600 whitespace-nowrap">
                             {b.checkIn} <br/>to {b.checkOut}
                           </td>
-                          <td className="px-5 py-3.5 text-xs font-mono font-semibold text-stone-900 whitespace-nowrap">
+                          <td className="px-4 py-3.5 text-xs font-mono font-semibold text-stone-900 whitespace-nowrap">
                             {b.total ? (b.currency === 'USD' ? `$${Number(b.total).toLocaleString()}` : `MK ${Number(b.total).toLocaleString()}`) : '—'}
                           </td>
-                          <td className="px-5 py-3.5">
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium capitalize border ${
+                          <td className="px-4 py-3.5 whitespace-nowrap">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium capitalize border whitespace-nowrap ${
                               b.status === 'confirmed' ? 'bg-emerald-50 text-emerald-800 border-emerald-200/70' :
                               b.status === 'rejected' ? 'bg-rose-50 text-rose-800 border-rose-200/70' :
                               b.status === 'cancelled' ? 'bg-stone-100 text-stone-700 border-stone-200' :
@@ -2558,8 +2828,8 @@ export default function AdminDashboard() {
                               {b.status}
                             </span>
                           </td>
-                          <td className="px-5 py-3.5 text-right">
-                            <div className="flex items-center justify-end gap-2">
+                          <td className="px-4 py-3.5 text-right whitespace-nowrap">
+                            <div className="inline-flex items-center justify-end gap-2 whitespace-nowrap">
                               <select
                                 value={b.status}
                                 onChange={(e) => handleUpdateBookingStatus(b.id!, e.target.value as any)}
@@ -2573,7 +2843,7 @@ export default function AdminDashboard() {
                               <button
                                 type="button"
                                 onClick={() => setBookingToDelete(b)}
-                                className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
+                                className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer shrink-0"
                                 title="Permanently Delete Booking"
                               >
                                 <Trash2 className="w-3.5 h-3.5 text-rose-500" />
@@ -2593,8 +2863,75 @@ export default function AdminDashboard() {
                   </tbody>
                 </table>
               </div>
+
+              {/* Mobile Stacked Card List (<md) */}
+              <div className="md:hidden divide-y divide-stone-100">
+                {bookings.slice((currentBookingPage - 1) * itemsPerPage, currentBookingPage * itemsPerPage).map((b, index) => {
+                  const hotelName = hotels.find(h => h.id === b.hotelId)?.name || 'Unknown Property';
+                  return (
+                    <div key={`admin-booking-card-${b.id || index}-${index}`} className="p-3.5 space-y-2.5">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <h3 className="text-sm font-semibold text-stone-900 truncate">{hotelName}</h3>
+                          <p className="text-[11px] font-mono text-stone-500 mt-0.5">Ref: {b.reference || 'N/A'}</p>
+                        </div>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium capitalize border whitespace-nowrap shrink-0 ${
+                          b.status === 'confirmed' ? 'bg-emerald-50 text-emerald-800 border-emerald-200/70' :
+                          b.status === 'rejected' ? 'bg-rose-50 text-rose-800 border-rose-200/70' :
+                          b.status === 'cancelled' ? 'bg-stone-100 text-stone-700 border-stone-200' :
+                          'bg-amber-50 text-amber-800 border-amber-200/70'
+                        }`}>
+                          {b.status}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 bg-stone-50/80 border border-stone-200/60 rounded-lg px-3 py-2 text-xs">
+                        <div className="min-w-0">
+                          <span className="text-[10px] font-semibold uppercase tracking-wider text-stone-400 block">Guest</span>
+                          <div className="font-medium text-stone-900 truncate mt-0.5">{b.guestName}</div>
+                          <div className="text-[11px] text-stone-500 truncate">{b.guestEmail || 'No Email'}</div>
+                        </div>
+                        <div className="min-w-0">
+                          <span className="text-[10px] font-semibold uppercase tracking-wider text-stone-400 block">Stay &amp; Total</span>
+                          <div className="text-[11px] text-stone-700 truncate mt-0.5">{b.checkIn} → {b.checkOut}</div>
+                          <div className="text-xs font-mono font-semibold text-stone-900 mt-0.5">
+                            {b.total ? (b.currency === 'USD' ? `$${Number(b.total).toLocaleString()}` : `MK ${Number(b.total).toLocaleString()}`) : '—'}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-2 pt-1">
+                        <select
+                          value={b.status}
+                          onChange={(e) => handleUpdateBookingStatus(b.id!, e.target.value as any)}
+                          className="flex-1 bg-white hover:bg-stone-50 border border-stone-200 text-stone-800 text-xs font-medium rounded-lg focus:outline-none focus:border-stone-900 py-1.5 px-2.5 shadow-2xs transition cursor-pointer"
+                        >
+                          <option value="pending">Pending</option>
+                          <option value="confirmed">Confirmed</option>
+                          <option value="rejected">Rejected</option>
+                          <option value="cancelled">Cancelled</option>
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => setBookingToDelete(b)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-rose-700 bg-rose-50 hover:bg-rose-100/70 border border-rose-200/60 rounded-lg transition cursor-pointer shrink-0"
+                          title="Permanently Delete Booking"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                          <span>Delete</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+                {bookings.length === 0 && (
+                  <div className="px-6 py-12 text-center text-stone-500 text-xs">
+                    No bookings recorded on the platform.
+                  </div>
+                )}
+              </div>
               
-              <div className="px-5 py-3 border-t border-stone-200 bg-stone-50/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-stone-500 shrink-0">
+              <div className="px-4 sm:px-5 py-3 border-t border-stone-200 bg-stone-50/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-stone-500 shrink-0">
                 <div>
                   Showing <span className="font-semibold text-stone-900 font-mono">{bookings.length === 0 ? 0 : (currentBookingPage - 1) * itemsPerPage + 1}</span>–<span className="font-semibold text-stone-900 font-mono">{Math.min(currentBookingPage * itemsPerPage, bookings.length)}</span> of <span className="font-semibold text-stone-900 font-mono">{bookings.length}</span> bookings
                 </div>
@@ -2907,19 +3244,19 @@ export default function AdminDashboard() {
         {/* ===================== SETTINGS & CHANNELS CONFIGURATION TAB ===================== */}
         {activeTab === 'settings' && (
           <div className="space-y-6">
-            <div className="flex items-center gap-6 sm:gap-8 border-b border-stone-200/90 pb-0 w-full" role="tablist">
+            <div className="flex items-center gap-5 sm:gap-8 border-b border-stone-200/90 pb-0 w-full overflow-x-auto no-scrollbar" role="tablist">
               <button
                 type="button"
                 role="tab"
                 aria-selected={settingsSubTab === 'channels'}
                 onClick={() => setSettingsSubTab('channels')}
-                className={`pb-3 text-xs sm:text-sm font-medium border-b-2 -mb-px transition flex items-center gap-2 cursor-pointer ${
+                className={`pb-3 text-xs sm:text-sm font-medium border-b-2 -mb-px transition flex items-center gap-2 cursor-pointer shrink-0 whitespace-nowrap ${
                   settingsSubTab === 'channels'
                     ? 'border-stone-900 text-stone-900 font-semibold'
                     : 'border-transparent text-stone-500 hover:text-stone-800 hover:border-stone-300'
                 }`}
               >
-                <CalendarSync className="w-3.5 h-3.5" />
+                <CalendarSync className="w-3.5 h-3.5 shrink-0" />
                 <span>iCal &amp; Channel Manager</span>
               </button>
               <button
@@ -2927,13 +3264,13 @@ export default function AdminDashboard() {
                 role="tab"
                 aria-selected={settingsSubTab === 'whatsapp'}
                 onClick={() => setSettingsSubTab('whatsapp')}
-                className={`pb-3 text-xs sm:text-sm font-medium border-b-2 -mb-px transition flex items-center gap-2 cursor-pointer ${
+                className={`pb-3 text-xs sm:text-sm font-medium border-b-2 -mb-px transition flex items-center gap-2 cursor-pointer shrink-0 whitespace-nowrap ${
                   settingsSubTab === 'whatsapp'
                     ? 'border-stone-900 text-stone-900 font-semibold'
                     : 'border-transparent text-stone-500 hover:text-stone-800 hover:border-stone-300'
                 }`}
               >
-                <MessageSquare className="w-3.5 h-3.5" />
+                <MessageSquare className="w-3.5 h-3.5 shrink-0" />
                 <span>WhatsApp Messaging</span>
               </button>
               <button
@@ -2941,13 +3278,13 @@ export default function AdminDashboard() {
                 role="tab"
                 aria-selected={settingsSubTab === 'email'}
                 onClick={() => setSettingsSubTab('email')}
-                className={`pb-3 text-xs sm:text-sm font-medium border-b-2 -mb-px transition flex items-center gap-2 cursor-pointer ${
+                className={`pb-3 text-xs sm:text-sm font-medium border-b-2 -mb-px transition flex items-center gap-2 cursor-pointer shrink-0 whitespace-nowrap ${
                   settingsSubTab === 'email'
                     ? 'border-stone-900 text-stone-900 font-semibold'
                     : 'border-transparent text-stone-500 hover:text-stone-800 hover:border-stone-300'
                 }`}
               >
-                <Mail className="w-3.5 h-3.5" />
+                <Mail className="w-3.5 h-3.5 shrink-0" />
                 <span>Email &amp; SMTP</span>
               </button>
             </div>

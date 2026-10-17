@@ -785,35 +785,130 @@ export default function AdminTrafficMonitor({ compactMode = false }: AdminTraffi
             <p className="text-xs text-stone-400 mt-0.5">Try clearing the search query or selecting All Visitors.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="bg-stone-50/80 border-b border-stone-200 text-[11px] font-semibold text-stone-500">
-                  <th className="px-4 py-2.5">Visitor</th>
-                  <th className="px-3.5 py-2.5">Status &amp; Duration</th>
-                  <th className="px-3.5 py-2.5">Current Page</th>
-                  <th className="px-3.5 py-2.5">Activity</th>
-                  <th className="px-3.5 py-2.5">Recent Pages</th>
-                  <th className="px-3.5 py-2.5 text-right">Details</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-stone-100">
-                {filteredSessions.map((s) => {
-                  const isSelected = selectedSession?.sessionId === s.sessionId;
-                  return (
-                    <tr
-                      key={s.sessionId}
-                      onClick={() => setSelectedSession(s)}
-                      className={`hover:bg-stone-50/90 transition-colors cursor-pointer ${
-                        isSelected ? 'bg-stone-50' : ''
-                      }`}
-                    >
-                      <td className="px-4 py-3 align-top whitespace-nowrap">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-stone-900 text-xs">
+          <>
+            {/* Desktop & Laptop Table (md+) */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-stone-50/80 border-b border-stone-200 text-[11px] font-semibold text-stone-500">
+                    <th className="px-4 py-2.5">Visitor</th>
+                    <th className="px-3.5 py-2.5 whitespace-nowrap">Status &amp; Duration</th>
+                    <th className="px-3.5 py-2.5">Current Page</th>
+                    <th className="px-3.5 py-2.5">Activity</th>
+                    <th className="hidden xl:table-cell px-3.5 py-2.5">Recent Pages</th>
+                    <th className="px-3.5 py-2.5 text-right whitespace-nowrap">Details</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-stone-100">
+                  {filteredSessions.map((s) => {
+                    const isSelected = selectedSession?.sessionId === s.sessionId;
+                    return (
+                      <tr
+                        key={s.sessionId}
+                        onClick={() => setSelectedSession(s)}
+                        className={`hover:bg-stone-50/90 transition-colors cursor-pointer ${
+                          isSelected ? 'bg-stone-50' : ''
+                        }`}
+                      >
+                        <td className="px-4 py-3 align-top whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-stone-900 text-xs">
+                              {s.isAnonymous ? s.visitorId : s.userName || 'Signed-in User'}
+                            </span>
+                            <span className={`text-[10px] font-medium px-1.5 py-0.2 rounded ${
+                              s.isAnonymous
+                                ? 'bg-stone-100 text-stone-600'
+                                : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                            }`}>
+                              {s.isAnonymous ? 'Guest' : s.userRole || 'User'}
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-stone-400 mt-0.5 flex items-center gap-1.5">
+                            {renderDeviceIcon(s.device?.type, 'w-3 h-3')}
+                            <span>{s.location.city || s.location.country || 'Malawi'}</span>
+                            <span>·</span>
+                            <span>{s.device?.os || 'Web'}</span>
+                          </div>
+                        </td>
+
+                        <td className="px-3.5 py-3 align-top whitespace-nowrap">
+                          <div>{renderStatusBadge(s.status, s.currentWaitSeconds)}</div>
+                          <div className="text-[11px] text-stone-400 mt-0.5">
+                            Session: <span className="font-mono text-stone-600">{formatWaitDuration(s.totalSessionSeconds)}</span>
+                          </div>
+                        </td>
+
+                        <td className="px-3.5 py-3 align-top">
+                          <div className="font-medium text-stone-900 max-w-[200px] truncate">
+                            {s.currentTitle || s.currentPath}
+                          </div>
+                          <div className="text-[11px] text-stone-400 font-mono truncate max-w-[200px] mt-0.5">
+                            {s.currentPath}
+                          </div>
+                        </td>
+
+                        <td className="px-3.5 py-3 align-top">
+                          <div>{renderIntentBadge(s.intent)}</div>
+                          <div className="text-[11px] text-stone-500 line-clamp-1 max-w-[220px] mt-0.5">
+                            {s.intentSummary}
+                          </div>
+                        </td>
+
+                        <td className="hidden xl:table-cell px-3.5 py-3 align-top">
+                          <div className="flex items-center gap-1 flex-wrap max-w-[240px]">
+                            {s.steps.slice(-3).map((st, i) => (
+                              <span
+                                key={i}
+                                className="text-[11px] bg-stone-100 text-stone-700 px-2 py-0.5 rounded truncate max-w-[120px]"
+                                title={`${st.title} (${formatWaitDuration(st.dwellSeconds)})`}
+                              >
+                                {st.hotelName || (st.path === '/' ? 'Home' : st.path.replace(/\//g, ''))}
+                              </span>
+                            ))}
+                            {s.steps.length > 3 && (
+                              <span className="text-[11px] text-stone-400">+{s.steps.length - 3}</span>
+                            )}
+                          </div>
+                        </td>
+
+                        <td className="px-3.5 py-3 align-top text-right whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedSession(s);
+                            }}
+                            className="px-2.5 py-1 text-xs font-medium text-stone-700 border border-stone-200 bg-white hover:bg-stone-50 rounded-lg transition cursor-pointer"
+                          >
+                            View
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Stacked Card List (<md) */}
+            <div className="md:hidden divide-y divide-stone-100">
+              {filteredSessions.map((s) => {
+                const isSelected = selectedSession?.sessionId === s.sessionId;
+                return (
+                  <div
+                    key={`mobile-${s.sessionId}`}
+                    onClick={() => setSelectedSession(s)}
+                    className={`p-3.5 space-y-2.5 cursor-pointer transition hover:bg-stone-50/80 ${
+                      isSelected ? 'bg-stone-50' : ''
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-semibold text-stone-900 text-xs truncate">
                             {s.isAnonymous ? s.visitorId : s.userName || 'Signed-in User'}
                           </span>
-                          <span className={`text-[10px] font-medium px-1.5 py-0.2 rounded ${
+                          <span className={`text-[10px] font-medium px-1.5 py-0.2 rounded shrink-0 ${
                             s.isAnonymous
                               ? 'bg-stone-100 text-stone-600'
                               : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
@@ -827,66 +922,43 @@ export default function AdminTrafficMonitor({ compactMode = false }: AdminTraffi
                           <span>·</span>
                           <span>{s.device?.os || 'Web'}</span>
                         </div>
-                      </td>
+                      </div>
+                      <div className="shrink-0">{renderStatusBadge(s.status, s.currentWaitSeconds)}</div>
+                    </div>
 
-                      <td className="px-3.5 py-3 align-top whitespace-nowrap">
-                        <div>{renderStatusBadge(s.status, s.currentWaitSeconds)}</div>
-                        <div className="text-[11px] text-stone-400 mt-0.5">
-                          Session: <span className="font-mono text-stone-600">{formatWaitDuration(s.totalSessionSeconds)}</span>
+                    <div className="grid grid-cols-2 gap-2 bg-stone-50/80 border border-stone-200/60 rounded-lg px-3 py-2 text-xs">
+                      <div className="min-w-0">
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-stone-400 block">Current Page</span>
+                        <div className="font-medium text-stone-900 truncate mt-0.5">{s.currentTitle || s.currentPath}</div>
+                        <div className="text-[11px] text-stone-400 font-mono truncate">{s.currentPath}</div>
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-stone-400 block">Activity</span>
+                        <div className="mt-0.5">{renderIntentBadge(s.intent)}</div>
+                        <div className="text-[11px] text-stone-500 truncate mt-0.5">
+                          Session: {formatWaitDuration(s.totalSessionSeconds)}
                         </div>
-                      </td>
+                      </div>
+                    </div>
 
-                      <td className="px-3.5 py-3 align-top">
-                        <div className="font-medium text-stone-900 max-w-[220px] truncate">
-                          {s.currentTitle || s.currentPath}
-                        </div>
-                        <div className="text-[11px] text-stone-400 font-mono truncate max-w-[220px] mt-0.5">
-                          {s.currentPath}
-                        </div>
-                      </td>
-
-                      <td className="px-3.5 py-3 align-top">
-                        <div>{renderIntentBadge(s.intent)}</div>
-                        <div className="text-[11px] text-stone-500 line-clamp-1 max-w-[240px] mt-0.5">
-                          {s.intentSummary}
-                        </div>
-                      </td>
-
-                      <td className="px-3.5 py-3 align-top">
-                        <div className="flex items-center gap-1 flex-wrap max-w-[240px]">
-                          {s.steps.slice(-3).map((st, i) => (
-                            <span
-                              key={i}
-                              className="text-[11px] bg-stone-100 text-stone-700 px-2 py-0.5 rounded truncate max-w-[120px]"
-                              title={`${st.title} (${formatWaitDuration(st.dwellSeconds)})`}
-                            >
-                              {st.hotelName || (st.path === '/' ? 'Home' : st.path.replace(/\//g, ''))}
-                            </span>
-                          ))}
-                          {s.steps.length > 3 && (
-                            <span className="text-[11px] text-stone-400">+{s.steps.length - 3}</span>
-                          )}
-                        </div>
-                      </td>
-
-                      <td className="px-3.5 py-3 align-top text-right whitespace-nowrap">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedSession(s);
-                          }}
-                          className="px-2 py-1 text-xs font-medium text-stone-600 hover:text-stone-900 hover:bg-stone-100 rounded-md transition cursor-pointer"
-                        >
-                          View
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                    <div className="flex items-center justify-between gap-2 pt-0.5">
+                      <p className="text-[11px] text-stone-500 truncate flex-1">{s.intentSummary}</p>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedSession(s);
+                        }}
+                        className="px-2.5 py-1 text-xs font-medium text-stone-700 border border-stone-200 bg-white hover:bg-stone-50 rounded-lg transition cursor-pointer shrink-0"
+                      >
+                        Details
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
         )}
       </div>
 

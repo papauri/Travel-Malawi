@@ -477,7 +477,7 @@ export default function ManagerDashboard() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 py-5 sm:py-8 md:py-10 w-full">
+    <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 py-5 sm:py-8 md:py-10 pb-24 w-full">
       {isShadowing && (
         <div className="mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-300 text-amber-950 flex items-center justify-between gap-3 flex-wrap shadow-xs">
           <div className="flex items-center gap-2.5">
@@ -861,10 +861,10 @@ export default function ManagerDashboard() {
             return (
               <div
                 key={`mgr-hotel-${hotel.id}`}
-                className="group bg-white rounded-2xl shadow-2xs border border-stone-200/90 overflow-hidden flex flex-col hover:border-stone-300 hover:shadow-xs transition duration-200"
+                className="group bg-white rounded-2xl shadow-2xs border border-stone-200/90 overflow-visible flex flex-col hover:border-stone-300 hover:shadow-xs transition duration-200"
               >
                 {/* Card Media Header */}
-                <div className="w-full aspect-[16/10] sm:aspect-auto sm:h-36 md:h-44 bg-stone-100 relative shrink-0 overflow-hidden">
+                <div className="w-full aspect-[16/10] sm:aspect-auto sm:h-36 md:h-44 bg-stone-100 relative shrink-0 overflow-hidden rounded-t-2xl">
                   <SmartImage
                     src={getHotelImage(hotel)}
                     alt={hotel.name}
@@ -882,12 +882,12 @@ export default function ManagerDashboard() {
                           e.stopPropagation();
                           handleApproveListing(hotel);
                         }}
-                        className="absolute top-2.5 left-2.5 z-20 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold bg-amber-500 hover:bg-emerald-600 active:scale-95 text-white border border-amber-600/40 hover:border-emerald-700/40 shadow-xs transition cursor-pointer select-none"
+                        className="absolute top-2.5 left-2.5 z-20 max-w-[calc(100%-6rem)] inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold bg-amber-500 hover:bg-emerald-600 active:scale-95 text-white border border-amber-600/40 hover:border-emerald-700/40 shadow-xs transition cursor-pointer select-none"
                         title="Click to approve this stay and make it live on Travel Malawi"
                       >
                         <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                        <span>
-                          {approvingHotelId === hotel.id ? 'Approving...' : 'Pending review • Click to approve'}
+                        <span className="truncate">
+                          {approvingHotelId === hotel.id ? 'Approving...' : 'Pending · Approve'}
                         </span>
                       </button>
                     ) : (
