@@ -261,7 +261,8 @@ export default function ManagerMessageTemplatesHub({
     }
   };
 
-  const { generate } = useAIAssistant();
+  const { status: aiStatus, generate } = useAIAssistant();
+  const isAIAvailable = Boolean(aiStatus.enabled && aiStatus.available);
 
   const generateWithAI = async () => {
     if (!aiPrompt.trim()) {
@@ -320,8 +321,7 @@ export default function ManagerMessageTemplatesHub({
             </h2>
           </div>
           <p className="text-sm text-stone-600">
-            Create reusable Email & WhatsApp templates. Harness the Draft Assistant to write the
-            perfect message.
+            Create reusable Email & WhatsApp templates for guest communications.
           </p>
         </div>
         {!editingId && (
@@ -367,30 +367,34 @@ export default function ManagerMessageTemplatesHub({
               <h3 className="font-bold text-stone-900 text-lg">
                 {editingId === "new" ? "Create Template" : "Edit Template"}
               </h3>
-              <button
-                onClick={() => setShowAIPrompt(!showAIPrompt)}
-                className="flex items-center gap-1.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 px-3 py-1.5 rounded-lg text-sm font-bold transition border border-indigo-100"
-              >
-                {showAIPrompt ? "Close Assistant" : "Open Draft Assistant"}
-              </button>
+              {isAIAvailable && (
+                <button
+                  type="button"
+                  onClick={() => setShowAIPrompt(!showAIPrompt)}
+                  className="flex items-center gap-1.5 bg-stone-100 text-stone-700 hover:bg-stone-200 px-3 py-1.5 rounded-lg text-sm font-bold transition border border-stone-200"
+                >
+                  {showAIPrompt ? "Close Assistant" : "Open Draft Assistant"}
+                </button>
+              )}
             </div>
 
-            {showAIPrompt && (
-              <div className="mb-6 bg-indigo-50/50 p-4 rounded-xl border border-indigo-100">
-                <label className="block text-xs font-bold text-indigo-800 uppercase tracking-wider mb-2">
+            {isAIAvailable && showAIPrompt && (
+              <div className="mb-6 bg-white p-4 rounded-xl border border-stone-200">
+                <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-2">
                   Draft Instructions
                 </label>
                 <textarea
                   value={aiPrompt}
                   onChange={(e) => setAiPrompt(e.target.value)}
                   placeholder="e.g. Write a friendly welcome email that reminds guests about the 2PM check-in and our free breakfast."
-                  className="w-full bg-white border border-indigo-200 text-stone-900 text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 mb-3"
+                  className="w-full bg-stone-50 border border-stone-200 text-stone-900 text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-stone-900 focus:ring-1 focus:ring-stone-900 mb-3"
                   rows={2}
                 />
                 <button
+                  type="button"
                   onClick={generateWithAI}
                   disabled={isGenerating}
-                  className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition disabled:opacity-50 w-full sm:w-auto"
+                  className="flex items-center justify-center gap-2 bg-stone-900 hover:bg-stone-800 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition disabled:opacity-50 w-full sm:w-auto"
                 >
                   {isGenerating && <Loader2 className="w-4 h-4 animate-spin" />}
                   {isGenerating ? "Drafting Template..." : "Auto-Draft Content"}
@@ -408,14 +412,14 @@ export default function ManagerMessageTemplatesHub({
                     <button
                       type="button"
                       onClick={() => setType("whatsapp")}
-                      className={`flex-1 py-2 text-sm font-bold flex items-center justify-center gap-2 ${type === "whatsapp" ? "bg-green-500 text-white" : "text-stone-500 hover:bg-stone-50"}`}
+                      className={`flex-1 py-2 text-sm font-bold flex items-center justify-center gap-2 ${type === "whatsapp" ? "bg-emerald-700 text-white" : "text-stone-500 hover:bg-stone-50"}`}
                     >
                       <MessageSquare className="w-4 h-4" /> WhatsApp
                     </button>
                     <button
                       type="button"
                       onClick={() => setType("email")}
-                      className={`flex-1 py-2 text-sm font-bold flex items-center justify-center gap-2 ${type === "email" ? "bg-blue-500 text-white" : "text-stone-500 hover:bg-stone-50"}`}
+                      className={`flex-1 py-2 text-sm font-bold flex items-center justify-center gap-2 ${type === "email" ? "bg-stone-900 text-white" : "text-stone-500 hover:bg-stone-50"}`}
                     >
                       <Mail className="w-4 h-4" /> Email
                     </button>
