@@ -396,10 +396,10 @@ export default function AdminLogs() {
   // Category Badge
   const renderCategoryBadge = (cat?: LogCategory) => {
     const map: Record<string, { label: string; bg: string; text: string }> = {
-      admin: { label: 'Role-Based Access Control', bg: 'bg-purple-50 border-purple-200', text: 'text-purple-700' },
+      admin: { label: 'Role-Based Access Control', bg: 'bg-stone-900 border-stone-800', text: 'text-amber-300' },
       security: { label: 'Security & Suspensions', bg: 'bg-rose-50 border-rose-200', text: 'text-rose-700' },
       auth: { label: 'Authentication', bg: 'bg-amber-50 border-amber-200', text: 'text-amber-800' },
-      session: { label: 'Session & Device', bg: 'bg-indigo-50 border-indigo-200', text: 'text-indigo-700' },
+      session: { label: 'Session & Device', bg: 'bg-stone-100 border-stone-200', text: 'text-stone-700' },
       booking: { label: 'Reservations & Bookings', bg: 'bg-emerald-50 border-emerald-200', text: 'text-emerald-700' },
       property: { label: 'Property Management', bg: 'bg-amber-50/80 border-amber-200', text: 'text-amber-900' },
       ai: { label: 'Ulendo Concierge AI', bg: 'bg-stone-100 border-stone-300', text: 'text-stone-800' },
@@ -425,7 +425,7 @@ export default function AdminLogs() {
     } else if (rLower.includes('manager') || rLower.includes('host')) {
       badgeClass = 'bg-amber-50 text-amber-800 border-amber-200';
     } else if (rLower.includes('traveller')) {
-      badgeClass = 'bg-sky-50 text-sky-800 border-sky-200';
+      badgeClass = 'bg-emerald-50 text-emerald-800 border-emerald-200';
     }
     return (
       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border ${badgeClass}`}>
@@ -1180,7 +1180,7 @@ export default function AdminLogs() {
                                 className="p-3.5 sm:p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 cursor-pointer hover:bg-stone-50 transition-colors select-none"
                               >
                                 <div className="flex items-start sm:items-center gap-3">
-                                  <div className="p-2 rounded-lg bg-indigo-50 text-indigo-700">
+                                  <div className="p-2 rounded-lg bg-stone-100 text-stone-700 border border-stone-200">
                                     <Monitor className="w-4 h-4" />
                                   </div>
 
@@ -1748,7 +1748,7 @@ export default function AdminLogs() {
                             <tr>
                               <td className="px-3.5 py-2 text-stone-800 font-semibold font-sans">roles</td>
                               <td className="px-3.5 py-2 text-stone-400 italic font-sans">[inherited]</td>
-                              <td className="px-3.5 py-2 text-indigo-600 font-bold">
+                              <td className="px-3.5 py-2 text-amber-800 font-bold">
                                 {Array.isArray(selectedLog.details.roles)
                                   ? selectedLog.details.roles.join(', ')
                                   : String(selectedLog.details.roles)}

@@ -48,7 +48,7 @@ export default function AdminDashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
   
   const urlTab = searchParams.get('tab') as Tab | null;
-  const validTabs: Tab[] = ['overview', 'analytics', 'properties', 'reviews', 'users', 'bookings', 'destinations', 'content', 'ai', 'logs', 'docs', 'settings', 'channels'];
+  const validTabs: Tab[] = ['overview', 'traffic', 'analytics', 'properties', 'reviews', 'users', 'bookings', 'destinations', 'content', 'ai', 'logs', 'docs', 'settings', 'channels'];
   const initialTab = urlTab && validTabs.includes(urlTab) ? urlTab : 'overview';
   
   const [activeTab, setActiveTabState] = useState<Tab>(initialTab);
@@ -848,6 +848,20 @@ export default function AdminDashboard() {
     const pendingList = hotels.filter(h => h.status === 'pending');
     const approvedList = hotels.filter(h => h.status === 'approved' || !h.status);
     const rejectedList = hotels.filter(h => h.status === 'rejected');
+    const confirmedBookings = bookings.filter(b => b.status === 'confirmed');
+    const pendingBookings = bookings.filter(b => b.status === 'pending');
+    const revenueMWK = confirmedBookings
+      .filter(b => !b.currency || b.currency === 'MWK')
+      .reduce((sum, b) => sum + (Number(b.total) || 0), 0);
+    const revenueUSD = confirmedBookings
+      .filter(b => b.currency === 'USD')
+      .reduce((sum, b) => sum + (Number(b.total) || 0), 0);
+    const totalRoomTypes = rooms.length;
+    const totalRoomUnits = rooms.reduce((sum, r) => sum + (Number(r.quantity) || 1), 0);
+    const syncedPropertiesCount = hotels.filter(
+      h => (h.icalSyncUrls?.length || 0) > 0 || rooms.some(r => r.hotelId === h.id && (r.icalSyncUrls?.length || 0) > 0)
+    ).length;
+
     return {
       totalProperties: hotels.length,
       pendingProperties: pendingList.length,
@@ -855,10 +869,18 @@ export default function AdminDashboard() {
       rejectedProperties: rejectedList.length,
       totalUsers: users.length,
       totalBookings: bookings.length,
+      confirmedBookingsCount: confirmedBookings.length,
+      pendingBookingsCount: pendingBookings.length,
+      conversionRate: bookings.length > 0 ? Math.round((confirmedBookings.length / bookings.length) * 100) : 0,
       managersCount: users.filter(u => isHotelManager(u)).length,
-      totalRevenue: bookings.filter(b => b.status === 'confirmed').reduce((sum, b) => sum + (b.total || 0), 0)
+      revenueMWK,
+      revenueUSD,
+      totalRoomTypes,
+      totalRoomUnits,
+      syncedPropertiesCount,
+      totalRevenue: revenueMWK
     };
-  }, [hotels, users, bookings]);
+  }, [hotels, users, bookings, rooms]);
 
   const adminTabs = useMemo(() => {
     return [
@@ -1349,7 +1371,80 @@ export default function AdminDashboard() {
           <div className="space-y-6 animate-in fade-in duration-200">
             <div className="pb-2 border-b border-stone-200">
               <h2 className="text-2xl font-serif font-bold text-stone-900 tracking-tight">Analytics &amp; Performance</h2>
-              <p className="text-stone-500 text-xs sm:text-sm mt-0.5">Platform growth velocity, monthly reservation metrics, and featured property management.</p>
+              <p className="text-stone-500 text-xs sm:text-sm mt-0.5">Platform growth velocity, dual-currency direct booking volume, and featured property management.</p>
+            </div>
+
+            {/* Platform Telemetry & Dual-Currency Revenue Strip */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+              <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-2xs">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-stone-500 text-xs font-medium">Confirmed Direct Volume</span>
+                  <TrendingUp className="w-4 h-4 text-emerald-700" />
+                </div>
+                <p className="text-xl font-serif font-bold text-stone-900 tabular-nums">
+                  MK {stats.revenueMWK.toLocaleString()}
+                </p>
+                <div className="flex items-center justify-between mt-1 text-[11px]">
+                  <span className="font-mono font-semibold text-emerald-800">
+                    + USD ${stats.revenueUSD.toLocaleString()}
+                  </span>
+                  <span className="text-stone-400">0% platform fee</span>
+                </div>
+              </div>
+
+              <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-2xs">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-stone-500 text-xs font-medium">Reservation Pipeline</span>
+                  <CalendarRange className="w-4 h-4 text-stone-400" />
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <p className="text-2xl font-serif font-bold text-stone-900 tabular-nums">
+                    {stats.confirmedBookingsCount}
+                  </p>
+                  <span className="text-xs text-emerald-700 font-semibold">
+                    confirmed ({stats.conversionRate}%)
+                  </span>
+                </div>
+                <p className="text-[11px] text-stone-400 mt-0.5">
+                  {stats.pendingBookingsCount} pending · {stats.totalBookings} total requests
+                </p>
+              </div>
+
+              <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-2xs">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-stone-500 text-xs font-medium">Room Inventory &amp; Units</span>
+                  <Building2 className="w-4 h-4 text-stone-400" />
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <p className="text-2xl font-serif font-bold text-stone-900 tabular-nums">
+                    {stats.totalRoomUnits}
+                  </p>
+                  <span className="text-xs text-stone-500 font-medium">
+                    units ({stats.totalRoomTypes} types)
+                  </span>
+                </div>
+                <p className="text-[11px] text-stone-400 mt-0.5">
+                  Across {stats.approvedProperties} live · {stats.pendingProperties} pending stays
+                </p>
+              </div>
+
+              <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-2xs">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-stone-500 text-xs font-medium">Host &amp; Channel Sync</span>
+                  <CalendarSync className="w-4 h-4 text-emerald-700" />
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <p className="text-2xl font-serif font-bold text-stone-900 tabular-nums">
+                    {stats.managersCount}
+                  </p>
+                  <span className="text-xs text-stone-500 font-medium">
+                    active hosts
+                  </span>
+                </div>
+                <p className="text-[11px] text-stone-400 mt-0.5">
+                  {stats.syncedPropertiesCount} properties connected via 2-way iCal
+                </p>
+              </div>
             </div>
             
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -1758,10 +1853,10 @@ export default function AdminDashboard() {
                             if (syncCount === 0) return null;
                             return (
                               <span
-                                className="inline-flex items-center gap-1 text-xs font-semibold text-sky-800 bg-sky-50 border border-sky-200 px-2 py-0.5 rounded-md"
+                                className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-900 bg-emerald-50/80 border border-emerald-200 px-2 py-0.5 rounded-md"
                                 title="Connected to RoomRaccoon, Airbnb, or external iCal channel"
                               >
-                                <CalendarSync className="w-3.5 h-3.5 text-sky-600" />
+                                <CalendarSync className="w-3.5 h-3.5 text-emerald-700" />
                                 <span>{syncCount} iCal {syncCount === 1 ? 'feed' : 'feeds'}</span>
                               </span>
                             );
@@ -1908,27 +2003,81 @@ export default function AdminDashboard() {
                               className="fixed inset-0 z-30" 
                               onClick={() => setOpenHotelMenuId(null)} 
                             />
-                            <div className="absolute right-0 bottom-full mb-1.5 sm:bottom-auto sm:top-full sm:mt-1.5 w-52 bg-white rounded-xl shadow-lg border border-stone-200 py-1.5 z-40 text-left animate-in fade-in zoom-in-95 duration-150">
+                            <div className="absolute right-0 bottom-full mb-1.5 sm:bottom-auto sm:top-full sm:mt-1.5 w-56 bg-white rounded-xl shadow-lg border border-stone-200 py-1.5 z-40 text-left animate-in fade-in zoom-in-95 duration-150">
                               <div className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-stone-400">
                                 Management &amp; Delegation
                               </div>
 
                               {(isAdmin(user) || isMarketing(user)) && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setHotelToAssignManager(hotel);
-                                    setAssignManagerSelectedUid(hotel.managerId || '');
-                                    setAssignManagerCustomEmail(hotel.managerEmail || '');
-                                    setAssignManagerCustomName(hotel.managerName || '');
-                                    setAssignManagerOwnerEmail(hotel.ownerEmail || '');
-                                    setOpenHotelMenuId(null);
-                                  }}
-                                  className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center gap-2 transition cursor-pointer"
-                                >
-                                  <Users className="w-3.5 h-3.5 text-stone-400" />
-                                  <span>Assign / Change Manager</span>
-                                </button>
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setHotelToAssignManager(hotel);
+                                      setAssignManagerSelectedUid(hotel.managerId || '');
+                                      setAssignManagerCustomEmail(hotel.managerEmail || '');
+                                      setAssignManagerCustomName(hotel.managerName || '');
+                                      setAssignManagerOwnerEmail(hotel.ownerEmail || '');
+                                      setOpenHotelMenuId(null);
+                                    }}
+                                    className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center gap-2 transition cursor-pointer"
+                                  >
+                                    <Users className="w-3.5 h-3.5 text-stone-400" />
+                                    <span>Assign / Change Manager</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={async () => {
+                                      setOpenHotelMenuId(null);
+                                      const targetEmail =
+                                        hotel.ownerEmail ||
+                                        hotel.managerEmail ||
+                                        hotel.contactEmail ||
+                                        (hotel.managerId && users.find(u => u.uid === hotel.managerId)?.email);
+                                      if (!targetEmail) {
+                                        toast.error('No owner, manager, or contact email on this listing. Assign an email first.');
+                                        return;
+                                      }
+                                      const toastId = toast.loading(`Sending login credentials to ${targetEmail}…`);
+                                      try {
+                                        const res = await fetch('/api/onboarding/welcome-email', {
+                                          method: 'POST',
+                                          headers: { 'Content-Type': 'application/json' },
+                                          body: JSON.stringify({
+                                            hotelId: hotel.id,
+                                            hotelName: hotel.name,
+                                            location: hotel.location,
+                                            category: hotel.category,
+                                            status: hotel.status || 'pending',
+                                            ownerName: hotel.ownerName,
+                                            ownerEmail: hotel.ownerEmail,
+                                            ownerPhone: hotel.ownerPhone,
+                                            managerName: hotel.managerName,
+                                            managerEmail: hotel.managerEmail || targetEmail,
+                                            managerPhone: hotel.managerPhone,
+                                            contactEmail: hotel.contactEmail,
+                                            contactPhone: hotel.contactPhone,
+                                            contactWhatsapp: hotel.contactWhatsapp,
+                                            submittedByEmail: user?.email,
+                                          }),
+                                        });
+                                        const data = await res.json();
+                                        if (data.ok && data.sentCount > 0) {
+                                          toast.success(`Host login credentials sent via SMTP (${data.sentCount} email${data.sentCount > 1 ? 's' : ''})!`, { id: toastId });
+                                        } else {
+                                          toast.error(data.error || 'Could not dispatch SMTP email. Verify SMTP settings.', { id: toastId });
+                                        }
+                                      } catch (err: any) {
+                                        toast.error(err?.message || 'Failed to send host credentials.', { id: toastId });
+                                      }
+                                    }}
+                                    className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center gap-2 transition cursor-pointer"
+                                  >
+                                    <Mail className="w-3.5 h-3.5 text-emerald-700" />
+                                    <span>Send Host Login Details (SMTP)</span>
+                                  </button>
+                                </>
                               )}
 
                               <div className="my-1 border-t border-stone-100" />
@@ -2495,8 +2644,8 @@ export default function AdminDashboard() {
                           <td className="px-5 py-3.5 text-xs text-stone-600 whitespace-nowrap">
                             {b.checkIn} <br/>to {b.checkOut}
                           </td>
-                          <td className="px-5 py-3.5 text-xs font-medium text-stone-400">
-                            ***
+                          <td className="px-5 py-3.5 text-xs font-mono font-semibold text-stone-900 whitespace-nowrap">
+                            {b.total ? (b.currency === 'USD' ? `$${Number(b.total).toLocaleString()}` : `MK ${Number(b.total).toLocaleString()}`) : '—'}
                           </td>
                           <td className="px-5 py-3.5">
                             <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium capitalize border ${

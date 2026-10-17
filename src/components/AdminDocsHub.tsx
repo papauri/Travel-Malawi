@@ -164,12 +164,12 @@ export default function AdminDocsHub() {
   );
 
   const secondaryBtn =
-    'inline-flex items-center gap-1.5 border border-stone-300 text-stone-800 rounded-md px-3 py-1.5 text-sm hover:bg-stone-50 cursor-pointer disabled:opacity-50';
+    'inline-flex items-center gap-1.5 border border-stone-200 bg-white text-stone-800 rounded-lg px-3 py-1.5 text-xs font-semibold hover:bg-stone-50 shadow-2xs transition cursor-pointer disabled:opacity-50';
   const primaryBtn =
-    'inline-flex items-center gap-1.5 bg-stone-900 text-white rounded-md px-3 py-1.5 text-sm hover:bg-stone-800 cursor-pointer';
+    'inline-flex items-center gap-1.5 bg-stone-900 text-white rounded-lg px-3 py-1.5 text-xs font-semibold hover:bg-stone-800 shadow-2xs transition cursor-pointer';
   const tabBtn = (active: boolean) => (active ? primaryBtn : secondaryBtn);
-  const th = 'bg-stone-50 text-left font-medium text-stone-900 px-3 py-2';
-  const td = 'px-3 py-2 border-t border-stone-200 text-stone-700 align-top';
+  const th = 'bg-stone-50 text-left text-[11px] font-semibold uppercase tracking-wider text-stone-500 px-4 py-3';
+  const td = 'px-4 py-3 border-t border-stone-100 text-stone-700 align-top text-xs';
   const textLink = 'text-stone-900 underline underline-offset-2 decoration-stone-300 hover:decoration-stone-900';
 
   const surveyTypeLabel = (type?: string) =>
@@ -327,18 +327,18 @@ export default function AdminDocsHub() {
         <>
           <section>
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h3 className="text-xl font-semibold text-stone-900">Documents</h3>
+              <h3 className="text-lg font-serif font-bold text-stone-900">Documents</h3>
               <input
                 type="text"
-                placeholder="Search documents"
+                placeholder="Search documents…"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="w-full sm:w-64 bg-white border border-stone-300 rounded-md px-3 py-2 text-sm text-stone-900 placeholder-stone-400 focus:outline-none focus:border-stone-900"
+                className="w-full sm:w-64 bg-white border border-stone-200 rounded-xl px-3.5 py-2 text-xs text-stone-900 placeholder-stone-400 shadow-2xs focus:outline-none focus:border-stone-900"
               />
             </div>
 
-            <div className="mt-4 overflow-x-auto border border-stone-200 rounded-xl">
-              <table className="w-full text-sm">
+            <div className="mt-4 overflow-x-auto bg-white border border-stone-200 rounded-2xl shadow-2xs">
+              <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-stone-200">
                     <th className={th}>Title</th>
@@ -360,23 +360,25 @@ export default function AdminDocsHub() {
                     filteredDocs.map((doc, dIdx) => {
                       const isSelected = doc.id === selectedDocId;
                       return (
-                        <tr key={`${doc.id || 'doc'}-${dIdx}`} className={isSelected ? 'bg-stone-50' : ''}>
+                        <tr key={`${doc.id || 'doc'}-${dIdx}`} className={isSelected ? 'bg-stone-50/90' : 'hover:bg-stone-50/50 transition'}>
                           <td className={td}>
                             <button
                               onClick={() => setSelectedDocId(doc.id)}
-                              className="text-left font-medium text-stone-900 hover:underline cursor-pointer"
+                              className="text-left font-semibold text-stone-900 hover:underline cursor-pointer"
                             >
                               {doc.title}
                             </button>
                             <p className="mt-0.5 text-stone-500 line-clamp-1">{doc.subtitle}</p>
                           </td>
                           <td className={`${td} whitespace-nowrap`}>
-                            {doc.category}
-                            {doc.isCustomized && <span className="block text-stone-500">Customised</span>}
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-stone-100 text-stone-700 font-medium text-[11px]">
+                              {doc.category}
+                            </span>
+                            {doc.isCustomized && <span className="block text-[10px] text-emerald-700 font-semibold mt-0.5">Customised</span>}
                           </td>
-                          <td className={`${td} whitespace-nowrap text-stone-500`}>{formatEdited(doc)}</td>
+                          <td className={`${td} whitespace-nowrap text-stone-500 font-mono text-[11px]`}>{formatEdited(doc)}</td>
                           <td className={`${td} whitespace-nowrap text-right`}>
-                            <div className="inline-flex items-center gap-3">
+                            <div className="inline-flex items-center gap-3 font-medium">
                               <button
                                 onClick={() => setSelectedDocId(doc.id)}
                                 className="text-stone-900 hover:underline cursor-pointer"
@@ -390,7 +392,7 @@ export default function AdminDocsHub() {
                                 Edit
                               </button>
                               {doc.liveUrl && (
-                                <a href={doc.liveUrl} target="_blank" rel="noreferrer" className="text-stone-900 hover:underline">
+                                <a href={doc.liveUrl} target="_blank" rel="noreferrer" className="text-emerald-800 hover:underline">
                                   Open
                                 </a>
                               )}
@@ -404,7 +406,7 @@ export default function AdminDocsHub() {
               </table>
             </div>
 
-            <p className="mt-4 text-sm text-stone-500 leading-relaxed">
+            <p className="mt-4 text-xs text-stone-500 leading-relaxed">
               Live pages:{' '}
               {livePages.map((page, i) => (
                 <React.Fragment key={page.href}>
@@ -416,16 +418,16 @@ export default function AdminDocsHub() {
           </section>
 
           {/* Document viewer */}
-          <section className="border-t border-stone-200 mt-10 pt-10">
-            <div className="border border-stone-200 rounded-md">
+          <section className="mt-8">
+            <div className="bg-white border border-stone-200 rounded-2xl shadow-2xs overflow-hidden">
               {/* Viewer toolbar */}
-              <div className="px-4 py-3 border-b border-stone-200 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+              <div className="px-5 py-4 border-b border-stone-200 bg-stone-50/60 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-sm text-stone-500">
+                  <p className="text-[11px] font-medium text-stone-500">
                     {currentDoc?.category || 'Document'}
                     {currentDoc?.filename && <> &middot; <span className="font-mono">{currentDoc.filename}</span></>}
                   </p>
-                  <h3 className="mt-0.5 text-base font-semibold text-stone-900">{currentDoc?.title}</h3>
+                  <h3 className="mt-0.5 text-base font-serif font-bold text-stone-900">{currentDoc?.title}</h3>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2 shrink-0">

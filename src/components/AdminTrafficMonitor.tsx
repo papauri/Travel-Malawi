@@ -157,7 +157,7 @@ export default function AdminTrafficMonitor({ compactMode = false }: AdminTraffi
     }
     if (intent === 'host_inquiry') {
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-purple-50 text-purple-800 border border-purple-200">
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-stone-900 text-amber-300 border border-stone-800">
           <span>Host Scout</span>
           <span className="font-mono text-[9px] opacity-80">{score}%</span>
         </span>
@@ -165,7 +165,7 @@ export default function AdminTrafficMonitor({ compactMode = false }: AdminTraffi
     }
     if (intent === 'price_comparing') {
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-sky-50 text-sky-800 border border-sky-200">
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50/80 text-amber-900 border border-amber-200">
           <span>Comparing</span>
           <span className="font-mono text-[9px] opacity-80">{score}%</span>
         </span>
@@ -658,7 +658,7 @@ export default function AdminTrafficMonitor({ compactMode = false }: AdminTraffi
                                   Anon
                                 </span>
                               ) : (
-                                <span className="text-[9px] uppercase font-bold px-1 py-0.2 bg-sky-100 text-sky-800 rounded">
+                                <span className="text-[9px] uppercase font-bold px-1 py-0.2 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded">
                                   {s.userRole || 'User'}
                                 </span>
                               )}
@@ -761,7 +761,7 @@ export default function AdminTrafficMonitor({ compactMode = false }: AdminTraffi
                       Anonymous
                     </span>
                   ) : (
-                    <span className="text-[9px] font-bold px-1.5 py-0.2 bg-sky-100 text-sky-800 rounded">
+                    <span className="text-[9px] font-bold px-1.5 py-0.2 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded">
                       {selectedSession.userRole || 'User'}
                     </span>
                   )}

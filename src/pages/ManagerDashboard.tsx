@@ -8,7 +8,7 @@ import {
   Building2, Plus, ChevronRight, Clock, CheckCircle2, XCircle, 
   BedDouble, CalendarCheck, CalendarSync, Lock, KeyRound, UserCheck, ArrowRight, 
   Check, ChevronDown, Filter, ExternalLink, SlidersHorizontal, Radio,
-  Percent, Trash2, AlertCircle, X
+  Percent, Trash2, AlertCircle, X, TrendingUp
 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -261,20 +261,36 @@ export default function ManagerDashboard() {
     }
   };
 
-  /** Room count and outstanding requests, per property. */
+  /** Room count, units, and reservation metrics per property. */
   const summaryByHotel = useMemo(() => {
-    const map = new Map<string, { rooms: number; pending: number }>();
+    const map = new Map<string, { rooms: number; units: number; pending: number; confirmed: number }>();
     for (const hotel of hotels) {
       if (!hotel.id) continue;
+      const hotelRooms = rooms.filter(r => r.hotelId === hotel.id);
+      const hotelBookings = bookings.filter(b => b.hotelId === hotel.id);
       map.set(hotel.id, {
-        rooms: rooms.filter(r => r.hotelId === hotel.id).length,
-        pending: bookings.filter(b => b.hotelId === hotel.id && b.status === 'pending').length,
+        rooms: hotelRooms.length,
+        units: hotelRooms.reduce((sum, r) => sum + (Number(r.quantity) || 1), 0),
+        pending: hotelBookings.filter(b => b.status === 'pending').length,
+        confirmed: hotelBookings.filter(b => b.status === 'confirmed').length,
       });
     }
     return map;
   }, [hotels, rooms, bookings]);
 
   const totalPending = bookings.filter(b => b.status === 'pending').length;
+  const confirmedBookingsList = bookings.filter(b => b.status === 'confirmed');
+  const confirmedBookingsCount = confirmedBookingsList.length;
+  const revenueMWK = confirmedBookingsList
+    .filter(b => !b.currency || b.currency === 'MWK')
+    .reduce((sum, b) => sum + (Number(b.total) || 0), 0);
+  const revenueUSD = confirmedBookingsList
+    .filter(b => b.currency === 'USD')
+    .reduce((sum, b) => sum + (Number(b.total) || 0), 0);
+  const totalRoomUnits = rooms.reduce((sum, r) => sum + (Number(r.quantity) || 1), 0);
+  const syncedPropertiesCount = hotels.filter(
+    h => (h.icalSyncUrls?.length || 0) > 0 || rooms.some(r => r.hotelId === h.id && (r.icalSyncUrls?.length || 0) > 0)
+  ).length;
   const liveCount = hotels.filter(h => (!h.status || h.status === 'approved') && h.isOnline !== false).length;
   const pendingApprovalCount = hotels.filter(h => h.status === 'pending').length;
   const offlineCount = hotels.filter(h => h.isOnline === false).length;
@@ -512,6 +528,103 @@ export default function ManagerDashboard() {
           </Link>
         </div>
       </div>
+
+      {/* Host Telemetry & Performance Summary Strip */}
+      {hotels.length > 0 && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('all');
+              setStatusFilter('all');
+              setCurrentPage(1);
+            }}
+            className="bg-white p-3.5 sm:p-4 rounded-xl border border-stone-200 shadow-2xs text-left hover:border-stone-300 transition cursor-pointer"
+          >
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-stone-500 text-xs font-medium">Portfolio &amp; Status</span>
+              <Building2 className="w-4 h-4 text-stone-400" />
+            </div>
+            <div className="flex items-baseline gap-1.5">
+              <p className="text-2xl font-serif font-bold text-stone-900 tabular-nums">{hotels.length}</p>
+              <span className="text-xs text-emerald-700 font-semibold">{liveCount} live</span>
+            </div>
+            <p className="text-[11px] text-stone-400 mt-0.5">
+              {pendingApprovalCount > 0
+                ? `${pendingApprovalCount} pending review`
+                : offlineCount > 0
+                ? `${offlineCount} offline`
+                : 'All stays active'}
+            </p>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleOpenBulkEditor()}
+            className="bg-white p-3.5 sm:p-4 rounded-xl border border-stone-200 shadow-2xs text-left hover:border-stone-300 transition cursor-pointer"
+          >
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-stone-500 text-xs font-medium">Room Inventory &amp; Sync</span>
+              <BedDouble className="w-4 h-4 text-stone-400" />
+            </div>
+            <div className="flex items-baseline gap-1.5">
+              <p className="text-2xl font-serif font-bold text-stone-900 tabular-nums">{totalRoomUnits}</p>
+              <span className="text-xs text-stone-500 font-normal">units ({rooms.length} types)</span>
+            </div>
+            <p className="text-[11px] text-stone-400 mt-0.5">
+              {syncedPropertiesCount > 0
+                ? `${syncedPropertiesCount} ${syncedPropertiesCount === 1 ? 'stay' : 'stays'} iCal synced`
+                : 'Click to manage rooms & rates'}
+            </p>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('needs_attention');
+              setStatusFilter('needs_attention');
+              setCurrentPage(1);
+            }}
+            className={`p-3.5 sm:p-4 rounded-xl border shadow-2xs text-left transition cursor-pointer ${
+              totalPending > 0
+                ? 'bg-amber-50/60 border-amber-300 hover:border-amber-400'
+                : 'bg-white border-stone-200 hover:border-stone-300'
+            }`}
+          >
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-stone-500 text-xs font-medium">Reservation Requests</span>
+              <CalendarCheck className={`w-4 h-4 ${totalPending > 0 ? 'text-amber-600 animate-pulse' : 'text-stone-400'}`} />
+            </div>
+            <div className="flex items-baseline gap-1.5">
+              <p className={`text-2xl font-serif font-bold tabular-nums ${totalPending > 0 ? 'text-amber-900' : 'text-stone-900'}`}>
+                {bookings.length}
+              </p>
+              <span className="text-xs text-emerald-700 font-semibold">
+                {confirmedBookingsCount} confirmed
+              </span>
+            </div>
+            <p className="text-[11px] text-stone-400 mt-0.5">
+              {totalPending > 0 ? `${totalPending} awaiting host reply` : '0 pending requests'}
+            </p>
+          </button>
+
+          <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-stone-200 shadow-2xs text-left">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-stone-500 text-xs font-medium">Confirmed Volume (0% Fee)</span>
+              <TrendingUp className="w-4 h-4 text-emerald-700" />
+            </div>
+            <p className="text-lg sm:text-xl font-serif font-bold text-stone-900 tabular-nums truncate">
+              MK {revenueMWK.toLocaleString()}
+            </p>
+            <div className="flex items-center justify-between mt-0.5 text-[11px]">
+              <span className="font-mono font-semibold text-emerald-800">
+                + USD ${revenueUSD.toLocaleString()}
+              </span>
+              <span className="text-stone-400 hidden sm:inline">100% direct</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Minimal Underline-Based Dashboard Navigation Tabs */}
       <div className="border-b border-stone-200/90 mb-6 flex flex-wrap items-center gap-x-6 sm:gap-x-8 gap-y-2" role="tablist" aria-label="Dashboard views">
@@ -875,11 +988,11 @@ export default function ManagerDashboard() {
                             e.stopPropagation();
                             setIcalModalHotel(hotel);
                           }}
-                          className="inline-flex items-center gap-1.5 bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-300 px-2 py-0.5 rounded-lg text-[11px] font-semibold transition cursor-pointer"
+                          className="inline-flex items-center gap-1.5 bg-emerald-50/80 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 px-2 py-0.5 rounded-lg text-[11px] font-semibold transition cursor-pointer"
                           title="Click to view & test live 2-way calendar sync connections"
                         >
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                          <CalendarSync className="w-3 h-3 text-sky-600" />
+                          <CalendarSync className="w-3 h-3 text-emerald-700" />
                           <span>iCal Synced ({syncedFeedsCount})</span>
                         </button>
                       );
@@ -1031,7 +1144,7 @@ export default function ManagerDashboard() {
                               }}
                               className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center gap-2 transition cursor-pointer"
                             >
-                              <CalendarSync className="w-3.5 h-3.5 text-sky-600" />
+                              <CalendarSync className="w-3.5 h-3.5 text-emerald-700" />
                               <span>Calendar Sync (iCal / PMS)</span>
                             </button>
 
