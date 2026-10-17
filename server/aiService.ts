@@ -898,6 +898,9 @@ async function callVisionProvider(
         }),
       });
     } else if (providerId === 'openai') {
+      if (mimeType === 'application/pdf') {
+        throw new Error('OpenAI chat completions API does not support PDF vision directly. Use Gemini or Anthropic for PDFs.');
+      }
       response = await pacedFetch(providerId, 'https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
@@ -917,16 +920,26 @@ async function callVisionProvider(
         }),
       });
     } else {
+      const isPdf = mimeType === 'application/pdf';
+      const anthropicContent = isPdf
+        ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } }
+        : { type: 'image', source: { type: 'base64', media_type: mimeType, data: base64 } };
+
       response = await pacedFetch(providerId, 'https://api.anthropic.com/v1/messages', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          ...(isPdf ? { 'anthropic-beta': 'pdfs-2024-09-25' } : {}),
+        },
         body: JSON.stringify({
           model: m,
           max_tokens: 4096,
           messages: [{
             role: 'user',
             content: [
-              { type: 'image', source: { type: 'base64', media_type: mimeType, data: base64 } },
+              anthropicContent,
               { type: 'text', text: prompt },
             ],
           }],
@@ -2572,8 +2585,9 @@ Rules:
 
   if (isImage) {
     // For images, we need a vision-capable provider
-    // Try Gemini first (native vision), then OpenAI, then Anthropic
-    const visionProviders: AIProviderId[] = ['gemini', 'openai', 'anthropic'];
+    // For PDFs: Gemini supports inline_data application/pdf and Anthropic supports document pdfs. OpenAI chat completions does not accept application/pdf in image_url.
+    const isPdf = mimeType === 'application/pdf';
+    const visionProviders: AIProviderId[] = isPdf ? ['gemini', 'anthropic'] : ['gemini', 'openai', 'anthropic'];
     const base64 = fileBuffer.toString('base64');
 
     for (const providerId of visionProviders) {
@@ -2729,7 +2743,8 @@ Rules:
     if (!config.enabled) {
       throw new Error('Document scanning is currently disabled.');
     }
-    const visionProviders: AIProviderId[] = ['gemini', 'openai', 'anthropic'];
+    const isPdf = mimeType === 'application/pdf';
+    const visionProviders: AIProviderId[] = isPdf ? ['gemini', 'anthropic'] : ['gemini', 'openai', 'anthropic'];
     const base64 = fileBuffer.toString('base64');
 
     for (const providerId of visionProviders) {

@@ -22,6 +22,7 @@ import {
 import toast from 'react-hot-toast';
 import { MenuSection, MenuItem, PriceMap } from '../types';
 import { parseMenuText } from '../lib/localMenuParser';
+import { auth } from '../lib/firebase';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { useModalScrollIsolation } from '../hooks/useModalScrollIsolation';
 import { useAIAssistant, describeAIError } from '../hooks/useAIAssistant';
@@ -199,10 +200,13 @@ export default function MenuImporter({ open, onClose, onImport, currencies }: Me
       let res: Response;
       let rawTextForFallback = activeTab === 'text' ? pastedText.trim() : '';
 
+      const token = auth.currentUser ? await auth.currentUser.getIdToken() : '';
+      const authHeaders: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+
       if (activeTab === 'text') {
         res = await fetch('/api/ai/parse-menu', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...authHeaders },
           body: JSON.stringify({ text: pastedText.trim(), currencies }),
         });
       } else {
@@ -219,6 +223,7 @@ export default function MenuImporter({ open, onClose, onImport, currencies }: Me
 
         res = await fetch('/api/ai/parse-menu', {
           method: 'POST',
+          headers: authHeaders,
           body: formData,
         });
       }

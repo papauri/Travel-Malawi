@@ -161,67 +161,106 @@ export function extractPrices(text: string): { prices: PriceMap; cleanedText: st
   const prices: PriceMap = {};
   let cleaned = text;
 
-  // Replace commas inside numbers for clean parsing (e.g. 14,000 -> 14000)
-  // Look for patterns like: MWK 14,000 / USD 8
-  const dualCurrencyRegex = /(?:MWK|MK|K)?\s*([\d,]+(?:\.\d+)?)\s*(?:MWK|MK|K)?\s*[/|]\s*(?:USD|\$)?\s*([\d,]+(?:\.\d+)?)\s*(?:USD|\$)?/i;
+  // 1. Dual-currency slash pattern: e.g. "14,000 / $8", "MWK 14,000 / USD 8", "14,000 / 8", "$10 / 17,500", "K18,000 / $10"
+  const dualCurrencyRegex = /(?:(?:MWK|MK|Kwacha|(?<=[\s\-—–:(.]|^)K|\$|USD)\s*)?([0-9]{1,3}(?:,[0-9]{3})+(?:\.[0-9]+)?|[0-9]{1,7}(?:\.[0-9]+)?)\s*(?:MWK|MK|Kwacha)?\s*[/|\\]\s*(?:\$|USD|MWK|MK|Kwacha|(?<=[\s\-—–:(.]|^)K)?\s*([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]+)?|[0-9]+(?:\.[0-9]+)?)\s*(?:USD|\$|MWK|MK|Kwacha)?/i;
   
-  // Specific MWK patterns:
-  // MWK 14,000 | MK 14,000 | K14,000 | 14,000 MWK | 14,000 MK
+  const dualMatch = dualCurrencyRegex.exec(cleaned);
+  if (dualMatch) {
+    const raw1 = dualMatch[1].replace(/,/g, '');
+    const raw2 = dualMatch[2].replace(/,/g, '');
+    const val1 = parseFloat(raw1);
+    const val2 = parseFloat(raw2);
+
+    if (!isNaN(val1) && !isNaN(val2) && val1 > 0 && val2 > 0) {
+      const matchSegment = dualMatch[0];
+      const hasUsd1 = /\$|USD/i.test(matchSegment.slice(0, matchSegment.indexOf('/')));
+      const hasUsd2 = /\$|USD/i.test(matchSegment.slice(matchSegment.indexOf('/')));
+
+      if (hasUsd1) {
+        prices.USD = val1;
+        prices.MWK = val2;
+      } else if (hasUsd2) {
+        prices.USD = val2;
+        prices.MWK = val1;
+      } else if (val1 >= 500 && val2 < 500) {
+        // e.g. 14,000 / 8
+        prices.MWK = val1;
+        prices.USD = val2;
+      } else if (val2 >= 500 && val1 < 500) {
+        // e.g. 8 / 14,000
+        prices.USD = val1;
+        prices.MWK = val2;
+      } else if (val1 >= 500 && val2 >= 500) {
+        // Both high -> default first as MWK
+        prices.MWK = val1;
+      } else {
+        prices.USD = val1;
+      }
+
+      // Remove the dual currency block from cleaned
+      cleaned = cleaned.replace(dualMatch[0], ' ');
+    }
+  }
+
+  // 2. Specific MWK patterns:
+  // MWK 14,000 | MK 14,000 | K14,000 | K 14,000 | 14,000 MWK | 14,000 MK | 14,000 Kwacha
   const mwkPatterns = [
-    /(?:MWK|MK|K)\s*([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]+)?|[0-9]+(?:\.[0-9]+)?)/gi,
+    /(?:(?:MWK|MK|Kwacha)|(?<=[\s\-—–:(.]|^)K)\s*([0-9]{1,3}(?:,[0-9]{3})+(?:\.[0-9]+)?|[0-9]{3,7}(?:\.[0-9]+)?)/gi,
     /([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]+)?|[0-9]+(?:\.[0-9]+)?)\s*(?:MWK|MK|Kwacha|Kwachas)/gi,
   ];
 
-  // USD patterns:
+  // 3. USD patterns:
   // USD 8 | $8 | 8 USD | US$ 8
   const usdPatterns = [
     /(?:USD|US\$|\$)\s*([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]+)?|[0-9]+(?:\.[0-9]+)?)/gi,
     /([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]+)?|[0-9]+(?:\.[0-9]+)?)\s*(?:USD|dollars?)/gi,
   ];
 
-  // GBP patterns:
+  // 4. GBP / EUR / ZAR patterns:
   const gbpPatterns = [
     /(?:GBP|£)\s*([0-9]+(?:\.[0-9]+)?)/gi,
     /([0-9]+(?:\.[0-9]+)?)\s*GBP/gi,
   ];
 
-  // EUR patterns:
   const eurPatterns = [
     /(?:EUR|€)\s*([0-9]+(?:\.[0-9]+)?)/gi,
     /([0-9]+(?:\.[0-9]+)?)\s*EUR/gi,
   ];
 
-  // ZAR patterns:
   const zarPatterns = [
     /(?:ZAR|R)\s*([0-9]+(?:\.[0-9]+)?)/gi,
     /([0-9]+(?:\.[0-9]+)?)\s*ZAR/gi,
   ];
 
-  // 1. First test explicit MWK patterns
-  for (const pat of mwkPatterns) {
-    let match;
-    while ((match = pat.exec(cleaned)) !== null) {
-      const numStr = match[1].replace(/,/g, '');
-      const val = parseFloat(numStr);
-      if (!isNaN(val) && val > 0) {
-        prices.MWK = val;
+  // Test explicit MWK patterns if not already set
+  if (!prices.MWK) {
+    for (const pat of mwkPatterns) {
+      let match;
+      while ((match = pat.exec(cleaned)) !== null) {
+        const numStr = match[1].replace(/,/g, '');
+        const val = parseFloat(numStr);
+        if (!isNaN(val) && val > 0) {
+          prices.MWK = val;
+        }
       }
     }
   }
 
-  // 2. USD patterns
-  for (const pat of usdPatterns) {
-    let match;
-    while ((match = pat.exec(cleaned)) !== null) {
-      const numStr = match[1].replace(/,/g, '');
-      const val = parseFloat(numStr);
-      if (!isNaN(val) && val > 0) {
-        prices.USD = val;
+  // Test explicit USD patterns if not already set
+  if (!prices.USD) {
+    for (const pat of usdPatterns) {
+      let match;
+      while ((match = pat.exec(cleaned)) !== null) {
+        const numStr = match[1].replace(/,/g, '');
+        const val = parseFloat(numStr);
+        if (!isNaN(val) && val > 0) {
+          prices.USD = val;
+        }
       }
     }
   }
 
-  // 3. Fallback for other foreign currencies: convert to USD equivalent if USD not already set
+  // Fallback for other foreign currencies
   for (const pat of gbpPatterns) {
     let match;
     while ((match = pat.exec(cleaned)) !== null) {
@@ -246,16 +285,30 @@ export function extractPrices(text: string): { prices: PriceMap; cleanedText: st
     }
   }
 
+  // 5. Trailing price without currency symbol: e.g. "Chambo Cakes ............ 18,500" or "Whole Tilapia \t 22,000"
+  if (Object.keys(prices).length === 0) {
+    const trailingPriceRegex = /(?:[.\-—–~:\s]{2,}|\t+)\s*([0-9]{1,3}(?:,[0-9]{3})+(?:\.[0-9]+)?|[0-9]{4,7}(?:\.[0-9]+)?)\s*$/;
+    const trailMatch = trailingPriceRegex.exec(cleaned);
+    if (trailMatch) {
+      const val = parseFloat(trailMatch[1].replace(/,/g, ''));
+      if (!isNaN(val) && val >= 500) {
+        prices.MWK = val;
+        cleaned = cleaned.slice(0, trailMatch.index);
+      }
+    }
+  }
+
   // Strip price text out of the line so we leave only the dish name / description
   cleaned = cleaned
-    .replace(/(?:\bMWK\b|\bMK\b|\bK\b|\bKwacha\b)\s*[\d,]+(?:\.\d+)?/gi, '')
-    .replace(/[\d,]+(?:\.\d+)?\s*(?:\bMWK\b|\bMK\b|\bKwacha\b)/gi, '')
-    .replace(/(?:\bUSD\b|US\$|\$)\s*[\d,]+(?:\.\d+)?/gi, '')
-    .replace(/[\d,]+(?:\.\d+)?\s*(?:\bUSD\b|dollars?)/gi, '')
-    .replace(/(?:\bGBP\b|£|\bEUR\b|€|\bZAR\b|\bR\b)\s*[\d,]+(?:\.\d+)?/gi, '')
-    .replace(/[\d,]+(?:\.\d+)?\s*(?:\bGBP\b|\bEUR\b|\bZAR\b)/gi, '')
+    .replace(/(?:(?:MWK|MK|Kwacha)|(?<=[\s\-—–:(.]|^)K)\s*[\d,]+(?:\.\d+)?/gi, '')
+    .replace(/[\d,]+(?:\.\d+)?\s*(?:MWK|MK|Kwacha|Kwachas)/gi, '')
+    .replace(/(?:USD|US\$|\$)\s*[\d,]+(?:\.\d+)?/gi, '')
+    .replace(/[\d,]+(?:\.\d+)?\s*(?:USD|dollars?)/gi, '')
+    .replace(/(?:GBP|£|EUR|€|ZAR|R)\s*[\d,]+(?:\.\d+)?/gi, '')
+    .replace(/[\d,]+(?:\.\d+)?\s*(?:GBP|EUR|ZAR)/gi, '')
+    .replace(/(?:[.\-—–~:\s]{2,}|\t+)\s*[\d,]+(?:\.\d+)?\s*$/g, '')
     // Clean trailing or orphan slashes, dots, and dashes
-    .replace(/\s*[/|]\s*$/g, '')
+    .replace(/\s*[/|\\]\s*$/g, '')
     .replace(/[\s.\-—–:]+$/g, '')
     .replace(/\s+/g, ' ')
     .trim();

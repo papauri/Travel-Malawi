@@ -858,15 +858,29 @@ async function startServer() {
       })();
 
       const isText = mimeType === 'text/plain' || mimeType === 'text/csv' || fileName.endsWith('.txt') || fileName.endsWith('.csv');
+      const isSpreadsheet = mimeType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || fileName.endsWith('.xlsx');
       const preferLocal = req.body?.engine === 'local';
 
-      // If client requests local engine or if text is provided and AI is not active:
+      const extractTextFromBuffer = (): string => {
+        if (isSpreadsheet) {
+          const str = buffer.toString('utf-8');
+          const xmlMatches = str.match(/>([^<]+)</g);
+          if (xmlMatches) {
+            return xmlMatches.map(m => m.slice(1, -1)).filter(s => s.trim().length > 1).join('\n');
+          }
+        }
+        return buffer.toString('utf-8');
+      };
+
+      // If client requests local engine or if text/spreadsheet is provided and AI is not active:
       const status = getPublicAIStatus();
-      if (isText && (preferLocal || !status.enabled || !status.available)) {
+      if ((isText || isSpreadsheet) && (preferLocal || !status.enabled || !status.available)) {
         const { parseMenuText } = await import('./server/localMenuParser');
-        const textContent = buffer.toString('utf-8');
-        const parsed = parseMenuText(textContent, currencies);
-        return res.json({ sections: parsed.sections, engine: 'local', stats: parsed.stats });
+        const textContent = extractTextFromBuffer();
+        if (textContent.trim()) {
+          const parsed = parseMenuText(textContent, currencies);
+          return res.json({ sections: parsed.sections, engine: 'local', stats: parsed.stats });
+        }
       }
 
       // If AI is needed for images/PDFs or user requested AI deep parsing:
@@ -879,13 +893,15 @@ async function startServer() {
         const result = await parseMenuContent(buffer, mimeType, fileName, currencies);
         res.json({ ...result, engine: 'ai' });
       } catch (aiErr: any) {
-        // If AI fails but we have text, gracefully fallback to local parser
-        if (isText) {
+        // If AI fails but we have text or spreadsheet, gracefully fallback to local parser
+        if (isText || isSpreadsheet) {
           const { parseMenuText } = await import('./server/localMenuParser');
-          const textContent = buffer.toString('utf-8');
-          const parsed = parseMenuText(textContent, currencies);
-          if (parsed.sections && parsed.sections.length > 0) {
-            return res.json({ sections: parsed.sections, engine: 'local_fallback', stats: parsed.stats });
+          const textContent = extractTextFromBuffer();
+          if (textContent.trim()) {
+            const parsed = parseMenuText(textContent, currencies);
+            if (parsed.sections && parsed.sections.length > 0) {
+              return res.json({ sections: parsed.sections, engine: 'local_fallback', stats: parsed.stats });
+            }
           }
         }
         throw aiErr;

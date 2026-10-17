@@ -78,6 +78,7 @@ function hotelFormSnapshot(data: Partial<Hotel>): string {
     ? data.amenities
     : String(data.amenities ?? '').split(',').map(s => s.trim()).filter(Boolean);
   return JSON.stringify({
+    name: data.name ?? '',
     description: data.description ?? '',
     categories: data.categories ?? [],
     location: data.location ?? '',
@@ -117,6 +118,7 @@ function pickHotelFormData(data: Partial<Hotel>): Partial<Hotel> {
     ? data.amenities
     : String(data.amenities ?? '').split(',').map(s => s.trim()).filter(Boolean);
   return ({
+    name: data.name ?? '',
     description: data.description ?? '',
     categories: data.categories ?? [],
     location: data.location ?? '',
@@ -153,7 +155,7 @@ function pickHotelFormData(data: Partial<Hotel>): Partial<Hotel> {
 
 /** Fields that describe the listing itself and are never edited from this form. */
 const HOTEL_READONLY_FIELDS = [
-  'id', 'managerId', 'status', 'featured', 'featuredAt', 'createdAt', 'name', 'reviews',
+  'id', 'managerId', 'status', 'featured', 'featuredAt', 'createdAt', 'reviews',
   // Edited by the promotions and bulk editors, which save on their own.
   'promotions',
 ] as const;
@@ -1038,9 +1040,10 @@ export default function ManageHotel() {
       // `status` from page load overwrite an admin's decision.
       for (const field of HOTEL_READONLY_FIELDS) delete updateData[field];
 
-      // Non-admin / non-marketing managers are not permitted to alter stayType or categories.
+      // Non-admin / non-marketing managers are not permitted to alter property name, stayType or categories.
       // Property owners and admins can update owner legal contact details. Entire place specs are always editable by hosts.
       if (!canEditElevatedFields) {
+        delete updateData.name;
         delete updateData.stayType;
         delete updateData.categories;
         if (!canEditOwnerDetails) {
@@ -1048,6 +1051,8 @@ export default function ManageHotel() {
           delete updateData.ownerEmail;
           delete updateData.ownerPhone;
         }
+      } else if (typeof updateData.name === 'string') {
+        updateData.name = updateData.name.trim();
       }
 
       // Strip out undefined values (Firestore rejects them) and anything the
@@ -2167,9 +2172,42 @@ export default function ManageHotel() {
   <SectionCard title="Basic Information" description="The core details about your property shown to guests." collapsible>
     <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4 md:gap-6">
               <div className="md:col-span-2">
-                <label className="block text-[11px] sm:text-xs font-bold text-stone-500 uppercase tracking-wider mb-1 sm:mb-1.5">Property Name</label>
-                <input type="text" required value={editHotelData.name || ''} readOnly disabled className="w-full bg-stone-200 border border-stone-300 px-3 py-2 text-xs sm:text-sm rounded-lg sm:rounded-xl outline-none text-stone-500 cursor-not-allowed" />
-                <p className="text-[11px] sm:text-xs text-stone-400 mt-1">Property name cannot be changed after registration. Contact admin for assistance.</p>
+                <div className="flex items-center justify-between mb-1 sm:mb-1.5">
+                  <div className="flex items-center gap-2">
+                    <label className="block text-[11px] sm:text-xs font-bold text-stone-700 uppercase tracking-wider">Property Name</label>
+                    {!canEditElevatedFields ? (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-stone-500 bg-stone-200/80 px-2 py-0.5 rounded-md">
+                        <Lock className="w-3 h-3 text-stone-500" />
+                        <span>Admin &amp; Marketing Only</span>
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md">
+                        <UserCheck className="w-3 h-3 text-emerald-700" />
+                        <span>Admin &amp; Marketing Editable</span>
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <input
+                  type="text"
+                  required
+                  value={editHotelData.name || ''}
+                  onChange={e => canEditElevatedFields && setEditHotelData({ ...editHotelData, name: e.target.value })}
+                  readOnly={!canEditElevatedFields}
+                  disabled={!canEditElevatedFields}
+                  placeholder="Property name"
+                  className={`w-full border px-3 py-2 text-xs sm:text-sm rounded-lg sm:rounded-xl outline-none transition ${
+                    !canEditElevatedFields
+                      ? 'bg-stone-200 border-stone-300 text-stone-500 cursor-not-allowed'
+                      : 'bg-white border-stone-300 text-stone-900 focus:border-stone-900 focus:ring-1 focus:ring-stone-900 shadow-2xs'
+                  }`}
+                />
+                <FieldError message={detailProblems.name} />
+                <p className="text-[11px] sm:text-xs text-stone-400 mt-1">
+                  {canEditElevatedFields
+                    ? 'As an Admin or Marketing user, you can update this property name. Bookings, guest invoices, and public listings will reflect this update.'
+                    : 'Property name cannot be changed after registration. Contact an admin or marketing team for assistance.'}
+                </p>
               </div>
 
               {/* Stay Type & Whole House Mode */}

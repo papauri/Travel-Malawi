@@ -48,9 +48,11 @@ export default function MenuEditor({ value, onChange, currencies }: Props) {
   const patch = (changes: Partial<Restaurant>) => onChange({ ...value, ...changes });
 
   const handleMenuImport = (importedSections: MenuSection[]) => {
-    // Merge with existing sections
+    // If current sections only contain empty placeholders (0 items), replace them cleanly
     const current = value.sections || [];
-    const merged = [...current, ...importedSections];
+    const hasExistingDishes = current.some(s => s.items && s.items.length > 0);
+    const cleanedCurrent = current.filter(s => s.items && s.items.length > 0);
+    const merged = hasExistingDishes ? [...cleanedCurrent, ...importedSections] : importedSections;
     onChange({ ...value, sections: merged, enabled: true });
   };
 
