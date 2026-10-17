@@ -15,6 +15,7 @@ import { parseReviewDateToTimestamp, formatReviewDate } from '../lib/reviewDates
 interface AdminReviewScraperProps {
   hotels: Hotel[];
   onHotelUpdated: (updatedHotel: Hotel) => void;
+  initialHotelId?: string;
 }
 
 export interface UnifiedPlatformReview {
@@ -108,10 +109,19 @@ export function isReviewDuplicate(
   });
 }
 
-export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminReviewScraperProps) {
-  const [selectedHotelId, setSelectedHotelId] = useState<string>('');
+export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHotelId }: AdminReviewScraperProps) {
+  const [selectedHotelId, setSelectedHotelId] = useState<string>(initialHotelId || '');
   const [hotelSearchQuery, setHotelSearchQuery] = useState<string>('');
-  const [activeSubTab, setActiveSubTab] = useState<'all' | 'discover' | 'existing'>('all');
+  const [activeSubTab, setActiveSubTab] = useState<'all' | 'discover' | 'existing'>(
+    initialHotelId ? 'discover' : 'all'
+  );
+
+  useEffect(() => {
+    if (initialHotelId) {
+      setSelectedHotelId(initialHotelId);
+      setActiveSubTab('discover');
+    }
+  }, [initialHotelId]);
 
   // Direct Guest-Written Reviews from Platform
   const [directReviews, setDirectReviews] = useState<Review[]>([]);
@@ -334,14 +344,20 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
     return hotels.find(h => h.id === selectedHotelId);
   }, [hotels, selectedHotelId]);
 
-  // Filter approved hotels by search query
+  // Include all properties (including pending approval and unpublished) so admins can fetch reviews before or after approval
   const filteredHotels = useMemo(() => {
-    const approved = hotels.filter(h => h.status === 'approved' || !h.status);
-    if (!hotelSearchQuery.trim()) return approved;
+    const sorted = [...hotels].sort((a, b) => {
+      const aPending = a.status === 'pending' ? 0 : a.status === 'rejected' ? 2 : 1;
+      const bPending = b.status === 'pending' ? 0 : b.status === 'rejected' ? 2 : 1;
+      if (aPending !== bPending) return aPending - bPending;
+      return (a.name || '').localeCompare(b.name || '');
+    });
+    if (!hotelSearchQuery.trim()) return sorted;
     const q = hotelSearchQuery.toLowerCase();
-    return approved.filter(h => 
+    return sorted.filter(h => 
       h.name.toLowerCase().includes(q) || 
-      (h.location && h.location.toLowerCase().includes(q))
+      (h.location && h.location.toLowerCase().includes(q)) ||
+      (h.status && h.status.toLowerCase().includes(q))
     );
   }, [hotels, hotelSearchQuery]);
 
@@ -1343,6 +1359,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
                 <option value="">-- Choose property ({filteredHotels.length}) --</option>
                 {filteredHotels.map(hotel => (
                   <option key={hotel.id} value={hotel.id}>
+                    {hotel.status === 'pending' ? '[Pending Approval] ' : hotel.status === 'rejected' ? '[Unpublished] ' : ''}
                     {hotel.name} {hotel.location ? `(${hotel.location})` : ''}
                   </option>
                 ))}
@@ -1367,7 +1384,22 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated }: AdminRevi
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <h4 className="font-serif font-bold text-stone-900 text-sm truncate">{selectedHotel.name}</h4>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h4 className="font-serif font-bold text-stone-900 text-sm truncate">{selectedHotel.name}</h4>
+                  {selectedHotel.status === 'pending' ? (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200/80">
+                      Pending Approval
+                    </span>
+                  ) : selectedHotel.status === 'rejected' ? (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-stone-100 text-stone-600 border border-stone-200">
+                      Unpublished
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/80">
+                      Live
+                    </span>
+                  )}
+                </div>
                 <p className="text-[11px] text-stone-500 truncate flex items-center gap-1 mt-0.5">
                   <MapPin className="w-3 h-3 text-stone-400 shrink-0" />
                   <span>{selectedHotel.location || 'Malawi'}</span>

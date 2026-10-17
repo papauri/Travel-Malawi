@@ -42,7 +42,7 @@ import PriceDisplay from '../components/PriceDisplay';
 type Tab = 'overview' | 'traffic' | 'analytics' | 'properties' | 'reviews' | 'users' | 'bookings' | 'destinations' | 'content' | 'ai' | 'logs' | 'docs' | 'settings' | 'channels';
 
 export default function AdminDashboard() {
-  const { user, loading: authLoading, resetPassword } = useAuth();
+  const { user, actualUser, loading: authLoading, resetPassword } = useAuth();
   const confirmFlow = useConfirmBooking();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -53,9 +53,23 @@ export default function AdminDashboard() {
   
   const [activeTab, setActiveTabState] = useState<Tab>(initialTab);
 
+  const scrollToTopInstant = () => {
+    if (typeof window === 'undefined') return;
+    try {
+      const lenis = (window as any).__lenis;
+      if (lenis && typeof lenis.scrollTo === 'function') {
+        lenis.scrollTo(0, { immediate: true });
+      }
+    } catch {}
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior });
+    if (document.documentElement) document.documentElement.scrollTop = 0;
+    if (document.body) document.body.scrollTop = 0;
+  };
+
   const setActiveTab = (tab: Tab) => {
     setActiveTabState(tab);
     setSearchParams(tab === 'overview' ? {} : { tab }, { replace: true });
+    scrollToTopInstant();
   };
 
   useEffect(() => {
@@ -71,21 +85,34 @@ export default function AdminDashboard() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   const activeTabRef = useRef<HTMLButtonElement | null>(null);
+  const navContainerRef = useRef<HTMLElement | null>(null);
 
-  // Smoothly scroll active tab into view on mobile/tablet navigation
+  // Reset main page scroll to top when switching Admin sections, and keep active tab visible inside sidebar nav container only
   useEffect(() => {
-    if (activeTabRef.current) {
-      activeTabRef.current.scrollIntoView({
-        behavior: 'smooth',
-        block: 'nearest',
-        inline: 'center'
-      });
-    }
-  }, [activeTab]);
+    scrollToTopInstant();
+    const rafId = requestAnimationFrame(() => {
+      scrollToTopInstant();
+      if (activeTabRef.current && navContainerRef.current) {
+        const container = navContainerRef.current;
+        const btn = activeTabRef.current;
+        const btnTop = btn.offsetTop;
+        const btnBottom = btnTop + btn.offsetHeight;
+        const viewTop = container.scrollTop;
+        const viewBottom = viewTop + container.clientHeight;
+        if (btnTop < viewTop) {
+          container.scrollTop = Math.max(0, btnTop - 12);
+        } else if (btnBottom > viewBottom) {
+          container.scrollTop = btnBottom - container.clientHeight + 12;
+        }
+      }
+    });
+    return () => cancelAnimationFrame(rafId);
+  }, [activeTab, settingsSubTab]);
   
   const [hotels, setHotels] = useState<Hotel[]>([]);
   const [rooms, setRooms] = useState<RoomType[]>([]);
   const [inspectingHotel, setInspectingHotel] = useState<Hotel | null>(null);
+  const [reviewScraperHotelId, setReviewScraperHotelId] = useState<string>('');
   const [hotelStatusFilter, setHotelStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [users, setUsers] = useState<User[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -250,13 +277,14 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (!authLoading) {
-      if (!user || (!isAdmin(user) && !isMarketing(user))) {
+      const effectiveAdmin = actualUser || user;
+      if (!effectiveAdmin || (!isAdmin(effectiveAdmin) && !isMarketing(effectiveAdmin))) {
         navigate('/');
         return;
       }
       fetchData();
     }
-  }, [user, authLoading, navigate]);
+  }, [user, actualUser, authLoading, navigate]);
 
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
@@ -1043,6 +1071,7 @@ export default function AdminDashboard() {
 
         {/* Desktop Vertical Navigation */}
         <nav 
+          ref={navContainerRef}
           className="hidden lg:flex lg:flex-col flex-1 min-h-0 overflow-y-auto overflow-x-hidden scrollbar-slim pr-1.5 space-y-4 pt-1 w-full min-w-0 overscroll-contain"
           role="tablist"
           aria-label="Admin Sections"
@@ -1812,12 +1841,17 @@ export default function AdminDashboard() {
                                   }
                                   const toastId = toast.loading(`Sending login credentials to ${targetEmail}…`);
                                   try {
+                                    const token = await auth.currentUser?.getIdToken().catch(() => null);
                                     const res = await fetch('/api/onboarding/welcome-email', {
                                       method: 'POST',
-                                      headers: { 'Content-Type': 'application/json' },
+                                      headers: {
+                                        'Content-Type': 'application/json',
+                                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                                      },
                                       body: JSON.stringify({
                                         hotelId: hotel.id,
                                         hotelName: hotel.name,
+                                        propertyName: hotel.name,
                                         location: hotel.location,
                                         category: hotel.category,
                                         status: hotel.status || 'pending',
@@ -1830,12 +1864,13 @@ export default function AdminDashboard() {
                                         contactEmail: hotel.contactEmail,
                                         contactPhone: hotel.contactPhone,
                                         contactWhatsapp: hotel.contactWhatsapp,
-                                        submittedByEmail: user?.email,
+                                        submittedByEmail: (actualUser || user)?.email,
                                       }),
                                     });
                                     const data = await res.json();
-                                    if (data.ok && data.sentCount > 0) {
-                                      toast.success(`Host login credentials sent via SMTP (${data.sentCount} email${data.sentCount > 1 ? 's' : ''})!`, { id: toastId });
+                                    if ((data.ok || data.success) && (data.sentCount > 0 || data.sent)) {
+                                      const count = data.sentCount || data.recipients?.length || 1;
+                                      toast.success(`Host login credentials sent via SMTP (${count} email${count > 1 ? 's' : ''})!`, { id: toastId });
                                     } else {
                                       toast.error(data.error || 'Could not dispatch SMTP email. Verify SMTP settings.', { id: toastId });
                                     }
@@ -1851,6 +1886,28 @@ export default function AdminDashboard() {
                               <div className="my-1 border-t border-stone-100" />
                             </>
                           )}
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setOpenHotelMenuId(null);
+                              if (hotel.id) {
+                                setReviewScraperHotelId(hotel.id);
+                                setActiveTab('reviews');
+                              }
+                            }}
+                            className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center justify-between transition cursor-pointer"
+                          >
+                            <span className="flex items-center gap-2">
+                              <Star className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                              <span>Get / Manage Reviews</span>
+                            </span>
+                            {(hotel.reviews?.length || hotel.reviewsSummary?.count || 0) > 0 && (
+                              <span className="text-[10px] font-semibold bg-stone-100 text-stone-600 px-1.5 py-0.5 rounded">
+                                {hotel.reviews?.length || hotel.reviewsSummary?.count}
+                              </span>
+                            )}
+                          </button>
 
                           <button
                             type="button"
@@ -3316,7 +3373,11 @@ export default function AdminDashboard() {
         {activeTab === 'reviews' && (
           <AdminReviewScraper 
             hotels={hotels} 
-            onHotelUpdated={(updatedHotel) => setHotels(hotels.map(h => h.id === updatedHotel.id ? updatedHotel : h))} 
+            initialHotelId={reviewScraperHotelId}
+            onHotelUpdated={(updatedHotel) => {
+              setHotels(prev => prev.map(h => h.id === updatedHotel.id ? updatedHotel : h));
+              setInspectingHotel(prev => prev?.id === updatedHotel.id ? updatedHotel : prev);
+            }} 
           />
         )}
 
@@ -3557,6 +3618,14 @@ export default function AdminDashboard() {
               setInspectingHotel(null);
               setHotelToDelete(target);
             }
+          }}
+          onOpenReviewScraper={(id) => {
+            setReviewScraperHotelId(id);
+            setActiveTab('reviews');
+          }}
+          onHotelUpdated={(updatedHotel) => {
+            setHotels(prev => prev.map(h => h.id === updatedHotel.id ? updatedHotel : h));
+            setInspectingHotel(updatedHotel);
           }}
           isUpdating={updatingId === inspectingHotel?.id}
         />

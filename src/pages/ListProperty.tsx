@@ -1498,7 +1498,7 @@ export default function ListProperty() {
     }
 
     // Auto-ensure the user has the host role so they never get blocked by permissions error
-    if (!isHost) {
+    if (!isHost && !user.isShadowed) {
       try {
         await becomeHost();
       } catch (err: any) {
@@ -1521,7 +1521,10 @@ export default function ListProperty() {
     try {
       // Guards against a double submit creating two copies of the property,
       // which then had to be moderated and deleted by hand.
-      if (await hasDuplicateListing(user.uid, draft.name)) {
+      const lookupUid = user.uid.startsWith('shadow_host_')
+        ? (auth.currentUser?.uid || user.uid)
+        : user.uid;
+      if (await hasDuplicateListing(lookupUid, draft.name)) {
         toast.error('You already have a property listed under that name.');
         setStep(0);
         setShowErrors(true);

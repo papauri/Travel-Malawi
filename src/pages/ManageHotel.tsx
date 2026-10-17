@@ -366,12 +366,12 @@ export default function ManageHotel() {
   const isAdminRoute = location.pathname.startsWith('/admin/');
   const backUrl = isAdminRoute ? '/admin' : '/dashboard';
   const navigate = useNavigate();
-  const { user, loading: authLoading, becomeHost } = useAuth();
+  const { user, actualUser, isShadowing, loading: authLoading, becomeHost } = useAuth();
   const { openAuth } = useAuthDialog();
 
   // Certain critical property fields (Stay & Accommodation type, Categories, Owner/Holding entity)
   // are protected so property managers cannot modify them; only Admins or Marketing roles can.
-  const isElevatedUser = Boolean(isAdmin(user) || isMarketing(user));
+  const isElevatedUser = Boolean(isAdmin(actualUser || user) || isMarketing(actualUser || user));
 
   // The tab lives in the query string, so a reload, a shared link and the
   // browser's back button all land where the manager expects.
@@ -784,8 +784,12 @@ export default function ManageHotel() {
           hRaw.managerId.trim() !== ''
         );
         const userEmailLower = user?.email?.toLowerCase();
+        const shadowedIds: string[] = Array.isArray((user as any)?.managedHotelIds)
+          ? (user as any).managedHotelIds
+          : [];
         const canManage = Boolean(
-          isAdmin(user) || isMarketing(user) ||
+          isAdmin(actualUser || user) || isMarketing(actualUser || user) ||
+          (id && shadowedIds.includes(id)) ||
           // Unassigned properties are managed by admins only unless email matches owner/manager.
           (hasAssignedManager && hRaw?.managerId === user?.uid) ||
           (userEmailLower && (
@@ -800,7 +804,7 @@ export default function ManageHotel() {
         if (cancelled) return;
         if (docSnap.exists() && canManage) {
           // Auto-ensure the user has the hotel_manager role when they manage this property
-          if (user && !isHotelManager(user) && !isAdmin(user) && !isMarketing(user)) {
+          if (user && !isShadowing && !isHotelManager(user) && !isAdmin(user) && !isMarketing(user)) {
             becomeHost().catch(() => {});
           }
           const rawHotel = { id: docSnap.id, ...docSnap.data() } as Hotel;
@@ -847,10 +851,13 @@ export default function ManageHotel() {
 
         if (cancelled) return;
         try {
+          const targetManagerId = hRaw?.managerId && hRaw.managerId !== 'unassigned' && hRaw.managerId !== 'none'
+            ? hRaw.managerId
+            : user?.uid;
           const inquiriesQuery = query(
             collection(db, 'hotel_chats'),
             where('hotelId', '==', id),
-            where('managerId', '==', user?.uid)
+            where('managerId', '==', targetManagerId)
           );
           unsubInquiries = onSnapshot(inquiriesQuery, (snap) => {
             const docs = snap.docs

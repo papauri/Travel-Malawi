@@ -9,9 +9,12 @@ import {
   CheckCircle2, XCircle, Clock, MapPin, MapPinOff, ExternalLink,
   Phone, Mail, MessageSquare, Calendar, Building, Camera, Check,
   X, ShieldCheck, AlertTriangle, Eye, Edit3, User,
-  DollarSign, Compass, Info, ChevronRight, Trash2
+  DollarSign, Compass, Info, ChevronRight, Trash2, Star, RefreshCw, Globe
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
+import toast from 'react-hot-toast';
 
 interface ReviewListingModalProps {
   hotel: Hotel | null;
@@ -21,6 +24,8 @@ interface ReviewListingModalProps {
   onApprove: (hotelId: string) => Promise<void>;
   onReject: (hotelId: string, reason?: string) => Promise<void>;
   onDelete?: (hotelId: string) => Promise<void> | void;
+  onOpenReviewScraper?: (hotelId: string) => void;
+  onHotelUpdated?: (updatedHotel: Hotel) => void;
   isUpdating: boolean;
 }
 
@@ -32,12 +37,15 @@ export default function ReviewListingModal({
   onApprove,
   onReject,
   onDelete,
+  onOpenReviewScraper,
+  onHotelUpdated,
   isUpdating
 }: ReviewListingModalProps) {
   const [activeTab, setActiveTab] = useState<'dossier' | 'preview'>('dossier');
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [showRejectForm, setShowRejectForm] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
+  const [isFetchingReviews, setIsFetchingReviews] = useState(false);
 
   if (!hotel) return null;
 
@@ -127,6 +135,81 @@ export default function ReviewListingModal({
   ];
 
   const allPassed = checks.filter(c => c.passed).length >= 4;
+
+  const existingReviews = Array.isArray(hotel.reviews) && hotel.reviews.length > 0
+    ? hotel.reviews
+    : (Array.isArray(hotel.reviewsSummary?.recentReviews) ? hotel.reviewsSummary.recentReviews : []);
+
+  const handleQuickFetchReviews = async () => {
+    if (!hotel.id) return;
+    setIsFetchingReviews(true);
+    try {
+      const response = await fetch('/api/admin/scrape-reviews', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          hotelName: hotel.name,
+          location: hotel.location || 'Malawi',
+          category: hotel.category || 'Lodge',
+          count: 8,
+          minRating: 4,
+          sources: ['Google Reviews', 'TripAdvisor', 'Booking.com', 'SafariBookings'],
+          existingReviews: existingReviews.map(r => ({
+            author: r.author,
+            comment: r.comment,
+            title: r.title,
+          })),
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok || !Array.isArray(data.reviews) || data.reviews.length === 0) {
+        toast.error(data.error || 'No new public reviews found for this property.');
+        return;
+      }
+
+      const formattedNew = data.reviews.map((r: any) => ({
+        author: r.author || 'Verified Guest',
+        rating: Number(r.rating) || 5,
+        title: r.title || '',
+        comment: r.comment || r.text || '',
+        date: r.date || new Date().toISOString().slice(0, 10),
+        source: r.source || 'Google Reviews',
+        sourceUrl: r.sourceUrl || '',
+        verified: true,
+      }));
+
+      const combinedReviews = [...existingReviews, ...formattedNew];
+      const avgRating = Number(
+        (combinedReviews.reduce((sum, r) => sum + (Number(r.rating) || 5), 0) / combinedReviews.length).toFixed(1)
+      );
+      const reviewsSummary = {
+        averageRating: avgRating,
+        count: combinedReviews.length,
+        sources: Array.from(new Set(combinedReviews.map(r => r.source || 'Google Reviews'))),
+        recentReviews: combinedReviews.slice(0, 8),
+        updatedAt: Date.now(),
+      };
+
+      await updateDoc(doc(db, 'hotels', hotel.id), {
+        reviews: combinedReviews,
+        rating: avgRating,
+        reviewsSummary,
+      });
+
+      const updatedHotel: Hotel = {
+        ...hotel,
+        reviews: combinedReviews,
+        reviewsSummary,
+      };
+      onHotelUpdated?.(updatedHotel);
+      toast.success(`Attached ${formattedNew.length} public review(s) to ${hotel.name}!`);
+    } catch (err: any) {
+      console.error('Quick review fetch failed:', err);
+      toast.error(err?.message || 'Failed to fetch public reviews.');
+    } finally {
+      setIsFetchingReviews(false);
+    }
+  };
 
   const handleApproveClick = async () => {
     await onApprove(hotel.id!);
@@ -462,6 +545,72 @@ export default function ReviewListingModal({
                 </div>
               </div>
             )}
+
+            {/* Public Reviews & Social Proof (Works for Pending & Approved Properties) */}
+            <div className="p-4 rounded-xl bg-stone-50 border border-stone-200 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-stone-700">
+                      Public Reviews &amp; Social Proof
+                    </h4>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-white border border-stone-200 text-stone-700">
+                      <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                      <span>{existingReviews.length > 0 ? `${hotel.reviewsSummary?.averageRating || '4.8'} (${existingReviews.length})` : '0 attached'}</span>
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-stone-500 mt-0.5">
+                    Fetch and attach public reviews (Google, TripAdvisor, Booking.com) even while this property is pending approval.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                  <button
+                    type="button"
+                    disabled={isFetchingReviews}
+                    onClick={handleQuickFetchReviews}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-stone-900 hover:bg-stone-800 disabled:opacity-50 text-white text-xs font-semibold transition cursor-pointer shadow-2xs"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isFetchingReviews ? 'animate-spin' : ''}`} />
+                    <span>{isFetchingReviews ? 'Fetching Reviews...' : 'Fetch Public Reviews'}</span>
+                  </button>
+
+                  {onOpenReviewScraper && hotel.id && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClose();
+                        onOpenReviewScraper(hotel.id!);
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-stone-100 text-stone-700 border border-stone-200 text-xs font-semibold transition cursor-pointer"
+                    >
+                      <Globe className="w-3.5 h-3.5 text-stone-500" />
+                      <span>Open Review Studio</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {existingReviews.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                  {existingReviews.slice(0, 4).map((rev, idx) => (
+                    <div key={idx} className="p-2.5 rounded-lg bg-white border border-stone-200/80 text-xs">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-semibold text-stone-900 truncate">{rev.author || 'Guest'}</span>
+                        <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-stone-700 shrink-0">
+                          <Star className="w-2.5 h-2.5 fill-amber-400 text-amber-400" />
+                          {rev.rating || 5}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-stone-600 line-clamp-2 mt-1">{rev.comment}</p>
+                      {rev.source && (
+                        <span className="inline-block text-[10px] text-stone-400 mt-1">{rev.source}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
 

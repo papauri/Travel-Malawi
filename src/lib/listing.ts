@@ -1,4 +1,4 @@
-import { collection, doc, getDocs, query, where, limit, writeBatch, setDoc } from "firebase/firestore";
+import { collection, doc, getDocs, query, where, limit, writeBatch, setDoc, updateDoc } from "firebase/firestore";
 /**
  * Everything the "list your property" flow needs, in one place.
  *
@@ -13,7 +13,7 @@ import { collection, doc, getDocs, query, where, limit, writeBatch, setDoc } fro
  * cannot drift apart.
  */
 
-import { db } from './firebase';
+import { db, auth } from './firebase';
 import { Hotel, PropertyStayType, EntirePlaceDetails } from '../types';
 import { defaultWeek } from './hours';
 import { normalizeImageUrl } from './images';
@@ -521,7 +521,11 @@ export function sanitizeForFirestore<T>(data: T): T {
 
 /** Creates the listing and returns its new id. */
 export async function createListing(draft: ListingDraft, managerId: string): Promise<string> {
-  const rawPayload = draftToHotel(draft, managerId);
+  // Firestore security rules require `request.resource.data.managerId == request.auth.uid` on initial `create`.
+  // When an admin/marketing user is shadowing a host, `auth.currentUser.uid` is the admin's UID while `managerId`
+  // may be the shadowed host's UID. We create with `creatorUid` first so the rule passes, then reassign if needed.
+  const creatorUid = auth.currentUser?.uid || managerId;
+  const rawPayload = draftToHotel(draft, creatorUid);
   const payload = sanitizeForFirestore(rawPayload);
   const docId = draft.id || uuidv4();
 
@@ -584,6 +588,20 @@ export async function createListing(draft: ListingDraft, managerId: string): Pro
       batch.set(doc(collection(db, 'room_types')), cleanRoom);
     }
     await batch.commit();
+  }
+
+  // 3. If an admin created this listing while shadowing a registered host account, assign managerId to that host now
+  if (
+    managerId &&
+    managerId !== creatorUid &&
+    !managerId.startsWith('shadow_host_') &&
+    !managerId.startsWith('host_')
+  ) {
+    try {
+      await updateDoc(doc(db, 'hotels', docId), { managerId });
+    } catch (err) {
+      console.warn('Could not reassign managerId after shadowed creation:', err);
+    }
   }
 
   return docId;

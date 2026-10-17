@@ -348,7 +348,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.error('Error saving user profile to Firestore:', docErr);
       }
 
-      setUser(newUser);
+      applyEffectiveUser(newUser);
       if (typeof window !== 'undefined') {
         sessionStorage.setItem('tm_session_logged_user', newUser.uid);
       }
@@ -378,7 +378,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const result = await signInWithPopup(auth, googleProvider);
       const appUser = await loadOrCreateUser(result.user, roles);
-      setUser(appUser);
+      applyEffectiveUser(appUser);
       if (typeof window !== 'undefined') {
         sessionStorage.setItem('tm_session_logged_user', appUser.uid);
       }
@@ -452,7 +452,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (auth.currentUser) {
       try {
         const appUser = await loadOrCreateUser(auth.currentUser);
-        setUser(appUser);
+        applyEffectiveUser(appUser);
         return appUser;
       } catch (err) {
         console.error('Failed to refresh user:', err);
@@ -473,10 +473,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
    */
   const becomeHost = async () => {
     if (!user) throw new Error('Sign in before listing a property.');
-    if (isHotelManager(user)) return;
+    if (isHotelManager(user) || user.isShadowed) return;
     const roleFields = toRoleFields([...userRoles(user), 'hotel_manager']);
     await setDoc(doc(db, 'users', user.uid), roleFields, { merge: true });
     const updatedUser = { ...user, ...roleFields };
+    setActualUser(updatedUser);
     setUser(updatedUser);
     await logAuthEvent('role_change', `User added Host / Property Manager role: ${user.displayName || user.email}`, updatedUser, {
       grantedRole: 'hotel_manager',

@@ -1272,37 +1272,40 @@ async function startServer() {
     }
   });
 
-  // Property Onboarding Welcome & Login Guidance email — dispatched immediately upon listing submission
-  app.post('/api/onboarding/send-welcome', requireAuth, async (req, res) => {
+  // Property Onboarding Welcome & Login Guidance email — dispatched upon listing submission or from Admin Dashboard
+  app.post(['/api/onboarding/send-welcome', '/api/onboarding/welcome-email'], requireAuth, async (req, res) => {
     try {
       const {
         hotelId,
         propertyName,
+        hotelName,
         ownerEmail,
         ownerName,
         managerEmail,
         managerName,
+        contactEmail,
         location,
         category,
         stayType
       } = req.body || {};
 
-      if (!hotelId || !propertyName) {
-        return res.status(400).json({ error: 'hotelId and propertyName are required.' });
+      const resolvedPropertyName = propertyName || hotelName;
+      if (!hotelId || !resolvedPropertyName) {
+        return res.status(400).json({ ok: false, success: false, error: 'hotelId and propertyName are required.' });
       }
 
-      const effectiveEmail = ownerEmail || managerEmail || (req as any).user?.email || req.authUser?.email;
+      const effectiveEmail = ownerEmail || managerEmail || contactEmail || (req as any).user?.email || req.authUser?.email;
       if (!effectiveEmail || !String(effectiveEmail).includes('@')) {
-        return res.status(400).json({ error: 'Valid owner or manager email is required.' });
+        return res.status(400).json({ ok: false, success: false, error: 'Valid owner or manager email is required.' });
       }
 
       const hostOrigin = req.get('origin') || `${req.protocol}://${req.get('host')}`;
       const result = await sendOnboardingWelcomeEmail({
         hotelId: String(hotelId),
-        propertyName: String(propertyName),
+        propertyName: String(resolvedPropertyName),
         ownerEmail: String(effectiveEmail),
         ownerName: ownerName ? String(ownerName) : undefined,
-        managerEmail: managerEmail ? String(managerEmail) : undefined,
+        managerEmail: (managerEmail || contactEmail) ? String(managerEmail || contactEmail) : undefined,
         managerName: managerName ? String(managerName) : undefined,
         location: location ? String(location) : undefined,
         category: category ? String(category) : undefined,
@@ -1310,16 +1313,22 @@ async function startServer() {
         origin: hostOrigin,
       });
 
+      const sentCount = Array.isArray(result.recipients) && result.recipients.length > 0
+        ? result.recipients.length
+        : (result.success ? 1 : 0);
+
       res.json({
+        ok: result.success,
         success: true,
         sent: result.success,
+        sentCount,
         messageId: result.messageId,
         recipients: result.recipients,
         error: result.error,
       });
     } catch (err: any) {
       console.error('[API] Onboarding welcome email failed:', err);
-      res.status(500).json({ success: false, error: err?.message || 'Failed to dispatch onboarding email' });
+      res.status(500).json({ ok: false, success: false, error: err?.message || 'Failed to dispatch onboarding email' });
     }
   });
 

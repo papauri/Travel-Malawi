@@ -65,9 +65,15 @@ export default function Navbar() {
         where('managerId', '==', user.uid),
         // JS filter instead
       );
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        setPendingCount(snapshot.docs.filter(d => d.data().status === 'pending').length);
-      });
+      const unsubscribe = onSnapshot(
+        q,
+        (snapshot) => {
+          setPendingCount(snapshot.docs.filter(d => d.data().status === 'pending').length);
+        },
+        () => {
+          setPendingCount(0);
+        }
+      );
       return () => unsubscribe();
     }
     // Otherwise clear any count left over from a previous session.
@@ -162,7 +168,7 @@ export default function Navbar() {
                       <span className="xl:hidden">List Property</span>
                     </Link>
                   )}
-                  {(isAdmin(user) || isMarketing(user)) && (
+                  {(isAdmin(actualUser || user) || isMarketing(actualUser || user)) && (
                     <Link
                       to="/admin"
                       className={`text-xs xl:text-sm font-medium transition-colors px-2 py-1 xl:px-2.5 xl:py-1.5 rounded-lg whitespace-nowrap ${
@@ -173,18 +179,6 @@ export default function Navbar() {
                     >
                       Admin
                     </Link>
-                  )}
-                  {canShadow && (
-                    <button
-                      type="button"
-                      onClick={() => setShowShadowModal(true)}
-                      className="inline-flex items-center gap-1.5 px-2 py-1 xl:px-2.5 xl:py-1 rounded-full border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-950 text-xs font-semibold transition shadow-2xs whitespace-nowrap cursor-pointer"
-                      title="Shadow a Property Manager for support and operations"
-                    >
-                      <UserCheck className="w-3.5 h-3.5 text-amber-700 shrink-0" />
-                      <span className="hidden xl:inline">Shadow Host</span>
-                      <span className="xl:hidden">Shadow</span>
-                    </button>
                   )}
                   <Link
                     to="/saved"
@@ -292,7 +286,7 @@ export default function Navbar() {
                             <span>List your property</span>
                           </Link>
                         )}
-                        {(isAdmin(user) || isMarketing(user)) && (
+                        {(isAdmin(actualUser || user) || isMarketing(actualUser || user)) && (
                           <Link
                             to="/admin"
                             onClick={() => setShowUserMenu(false)}
@@ -300,19 +294,6 @@ export default function Navbar() {
                           >
                             <ShieldCheck className="h-3.5 w-3.5" /> Admin
                           </Link>
-                        )}
-                        {canShadow && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setShowUserMenu(false);
-                              setShowShadowModal(true);
-                            }}
-                            className="w-full flex items-center gap-2 px-3.5 py-2 text-xs sm:text-sm text-amber-900 hover:bg-amber-50 transition text-left cursor-pointer font-medium"
-                          >
-                            <UserCheck className="h-3.5 w-3.5 text-amber-600" />
-                            <span>Shadow a Host</span>
-                          </button>
                         )}
                       </div>
 
@@ -324,13 +305,13 @@ export default function Navbar() {
                               setShowUserMenu(false);
                               setShowShadowModal(true);
                             }}
-                            className="w-full flex items-center justify-between px-3.5 py-2 text-xs sm:text-sm text-amber-900 bg-amber-50/70 hover:bg-amber-100 transition text-left cursor-pointer font-medium"
+                            className="w-full flex items-center justify-between px-3.5 py-2 text-xs sm:text-sm text-stone-600 hover:bg-stone-50 hover:text-stone-900 transition text-left cursor-pointer"
                           >
                             <span className="flex items-center gap-2">
-                              <UserCheck className="h-3.5 w-3.5 text-amber-600" />
+                              <UserCheck className="h-3.5 w-3.5 text-stone-500" />
                               <span>Shadow a Host</span>
                             </span>
-                            <span className="text-[10px] bg-amber-200/80 text-amber-950 font-bold px-1.5 py-0.5 rounded">
+                            <span className="text-[10px] bg-stone-100 text-stone-600 border border-stone-200/80 font-semibold px-1.5 py-0.5 rounded-md">
                               Support
                             </span>
                           </button>

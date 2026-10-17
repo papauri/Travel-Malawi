@@ -181,9 +181,13 @@ export default function ManagerDashboard() {
 
       const userEmailLower = user?.email?.toLowerCase();
       const userIsAdmin = !isShadowing && Boolean(user && (isAdmin(user) || isMarketing(user)));
+      const shadowedHotelIds: string[] = Array.isArray((user as any)?.managedHotelIds)
+        ? (user as any).managedHotelIds
+        : [];
 
       const hotelsData = allHotels.filter(h => {
         if (userIsAdmin) return true;
+        if (h.id && shadowedHotelIds.includes(h.id)) return true;
         const hasAssignedManager = Boolean(
           h.managerId &&
           h.managerId !== 'unassigned' &&
@@ -204,7 +208,7 @@ export default function ManagerDashboard() {
       });
 
       setHotels(hotelsData);
-      if (hotelsData.length > 0 && user && !isHotelManager(user) && !isAdmin(user) && !isMarketing(user)) {
+      if (hotelsData.length > 0 && user && !isShadowing && !isHotelManager(user) && !isAdmin(user) && !isMarketing(user)) {
         becomeHost().catch(() => {});
       }
 
