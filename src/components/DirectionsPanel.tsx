@@ -110,14 +110,34 @@ export default function DirectionsPanel({
       return;
     }
 
+    const applyFallbackOrigin = () => {
+      try {
+        const saved = localStorage.getItem('tm_manual_user_location');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed?.coords?.lat && parsed?.coords?.lng) {
+            setGuestLocation({ lat: parsed.coords.lat, lng: parsed.coords.lng });
+            setSelectedOriginName(parsed.label || 'Lilongwe (Default)');
+            toast.success(`Using ${parsed.label || 'Lilongwe'} as starting point.`);
+            return;
+          }
+        }
+      } catch {
+        // ignore
+      }
+      const fallback = COMMON_ORIGINS[0];
+      setGuestLocation(fallback.coords);
+      setSelectedOriginName(`${fallback.label} (Default)`);
+      toast.success(`Using ${fallback.label} as starting point.`);
+    };
+
     if (!navigator.geolocation) {
-      toast.error('Geolocation is not supported by your browser.');
+      applyFallbackOrigin();
       return;
     }
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
       pos => {
-        
         setLocating(false);
         const origin = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         setGuestLocation(origin);
@@ -126,10 +146,10 @@ export default function DirectionsPanel({
       },
       err => {
         setLocating(false);
-        console.error('Geolocation error:', err);
-        toast.error('Could not determine your location. Please check browser permissions.');
+        console.warn('Geolocation fallback used:', err);
+        applyFallbackOrigin();
       },
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: true, timeout: 8000 }
     );
   };
 

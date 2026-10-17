@@ -2693,7 +2693,7 @@ export default function Home() {
                                       </div>
                                       <div className="bg-white/80 rounded-lg p-2 border border-emerald-100">
                                         <span className="text-[10px] text-stone-500 font-medium block">Est. Road Distance</span>
-                                        <span className="font-extrabold text-blue-700 text-sm">
+                                        <span className="font-extrabold text-emerald-800 text-sm">
                                           ~{travelEstimate.roadDistanceKm} km
                                         </span>
                                       </div>
@@ -2709,7 +2709,7 @@ export default function Home() {
                                         href={getDirectionsUrl(userLocation, coords!, hotel.name)}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs transition"
+                                        className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 px-3 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold shadow-xs transition"
                                       >
                                         <Navigation className="w-3.5 h-3.5 fill-white" />
                                         <span>Open in Google Maps</span>
@@ -2725,16 +2725,16 @@ export default function Home() {
                                     </div>
                                   </div>
                                 ) : !showUserLocation ? (
-                                  <div className="bg-blue-50/70 border border-blue-200/70 rounded-xl p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
-                                    <div className="flex items-center gap-2 text-xs text-blue-900">
-                                      <Locate className="w-4 h-4 text-blue-600 shrink-0" />
+                                  <div className="bg-stone-50 border border-stone-200 rounded-xl p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
+                                    <div className="flex items-center gap-2 text-xs text-stone-700">
+                                      <Locate className="w-4 h-4 text-emerald-700 shrink-0" />
                                       <span>Turn on location or pick a Malawian city to calculate driving time & distance.</span>
                                     </div>
                                     <div className="flex items-center gap-2 shrink-0">
                                       <button
                                         type="button"
                                         onClick={handleToggleUserLocation}
-                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-xs transition"
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold rounded-xl shadow-xs transition cursor-pointer"
                                       >
                                         <Locate className="w-3.5 h-3.5" />
                                         <span>Use GPS</span>
@@ -2742,7 +2742,7 @@ export default function Home() {
                                       <button
                                         type="button"
                                         onClick={() => openAccessPermissionsModal('location')}
-                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-stone-300 hover:bg-stone-50 text-stone-800 text-xs font-bold rounded-xl shadow-xs transition"
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-stone-300 hover:bg-stone-50 text-stone-800 text-xs font-bold rounded-xl shadow-xs transition cursor-pointer"
                                       >
                                         <MapPin className="w-3.5 h-3.5 text-emerald-600" />
                                         <span>Pick City</span>

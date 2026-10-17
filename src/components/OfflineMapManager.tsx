@@ -141,8 +141,27 @@ export default function OfflineMapManager({
       setGpsLocation(null);
       return;
     }
+
+    const applyFallbackHub = () => {
+      try {
+        const saved = localStorage.getItem('tm_manual_user_location');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed?.coords?.lat && parsed?.coords?.lng) {
+            setGpsLocation({ lat: parsed.coords.lat, lng: parsed.coords.lng });
+            toast.success(`Using ${parsed.label || 'Lilongwe'} for relative distance & bearing.`);
+            return;
+          }
+        }
+      } catch {
+        // ignore
+      }
+      setGpsLocation({ lat: -13.9626, lng: 33.7741 });
+      toast.success('Using Lilongwe (Default) for relative distance & bearing.');
+    };
+
     if (!navigator.geolocation) {
-      toast.error('GPS Geolocation is not supported by your device');
+      applyFallbackHub();
       return;
     }
     setIsGpsLocating(true);
@@ -152,11 +171,11 @@ export default function OfflineMapManager({
         setGpsLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
         toast.success('Current GPS satellite position acquired!');
       },
-      (err) => {
+      () => {
         setIsGpsLocating(false);
-        toast.error(`Could not read GPS position: ${err.message}`);
+        applyFallbackHub();
       },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 }
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
     );
   };
 

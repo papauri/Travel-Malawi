@@ -897,11 +897,6 @@ async function startServer() {
 
   app.post('/api/ai/parse-property-doc', requireAuth, aiLimiter, menuUpload.single('document'), async (req, res) => {
     try {
-      const status = getPublicAIStatus();
-      if (!status.enabled || !status.available) {
-        return res.status(503).json({ error: 'Property parsing requires an active AI provider. Please configure one in the Admin Dashboard.' });
-      }
-
       let buffer: Buffer;
       let mimeType: string;
       let fileName: string;
@@ -916,6 +911,20 @@ async function startServer() {
         fileName = 'pasted-doc.txt';
       } else {
         return res.status(400).json({ error: 'No file uploaded or text provided' });
+      }
+
+      const isTextOrSpreadsheet =
+        mimeType === 'text/plain' ||
+        mimeType === 'text/csv' ||
+        mimeType.includes('spreadsheet') ||
+        mimeType.includes('excel') ||
+        /\.(txt|csv|xlsx|xls)$/i.test(fileName);
+
+      const status = getPublicAIStatus();
+      if (!isTextOrSpreadsheet && (!status.enabled || !status.available)) {
+        return res.status(503).json({
+          error: 'Scanning photos or PDFs requires an active AI provider. For instant free deciphering, paste the text or upload a TXT, CSV, or Excel file.',
+        });
       }
 
       const { parsePropertyDocContent } = await import('./server/aiService');

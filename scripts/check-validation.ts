@@ -272,6 +272,13 @@ check('converts USD-only room to dual currency', parsedDoc.rooms?.[1]?.prices?.U
 check('converts MWK-only room to dual currency', parsedDoc.rooms?.[2]?.prices?.MWK, 140000);
 check('does not invent fake prices for unpriced room', parsedDoc.rooms?.[3]?.prices, { USD: 0, MWK: 0 });
 
+const sampleCsv = `Room Name,Max Guests,Units,Price USD,Price MWK,Description
+Executive King Suite,2,3,150,265000,Panoramic lake view with balcony
+Standard Twin Room,2,6,85,150000,Garden view twin beds`;
+const parsedCsv = parsePropertyText(sampleCsv);
+check('deciphers CSV/Excel room table rows', parsedCsv.rooms?.length, 2);
+check('deciphers CSV room dual prices and units', { p: parsedCsv.rooms?.[0]?.prices, q: parsedCsv.rooms?.[0]?.quantity }, { p: { USD: 150, MWK: 265000 }, q: 3 });
+
 const sengaBay = { lat: -13.7333, lng: 34.6167 };
 check('detects Lake Malawi crossing to Likoma Island', isCrossingLakeMalawi(sengaBay, kayaMawa), true);
 check('road leg Lilongwe -> Blantyre does not cross lake', isCrossingLakeMalawi(lilongwe, blantyre), false);

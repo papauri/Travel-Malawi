@@ -48,6 +48,8 @@ interface PropertyDocumentImporterProps {
 const ACCEPTED_TYPES: Record<string, string> = {
   'text/plain': '.txt',
   'text/csv': '.csv',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx',
+  'application/vnd.ms-excel': '.xls',
   'image/jpeg': '.jpg',
   'image/png': '.png',
   'image/webp': '.webp',
@@ -138,8 +140,8 @@ export default function PropertyDocumentImporter({
     }
 
     const accepted = Object.keys(ACCEPTED_TYPES);
-    if (!accepted.includes(f.type) && !f.name.match(/\.(jpg|jpeg|png|webp|pdf|txt|csv)$/i)) {
-      setError('Unsupported file type. Please upload a TXT, CSV, image, or PDF file.');
+    if (!accepted.includes(f.type) && !f.name.match(/\.(jpg|jpeg|png|webp|pdf|txt|csv|xlsx|xls)$/i)) {
+      setError('Unsupported file type. Please upload a TXT, CSV, Excel (.xlsx), image, or PDF file.');
       return;
     }
 
@@ -273,10 +275,17 @@ export default function PropertyDocumentImporter({
         return;
       }
 
-      // 2. Image or PDF file upload
-      if (!hasAI) {
+      const isSpreadsheetFile =
+        activeTab === 'file' &&
+        file &&
+        (file.type.includes('spreadsheet') ||
+          file.type.includes('excel') ||
+          /\.(xlsx|xls)$/i.test(file.name));
+
+      // 2. Image or PDF file upload (requires AI vision) vs Excel spreadsheet (works with 0-credit server XLSX->local parser)
+      if (!hasAI && !isSpreadsheetFile) {
         setError(
-          'Scanning photos or PDFs requires cloud vision. Please switch to "Paste Text / Rate Sheet" or upload a .txt / .csv file for instant local deciphering.'
+          'Scanning photos or PDFs requires cloud vision. Please switch to "Paste Text / Rate Sheet" or upload a .txt, .csv, or .xlsx file for instant local deciphering.'
         );
         return;
       }
