@@ -47,6 +47,16 @@ unclaimed routes belong to `platform`.
 agents/board/<lead>.md          your log (only you write it)
 agents/board/inbox/<lead>.md    handoffs addressed to <lead> (others append, owner reads)
 ```
+**Crash-safe logging (mandatory).** Sessions can drop mid-run. The first line you write to your
+board is `status: in-progress`; append each log line **immediately after each fix** (never batch
+them for the end); append `status: done` as the very last line when §5 is met. The tracker
+(`node agents/status.mjs`) reads only the last `status:` line.
+
+**Resuming.** If your board says `status: in-progress`, or is missing but `git diff --stat` shows
+changes in your owned files, a previous run was interrupted: read your board and
+`git diff -- <your owned files>` (that work is yours — keep it, log it, don't redo it), then
+continue the checklist from where it stopped.
+
 **Log line** (in your own board file):
 ```
 - [<lead>-<n>] P1 FIXED  src/lib/availability.ts:88 — checkOut==checkIn accepted → now rejected
@@ -57,6 +67,10 @@ agents/board/inbox/<lead>.md    handoffs addressed to <lead> (others append, own
 echo "- [H-<from>-<n>] P1 → <to> | src/x.tsx:120 | problem → requested change | contract: <none|what changed>" >> agents/board/inbox/<to>.md
 ```
 (PowerShell: `Add-Content agents/board/inbox/<to>.md "<line>"`.)
+
+Handoff ids must be unique forever: use `H-<from>-<n>` where `<n>` is the number of the log line on
+your own board that records the finding (e.g. `[onboarding-29]` → `H-onboarding-29`). Never reuse a
+number from an earlier wave — the tracker matches DONE lines by id.
 
 When you process your inbox, append the outcome to your own board:
 `- [H-<from>-<n>] DONE|REJECTED <one-line reason>`.

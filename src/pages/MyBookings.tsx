@@ -4,7 +4,7 @@ import { useAuthDialog } from '../contexts/AuthDialogContext';
 import {
   collection, query, where, getDocs, getDoc, doc, updateDoc, addDoc, onSnapshot,
 } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db, auth } from '../lib/firebase';
 import { Booking, Hotel, RoomType, Broadcast } from '../types';
 import {
   Calendar, MapPin, ExternalLink, Clock, CheckCircle2, XCircle, Ban, Star, Copy, ShieldCheck, Users, MessageCircle, Phone, Info, Map as MapIcon, MessageSquare, Megaphone, X, Check, Building2, Mail, Edit2, Filter as FilterIcon, ChevronDown
@@ -26,6 +26,8 @@ import { cancellationTerms, formatMoney, isStayComplete, FREE_CANCELLATION_DAYS 
 import { isTraveller, isAdmin, isMarketing } from '../lib/roles';
 import { updateBookingWithSlot, cancelBookingReminders } from '../lib/bookingWrites';
 import { useConfirmBooking } from '../hooks/useConfirmBooking';
+import { EMAIL_PATTERN } from '../lib/contact';
+import { isCurrencyCode, roomPrice } from '../lib/currency';
 import PriceMismatchNotice from '../components/PriceMismatchNotice';
 import PriceDisplay from '../components/PriceDisplay';
 import OfflineBookingsQueue from '../components/OfflineBookingsQueue';
@@ -114,6 +116,9 @@ export default function MyBookings() {
             h.managerId.trim() !== ''
           );
           if (hasAssignedManager && h.managerId === uid) return true;
+          // Same owner fields the security rules accept.
+          const extra = h as Hotel & { ownerId?: string; createdBy?: string };
+          if (extra.ownerId === uid || extra.createdBy === uid) return true;
           if (userEmailLower) {
             if (h.managerEmail && h.managerEmail.toLowerCase() === userEmailLower) return true;
             if (h.ownerEmail && h.ownerEmail.toLowerCase() === userEmailLower) return true;
@@ -121,6 +126,14 @@ export default function MyBookings() {
           }
           return false;
         });
+
+        // The rules only honour an email match once the address is verified;
+        // say so instead of showing an empty host tab.
+        if (!userIsAdmin && auth.currentUser && !auth.currentUser.emailVerified
+            && hotels.some(h => h.managerId !== uid && [h.managerEmail, h.ownerEmail, h.contactEmail]
+              .some(e => e && e.toLowerCase() === userEmailLower))) {
+          toast.error('Verify your email address to see bookings for the properties listed under it, then sign in again.', { id: 'verify-email-bookings' });
+        }
 
         setManagerHotels(hotels);
         try {
@@ -730,7 +743,8 @@ export default function MyBookings() {
                             {booking.status === 'pending' && (
                               <button
                                 onClick={() => setConfirmModalBooking(booking)}
-                                className="p-2 text-emerald-600 hover:text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl hover:bg-emerald-100 transition shadow-sm"
+                                disabled={busyId === booking.id || confirmFlow.busyId === booking.id}
+                                className="disabled:opacity-50 p-2 text-emerald-600 hover:text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl hover:bg-emerald-100 transition shadow-sm"
                                 title="Approve Booking"
                               >
                                 <Check className="w-4 h-4" />
@@ -739,7 +753,8 @@ export default function MyBookings() {
                             {booking.status === 'pending' && (
                               <button
                                 onClick={() => handleRejectHostBooking(booking)}
-                                className="p-2 text-red-600 hover:text-red-700 bg-red-50 border border-red-200 rounded-xl hover:bg-red-100 transition shadow-sm"
+                                disabled={busyId === booking.id || confirmFlow.busyId === booking.id}
+                                className="disabled:opacity-50 p-2 text-red-600 hover:text-red-700 bg-red-50 border border-red-200 rounded-xl hover:bg-red-100 transition shadow-sm"
                                 title="Decline Booking"
                               >
                                 <X className="w-4 h-4" />
@@ -896,7 +911,7 @@ export default function MyBookings() {
                     <div className="text-left sm:text-right w-full sm:w-auto">
                       <p className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-1">Total Price</p>
                       <div className="text-lg sm:text-xl md:text-2xl font-serif font-bold text-stone-900 tracking-tight">
-                        <PriceDisplay amount={booking.total ?? ((booking.room?.price ?? 0) * nights)} currency={booking.currency} />
+                        <PriceDisplay amount={booking.total ?? (booking.room && isCurrencyCode(booking.currency) ? (roomPrice(booking.room, booking.currency) ?? 0) * nights : null)} currency={booking.currency} />
                       </div>
                     </div>
                   </div>
@@ -1261,12 +1276,19 @@ function QuickEditBookingModal({ booking, onClose, onUpdated }: { booking: Enric
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!booking.id) return;
+    if (guestName.trim().length < 2 || !EMAIL_PATTERN.test(guestEmail.trim())) {
+      toast.error('Please give a name and a valid email address.');
+      return;
+    }
+    // A separate WhatsApp number on the booking is kept; it only follows the
+    // phone when it was empty or the same number.
+    const keepsWhatsapp = !!booking.guestWhatsapp && booking.guestWhatsapp !== booking.guestPhone;
     setSubmitting(true);
     try {
       await updateDoc(doc(db, 'bookings', booking.id), {
         guestName: guestName.trim(),
         guestPhone: guestPhone.trim(),
-        guestWhatsapp: guestPhone.trim(),
+        guestWhatsapp: keepsWhatsapp ? booking.guestWhatsapp : guestPhone.trim(),
         guestEmail: guestEmail.trim(),
         updatedAt: Date.now()
       });

@@ -24,6 +24,10 @@ export function useSystemSettings() {
         setSettings(docSnap.data() as SystemSettings);
       }
       setLoading(false);
+    }, (err) => {
+      // Permission or network failure: keep defaults rather than loading forever.
+      console.warn('[useSystemSettings] Could not read system content:', err?.message || err);
+      setLoading(false);
     });
     return unsub;
   }, []);

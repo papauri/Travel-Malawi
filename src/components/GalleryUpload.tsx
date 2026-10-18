@@ -67,6 +67,12 @@ export default function GalleryUpload({
    * selection of ten used to abandon the other nine.
    */
   const uploadAll = async (files: FileList) => {
+    // A second batch dropped mid-upload would append to the same stale list
+    // and drop the first batch's photos.
+    if (isUploading) {
+      toast.error("Please wait for the current upload to finish.");
+      return;
+    }
     const chosen = Array.from(files);
     const rejected: string[] = [];
     const accepted = chosen.filter(file => {
@@ -130,7 +136,7 @@ export default function GalleryUpload({
     const newUrls = [...value];
     const removedUrl = newUrls.splice(idx, 1)[0];
     onChange(newUrls);
-    toast.success("Photo deleted from media.", {
+    toast.success("Photo removed. Save to apply.", {
       icon: "🗑️",
       duration: 5000,
     });
@@ -163,7 +169,7 @@ export default function GalleryUpload({
     onChange(newUrls);
     setSelectedUrls(new Set());
     setIsSelectMode(false);
-    toast.success(`Deleted ${count} photo${count > 1 ? 's' : ''} from media.`, {
+    toast.success(`Removed ${count} photo${count > 1 ? 's' : ''}. Save to apply.`, {
       icon: "🗑️",
     });
   };

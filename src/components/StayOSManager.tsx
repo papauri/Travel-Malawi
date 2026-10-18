@@ -1,5 +1,5 @@
 import SectionCard from './SectionCard';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import ConfirmDialog from './ConfirmDialog';
 import { doc, updateDoc } from 'firebase/firestore';
@@ -10,6 +10,10 @@ import { ShieldCheck, Zap, Droplets, Map, CheckCircle2, User, Plus, Trash2, Save
 
 interface StayOSManagerProps {
   hotel: Hotel;
+  /** Lets the page warn before a tab switch discards unsaved edits. */
+  onDirtyChange?: (dirty: boolean) => void;
+  /** Called with what was written, so the page's copy of the hotel stays current. */
+  onSaved?: (patch: Pick<Hotel, 'infrastructure' | 'crew' | 'dailyBoard'>) => void;
 }
 
 
@@ -61,7 +65,7 @@ const CustomSelect = ({ value, options, onChange, placeholder }: { value: string
   );
 };
 
-export default function StayOSManager({ hotel }: StayOSManagerProps) {
+export default function StayOSManager({ hotel, onDirtyChange, onSaved }: StayOSManagerProps) {
   const [saving, setSaving] = useState(false);
   const [infrastructure, setInfrastructure] = useState<InfrastructureDetails>(
     hotel.infrastructure || {
@@ -77,16 +81,11 @@ export default function StayOSManager({ hotel }: StayOSManagerProps) {
   const [crew, setCrew] = useState<StayCrewMember[]>(hotel.crew || []);
   const [dailyBoard, setDailyBoard] = useState<DailyBoard>(hotel.dailyBoard || { activities: '', dishOfTheDay: '', notes: '' });
 
-  const initialInfrastructure = hotel.infrastructure || {
-    powerSource: 'None',
-    waterSource: 'Water Board',
-    roadAccess: 'Tarred',
-    internetSource: 'None',
-    workspaceSetup: 'None',
-    offlineTrustBadge: false
-  };
-  const initialCrew = hotel.crew || [];
-  const initialDailyBoard = hotel.dailyBoard || { activities: '', dishOfTheDay: '', notes: '' };
+  // What is stored now. Moved forward on save so a saved form is no longer "unsaved".
+  const [saved, setSaved] = useState(() => ({ infrastructure, crew, dailyBoard }));
+  const initialInfrastructure = saved.infrastructure;
+  const initialCrew = saved.crew;
+  const initialDailyBoard = saved.dailyBoard;
   
   const isDirty = 
     JSON.stringify(infrastructure) !== JSON.stringify(initialInfrastructure) ||
@@ -95,19 +94,25 @@ export default function StayOSManager({ hotel }: StayOSManagerProps) {
 
   const blocker = useUnsavedChanges(isDirty);
 
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
+  useEffect(() => () => onDirtyChange?.(false), [onDirtyChange]);
+
 
   const handleSave = async () => {
     setSaving(true);
     try {
+      const savedBoard = { ...dailyBoard, updatedAt: Date.now() };
       await updateDoc(doc(db, 'hotels', hotel.id!), {
         infrastructure,
         crew,
-        dailyBoard: {
-          ...dailyBoard,
-          updatedAt: Date.now()
-        }
+        dailyBoard: savedBoard
       });
-      toast.success('Stay OS settings saved successfully');
+      setDailyBoard(savedBoard);
+      setSaved({ infrastructure, crew, dailyBoard: savedBoard });
+      onSaved?.({ infrastructure, crew, dailyBoard: savedBoard });
+      toast.success('Ulendo stay settings saved');
     } catch (e) {
       console.error(e);
       toast.error('Failed to save settings');
@@ -137,7 +142,7 @@ export default function StayOSManager({ hotel }: StayOSManagerProps) {
         <div className="mb-6">
           <h2 className="text-2xl font-serif font-bold text-stone-900 flex items-center gap-2">
             <ShieldCheck className="w-6 h-6 text-emerald-600" />
-            Stay OS Verification
+            Ulendo Stay Verification
           </h2>
           <p className="text-stone-500 mt-1 max-w-2xl">
             Build trust with guests without processing payments. These verified infrastructure details appear on your digital stay vouchers.
@@ -459,7 +464,7 @@ export default function StayOSManager({ hotel }: StayOSManagerProps) {
       <ConfirmDialog 
         isOpen={blocker.state === 'blocked'} 
         title="Unsaved Changes" 
-        message="You have unsaved changes to your Stay OS settings. Are you sure you want to leave this page and discard them?"
+        message="You have unsaved changes to your Ulendo stay settings. Are you sure you want to leave this page and discard them?"
         confirmText="Discard and Leave"
         cancelText="Stay on Page"
         isDestructive={true}

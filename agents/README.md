@@ -41,8 +41,24 @@ load the same briefs).
 - **ui / ux → owners** — cross-file design or UX defects they find but do not own.
 - **cleanup** talks to no one; it only removes what it can prove is unused.
 
+## Tracker (task lead)
+The tracker is not an LLM — it is `node agents/status.mjs [--write]`. It reads the board and prints
+each lead's status (`not-started | in-progress | done`), fix/log counts, unprocessed handoffs and the
+**next wave to run**. `--write` saves `agents/board/TRACKER.md` so any agent (or a new session after
+a disconnect) can pick up exactly where the last one stopped. The orchestrator runs it before and
+after every wave instead of reading board files itself — that is what keeps orchestration cheap.
+
+## Directives (cross-cutting goals)
+When one goal touches many departments (e.g. "no hard-coded properties"), the orchestrator writes it
+once as `agents/directives/D<n>-<slug>.md` (rule, rationale, how to find) and appends one inbox
+line per affected lead: `- [H-orch-D<n>] P1 → <lead> | <their files> | apply directive ... | contract: none`.
+Leads read the directive file instead of a long prompt; the tracker tracks the inbox lines like any
+handoff. Pick affected leads by grepping first and mapping hits through the ownership table.
+
 ## Run playbook (orchestrator — any agent)
-1. Clear the board: `rm -rf agents/board && mkdir -p agents/board/inbox`.
+0. **Resume first:** run `node agents/status.mjs`. If any lead is not `not-started`, do **not** clear
+   the board — run the wave it names (interrupted leads resume per PROTOCOL §4).
+1. Fresh audit only: clear the board: `rm -rf agents/board && mkdir -p agents/board/inbox`.
 2. **Wave 1 (parallel):** start every lead except `cleanup` with: *"You are lead `<x>`. Read
    agents/PROTOCOL.md and agents/leads/<x>.md. Run a full audit-and-patch of your owned files,
    write agents/board/<x>.md, send handoffs per §3."*
@@ -50,6 +66,7 @@ load the same briefs).
    Prefer resuming the wave-1 session (it already holds the files). Repeat until inboxes are empty
    (normally one pass).
 4. **Wave 3:** start `cleanup` alone.
-5. **Verify:** `npm run lint`, `npm run build`, `npm run check:validation`. Route any failure to its
+5. Run `node agents/status.mjs --write` after each wave; it names the next step.
+6. **Verify:** `npm run lint`, `npm run build`, `npm run check:validation`. Route any failure to its
    owner by the map above. Then commit + push per `AGENTS.md`.
-6. Single-domain bug later? Call just that lead with the bug as its task — no wave needed.
+7. Single-domain bug later? Call just that lead with the bug as its task — no wave needed.

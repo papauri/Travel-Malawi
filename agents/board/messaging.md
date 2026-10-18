@@ -1,0 +1,29 @@
+status: in-progress
+- [messaging-1] P1 FIXED  src/components/BookingChat.tsx:441 — first-confirmation email used stale snapshot arrivalPin (undefined) → uses freshly written PIN
+- [messaging-2] P2 FIXED  src/components/BroadcastManager.tsx:41 — double-click sent the same broadcast twice → isSending guard + disabled button
+- [messaging-3] P2 FIXED  src/components/CallModal.tsx:64 — mute/camera/speaker toggles carried into next call → reset per localStream
+- [messaging-4] P1 FIXED  src/components/CallModal.tsx:71 — incoming call in the open chat never rang → start/stopRinging tied to incomingCall id
+- [messaging-5] P2 FIXED  src/components/ReminderTemplatesModal.tsx:86 — fake +265 999 000 000 manager phone sent to guests → falls back to template wording
+- [messaging-6] P1 FIXED  src/components/ReminderTemplatesModal.tsx:272 — 0-prefixed local numbers broke wa.me link → whatsappDigits() normalises to 265…
+- [messaging-7] P1 FIXED  src/lib/reminderTemplates.ts:234 — {managerPhone} default was a fake number → 'our front desk'
+- [messaging-8] P1 FIXED  src/contexts/ChatModalContext.tsx:69,133 — closing a chat ran sessionStorage.clear() (wiped auth/shadow/Ulendo state) → removes only chat-prefixed keys
+- [messaging-9] P1 FIXED  src/hooks/useUnreadBroadcasts.ts:62 — broadcasts listener replaced without unsubscribing on each bookings snapshot → leak + duplicate toasts; now unsubbed first
+- [messaging-10] P2 FIXED src/hooks/useUnreadBroadcasts.ts:11 — hook mounted 3x announced each broadcast 3x → module-level announced set + toast id
+- [messaging-11] P2 FIXED src/hooks/useUnreadBroadcasts.ts:121 — corrupt seenBroadcasts JSON crashed the count → safe reader
+- [messaging-12] P2 FIXED src/hooks/useUnreadMessages.ts:98 — initial-load flag cleared after first listener → backlog of 2nd-4th listeners buzzed on every load; waits for all listeners
+- [messaging-13] P1 FIXED src/lib/notificationSound.ts:153 — ringer kept ringing after user muted → checks preference each ring
+- [messaging-14] P1 FIXED src/lib/notificationSound.ts:250 — new Notification() throws on Android Chrome, aborting snapshot handler → try/catch
+- [messaging-15] P1 FIXED src/components/PropertyChat.tsx:98 — manager opening chat overwrote guest's name with manager's own name → manager side uses passed/stored guest name only
+- [messaging-16] P1 FIXED src/components/PropertyChat.tsx:279 — listeners attached before chat doc existed were permission-denied and never retried (first inquiry blank) → attach after ensure
+- [messaging-17] P1 FIXED src/lib/useWebRTC.ts:215,255 — startCall/answerCall failure left camera/mic running → try/catch + cleanup + toast
+- [messaging-18] P2 FIXED src/lib/useWebRTC.ts:105,296 — ICE candidate signalling docs left behind on end/reject → deleteCandidates
+- [messaging-19] P1 FIXED src/components/GlobalNotificationManager.tsx:140 — booking-chat calls never rang when chat closed; call listener read stale chat data → shared watchCalls for hotel_chats + live bookings with latest context
+- [messaging-20] P2 FIXED src/components/GlobalNotificationManager.tsx:222 — ended-call backlog of a newly watched chat stopped ringing for another chat → only stop for ringing/modified calls
+- [messaging-21] P2 FIXED src/components/GlobalNotificationManager.tsx:581 — guest got chime+toast for their own cancellation / chime on every status change → skip own cancel, chime only on announced changes
+- [messaging-22] P1 FIXED src/hooks/usePresence.ts:95 — manager's manual away/offline was overwritten by the 2-min heartbeat/visibility change (override flag never set) → manualStatus ref honoured
+- [messaging-23] P1 FIXED src/lib/contact.ts:183 — whatsappDigits left 00265…, +265 0991… and bare 9-digit 991… numbers unusable for wa.me → normalised to 265XXXXXXXXX
+- [messaging-24] P3 FIXED src/lib/contact.ts:137 — email-pattern comment split by unrelated constants → rejoined
+- [messaging-25] P2 FIXED src/hooks/useUnreadMessages.ts:221,286,355,423 — a failed listener never 'reported', so initial-load stayed on forever and the badge never buzzed for new messages → errors count as reported
+- [messaging-26] P1 FIXED src/components/ManagerMessageTemplatesHub.tsx:113 — switching property kept previous property's templates in state; next save overwrote the new property → reset on hotel.id change
+- [messaging-27] P1 FIXED src/components/ManagerMessageTemplatesHub.tsx:258 — "apply to all" queried the signed-in user's hotels (admin overwrote own listings, not the owner's) and miscounted → uses hotel.managerId, counts updated docs
+status: done

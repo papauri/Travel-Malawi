@@ -6,6 +6,19 @@ import { Booking, Broadcast } from '../types';
 import { playChime } from '../lib/notificationSound';
 import toast from 'react-hot-toast';
 
+// Navbar, MobileNav and NotificationBell each mount this hook; a broadcast
+// must still be announced (toast, chime, browser notification) only once.
+const announcedBroadcastIds = new Set<string>();
+
+function readSeenBroadcastIds(): string[] {
+  try {
+    const parsed = JSON.parse(localStorage.getItem('seenBroadcasts') || '[]');
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 export function useUnreadBroadcasts() {
   const { user } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
@@ -44,9 +57,13 @@ export function useUnreadBroadcasts() {
 
       const hotelIds = Array.from(new Set(upcomingBookings.map(b => b.hotelId))).filter(Boolean) as string[];
 
+      // Every bookings snapshot replaces the broadcasts listener; drop the old
+      // one first or listeners pile up and each fires its own toast.
+      unsubBroadcasts();
+      unsubBroadcasts = () => {};
+
       if (hotelIds.length === 0) {
         setBroadcasts([]);
-        unsubBroadcasts();
         return;
       }
 
@@ -69,14 +86,18 @@ export function useUnreadBroadcasts() {
         }
 
         const newBroadcasts = fetchedBroadcasts.filter(fb => fb.id && !knownBroadcastIds.current.has(fb.id));
-        if (newBroadcasts.length > 0) {
+        newBroadcasts.forEach(b => { if (b.id) knownBroadcastIds.current.add(b.id); });
+        const toAnnounce = newBroadcasts.filter(b => b.id && !announcedBroadcastIds.has(b.id));
+        if (toAnnounce.length > 0) {
           playChime();
-          newBroadcasts.forEach(b => {
-            if (b.id) knownBroadcastIds.current.add(b.id);
-            toast.success(`New Update: ${b.message}`, { icon: '📣', duration: 8000 });
+          toAnnounce.forEach(b => {
+            announcedBroadcastIds.add(b.id!);
+            toast.success(`New Update: ${b.message}`, { icon: '📣', duration: 8000, id: `broadcast-${b.id}` });
             if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-              const n = new Notification('New Property Update', { body: b.message, icon: '/favicon.ico' });
-              n.onclick = () => { window.focus(); n.close(); };
+              try {
+                const n = new Notification('New Property Update', { body: b.message, icon: '/favicon.ico' });
+                n.onclick = () => { window.focus(); n.close(); };
+              } catch { /* constructor unsupported (Android) */ }
             }
           });
         }
@@ -97,8 +118,8 @@ export function useUnreadBroadcasts() {
   // Recalculate unread count when broadcasts change or when seen event occurs
   useEffect(() => {
     const calculateUnread = () => {
-      const seenIds = JSON.parse(localStorage.getItem('seenBroadcasts') || '[]');
-      const unread = broadcasts.filter(b => !seenIds.includes(b.id));
+      const seenIds = readSeenBroadcastIds();
+      const unread = broadcasts.filter(b => !seenIds.includes(b.id!));
       setUnreadCount(unread.length);
     };
 

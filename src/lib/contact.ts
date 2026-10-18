@@ -11,11 +11,11 @@
 
 import { normalisePhone } from './spam';
 
-// Deliberately permissive: the aim is to catch a typo, not to adjudicate the
 // Platform domain and email defaults
 export const DEFAULT_PLATFORM_EMAIL = 'info@ulendomalawi.com';
 export const DEFAULT_PLATFORM_DOMAIN = 'ulendomalawi.com';
 
+// Deliberately permissive: the aim is to catch a typo, not to adjudicate the
 // RFC. Anything stricter starts rejecting real addresses.
 export const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i;
 
@@ -55,9 +55,14 @@ export function phoneProblem(value: string, label: string, required: boolean): s
  * number and would otherwise open an empty chat.
  */
 export function whatsappDigits(value: string): string | null {
-  const digits = normalisePhone(value ?? '');
+  let digits = normalisePhone(value ?? '');
   if (!digits) return null;
+  // `00265…` international dialling prefix, and `+265 0991…` with the trunk 0 kept.
+  if (digits.startsWith('00')) digits = digits.slice(2);
+  if (digits.startsWith('2650')) digits = `265${digits.slice(4)}`;
   if (digits.startsWith('0')) return `265${digits.slice(1)}`;
+  // A bare 9-digit Malawian number (`991 234 567`) without its leading 0.
+  if (digits.length === 9 && /^[189]/.test(digits)) return `265${digits}`;
   return digits;
 }
 

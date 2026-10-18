@@ -1,0 +1,41 @@
+status: in-progress
+- [ai-1] P2 FIXED  server/aiService.ts:1764 — executeAIGeneration served curated template text when AI off/no provider/all failed → now throws honest error (reviews return empty)
+- [ai-2] P2 FIXED  server/aiService.ts:1777 — override-provider path hid errors except for a magic test string → errors bubble to caller
+- [ai-3] P1 FIXED  server/aiService.ts:2543 — connection test could be served from 20-min cache of old key → clearProviderCaches() before test
+- [ai-4] P2 FIXED  server/aiService.ts:690 — OpenAI-compatible JSON tasks had no JSON mode → response_format json_object (auto-retry without on 400)
+- [ai-5] P2 FIXED  server/aiService.ts:1001 — empty vision extraction got cached per file hash → throws so next model tries
+- [ai-6] P2 FIXED  server/aiService.ts:1730 — responseCache unbounded → capped at 300 entries
+- [ai-7] P2 FIXED  server/aiService.ts:2303 — small-talk cap 300 → 380 tokens per AGENTS.md
+- [ai-8] P1 FIXED  server/aiService.ts:2375 — "all rooms at X" widened proposal to every property → explicit all-properties regex only
+- [ai-9] P2 FIXED  server/aiService.ts:3188 — route Q&A returned a scripted M1/M3 answer on AI failure → honest notice
+- [ai-10] P2 FIXED server/aiSwarm.ts:337 — liveDataAnswer had canned scope/onboarding/marketing/review scripts and invented default policies → removed / "not set"
+- [ai-11] P0 FIXED server/opsPrompt.ts:197 — Wi-Fi password sent in every utilities prompt → only when question mentions Wi-Fi/password; invented defaults → "not set"
+- [ai-12] P1 FIXED src/components/OperationsCopilot.tsx:197 — AI proposals applied unvalidated (default "Breakfast Included"/"Standard", fake success) → proposalProblem() validation before any write
+- [ai-13] P2 FIXED src/components/TripAIInsights.tsx:554 — scripted route answer/local blueprint on AI failure → toast/notice, aiNotice rendered
+- [ai-14] P2 FIXED src/hooks/useAIAssistant.ts:356 — synthesizeClientFallback faked drafts/lookup data (fake phone/email) on errors → removed, honest error toasts
+- [ai-15] P2 FIXED server/modelRegistry.ts:240,388 — provider replacement hint (e.g. "use gemini-4.x") was stored/auto-picked though excluded → hints filtered by isExcludedModel
+- [ai-16] P1 FIXED server/aiService.ts:2511 — /api/admin/ai-test persisted any submitted key, incl. a masked "abcd••••wxyz" echo, overwriting the real key; unknown provider id crashed → masked keys ignored, provider id validated
+- [ai-17] P1 FIXED server.ts:723 — POST /api/admin/ai-config accepted pid "__proto__"/"constructor" (prototype pollution of every object's enabled/model) and null updates crashed → own-key provider id check
+- [ai-18] P2 FIXED server/aiService.ts:476 — 5xx retries backed off from 2000ms, below the 4500ms base in AGENTS.md → all transient retries use backoffMs()
+- [ai-19] P2 FIXED server/aiService.ts:1648 — scraped reviews with no date got invented months (Feb 2025…) and defaulted to verified:true → date left empty, verified only when reported
+- [ai-20] P2 FIXED server/aiService.ts:2238 — small-talk system prompt interpolated per-turn history flag and display name, breaking provider prefix caching → volatile values live only in the user prompt (already there)
+- [ai-21] P1 FIXED src/components/OperationsCopilot.tsx:425 — unverified users were given email-matched properties that the rules now deny (bookings silently empty, writes failing) → email match only when verified, clear "verify your email" toast
+- [ai-22] P2 FIXED src/components/OperationsCopilot.tsx:1092 — apply-action auth check ignored contactEmail and email verification (rules honour both) → same verified manager/owner/contact match as rules
+- [H-platform-c1] DONE Copilot property load + apply check now require emailVerified for email matches and tell unverified users to verify (ai-21, ai-22)
+- [ai-23] P2 FIXED src/components/OperationsCopilot.tsx:1279 — AI rate proposals wrote raw prices (e.g. MK 84,932, $94.6) → MWK rounded to nearest 1,000, USD to whole dollars
+- [ai-24] P1 FIXED src/components/OperationsCopilot.tsx:1430 — scrape_reviews proposal: 403 for managers / network error still posted "Applied Successfully" and "zero reviews found"; no existingReviews sent so duplicates appended → resp.ok checked, failures return, existing reviews passed for dedupe
+- [ai-25] P2 FIXED src/lib/assistantMemory.ts:44 — removing the last learned directive re-seeded the defaults on next read, so deletions never stuck → seed only when nothing was ever stored
+- [ai-26] P3 LOGGED server/aiService.ts:4180 — handleCuratedActionFallback's non-review branches and generateCuratedMalawi* templates are now unreachable from routes (only scripts/test-*.ts import two of them) → removal >5 lines, left for cleanup
+- checklist verified: key masking + masked-save guard (server.ts:760), Gemini 4000ms queue, 4500ms jittered backoff, 429/503/504 → next model + cooldown, auto model + EXCLUDED_MODELS in candidates/live lists, 404 retire persisted, routed opsPrompt + Anthropic cache_control, 20-min call cache + in-flight dedupe, caps 380/900/1400, JSON mode, vision hash cache, guest contact only on contacts topic
+- npx tsc --noEmit: clean
+status: in-progress
+- [ai-27] P1 FIXED src/lib/malawiHospitalityRegistry.ts:38,1894 — ~140 real lodges/hotels (names, prices, phones) hard-coded for search/auto-fill + 12-name "Popular" showcase → registry and showcase emptied, types/functions kept so geo.ts/ListProperty.tsx compile (D1); H-ai-1 → onboarding for the empty showcase label
+- [ai-28] P1 FIXED src/components/TripAIInsights.tsx:87-178 — route-region classifier keyed on real lodge names (Kaya Mawa, Mvuu, Pumulani, Makokola, Blue Zebra, Chelinda, Tongole, Mkulumadzi…) → place names only (D1)
+- [ai-29] P1 FIXED server/aiService.ts:190-196,2539,2989 — lookup prompt examples named Kaya Mawa, Sunbird, Makokola, Latitude 13°, Protea Ryalls, Mvuu, Pumulani, Chelinda…; connection test used "Sunbird Livingstonia Beach"; Zomba blueprint sent guests to "Sunbird Ku Chawe" → fictional/place-only wording (D1)
+- [ai-30] P1 FIXED server/aiService.ts:3064,3160 — trip-insights and trip-chat prompts did not stop the model recommending lodges outside the itinerary → explicit "only the traveller's stops" rule (D1)
+- [ai-31] P1 FIXED server/opsPrompt.ts:47,58,65,104 — core prompt lacked a "only properties in context" rule; examples named Kaya Mawa/Esthers; Satemwa (estate lodge) in food lines → rule added to core + Malawi module, fictional examples, "Thyolo tea" (D1)
+- [H-orch-D1] DONE registry/showcase emptied, TripAIInsights/aiService/opsPrompt cleaned, prompts restrict naming to context properties (ai-27..31)
+- [H-ui-3] DONE same change as ai-28: TripAIInsights matches place keywords only (likoma, chizumulu, mangochi…)
+- npx tsc --noEmit: no errors in ai files (4 errors in onboarding files: localPropertyParser convertUsdToMwk/convertMwkToUsd, onboarding in progress)
+- [ai-32] P1 FIXED server/aiService.ts — removed dead fabricators generateCuratedMalawiReviews/PropertyDraft/PropertyLookup/detectMalawiRegion (~750 lines; only tests used them; fake reviews/listings violate D1) (orchestrator, verify)
+status: done

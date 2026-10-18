@@ -119,6 +119,17 @@ class TrafficTrackerStore {
       }
     }
 
+    // Drop anything older than 24h (the admin view reports a 24h window)
+    const dayMs = 24 * 60 * 60 * 1000;
+    for (const [sid, session] of this.sessions.entries()) {
+      if (now - session.lastHeartbeatAt > dayMs) this.sessions.delete(sid);
+    }
+    if (this.geoCache.size > 2000) this.geoCache.clear();
+
+    this.trimToCapacity();
+  }
+
+  private trimToCapacity() {
     // Trim store if exceeds maximum capacity
     if (this.sessions.size > this.maxSessions) {
       const sorted = Array.from(this.sessions.entries()).sort(
@@ -308,20 +319,51 @@ class TrafficTrackerStore {
    */
   public async ingestTrafficPing(req: Request, payload: any): Promise<TrafficSession> {
     const now = Date.now();
-    const rawIp = clientIp(req);
-    const ip = payload.ip && payload.ip !== '127.0.0.1' ? payload.ip : rawIp || '127.0.0.1';
+    // The caller's address always comes from the connection, never from the body.
+    const ip = clientIp(req) || '127.0.0.1';
 
-    const sessionId: string = String(payload.sessionId || 'sess_anon_' + Math.random().toString(36).slice(2, 9));
-    const visitorId: string = String(payload.visitorId || 'anon_' + Math.random().toString(36).slice(2, 9));
-    const isAnonymous = !payload.userId;
+    const clip = (value: unknown, max: number): string => String(value ?? '').slice(0, max);
+    const clipOpt = (value: unknown, max: number): string | undefined => (value ? clip(value, max) : undefined);
+    const num = (value: unknown, max: number): number => {
+      const n = Number(value);
+      return Number.isFinite(n) && n >= 0 ? Math.min(n, max) : 0;
+    };
 
-    const path: string = String(payload.path || '/').slice(0, 200);
-    const title: string = String(payload.title || 'Travel Malawi').slice(0, 150);
-    const currentWaitSeconds: number = Number(payload.dwellSeconds) >= 0 ? Number(payload.dwellSeconds) : 0;
-    const incomingStatus = (payload.waitingStatus as any) || (currentWaitSeconds > 60 ? 'waiting' : 'active');
+    const sessionId: string = clip(payload.sessionId || 'sess_anon_' + Math.random().toString(36).slice(2, 9), 80);
+    const visitorId: string = clip(payload.visitorId || 'anon_' + Math.random().toString(36).slice(2, 9), 80);
 
-    // Resolve or retrieve geo location
-    let location: TrafficLocationTelemetry = payload.location || {};
+    // Identity comes from the verified token (optionalAuth), not from what the client claims.
+    const authUser = req.authUser;
+    const userId: string | null = authUser?.uid || null;
+    const isAnonymous = !userId;
+    const userEmail: string | null = authUser?.email || null;
+    const userName: string | null = authUser ? clipOpt(payload.userName, 120) || userEmail : null;
+    const userRole: string | null = authUser ? authUser.roles?.[0] || 'Traveller' : null;
+
+    const path: string = clip(payload.path || '/', 200);
+    const title: string = clip(payload.title || 'Travel Malawi', 150);
+    const currentWaitSeconds: number = num(payload.dwellSeconds, 86400);
+    const allowedStatuses = ['active', 'waiting', 'idle', 'background', 'exited'];
+    const incomingStatus: TrafficSession['status'] = allowedStatuses.includes(payload.waitingStatus)
+      ? payload.waitingStatus
+      : currentWaitSeconds > 60 ? 'waiting' : 'active';
+    const hotelId = clipOpt(payload.hotelId, 120);
+    const hotelName = clipOpt(payload.hotelName, 150);
+    const interactions = Math.max(1, Math.round(num(payload.interactions, 100000)));
+    const interactionsDelta = Math.round(num(payload.interactionsDelta, 10000));
+
+    // Resolve or retrieve geo location (client-supplied values are length-capped text only)
+    const claimed = payload.location && typeof payload.location === 'object' ? payload.location : {};
+    let location: TrafficLocationTelemetry = {
+      ip,
+      city: clipOpt(claimed.city, 80),
+      region: clipOpt(claimed.region, 80),
+      country: clipOpt(claimed.country, 80),
+      countryCode: clipOpt(claimed.countryCode, 2),
+      flag: clipOpt(claimed.flag, 8),
+      timezone: clipOpt(claimed.timezone, 60),
+      org: clipOpt(claimed.org, 120),
+    };
     if (!location.country || !location.city) {
       location = await this.resolveGeo(ip);
     }
@@ -329,10 +371,14 @@ class TrafficTrackerStore {
       location.flag = this.getCountryFlag(location.countryCode);
     }
 
-    const device: TrafficDeviceTelemetry = payload.device || {
-      type: 'Desktop',
-      os: 'Unknown',
-      browser: 'Web',
+    const claimedDevice = payload.device && typeof payload.device === 'object' ? payload.device : {};
+    const device: TrafficDeviceTelemetry = {
+      type: ['Mobile', 'Tablet', 'Desktop'].includes(claimedDevice.type) ? claimedDevice.type : 'Desktop',
+      os: clip(claimedDevice.os || 'Unknown', 60),
+      browser: clip(claimedDevice.browser || 'Web', 60),
+      screen: clipOpt(claimedDevice.screen, 30),
+      language: clipOpt(claimedDevice.language, 20),
+      timezone: clipOpt(claimedDevice.timezone, 60),
     };
 
     let session = this.sessions.get(sessionId);
@@ -344,9 +390,9 @@ class TrafficTrackerStore {
         title,
         dwellSeconds: currentWaitSeconds,
         enteredAt: now,
-        interactions: Number(payload.interactions) || 1,
-        hotelId: payload.hotelId,
-        hotelName: payload.hotelName,
+        interactions,
+        hotelId,
+        hotelName,
       };
 
       const intelligent = this.computeIntelligentIntent(
@@ -361,10 +407,10 @@ class TrafficTrackerStore {
         sessionId,
         visitorId,
         isAnonymous,
-        userId: payload.userId || null,
-        userName: payload.userName || (isAnonymous ? `Guest · ${visitorId.slice(-4)}` : null),
-        userEmail: payload.userEmail || null,
-        userRole: payload.userRole || (isAnonymous ? 'Anonymous Visitor' : 'Traveller'),
+        userId,
+        userName: userName || (isAnonymous ? `Guest · ${visitorId.slice(-4)}` : null),
+        userEmail,
+        userRole: userRole || 'Anonymous Visitor',
         status: incomingStatus,
         currentPath: path,
         currentTitle: title,
@@ -382,13 +428,14 @@ class TrafficTrackerStore {
         conversionLikelihood: intelligent.conversionLikelihood,
         steps: [step],
         totalPageViews: 1,
-        totalInteractions: Number(payload.interactions) || 1,
+        totalInteractions: interactions,
         startedAt: now - Math.round(currentWaitSeconds * 1000),
         lastActiveAt: now,
         lastHeartbeatAt: now,
       };
 
       this.sessions.set(sessionId, session);
+      if (this.sessions.size > this.maxSessions) this.trimToCapacity();
       return session;
     }
 
@@ -409,6 +456,8 @@ class TrafficTrackerStore {
     } else if (incomingStatus === 'idle' || incomingStatus === 'background') {
       session.idleSeconds += waitDelta;
       session.status = incomingStatus;
+    } else if (incomingStatus === 'exited') {
+      session.status = 'exited';
     }
 
     // Path change detected (new stop in journey)
@@ -425,10 +474,11 @@ class TrafficTrackerStore {
         title,
         dwellSeconds: currentWaitSeconds,
         enteredAt: now,
-        interactions: Number(payload.interactions) || 1,
-        hotelId: payload.hotelId,
-        hotelName: payload.hotelName,
+        interactions,
+        hotelId,
+        hotelName,
       });
+      if (session.steps.length > 60) session.steps.splice(0, session.steps.length - 60);
 
       session.currentPath = path;
       session.currentTitle = title;
@@ -438,18 +488,18 @@ class TrafficTrackerStore {
       if (session.steps.length > 0) {
         const lastStep = session.steps[session.steps.length - 1];
         lastStep.dwellSeconds = currentWaitSeconds;
-        lastStep.interactions = (lastStep.interactions || 0) + (Number(payload.interactionsDelta) || 0);
-        if (payload.hotelName && !lastStep.hotelName) lastStep.hotelName = payload.hotelName;
+        lastStep.interactions = (lastStep.interactions || 0) + interactionsDelta;
+        if (hotelName && !lastStep.hotelName) lastStep.hotelName = hotelName;
       }
     }
 
     // Link user if authenticated mid-session
-    if (payload.userId && session.isAnonymous) {
+    if (userId && session.isAnonymous) {
       session.isAnonymous = false;
-      session.userId = payload.userId;
-      session.userName = payload.userName || session.userName;
-      session.userEmail = payload.userEmail || session.userEmail;
-      session.userRole = payload.userRole || 'Traveller';
+      session.userId = userId;
+      session.userName = userName || session.userName;
+      session.userEmail = userEmail || session.userEmail;
+      session.userRole = userRole || 'Traveller';
     }
 
     // Recompute intelligent intent
@@ -464,7 +514,7 @@ class TrafficTrackerStore {
     session.intentScore = intelligent.intentScore;
     session.intentSummary = intelligent.intentSummary;
     session.conversionLikelihood = intelligent.conversionLikelihood;
-    session.totalInteractions += Number(payload.interactionsDelta) || 0;
+    session.totalInteractions += interactionsDelta;
 
     return session;
   }

@@ -13,7 +13,7 @@ import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { useModalScrollIsolation } from '../hooks/useModalScrollIsolation';
 import { Booking, Hotel, RoomType } from '../types';
 import { formatMoney } from '../lib/booking';
-import { formatDateStr } from '../lib/dates';
+import { formatDateStr, toDateStr } from '../lib/dates';
 import SmartImage from './SmartImage';
 import PriceDisplay from '../components/PriceDisplay';
 
@@ -62,8 +62,9 @@ export default function StayVoucherModal({ booking, isOpen, onClose }: Props) {
   if (!booking || !booking.hotel) return null;
   const hotel = booking.hotel;
 
-  const todayStr = new Date().toISOString().split('T')[0];
-  const isArrivalDayOrLater = Boolean(booking?.checkIn && booking.checkIn <= todayStr);
+  // Local calendar date (not UTC), and only a confirmed stay unlocks on arrival day.
+  const todayStr = toDateStr(new Date());
+  const isArrivalDayOrLater = Boolean(booking?.status === 'confirmed' && booking?.checkIn && booking.checkIn <= todayStr);
   const isUnlockedEffective = isUnlocked || isArrivalDayOrLater;
   const isLocked = Boolean(booking?.arrivalPin && !isUnlockedEffective);
 
@@ -79,7 +80,7 @@ export default function StayVoucherModal({ booking, isOpen, onClose }: Props) {
     checkIn: booking.checkIn,
     checkOut: booking.checkOut,
     pin: isUnlockedEffective ? arrivalPin : 'LOCKED',
-    status: 'confirmed',
+    status: booking.status,
   });
 
   const handlePrint = () => {

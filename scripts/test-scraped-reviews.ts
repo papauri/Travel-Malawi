@@ -1,54 +1,19 @@
-import { generateCuratedMalawiReviews } from '../server/aiService';
+import { handleCuratedActionFallback } from '../server/aiService';
 import assert from 'node:assert';
 
-console.log('--- Testing Review Scraper Transparency & Direct Source Links ---');
+// When no AI provider can scrape reviews, the fallback must return an empty list —
+// never fabricated reviews (AGENTS.md: no scripted AI; only onboarded properties exist).
+console.log('--- Review fallback never fabricates reviews ---');
 
-// 1. Test Balanced Mode (Lake Property)
-const balancedLake = generateCuratedMalawiReviews('Cape Maclear Sunset Lakeside Cottage', 'Cape Maclear, Mangochi', 'Lakeside Cottage', 4, 'balanced');
-console.log(`\n[Balanced Mode - Lake] Count: ${balancedLake.length}`);
-balancedLake.forEach((r, idx) => {
-  console.log(`  ${idx + 1}. [${r.rating}★] [${r.sentiment}] "${r.title}"`);
-  console.log(`     Author: ${r.author} | Date: ${r.date} | Source: ${r.source}`);
-  console.log(`     Link: ${r.sourceUrl || '(Physical Guest Book - In-person ledger)'}`);
-  assert.ok(r.date, 'Review must have date');
-  if (r.source === 'Guest Book') {
-    assert.strictEqual(r.sourceUrl || '', '', 'Physical guest book must not have fake web URL');
-  } else {
-    assert.ok(r.sourceUrl && r.sourceUrl.startsWith('http'), 'Review must have valid http sourceUrl');
-    assert.ok(!r.sourceUrl.includes('/maps/reviews'), 'Must not contain fake Google review path');
-  }
-});
+for (const name of ['Example Lakeside Cottage', 'Example Safari Camp', 'Example City Hotel']) {
+  const result = handleCuratedActionFallback({
+    action: 'scrape_reviews',
+    entityType: 'property',
+    details: { name, location: 'Malawi' },
+  });
+  assert.deepStrictEqual(result.data, [], `${name}: fallback must return no reviews`);
+  assert.strictEqual(JSON.parse(result.text).length, 0, `${name}: fallback text must be an empty list`);
+  console.log(`ok   ${name}: no fabricated reviews`);
+}
 
-const hasConstructiveOrCritical = balancedLake.some(r => r.rating <= 3.8);
-assert.ok(hasConstructiveOrCritical, 'Balanced mode should include constructive/critical reviews for transparent authenticity');
-console.log('✓ Balanced mode includes authentic constructive feedback alongside 5-star highlights!');
-
-// 2. Test Critical Mode (Safari Property)
-const criticalSafari = generateCuratedMalawiReviews('Majete Wildlife Camp', 'Majete Wildlife Reserve', 'Safari Camp', 4, 'critical');
-console.log(`\n[Critical Mode - Safari] Count: ${criticalSafari.length}`);
-criticalSafari.forEach((r, idx) => {
-  console.log(`  ${idx + 1}. [${r.rating}★] [${r.sentiment}] "${r.title}"`);
-  console.log(`     Author: ${r.author} | Date: ${r.date} | Source: ${r.source}`);
-  console.log(`     Link: ${r.sourceUrl}`);
-  assert.ok(r.date, 'Review must have date');
-  assert.ok(r.sourceUrl && r.sourceUrl.startsWith('http'), 'Review must have valid http sourceUrl');
-});
-
-const hasLowRating = criticalSafari.some(r => r.rating <= 3);
-assert.ok(hasLowRating, 'Critical mode should include 1-3 star reviews');
-console.log('✓ Critical mode successfully returns authentic 1-3 star friction points for transparent review!');
-
-// 3. Test Positive Mode
-const positiveReviews = generateCuratedMalawiReviews('Sunbird Mount Soche', 'Blantyre', 'Hotel', 4, 'positive');
-console.log(`\n[Positive Mode] Count: ${positiveReviews.length}`);
-positiveReviews.forEach((r, idx) => {
-  console.log(`  ${idx + 1}. [${r.rating}★] [${r.sentiment}] "${r.title}"`);
-  console.log(`     Author: ${r.author} | Date: ${r.date} | Source: ${r.source}`);
-  console.log(`     Link: ${r.sourceUrl}`);
-  assert.ok(r.rating >= 4.5, 'Positive mode should only have 4.5+ star reviews');
-  assert.ok(r.date, 'Review must have date');
-  assert.ok(r.sourceUrl, 'Review must have sourceUrl');
-});
-console.log('✓ Positive mode provides top highlights with dates and verified source URLs!');
-
-console.log('\n--- ALL REVIEW SCRAPER CHECKS PASSED SUCCESSFULLY ---');
+console.log('\nAll checks passed');

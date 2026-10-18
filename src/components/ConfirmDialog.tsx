@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
@@ -30,6 +30,7 @@ export default function ConfirmDialog({
   onCancel,
   isDestructive = false
 }: Props) {
+  const titleId = useId();
   useBodyScrollLock(isOpen);
 
   // Escape cancels, and the page behind is frozen — which also stops Lenis,
@@ -60,6 +61,7 @@ export default function ConfirmDialog({
           className="fixed inset-0 z-[160] overflow-y-auto overscroll-contain flex min-h-full items-center justify-center p-4 text-center"
           role="dialog"
           aria-modal="true"
+          aria-labelledby={titleId}
         >
           <motion.div
             initial={{ opacity: 0 }}
@@ -83,16 +85,19 @@ export default function ConfirmDialog({
               }`}>
                 <AlertTriangle className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
-              <h3 className="text-lg sm:text-xl font-serif font-bold text-stone-900 mb-1.5 sm:mb-2 tracking-tight leading-snug">{title}</h3>
+              <h3 id={titleId} className="text-lg sm:text-xl font-serif font-bold text-stone-900 mb-1.5 sm:mb-2 tracking-tight leading-snug">{title}</h3>
               <p className="text-stone-500 text-xs sm:text-sm leading-relaxed mb-5 sm:mb-6">{message}</p>
               <div className="flex gap-2.5 sm:gap-3 w-full">
                 <button
+                  type="button"
+                  autoFocus
                   onClick={onCancel}
                   className="flex-1 bg-stone-100 text-stone-700 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl sm:rounded-full font-semibold text-xs sm:text-sm hover:bg-stone-200 transition cursor-pointer"
                 >
                   {cancelText}
                 </button>
                 <button
+                  type="button"
                   onClick={() => {
                     onConfirm();
                     onCancel();

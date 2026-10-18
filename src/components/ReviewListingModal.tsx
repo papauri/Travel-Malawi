@@ -72,11 +72,17 @@ export default function ReviewListingModal({
 
   // Pricing assessment
   const hasRooms = hotelRooms.length > 0;
-  const primaryRateUsd = hasRooms 
-    ? Math.min(...hotelRooms.map(r => r.prices?.USD ?? r.price ?? 0).filter(p => p > 0))
+  // Math.min() of an empty list is Infinity, which showed as "$Infinity" when
+  // no room had a price yet.
+  const lowestPositive = (values: number[]) => {
+    const priced = values.filter(p => p > 0);
+    return priced.length ? Math.min(...priced) : 0;
+  };
+  const primaryRateUsd = hasRooms
+    ? lowestPositive(hotelRooms.map(r => r.prices?.USD ?? r.price ?? 0))
     : (hotel.entirePlaceDetails?.ratePerNightUsd || 0);
-  const primaryRateMwk = hasRooms 
-    ? Math.min(...hotelRooms.map(r => r.prices?.MWK ?? r.priceMWK ?? 0).filter(p => p > 0))
+  const primaryRateMwk = hasRooms
+    ? lowestPositive(hotelRooms.map(r => r.prices?.MWK ?? r.priceMWK ?? 0))
     : (hotel.entirePlaceDetails?.ratePerNightMwk || 0);
 
   // Compliance checklist items
@@ -150,7 +156,7 @@ export default function ReviewListingModal({
         body: JSON.stringify({
           hotelName: hotel.name,
           location: hotel.location || 'Malawi',
-          category: hotel.category || 'Lodge',
+          category: hotel.categories?.[0] || hotel.category || 'Lodge',
           count: 8,
           minRating: 4,
           sources: ['Google Reviews', 'TripAdvisor', 'Booking.com', 'SafariBookings'],

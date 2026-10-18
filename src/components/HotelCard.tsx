@@ -173,6 +173,8 @@ export default function HotelCard({
               : 'bg-white/95 hover:bg-white text-stone-700 hover:text-stone-900 border-stone-200/90 shadow-2xs'
           }`}
           title={isComparing ? 'Remove from comparison' : 'Compare Property'}
+          aria-label={isComparing ? 'Remove from comparison' : 'Compare property'}
+          aria-pressed={isComparing}
         >
           <Scale className={`w-3.5 h-3.5 ${isComparing ? 'text-stone-300' : 'text-stone-500'}`} />
           <span className="hidden sm:inline">{isComparing ? 'Comparing' : 'Compare'}</span>
@@ -218,7 +220,7 @@ export default function HotelCard({
         {/* Carousel Controls */}
         {allImages.length > 1 && (
           <>
-            <div className="absolute inset-0 flex items-center justify-between p-2.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+            <div className="absolute inset-0 flex items-center justify-between p-2.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-200 pointer-events-none">
               <button 
                 onClick={handlePrevImage}
                 aria-label="Previous image"
@@ -248,7 +250,7 @@ export default function HotelCard({
         )}
       </motion.div>
 
-      {/* Dwellis Aesthetic Content */}
+      {/* Card content */}
       <div className="flex flex-col gap-1 min-w-0">
         <div className="flex items-center justify-between gap-2 min-w-0">
           <p className="text-[0.65rem] font-bold tracking-[0.18em] text-stone-500 uppercase truncate flex-1 min-w-0">

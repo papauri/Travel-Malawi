@@ -13,6 +13,8 @@ export interface AdminDocMeta {
   lastEditedBy?: string;
   lastEditedAt?: string;
   isCustomized?: boolean;
+  /** public = anyone, host = signed-in property managers, admin = admin/marketing (server enforces; missing = admin). */
+  audience?: 'public' | 'host' | 'admin';
 }
 
 /**

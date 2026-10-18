@@ -231,7 +231,7 @@ export function fillTemplate(
     .replace(/{depositInstructions}/g, vars.depositInstructions || 'Bank transfer (Standard Bank / National Bank of Malawi) or Mobile Money (Airtel Money / Mpamba). Please contact reception for account details.')
     .replace(/{wifiName}/g, vars.wifiName || `${vars.hotelName} Guest WiFi`)
     .replace(/{wifiPassword}/g, vars.wifiPassword || 'Provided at check-in')
-    .replace(/{managerPhone}/g, vars.managerPhone || '+265 999 000 000')
+    .replace(/{managerPhone}/g, vars.managerPhone || 'our front desk')
     .replace(/{managerEmail}/g, vars.managerEmail || 'info@ulendomalawi.com');
 }
 

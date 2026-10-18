@@ -80,7 +80,11 @@ function looksLikeGibberish(value: string): boolean {
 
 function containsSpamPhrase(value: string): boolean {
   const lower = value.toLowerCase();
-  return SPAM_PHRASES.some(phrase => lower.includes(phrase));
+  // Whole words only, so "seo" does not flag "Seoul" or a surname.
+  return SPAM_PHRASES.some(phrase => {
+    const escaped = phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return new RegExp(`(^|[^a-z0-9])${escaped}s?([^a-z0-9]|$)`).test(lower);
+  });
 }
 
 /** Digits only, so formatting differences do not matter. */

@@ -1,0 +1,1 @@
+- [H-ux-c1] P3 → cleanup | public/robots.txt | shadowed by server.ts:230 GET /robots.txt (registered before express.static at :2107), stale divergent copy → delete if nothing else references it | contract: none

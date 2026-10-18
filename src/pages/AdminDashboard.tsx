@@ -410,7 +410,22 @@ export default function AdminDashboard() {
       if (inspectingHotel && inspectingHotel.id === hotelId) {
         setInspectingHotel(prev => prev ? { ...prev, status: newStatus, moderationNotes: reason || prev.moderationNotes } : null);
       }
-      toast.success(newStatus === 'approved' 
+      // Tell the host once per real status change (not on a repeated click or a no-op update).
+      const hostEmail = targetHotel?.managerEmail || targetHotel?.ownerEmail;
+      if (targetHotel && targetHotel.status !== newStatus && hostEmail) {
+        fetch('/api/admin/email-listing-status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: hostEmail,
+            name: targetHotel.managerName || targetHotel.ownerName,
+            hotelName: targetHotel.name,
+            status: newStatus,
+            reason,
+          }),
+        }).catch(() => {});
+      }
+      toast.success(newStatus === 'approved'
         ? `${targetHotel?.name || 'Property'} approved and live on Travel Malawi!` 
         : `Property status updated to ${newStatus}`);
 
@@ -982,6 +997,9 @@ export default function AdminDashboard() {
     ].filter(t => t.visible !== false);
   }, [user]);
 
+  // A tab hidden from this role must not render even when reached through ?tab=
+  const canViewTab = (id: Tab) => adminTabs.some(t => t.id === id);
+
   const currentTabItem = useMemo(() => {
     return adminTabs.find(t => t.id === activeTab) || adminTabs[0];
   }, [adminTabs, activeTab]);
@@ -1424,7 +1442,7 @@ export default function AdminDashboard() {
         )}
 
         {/* ===================== LIVE TRAFFIC & WAITING TAB ===================== */}
-        {activeTab === 'traffic' && (
+        {activeTab === 'traffic' && canViewTab('traffic') && (
           <AdminTrafficMonitor />
         )}
         
@@ -2476,7 +2494,7 @@ export default function AdminDashboard() {
           </div>
         )}
         {/* ===================== USERS TAB ===================== */}
-        {activeTab === 'users' && (
+        {activeTab === 'users' && canViewTab('users') && (
           <div className="space-y-6 animate-in fade-in duration-200">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-stone-200">
               <div>
@@ -3353,12 +3371,12 @@ export default function AdminDashboard() {
         )}
 
         {/* ===================== AI CONFIGURATION TAB ===================== */}
-        {activeTab === 'ai' && (
+        {activeTab === 'ai' && canViewTab('ai') && (
           <AdminAISettings />
         )}
 
         {/* ===================== SYSTEM LOGS TAB ===================== */}
-        {activeTab === 'logs' && (
+        {activeTab === 'logs' && canViewTab('logs') && (
           <AdminLogs />
         )}
 
@@ -3368,7 +3386,7 @@ export default function AdminDashboard() {
         )}
 
         {/* ===================== SETTINGS & CHANNELS CONFIGURATION TAB ===================== */}
-        {activeTab === 'settings' && (
+        {activeTab === 'settings' && canViewTab('settings') && (
           <div className="space-y-6">
             <div className="flex items-center gap-5 sm:gap-8 border-b border-stone-200/90 pb-0 w-full overflow-x-auto no-scrollbar" role="tablist">
               <button

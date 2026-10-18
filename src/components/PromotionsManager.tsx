@@ -14,9 +14,11 @@ interface PromotionsManagerProps {
   hotel: Hotel;
   rooms?: RoomType[];
   onUpdate: (promotions: Promotion[]) => void;
+  /** Lets the page warn before a tab switch discards unsaved edits. */
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
-export default function PromotionsManager({ hotel, rooms, onUpdate }: PromotionsManagerProps) {
+export default function PromotionsManager({ hotel, rooms, onUpdate, onDirtyChange }: PromotionsManagerProps) {
   const [promotions, setPromotions] = useState<Promotion[]>(hotel.promotions || []);
   // The promotions as loaded or last saved, used to merge with concurrent edits.
   const baselineRef = useRef<Promotion[]>(hotel.promotions || []);
@@ -24,6 +26,27 @@ export default function PromotionsManager({ hotel, rooms, onUpdate }: Promotions
   const [roomsList, setRoomsList] = useState<RoomType[]>(rooms || hotel.rooms || []);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 3;
+  const isDirty = JSON.stringify(promotions) !== JSON.stringify(baselineRef.current);
+
+  // Promotions saved elsewhere on the page (the bulk editor) show up here
+  // unless the manager is mid-edit; a save merges them either way.
+  useEffect(() => {
+    if (isDirty) return;
+    baselineRef.current = hotel.promotions || [];
+    setPromotions(hotel.promotions || []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hotel.promotions]);
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
+  useEffect(() => () => onDirtyChange?.(false), [onDirtyChange]);
+
+  // Deleting the last card on a page falls back to the page before it.
+  const totalPages = Math.max(1, Math.ceil(promotions.length / itemsPerPage));
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
 
   useEffect(() => {
     if (rooms && rooms.length > 0) {
@@ -52,6 +75,8 @@ export default function PromotionsManager({ hotel, rooms, onUpdate }: Promotions
       startDate: malawiToday(),
     };
     setPromotions([...promotions, newPromo]);
+    // Shown straight away rather than on a later page.
+    setCurrentPage(Math.ceil((promotions.length + 1) / itemsPerPage));
   };
 
   const updatePromo = (id: string, updates: Partial<Promotion>) => {
@@ -129,6 +154,18 @@ export default function PromotionsManager({ hotel, rooms, onUpdate }: Promotions
             >
               <Plus className="w-3.5 h-3.5" /> Launch First Sale Campaign
             </button>
+            {isDirty && (
+              <div className="pt-4">
+                <button
+                  onClick={savePromotions}
+                  disabled={saving}
+                  className="inline-flex items-center gap-2 bg-white border border-stone-300 text-stone-900 px-5 py-2.5 rounded-full text-xs font-bold hover:bg-stone-100 transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                  {saving ? 'Saving...' : 'Save removal of all promotions'}
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           <div className="space-y-6">
@@ -148,7 +185,7 @@ export default function PromotionsManager({ hotel, rooms, onUpdate }: Promotions
                       <div>
                         <h4 className="font-bold text-stone-900 text-base">{promo.name || 'Unnamed Promotion'}</h4>
                         <p className="text-xs text-stone-500">
-                          {getSaleTypeLabel(promo.saleType, promo.saleTypeCustomLabel)} · {promo.discountPercentage}% Price Slash
+                          {getSaleTypeLabel(promo.saleType, promo.saleTypeCustomLabel)} · {promo.discountType === 'fixed_slash' ? 'Fixed price slash' : `${promo.discountPercentage}% Price Slash`}
                         </p>
                       </div>
                     </div>
@@ -268,7 +305,7 @@ export default function PromotionsManager({ hotel, rooms, onUpdate }: Promotions
                         </div>
                       </div>
                       <p className="text-[11px] text-stone-400 mt-1">
-                        How much rates are slashed by. Minimum 5%, up to 80%.
+                        How much rates are slashed by. Minimum 5%, up to {MAX_PROMO_DISCOUNT_PERCENT}%.
                       </p>
                     </div>
 

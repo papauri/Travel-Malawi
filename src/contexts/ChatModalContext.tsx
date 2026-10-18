@@ -42,6 +42,18 @@ const ChatModalContext = createContext<ChatModalContextType | undefined>(undefin
 
 const CHAT_STORAGE_PREFIX = 'kaza_active_chat_session_';
 
+// Remove only this dock's own keys: other features (shadow mode, auth, Ulendo
+// sessions) keep their state in sessionStorage and must survive a chat close.
+function clearChatSessionStorage() {
+  try {
+    for (const store of [localStorage, sessionStorage]) {
+      Object.keys(store).filter(k => k.startsWith(CHAT_STORAGE_PREFIX)).forEach(k => store.removeItem(k));
+    }
+  } catch {
+    // storage blocked
+  }
+}
+
 export function ChatModalProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [activeChat, setActiveChat] = useState<ActiveChatState>(null);
@@ -54,12 +66,7 @@ export function ChatModalProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setActiveChat(null);
     setIsMinimized(false);
-    try {
-      localStorage.removeItem('kaza_active_chat_session_v1');
-      sessionStorage.clear();
-    } catch (e) {
-      // ignore
-    }
+    clearChatSessionStorage();
   }, [user?.uid]);
 
   const isChatOpen = (type: 'inquiry' | 'booking', idOrHotelId: string, guestId?: string): boolean => {
@@ -123,12 +130,7 @@ export function ChatModalProvider({ children }: { children: React.ReactNode }) {
   const closeChat = () => {
     setActiveChat(null);
     setIsMinimized(false);
-    try {
-      localStorage.removeItem('kaza_active_chat_session_v1');
-      sessionStorage.clear();
-    } catch (e) {
-      // ignore
-    }
+    clearChatSessionStorage();
   };
 
   const currentHotelName = activeChat?.type === 'inquiry' ? activeChat.hotel.name : 'Property';

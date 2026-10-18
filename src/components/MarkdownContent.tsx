@@ -19,7 +19,10 @@ export default function MarkdownContent({ content }: Props) {
         ul: ({node, ...props}) => <ul className="list-disc pl-5 mb-4 space-y-2 text-stone-800" {...props} />,
         ol: ({node, ...props}) => <ol className="list-decimal pl-5 mb-4 space-y-2 text-stone-800" {...props} />,
         li: ({node, ...props}) => <li className="leading-relaxed" {...props} />,
-        a: ({node, ...props}) => <a className="text-emerald-700 hover:underline font-medium" {...props} />,
+        a: ({node, ...props}) => {
+          const external = /^https?:\/\//i.test(props.href ?? '');
+          return <a className="text-emerald-700 hover:underline font-medium" {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})} {...props} />;
+        },
         table: ({node, ...props}) => (
           <div className="overflow-x-auto my-4 border border-stone-200 rounded-xl bg-white shadow-2xs">
             <table className="min-w-full text-sm divide-y divide-stone-200" {...props} />

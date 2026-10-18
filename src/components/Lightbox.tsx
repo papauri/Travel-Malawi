@@ -24,12 +24,13 @@ export default function Lightbox({ images, initialIndex = 0, onClose, onDelete }
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
+      if (images.length < 2) return;
       if (e.key === 'ArrowRight') next();
       if (e.key === 'ArrowLeft') prev();
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentIndex, onClose]);
+  }, [currentIndex, onClose, images.length]);
 
   // Lock body scroll
   useBodyScrollLock(true);
@@ -84,8 +85,14 @@ export default function Lightbox({ images, initialIndex = 0, onClose, onDelete }
 
   if (images.length === 0) return null;
 
+  // The list can shrink underneath us (a photo deleted elsewhere).
+  const safeIndex = Math.min(currentIndex, images.length - 1);
+
   return (
     <div 
+      role="dialog"
+      aria-modal="true"
+      aria-label="Photo gallery"
       className="fixed inset-0 z-[200] flex items-center justify-center bg-black/95 backdrop-blur-xl select-none"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
@@ -95,7 +102,7 @@ export default function Lightbox({ images, initialIndex = 0, onClose, onDelete }
       {/* Header controls */}
       <div className="absolute top-4 left-0 right-0 px-4 sm:px-6 flex justify-between items-center z-10 pointer-events-none">
         <span className="text-white/80 font-mono text-sm tracking-widest font-semibold bg-black/50 px-3 py-1 rounded-full backdrop-blur-md">
-          {currentIndex + 1} / {images.length}
+          {safeIndex + 1} / {images.length}
         </span>
         <div className="flex items-center gap-2 pointer-events-auto">
           {onDelete && (
@@ -103,7 +110,7 @@ export default function Lightbox({ images, initialIndex = 0, onClose, onDelete }
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                const idxToDelete = currentIndex;
+                const idxToDelete = safeIndex;
                 onDelete(idxToDelete);
                 if (images.length <= 1) {
                   onClose();
@@ -132,7 +139,7 @@ export default function Lightbox({ images, initialIndex = 0, onClose, onDelete }
       {/* Main Image with swipe indicators on mobile */}
       <AnimatePresence mode="wait">
         <motion.div
-          key={currentIndex}
+          key={safeIndex}
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 1.02 }}
@@ -140,8 +147,8 @@ export default function Lightbox({ images, initialIndex = 0, onClose, onDelete }
           className="relative w-full h-full max-w-6xl max-h-[85vh] mx-auto p-4 md:p-8 flex items-center justify-center cursor-grab active:cursor-grabbing"
         >
           <SmartImage
-            src={images[currentIndex]}
-            alt={`Gallery ${currentIndex + 1}`}
+            src={images[safeIndex]}
+            alt={`Gallery photo ${safeIndex + 1} of ${images.length}`}
             className="max-w-full max-h-full object-contain rounded-xl shadow-2xl pointer-events-none"
           />
         </motion.div>
@@ -151,12 +158,16 @@ export default function Lightbox({ images, initialIndex = 0, onClose, onDelete }
       {images.length > 1 && (
         <>
           <button
+            type="button"
+            aria-label="Previous photo"
             onClick={prev}
             className="absolute left-4 md:left-8 p-3 bg-black/50 hover:bg-black/70 rounded-full text-white transition backdrop-blur-md z-10 active:scale-95"
           >
             <ChevronLeft className="w-8 h-8" />
           </button>
           <button
+            type="button"
+            aria-label="Next photo"
             onClick={next}
             className="absolute right-4 md:right-8 p-3 bg-black/50 hover:bg-black/70 rounded-full text-white transition backdrop-blur-md z-10 active:scale-95"
           >
@@ -166,16 +177,19 @@ export default function Lightbox({ images, initialIndex = 0, onClose, onDelete }
       )}
 
       {/* Thumbnail strip */}
-      <div className="absolute bottom-6 left-0 right-0 flex justify-center gap-2 px-4 overflow-x-auto snap-x scrollbar-hide py-2 z-10">
+      <div className="absolute bottom-6 left-0 right-0 flex gap-2 px-4 overflow-x-auto snap-x scrollbar-hide py-2 z-10 before:content-[''] before:m-auto after:content-[''] after:m-auto">
         {images.map((img, idx) => (
           <button
             key={idx}
+            type="button"
+            aria-label={`Show photo ${idx + 1}`}
+            aria-current={idx === safeIndex ? 'true' : undefined}
             onClick={() => setCurrentIndex(idx)}
             className={`relative w-16 h-12 shrink-0 rounded-lg overflow-hidden transition-all duration-300 ${
-              idx === currentIndex ? 'ring-2 ring-white scale-110 opacity-100 shadow-lg' : 'opacity-40 hover:opacity-80'
+              idx === safeIndex ? 'ring-2 ring-white scale-110 opacity-100 shadow-lg' : 'opacity-40 hover:opacity-80'
             }`}
           >
-            <SmartImage src={img} alt={`Thumb ${idx}`} className="w-full h-full object-cover" />
+            <SmartImage src={img} alt="" className="w-full h-full object-cover" />
           </button>
         ))}
       </div>

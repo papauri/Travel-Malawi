@@ -83,12 +83,37 @@ export function saveWhatsAppConfig(config: Partial<WhatsAppConfig>): WhatsAppCon
   // Preserve accessToken if passed as blank or masked string
   let tokenToSave = config.accessToken;
   if (!tokenToSave || tokenToSave.trim() === '' || tokenToSave === '********') {
-    tokenToSave = existing.accessToken || '';
+    // A blank Phone Number ID (the form's Clear action) also removes the stored token.
+    const clearing = typeof config.phoneNumberId === 'string' && config.phoneNumberId.trim() === '';
+    tokenToSave = clearing ? '' : existing.accessToken || '';
+  }
+
+  // Only persist known fields (the admin form echoes read-only extras such as
+  // hasToken / isConfigured) and coerce types so a malformed body cannot corrupt the file.
+  const allowed: (keyof WhatsAppConfig)[] = [
+    'enabled', 'provider', 'phoneNumberId', 'businessAccountId', 'senderPhoneNumber',
+    'defaultCountryCode',
+    // Test results are recorded only by the test routine (a save made up solely of lastTest* keys),
+    // never echoed back from the settings form, which would overwrite a newer result.
+    ...(Object.keys(config).every(k => k.startsWith('lastTest')) ? (['lastTestedAt', 'lastTestStatus', 'lastTestMessage'] as const) : []),
+  ];
+  const incoming: Record<string, unknown> = {};
+  for (const key of allowed) {
+    if (config[key] === undefined) continue;
+    const value: unknown = config[key];
+    incoming[key] = typeof value === 'string' ? value.trim().slice(0, 500) : value;
+  }
+  if (incoming.enabled !== undefined) incoming.enabled = incoming.enabled === true || incoming.enabled === 'true';
+  if (incoming.provider !== undefined && incoming.provider !== 'cloud_api' && incoming.provider !== 'direct') {
+    throw new Error('Provider must be "cloud_api" or "direct".');
+  }
+  if (incoming.defaultCountryCode !== undefined && !/^\+?\d{1,4}$/.test(String(incoming.defaultCountryCode))) {
+    throw new Error('Default country code must look like +265.');
   }
 
   const updated: WhatsAppConfig = {
     ...existing,
-    ...config,
+    ...incoming,
     accessToken: tokenToSave,
     updatedAt: Date.now(),
   };
@@ -284,14 +309,15 @@ export async function testWhatsAppConnection(
       const sendData: any = await sendRes.json();
       if (!sendRes.ok || sendData.error) {
         const warnMsg = sendData?.error?.message || 'Credentials verified, but test message could not be sent to recipient.';
+        const failMsg = `Credentials verified for ${verifyData.display_phone_number || active.phoneNumberId}, but the test message was not delivered: ${warnMsg}`;
         saveWhatsAppConfig({
           lastTestedAt: now,
-          lastTestStatus: 'success',
-          lastTestMessage: `Account verified (${verifyData.display_phone_number || verifyData.verified_name || 'Active'}). Test message warning: ${warnMsg}`,
+          lastTestStatus: 'failed',
+          lastTestMessage: failMsg,
         });
         return {
-          success: true,
-          message: `Account credentials verified successfully for ${verifyData.display_phone_number || active.phoneNumberId}. (Notice: ${warnMsg})`,
+          success: false,
+          message: failMsg,
           details: { verifyData, sendData },
         };
       }

@@ -5,10 +5,8 @@
  * short sine tones weigh nothing, need no network request to be ready the
  * first time, and cannot 404. Every browser the app supports has it.
  *
- * Off by default. A page that starts making noise unprompted is worse than one
- * that stays quiet, and browsers block audio until the visitor has interacted
- * with the page anyway — so the preference is opted into deliberately, and the
- * toggle that turns it on doubles as the gesture that unlocks playback.
+ * On by default; muting stores 'false'. Browsers block audio until the visitor
+ * has interacted with the page, so the first click/tap/key unlocks playback.
  */
 const STORAGE_KEY = 'chatSoundEnabled';
 
@@ -152,6 +150,7 @@ export function startRinging(): void {
   if (activeRinger) return; // already ringing
 
   const ring = () => {
+    if (!isSoundEnabled()) { stopRinging(); return; }
     const ctx = ensureContext();
     if (!ctx) return;
     if (ctx.state === 'suspended') {
@@ -248,7 +247,9 @@ export function chimeForIncoming(
       const otherMsgs = incoming.filter(m => m.senderId && m.senderId !== currentUserId);
       if (otherMsgs.length > 0) {
         const text = otherMsgs[otherMsgs.length - 1].text || otherMsgs[otherMsgs.length - 1].content || 'You have a new message.';
-        new Notification('New Message', { body: text });
+        // Android Chrome throws on the constructor (service-worker only); never
+        // let that abort the caller's snapshot handler.
+        try { new Notification('New Message', { body: text }); } catch { /* unsupported */ }
       }
     }
   }

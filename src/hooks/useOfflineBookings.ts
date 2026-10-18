@@ -31,7 +31,7 @@ export function useOfflineBookings(): UseOfflineBookingsReturn {
     try {
       const all = await getAllOfflineBookings();
       setAllBookings(all);
-      const pending = all.filter((b) => b.status === 'pending_sync' || b.status === 'failed');
+      const pending = all.filter((b) => b.status === 'pending_sync' || b.status === 'failed' || b.status === 'syncing');
       setPendingBookings(pending);
     } catch (err) {
       console.warn('[useOfflineBookings] Error loading from IndexedDB:', err);

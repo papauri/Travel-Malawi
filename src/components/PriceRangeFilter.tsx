@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { CurrencyCode } from '../types';
 import { formatMoney, CURRENCIES } from '../lib/currency';
 
@@ -55,6 +55,24 @@ export default function PriceRangeFilter({
       ];
     }
   }, [currency, priceLimitMax]);
+
+  // The number boxes hold what is being typed and apply it on blur/Enter.
+  // Clamping on every keystroke turned a typed "80" into "1000" after the "8".
+  const [minDraft, setMinDraft] = useState<string | null>(null);
+  const [maxDraft, setMaxDraft] = useState<string | null>(null);
+  useEffect(() => { setMinDraft(null); setMaxDraft(null); }, [minPrice, maxPrice]);
+
+  const commitDraft = (which: 'min' | 'max') => {
+    const raw = which === 'min' ? minDraft : maxDraft;
+    if (raw === null) return;
+    const num = Number(raw);
+    if (raw.trim() === '' || !Number.isFinite(num)) {
+      if (which === 'min') setMinDraft(null); else setMaxDraft(null);
+      return;
+    }
+    if (which === 'min') handleMinChange(num); else handleMaxChange(num);
+    if (which === 'min') setMinDraft(null); else setMaxDraft(null);
+  };
 
   const handleMinChange = (val: number) => {
     const clamped = Math.max(priceLimitMin, Math.min(val, maxPrice - step));
@@ -159,8 +177,12 @@ export default function PriceRangeFilter({
             <span className="text-xs text-stone-400 font-medium">{currencySymbol}</span>
             <input
               type="number"
-              value={minPrice}
-              onChange={(e) => handleMinChange(Number(e.target.value))}
+              inputMode="numeric"
+              aria-label="Minimum price"
+              value={minDraft ?? minPrice}
+              onChange={(e) => setMinDraft(e.target.value)}
+              onBlur={() => commitDraft('min')}
+              onKeyDown={(e) => { if (e.key === 'Enter') commitDraft('min'); }}
               min={priceLimitMin}
               max={maxPrice}
               step={step}
@@ -177,8 +199,12 @@ export default function PriceRangeFilter({
             <span className="text-xs text-stone-400 font-medium">{currencySymbol}</span>
             <input
               type="number"
-              value={maxPrice}
-              onChange={(e) => handleMaxChange(Number(e.target.value))}
+              inputMode="numeric"
+              aria-label="Maximum price"
+              value={maxDraft ?? maxPrice}
+              onChange={(e) => setMaxDraft(e.target.value)}
+              onBlur={() => commitDraft('max')}
+              onKeyDown={(e) => { if (e.key === 'Enter') commitDraft('max'); }}
               min={minPrice}
               max={priceLimitMax}
               step={step}

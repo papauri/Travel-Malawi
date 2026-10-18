@@ -1,7 +1,12 @@
 import fs from 'fs';
 import path from 'path';
 
+/** Who may read a document: public = anyone, host = signed-in property managers/owners, admin = admin/marketing only. */
+export type DocAudience = "public" | "host" | "admin";
+
 export interface AdminDocMeta {
+  /** Missing means "admin" (fail closed). */
+  audience?: DocAudience;
   id: string;
   title: string;
   subtitle: string;
@@ -21,6 +26,7 @@ export interface AdminDocMeta {
 export const ADMIN_DOCS: AdminDocMeta[] = [
   {
     id: 'concept-validation-survey',
+    audience: 'public',
     title: 'Pre-Launch Concept Validation Survey',
     subtitle: "Partner discovery framework and survey for lodges, cottages, hotels and camps in Malawi",
     category: 'Concept Discovery',
@@ -34,6 +40,7 @@ export const ADMIN_DOCS: AdminDocMeta[] = [
   },
   {
     id: 'stay-owner-leaflet',
+    audience: 'public',
     title: 'What You Get as a Partner Property',
     subtitle: "A one-page summary for lodge, cottage and hotel owners",
     category: 'Partner Leaflet',
@@ -47,6 +54,7 @@ export const ADMIN_DOCS: AdminDocMeta[] = [
   },
   {
     id: 'marketing-presentation',
+    audience: 'admin',
     title: 'Marketing and Commercial Strategy',
     subtitle: "Direct booking for independent stays in Malawi: audiences, positioning and launch plan",
     category: 'Marketing',
@@ -60,6 +68,7 @@ export const ADMIN_DOCS: AdminDocMeta[] = [
   },
   {
     id: 'operations-starter-pack',
+    audience: 'admin',
     title: 'Operations and Field Playbook',
     subtitle: "Partner outreach, common objections and listing quality checks",
     category: 'Operations',
@@ -73,6 +82,7 @@ export const ADMIN_DOCS: AdminDocMeta[] = [
   },
   {
     id: 'host-onboarding-pack',
+    audience: 'public',
     title: 'Host Onboarding Starter Pack',
     subtitle: "How to set up a clear, trustworthy listing for an independent property in Malawi",
     category: 'Host Acquisition',
@@ -86,6 +96,7 @@ export const ADMIN_DOCS: AdminDocMeta[] = [
   },
   {
     id: 'property-listing-guide',
+    audience: 'host',
     title: 'Property Listing Reference',
     subtitle: "How to write clear listings that answer travellers' questions before they ask",
     category: 'Property Onboarding',
@@ -99,6 +110,7 @@ export const ADMIN_DOCS: AdminDocMeta[] = [
   },
   {
     id: 'platform-guide-uat',
+    audience: 'admin',
     title: 'Platform Guide and UAT Checklist',
     subtitle: "Quality checks, test checklists and acceptance criteria for Travel Malawi",
     category: 'Platform Standards & QA',
@@ -111,6 +123,14 @@ export const ADMIN_DOCS: AdminDocMeta[] = [
     estimatedReadMinutes: 4,
   },
 ];
+
+/** Whether a viewer may read a doc. Unset audience is treated as admin-only. */
+export function docVisibleTo(doc: { audience?: DocAudience }, viewer: { isStaff: boolean; isHost: boolean }): boolean {
+  const audience = doc.audience ?? 'admin';
+  if (audience === 'public') return true;
+  if (viewer.isStaff) return true;
+  return audience === 'host' && viewer.isHost;
+}
 
 export function getDocsDir(): string {
   const candidates = [
@@ -506,6 +526,24 @@ export function saveAdminDoc(
     return { success: false, error: 'Document not found' };
   }
 
+  for (const key of ['title', 'subtitle', 'category', 'lastEditedBy'] as const) {
+    if (updates[key] !== undefined && typeof updates[key] !== 'string') {
+      return { success: false, error: `${key} must be text` };
+    }
+  }
+  if (updates.content !== undefined && typeof updates.content !== 'string') {
+    return { success: false, error: 'content must be text' };
+  }
+  if (typeof updates.content === 'string' && updates.content.length > 500_000) {
+    return { success: false, error: 'Document is too large (500,000 character limit).' };
+  }
+  if (typeof updates.content === 'string' && !updates.content.trim()) {
+    return { success: false, error: 'Document content cannot be empty. Use Reset to restore the original.' };
+  }
+  for (const key of ['title', 'subtitle', 'category'] as const) {
+    if ((updates[key] || '').length > 300) return { success: false, error: `${key} is too long (300 characters max).` };
+  }
+
   const docsDir = getDocsDir();
   const filePath = path.join(docsDir, baseDoc.filename);
 
@@ -591,6 +629,13 @@ export function resetAdminDoc(id: string): { success: boolean; doc?: AdminDocMet
       fs.writeFileSync(targetPath, restoredContent, 'utf-8');
     } catch (err: any) {
       return { success: false, error: 'Failed to restore default content file' };
+    }
+  } else {
+    // Never edited, so the file on disk is still the original; return it so the editor is not blanked.
+    try {
+      if (fs.existsSync(targetPath)) restoredContent = fs.readFileSync(targetPath, 'utf-8');
+    } catch {
+      // non-fatal
     }
   }
 

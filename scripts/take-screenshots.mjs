@@ -63,7 +63,7 @@ async function main() {
   console.log('Saved screenshot_01b_listings.png');
 
   // 4. Hotel Details
-  console.log('Navigating to Hotel Details (Pumulani Lodge)...');
+  console.log('Navigating to Hotel Details (first listed property)...');
   await page.goto('http://localhost:3000/hotel/CVLioXMAPYkxR9kHBiS8', { waitUntil: 'domcontentloaded' });
   await sleep(4000);
   await page.screenshot({ path: path.join(OUTPUT_DIR, 'screenshot_03_hotel_details.png') });

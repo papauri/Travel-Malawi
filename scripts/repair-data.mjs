@@ -6,7 +6,7 @@
  *  1. Five of the six listings are owned by `demo_manager_123`, which is not a
  *     real Auth uid. Nobody can sign in as that owner, so those listings cannot
  *     be edited and their booking requests can never be confirmed or declined.
- *     They are handed to real accounts per OWNERSHIP below.
+ *     They are handed to the FALLBACK_OWNER_EMAIL test account below.
  *
  *  2. Bookings carry a `managerId` stamped when they were created, so it goes
  *     stale as soon as a listing changes hands — and reassigning the orphaned
@@ -34,29 +34,9 @@ const PLACEHOLDER_MANAGER = 'demo_manager_123';
 const DELETE_UNDATEABLE = process.argv.includes('--delete-undateable');
 
 /**
- * Who ends up owning which listing, matched on the listing name.
- *
- * Everything here is a test account — no personal account owns platform data.
- *
- * host@malawiscapes.com holds both roles, so signing in as it exercises the
- * case this platform is actually built for: someone who lists a property and
- * also books stays. It takes Blue Zebra, which carries the end-to-end test
- * booking, so confirm and decline can be driven from a real dashboard. The
- * rest go to a manager-only account, so there is more than one owner to test
- * against.
+ * Orphaned listings are handed to a test account. No listing is matched by
+ * name: properties exist only as onboarded Firestore records (directive D1).
  */
-const OWNERSHIP = [
-  {
-    email: 'host@malawiscapes.com',
-    listings: ['Blue Zebra Island Lodge', 'Kaya Mawa', 'Pumulani Lodge'],
-  },
-  {
-    email: 'manager@malawiscapes.com',
-    listings: ['Sunbird Ku Chawe', 'Mvuu Camp & Lodge'],
-  },
-];
-
-/** Anything still orphaned after the map above goes here. */
 const FALLBACK_OWNER_EMAIL = 'manager@malawiscapes.com';
 
 let changes = 0;
@@ -72,13 +52,7 @@ async function requireAccount(email) {
   process.exit(1);
 }
 
-// Every email is resolved up front, so a typo fails before anything is written.
-const ownerByListing = new Map();
-for (const { email, listings } of OWNERSHIP) {
-  const account = await requireAccount(email);
-  console.log(`${email} -> ${account.uid}  (${listings.length} listing(s))`);
-  for (const name of listings) ownerByListing.set(name, { uid: account.uid, email });
-}
+// Resolved up front, so a missing account fails before anything is written.
 const fallbackOwner = await requireAccount(FALLBACK_OWNER_EMAIL);
 
 // --- 1. Listings owned by a uid that does not exist -------------------------
@@ -90,8 +64,7 @@ for (const doc of hotels.docs) {
   const hotel = doc.data();
   if (hotel.managerId !== PLACEHOLDER_MANAGER) continue;
 
-  const owner = ownerByListing.get(hotel.name)
-    ?? { uid: fallbackOwner.uid, email: FALLBACK_OWNER_EMAIL };
+  const owner = { uid: fallbackOwner.uid, email: FALLBACK_OWNER_EMAIL };
   plan(`reassign "${hotel.name}" (${doc.id}) -> ${owner.email}`);
   changes++;
   if (APPLY) await doc.ref.update({ managerId: owner.uid });

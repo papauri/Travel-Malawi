@@ -76,7 +76,7 @@ export function loadEmailConfig(): SMTPEmailConfig {
   return getEnvEmailDefaults();
 }
 
-export function saveEmailConfig(config: Partial<SMTPEmailConfig>): SMTPEmailConfig {
+export function saveEmailConfig(config: Partial<SMTPEmailConfig>, opts: { recordTest?: boolean } = {}): SMTPEmailConfig {
   if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
   }
@@ -85,7 +85,11 @@ export function saveEmailConfig(config: Partial<SMTPEmailConfig>): SMTPEmailConf
   
   // If new password is blank or masked string ('********'), keep existing password
   let passwordToSave = config.smtpPass;
-  if (!passwordToSave || passwordToSave.trim() === '' || passwordToSave === '********') {
+  const clearing = typeof config.smtpHost === 'string' && config.smtpHost.trim() === '';
+  if (clearing && (!passwordToSave || passwordToSave === '********')) {
+    // Blank host (the form's Clear action) also removes the stored password.
+    passwordToSave = '';
+  } else if (!passwordToSave || passwordToSave.trim() === '' || passwordToSave === '********') {
     // Keep the stored password only while it still points at the same
     // server and account; moving it elsewhere requires re-entering it.
     const moved = (['smtpHost', 'smtpUser'] as const).some(key =>
@@ -99,9 +103,24 @@ export function saveEmailConfig(config: Partial<SMTPEmailConfig>): SMTPEmailConf
     passwordToSave = existing.smtpPass || '';
   }
 
+  // Only persist known fields: the admin form echoes read-only extras
+  // (hasPassword, isConfigured) that must not end up in the stored file.
+  const allowed: (keyof SMTPEmailConfig)[] = [
+    'smtpHost', 'smtpPort', 'smtpSecure', 'smtpUser', 'fromName', 'fromEmail', 'replyTo',
+    // Test results are written only by the test routine, never echoed back from the form.
+    ...(opts.recordTest ? (['lastTestedAt', 'lastTestStatus', 'lastTestMessage'] as const) : []),
+  ];
+  const incoming: Record<string, unknown> = {};
+  for (const key of allowed) {
+    if (config[key] === undefined) continue;
+    const value: unknown = config[key];
+    incoming[key] = typeof value === 'string' ? value.trim().slice(0, 500) : value;
+  }
+  if (incoming.smtpSecure !== undefined) incoming.smtpSecure = incoming.smtpSecure === true || incoming.smtpSecure === 'true';
+
   const updated: SMTPEmailConfig = {
     ...existing,
-    ...config,
+    ...incoming,
     smtpPass: passwordToSave,
     updatedAt: Date.now(),
   };
@@ -241,7 +260,7 @@ export async function testSMTPConnection(
       lastTestMessage: testEmail 
         ? `Verified and sent test email to ${testEmail}` 
         : 'SMTP server connection verified successfully',
-    });
+    }, { recordTest: true });
 
     return {
       success: true,
@@ -255,7 +274,7 @@ export async function testSMTPConnection(
       lastTestedAt: Date.now(),
       lastTestStatus: 'failed',
       lastTestMessage: err?.message || 'Connection failed',
-    });
+    }, { recordTest: true });
     throw new Error(`SMTP Error: ${err?.message || 'Failed to connect to SMTP server'}`);
   }
 }

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   MessageSquare,
   Plus,
@@ -107,6 +107,32 @@ export default function ManagerMessageTemplatesHub({
   const [activeListTab, setActiveListTab] = useState<"whatsapp" | "email">("whatsapp");
 
   const [applyingToAll, setApplyingToAll] = useState(false);
+
+  // Switching property keeps this component mounted; without a reset the next
+  // save would write the previous property's templates onto the new one.
+  const loadedHotelId = useRef(hotel.id);
+  useEffect(() => {
+    if (loadedHotelId.current === hotel.id) return;
+    loadedHotelId.current = hotel.id;
+    const fromHotel = hotel.messageTemplates ||
+      (hotel.whatsappTemplates || []).map((t) => ({
+        id: t.id,
+        type: "whatsapp" as const,
+        title: t.title,
+        body: t.body,
+        enabled: true,
+        isCustom: true,
+        createdAt: t.createdAt,
+      }));
+    setTemplates(fromHotel.length > 0
+      ? fromHotel
+      : DEFAULT_TEMPLATES.map((t) => ({
+          ...t,
+          id: Math.random().toString(36).substr(2, 9),
+          createdAt: Date.now(),
+        })));
+    resetForm();
+  }, [hotel.id]);
 
   const saveTemplatesToDb = async (newTemplates: MessageTemplate[]) => {
     await updateDoc(doc(db, "hotels", hotel.id!), {
@@ -236,22 +262,23 @@ export default function ManagerMessageTemplatesHub({
       return;
     setApplyingToAll(true);
     try {
+      // The property's own manager: an admin working on someone else's
+      // property must not overwrite the admin's own listings.
       const q = query(
         collection(db, "hotels"),
-        where("managerId", "==", user.uid),
+        where("managerId", "==", hotel.managerId || user.uid),
       );
       const snapshot = await getDocs(q);
       const batch = writeBatch(db);
+      const others = snapshot.docs.filter((docSnap) => docSnap.id !== hotel.id);
 
-      snapshot.docs.forEach((docSnap) => {
-        if (docSnap.id !== hotel.id) {
-          batch.update(docSnap.ref, { messageTemplates: templates });
-        }
+      others.forEach((docSnap) => {
+        batch.update(docSnap.ref, { messageTemplates: templates });
       });
 
       await batch.commit();
       toast.success(
-        `Applied templates to ${snapshot.size - 1} other properties`,
+        `Applied templates to ${others.length} other ${others.length === 1 ? "property" : "properties"}`,
       );
     } catch (error) {
       console.error(error);

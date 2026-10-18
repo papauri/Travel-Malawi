@@ -1,15 +1,21 @@
 import { useState, useEffect, useCallback } from 'react';
 import { AdminDocMeta } from '../lib/docUtils';
+import { auth } from '../lib/firebase';
+import { useAuth } from '../contexts/AuthContext';
 
 export function useDocContent(docId: string, defaultTitle: string, defaultSubtitle: string) {
   const [docMeta, setDocMeta] = useState<AdminDocMeta | null>(null);
   const [content, setContent] = useState<string>('');
   const [loading, setLoading] = useState(true);
+  // Re-fetch when the signed-in user changes: host and admin documents are only served to a verified token.
+  const { user } = useAuth();
+  const uid = user?.uid ?? null;
 
   const fetchDoc = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch(`/api/docs/${docId}?format=md`);
+      const token = await auth.currentUser?.getIdToken().catch(() => null);
+      const res = await fetch(`/api/docs/${docId}?format=md`, token ? { headers: { Authorization: `Bearer ${token}` } } : undefined);
       if (res.ok) {
         const data = await res.json();
         setDocMeta(data.doc);
@@ -20,7 +26,7 @@ export function useDocContent(docId: string, defaultTitle: string, defaultSubtit
     } finally {
       setLoading(false);
     }
-  }, [docId]);
+  }, [docId, uid]);
 
   useEffect(() => {
     fetchDoc();

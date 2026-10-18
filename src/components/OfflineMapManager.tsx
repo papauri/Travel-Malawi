@@ -1,4 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNetworkStatus } from '../hooks/useNetworkStatus';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { useDialogA11y } from '../hooks/useDialogA11y';
 import {
   CloudDownload,
   CheckCircle2,
@@ -58,7 +61,8 @@ export default function OfflineMapManager({
   const [isDownloading, setIsDownloading] = useState(false);
   const [progress, setProgress] = useState<OfflineProgressUpdate | null>(null);
   const [showModal, setShowModal] = useState(false);
-  const [isOffline, setIsOffline] = useState(() => !navigator.onLine);
+  const { isOnline } = useNetworkStatus();
+  const isOffline = !isOnline;
   
   // GPS tracking for offline guide
   const [gpsLocation, setGpsLocation] = useState<LatLng | null>(null);
@@ -71,19 +75,15 @@ export default function OfflineMapManager({
     setPkg(getPropertyOfflinePackage(property.id));
   }, [property.id]);
 
-  useEffect(() => {
-    const onOnline = () => setIsOffline(false);
-    const onOffline = () => setIsOffline(true);
-    window.addEventListener('online', onOnline);
-    window.addEventListener('offline', onOffline);
-    return () => {
-      window.removeEventListener('online', onOnline);
-      window.removeEventListener('offline', onOffline);
-    };
-  }, []);
+  const modalRef = useDialogA11y(showModal && !showDeleteConfirm, () => setShowModal(false));
+  useBodyScrollLock(showModal);
 
   const handleDownload = async () => {
     if (isDownloading) return;
+    if (isOffline) {
+      toast.error('You are offline. Connect to the internet to save this map.', { id: 'offline-map-needs-network' });
+      return;
+    }
     if (!isValidLatLng(property.coordinates)) {
       toast.error('Location coordinates unavailable for this property.');
       return;
@@ -129,10 +129,14 @@ export default function OfflineMapManager({
   };
 
   const handleCopy = (text: string, type: 'decimal' | 'dms') => {
-    navigator.clipboard.writeText(text);
-    setCopiedFormat(type);
-    toast.success(`Copied ${type === 'decimal' ? 'decimal coordinates' : 'GPS DMS coordinates'}!`);
-    setTimeout(() => setCopiedFormat(null), 2000);
+    navigator.clipboard.writeText(text).then(
+      () => {
+        setCopiedFormat(type);
+        toast.success(`Copied ${type === 'decimal' ? 'decimal coordinates' : 'GPS DMS coordinates'}!`);
+        setTimeout(() => setCopiedFormat(null), 2000);
+      },
+      () => toast.error(`Could not copy. The coordinates are ${text}`)
+    );
   };
 
   // Offline GPS Position request
@@ -328,7 +332,13 @@ export default function OfflineMapManager({
       {/* 2. OFFLINE NAVIGATION GUIDE & GPS MODAL */}
       {showModal && (
         <div className="fixed inset-0 z-[3000] bg-stone-950/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 md:p-6 overflow-y-auto">
-          <div className="relative w-full max-w-3xl bg-white rounded-2xl sm:rounded-3xl border border-stone-200 shadow-2xl overflow-hidden my-auto flex flex-col max-h-[92vh]">
+          <div
+            ref={modalRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Offline navigation guide for ${property.name}`}
+            className="relative w-full max-w-3xl bg-white rounded-2xl sm:rounded-3xl border border-stone-200 shadow-2xl overflow-hidden my-auto flex flex-col max-h-[92vh]"
+          >
             {/* Header */}
             <div className="px-5 py-4 sm:px-6 sm:py-5 border-b border-stone-100 flex items-start justify-between gap-4 bg-stone-50/80">
               <div className="flex items-center gap-3">
@@ -354,6 +364,7 @@ export default function OfflineMapManager({
               <button
                 type="button"
                 onClick={() => setShowModal(false)}
+                aria-label="Close offline navigation guide"
                 className="p-2 text-stone-400 hover:text-stone-700 hover:bg-stone-200/60 rounded-full transition"
               >
                 <X className="w-5 h-5" />

@@ -61,8 +61,19 @@ export function ReviewModal({
         const snap = await getDocs(q);
         if (!isMounted) return;
 
-        if (!snap.empty) {
-          const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Booking));
+        // One review per stay: leave out bookings this guest has already reviewed.
+        const reviewedSnap = await getDocs(query(
+          collection(db, 'reviews'),
+          where('hotelId', '==', hotelId),
+          where('guestId', '==', user.uid)
+        )).catch(() => null);
+        if (!isMounted) return;
+        const reviewedIds = new Set(reviewedSnap?.docs.map(d => d.data().bookingId) ?? []);
+        const list = snap.docs
+          .map(d => ({ id: d.id, ...d.data() } as Booking))
+          .filter(b => !b.id || !reviewedIds.has(b.id));
+
+        if (list.length > 0) {
           setUserBookings(list);
           setSelectedBookingId(list[0].id || null);
         } else {
@@ -111,7 +122,7 @@ export function ReviewModal({
         guestId: user.uid,
         authorName: user.displayName || user.email?.split('@')[0] || 'Verified Guest',
         rating,
-        title: title.trim() || undefined,
+        ...(title.trim() ? { title: title.trim() } : {}),
         text: trimmedText,
         createdAt: Date.now(),
       };

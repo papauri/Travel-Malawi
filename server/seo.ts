@@ -1,5 +1,3 @@
-import { MALAWI_HOSPITALITY_REGISTRY } from '../src/lib/malawiHospitalityRegistry';
-
 export const BASE_URL = 'https://ulendomalawi.com';
 
 export interface SitemapUrl {
@@ -13,8 +11,10 @@ export interface SitemapUrl {
  * Generates the complete, high-authority sitemap.xml for Travel Malawi
  */
 export function generateSitemapXml(
-  liveHotels: { id: string; updatedAt?: number; location?: string; district?: string }[] = []
+  allHotels: { id: string; updatedAt?: number; location?: string; district?: string; status?: string }[] = []
 ): string {
+  // Pending and rejected listings are not public pages; a missing status is a legacy approved one.
+  const liveHotels = allHotels.filter((h) => !h.status || h.status === 'approved');
   const today = new Date().toISOString().split('T')[0];
 
   // Core static landing pages
@@ -24,23 +24,18 @@ export function generateSitemapXml(
     { loc: '/host-guide', priority: '0.80', changefreq: 'weekly', lastmod: today },
     { loc: '/how-hosting-works', priority: '0.80', changefreq: 'weekly', lastmod: today },
     { loc: '/stay-owner-leaflet', priority: '0.75', changefreq: 'monthly', lastmod: today },
-    { loc: '/marketing', priority: '0.70', changefreq: 'monthly', lastmod: today },
-    { loc: '/operations-guide', priority: '0.70', changefreq: 'monthly', lastmod: today },
     { loc: '/concept-validation', priority: '0.65', changefreq: 'monthly', lastmod: today },
     { loc: '/terms', priority: '0.50', changefreq: 'monthly', lastmod: today },
     { loc: '/privacy', priority: '0.50', changefreq: 'monthly', lastmod: today },
     { loc: '/refunds', priority: '0.50', changefreq: 'monthly', lastmod: today },
   ];
 
-  // Dynamically harvest all unique locations and districts from live hotels and registry
+  // Only places with a live listing: the national registry is not browsable,
+  // so its towns would be search pages with no results.
   const uniqueLocations = new Set<string>();
   for (const h of liveHotels) {
     if (h.district) uniqueLocations.add(h.district.trim());
     if (h.location) uniqueLocations.add(h.location.trim());
-  }
-  for (const reg of MALAWI_HOSPITALITY_REGISTRY) {
-    if (reg.district) uniqueLocations.add(reg.district.trim());
-    if (reg.location) uniqueLocations.add(reg.location.trim());
   }
 
   const dynamicLocationRoutes: SitemapUrl[] = Array.from(uniqueLocations)
@@ -52,11 +47,11 @@ export function generateSitemapXml(
       lastmod: today,
     }));
 
-  // Collect hotel IDs from registry and live database
+  // Live hotels only: a registry id has no /hotel/:id page behind it, so
+  // listing it would hand crawlers a "not found" page.
   const seenIds = new Set<string>();
   const hotelRoutes: SitemapUrl[] = [];
 
-  // 1. Live Firestore hotels
   for (const h of liveHotels) {
     if (h.id && !seenIds.has(h.id)) {
       seenIds.add(h.id);
@@ -66,19 +61,6 @@ export function generateSitemapXml(
         priority: '0.90',
         changefreq: 'weekly',
         lastmod: modDate,
-      });
-    }
-  }
-
-  // 2. Verified national registry hotels
-  for (const reg of MALAWI_HOSPITALITY_REGISTRY) {
-    if (reg.id && !seenIds.has(reg.id)) {
-      seenIds.add(reg.id);
-      hotelRoutes.push({
-        loc: `/hotel/${encodeURIComponent(reg.id)}`,
-        priority: '0.90',
-        changefreq: 'weekly',
-        lastmod: today,
       });
     }
   }
@@ -119,14 +101,20 @@ Disallow: /dashboard/*
 Disallow: /api/admin/*
 Disallow: /my-bookings
 Disallow: /profile
+Disallow: /saved
+Disallow: /marketing
+Disallow: /marketing-deck
+Disallow: /operations-guide
+Disallow: /listing-guide
+Disallow: /uat
+Disallow: /uat-guide
+Disallow: /uat-manual
+Disallow: /platform-guide
 
-# Major search engines crawl rate
-User-agent: Googlebot
-Allow: /
+# Googlebot and Bingbot follow the group above: a bot with its own group ignores
+# the "*" rules, which used to let them crawl /admin and /my-bookings.
 
-User-agent: Bingbot
-Allow: /
-
+# Link-preview bots only fetch pages they are given
 User-agent: Twitterbot
 Allow: /
 

@@ -36,34 +36,11 @@ const db = config.firestoreDatabaseId
   ? getFirestore(app, config.firestoreDatabaseId)
   : getFirestore(app);
 
-// Bundled photography of these specific lodges, served from public/hotels.
-// Preferred over remote links, which is what broke the listings originally.
-const LOCAL = {
-  pumulani: ['/hotels/pumulani_main.jpg', '/hotels/pumulani_gal1.jpg', '/hotels/pumulani_gal2.jpg'],
-  kaya: ['/hotels/kaya_main.jpg', '/hotels/kaya_gal1.jpg', '/hotels/kaya_gal2.jpg'],
-};
-
 const U = (id) => `https://images.unsplash.com/photo-${id}?q=80&w=2400&auto=format&fit=crop`;
 
-// Keyed on a fragment of the hotel name so the plan survives new document ids.
-// Every URL here was verified to return 200 before being committed.
-const HOTEL_PLAN = {
-  pumulani: { gallery: LOCAL.pumulani },
-  'kaya mawa': { gallery: LOCAL.kaya },
-  'ku chawe': {
-    // Replaces a link that now 404s.
-    image: 'https://upload.wikimedia.org/wikipedia/commons/1/15/Mulunguzi_dam_on_Zomba_Plateau.jpg',
-    gallery: [U('1523805009345-7448845a9e53'), U('1464822759023-fed622ff2c3b')],
-  },
-  'blue zebra': { gallery: [U('1504280390367-361c6d9f38f4'), U('1523805009345-7448845a9e53')] },
-  mvuu: { gallery: [U('1516426122078-c23e76319801'), U('1614531341773-3bff8b7cb3fc')] },
-  'lilongwe grand': {
-    // Generic hotel photography: there is no bundled imagery for this property,
-    // and reusing another named lodge's photos would misrepresent it.
-    image: U('1566073771259-6a8506099945'),
-    gallery: [U('1551882547-ff40c63fe5fa'), U('1582719478250-c89cae4dc85b')],
-  },
-};
+// No per-property photo plan: listing photos come only from the owner's own
+// uploads (directive D1). A dead main-image link is cleared so the app renders
+// its neutral placeholder (src/lib/images.ts); galleries are never invented.
 
 const ROOM_IMAGES = {
   'standard suite': U('1582719478250-c89cae4dc85b'),
@@ -73,11 +50,6 @@ const ROOM_IMAGES = {
 const ROOM_FALLBACK = U('1566073771259-6a8506099945');
 
 const isUsable = (v) => typeof v === 'string' && v.trim() !== '';
-const planFor = (name = '') => {
-  const n = name.toLowerCase();
-  const key = Object.keys(HOTEL_PLAN).find((k) => n.includes(k));
-  return key ? HOTEL_PLAN[key] : null;
-};
 
 async function main() {
   const email = arg('email');
@@ -92,16 +64,11 @@ async function main() {
   const hotels = await getDocs(collection(db, 'hotels'));
   for (const d of hotels.docs) {
     const data = d.data();
-    const plan = planFor(data.name);
     const patch = {};
 
-    if (!isUsable(data.imageUrl) && plan?.image) patch.imageUrl = plan.image;
-    // A dead link stored as the main image.
-    if (typeof data.imageUrl === 'string' && data.imageUrl.includes('photo-1542314831-c6a4d1409e1c') && plan?.image) {
-      patch.imageUrl = plan.image;
-    }
-    if (!Array.isArray(data.galleryUrls) || data.galleryUrls.length === 0) {
-      if (plan?.gallery) patch.galleryUrls = plan.gallery;
+    // A dead link stored as the main image → cleared so the placeholder shows.
+    if (typeof data.imageUrl === 'string' && data.imageUrl.includes('photo-1542314831-c6a4d1409e1c')) {
+      patch.imageUrl = '';
     }
 
     if (Object.keys(patch).length > 0) {

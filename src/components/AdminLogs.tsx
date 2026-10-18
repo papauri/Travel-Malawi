@@ -164,6 +164,15 @@ export default function AdminLogs() {
     });
   }, [logs, dateRange, selectedCategory, selectedStatus, selectedRole, searchQuery]);
 
+  // Keep the page valid when filters or deletions shrink the result set
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [dateRange, selectedCategory, selectedStatus, selectedRole, searchQuery, sortField, sortOrder]);
+  useEffect(() => {
+    const totalPages = Math.max(1, Math.ceil(filteredLogs.length / itemsPerPage));
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [filteredLogs.length, itemsPerPage, currentPage]);
+
   // Sorted logs for Intune Table
   const sortedLogs = useMemo(() => {
     const list = [...filteredLogs];
@@ -336,13 +345,18 @@ export default function AdminLogs() {
         `"${l.details ? JSON.stringify(l.details).replace(/"/g, '""') : ''}"`,
       ]);
 
-      const csvString = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+      // Neutralise spreadsheet formulas in user-controlled cells, and use a Blob URL so a '#' in a
+      // message cannot truncate the file the way it does in a data: URI.
+      const safeRows = rows.map((r) => r.map((c) => c.replace(/^"([=+\-@\t\r])/, '"\'$1')));
+      const csvString = [headers.join(','), ...safeRows.map((r) => r.join(','))].join('\n');
+      const csvUrl = URL.createObjectURL(new Blob([csvString], { type: 'text/csv;charset=utf-8' }));
       const anchor = document.createElement('a');
-      anchor.setAttribute('href', encodeURI(csvString));
+      anchor.setAttribute('href', csvUrl);
       anchor.setAttribute('download', `travel_malawi_intune_audit_${format(new Date(), 'yyyy-MM-dd_HHmm')}.csv`);
       document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();
+      setTimeout(() => URL.revokeObjectURL(csvUrl), 1000);
       setShowExportMenu(false);
       toast.success(`Exported ${filteredLogs.length} audit records to CSV`);
     } catch {

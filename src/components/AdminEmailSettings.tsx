@@ -59,6 +59,8 @@ export default function AdminEmailSettings() {
             });
           }
         }
+      } else {
+        toast.error('Failed to load settings (HTTP ' + res.status + ').');
       }
     } catch {
       toast.error('Failed to load SMTP settings');

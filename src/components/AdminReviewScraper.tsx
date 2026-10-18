@@ -12,6 +12,12 @@ import Pagination from './Pagination';
 import ConfirmDialog from './ConfirmDialog';
 import { parseReviewDateToTimestamp, formatReviewDate, sanitizeReviewSourceUrl, getReviewSourceLabel, isBrokenOrFakeReviewUrl } from '../lib/reviewDates';
 
+/** Mean of the numeric ratings only (a review with no rating must not count as 5 stars), to one decimal. */
+function ratingAverage(list: any[], emptyValue: number): number {
+  const rated = list.map(r => r?.rating).filter((v): v is number => typeof v === 'number' && v > 0);
+  return rated.length > 0 ? Math.round((rated.reduce((sum, v) => sum + v, 0) / rated.length) * 10) / 10 : emptyValue;
+}
+
 interface AdminReviewScraperProps {
   hotels: Hotel[];
   onHotelUpdated: (updatedHotel: Hotel) => void;
@@ -616,8 +622,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
       });
 
       const totalCount = finalReviews.length;
-      const totalScore = finalReviews.reduce((sum: number, r: any) => sum + (r.rating || 5), 0);
-      const newAverage = totalCount > 0 ? Math.round((totalScore / totalCount) * 10) / 10 : 5;
+      const newAverage = ratingAverage(finalReviews, 5);
 
       const updatedSummary = {
         count: totalCount,
@@ -663,8 +668,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
       currentReviews.splice(reviewIndex, 1);
       
       const totalCount = currentReviews.length;
-      const totalScore = currentReviews.reduce((sum: number, r: any) => sum + (r.rating || 5), 0);
-      const newAverage = totalCount > 0 ? Math.round((totalScore / totalCount) * 10) / 10 : 0;
+      const newAverage = ratingAverage(currentReviews, 0);
 
       const updatedSummary = {
         count: totalCount,
@@ -817,8 +821,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
               date: editFormData.date || 'Recent stay',
             };
             const totalCount = currentReviews.length;
-            const totalScore = currentReviews.reduce((sum: number, r: any) => sum + (r.rating || 5), 0);
-            const newAvg = totalCount > 0 ? Math.round((totalScore / totalCount) * 10) / 10 : 5;
+            const newAvg = ratingAverage(currentReviews, 5);
             const updatedSummary = {
               count: totalCount,
               averageRating: newAvg,
@@ -852,8 +855,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
             date: editFormData.date || 'Recent stay',
           };
           const totalCount = currentReviews.length;
-          const totalScore = currentReviews.reduce((sum: number, r: any) => sum + (r.rating || 5), 0);
-          const newAvg = totalCount > 0 ? Math.round((totalScore / totalCount) * 10) / 10 : 5;
+          const newAvg = ratingAverage(currentReviews, 5);
           const updatedSummary = {
             count: totalCount,
             averageRating: newAvg,
@@ -907,8 +909,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
           const currentReviews = Array.isArray(targetHotel.reviews) ? [...targetHotel.reviews] : [];
           const filtered = currentReviews.filter((_, idx) => idx !== review.originalIndex);
           const totalCount = filtered.length;
-          const totalScore = filtered.reduce((sum: number, r: any) => sum + (r.rating || 5), 0);
-          const newAvg = totalCount > 0 ? Math.round((totalScore / totalCount) * 10) / 10 : 0;
+          const newAvg = ratingAverage(filtered, 0);
           const updatedSummary = {
             count: totalCount,
             averageRating: newAvg,

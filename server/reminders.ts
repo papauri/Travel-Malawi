@@ -537,6 +537,25 @@ async function deliver(r: ServerReminder): Promise<DeliveryOutcome> {
   return { delivered, error: errors.join('; ') || undefined };
 }
 
+/**
+ * False when the booking a guest reminder belongs to is no longer confirmed
+ * (cancelled or declined after the client's best-effort cancel call failed).
+ * Only checked where the server has Firestore credentials (REMINDERS_STORE=firestore);
+ * an unreadable booking does not block delivery.
+ */
+async function bookingStillConfirmed(r: ServerReminder): Promise<boolean> {
+  if (process.env.REMINDERS_STORE !== 'firestore' || !r.bookingId || !r.templateId) return true;
+  try {
+    const app = getApps()[0] ?? initializeApp({ projectId: PROJECT_ID });
+    const snap = await getFirestore(app, DATABASE_ID).collection('bookings').doc(r.bookingId).get();
+    if (!snap.exists) return false;
+    const status = snap.get('status');
+    return !status || ['confirmed', 'checked_in', 'checked_out', 'completed'].includes(status);
+  } catch {
+    return true;
+  }
+}
+
 let firing = false;
 
 /** Called every minute by the server. Never runs two passes at once. */
@@ -564,6 +583,15 @@ export async function checkAndFireReminders(): Promise<{ fired: ServerReminder[]
     for (const r of due) {
       if (now - new Date(r.scheduledFor).getTime() > STALE_AFTER_MS) {
         updates.push({ ...r, status: 'expired', lastError: 'More than 24 hours overdue; not sent.' });
+        continue;
+      }
+
+      // The list was read at the start of the pass; a cancellation or a
+      // regeneration since then must win over this stale copy.
+      const latest = await getStore().get(r.id).catch(() => r);
+      if (!latest || statusOf(latest) !== 'pending' || latest.scheduledFor !== r.scheduledFor) continue;
+      if (!(await bookingStillConfirmed(r))) {
+        updates.push({ ...r, status: 'cancelled', lastError: 'Booking is no longer confirmed.' });
         continue;
       }
 

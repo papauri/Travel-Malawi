@@ -117,13 +117,17 @@ export function isOpenAt(hours: WeeklyHours | undefined | null, now = new Date()
   const week = normaliseHours(hours);
   if (!week) return null;
 
-  const minutesNow = now.getHours() * 60 + now.getMinutes();
+  // Hours are Malawi local time (CAT, UTC+2, no daylight saving); reading the
+  // viewer's clock showed "Open now" wrongly to anyone abroad.
+  const malawi = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+  const minutesNow = malawi.getUTCHours() * 60 + malawi.getUTCMinutes();
+  const weekday = malawi.getUTCDay();
   const toMinutes = (time: string) => {
     const [h, m] = time.split(':').map(Number);
     return h * 60 + m;
   };
 
-  const today = week[now.getDay()];
+  const today = week[weekday];
   if (!today.closed) {
     const open = toMinutes(today.open);
     const close = toMinutes(today.close);
@@ -133,7 +137,7 @@ export function isOpenAt(hours: WeeklyHours | undefined | null, now = new Date()
   }
 
   // Yesterday's session may still be running.
-  const yesterday = week[(now.getDay() + 6) % 7];
+  const yesterday = week[(weekday + 6) % 7];
   if (!yesterday.closed) {
     const open = toMinutes(yesterday.open);
     const close = toMinutes(yesterday.close);

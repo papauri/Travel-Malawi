@@ -42,7 +42,7 @@ import { hasAnyContact, mailtoLink, telLink, whatsappLink } from '../lib/contact
 import { mapEmbedUrl, mapLinkUrl, resolveHotelCoordinates, isValidLatLng } from '../lib/geo';
 import { getSingleCachedHotel, saveSingleCachedHotel, getCachedRooms } from '../lib/mapCache';
 import DatePicker from '../components/DatePicker';
-import { computeBookingPricing, formatMoney, makeBookingReference } from '../lib/booking';
+import { computeBookingPricing, entirePlaceRoom, formatMoney, makeBookingReference } from '../lib/booking';
 import { isTraveller, isAdmin, isHotelManager, isMarketing } from '../lib/roles';
 import { logSystemEvent } from '../lib/logger';
 import { validateBooking, errorsByField, BookingField, MAX_SPECIAL_REQUESTS } from '../lib/validateBooking';
@@ -554,38 +554,11 @@ export default function HotelDetails() {
    * synthesizes a whole-space room record so all availability, calendar, and booking logic works.
    */
   const effectiveRooms = useMemo(() => {
-    const hotelBlocked = normalizeBlockedDates(hotel?.blockedDates);
+    const hotelBlocked = [...normalizeBlockedDates(hotel?.blockedDates), ...normalizeBlockedDates(hotel?.icalBlockedDates)];
     let baseRooms = [...rooms];
 
     if (hotel?.stayType === 'entire_place' && baseRooms.length === 0) {
-      const ep = hotel.entirePlaceDetails || {};
-      const primaryRateUsd = Number(ep.ratePerNightUsd || 120);
-      const primaryRateMwk = Number(ep.ratePerNightMwk || 210000);
-      baseRooms = [
-        {
-          id: hotel.id ? `entire-${hotel.id}` : 'entire-place-room',
-          hotelId: hotel.id || '',
-          name: ep.propertyType ? `Entire ${ep.propertyType}` : 'Entire Property',
-          description: ep.wholeHouseDescription || `${hotel.name} is rented exclusively as an entire private space. Includes all ${ep.bedrooms || 2} bedrooms, private grounds, and amenities.`,
-          maxGuests: Number(ep.maxGuests || 6),
-          quantity: 1,
-          currencies: ['USD', 'MWK'],
-          price: primaryRateUsd,
-          priceMWK: primaryRateMwk,
-          prices: {
-            USD: primaryRateUsd,
-            MWK: primaryRateMwk,
-          },
-          extraGuestFees: {
-            USD: 0,
-            MWK: 0,
-          },
-          amenities: hotel.amenities || [],
-          galleryUrls: hotel.galleryUrls || [],
-          imageUrl: hotel.imageUrl || '',
-          createdAt: hotel.createdAt || Date.now(),
-        } as RoomType,
-      ];
+      baseRooms = [entirePlaceRoom(hotel)];
     }
 
     return baseRooms.map(r => {
@@ -609,14 +582,14 @@ export default function HotelDetails() {
 
   /** Checks if any calendar date is fully blocked for the entire property */
   const isDateBlockedForProperty = useMemo(() => {
-    const hotelBlocked = new Set(normalizeBlockedDates(hotel?.blockedDates));
+    const hotelBlocked = new Set([...normalizeBlockedDates(hotel?.blockedDates), ...normalizeBlockedDates(hotel?.icalBlockedDates)]);
     return (dateStr: string) => {
       if (hotelBlocked.has(dateStr)) return true;
       if (effectiveRooms.length === 0) return false;
       const nextDay = addDays(dateStr, 1);
       return effectiveRooms.every(r => !isRoomAvailable(r, bookings, dateStr, nextDay, 1));
     };
-  }, [hotel?.blockedDates, effectiveRooms, bookings]);
+  }, [hotel?.blockedDates, hotel?.icalBlockedDates, effectiveRooms, bookings]);
 
   const [dateSelectMode, setDateSelectMode] = useState<'inputs' | 'calendar'>('inputs');
 
@@ -1040,6 +1013,14 @@ export default function HotelDetails() {
           createdAt: Date.now()
         });
       } catch (writeErr: any) {
+        // Only a connectivity failure is queued; a rejected write (rules,
+        // validation) would fail again on every replay, so it is reported now.
+        const code = String(writeErr?.code || '');
+        if (code && !['unavailable', 'deadline-exceeded', 'resource-exhausted', 'aborted'].includes(code)) {
+          console.error('Booking write rejected:', writeErr);
+          toast.error('This booking request could not be submitted. Please check your details or contact the property directly.');
+          return;
+        }
         console.warn('Firebase booking write encountered network issue, saving to IndexedDB queue:', writeErr);
         await saveOfflineAndNotify();
         return;
@@ -1227,13 +1208,13 @@ export default function HotelDetails() {
       : undefined;
 
     const roomPricesMwk = rooms
-      .map((r) => r.prices?.MWK || r.priceMWK || (r.price as number))
+      .map((r) => roomPrice(r, 'MWK'))
       .filter((p): p is number => typeof p === 'number' && p > 0);
     const minMwk = roomPricesMwk.length > 0 ? Math.min(...roomPricesMwk) : null;
     const maxMwk = roomPricesMwk.length > 0 ? Math.max(...roomPricesMwk) : null;
 
     const roomPricesUsd = rooms
-      .map((r) => r.prices?.USD || (r.currency === 'USD' && typeof r.price === 'number' ? r.price : 0))
+      .map((r) => roomPrice(r, 'USD'))
       .filter((p): p is number => typeof p === 'number' && p > 0);
     const minUsd = roomPricesUsd.length > 0 ? Math.min(...roomPricesUsd) : null;
     const maxUsd = roomPricesUsd.length > 0 ? Math.max(...roomPricesUsd) : null;

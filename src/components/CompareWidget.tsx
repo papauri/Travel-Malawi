@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { useModalScrollIsolation } from '../hooks/useModalScrollIsolation';
+import { useDialogA11y } from '../hooks/useDialogA11y';
 import { motion, AnimatePresence } from 'motion/react';
 import { Scale, X, Check, Star, MapPin, Clock, Phone, Mail, Tag, ArrowRight } from 'lucide-react';
 import { useCompare } from '../contexts/CompareContext';
@@ -14,6 +15,13 @@ export default function CompareWidget() {
   const { selectedHotels, clearSelection, toggleHotel, isCompareModalOpen, setIsCompareModalOpen } = useCompare();
   useBodyScrollLock(isCompareModalOpen);
   const scrollIsolationRef = useModalScrollIsolation<HTMLDivElement>(isCompareModalOpen);
+  const dialogRef = useDialogA11y(isCompareModalOpen, () => setIsCompareModalOpen(false));
+
+  // Removing the last property from inside the open dialog unmounts it, but the
+  // flag (and the page scroll lock it drives) would stay on.
+  useEffect(() => {
+    if (isCompareModalOpen && selectedHotels.length === 0) setIsCompareModalOpen(false);
+  }, [isCompareModalOpen, selectedHotels.length, setIsCompareModalOpen]);
 
   if (selectedHotels.length === 0) return null;
 
@@ -44,14 +52,18 @@ export default function CompareWidget() {
 
             <div className="flex items-center gap-1 sm:gap-2 border-l border-stone-800 pl-2 sm:pl-3 shrink-0">
               <button
+                type="button"
                 onClick={() => setIsCompareModalOpen(true)}
                 disabled={selectedHotels.length < 2}
+                title={selectedHotels.length < 2 ? 'Pick one more property to compare' : undefined}
                 className="bg-white hover:bg-stone-100 disabled:bg-stone-800 disabled:text-stone-500 text-stone-900 px-3 py-1 rounded-lg text-xs font-semibold transition whitespace-nowrap cursor-pointer disabled:cursor-not-allowed shadow-2xs"
               >
                 Compare
               </button>
               <button
+                type="button"
                 onClick={clearSelection}
+                aria-label="Clear comparison selection"
                 className="p-1 text-stone-400 hover:text-white hover:bg-stone-800 rounded-md transition shrink-0 cursor-pointer"
                 title="Clear selection"
               >
@@ -67,6 +79,10 @@ export default function CompareWidget() {
           {isCompareModalOpen && (
             <div
               key="compare-modal-container"
+              ref={dialogRef}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Compare properties"
               data-lenis-prevent="true"
               className="fixed inset-0 z-[100] overflow-y-auto overscroll-contain flex min-h-full items-center justify-center p-3 sm:p-6 md:p-10 text-center"
             >
@@ -94,7 +110,9 @@ export default function CompareWidget() {
                     <h2 className="text-xl sm:text-2xl font-serif font-bold text-stone-900">Compare Properties</h2>
                   </div>
                   <button
+                    type="button"
                     onClick={() => setIsCompareModalOpen(false)}
+                    aria-label="Close comparison"
                     className="p-2 hover:bg-stone-200 rounded-full transition bg-stone-100 cursor-pointer"
                   >
                     <X className="w-5 h-5 text-stone-600" />
@@ -126,8 +144,10 @@ export default function CompareWidget() {
                           className="absolute inset-0 w-full h-full object-cover"
                         />
                         <button
+                          type="button"
                           onClick={() => toggleHotel(item)}
-                          className="absolute top-3 right-3 p-2 bg-white/90 hover:bg-white text-stone-900 rounded-full shadow-md transition"
+                          className="absolute top-3 right-3 p-2 bg-white/90 hover:bg-white text-stone-900 rounded-full shadow-md transition cursor-pointer"
+                          aria-label={`Remove ${item.hotel.name} from comparison`}
                           title="Remove from comparison"
                         >
                           <X className="w-4 h-4" />
@@ -225,13 +245,13 @@ export default function CompareWidget() {
                         <div>
                           <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 mb-3 block">Amenities</span>
                           <ul className="grid grid-cols-1 gap-2 text-sm">
-                            {item.hotel.amenities.map((amenity, aIdx) => (
+                            {(item.hotel.amenities || []).map((amenity, aIdx) => (
                               <li key={`${amenity}-${aIdx}`} className="flex items-start gap-2 text-stone-700 font-medium">
                                 <Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
                                 <span>{amenity}</span>
                               </li>
                             ))}
-                            {item.hotel.amenities.length === 0 && (
+                            {(item.hotel.amenities || []).length === 0 && (
                               <li className="text-stone-400 italic text-sm">No amenities listed</li>
                             )}
                           </ul>

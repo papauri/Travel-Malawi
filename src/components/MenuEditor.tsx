@@ -7,6 +7,7 @@ import OpeningHoursEditor from './OpeningHoursEditor';
 import ImageUpload from './ImageUpload';
 import { defaultWeek } from '../lib/hours';
 import MenuImporter from './MenuImporter';
+import ConfirmDialog from './ConfirmDialog';
 
 interface Props {
   value: Restaurant;
@@ -43,6 +44,7 @@ const inputClass =
  */
 export default function MenuEditor({ value, onChange, currencies }: Props) {
   const [showImporter, setShowImporter] = useState(false);
+  const [sectionToDelete, setSectionToDelete] = useState<MenuSection | null>(null);
   const priced = currencies.length > 0 ? currencies : (['USD'] as CurrencyCode[]);
 
   const patch = (changes: Partial<Restaurant>) => onChange({ ...value, ...changes });
@@ -296,7 +298,11 @@ export default function MenuEditor({ value, onChange, currencies }: Props) {
                     </button>
                     <button
                       type="button"
-                      onClick={() => patch({ sections: value.sections.filter(s => s.id !== section.id) })}
+                      onClick={() =>
+                        section.items.length > 0
+                          ? setSectionToDelete(section)
+                          : patch({ sections: value.sections.filter(s => s.id !== section.id) })
+                      }
                       aria-label="Delete section"
                       className="p-1.5 text-stone-400 hover:text-red-600 transition"
                     >
@@ -358,7 +364,9 @@ export default function MenuEditor({ value, onChange, currencies }: Props) {
                             value={(item.tags ?? []).join(', ')}
                             onChange={e =>
                               patchItem(section.id, item.id, {
-                                tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean),
+                                // Kept loosely while typing so a comma or space is not eaten;
+                                // trimmed and emptied out when the menu is saved.
+                                tags: e.target.value.split(',').map(t => t.trimStart()),
                               })
                             }
                             placeholder="Tags, e.g. v, gf"
@@ -399,6 +407,19 @@ export default function MenuEditor({ value, onChange, currencies }: Props) {
           </div>
         </>
       )}
+
+      <ConfirmDialog
+        isOpen={!!sectionToDelete}
+        title="Delete section?"
+        message={`"${sectionToDelete?.name || 'This section'}" and its ${sectionToDelete?.items.length ?? 0} dish${sectionToDelete?.items.length === 1 ? '' : 'es'} will be removed from the menu when you save.`}
+        confirmText="Delete section"
+        isDestructive
+        onCancel={() => setSectionToDelete(null)}
+        onConfirm={() => {
+          if (sectionToDelete) patch({ sections: value.sections.filter(s => s.id !== sectionToDelete.id) });
+          setSectionToDelete(null);
+        }}
+      />
     </div>
   );
 }

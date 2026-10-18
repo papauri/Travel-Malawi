@@ -6,6 +6,8 @@
 
 import { getApps, initializeApp } from 'firebase-admin/app';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';
+import { lookup } from 'node:dns/promises';
+import { isIP } from 'node:net';
 import { PROJECT_ID, DATABASE_ID } from './auth';
 
 let firestoreInstance: Firestore | null = null;
@@ -40,14 +42,11 @@ function toIcalTimestamp(ts: number = Date.now()): string {
   return d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
 }
 
-/** Adds N days to YYYY-MM-DD */
+/** Adds N days to YYYY-MM-DD. UTC throughout so the server's timezone cannot shift the date. */
 function addDaysToStr(dateStr: string, days: number): string {
-  const d = new Date(dateStr);
-  d.setDate(d.getDate() + days);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
+  const [y, m, d] = dateStr.slice(0, 10).split('-').map(Number);
+  const stepped = new Date(Date.UTC(y, (m || 1) - 1, d || 1) + days * 86400000);
+  return stepped.toISOString().slice(0, 10);
 }
 
 /**
@@ -75,17 +74,19 @@ export async function generateRoomIcalFeed(
   if (!roomSnap.exists) return null;
   const room = roomSnap.data() || {};
 
-  // If room has a secret token configured, verify it
-  if (room.icalExportToken && token && room.icalExportToken !== token) {
-    throw new Error('Unauthorized calendar feed access token.');
-  }
+  // If the room has a secret token configured, the feed is only served with it.
+  if (room.icalExportToken && room.icalExportToken !== token) return null;
 
   const hotelId = room.hotelId;
   let hotelName = 'Malawi Lodge';
+  let hotelBlocks: string[] = [];
   if (hotelId) {
     const hotelSnap = await db.collection('hotels').doc(hotelId).get();
     if (hotelSnap.exists) {
       hotelName = (hotelSnap.data()?.name as string) || hotelName;
+      // A property-wide closure closes every room, so the room feed carries it too.
+      const hb = hotelSnap.data()?.blockedDates;
+      if (Array.isArray(hb)) hotelBlocks = hb.filter((d: unknown): d is string => typeof d === 'string');
     }
   }
 
@@ -117,13 +118,14 @@ export async function generateRoomIcalFeed(
     const uid = `tm-booking-${doc.id}@travelmalawi.app`;
     const dtstart = toIcalDate(b.checkIn);
     const dtend = toIcalDate(b.checkOut);
-    const summary = escapeIcalText(`Reserved - Travel Malawi (${b.guestName || 'Guest'})`);
+    // The feed URL is public (room ids are public), so it carries no guest
+    // name or contact details, only that the nights are taken.
+    const summary = escapeIcalText('Reserved - Travel Malawi');
     const desc = escapeIcalText(
-      `Travel Malawi Booking Reference: ${b.bookingRef || doc.id}\n` +
+      `Travel Malawi Booking Reference: ${b.reference || doc.id}\n` +
       `Property: ${hotelName}\n` +
       `Room: ${roomName}\n` +
-      `Dates: ${b.checkIn} to ${b.checkOut}\n` +
-      `Direct Contact: ${b.guestPhone || b.guestEmail || 'Via Travel Malawi Platform'}`
+      `Dates: ${b.checkIn} to ${b.checkOut}`
     );
 
     lines.push('BEGIN:VEVENT');
@@ -140,7 +142,7 @@ export async function generateRoomIcalFeed(
 
   // Add manually blocked dates from the host (avoiding duplicate spans)
   const manualBlocks: string[] = Array.isArray(room.blockedDates) ? room.blockedDates : [];
-  const sortedBlocks = [...manualBlocks].filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort();
+  const sortedBlocks = [...new Set([...manualBlocks, ...hotelBlocks])].filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort();
 
   for (const blockDate of sortedBlocks) {
     const uid = `tm-blocked-${roomId}-${blockDate}@travelmalawi.app`;
@@ -186,9 +188,7 @@ export async function generateHotelIcalFeed(
   if (!hotelSnap.exists) return null;
   const hotel = hotelSnap.data() || {};
 
-  if (hotel.icalExportToken && token && hotel.icalExportToken !== token) {
-    throw new Error('Unauthorized calendar feed access token.');
-  }
+  if (hotel.icalExportToken && hotel.icalExportToken !== token) return null;
 
   const hotelName = (hotel.name as string) || 'Malawi Stay';
 
@@ -217,7 +217,7 @@ export async function generateHotelIcalFeed(
     const uid = `tm-booking-${doc.id}@travelmalawi.app`;
     const dtstart = toIcalDate(b.checkIn);
     const dtend = toIcalDate(b.checkOut);
-    const summary = escapeIcalText(`Reserved - Travel Malawi (${b.guestName || 'Guest'})`);
+    const summary = escapeIcalText('Reserved - Travel Malawi');
 
     lines.push('BEGIN:VEVENT');
     lines.push(`UID:${uid}`);
@@ -310,7 +310,9 @@ export function parseIcalToBlockedDates(icsContent: string): {
         const startStr = parseIcalDate(dtstart);
         const endStr = dtend ? parseIcalDate(dtend) : startStr;
 
-        if (startStr && startStr >= cutoffPast && startStr <= cutoffFuture) {
+        // Judged by the end date so a long stay that began over 30 days ago
+        // still blocks the nights it has left.
+        if (startStr && (endStr || startStr) >= cutoffPast && startStr <= cutoffFuture) {
           parsedEvents.push({
             start: startStr,
             end: endStr || startStr,
@@ -352,8 +354,33 @@ export function parseIcalToBlockedDates(icsContent: string): {
   };
 }
 
+const MAX_ICAL_BYTES = 5 * 1024 * 1024;
+
+/** True for loopback, private, link-local (cloud metadata) and other non-public addresses. */
+function isPrivateAddress(ip: string): boolean {
+  const v = ip.toLowerCase().replace(/^::ffff:/, '');
+  if (isIP(v) === 4) {
+    const [a, b] = v.split('.').map(Number);
+    return a === 0 || a === 10 || a === 127 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31)
+      || (a === 192 && b === 168) || (a === 100 && b >= 64 && b <= 127) || a >= 224;
+  }
+  return v === '::' || v === '::1' || v.startsWith('fc') || v.startsWith('fd') || v.startsWith('fe80');
+}
+
+/** Rejects a URL whose host is, or resolves to, a non-public address. */
+async function assertPublicHost(url: string): Promise<void> {
+  const host = new URL(url).hostname.replace(/^\[|\]$/g, '');
+  if (!host || host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.internal')) {
+    throw new Error('Feed URL must point to a public calendar address.');
+  }
+  const addresses = isIP(host) ? [host] : (await lookup(host, { all: true }).catch(() => [])).map(a => a.address);
+  if (!addresses.length) throw new Error(`Could not resolve calendar host ${host}.`);
+  if (addresses.some(isPrivateAddress)) throw new Error('Feed URL must point to a public calendar address.');
+}
+
 /**
- * Fetches an external .ics URL with safety guards (timeout, status check, user-agent).
+ * Fetches an external .ics URL with safety guards (public hosts only, timeout,
+ * size cap, status check, user-agent).
  */
 export async function fetchExternalIcal(url: string): Promise<string> {
   let cleanUrl = (url || '').trim();
@@ -365,19 +392,35 @@ export async function fetchExternalIcal(url: string): Promise<string> {
     throw new Error('Invalid URL format. Feed URL must begin with http://, https://, or webcal://');
   }
 
-  const response = await fetch(cleanUrl, {
-    headers: {
-      'User-Agent': 'TravelMalawi-ChannelSync/1.0 (+https://travelmalawi.app; hospitality calendar synchronization)',
-      'Accept': 'text/calendar, application/octet-stream, text/plain, */*',
-    },
-    signal: AbortSignal.timeout(12000), // 12 second timeout
-  });
+  // Redirects are followed by hand so every hop is checked against private
+  // addresses (a feed URL must never reach the server's own network).
+  let response: Response | null = null;
+  for (let hop = 0; hop < 4; hop++) {
+    await assertPublicHost(cleanUrl);
+    response = await fetch(cleanUrl, {
+      headers: {
+        'User-Agent': 'TravelMalawi-ChannelSync/1.0 (+https://travelmalawi.app; hospitality calendar synchronization)',
+        'Accept': 'text/calendar, application/octet-stream, text/plain, */*',
+      },
+      redirect: 'manual',
+      signal: AbortSignal.timeout(12000), // 12 second timeout
+    });
+    const location = response.status >= 300 && response.status < 400 ? response.headers.get('location') : null;
+    if (!location) break;
+    cleanUrl = new URL(location, cleanUrl).toString();
+    if (!/^https?:\/\//i.test(cleanUrl)) throw new Error('External calendar redirected to an unsupported address.');
+    response = null;
+  }
+  if (!response) throw new Error('External calendar redirected too many times.');
 
   if (!response.ok) {
     throw new Error(`External calendar returned HTTP status ${response.status} (${response.statusText})`);
   }
 
+  const declared = Number(response.headers.get('content-length') || 0);
+  if (declared > MAX_ICAL_BYTES) throw new Error('External calendar is too large to import.');
   const text = await response.text();
+  if (text.length > MAX_ICAL_BYTES) throw new Error('External calendar is too large to import.');
   if (!text.includes('BEGIN:VCALENDAR')) {
     throw new Error('Received content is not a valid iCalendar (.ics) feed (missing BEGIN:VCALENDAR).');
   }
@@ -437,6 +480,10 @@ export async function syncRoomIcal(
   }
 
   const room = roomSnap.data() || {};
+  // The caller was authorised for `hotelId`; the room must belong to it.
+  if (hotelId && room.hotelId !== hotelId) {
+    throw new Error(`Room with ID ${roomId} not found.`);
+  }
   const feeds: IcalFeedItem[] = Array.isArray(room.icalSyncUrls) ? [...room.icalSyncUrls] : [];
 
   if (feeds.length === 0) {
@@ -448,6 +495,7 @@ export async function syncRoomIcal(
   }
 
   const allBlockedSet = new Set<string>();
+  let feedFailed = false;
   const now = Date.now();
 
   for (let i = 0; i < feeds.length; i++) {
@@ -468,6 +516,7 @@ export async function syncRoomIcal(
       };
     } catch (err: any) {
       console.warn(`[iCal Sync Error] Room ${roomId} feed ${feed.name}:`, err?.message);
+      feedFailed = true;
       feeds[i] = {
         ...feed,
         lastSyncedAt: now,
@@ -476,6 +525,12 @@ export async function syncRoomIcal(
         updatedAt: now,
       };
     }
+  }
+
+  // A feed that could not be read this time keeps the nights it blocked last
+  // time; dropping them would reopen externally booked nights for sale.
+  if (feedFailed && Array.isArray(room.icalBlockedDates)) {
+    for (const d of room.icalBlockedDates) if (typeof d === 'string') allBlockedSet.add(d);
   }
 
   const combinedBlocked = Array.from(allBlockedSet).sort();
@@ -522,6 +577,7 @@ export async function syncHotelIcal(
   }
 
   const allBlockedSet = new Set<string>();
+  let feedFailed = false;
   const now = Date.now();
 
   for (let i = 0; i < feeds.length; i++) {
@@ -542,6 +598,7 @@ export async function syncHotelIcal(
       };
     } catch (err: any) {
       console.warn(`[iCal Sync Error] Hotel ${hotelId} feed ${feed.name}:`, err?.message);
+      feedFailed = true;
       feeds[i] = {
         ...feed,
         lastSyncedAt: now,
@@ -550,6 +607,11 @@ export async function syncHotelIcal(
         updatedAt: now,
       };
     }
+  }
+
+  // Keep last-known blocks while a feed is unreachable (see syncRoomIcal).
+  if (feedFailed && Array.isArray(hotel.icalBlockedDates)) {
+    for (const d of hotel.icalBlockedDates) if (typeof d === 'string') allBlockedSet.add(d);
   }
 
   const combinedBlocked = Array.from(allBlockedSet).sort();

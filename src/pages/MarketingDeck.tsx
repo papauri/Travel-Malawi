@@ -6,6 +6,7 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import DocQuickEditButton from '../components/DocQuickEditButton';
 import { useDocContent } from '../hooks/useDocContent';
+import { downloadDocHtml } from '../lib/downloadDoc';
 
 export default function MarketingDeck() {
   const { title: customTitle, subtitle: customSubtitle, isCustomized, lastEditedBy, refreshDoc } = useDocContent(
@@ -44,15 +45,7 @@ export default function MarketingDeck() {
     window.print();
   };
 
-  const handleDownload = () => {
-    const link = document.createElement('a');
-    link.href = '/api/admin/docs/marketing-presentation?format=html&download=1';
-    link.download = 'travel_malawi_commercial_strategy.html';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success('Downloaded strategy deck (.html)');
-  };
+  const handleDownload = () => downloadDocHtml('marketing-presentation', 'travel_malawi_commercial_strategy.html', 'Downloaded strategy deck (.html)');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -187,7 +180,7 @@ export default function MarketingDeck() {
           </ul>
           <div className="mt-6 bg-stone-50/80 border border-stone-200/90 rounded-xl p-4 text-[15px] leading-relaxed text-stone-700">
             <strong className="font-semibold text-stone-900">The Cold Math: </strong>
-            A 10-room lodge charging MK 90,000/night with 50% occupancy surrenders <strong className="font-semibold text-stone-900">MK 8,100,000 to MK 13,500,000 every single year</strong> in commission fees to overseas corporations that provide zero customer service in Malawi. Travel Malawi keeps 100% of that revenue in the lodge owner&apos;s hands.
+            A 10-room lodge charging MK 90,000/night with 50% occupancy surrenders <strong className="font-semibold text-stone-900">MK 24,600,000 to MK 41,000,000 every single year</strong> in commission fees to overseas corporations that provide zero customer service in Malawi. Travel Malawi keeps 100% of that revenue in the lodge owner&apos;s hands.
           </div>
         </section>
 

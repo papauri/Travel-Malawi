@@ -26,41 +26,29 @@ export const PLACEHOLDER_IMAGE =
   );
 
 /**
- * Photography bundled with the app under `public/hotels/`. Used to stand in for
- * listings whose stored URLs are missing or dead, keyed by a fragment of the
- * hotel name.
+ * A generic Malawi landscape (Mulunguzi Dam, Zomba Plateau) that pictures no
+ * property. Only onboarded properties may appear in the product, so no lodge
+ * photo is ever used as a default, hero or decorative image (directive D1).
  */
-const LOCAL_HOTEL_IMAGES: Record<string, string[]> = {
-  pumulani: ['/hotels/pumulani_main.jpg', '/hotels/pumulani_gal1.jpg', '/hotels/pumulani_gal2.jpg'],
-  'kaya mawa': ['/hotels/kaya_main.jpg', '/hotels/kaya_gal1.jpg', '/hotels/kaya_gal2.jpg'],
-  makokola: ['/hotels/makokola_main.jpg', '/hotels/makokola_gal1.jpg', '/hotels/makokola_gal2.jpg'],
-};
+const MALAWI_LANDSCAPE_IMAGE = 'https://upload.wikimedia.org/wikipedia/commons/1/15/Mulunguzi_dam_on_Zomba_Plateau.jpg';
 
-/** A local image safe to use as decorative background art. */
-export const DECORATIVE_IMAGE = '/hotels/pumulani_main.jpg';
+/** Decorative background art; names and pictures no property. */
+export const DECORATIVE_IMAGE = MALAWI_LANDSCAPE_IMAGE;
 
-/**
- * The home page hero.
- */
-export const HERO_IMAGE = 'https://images.unsplash.com/photo-1543116696-9e33bf8c3425?auto=format&fit=crop&q=80&w=2000';
+/** The home page hero; names and pictures no property. */
+export const HERO_IMAGE = MALAWI_LANDSCAPE_IMAGE;
 
 /**
  * URLs confirmed dead (verified 404) that still exist in stored records,
  * mapped to a working equivalent. Matched on a distinctive substring so the
  * surrounding query string does not matter.
  */
-const DEAD_URL_REWRITES: { match: string; replacement: string }[] = [
-  // Unsplash photo removed upstream; was used both as Sunbird Ku Chawe's main
-  // image and as a generic fallback across the home page.
-  {
-    match: 'photo-1542314831-c6a4d1409e1c',
-    replacement: 'https://upload.wikimedia.org/wikipedia/commons/1/15/Mulunguzi_dam_on_Zomba_Plateau.jpg',
-  },
+const DEAD_URL_REWRITES: { match: string; replacement: string | null }[] = [
+  // Stock photo removed upstream (old seed data); dropped so the listing's own
+  // photos or the neutral placeholder are used instead.
+  { match: 'photo-1542314831-c6a4d1409e1c', replacement: null },
   // Wikimedia file no longer exists at this path.
-  {
-    match: 'commons/4/4e/Liwonde_National_Park.jpg',
-    replacement: 'https://images.unsplash.com/photo-1516426122078-c23e76319801?q=80&w=2936&auto=format&fit=crop',
-  },
+  { match: 'commons/4/4e/Liwonde_National_Park.jpg', replacement: null },
 ];
 
 /**
@@ -73,8 +61,9 @@ export function normalizeImageUrl(url: unknown): string | null {
   // Firestore records sometimes hold these as literal strings.
   if (!trimmed || trimmed === 'undefined' || trimmed === 'null') return null;
 
-  // Drop default app mock pictures so authentic property pictures are not cluttered
-  if (trimmed.includes('rosalyn_main') || trimmed.includes('rosalyn_gal') || trimmed.includes('/hotels/rosalyn_')) {
+  // Bundled sample photos of real lodges (old seed data) never stand in for a
+  // listing: only onboarded properties' own photos are shown (directive D1).
+  if (/^(https?:\/\/[^/]+)?\/(hotels\/)?[a-z]+_(main|gal\d)\.jpg(\?.*)?$/i.test(trimmed)) {
     return null;
   }
 
@@ -86,16 +75,6 @@ export function normalizeImageUrl(url: unknown): string | null {
   // at the image. Rewriting here means links already saved in Firestore start
   // rendering too, without anyone having to re-enter them.
   return resolveShareUrl(trimmed).url;
-}
-
-/** Local photography for a hotel, matched on its name. Empty if none matches. */
-export function localImagesForName(name: unknown): string[] {
-  if (typeof name !== 'string') return [];
-  const normalized = name.toLowerCase();
-  for (const [key, images] of Object.entries(LOCAL_HOTEL_IMAGES)) {
-    if (normalized.includes(key)) return images;
-  }
-  return [];
 }
 
 /**
@@ -124,12 +103,7 @@ export function getHotelImages(hotel: {
     return [...new Set(resolved)];
   }
 
-  // Only if the property has absolutely no photos, fall back to bundled reference or placeholder
-  const local = localImagesForName(hotel?.name);
-  if (local.length > 0) {
-    return local;
-  }
-
+  // No photos of its own: the neutral placeholder, never another property's photo.
   return [PLACEHOLDER_IMAGE];
 }
 
@@ -139,31 +113,11 @@ export function getHotelImage(hotel: { name?: string; imageUrl?: string; gallery
 }
 
 /**
- * Default authentic photography tailored to a property category when creating drafts.
+ * Default image for a property category. Every category gets the neutral
+ * placeholder: the old defaults were photos of specific real lodges (D1).
  */
-export function getDefaultImageForCategory(category?: string): string {
-  switch (category) {
-    case 'Lake & Beach':
-      return '/hotels/kaya_main.jpg';
-    case 'Safari & Wildlife':
-      return 'https://images.unsplash.com/photo-1516426122078-c23e76319801?q=80&w=2936&auto=format&fit=crop';
-    case 'Luxury':
-      return '/hotels/pumulani_main.jpg';
-    case 'Bed & Breakfast':
-      return '/hotels/rosalyn_main.jpg';
-    case 'Guest House':
-      return '/hotels/rosalyn_gal1.jpg';
-    case 'Cottage & Chalet':
-      return '/hotels/makokola_gal1.jpg';
-    case 'Romantic Escape':
-      return '/hotels/kaya_gal1.jpg';
-    case 'Family':
-      return '/hotels/makokola_main.jpg';
-    case 'Adventure':
-      return 'https://upload.wikimedia.org/wikipedia/commons/1/15/Mulunguzi_dam_on_Zomba_Plateau.jpg';
-    default:
-      return '/hotels/rosalyn_main.jpg';
-  }
+export function getDefaultImageForCategory(_category?: string): string {
+  return PLACEHOLDER_IMAGE;
 }
 
 
@@ -194,5 +148,5 @@ export function getRoomImage(room: { imageUrl?: string; galleryUrls?: unknown },
     }
   }
   
-  return DECORATIVE_IMAGE || PLACEHOLDER_IMAGE;
+  return PLACEHOLDER_IMAGE;
 }

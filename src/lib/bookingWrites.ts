@@ -52,9 +52,13 @@ export function slotRef(bookingId: string): DocumentReference {
   return doc(db, 'booking_slots', bookingId);
 }
 
-/** Creates a booking and its slot atomically. Returns the new booking id. */
-export async function createBookingWithSlot(data: BookingShape): Promise<string> {
-  const ref = doc(collection(db, 'bookings'));
+/**
+ * Creates a booking and its slot atomically. Returns the new booking id.
+ * `bookingId` gives a replayable write (the offline queue) a fixed id, so a
+ * retry after a lost acknowledgement cannot create a second booking.
+ */
+export async function createBookingWithSlot(data: BookingShape, bookingId?: string): Promise<string> {
+  const ref = bookingId ? doc(db, 'bookings', bookingId) : doc(collection(db, 'bookings'));
   // `quantity` must be explicit so the slot and the booking agree exactly.
   const full = { ...data, quantity: typeof data.quantity === 'number' ? data.quantity : 1 };
   const batch = writeBatch(db);

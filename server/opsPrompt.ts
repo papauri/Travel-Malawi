@@ -45,6 +45,7 @@ STYLE & ZERO EMPTY PROMISES
 - Small talk -> 1-2 warm sentences, no data dumps or unprompted status checks.
 - No "Moni" or Chichewa unless the user uses it first. In an ongoing conversation don't open with a greeting. Don't repeat the user's name; never use their email username or a role title. Say "you", "your lodge".
 - Never invent facts. If something is not in the context, say so in one line and where to set it.
+- Only name or recommend accommodation (lodges, hotels, camps, restaurants) that appears in the context. Never suggest or mention any other property in Malawi; use general place knowledge (towns, parks, the lake) instead.
 - Money: MWK rounded cleanly to the nearest 1,000 (e.g. MK 85,000), USD whole dollars or rounded to nearest $5 (~1,750 MWK/USD).
 
 PERMISSIONS & ACCESS LEVELS
@@ -55,14 +56,14 @@ PERMISSIONS & ACCESS LEVELS
 
 MENUS & DINING KNOWLEDGE
 - Read and explain menu sections, dishes, ingredients, dietary tags (v: vegetarian, vg: vegan, gf: gluten-free, sf: seafood, s: spicy), and prices in both MWK and USD.
-- Highlight authentic Malawian culinary specialties: fresh Lake Chambo (grilled or fried), Kampango fillets, traditional Nsima served with relish/ndiwo (pumpkin leaves, beans), Mzuzu coffee, and Satemwa tea.
+- Highlight authentic Malawian culinary specialties: fresh Lake Chambo (grilled or fried), Kampango fillets, traditional Nsima served with relish/ndiwo (pumpkin leaves, beans), Mzuzu coffee, and Thyolo tea.
 - When asked to add dishes or change the daily board, explain the addition and emit an action_proposal (add_restaurant_dish or update_daily_board).
 
 UNCLEAR REQUESTS (be smart, not literal)
 - Read the conversation history first: short replies ("the boat house one", "yes", "June") usually answer your last question.
-- Typos, nicknames and partial names: match them to the closest property, room or guest in context and say which one you used ("Taking 'esters' as Esthers Guest House").
+- Typos, nicknames and partial names: match them to the closest property, room or guest in context and say which one you used ("Taking 'lakesid' as Example Lakeside Lodge").
 - If one reading is clearly most likely, answer it and state the assumption in a few words. Ask only when the answer would differ materially (several properties or rooms fit, dates are missing for a booking question, a change has no target or value).
-- When you ask, ask ONE short, specific question and offer the real options from the context, e.g. "Which one: Esthers Guest House or Kaya Mawa?". Put those options in suggested_follow_ups so the user can tap one. Never ask something the context already answers.
+- When you ask, ask ONE short, specific question and offer the real options from the context, e.g. "Which one: Example Lakeside Lodge or Example City Hotel?". Put those options in suggested_follow_ups so the user can tap one. Never ask something the context already answers.
 - If a request is vague ("help with my lodge", "something about rates"), give the 2-3 most useful things you can do with their actual data and ask which they want.
 - Never emit an action_proposal until the target and value are clear.
 
@@ -105,11 +106,11 @@ Types and their fields:
 - Admin only: update_property_status (oldStatus, newStatus "approved" | "rejected" | "pending"); toggle_featured (featured)
 For several or all properties: list every id in "hotelIds" and name in "hotelNames", set "targetScope": "all" (or "single"), and say how many properties are targeted.`;
 
-const MALAWI_KNOWLEDGE_MODULE = `MALAWI INSIDER KNOWLEDGE (use for guest and travel advice):
+const MALAWI_KNOWLEDGE_MODULE = `MALAWI INSIDER KNOWLEDGE (use for guest and travel advice; places and culture only, never name a lodge, hotel or camp that is not in the context):
 - Lake Malawi: Cape Maclear (Thumbi West snorkelling, Otter Point, mbuna cichlids, sunset dhows), Monkey Bay, Senga Bay (Salima), Nkhata Bay (cliff jumping, Chikale beach), Likoma (St Peter's Cathedral), Chizumulu, Mangochi.
 - Wildlife: Majete (Big 5), Liwonde (Shire River boat safaris, elephants, hippos, rhino, cheetah), Nyika (montane grassland, roan, leopard), Nkhotakota (Bua River canoeing), Kasungu, Vwaza Marsh.
 - Highlands: Mulanje (Likhubula, Sapitwa 3,002 m), Zomba Plateau (Emperor's View, Chingwe's Hole, trout), Dedza (rock art, pottery).
-- Food: grilled Chambo, Kampango, Usipa, Mpasa, nsima with ndiwo, Mzuzu coffee, Satemwa tea, Malawi Gin, Kuche Kuche.
+- Food: grilled Chambo, Kampango, Usipa, Mpasa, nsima with ndiwo, Mzuzu coffee, Thyolo tea, Malawi Gin, Kuche Kuche.
 - Logistics: LLW and BLZ airports, M1/M3/M5 tarmac, 4x4 for rainy season (Dec-Apr) park roads, daylight driving, Ilala ferry, Airtel/TNM SIMs, Airtel Money and TNM Mpamba, ESCOM load-shedding and solar backup.
 - Revenue: USD for international guests, MWK for residents and conferences (~1,750 MWK per USD); peak at Easter, Lake of Stars and Christmas, discount in green season.`;
 
@@ -165,7 +166,7 @@ function roomLine(r: NonNullable<PropertyContext['rooms']>[number], withDetail: 
 }
 
 /** Full property block with only the requested sections. */
-function propertyBlock(p: PropertyContext, topics: Set<ContextTopic>, all: boolean, isAdminUser: boolean, displayName: string): string {
+function propertyBlock(p: PropertyContext, topics: Set<ContextTopic>, all: boolean, isAdminUser: boolean, displayName: string, withWifiPassword = false): string {
   const want = (t: ContextTopic) => all || topics.has(t);
   const lines: string[] = [];
 
@@ -190,12 +191,12 @@ function propertyBlock(p: PropertyContext, topics: Set<ContextTopic>, all: boole
     lines.push(`    - Crew: ${p.crew.slice(0, 10).map(c => `${clip(c.name, 60)} (${clip(c.role, 40)})`).join(', ')}`);
   }
   if (want('policies')) {
-    lines.push(`    - Policies: check-in ${p.checkInTime || '14:00'}, check-out ${p.checkOutTime || '10:00'} | cancellation "${clip(p.cancellationPolicy, 200) || 'Standard'}"${p.paymentPolicy ? ` | payment "${clip(p.paymentPolicy, 200)}"` : ''}`);
+    lines.push(`    - Policies: check-in ${p.checkInTime || 'not set'}, check-out ${p.checkOutTime || 'not set'} | cancellation "${clip(p.cancellationPolicy, 200) || 'not set'}"${p.paymentPolicy ? ` | payment "${clip(p.paymentPolicy, 200)}"` : ''}`);
   }
   if (want('infra') && p.infrastructure) {
     const inf = p.infrastructure;
-    const wifi = inf.wifiSSID ? ` | Wi-Fi "${inf.wifiSSID}" (password "${inf.wifiPassword || 'ask at desk'}")` : '';
-    lines.push(`    - Utilities: power ${inf.powerSource || 'grid + backup'}${inf.powerNotes ? ` (${clip(inf.powerNotes, 100)})` : ''} | water ${inf.waterSource || '-'} | road ${inf.roadAccess || '-'} | internet ${inf.internetSource || '-'}${wifi}`);
+    const wifi = inf.wifiSSID ? ` | Wi-Fi "${inf.wifiSSID}"${withWifiPassword ? ` (password "${inf.wifiPassword || 'not set'}")` : ''}` : '';
+    lines.push(`    - Utilities: power ${inf.powerSource || '-'}${inf.powerNotes ? ` (${clip(inf.powerNotes, 100)})` : ''} | water ${inf.waterSource || '-'} | road ${inf.roadAccess || '-'} | internet ${inf.internetSource || '-'}${wifi}`);
   }
   if ((want('promotions') || want('rooms')) && p.promotions?.length) {
     lines.push(`    - Promotions: ${p.promotions.map(pr => `"${pr.name}" (${pr.discountPercentage}% off)`).join(', ')}`);
@@ -304,9 +305,11 @@ export function buildOperationsChatPrompts(
   const focusAll = mentioned.size === 0;
 
   const effectiveDisplayName = req.context.managerHabits?.preferredName || resolvedDisplayName;
+  // Wi-Fi passwords are secrets: only sent when the question is about the Wi-Fi.
+  const wantsWifiPassword = /\b(wi-?fi|password|ssid|wireless)\b/i.test(recentText);
   const propertyBlocks = properties.map(p =>
     focusAll || mentioned.has(p.id)
-      ? propertyBlock(p, topics, broad, isAdminUser, effectiveDisplayName)
+      ? propertyBlock(p, topics, broad, isAdminUser, effectiveDisplayName, wantsWifiPassword)
       : propertyOneLiner(p)
   ).join('\n');
   const propertiesSummary = propertyBlocks.length > MAX_PROPERTIES_SUMMARY_CHARS

@@ -135,7 +135,10 @@ export default function AvailabilityCalendar({
 
   useEffect(() => {
     async function fetchBookings() {
-      if (!hotelId) return;
+      if (!hotelId) {
+        setLoading(false);
+        return;
+      }
       setLoading(true);
       try {
         // Reads the public inventory mirror; bookings themselves are private.

@@ -175,10 +175,14 @@ export default function DirectionsPanel({
   const handleCopyCoordinates = () => {
     if (!destCoords) return;
     const text = formatCoordinates(destCoords, 5);
-    navigator.clipboard.writeText(text);
-    setCopiedCoords(true);
-    toast.success(`Copied coordinates: ${text}`);
-    setTimeout(() => setCopiedCoords(false), 3000);
+    navigator.clipboard.writeText(text).then(
+      () => {
+        setCopiedCoords(true);
+        toast.success(`Copied coordinates: ${text}`);
+        setTimeout(() => setCopiedCoords(false), 3000);
+      },
+      () => toast.error(`Could not copy. The coordinates are ${text}`)
+    );
   };
 
   const handleShareLocation = () => {
@@ -193,8 +197,10 @@ export default function DirectionsPanel({
         })
         .catch(() => {});
     } else {
-      navigator.clipboard.writeText(url);
-      toast.success('Directions link copied to clipboard!');
+      navigator.clipboard.writeText(url).then(
+        () => toast.success('Directions link copied to clipboard!'),
+        () => toast.error('Could not copy the link.')
+      );
     }
   };
 

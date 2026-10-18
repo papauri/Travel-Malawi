@@ -19,6 +19,7 @@ export default function BroadcastManager({ hotelId, managerId }: BroadcastManage
   const [newMessage, setNewMessage] = useState('');
   const [newType, setNewType] = useState<'info' | 'alert' | 'event'>('info');
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [isSending, setIsSending] = useState(false);
 
   useEffect(() => {
     const q = query(collection(db, 'broadcasts'), where('hotelId', '==', hotelId));
@@ -37,7 +38,9 @@ export default function BroadcastManager({ hotelId, managerId }: BroadcastManage
 
   const handleAddBroadcast = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim()) return;
+    // A double click must not broadcast the same message twice to every guest.
+    if (!newMessage.trim() || isSending) return;
+    setIsSending(true);
 
     try {
       await addDoc(collection(db, 'broadcasts'), {
@@ -54,6 +57,8 @@ export default function BroadcastManager({ hotelId, managerId }: BroadcastManage
     } catch (err) {
       console.error(err);
       toast.error('Failed to send broadcast');
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -138,7 +143,7 @@ export default function BroadcastManager({ hotelId, managerId }: BroadcastManage
             </button>
             <button
               type="submit"
-              disabled={!newMessage.trim()}
+              disabled={!newMessage.trim() || isSending}
               className="inline-flex items-center gap-2 px-5 py-2 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition disabled:opacity-50"
             >
               <Megaphone className="w-4 h-4" /> Broadcast

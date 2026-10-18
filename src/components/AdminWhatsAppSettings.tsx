@@ -55,6 +55,8 @@ export default function AdminWhatsAppSettings() {
             });
           }
         }
+      } else {
+        toast.error('Failed to load settings (HTTP ' + res.status + ').');
       }
     } catch {
       toast.error('Failed to load WhatsApp configuration.');

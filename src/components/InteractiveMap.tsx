@@ -8,6 +8,9 @@ import { LatLng, isValidLatLng, MALAWI_CENTRE, distanceKm, estimateTravelTime, g
 import { CurrencyCode } from '../types';
 import { Layers, Locate, Maximize2, Minimize2, ZoomIn, ZoomOut, Navigation, Star, MapPin, Car, ArrowRight, ExternalLink, X, Compass, Route, WifiOff, CloudDownload, Download, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { Link, useNavigate } from 'react-router-dom';
+import { useNetworkStatus } from '../hooks/useNetworkStatus';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 
 
 import { createCachedStreetLayer, createCachedSatelliteLayer, prefetchMalawiMapTiles } from '../lib/mapCache';
@@ -357,21 +360,30 @@ export default function InteractiveMap({
   const [mapType, setMapType] = useState<'streets' | 'satellite'>('streets');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isOverlayMinimized, setIsOverlayMinimized] = useState(false);
-  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  const { isOnline } = useNetworkStatus();
+  const isOffline = !isOnline;
+  const navigate = useNavigate();
+  const navigateRef = useRef(navigate);
+  navigateRef.current = navigate;
+  const onMarkerChangeRef = useRef(onMarkerChange);
+  onMarkerChangeRef.current = onMarkerChange;
   const [isPrefetching, setIsPrefetching] = useState(false);
   const [mapReady, setMapReady] = useState(false);
   const [isPinExpanded, setIsPinExpanded] = useState(false);
 
+  // Fullscreen is a fixed overlay: hold the page still behind it and let Escape leave it.
+  useBodyScrollLock(isFullscreen);
   useEffect(() => {
-    const handleOnline = () => setIsOffline(false);
-    const handleOffline = () => setIsOffline(true);
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
+    if (!isFullscreen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsFullscreen(false);
+        setTimeout(() => mapInstanceRef.current?.invalidateSize(), 200);
+      }
     };
-  }, []);
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [isFullscreen]);
 
   const handlePreloadMalawi = async () => {
     if (isPrefetching) return;
@@ -510,9 +522,22 @@ export default function InteractiveMap({
     if (interactive && onMarkerChange) {
       map.on('click', (e: L.LeafletMouseEvent) => {
         const newCoords = { lat: e.latlng.lat, lng: e.latlng.lng };
-        onMarkerChange(newCoords);
+        onMarkerChangeRef.current?.(newCoords);
       });
     }
+
+    // Popup "View" links are plain anchors inside Leaflet's HTML; keep them in
+    // the SPA instead of reloading the whole app.
+    map.on('popupopen', (e: L.PopupEvent) => {
+      const link = e.popup.getElement()?.querySelector<HTMLAnchorElement>('a[href^="/hotel/"]');
+      if (!link || link.dataset.spaBound) return;
+      link.dataset.spaBound = '1';
+      link.addEventListener('click', (ev) => {
+        if (ev.defaultPrevented || ev.button !== 0 || ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey) return;
+        ev.preventDefault();
+        navigateRef.current(link.getAttribute('href') || '/');
+      });
+    });
 
     return () => {
       clearTimeout(resizeTimer);
@@ -657,6 +682,9 @@ export default function InteractiveMap({
   // Update marker icons when selectedLodgeId changes
   useEffect(() => {
     if (!lodges || lodges.length === 0) return;
+    // Popups open on a delay; if the map is torn down first, opening one on a
+    // marker with no map throws.
+    const timers: ReturnType<typeof setTimeout>[] = [];
     lodges.forEach(lodge => {
       const marker = lodgeMarkersMapRef.current.get(lodge.id);
       if (marker) {
@@ -672,21 +700,22 @@ export default function InteractiveMap({
               if (map) {
                 map.flyTo([lodge.coordinates.lat, lodge.coordinates.lng], 12, { animate: true, duration: 1 });
               }
-              setTimeout(() => {
-                marker.openPopup();
-              }, 200);
+              timers.push(setTimeout(() => {
+                if (mapInstanceRef.current) marker.openPopup();
+              }, 200));
             });
           } else {
             if (map) {
               map.flyTo([lodge.coordinates.lat, lodge.coordinates.lng], 12, { animate: true, duration: 1 });
             }
-            setTimeout(() => {
-              if (marker) marker.openPopup();
-            }, 500);
+            timers.push(setTimeout(() => {
+              if (marker && mapInstanceRef.current) marker.openPopup();
+            }, 500));
           }
         }
       }
     });
+    return () => timers.forEach(clearTimeout);
   }, [selectedLodgeId, lodges, showLodgePopups]);
 
   // Update Destination / Property Marker (Single Pin Mode)
@@ -712,7 +741,7 @@ export default function InteractiveMap({
         if (interactive && onMarkerChange) {
           marker.on('dragend', () => {
             const pos = marker.getLatLng();
-            onMarkerChange({ lat: pos.lat, lng: pos.lng });
+            onMarkerChangeRef.current?.({ lat: pos.lat, lng: pos.lng });
           });
         }
 
@@ -1016,12 +1045,17 @@ export default function InteractiveMap({
     }
   }, [center, markerPosition, zoom, lodges, interactive, onMarkerChange, origin]);
 
-  // Ensure map dragging and touch interaction is always enabled on mobile and desktop
+  // On a phone, a one-finger drag on a browse map would swallow the page scroll
+  // and strand the visitor inside it. Pinch (two fingers) still zooms and moves
+  // the map; fullscreen and pin-picking maps keep one-finger panning.
+  const pinPicking = !!onMarkerChange;
+  const touchScrollsPage = L.Browser.mobile && !isFullscreen && !pinPicking && !!lodges;
   useEffect(() => {
-    if (mapInstanceRef.current && interactive) {
-      mapInstanceRef.current.dragging.enable();
-    }
-  }, [interactive]);
+    const map = mapInstanceRef.current;
+    if (!map || !mapReady || !interactive) return;
+    if (touchScrollsPage) map.dragging.disable();
+    else map.dragging.enable();
+  }, [mapReady, interactive, touchScrollsPage]);
   // Invalidate map size on resize / fullscreen
   const toggleFullscreen = () => {
     setIsFullscreen(prev => !prev);
@@ -1087,7 +1121,7 @@ export default function InteractiveMap({
             type="button"
             onClick={handlePreloadMalawi}
             disabled={isPrefetching}
-            title="Download/Update offline map tiles for Malawi safari & lake regions"
+            title="Save map tiles for the safari and lake regions so they work without signal"
             className="bg-white/95 hover:bg-stone-50 text-stone-700 hover:text-emerald-800 text-[11px] font-semibold px-2.5 py-1 rounded-xl border border-stone-200/90 backdrop-blur-md flex items-center gap-1.5 shadow-xs transition group"
           >
             {isPrefetching ? (
@@ -1095,7 +1129,7 @@ export default function InteractiveMap({
             ) : (
               <CloudDownload className="w-3.5 h-3.5 text-emerald-600 group-hover:scale-110 transition-transform" />
             )}
-            <span>{isPrefetching ? 'Caching Malawi...' : 'Offline Map Ready'}</span>
+            <span>{isPrefetching ? 'Saving map...' : 'Save map offline'}</span>
           </button>
         )}
 
@@ -1110,6 +1144,7 @@ export default function InteractiveMap({
               }
             }}
             title={isPinExpanded ? 'Switch to compact pin' : 'Show hotel photo icon'}
+            aria-label={isPinExpanded ? 'Switch to compact pin' : 'Show hotel photo icon'}
             className="bg-white/95 hover:bg-stone-50 text-stone-800 hover:text-emerald-800 text-[11px] font-semibold px-2.5 py-1 rounded-xl border border-stone-200/90 backdrop-blur-md flex items-center gap-1.5 shadow-xs transition cursor-pointer"
           >
             {isPinExpanded ? (
@@ -1135,6 +1170,8 @@ export default function InteractiveMap({
             type="button"
             onClick={onToggleUserLocation}
             title={showUserLocation ? 'Hide My Location' : 'Show My Location'}
+            aria-label={showUserLocation ? 'Hide my location' : 'Show my location'}
+            aria-pressed={showUserLocation}
             className={`p-2.5 rounded-xl border shadow-md transition-all flex items-center justify-center ${
               showUserLocation
                 ? 'bg-blue-600 text-white border-blue-700 ring-2 ring-blue-400/50 shadow-blue-500/20'
@@ -1157,6 +1194,7 @@ export default function InteractiveMap({
             type="button"
             onClick={handleCenterOnUser}
             title="Center on My Location"
+            aria-label="Center on my location"
             className="p-2 bg-white/95 backdrop-blur-md text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-xl border border-blue-200 shadow-md transition"
           >
             <Locate className="h-4 w-4" />
@@ -1169,6 +1207,7 @@ export default function InteractiveMap({
             type="button"
             onClick={handleCenterOnRoute}
             title="Fit Route (You to Stay)"
+            aria-label="Fit route from you to the stay"
             className="p-2 bg-emerald-600 text-white hover:bg-emerald-700 rounded-xl border border-emerald-700 shadow-md transition animate-pulse"
           >
             <Route className="h-4 w-4" />
@@ -1180,6 +1219,7 @@ export default function InteractiveMap({
             type="button"
             onClick={handleZoomIn}
             title="Zoom In"
+            aria-label="Zoom in"
             className="p-2 text-stone-700 hover:bg-stone-100 hover:text-stone-900 border-b border-stone-100 transition"
           >
             <ZoomIn className="h-4 w-4" />
@@ -1188,6 +1228,7 @@ export default function InteractiveMap({
             type="button"
             onClick={handleZoomOut}
             title="Zoom Out"
+            aria-label="Zoom out"
             className="p-2 text-stone-700 hover:bg-stone-100 hover:text-stone-900 transition"
           >
             <ZoomOut className="h-4 w-4" />
@@ -1199,6 +1240,7 @@ export default function InteractiveMap({
             type="button"
             onClick={handleCenterOnPin}
             title="Center on Pin"
+            aria-label="Center on pin"
             className="p-2 bg-white/95 backdrop-blur-md text-stone-700 hover:text-stone-900 hover:bg-stone-100 rounded-xl border border-stone-200/80 shadow-md transition"
           >
             <Locate className="h-4 w-4" />
@@ -1210,6 +1252,7 @@ export default function InteractiveMap({
             type="button"
             onClick={() => setMapType(m => (m === 'streets' ? 'satellite' : 'streets'))}
             title={`Switch to ${mapType === 'streets' ? 'Satellite' : 'Streets'} view`}
+            aria-label={`Switch to ${mapType === 'streets' ? 'satellite' : 'streets'} view`}
             className={`p-2 rounded-xl border border-stone-200/80 shadow-md transition ${
               mapType === 'satellite'
                 ? 'bg-stone-900 text-white'
@@ -1224,6 +1267,7 @@ export default function InteractiveMap({
           type="button"
           onClick={toggleFullscreen}
           title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen Map'}
+          aria-label={isFullscreen ? 'Exit fullscreen map' : 'Fullscreen map'}
           className="p-2 bg-white/95 backdrop-blur-md text-stone-700 hover:text-stone-900 hover:bg-stone-100 rounded-xl border border-stone-200/80 shadow-md transition"
         >
           {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
@@ -1266,6 +1310,7 @@ export default function InteractiveMap({
                   onClick={() => setIsOverlayMinimized(prev => !prev)}
                   className="p-1.5 text-stone-400 hover:text-stone-700 rounded-lg hover:bg-stone-100 transition"
                   title={isOverlayMinimized ? 'Expand details' : 'Minimize overlay'}
+                  aria-expanded={!isOverlayMinimized}
                 >
                   <span className="text-xs font-bold">{isOverlayMinimized ? 'Show' : 'Hide'}</span>
                 </button>
@@ -1275,6 +1320,7 @@ export default function InteractiveMap({
                     onClick={onClearSelectedLodge}
                     className="p-1.5 text-stone-400 hover:text-stone-700 rounded-lg hover:bg-stone-100 transition"
                     title="Close measurement overlay"
+            aria-label="Close route details"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -1327,17 +1373,23 @@ export default function InteractiveMap({
                     <span>Open in Google Maps</span>
                     <ExternalLink className="w-3 h-3 opacity-80" />
                   </a>
-                  <a
-                    href={`/hotel/${selectedLodge.id}`}
+                  <Link
+                    to={`/hotel/${encodeURIComponent(selectedLodge.id)}`}
                     className="inline-flex items-center justify-center gap-1 py-2.5 px-3.5 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-bold transition active:scale-[0.98]"
                   >
                     <span>View Stay</span>
                     <ArrowRight className="w-3.5 h-3.5" />
-                  </a>
+                  </Link>
                 </div>
               </>
             )}
           </div>
+        </div>
+      )}
+
+      {touchScrollsPage && !(showDistanceOverlay && showUserLocation && selectedLodge) && (
+        <div className="absolute bottom-3 left-3 z-20 bg-stone-900/80 backdrop-blur-md px-2.5 py-1 rounded-lg text-[10px] font-medium text-white pointer-events-none">
+          Use two fingers to move the map
         </div>
       )}
 

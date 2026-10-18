@@ -6,7 +6,8 @@
  * cannot drift apart.
  */
 
-import { Booking, CurrencyCode, RoomType, Promotion, ChildPolicy } from '../types';
+import { Booking, CurrencyCode, Hotel, RoomType, Promotion, ChildPolicy } from '../types';
+import { normalizeBlockedDates } from './availability';
 import { DateStr, daysUntil, nightsBetween } from './dates';
 import { packagePrice, roomExtraGuestFee, roomPrice, roomPrimaryCurrency, resolveCurrency, roundPrice } from './currency';
 import { calculateSlashedPrice, MAX_PROMO_DISCOUNT_PERCENT } from './promotions';
@@ -127,6 +128,52 @@ export function computeBookingPricing(
     total: roundPrice(accommodationTotal - discountAmount + packagesTotal, currency),
     unavailablePackageIds,
   };
+}
+
+/** Room id given to the synthetic whole-property unit of an entire-place listing. */
+export function entirePlaceRoomId(hotelId: string | undefined): string {
+  return hotelId ? `entire-${hotelId}` : 'entire-place-room';
+}
+
+/**
+ * An entire-place listing with no room types is sold as one synthetic unit.
+ * Built here so the property page and the confirm flow price it identically.
+ * Only rates the property actually set are offered.
+ */
+export function entirePlaceRoom(hotel: Hotel): RoomType {
+  const ep = hotel.entirePlaceDetails || ({} as NonNullable<Hotel['entirePlaceDetails']>);
+  const usd = Number(ep.ratePerNightUsd) > 0 ? Number(ep.ratePerNightUsd) : null;
+  const mwk = Number(ep.ratePerNightMwk) > 0 ? Number(ep.ratePerNightMwk) : null;
+  const prices: Partial<Record<CurrencyCode, number>> = {};
+  if (usd !== null) prices.USD = usd;
+  if (mwk !== null) prices.MWK = mwk;
+  const currencies = (['USD', 'MWK'] as CurrencyCode[]).filter(c => prices[c] !== undefined);
+  return {
+    id: entirePlaceRoomId(hotel.id),
+    hotelId: hotel.id || '',
+    name: ep.propertyType ? `Entire ${ep.propertyType}` : 'Entire Property',
+    description: ep.wholeHouseDescription || `${hotel.name} is rented exclusively as an entire private space. Includes all ${ep.bedrooms || 2} bedrooms, private grounds, and amenities.`,
+    maxGuests: Number(ep.maxGuests || 6),
+    // No rate set means nothing can honestly be charged, so it is not on sale.
+    quantity: currencies.length > 0 ? 1 : 0,
+    currencies,
+    ...(usd !== null ? { price: usd } : {}),
+    ...(mwk !== null ? { priceMWK: mwk } : {}),
+    prices,
+    extraGuestFees: { USD: 0, MWK: 0 },
+    amenities: hotel.amenities || [],
+    galleryUrls: hotel.galleryUrls || [],
+    imageUrl: hotel.imageUrl || '',
+    createdAt: hotel.createdAt || Date.now(),
+  } as RoomType;
+}
+
+/** The room with the property-wide closures (manual and iCal-synced) folded into its blocked dates. */
+export function withPropertyBlocks(room: RoomType, hotel: Hotel | null | undefined): RoomType {
+  if (!hotel) return room;
+  const extra = [...normalizeBlockedDates(hotel.blockedDates), ...normalizeBlockedDates(hotel.icalBlockedDates)];
+  if (!extra.length) return room;
+  return { ...room, blockedDates: [...new Set([...normalizeBlockedDates(room.blockedDates), ...extra])] };
 }
 
 /** Days before check-in within which a cancellation is no longer free. */

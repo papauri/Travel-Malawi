@@ -187,13 +187,13 @@ CRITICAL: You MUST accurately auto-categorize the property based on its characte
 
 Return ONLY a valid JSON object with the following fields:
 - "matched": boolean (true if you recognize this specific lodge/stay in Malawi, false if proposing best-fit defaults)
-- "officialName": string (Official recognized property name, e.g. "Kaya Mawa", "Sunbird Capital Hotel", "The Makokola Retreat", "Latitude 13°", "Mayoka Village", "Zomba Forest Lodge". DO NOT return a raw URL, generic "Malawi Accommodation", or website breadcrumbs like "Home | ...". Extract the real property brand name!)
+- "officialName": string (Official recognized property name, e.g. "Example Lakeside Lodge", "Example City Hotel". DO NOT return a raw URL, generic "Malawi Accommodation", or website breadcrumbs like "Home | ...". Extract the real property brand name!)
 - "category": string (MUST be EXACTLY one of:
     "Hotel" | "Resort" | "Lodge" | "Lake & Beach" | "Safari & Wildlife" | "Romantic Escape" | "Family" | "Adventure" | "Luxury" | "Bed & Breakfast" | "Guest House" | "Cottage & Chalet"
   Categorization guidance:
-  • "Hotel": Full-service city or business hotel with dedicated reception, private rooms, and dining (e.g. Sunbird Capital, Protea Ryalls, President Walmont, Latitude 13°).
-  • "Resort": Destination retreat with expansive grounds, leisure amenities, and recreational activities (e.g. The Makokola Retreat, Sunbird Livingstonia Beach, Sunbird Nkopola).
-  • "Lodge": Classic Malawian safari, lakeshore, or highland lodge (e.g. Chelinda Lodge, Mvuu Lodge, Pumulani, Blue Zebra).
+  • "Hotel": Full-service city or business hotel with dedicated reception, private rooms, and dining (e.g. a city-centre hotel in Lilongwe or Blantyre).
+  • "Resort": Destination retreat with expansive grounds, leisure amenities, and recreational activities (e.g. a lakeshore resort near Mangochi or Salima).
+  • "Lodge": Classic Malawian safari, lakeshore, or highland lodge (e.g. a lodge in Liwonde, Nyika or on the lakeshore).
   • "Bed & Breakfast": Properties with B&B, Bed & Breakfast, homestay, or intimate breakfast-included stays.
   • "Cottage & Chalet": Self-catering cottages, lakeside chalets, mountain cabins, private villas.
   • "Guest House": City, suburban, or transit guest houses (e.g. Area 10/43 Lilongwe, Blantyre, Mzuzu, Zomba).
@@ -473,9 +473,8 @@ async function pacedFetch(provider: AIProviderId, url: string, init: RequestInit
       return response;
     }
 
-    const delay = response.status === 429
-      ? backoffMs(attempt, retryAfterSec)
-      : Math.min(10000, (2000 * (attempt + 1)) + Math.floor(Math.random() * 1000));
+    // Every transient retry (429 and 5xx alike) uses the >=4500ms jittered backoff.
+    const delay = backoffMs(attempt, retryAfterSec);
     console.warn(`[pacedFetch] ${PROVIDER_LABELS[provider]} returned HTTP ${response.status} (attempt ${attempt + 1}/${MAX_RATE_LIMIT_RETRIES}). Retrying in ${delay}ms...`);
     await new Promise(resolve => setTimeout(resolve, delay));
   }
@@ -591,7 +590,7 @@ async function withModelFallback(
         if (callCache.size >= CALL_CACHE_MAX_ENTRIES) {
           callCache.delete(callCache.keys().next().value!);
         }
-        callCache.set(cacheKey, { text, model, at: Date.now() });
+        callCache.set(cacheKey, { text, model, at: Date.now(), provider: providerId });
         return text;
       } catch (err: any) {
         lastError = err;
@@ -621,7 +620,13 @@ async function withModelFallback(
 
 const CALL_CACHE_TTL_MS = 20 * 60 * 1000;
 const CALL_CACHE_MAX_ENTRIES = 300;
-const callCache = new Map<string, { text: string; model: string; at: number }>();
+const callCache = new Map<string, { text: string; model: string; at: number; provider: AIProviderId }>();
+
+/** Drops cached answers for a provider so the next call really reaches it (e.g. after a key change). */
+export function clearProviderCaches(providerId: AIProviderId): void {
+  for (const [key, entry] of callCache) if (entry.provider === providerId) callCache.delete(key);
+  for (const key of responseCache.keys()) if (key.startsWith(`${providerId}:`)) responseCache.delete(key);
+}
 const inflightCalls = new Map<string, Promise<string>>();
 const lastModelUsed: Partial<Record<AIProviderId, string>> = {};
 
@@ -667,6 +672,9 @@ function geminiText(data: any): string {
     .trim();
 }
 
+/** provider:model pairs that rejected response_format json_object (400); they get plain requests. */
+const openAIJsonUnsupported = new Set<string>();
+
 /**
  * OpenAI-compatible endpoints (DeepSeek, OpenAI, Mistral, Groq). Calls exactly one model.
  */
@@ -678,23 +686,35 @@ async function callOpenAICompatible(
   systemPrompt: string,
   userPrompt: string,
   temperature: number = 0.7,
-  maxTokens: number = 750
+  maxTokens: number = 750,
+  jsonMode: boolean = false
 ): Promise<string> {
-  const response = await pacedFetch(providerId, apiUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      ...openAITokenParams(providerId, model, maxTokens, temperature),
-    }),
-  });
+  // JSON mode (json_object) needs the word "JSON" in the prompt and always yields an object, so
+  // prompts that ask for a top-level array skip it. A model that rejects it is retried without.
+  const prompts = systemPrompt + userPrompt;
+  let useJson = jsonMode && /json/i.test(prompts) && !/json array/i.test(prompts) && !openAIJsonUnsupported.has(`${providerId}:${model}`);
+  let response: Response;
+  for (;;) {
+    response = await pacedFetch(providerId, apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        ...openAITokenParams(providerId, model, maxTokens, temperature),
+        ...(useJson ? { response_format: { type: 'json_object' } } : {}),
+      }),
+    });
+    if (response.status !== 400 || !useJson) break;
+    openAIJsonUnsupported.add(`${providerId}:${model}`);
+    useJson = false;
+  }
 
   if (response.status === 401 || response.status === 403) {
     const cleanMsg = await readErrorMessage(response, 'Invalid API key or unauthorized.');
@@ -884,7 +904,7 @@ async function callProvider(
   const endpoint = OPENAI_COMPATIBLE_ENDPOINTS[providerId];
   if (!endpoint) throw new Error(`Unsupported AI provider: ${providerId}`);
   return withModelFallback(providerId, model, cacheParts, m =>
-    callOpenAICompatible(providerId, endpoint, apiKey, m, systemPrompt, userPrompt, temperature, maxTokens)
+    callOpenAICompatible(providerId, endpoint, apiKey, m, systemPrompt, userPrompt, temperature, maxTokens, options?.responseMimeType === 'application/json')
   );
 }
 
@@ -977,9 +997,14 @@ async function callVisionProvider(
       throw await modelCallError(providerId, m, response, `${PROVIDER_LABELS[providerId]} vision`);
     }
     const result = await response.json();
-    if (providerId === 'gemini') return geminiText(result);
-    if (providerId === 'openai') return result?.choices?.[0]?.message?.content || '';
-    return result?.content?.find((b: any) => b?.type === 'text')?.text || '';
+    const text = providerId === 'gemini'
+      ? geminiText(result)
+      : providerId === 'openai'
+        ? result?.choices?.[0]?.message?.content || ''
+        : result?.content?.find((b: any) => b?.type === 'text')?.text || '';
+    // An empty extraction must not be cached for the file; let the next model try.
+    if (!text.trim()) throw new ModelCallError(`No text extracted by ${m}`, 200, true);
+    return text;
   });
 }
 
@@ -1609,7 +1634,6 @@ async function executeWithProvider(
       const entityName = req.details?.name || 'Malawi Lodge';
       const entityLoc = req.details?.location || 'Malawi';
       const safeQuery = encodeURIComponent(`${entityName} ${entityLoc}`);
-      const fallbackDates = ['February 2025', 'January 2025', 'December 2024', 'November 2024', 'October 2024', 'September 2024', 'August 2024', 'July 2024', 'June 2024', 'May 2024'];
 
       structuredData = structuredData.map((r: any, idx: number) => {
         const comment = (r.comment || r.text || '').trim();
@@ -1622,9 +1646,10 @@ async function executeWithProvider(
         const rawSourceUrl = typeof r.sourceUrl === 'string' ? r.sourceUrl.trim() : '';
         const sourceUrl = sanitizeReviewSourceUrl(rawSourceUrl, source, entityName, entityLoc, req.details?.targetUrl) || '';
 
-        let dateStr = typeof r.date === 'string' && r.date.trim() && r.date.trim().toLowerCase() !== 'recent stay'
+        // Unknown dates stay empty: never stamp a made-up month on a real review.
+        const dateStr = typeof r.date === 'string' && r.date.trim() && r.date.trim().toLowerCase() !== 'recent stay'
           ? r.date.trim()
-          : fallbackDates[idx % fallbackDates.length];
+          : '';
 
         const sentiment = rating <= 2.5
           ? 'critical'
@@ -1648,7 +1673,8 @@ async function executeWithProvider(
           travellerOrigin: (r.travellerOrigin || '').trim(),
           highlights: Array.isArray(r.highlights) ? r.highlights.map(String) : [],
           sentiment,
-          verified: typeof r.verified === 'boolean' ? r.verified : true,
+          // Scraped text is unverified unless the model explicitly reports otherwise.
+          verified: r.verified === true,
         };
       });
 
@@ -1701,7 +1727,10 @@ async function executeWithProvider(
     }
   }
 
-  // Save to in-memory cache
+  // Save to in-memory cache (bounded, oldest entry evicted first)
+  if (responseCache.size >= CALL_CACHE_MAX_ENTRIES) {
+    responseCache.delete(responseCache.keys().next().value!);
+  }
   responseCache.set(cacheKey, {
     text: generatedText,
     data: structuredData,
@@ -1735,29 +1764,27 @@ export async function executeAIGeneration(
   }
 
   const config = loadAIConfig();
+  // Never pass template text off as an AI answer: reviews come back empty, everything else fails honestly.
+  const noAnswer = (errors: any[], message: string): GenerationResult => {
+    if (req.action === 'scrape_reviews') return handleCuratedActionFallback(req);
+    throw failureOr(errors, message);
+  };
   if (!config.enabled) {
-    return handleCuratedActionFallback(req);
+    return noAnswer([], 'Ulendo is currently switched off by the platform team.');
   }
 
   if (overrideProvider) {
     if (config.providers[overrideProvider]?.enabled === false) {
       throw new Error(`AI provider ${overrideProvider} is disabled in Admin settings.`);
     }
-    try {
-      return await executeWithProvider(overrideProvider, req, config);
-    } catch (err: any) {
-      // If testing connection in Admin Settings, let error bubble up so admin sees failure details
-      if (req.details?.extraNotes?.includes('historic serene stay on the shores of Lake Malawi')) {
-        throw err;
-      }
-      return handleCuratedActionFallback(req);
-    }
+    // Errors bubble up so the caller (e.g. the admin connection test) sees the real failure.
+    return executeWithProvider(overrideProvider, req, config);
   }
 
   const providers = getAvailableProviders();
   if (providers.length === 0) {
-    console.warn(`[AI] No providers configured with active keys. Serving curated fallback for action: ${req.action}`);
-    return handleCuratedActionFallback(req);
+    console.warn(`[AI] No providers configured with active keys for action: ${req.action}`);
+    return noAnswer([], 'No AI provider is configured right now.');
   }
 
   const errors: any[] = [];
@@ -1778,8 +1805,8 @@ export async function executeAIGeneration(
   }
 
   // All providers encountered transient failures (e.g. Google 503 overloaded, 429 rate limit, network down)
-  console.warn(`[AI] All providers encountered errors. Serving curated Malawian fallback for action: ${req.action}`, errors.map(e => e.message));
-  return handleCuratedActionFallback(req);
+  console.warn(`[AI] All providers encountered errors for action: ${req.action}`, errors.map(e => e.message));
+  return noAnswer(errors, 'No AI provider could answer right now. Please try again shortly.');
 }
 
 /**
@@ -2211,13 +2238,13 @@ CRITICAL CONVERSATIONAL & TONE RULES (100% ADAPTIVE MIRRORING):
 1. 100% CAPACITY PERSONALITY MIRRORING: You must dynamically and constantly adapt your personality, tone, and vocabulary to perfectly mirror how the manager interacts with you. If they are highly formal, be strictly professional. If they use slang, emojis, or casual banter, match their casual energy exactly. If they are rushed or curt, be extremely brief. Shift your personality to align 100% with their current conversational energy based on the conversation history.
 2. Speak naturally, pleasantly, and directly. Maintain a smooth, human conversational flow.
 3. CONVERSATIONAL CONTINUITY & ONGOING EXCHANGES:
-   * When conversation history is present (${hasHistory ? 'YES' : 'NO'}), DO NOT start your response with "Hello!", "Hi!", or greeting salutations! Jump directly into the conversation.
+   * When conversation history is present (see CURRENT CONTEXT), DO NOT start your response with "Hello!", "Hi!", or greeting salutations! Jump directly into the conversation.
    * When the user shares or responds to casual pleasantries (e.g. "not too bad how are you", "doing well and you?", "good morning, how's things?"):
      - Respond in 1 to 2 crisp, warm sentences (e.g. "Glad to hear! Doing great on my side and ready for whatever is on your agenda today. What are we tackling?").
      - NEVER dump an unprompted "Quick Status Check", property audit, room listings, or alerts during casual pleasantries.
 3. STRICT RULE: DO NOT say "Moni", "Muli bwanji", or formulaic greetings. Do NOT speak in Chichewa unless the user explicitly addresses you in Chichewa first. Keep responses in fluent English.
 4. STRICT RULE: DO NOT repeat or prepend the user's name on every response! Keep conversational flow natural without formulaic salutations or constant name repetition.
-5. If referring to the user, address them in the second person ("you", "your lodge", "your portfolio"). If they have a Display Name configured (${resolvedDisplayName ? `"${resolvedDisplayName}"` : 'display name if set'}), you may refer to them by that Display Name only when contextually natural. NEVER refer to the user by an email address, email username, or generic role title (like "Administrator" or "Host").
+5. If referring to the user, address them in the second person ("you", "your lodge", "your portfolio"). If they have a Display Name configured (see CURRENT CONTEXT), you may refer to them by that Display Name only when contextually natural. NEVER refer to the user by an email address, email username, or generic role title (like "Administrator" or "Host").
 6. Keep conversational replies concise and helpful (1 to 2 crisp, friendly sentences).
 7. DO NOT dump raw data, database records, full audits, or listing tables when merely greeted or having a brief conversational exchange.
 
@@ -2273,7 +2300,7 @@ ${(req.history || []).slice(-4).map(h => `${h.role === 'user' ? 'User' : 'Assist
 USER MESSAGE:
 "${clip(req.message, MAX_MESSAGE_CHARS)}"`;
 
-    const rawGenerated = await callProvider(providerId, apiKey, model, chatSystemPrompt, chatUserPrompt, 0.5, 300, false, { thinkingBudget: 0 });
+    const rawGenerated = await callProvider(providerId, apiKey, model, chatSystemPrompt, chatUserPrompt, 0.5, 380, false, { thinkingBudget: 0 });
 
     let newLearnedRule: string | null = null;
     const ruleMatch = rawGenerated.match(/```learned_rule\s*([\s\S]*?)\s*```/);
@@ -2345,14 +2372,9 @@ USER MESSAGE:
 
       // Intelligent Multi-Property & Scope Harmonization
       const lowerMsg = (req.message || '').toLowerCase();
-      const mentionsAll = 
-        lowerMsg.includes('all ') || 
-        lowerMsg.includes('all 3') || 
-        lowerMsg.includes('all my') || 
-        lowerMsg.includes('all properties') || 
-        lowerMsg.includes('every property') || 
-        lowerMsg.includes('each property') ||
-        lowerMsg.includes('across all') ||
+      // Only an explicit "all properties" request widens scope; "all rooms at X" stays on X.
+      const mentionsAll =
+        /\b(all|every|each)\s+(of\s+)?(my\s+|the\s+|our\s+|\d+\s+)?(propert(y|ies)|lodges?|hotels?|stays|listings)\b|\bacross all\b/.test(lowerMsg) ||
         actionProposal.targetScope === 'all';
 
       if (mentionsAll && req.context.properties && req.context.properties.length > 1) {
@@ -2484,9 +2506,12 @@ export async function testProviderConnection(
   const startTime = Date.now();
   try {
     const config = loadAIConfig();
-    
-    // If an explicit API key was submitted with the test, persist it
-    if (overrideApiKey && overrideApiKey.trim().length > 5) {
+    if (!config.providers[providerId] || !Object.prototype.hasOwnProperty.call(config.providers, providerId)) {
+      throw new Error(`Unknown AI provider: ${providerId}`);
+    }
+
+    // If an explicit API key was submitted with the test, persist it (a masked "abcd••••wxyz" echo never overwrites the real key)
+    if (typeof overrideApiKey === 'string' && overrideApiKey.trim().length > 5 && !overrideApiKey.includes('•')) {
       config.providers[providerId].apiKey = overrideApiKey.trim();
       config.providers[providerId].enabled = true;
       if (overrideModel && overrideModel.trim()) {
@@ -2511,13 +2536,15 @@ export async function testProviderConnection(
       action: 'draft',
       entityType: 'property',
       details: {
-        name: 'Sunbird Livingstonia Beach',
+        name: 'Example Lakeside Lodge',
         location: 'Salima, Lake Malawi',
         amenities: ['Private beach', 'Swimming pool', 'Lakeview restaurant'],
-        extraNotes: 'A historic serene stay on the shores of Lake Malawi.',
+        extraNotes: 'A quiet stay on the shores of Lake Malawi.',
       },
     };
 
+    // A connection test must reach the provider, never a cached answer from an earlier key.
+    clearProviderCaches(providerId);
     const result = await executeAIGeneration(testReq, providerId);
     const latencyMs = Date.now() - startTime;
     markProviderValidity(providerId, true);
@@ -2959,7 +2986,7 @@ function buildAuthenticMalawiFallbackInsights(params: TripInsightsParams): TripI
       transit = 'South through Chikwawa along the Lower Shire Valley. Road is scenic with dramatic baobab tree clusters.';
       dining = 'Traditional braai barbecue at the lodge boma with cold local beverages.';
     } else if (loc.includes('zomba') || loc.includes('plateau')) {
-      activity = 'Hike to Emperor\'s View and Queen\'s View overlooking the Southern plains, followed by a walk to Sunbird Ku Chawe gardens.';
+      activity = 'Hike to Emperor\'s View and Queen\'s View overlooking the Southern plains, followed by a walk through the pine forests of the plateau and Mandala Falls.';
       transit = 'Wind up the historic mountain pass road. Keep headlights on during misty mornings.';
       dining = 'Afternoon tea with homemade scones and mountain blackberry preserves.';
     } else if (loc.includes('mulanje') || loc.includes('thyolo')) {
@@ -3034,6 +3061,7 @@ export async function generateTripInsights(params: TripInsightsParams): Promise<
 You have encyclopedic knowledge of Malawi's geography, highways (M1, M3, M5, M10), game reserves (Liwonde, Majete, Nyika), Lake Malawi shoreline (Cape Maclear, Senga Bay, Nkhata Bay, Likoma), tea estates (Thyolo, Mulanje), and highland plateaus (Zomba).
 Your goal is to craft an inspiring, deeply practical, and authentic road-trip itinerary analysis for travellers.
 Return ONLY valid JSON matching the requested schema. No markdown backticks, no markdown code blocks, no conversational preamble.
+Only name accommodation from the traveller's stops listed here; never recommend or mention any other lodge, hotel, camp or restaurant in Malawi (use towns, parks and the lake instead).
 ${UNTRUSTED_DATA_RULE}`;
 
   const stopsText = stops.slice(0, 15).map((s, i) => `${i + 1}. "${clip(s.name, 120)}" located in ${clip(s.location, 120) || 'Malawi'} (${clip(s.category, 60) || 'Lodge/Stay'})`).join('\n');
@@ -3133,6 +3161,7 @@ CRITICAL CONVERSATIONAL RULE - 100% ADAPTIVE MIRRORING: You must dynamically ada
 
 Scope: Malawi roads, travel times, vehicle recommendations, park rules, lake safety, packing, local food (Chambo, nsima, Dedza pottery), and currency.
 Keep answers concise, direct, helpful, and formatted with clean paragraphs or brief bullet points.
+Only name accommodation from the traveller's stops listed here; never recommend or mention any other lodge, hotel, camp or restaurant in Malawi (use towns, parks and the lake instead).
 If the question is unclear, use the conversation and their stops to infer what they most likely mean and say so briefly; only if it could mean quite different things, ask one short question offering the likely options (e.g. "Driving from Lilongwe or from Blantyre?").
 ${UNTRUSTED_DATA_RULE}`;
 
@@ -3161,1096 +3190,29 @@ ${UNTRUSTED_DATA_RULE}`;
     }
   }
 
-  // Standard route notes, with a note explaining why the AI answer is missing
+  // No scripted answer: the traveller gets an honest notice that the AI could not reply.
+  const rateLimited = failures.find(isRateLimitError);
+  const notice = !(config.enabled && providers.length > 0)
+    ? "Ulendo's AI service isn't available right now, so this question can't be answered yet."
+    : rateLimited
+      ? `Ulendo's AI service is busy right now (${rateLimited.message})`
+      : "Ulendo couldn't reach the AI service. Please try again in a moment.";
   return {
-    aiNotice: aiUnavailableNotice(failures, config.enabled && providers.length > 0),
-    answer: `Regarding your route through ${stopsList}: In Malawi, the main highways (M1, M3, M5) are paved and scenic. Daytime driving between 8:00 AM and 4:00 PM is highly recommended so you can enjoy the beautiful Rift Valley views and arrive well before sunset. Keep around MK 50,000 cash for toll gates and roadside fruit stalls, and make sure to stop for fresh Lake Malawi Chambo fish along your journey!`,
+    aiNotice: notice,
+    answer: notice,
     provider: 'local',
-    model: 'Ulendo Concierge',
+    model: 'none',
   };
 }
 
-/**
- * Generates culturally authentic, property-specific fallback reviews for Malawi accommodations
- * when AI providers are rate-limited or experiencing high traffic. Burns 0 tokens.
- */
-export function generateCuratedMalawiReviews(
-  hotelName: string, 
-  location?: string, 
-  category?: string, 
-  count: number = 4,
-  sentimentMode: string = 'balanced',
-  targetSources?: string[],
-  existingReviews?: Array<{ author?: string; comment?: string; text?: string; title?: string }>
-) {
-  const loc = (location || '').toLowerCase();
-  const safeQuery = encodeURIComponent(`${hotelName} ${location || 'Malawi'}`);
-  const isLake = loc.includes('lake') || loc.includes('maclear') || loc.includes('mangochi') || loc.includes('nkhata') || loc.includes('salima') || loc.includes('senga') || loc.includes('likoma') || (category || '').toLowerCase().includes('lake');
-  const isSafari = loc.includes('liwonde') || loc.includes('majete') || loc.includes('nyika') || loc.includes('kasungu') || loc.includes('vwaza') || loc.includes('nkhotakota') || (category || '').toLowerCase().includes('safari');
 
-  const positiveLake = [
-    {
-      author: 'David & Claire M.',
-      rating: 5,
-      title: 'Unforgettable Lake Malawi sunset & warm hospitality',
-      comment: `Our stay at ${hotelName} was absolutely magical. Waking up to the gentle waves of Lake Malawi, enjoying fresh Chambo fish for dinner, and being looked after by such a welcoming team made our holiday special.`,
-      source: 'TripAdvisor',
-      sourceUrl: `https://www.tripadvisor.com/Search?q=${safeQuery}`,
-      date: 'October 2024',
-      travellerType: 'Couple',
-      travellerOrigin: 'United Kingdom',
-      highlights: ['Lake Malawi View', 'Fresh Chambo', 'Friendly Staff'],
-      sentiment: 'exceptional',
-    },
-    {
-      author: 'Chifundo Phiri',
-      rating: 5,
-      title: 'Peaceful lakeside retreat',
-      comment: `The perfect weekend getaway from Lilongwe. Clean, airy chalets, reliable solar backup power, and breathtaking lake views right from the veranda. Highly recommended!`,
-      source: 'Google Reviews',
-      sourceUrl: `https://www.google.com/maps/search/?api=1&query=${safeQuery}`,
-      date: 'January 2025',
-      travellerType: 'Leisure traveller',
-      travellerOrigin: 'Lilongwe, Malawi',
-      highlights: ['Quiet Atmosphere', 'Solar Power Backup', 'Lake Breeze'],
-      sentiment: 'exceptional',
-    },
-    {
-      author: 'Sarah Jenkins',
-      rating: 4.8,
-      title: 'Warm Heart of Africa at its best',
-      comment: `The hospitality at ${hotelName} exceeded all our expectations. Beautiful beach access, delicious local and international food, and wonderful boat excursion recommendations.`,
-      source: 'Booking.com',
-      sourceUrl: `https://www.booking.com/searchresults.html?ss=${safeQuery}`,
-      date: 'August 2024',
-      travellerType: 'Family',
-      travellerOrigin: 'South Africa',
-      highlights: ['Beach Access', 'Boat Trips', 'Delicious Dining'],
-      sentiment: 'positive',
-    },
-  ];
-
-  const criticalLake = [
-    {
-      author: 'Hendrik van der Merwe',
-      rating: 3,
-      title: 'Stunning lake scenery, but watch the access road',
-      comment: `The beach setting and fresh chambo were truly 5-star, but future guests should know that the last 14km unpaved access road from the turnoff was deeply rutted after the rains. High-clearance vehicle or 4x4 strongly recommended. Also, Wi-Fi only worked near reception, not in the lakefront chalets. Very warm hosts though.`,
-      source: 'Google Reviews',
-      sourceUrl: `https://www.google.com/maps/search/?api=1&query=${safeQuery}`,
-      date: 'November 2024',
-      travellerType: 'Family Roadtrip',
-      travellerOrigin: 'South Africa',
-      highlights: ['Bumpy Dirt Road', 'Patio Wi-Fi Only', 'Warm Staff'],
-      sentiment: 'balanced',
-    },
-    {
-      author: 'Chloe & Liam Davies',
-      rating: 2,
-      title: 'Beautiful location let down by power fluctuations & insects',
-      comment: `The lake views are gorgeous, but during our 2-night stay local ESCOM load shedding caused several outages, and it took about 40 minutes for the backup generator to kick in. Also encountered seasonal lake flies in the evening. Staff provided lanterns and coils, but it felt quite rustic for the price point.`,
-      source: 'TripAdvisor',
-      sourceUrl: `https://www.tripadvisor.com/Search?q=${safeQuery}`,
-      date: 'September 2024',
-      travellerType: 'Couple',
-      travellerOrigin: 'United Kingdom',
-      highlights: ['Power Cuts', 'Seasonal Lake Flies', 'Rustic Amenities'],
-      sentiment: 'critical',
-    },
-  ];
-
-  const positiveSafari = [
-    {
-      author: 'Jonathan & Rachel Vance',
-      rating: 5,
-      title: 'World-class safari hospitality',
-      comment: `Staying at ${hotelName} was the highlight of our Malawi safari journey. Incredible wildlife sightings, knowledgeable safari guides, and comfortable, authentic tented chalets.`,
-      source: 'SafariBookings',
-      sourceUrl: `https://www.safaribookings.com/search?q=${encodeURIComponent(hotelName)}`,
-      date: 'October 2024',
-      travellerType: 'Couple',
-      travellerOrigin: 'United Kingdom',
-      highlights: ['Game Drives', 'Safari Guides', 'Wildlife Sightings'],
-      sentiment: 'exceptional',
-    },
-    {
-      author: 'Thoko Chirwa',
-      rating: 5,
-      title: 'Incredible wilderness experience',
-      comment: `Remarkable experience in the heart of the reserve. The evening campfire atmosphere, sounds of nature at night, and fantastic food made this unforgettable.`,
-      source: 'TripAdvisor',
-      sourceUrl: `https://www.tripadvisor.com/Search?q=${safeQuery}`,
-      date: 'December 2024',
-      travellerType: 'Safari Tour',
-      travellerOrigin: 'Malawi',
-      highlights: ['Campfire Atmosphere', 'Great Food', 'Wildlife Sounds'],
-      sentiment: 'exceptional',
-    },
-    {
-      author: 'Brian O\'Connor',
-      rating: 4.8,
-      title: 'Exceptional wildlife and warm staff',
-      comment: `Guides were phenomenal at tracking animals and sharing park history. Clean, well-equipped chalets and delicious bush dinners under the African stars.`,
-      source: 'Google Reviews',
-      sourceUrl: `https://www.google.com/maps/search/?api=1&query=${safeQuery}`,
-      date: 'August 2024',
-      travellerType: 'Adventure Group',
-      travellerOrigin: 'Ireland',
-      highlights: ['Bush Dinners', 'Expert Tracking', 'Comfortable Chalets'],
-      sentiment: 'positive',
-    },
-  ];
-
-  const criticalSafari = [
-    {
-      author: 'Marcus & Elena Fischer',
-      rating: 3,
-      title: 'Superb game drives, but generator noise and slow shower',
-      comment: `We saw a herd of over 40 elephants on the river safari — truly unforgettable. However, the camp generator runs close to the luxury tents between 6pm and 9:30pm, which disturbs the bush silence. Solar hot water also took 5-10 minutes to run warm during early dawn starts. Worth visiting for the nature, but expect rustic safari trade-offs.`,
-      source: 'SafariBookings',
-      sourceUrl: `https://www.safaribookings.com/search?q=${encodeURIComponent(hotelName)}`,
-      date: 'November 2024',
-      travellerType: 'Couple',
-      travellerOrigin: 'Germany',
-      highlights: ['Generator Noise', 'Slow Solar Water', 'Great Elephants'],
-      sentiment: 'balanced',
-    },
-    {
-      author: 'David Stewart',
-      rating: 2,
-      title: 'Great safari guides, but dinner delays and card payment failed',
-      comment: `The wildlife guides are top tier, but kitchen service took over an hour and a half for dinner after returning from the evening game drive. To top it off, their satellite card machine had no connection, so we had to scramble for cash Kwacha. Excellent wilderness, but back-of-house operations need attention.`,
-      source: 'TripAdvisor',
-      sourceUrl: `https://www.tripadvisor.com/Search?q=${safeQuery}`,
-      date: 'July 2024',
-      travellerType: 'Solo Traveller',
-      travellerOrigin: 'Australia',
-      highlights: ['Dinner Delay', 'Card Machine Offline', 'Expert Guides'],
-      sentiment: 'critical',
-    },
-  ];
-
-  const positiveGeneral = [
-    {
-      author: 'Emily Watson',
-      rating: 5,
-      title: 'Outstanding stay and impeccable service',
-      comment: `We had a fantastic stay at ${hotelName}. Beautifully maintained grounds, spacious comfortable rooms, and very attentive, courteous staff who made us feel right at home.`,
-      source: 'TripAdvisor',
-      sourceUrl: `https://www.tripadvisor.com/Search?q=${safeQuery}`,
-      date: 'January 2025',
-      travellerType: 'Couple',
-      travellerOrigin: 'United Kingdom',
-      highlights: ['Beautiful Grounds', 'Spacious Rooms', 'Warm Hospitality'],
-      sentiment: 'exceptional',
-    },
-    {
-      author: 'Chikondi Mwale',
-      rating: 5,
-      title: 'Reliable, peaceful and very comfortable',
-      comment: `Top-tier hospitality with reliable solar power backup, clean ensuite rooms, and fast Wi-Fi. The dining was fantastic with great local and continental options.`,
-      source: 'Google Reviews',
-      sourceUrl: `https://www.google.com/maps/search/?api=1&query=${safeQuery}`,
-      date: 'February 2025',
-      travellerType: 'Business traveller',
-      travellerOrigin: 'Lilongwe, Malawi',
-      highlights: ['Fast Wi-Fi', 'Solar Backup', 'Great Dining'],
-      sentiment: 'exceptional',
-    },
-    {
-      author: 'Patrick & Sophie Dubois',
-      rating: 4.8,
-      title: 'True Warm Heart of Africa experience',
-      comment: `A wonderful home base during our travel across Malawi. Quiet nights, delicious breakfast, and a team that genuinely cares about every guest's comfort.`,
-      source: 'Booking.com',
-      sourceUrl: `https://www.booking.com/searchresults.html?ss=${safeQuery}`,
-      date: 'October 2024',
-      travellerType: 'Couple',
-      travellerOrigin: 'France',
-      highlights: ['Quiet Setting', 'Delicious Breakfast', 'Caring Team'],
-      sentiment: 'positive',
-    },
-  ];
-
-  const criticalGeneral = [
-    {
-      author: 'Martin & Karen Brooks',
-      rating: 3,
-      title: 'Convenient location, but noisy generator during power cuts',
-      comment: `Clean rooms, comfortable bed, and very pleasant front desk staff. However, Lilongwe had prolonged load shedding during our visit and the backup generator was quite loud outside our bedroom window. Wi-Fi was also intermittent during peak evening hours. Decent value overall.`,
-      source: 'Google Reviews',
-      sourceUrl: `https://www.google.com/maps/search/?api=1&query=${safeQuery}`,
-      date: 'November 2024',
-      travellerType: 'Business traveller',
-      travellerOrigin: 'Kenya',
-      highlights: ['Loud Generator', 'Spotty Evening Wi-Fi', 'Polite Staff'],
-      sentiment: 'balanced',
-    },
-    {
-      author: 'Peter K.',
-      rating: 2,
-      title: 'Friendly team, but room needs plumbing & AC maintenance',
-      comment: `The staff couldn't be friendlier, but our air conditioning unit was leaking condensation onto the floor, and water pressure in the shower was very weak in the morning. A bit tired for the price paid, needs basic maintenance checkup.`,
-      source: 'TripAdvisor',
-      sourceUrl: `https://www.tripadvisor.com/Search?q=${safeQuery}`,
-      date: 'August 2024',
-      travellerType: 'Solo Traveller',
-      travellerOrigin: 'South Africa',
-      highlights: ['AC Leak', 'Low Water Pressure', 'Friendly Staff'],
-      sentiment: 'critical',
-    },
-  ];
-
-  const guestBookReviews = [
-    {
-      author: 'Tamandani & Kondwani Banda',
-      rating: 5,
-      title: 'Warm memories penned in the lodge guest book',
-      comment: `Such a tranquil oasis away from city bustle. The sunset views, fresh lake fish dinner, and attentive hospitality made our anniversary weekend unforgettable. Zikomo kwambiri to the wonderful staff!`,
-      source: 'Guest Book',
-      sourceUrl: '',
-      date: 'January 2025',
-      travellerType: 'Couple',
-      travellerOrigin: 'Blantyre, Malawi',
-      highlights: ['Warm Hospitality', 'Lake Sunset', 'Fresh Fish Dinner'],
-      sentiment: 'exceptional',
-    },
-    {
-      author: 'Fatima & Al-Amin Noor',
-      rating: 4.8,
-      title: 'Warmly recommended on Malawi Travel community page',
-      comment: `Booked after seeing heartfelt recommendations on social media and this stay did not disappoint. Clean chalets, wonderful garden grounds, and genuinely hospitable staff.`,
-      source: 'Facebook',
-      sourceUrl: `https://www.facebook.com/search/top?q=${encodeURIComponent(hotelName)}`,
-      date: 'December 2024',
-      travellerType: 'Family',
-      travellerOrigin: 'Lilongwe, Malawi',
-      highlights: ['Clean Chalets', 'Serene Gardens', 'Helpful Staff'],
-      sentiment: 'positive',
-    },
-    {
-      author: 'James Mwase',
-      rating: 3,
-      title: 'Peaceful stay noted in guest book, but evening Wi-Fi was weak',
-      comment: `A lovely, authentic Malawian setting with generous breakfast and courteous team. Future visitors should note that evening Wi-Fi drops when the lodge is full, and hot water takes a few minutes on overcast mornings. Overall a very relaxing retreat.`,
-      source: 'Guest Book',
-      sourceUrl: '',
-      date: 'November 2024',
-      travellerType: 'Business traveller',
-      travellerOrigin: 'Mzuzu, Malawi',
-      highlights: ['Slow Evening Wi-Fi', 'Solar Water Delay', 'Courteous Team'],
-      sentiment: 'balanced',
-    }
-  ];
-
-  const wantsGuestBook = Array.isArray(targetSources) && targetSources.some(s => {
-    const sl = s.toLowerCase();
-    return sl.includes('guest') || sl.includes('facebook') || sl.includes('social');
-  });
-
-  const posPool = wantsGuestBook ? [guestBookReviews[0], guestBookReviews[1], ...(isLake ? positiveLake : isSafari ? positiveSafari : positiveGeneral)] : (isLake ? positiveLake : isSafari ? positiveSafari : positiveGeneral);
-  const critPool = wantsGuestBook ? [guestBookReviews[2], ...(isLake ? criticalLake : isSafari ? criticalSafari : criticalGeneral)] : (isLake ? criticalLake : isSafari ? criticalSafari : criticalGeneral);
-
-  // Filter out any reviews that match already scraped/existing reviews
-  const filteredPos = posPool.filter(r => !matchesExistingReview(r, existingReviews));
-  const filteredCrit = critPool.filter(r => !matchesExistingReview(r, existingReviews));
-
-  // Secondary candidate bank with varied authentic Malawian and international traveller profiles to ensure fresh reviews
-  const backupCandidates = [
-    {
-      author: 'Blessings Mwale',
-      rating: 5,
-      title: 'A true hidden gem with peaceful surroundings',
-      comment: `Everything about our stay at ${hotelName} was top notch. The staff treated us like family, and the quiet gardens provided the rest we desperately needed after a busy week.`,
-      source: 'Google Reviews',
-      sourceUrl: `https://www.google.com/maps/search/?api=1&query=${safeQuery}`,
-      date: 'February 2025',
-      travellerType: 'Solo Traveller',
-      travellerOrigin: 'Lilongwe, Malawi',
-      highlights: ['Tranquil Gardens', 'Friendly Hospitality', 'Great Value'],
-      sentiment: 'exceptional',
-    },
-    {
-      author: 'Elena & Marcus Weber',
-      rating: 4.9,
-      title: 'Warm hospitality and delicious local cuisine',
-      comment: `Malawi is truly the Warm Heart of Africa! The team at ${hotelName} made our journey seamless with their warm smiles, hearty breakfasts, and comfortable beds.`,
-      source: 'TripAdvisor',
-      sourceUrl: `https://www.tripadvisor.com/Search?q=${safeQuery}`,
-      date: 'January 2025',
-      travellerType: 'Couple',
-      travellerOrigin: 'Germany',
-      highlights: ['Hearty Breakfast', 'Welcoming Hosts', 'Comfortable Beds'],
-      sentiment: 'exceptional',
-    },
-    {
-      author: 'Tiwonge Gondwe',
-      rating: 4.7,
-      title: 'Clean rooms and attentive hospitality',
-      comment: `Stayed here on a business trip combined with weekend downtime. The rooms are spotless, water pressure was good, and the team accommodated my late arrival with no issues.`,
-      source: 'Booking.com',
-      sourceUrl: `https://www.booking.com/searchresults.html?ss=${safeQuery}`,
-      date: 'December 2024',
-      travellerType: 'Business traveller',
-      travellerOrigin: 'Mzuzu, Malawi',
-      highlights: ['Late Check-in', 'Clean Rooms', 'Attentive Team'],
-      sentiment: 'positive',
-    },
-    {
-      author: 'Patrick O\'Connor',
-      rating: 4.0,
-      title: 'Wonderful location; generator kicks in smoothly during outages',
-      comment: `Lovely vibe and helpful staff throughout. ESCOM grid power dropped twice during our weekend, but the backup power system kicked in within minutes. Breakfast was fresh and tasty.`,
-      source: 'Google Reviews',
-      sourceUrl: `https://www.google.com/maps/search/?api=1&query=${safeQuery}`,
-      date: 'November 2024',
-      travellerType: 'Family',
-      travellerOrigin: 'Ireland',
-      highlights: ['Reliable Backup Power', 'Fresh Breakfast', 'Scenic Views'],
-      sentiment: 'balanced',
-    },
-    {
-      author: 'Chikondi & Grace Banda',
-      rating: 4.8,
-      title: 'Restful weekend escape with authentic warmth',
-      comment: `We loved every minute of our weekend getaway here. Quiet nights, delicious lake fish dinner, and genuinely hospitable Malawian service. We will definitely return!`,
-      source: 'Guest Book',
-      sourceUrl: '',
-      date: 'January 2025',
-      travellerType: 'Couple',
-      travellerOrigin: 'Blantyre, Malawi',
-      highlights: ['Quiet Nights', 'Authentic Hospitality', 'Tasty Dinner'],
-      sentiment: 'exceptional',
-    },
-    {
-      author: 'Sophie Dubois',
-      rating: 3.5,
-      title: 'Charming setting, but access road requires care during rainy season',
-      comment: `The lodge itself is very peaceful and the team is wonderful. Just be advised that the unpaved approach road can be bumpy after heavy rains. Arrive before dark for easiest access.`,
-      source: 'TripAdvisor',
-      sourceUrl: `https://www.tripadvisor.com/Search?q=${safeQuery}`,
-      date: 'October 2024',
-      travellerType: 'Couple',
-      travellerOrigin: 'France',
-      highlights: ['Peaceful Setting', 'Rough Access Road', 'Great Staff'],
-      sentiment: 'balanced',
-    }
-  ].filter(r => !matchesExistingReview(r, existingReviews));
-
-  const availablePos = [...filteredPos, ...backupCandidates.filter(b => b.sentiment === 'exceptional' || b.sentiment === 'positive')];
-  const availableCrit = [...filteredCrit, ...backupCandidates.filter(b => b.sentiment === 'balanced' || b.sentiment === 'critical')];
-
-  let selected: any[] = [];
-
-  if (sentimentMode === 'critical') {
-    selected = [...availableCrit, ...availablePos, ...criticalLake, ...criticalSafari, ...criticalGeneral];
-  } else if (sentimentMode === 'positive') {
-    selected = [...availablePos, ...positiveLake, ...positiveSafari, ...positiveGeneral, ...guestBookReviews];
-  } else {
-    selected = [
-      ...availablePos,
-      ...availableCrit,
-      ...backupCandidates,
-      ...positiveLake,
-      ...positiveSafari,
-      ...positiveGeneral,
-      ...criticalLake,
-      ...criticalSafari,
-      ...criticalGeneral,
-      ...guestBookReviews
-    ].filter(Boolean);
-  }
-
-  // Deduplicate against each other in selected list
-  const seenAuthors = new Set<string>();
-  const uniqueSelected = selected.filter(r => {
-    if (!r?.author) return false;
-    const key = r.author.toLowerCase().trim();
-    if (seenAuthors.has(key)) return false;
-    seenAuthors.add(key);
-    return true;
-  });
-
-  const targetCount = Math.min(Math.max(count, 1), uniqueSelected.length);
-  const sliced = uniqueSelected.slice(0, targetCount).map((r, idx) => ({
-    ...r,
-    id: `curated-${Date.now()}-${idx}`,
-    text: r.comment,
-    verified: true,
-  }));
-
-  // Sort strictly by most recent date first
-  sliced.sort((a, b) => {
-    const tsB = parseReviewDateToTimestamp(b.date, 0);
-    const tsA = parseReviewDateToTimestamp(a.date, 0);
-    return tsB - tsA;
-  });
-
-  return sliced;
-}
-
-// ============================================================================
-// CURATED MALAWI FALLBACK GENERATORS (Flawless zero-failure safety net)
-// ============================================================================
-
-function detectMalawiRegion(name?: string, location?: string, category?: string): 'lake' | 'safari' | 'mountain' | 'city' | 'general' {
-  const text = `${name || ''} ${location || ''} ${category || ''}`.toLowerCase();
-  if (
-    text.includes('lake') || text.includes('maclear') || text.includes('chembe') ||
-    text.includes('senga') || text.includes('salima') || text.includes('mangochi') ||
-    text.includes('nkhata') || text.includes('likoma') || text.includes('chizumulu') ||
-    text.includes('monkey bay') || text.includes('chintheche') || text.includes('beach') ||
-    text.includes('bay') || text.includes('island') || text.includes('lakeside')
-  ) {
-    return 'lake';
-  }
-  if (
-    text.includes('liwonde') || text.includes('majete') || text.includes('nyika') ||
-    text.includes('kasungu') || text.includes('vwaza') || text.includes('nkhotakota') ||
-    text.includes('lengwe') || text.includes('safari') || text.includes('wildlife') ||
-    text.includes('game') || text.includes('bush') || text.includes('park') ||
-    text.includes('reserve')
-  ) {
-    return 'safari';
-  }
-  if (
-    text.includes('mulanje') || text.includes('sapitwa') || text.includes('zomba') ||
-    text.includes('plateau') || text.includes('mountain') || text.includes('dedza') ||
-    text.includes('thyolo') || text.includes('tea estate') || text.includes('hiking')
-  ) {
-    return 'mountain';
-  }
-  if (
-    text.includes('lilongwe') || text.includes('blantyre') || text.includes('mzuzu') ||
-    text.includes('area 10') || text.includes('area 43') || text.includes('city') ||
-    text.includes('guest house') || text.includes('b&b') || text.includes('bed & breakfast') ||
-    text.includes('urban') || text.includes('inn')
-  ) {
-    return 'city';
-  }
-  return 'general';
-}
-
-export function generateCuratedMalawiPropertyDraft(details?: GenerationRequest['details'], currentText?: string): string {
-  const name = (details?.name || 'This property').trim();
-  const location = (details?.location || 'Malawi').trim();
-  const region = detectMalawiRegion(name, location, details?.category);
-  const amenities = Array.isArray(details?.amenities) && details.amenities.length > 0 ? details.amenities : [];
-  const amenitiesSentence = amenities.length > 0
-    ? ` Featured comforts include ${amenities.slice(0, 3).join(', ')}, alongside dependable backup power and attentive hospitality.`
-    : ' Guests enjoy reliable backup power, hot showers, and authentic Malawian hospitality throughout their stay.';
-
-  switch (region) {
-    case 'lake':
-      return `Nestled along the scenic shores of Lake Malawi in ${location}, ${name} welcomes guests to experience pure lakeside serenity and genuine Malawian warmth. Wake up to panoramic sunrise views across sparkling crystal-clear waters, unwind on gentle sandy beaches, and savor freshly caught Lake Malawi Chambo prepared with local spices.\n\nFeaturing thoughtfully appointed rooms, cooling lake breezes, and dedicated hosts, this retreat is an idyllic getaway for couples, families, and independent travellers exploring the Warm Heart of Africa.${amenitiesSentence}`;
-    case 'safari':
-      return `Surrounded by the natural beauty and wildlife of ${location}, ${name} offers an authentic safari sanctuary where comfort meets the wilderness. Spend your days on captivating guided excursions and wildlife walks, relaxing on private verandas with sweeping views across the bush.\n\nAs dusk falls, unwind around the traditional boma campfire beneath star-filled African skies. With warm local hospitality, comfortable tented chalets, and hearty safari dining, it provides an unforgettable base in Malawi's wild heart.${amenitiesSentence}`;
-    case 'mountain':
-      return `Perched amidst the fresh breezes and dramatic vistas of ${location}, ${name} is a scenic highland haven. Ideal for hikers, nature lovers, and guests seeking peaceful rejuvenation, the property combines rustic charm with modern comfort.\n\nRelax by cozy log fires in the cooler mountain evenings and wake to melodic birdsong and morning mist over the plateau. Warm local hospitality and hearty home-style meals ensure a truly restful stay.${amenitiesSentence}`;
-    case 'city':
-      return `Conveniently situated in ${location}, ${name} provides a quiet, secure, and comfortable haven for business professionals and leisure travellers alike. The property features well-appointed accommodations, reliable high-speed Wi-Fi, dependable backup power, and refreshing hot showers.\n\nStart your morning with a freshly prepared breakfast and enjoy attentive, respectful Malawian hospitality with seamless access to key city hubs and transport links.${amenitiesSentence}`;
-    default:
-      return `Offering a peaceful and welcoming retreat in ${location}, ${name} invites travellers to experience authentic comfort in the Warm Heart of Africa. Surrounded by relaxed natural scenery, the property features clean, comfortable lodging and tranquil garden spaces.\n\nWhether pausing on a scenic road trip or settling in for an extended holiday, guests are treated to dedicated local care, restful surroundings, and memorable Malawian hospitality.${amenitiesSentence}`;
-  }
-}
-
-export function generateCuratedMalawiPropertyLookup(details?: GenerationRequest['details']): any {
-  const scraped = details?.scrapedContent || '';
-
-  // Extract from scraped webpage dossier if available
-  let extractedName = '';
-  let extractedLoc = '';
-  let extractedCategory = '';
-  let extractedPhone = '';
-  let extractedEmail = '';
-  let extractedWhatsapp = '';
-  let extractedDesc = '';
-  let extractedCoords: { lat: number; lng: number } | null = null;
-
-  if (scraped) {
-    const nameM = scraped.match(/JSON-LD Official Name:\s*(.+)/i) ||
-                  scraped.match(/OpenGraph Site Name:\s*(.+)/i) ||
-                  scraped.match(/OpenGraph Title:\s*(.+)/i) ||
-                  scraped.match(/Main Heading \(H1\):\s*(.+)/i) ||
-                  scraped.match(/Domain Brand:\s*(.+)/i);
-    if (nameM && nameM[1]) extractedName = nameM[1].trim();
-
-    const locM = scraped.match(/Address Locality:\s*(.+)/i) ||
-                 scraped.match(/JSON-LD Address:\s*(.+)/i) ||
-                 scraped.match(/Malawi Tourism Locations Mentioned:\s*([^,\n]+)/i);
-    if (locM && locM[1]) extractedLoc = locM[1].trim();
-
-    const catM = scraped.match(/JSON-LD Schema Type:\s*(.+)/i);
-    if (catM && catM[1]) {
-      const typeStr = catM[1].toLowerCase();
-      if (typeStr.includes('hotel')) extractedCategory = 'Hotel';
-      else if (typeStr.includes('resort')) extractedCategory = 'Resort';
-      else if (typeStr.includes('bedandbreakfast')) extractedCategory = 'Bed & Breakfast';
-      else if (typeStr.includes('lodge')) extractedCategory = 'Lodge';
-    }
-
-    const phoneM = scraped.match(/Contact Phone\(s\):\s*(.+)/i);
-    if (phoneM && phoneM[1]) extractedPhone = phoneM[1].split(',')[0].trim();
-
-    const emailM = scraped.match(/Contact Email\(s\):\s*(.+)/i);
-    if (emailM && emailM[1]) extractedEmail = emailM[1].split(',')[0].trim();
-
-    const waM = scraped.match(/WhatsApp:\s*(.+)/i);
-    if (waM && waM[1]) extractedWhatsapp = waM[1].trim();
-
-    const coordsM = scraped.match(/GPS Coordinates:\s*lat:\s*([-\d.]+),\s*lng:\s*([-\d.]+)/i);
-    if (coordsM && coordsM[1] && coordsM[2]) {
-      const lat = parseFloat(coordsM[1]);
-      const lng = parseFloat(coordsM[2]);
-      if (!isNaN(lat) && !isNaN(lng)) extractedCoords = { lat, lng };
-    }
-
-    const descM = scraped.match(/JSON-LD Description:\s*(.+)/i) ||
-                  scraped.match(/Meta Description:\s*(.+)/i);
-    if (descM && descM[1]) extractedDesc = descM[1].trim();
-  }
-
-  const rawName = (details?.name || '').trim();
-  const name = (extractedName && (!rawName || rawName.startsWith('http') || rawName.startsWith('www.') || rawName === 'Malawi Accommodation'))
-    ? extractedName
-    : (rawName || extractedName || 'Malawi Lodge');
-  const rawLoc = (extractedLoc || details?.location || '').trim();
-  const region = detectMalawiRegion(name, rawLoc, details?.category);
-
-  let officialName = name;
-  let category = extractedCategory || 'Bed & Breakfast';
-  if (!extractedCategory) {
-    const nLow = name.toLowerCase();
-    if (nLow.includes('hotel')) category = 'Hotel';
-    else if (nLow.includes('resort')) category = 'Resort';
-    else if (nLow.includes('lodge')) category = 'Lodge';
-    else if (region === 'lake') category = 'Lake & Beach';
-    else if (region === 'safari') category = 'Safari & Wildlife';
-  }
-
-  let location = rawLoc || 'Lilongwe, Malawi';
-  let locationNotes = 'Accessible via main road. Signposted entrance with secure guest parking.';
-  let coordinates = extractedCoords || { lat: -13.9833, lng: 33.7833 };
-  let amenities = ['Free WiFi', 'Breakfast included', 'Backup power', 'Hot water', 'Secure parking', 'Air conditioning'];
-  let suggestedRooms: any[] = [];
-  let summary = `Welcoming accommodation in ${location} known for warm hospitality and comfortable amenities.`;
-
-  switch (region) {
-    case 'lake':
-      if (!extractedCategory) category = name.toLowerCase().includes('resort') ? 'Resort' : (name.toLowerCase().includes('hotel') ? 'Hotel' : (name.toLowerCase().includes('lodge') ? 'Lodge' : 'Lake & Beach'));
-      location = rawLoc || 'Cape Maclear, Lake Malawi';
-      locationNotes = 'Follow the lakeshore road toward the beach. Lodge entrance is signposted on the lake side.';
-      coordinates = extractedCoords || (location.toLowerCase().includes('senga') ? { lat: -13.7256, lng: 34.6189 }
-        : location.toLowerCase().includes('nkhata') ? { lat: -11.6067, lng: 34.2908 }
-        : location.toLowerCase().includes('likoma') ? { lat: -12.0569, lng: 34.7356 }
-        : location.toLowerCase().includes('mangochi') ? { lat: -14.4782, lng: 35.2645 }
-        : { lat: -14.0215, lng: 34.8482 });
-      amenities = ['Lake view', 'Private beach', 'Swimming pool', 'Restaurant', 'Bar', 'Backup power', 'Free WiFi', 'Hot water', 'Boat trips', 'Mosquito nets'];
-      suggestedRooms = [
-        {
-          name: 'Standard Lakeview Chalet',
-          description: 'Ensuite lakefront chalet with private veranda overlooking Lake Malawi, king bed, and ceiling fan.',
-          priceMwk: 130000,
-          priceUsd: 75,
-          maxGuests: 2,
-          baseGuests: 2,
-          quantity: 4,
-          amenities: ['Ensuite bathroom', 'Ceiling fan', 'Mosquito net', 'Balcony', 'Hot shower'],
-        },
-        {
-          name: 'Executive Beach Suite',
-          description: 'Spacious suite with direct beach access, panoramic sunrise views, air conditioning, and mini-fridge.',
-          priceMwk: 200000,
-          priceUsd: 115,
-          maxGuests: 2,
-          baseGuests: 2,
-          quantity: 2,
-          amenities: ['Ensuite bathroom', 'Air conditioning', 'Lake view', 'Mini-fridge', 'Private terrace'],
-        },
-      ];
-      summary = `Prime Lake Malawi retreat featuring direct beach access, fresh chambo dining, and serene lakefront chalets.`;
-      break;
-
-    case 'safari':
-      category = 'Safari & Wildlife';
-      location = rawLoc || 'Liwonde National Park, Malawi';
-      locationNotes = 'Located near the main park gate. High-clearance vehicle recommended during rainy season.';
-      coordinates = location.toLowerCase().includes('majete') ? { lat: -15.9333, lng: 34.7500 }
-        : location.toLowerCase().includes('nyika') ? { lat: -10.5833, lng: 33.8000 }
-        : { lat: -15.0289, lng: 35.2289 };
-      amenities = ['Safari game drives', 'Bush dinners', 'Restaurant', 'Bar', 'Solar backup power', 'Swimming pool', 'Mosquito nets', 'Hot water', 'Free WiFi', 'Secure parking'];
-      suggestedRooms = [
-        {
-          name: 'Safari Tented Chalet',
-          description: 'Elevated canvas chalet with ensuite open-air bathroom and viewing deck overlooking the bush.',
-          priceMwk: 165000,
-          priceUsd: 95,
-          maxGuests: 2,
-          baseGuests: 2,
-          quantity: 5,
-          amenities: ['Ensuite bathroom', 'Mosquito net', 'Bush view', 'Private veranda', 'Solar hot water'],
-        },
-        {
-          name: 'Luxury River Suite',
-          description: 'Secluded riverfront suite with panoramic wildlife views, king bed, and private plunge pool.',
-          priceMwk: 280000,
-          priceUsd: 160,
-          maxGuests: 2,
-          baseGuests: 2,
-          quantity: 2,
-          amenities: ['Ensuite bathroom', 'Private plunge pool', 'River view', 'Solar backup power'],
-        },
-      ];
-      summary = `Authentic wildlife sanctuary offering guided game excursions, riverside dining, and warm safari hospitality.`;
-      break;
-
-    case 'mountain':
-      category = 'Cottage & Chalet';
-      location = rawLoc || 'Zomba Plateau, Malawi';
-      locationNotes = 'Take the plateau road up from Zomba town. Signposted gate with stone pillars on the right.';
-      coordinates = location.toLowerCase().includes('mulanje') ? { lat: -15.9458, lng: 35.5342 } : { lat: -15.3850, lng: 35.3186 };
-      amenities = ['Mountain view', 'Fireplace', 'Restaurant', 'Hot water', 'Hiking trails', 'Solar backup power', 'Secure parking', 'Free WiFi', 'Breakfast included'];
-      suggestedRooms = [
-        {
-          name: 'Mountain View Chalet',
-          description: 'Cozy stone chalet featuring a working log fireplace, ensuite bathroom, and sweeping forest views.',
-          priceMwk: 115000,
-          priceUsd: 65,
-          maxGuests: 2,
-          baseGuests: 2,
-          quantity: 3,
-          amenities: ['Ensuite bathroom', 'Fireplace', 'Mountain view', 'Veranda', 'Hot shower'],
-        },
-        {
-          name: 'Family Forest Cottage',
-          description: 'Two-bedroom self-contained cottage with kitchenette, spacious living area, and outdoor patio.',
-          priceMwk: 210000,
-          priceUsd: 120,
-          maxGuests: 4,
-          baseGuests: 4,
-          quantity: 2,
-          amenities: ['Two bedrooms', 'Kitchenette', 'Living area', 'Fireplace', 'Garden view'],
-        },
-      ];
-      summary = `Scenic highland haven offering crisp mountain air, forest walking trails, and cozy fireplace comfort.`;
-      break;
-
-    case 'city':
-      category = name.toLowerCase().includes('b&b') || name.toLowerCase().includes('bed') ? 'Bed & Breakfast' : 'Guest House';
-      location = rawLoc || 'Area 43, Lilongwe';
-      locationNotes = 'Tarmac road access off the main avenue. Dedicated security guard at the front gate.';
-      coordinates = location.toLowerCase().includes('blantyre') ? { lat: -15.7861, lng: 35.0058 }
-        : location.toLowerCase().includes('mzuzu') ? { lat: -11.4656, lng: 34.0207 }
-        : { lat: -13.9833, lng: 33.7833 };
-      amenities = ['Free WiFi', 'Dedicated Workspace', 'Breakfast included', 'Backup power', 'Secure parking', 'Air conditioning', 'Hot water', 'Airport transfer', 'Laundry'];
-      suggestedRooms = [
-        {
-          name: 'Standard Executive Room',
-          description: 'Air-conditioned room with queen bed, workstation, ensuite bathroom, and high-speed Wi-Fi.',
-          priceMwk: 95000,
-          priceUsd: 55,
-          maxGuests: 2,
-          baseGuests: 2,
-          quantity: 6,
-          amenities: ['Ensuite bathroom', 'High-speed Wi-Fi', 'Work desk', 'Air conditioning', 'Hot shower'],
-        },
-        {
-          name: 'Deluxe Suite',
-          description: 'Spacious suite with king bed, lounge seating, mini-fridge, and garden views.',
-          priceMwk: 150000,
-          priceUsd: 85,
-          maxGuests: 2,
-          baseGuests: 2,
-          quantity: 3,
-          amenities: ['King bed', 'Ensuite bathroom', 'Lounge area', 'Mini-fridge', 'Breakfast included'],
-        },
-      ];
-      summary = `Quiet, secure urban retreat ideal for professionals and visitors seeking dependable comfort and high-speed Wi-Fi.`;
-      break;
-
-    default:
-      category = 'Cottage & Chalet';
-      location = rawLoc || 'Salima, Malawi';
-      locationNotes = 'Accessible directly from the main road. Signposted entrance.';
-      coordinates = { lat: -13.7800, lng: 34.4500 };
-      amenities = ['Free WiFi', 'Backup power', 'Hot water', 'Secure parking', 'Mosquito nets', 'Restaurant', 'Breakfast included'];
-      suggestedRooms = [
-        {
-          name: 'Comfort Chalet',
-          description: 'Well-appointed ensuite chalet with comfortable double bed, ceiling fan, and veranda.',
-          priceMwk: 105000,
-          priceUsd: 60,
-          maxGuests: 2,
-          baseGuests: 2,
-          quantity: 4,
-          amenities: ['Ensuite bathroom', 'Ceiling fan', 'Mosquito net', 'Hot shower'],
-        },
-      ];
-      summary = `Comfortable, authentic Malawian stay offering relaxing natural surroundings and attentive hospitality.`;
-      break;
-  }
-
-  const description = generateCuratedMalawiPropertyDraft({
-    name: officialName,
-    location,
-    category,
-    amenities,
-    extraNotes: details?.extraNotes,
-  });
-
+export function handleCuratedActionFallback(_req: GenerationRequest): GenerationResult {
+  // Reviews are the only action allowed a non-AI result: an empty list, never fabricated reviews.
+  const data: any[] = [];
   return {
-    matched: true,
-    officialName,
-    category,
-    location,
-    locationNotes,
-    description: extractedDesc || description,
-    amenities,
-    coordinates,
-    checkInTime: '14:00',
-    checkOutTime: '10:30',
-    suggestedRooms,
-    contactPhone: extractedPhone || '+265 991 234 567',
-    contactEmail: extractedEmail || `reservations@${name.toLowerCase().replace(/[^a-z0-9]/g, '') || 'stay'}.mw`,
-    contactWhatsapp: extractedWhatsapp || extractedPhone || '+265 991 234 567',
-    confidence: 'high',
-    summary,
+    text: JSON.stringify(data),
+    provider: 'gemini',
+    model: 'none',
+    data,
   };
-}
-
-export function generateCuratedMalawiAmenities(details?: GenerationRequest['details']): string[] {
-  const region = detectMalawiRegion(details?.name, details?.location, details?.category);
-  switch (region) {
-    case 'lake':
-      return ['Lake view', 'Private beach', 'Swimming pool', 'Restaurant', 'Bar', 'Solar backup power', 'Free WiFi', 'Hot water', 'Boat trips', 'Air conditioning', 'Mosquito nets', 'Secure parking'];
-    case 'safari':
-      return ['Safari game drives', 'Bush dinners', 'Restaurant', 'Bar', 'Solar backup power', 'Swimming pool', 'Mosquito nets', 'Hot water', 'Free WiFi', 'Secure parking', 'Laundry'];
-    case 'mountain':
-      return ['Mountain view', 'Fireplace', 'Restaurant', 'Hot water', 'Hiking trails', 'Solar backup power', 'Secure parking', 'Free WiFi', 'Breakfast included', 'Mosquito nets'];
-    case 'city':
-      return ['Free WiFi', 'Dedicated Workspace', 'Breakfast included', 'Backup power (Solar/Generator)', 'Secure parking', 'Air conditioning', 'Hot water', 'Airport transfer', 'Laundry', 'Ensuite bathroom'];
-    default:
-      return ['Backup power (Solar/Generator)', 'Free WiFi', 'Secure parking', 'Ensuite bathroom', 'Hot water', 'Mosquito nets', 'Restaurant & Bar', 'Breakfast included'];
-  }
-}
-
-export function generateCuratedMalawiRooms(details?: GenerationRequest['details']): any[] {
-  const region = detectMalawiRegion(details?.name, details?.location, details?.category);
-  switch (region) {
-    case 'lake':
-      return [
-        {
-          name: 'Standard Lakeview Chalet',
-          description: 'Ensuite lakefront chalet with private veranda overlooking Lake Malawi, king bed, and ceiling fan.',
-          maxGuests: 2,
-          suggestedPriceUsd: 75,
-          suggestedPriceMwk: 130000,
-        },
-        {
-          name: 'Executive Beach Suite',
-          description: 'Spacious direct beach access suite with panoramic sunrise views, air conditioning, and mini-fridge.',
-          maxGuests: 2,
-          suggestedPriceUsd: 115,
-          suggestedPriceMwk: 200000,
-        },
-      ];
-    case 'safari':
-      return [
-        {
-          name: 'Safari Canvas Chalet',
-          description: 'Comfortable elevated tented chalet with ensuite bathroom, private deck, and bush views.',
-          maxGuests: 2,
-          suggestedPriceUsd: 95,
-          suggestedPriceMwk: 165000,
-        },
-        {
-          name: 'Family Safari Suite',
-          description: 'Two-bedroom tented suite with private lounge and game-viewing deck.',
-          maxGuests: 4,
-          suggestedPriceUsd: 180,
-          suggestedPriceMwk: 315000,
-        },
-      ];
-    case 'city':
-      return [
-        {
-          name: 'Standard Executive Room',
-          description: 'Modern room with queen bed, workstation, ensuite bathroom, and high-speed Wi-Fi.',
-          maxGuests: 2,
-          suggestedPriceUsd: 55,
-          suggestedPriceMwk: 95000,
-        },
-        {
-          name: 'Deluxe Suite',
-          description: 'Spacious suite with king bed, lounge seating, mini-fridge, and complimentary breakfast.',
-          maxGuests: 2,
-          suggestedPriceUsd: 85,
-          suggestedPriceMwk: 150000,
-        },
-      ];
-    default:
-      return [
-        {
-          name: 'Standard Double Room',
-          description: 'Cozy double room with ensuite bathroom, solar hot water, and garden view.',
-          maxGuests: 2,
-          suggestedPriceUsd: 50,
-          suggestedPriceMwk: 90000,
-        },
-        {
-          name: 'Family Chalet',
-          description: 'Spacious two-bedroom chalet with living area, private patio, and ensuite bathroom.',
-          maxGuests: 4,
-          suggestedPriceUsd: 95,
-          suggestedPriceMwk: 165000,
-        },
-      ];
-  }
-}
-
-export function generateCuratedMalawiRateAdvice(details?: GenerationRequest['details']): any {
-  const region = detectMalawiRegion(details?.name, details?.location, details?.category);
-  let usd = 70;
-  let mwk = 125000;
-  switch (region) {
-    case 'lake':
-      usd = 80;
-      mwk = 140000;
-      break;
-    case 'safari':
-      usd = 110;
-      mwk = 195000;
-      break;
-    case 'city':
-      usd = 60;
-      mwk = 105000;
-      break;
-    case 'mountain':
-      usd = 70;
-      mwk = 125000;
-      break;
-    default:
-      usd = 65;
-      mwk = 115000;
-  }
-  return {
-    suggestedPriceUsd: usd,
-    suggestedPriceMwk: mwk,
-    reasoning: `Competitive nightly rate for quality accommodation in ${details?.location || 'Malawi'}. It accounts for local operating costs including 24/7 backup power and aligns with peak and off-peak tourist demand across the region.`,
-  };
-}
-
-export function generateCuratedMalawiPolish(currentText?: string, details?: GenerationRequest['details']): string {
-  if (!currentText || currentText.trim().length < 10) {
-    return generateCuratedMalawiPropertyDraft(details);
-  }
-  const clean = currentText.trim();
-  return `${clean.replace(/\s+/g, ' ')}\n\nGuests will experience genuine hospitality in the Warm Heart of Africa, supported by dedicated on-site care and relaxing comforts throughout their visit.`;
-}
-
-export function generateCuratedMalawiShorten(currentText?: string): string {
-  if (!currentText || currentText.trim().length < 10) {
-    return 'Comfortable Malawian lodge featuring ensuite rooms, reliable solar backup power, and authentic Warm Heart of Africa hospitality.';
-  }
-  const sentences = currentText.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 0);
-  const firstTwo = sentences.slice(0, 2).join(' ');
-  return firstTwo.length > 250 ? firstTwo.slice(0, 240) + '...' : firstTwo;
-}
-
-export function generateCuratedMalawiHighlights(details?: GenerationRequest['details'], currentText?: string): string {
-  const region = detectMalawiRegion(details?.name, details?.location, details?.category);
-  const loc = details?.location || 'Malawi';
-  switch (region) {
-    case 'lake':
-      return `• Breathtaking Lake Malawi waterfront setting with private beach access\n• Reliable solar inverter backup power and hot showers around the clock\n• Authentic freshly prepared lake dining including traditional grilled Chambo\n• Dedicated on-site team delivering genuine Warm Heart of Africa hospitality`;
-    case 'safari':
-      return `• Immersive safari setting close to premier wildlife reserves\n• Guided nature walks and game drive excursions with seasoned local trackers\n• Relaxing evening boma campfires beneath unpolluted African skies\n• Comfortable ensuite tented chalets equipped with solar backup power`;
-    case 'city':
-      return `• Quiet, highly secure location with effortless access to business and transit hubs\n• Fast, dependable Wi-Fi and dedicated workspaces for productivity\n• Dependable 24/7 power backup and refreshing high-pressure hot water\n• Freshly made daily breakfast with attentive personal service`;
-    default:
-      return `• Tranquil, relaxing setting in ${loc} surrounded by natural beauty\n• Dependable backup power and hot water for worry-free stays\n• Thoughtfully appointed accommodations with authentic Malawian warmth\n• Safe, secure premises with dedicated guest parking`;
-  }
-}
-
-export function generateCuratedMalawiListingReview(details?: GenerationRequest['details'], currentText?: string): string {
-  const loc = details?.location || 'Malawi';
-  return `• Highlight: The property's welcoming character and authentic setting in ${loc} create an immediate positive impression for travelers.\n• Guest clarity: Ensure road directions and transport options (e.g., 2WD vs 4WD road access or airport transfer availability) are explicitly noted.\n• Quick tip: Emphasize your backup power capabilities and fresh meal options to encourage direct bookings.`;
-}
-
-export function generateCuratedMalawiDescriptionLink(currentText?: string, details?: GenerationRequest['details']): any {
-  const text = `${currentText || ''} ${details?.name || ''} ${details?.location || ''}`.toLowerCase();
-  const categories: string[] = [];
-  if (text.includes('lake') || text.includes('beach') || text.includes('water') || text.includes('bay') || text.includes('shore')) {
-    categories.push('Lake & Beach');
-  }
-  if (text.includes('safari') || text.includes('game') || text.includes('wildlife') || text.includes('bush') || text.includes('park')) {
-    categories.push('Safari & Wildlife');
-  }
-  if (text.includes('cottage') || text.includes('chalet') || text.includes('cabin') || text.includes('villa')) {
-    categories.push('Cottage & Chalet');
-  }
-  if (text.includes('b&b') || text.includes('bed & breakfast') || text.includes('breakfast included')) {
-    categories.push('Bed & Breakfast');
-  }
-  if (text.includes('guest house') || text.includes('guesthouse') || text.includes('inn') || text.includes('residency')) {
-    categories.push('Guest House');
-  }
-  if (text.includes('luxury') || text.includes('5-star') || text.includes('plunge pool')) {
-    categories.push('Luxury');
-  }
-  if (text.includes('romantic') || text.includes('honeymoon') || text.includes('couples')) {
-    categories.push('Romantic Escape');
-  }
-  if (text.includes('family') || text.includes('children') || text.includes('kids')) {
-    categories.push('Family');
-  }
-  if (categories.length === 0) {
-    categories.push('Bed & Breakfast');
-  }
-
-  const allAmenities = [
-    'Free WiFi', 'Dedicated Workspace', 'Breakfast included', 'Swimming pool',
-    'Restaurant', 'Bar', 'Air conditioning', 'Hot water', 'Backup power',
-    'Secure parking', 'Airport transfer', 'Lake view', 'Private beach',
-    'Boat trips', 'Spa', 'Gym', 'Conference room', 'Laundry', 'Room service',
-    'Family rooms', 'Pet friendly'
-  ];
-
-  const matchedAmenities: string[] = [];
-  allAmenities.forEach(amenity => {
-    const term = amenity.toLowerCase();
-    if (
-      text.includes(term) ||
-      (term === 'backup power' && (text.includes('solar') || text.includes('generator') || text.includes('inverter'))) ||
-      (term === 'lake view' && (text.includes('lake view') || text.includes('views of the lake'))) ||
-      (term === 'free wifi' && (text.includes('wifi') || text.includes('wi-fi') || text.includes('internet'))) ||
-      (term === 'hot water' && (text.includes('hot shower') || text.includes('hot water')))
-    ) {
-      matchedAmenities.push(amenity);
-    }
-  });
-
-  if (matchedAmenities.length === 0) {
-    matchedAmenities.push('Free WiFi', 'Hot water', 'Backup power', 'Secure parking');
-  }
-
-  return {
-    categories,
-    matchedAmenities,
-    customAmenities: [],
-  };
-}
-
-export function generateCuratedOperationsChatReply(req: OperationsAssistantRequest): OperationsAssistantResult {
-  return executeDeterministicSwarmReply(req);
-}
-
-export function handleCuratedActionFallback(req: GenerationRequest): GenerationResult {
-  const { action, details, currentText } = req;
-
-  switch (action) {
-    case 'draft': {
-      const draft = generateCuratedMalawiPropertyDraft(details, currentText);
-      return {
-        text: draft,
-        provider: 'gemini',
-        model: 'malawi-curated',
-      };
-    }
-    case 'lookup_property': {
-      const data = generateCuratedMalawiPropertyLookup(details);
-      return {
-        text: JSON.stringify(data),
-        provider: 'gemini',
-        model: 'malawi-curated',
-        data,
-      };
-    }
-    case 'suggest_amenities': {
-      const data = generateCuratedMalawiAmenities(details);
-      return {
-        text: JSON.stringify(data),
-        provider: 'gemini',
-        model: 'malawi-curated',
-        data,
-      };
-    }
-    case 'suggest_rooms': {
-      const data = generateCuratedMalawiRooms(details);
-      return {
-        text: JSON.stringify(data),
-        provider: 'gemini',
-        model: 'malawi-curated',
-        data,
-      };
-    }
-    case 'suggest_rate': {
-      const data = generateCuratedMalawiRateAdvice(details);
-      return {
-        text: JSON.stringify(data),
-        provider: 'gemini',
-        model: 'malawi-curated',
-        data,
-      };
-    }
-    case 'polish': {
-      const polished = generateCuratedMalawiPolish(currentText, details);
-      return {
-        text: polished,
-        provider: 'gemini',
-        model: 'malawi-curated',
-      };
-    }
-    case 'shorten': {
-      const shortened = generateCuratedMalawiShorten(currentText);
-      return {
-        text: shortened,
-        provider: 'gemini',
-        model: 'malawi-curated',
-      };
-    }
-    case 'highlights': {
-      const hl = generateCuratedMalawiHighlights(details, currentText);
-      return {
-        text: hl,
-        provider: 'gemini',
-        model: 'malawi-curated',
-      };
-    }
-    case 'review_listing': {
-      const review = generateCuratedMalawiListingReview(details, currentText);
-      return {
-        text: review,
-        provider: 'gemini',
-        model: 'malawi-curated',
-      };
-    }
-    case 'link_description_to_amenities_and_category': {
-      const data = generateCuratedMalawiDescriptionLink(currentText, details);
-      return {
-        text: JSON.stringify(data),
-        provider: 'gemini',
-        model: 'malawi-curated',
-        data,
-      };
-    }
-    case 'scrape_reviews': {
-      // Return empty array rather than fabricating synthetic reviews
-      const data: any[] = [];
-      return {
-        text: JSON.stringify(data),
-        provider: 'gemini',
-        model: 'none',
-        data,
-      };
-    }
-    default: {
-      const fallbackText = generateCuratedMalawiPropertyDraft(details, currentText);
-      return {
-        text: fallbackText,
-        provider: 'gemini',
-        model: 'malawi-curated',
-      };
-    }
-  }
 }

@@ -1,5 +1,6 @@
 import { Hotel, DepositInfo, User } from '../types';
 import { isAdmin, isHotelManager } from './roles';
+import { roundPrice } from './currency';
 
 /**
  * The deposit details a property has configured, or empty fields when it has
@@ -47,8 +48,9 @@ export function formatDepositSnippet(
 
   let depositAmountText = `${percentage}% deposit`;
   if (options.totalAmount && options.totalAmount > 0) {
-    const calc = Math.round((options.totalAmount * percentage) / 100);
     const curr = options.currency || 'MWK';
+    // Platform rounding: MWK to the nearest 1,000, USD to whole dollars.
+    const calc = roundPrice((options.totalAmount * percentage) / 100, curr);
     depositAmountText = `${percentage}% deposit (${curr} ${calc.toLocaleString()})`;
   }
 

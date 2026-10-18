@@ -6,17 +6,19 @@ import {
   PropertyCategory,
 } from './listing';
 import { RoomInput } from './validateRoom';
+import type { CurrencyCode, PriceMap } from '../types';
 
-const ESTIMATED_MWK_PER_USD = 1750;
-
-export function convertUsdToMwk(usd: number): number {
-  if (!usd || usd <= 0) return 0;
-  return Math.round((usd * ESTIMATED_MWK_PER_USD) / 5000) * 5000;
-}
-
-export function convertMwkToUsd(mwk: number): number {
-  if (!mwk || mwk <= 0) return 0;
-  return Math.max(5, Math.round((mwk / ESTIMATED_MWK_PER_USD) / 5) * 5);
+/**
+ * Prices are entered per currency by the host and are never derived through an
+ * exchange rate: a room gets only the currencies the document actually priced.
+ * With no price found both currencies are offered and left for the host to fill.
+ */
+export function roomPriceFields(usd: number, mwk: number): { currencies: CurrencyCode[]; prices: PriceMap } {
+  const prices: PriceMap = {};
+  if (usd > 0) prices.USD = usd;
+  if (mwk > 0) prices.MWK = mwk;
+  const currencies = Object.keys(prices) as CurrencyCode[];
+  return { currencies: currencies.length > 0 ? currencies : ['USD', 'MWK'], prices };
 }
 
 export interface ParsedPropertyResult extends Partial<ListingDraft> {
@@ -170,12 +172,6 @@ export function extractRoomPricesFromLine(text: string): {
   }
 
   const hasPrice = usd > 0 || mwk > 0;
-
-  if (usd > 0 && mwk === 0) {
-    mwk = convertUsdToMwk(usd);
-  } else if (mwk > 0 && usd === 0) {
-    usd = convertMwkToUsd(mwk);
-  }
 
   if (hasPrice) {
     cleaned = cleaned
@@ -347,9 +343,6 @@ function tryParseDelimitedRooms(rawText: string): RoomInput[] | null {
       mwk = extracted.mwk;
     }
 
-    if (usd > 0 && mwk === 0) mwk = convertUsdToMwk(usd);
-    else if (mwk > 0 && usd === 0) usd = convertMwkToUsd(mwk);
-
     const maxGuests = guestsIdx !== -1 && cols[guestsIdx] ? (parseInt(cols[guestsIdx].replace(/\D/g, ''), 10) || 2) : 2;
     const quantity = qtyIdx !== -1 && cols[qtyIdx] ? (parseInt(cols[qtyIdx].replace(/\D/g, ''), 10) || 1) : 1;
     const description = descIdx !== -1 && cols[descIdx] ? cols[descIdx] : '';
@@ -360,8 +353,7 @@ function tryParseDelimitedRooms(rawText: string): RoomInput[] | null {
       maxGuests: Math.max(1, Math.min(30, maxGuests)),
       baseGuests: Math.min(2, Math.max(1, maxGuests)),
       quantity: Math.max(1, quantity),
-      currencies: ['USD', 'MWK'],
-      prices: { USD: usd, MWK: mwk },
+      ...roomPriceFields(usd, mwk),
     });
   }
 
@@ -479,11 +471,7 @@ function parseRoomDetailsFromLine(line: string): RoomInput | null {
     maxGuests,
     baseGuests: Math.min(2, maxGuests),
     quantity,
-    currencies: ['USD', 'MWK'],
-    prices: {
-      USD: usd,
-      MWK: mwk,
-    },
+    ...roomPriceFields(usd, mwk),
   };
 }
 
@@ -739,7 +727,7 @@ export function parsePropertyText(rawText: string): ParsedPropertyResult {
           if (nextLine) {
             const nextPrice = extractRoomPricesFromLine(nextLine);
             if (!parsedRoom.prices?.USD && !parsedRoom.prices?.MWK && nextPrice.hasPrice && !ROOM_KEYWORD_REGEX.test(nextPrice.cleanedText)) {
-              parsedRoom.prices = { USD: nextPrice.usd, MWK: nextPrice.mwk };
+              Object.assign(parsedRoom, roomPriceFields(nextPrice.usd, nextPrice.mwk));
               if (!parsedRoom.description && nextPrice.cleanedText.length >= 6) {
                 parsedRoom.description = nextPrice.cleanedText.replace(/^[\s•*\-–—:|/]+/, '').trim();
               }

@@ -102,6 +102,8 @@ export function useWebRTC(
       }
       
       if (data.status === 'ended' || data.status === 'rejected' || data.status === 'missed') {
+        // Whichever side closed it, the signalling data is no longer needed.
+        void deleteCandidates(snapshot.id);
         cleanup();
       }
     });
@@ -213,29 +215,36 @@ export function useWebRTC(
     const callRef = doc(collection(db, chatCollection, chatId, 'calls'));
     const callId = callRef.id;
     
-    const pc = createPeerConnection(callId, true, stream);
+    try {
+      const pc = createPeerConnection(callId, true, stream);
     
-    const offerDescription = await pc.createOffer();
-    await pc.setLocalDescription(offerDescription);
+      const offerDescription = await pc.createOffer();
+      await pc.setLocalDescription(offerDescription);
     
-    const callData: Call = {
-      id: callId,
-      chatId,
-      callerId: currentUserId,
-      callerName: currentUserName,
-      calleeId,
-      status: 'ringing',
-      type: video ? 'video' : 'audio',
-      offer: {
-        type: offerDescription.type,
-        sdp: offerDescription.sdp
-      },
-      createdAt: Date.now(),
-      updatedAt: Date.now()
-    };
+      const callData: Call = {
+        id: callId,
+        chatId,
+        callerId: currentUserId,
+        callerName: currentUserName,
+        calleeId,
+        status: 'ringing',
+        type: video ? 'video' : 'audio',
+        offer: {
+          type: offerDescription.type,
+          sdp: offerDescription.sdp
+        },
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      };
     
-    await setDoc(callRef, callData);
-    setActiveCall(callData);
+      await setDoc(callRef, callData);
+      setActiveCall(callData);
+    } catch (err) {
+      // Never leave the camera/mic running when the call could not be placed.
+      console.error('Could not start call:', err);
+      toast.error('Could not start the call. Please try again.');
+      cleanup();
+    }
   };
 
   const answerCall = async (call: Call) => {
@@ -243,31 +252,37 @@ export function useWebRTC(
     const stream = await setupMedia(call.type === 'video');
     if (!stream) return;
     
-    const pc = createPeerConnection(call.id!, false, stream);
+    try {
+      const pc = createPeerConnection(call.id!, false, stream);
     
-    const offerDescription = new RTCSessionDescription(call.offer);
-    await pc.setRemoteDescription(offerDescription);
+      const offerDescription = new RTCSessionDescription(call.offer);
+      await pc.setRemoteDescription(offerDescription);
     
-    pendingCandidates.current.forEach(c => {
-       pc.addIceCandidate(c).catch(e => console.error(e));
-    });
-    pendingCandidates.current = [];
+      pendingCandidates.current.forEach(c => {
+         pc.addIceCandidate(c).catch(e => console.error(e));
+      });
+      pendingCandidates.current = [];
 
-    const answerDescription = await pc.createAnswer();
-    await pc.setLocalDescription(answerDescription);
+      const answerDescription = await pc.createAnswer();
+      await pc.setLocalDescription(answerDescription);
     
-    const callRef = doc(db, chatCollection, chatId, 'calls', call.id!);
-    await updateDoc(callRef, {
-      status: 'connected',
-      answer: {
-        type: answerDescription.type,
-        sdp: answerDescription.sdp
-      },
-      updatedAt: Date.now(),
-      connectedAt: Date.now()
-    });
+      const callRef = doc(db, chatCollection, chatId, 'calls', call.id!);
+      await updateDoc(callRef, {
+        status: 'connected',
+        answer: {
+          type: answerDescription.type,
+          sdp: answerDescription.sdp
+        },
+        updatedAt: Date.now(),
+        connectedAt: Date.now()
+      });
     
-    setActiveCall({ ...call, status: 'connected', connectedAt: Date.now() });
+      setActiveCall({ ...call, status: 'connected', connectedAt: Date.now() });
+    } catch (err) {
+      console.error('Could not answer call:', err);
+      toast.error('Could not connect the call. It may have ended.');
+      cleanup();
+    }
   };
 
   const rejectCall = async (call: Call) => {
@@ -277,7 +292,8 @@ export function useWebRTC(
       status: 'rejected',
       updatedAt: Date.now(),
       endedAt: Date.now()
-    });
+    }).catch(err => console.warn('Could not reject call:', err));
+    void deleteCandidates(call.id!);
   };
 
   /** Signalling data is only needed while connecting; remove it once a call is over. */

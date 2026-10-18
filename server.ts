@@ -43,7 +43,7 @@ import {
   sendTestTemplateEmail,
   getAllPendingReminders
 } from './server/reminders';
-import { getAdminDocsList, getAdminDocContent, saveAdminDoc, resetAdminDoc } from './server/docUtils';
+import { getAdminDocsList, getAdminDocContent, saveAdminDoc, resetAdminDoc, docVisibleTo } from './server/docUtils';
 import { getAdminEmailConfig, saveEmailConfig, testSMTPConnection, sendSystemEmail } from './server/emailConfig';
 import { OWNER_EMAILS } from './src/lib/roles';
 import { getHotelDepositInfo, formatDepositSnippet } from './src/lib/depositInfo';
@@ -69,6 +69,7 @@ import {
   requireAuth,
   requireRole,
   canManageHotel,
+  hasAnyRole,
   isAdminUser,
   aiRoleFor,
   readDoc,
@@ -110,6 +111,19 @@ function sendAIError(res: Response, err: any, publicMessage: string) {
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const lower = (v: unknown) => (typeof v === 'string' ? v.trim().toLowerCase() : '');
+
+/**
+ * This server's own origin, for links in outgoing emails. A caller-supplied
+ * Origin naming another site is ignored (the email then links to the default
+ * platform domain), so a public endpoint cannot be used to mail phishing links.
+ */
+function trustedOrigin(req: express.Request): string | undefined {
+  const host = req.get('host');
+  if (!host) return undefined;
+  const own = `${req.protocol}://${host}`;
+  const origin = req.get('origin');
+  return !origin || origin === own ? own : undefined;
+}
 
 async function startServer() {
   const app = express();
@@ -223,30 +237,36 @@ async function startServer() {
   // Dynamic XML Sitemap for Search Engines
   app.get('/sitemap.xml', async (req, res) => {
     try {
-      let liveHotels: { id: string; updatedAt?: number; location?: string; district?: string }[] = [];
+      let liveHotels: { id: string; updatedAt?: number; location?: string; district?: string; status?: string }[] = [];
       try {
-        const firestoreRes = await fetch(`${FIRESTORE_BASE}/hotels?pageSize=100`, {
-          signal: AbortSignal.timeout(3000),
-        });
-        if (firestoreRes.ok) {
+        // Follow page tokens: a single page of 100 left every later listing out of the sitemap.
+        let pageToken = '';
+        for (let page = 0; page < 10; page++) {
+          const firestoreRes = await fetch(
+            `${FIRESTORE_BASE}/hotels?pageSize=100${pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ''}`,
+            { signal: AbortSignal.timeout(3000) }
+          );
+          if (!firestoreRes.ok) break;
           const body: any = await firestoreRes.json();
           if (Array.isArray(body.documents)) {
-            liveHotels = body.documents
-              .map((doc: any) => {
-                const id = doc.name ? String(doc.name).split('/').pop() : '';
-                const fields = doc.fields || {};
-                const location = fields.location?.stringValue || fields.city?.stringValue;
-                const district = fields.district?.stringValue || fields.region?.stringValue;
-                const updatedAt = fields.updatedAt?.integerValue
-                  ? Number(fields.updatedAt.integerValue)
-                  : undefined;
-                return { id: id || '', updatedAt, location, district };
-              })
-              .filter((h: any) => Boolean(h.id));
+            for (const doc of body.documents) {
+              const id = doc.name ? String(doc.name).split('/').pop() : '';
+              if (!id) continue;
+              const fields = doc.fields || {};
+              const location = fields.location?.stringValue || fields.city?.stringValue;
+              const district = fields.district?.stringValue || fields.region?.stringValue;
+              const status = fields.status?.stringValue;
+              const updatedAt = fields.updatedAt?.integerValue
+                ? Number(fields.updatedAt.integerValue)
+                : undefined;
+              liveHotels.push({ id, updatedAt, location, district, status });
+            }
           }
+          if (!body.nextPageToken) break;
+          pageToken = String(body.nextPageToken);
         }
       } catch {
-        // Fall back gracefully to national registry
+        // A partial or empty list still yields a valid sitemap of the static pages.
       }
 
       const xml = generateSitemapXml(liveHotels);
@@ -267,7 +287,7 @@ async function startServer() {
     try {
       const { roomId } = req.params;
       const token = typeof req.query.token === 'string' ? req.query.token : undefined;
-      const feed = await generateRoomIcalFeed(roomId, token, `${req.protocol}://${req.get('host')}`);
+      const feed = isSafeId(roomId) ? await generateRoomIcalFeed(roomId, token, `${req.protocol}://${req.get('host')}`) : null;
       if (!feed) {
         res.status(404).send('Calendar feed not found.');
         return;
@@ -289,7 +309,7 @@ async function startServer() {
     try {
       const { hotelId } = req.params;
       const token = typeof req.query.token === 'string' ? req.query.token : undefined;
-      const feed = await generateHotelIcalFeed(hotelId, token, `${req.protocol}://${req.get('host')}`);
+      const feed = isSafeId(hotelId) ? await generateHotelIcalFeed(hotelId, token, `${req.protocol}://${req.get('host')}`) : null;
       if (!feed) {
         res.status(404).send('Calendar feed not found.');
         return;
@@ -307,7 +327,9 @@ async function startServer() {
   });
 
   // Test an external iCal URL before saving (e.g. from RoomRaccoon or Airbnb)
-  app.post('/api/calendar/test-feed', requireAuth, async (req, res) => {
+  // The server fetches the URL on the caller's behalf, so it is rate limited.
+  const icalFetchLimiter = rateLimit({ name: 'ical-fetch', windowMs: 60_000, max: 10 });
+  app.post('/api/calendar/test-feed', requireAuth, icalFetchLimiter, async (req, res) => {
     try {
       const { url } = req.body || {};
       if (!url || typeof url !== 'string') {
@@ -322,10 +344,10 @@ async function startServer() {
   });
 
   // Trigger manual sync for a room's feeds
-  app.post('/api/calendar/sync-room', requireAuth, async (req, res) => {
+  app.post('/api/calendar/sync-room', requireAuth, icalFetchLimiter, async (req, res) => {
     try {
       const { roomId, hotelId } = req.body || {};
-      if (!roomId || !hotelId) {
+      if (!isSafeId(roomId) || !isSafeId(hotelId)) {
         res.status(400).json({ error: 'roomId and hotelId are required.' });
         return;
       }
@@ -343,10 +365,10 @@ async function startServer() {
   });
 
   // Trigger manual sync for a whole hotel's feeds
-  app.post('/api/calendar/sync-hotel', requireAuth, async (req, res) => {
+  app.post('/api/calendar/sync-hotel', requireAuth, icalFetchLimiter, async (req, res) => {
     try {
       const { hotelId } = req.body || {};
-      if (!hotelId) {
+      if (!isSafeId(hotelId)) {
         res.status(400).json({ error: 'hotelId is required.' });
         return;
       }
@@ -374,7 +396,8 @@ async function startServer() {
   });
 
   // Client telemetry: IP address & location resolution for Intune-style audit logs
-  app.get('/api/client-telemetry', async (req, res) => {
+  const clientTelemetryLimiter = rateLimit({ name: 'client-telemetry', windowMs: 60 * 1000, max: 30 });
+  app.get('/api/client-telemetry', clientTelemetryLimiter, async (req, res) => {
     try {
       const ip = clientIp(req);
 
@@ -436,7 +459,7 @@ async function startServer() {
 
   // Intelligent Traffic & Waiting Telemetry (anonymous or authenticated)
   const trafficLimiter = rateLimit({ name: 'traffic-telemetry', windowMs: 60 * 1000, max: 180 });
-  app.post('/api/telemetry/traffic', trafficLimiter, async (req, res) => {
+  app.post('/api/telemetry/traffic', trafficLimiter, optionalAuth, async (req, res) => {
     try {
       const session = await trafficTracker.ingestTrafficPing(req, req.body || {});
       res.status(200).json({
@@ -672,7 +695,11 @@ async function startServer() {
   const adminOnly = requireRole('admin');
 
   // Intelligent Traffic & Waiting Intelligence (Live traffic and active sessions)
-  app.get('/api/admin/traffic/live', adminOnly, (req, res) => {
+  // Settings, logs and live-visitor tooling is limited to the roles the dashboard shows it to:
+  // global admins (all) and marketing (live visitors, read only).
+  const globalAdminOnly = requireRole('global_admin');
+  const trafficViewers = requireRole('global_admin', 'marketing');
+  app.get('/api/admin/traffic/live', trafficViewers, (req, res) => {
     try {
       const data = trafficTracker.getLiveTrafficSummary();
       res.status(200).json(data);
@@ -682,7 +709,7 @@ async function startServer() {
   });
 
   // Clear in-memory traffic telemetry buffer
-  app.post('/api/admin/traffic/clear', adminOnly, (req, res) => {
+  app.post('/api/admin/traffic/clear', globalAdminOnly, (req, res) => {
     try {
       trafficTracker.clearSessions();
       res.status(200).json({ ok: true });
@@ -706,18 +733,21 @@ async function startServer() {
     try {
       const current = loadAIConfig();
       const { enabled, activeProvider, providerUpdates } = req.body || {};
+      // Only real provider ids: "__proto__"/"constructor" would otherwise write onto Object.prototype.
+      const isProviderId = (pid: unknown): pid is AIProviderId =>
+        typeof pid === 'string' && Object.prototype.hasOwnProperty.call(current.providers, pid);
 
       if (typeof enabled === 'boolean') {
         current.enabled = enabled;
       }
-      if (activeProvider && current.providers[activeProvider as AIProviderId]) {
+      if (isProviderId(activeProvider)) {
         // Automatically ensure selected active provider is enabled
         current.providers[activeProvider as AIProviderId].enabled = true;
         current.activeProvider = activeProvider as AIProviderId;
       }
       if (providerUpdates && typeof providerUpdates === 'object') {
         Object.entries(providerUpdates).forEach(([pid, update]: [string, any]) => {
-          if (current.providers[pid as AIProviderId]) {
+          if (isProviderId(pid) && update && typeof update === 'object') {
             if (typeof update.enabled === 'boolean') {
               current.providers[pid as AIProviderId].enabled = update.enabled;
               // If the currently active provider is disabled, auto-switch to another enabled provider if possible
@@ -730,7 +760,8 @@ async function startServer() {
                 }
               }
             }
-            if (typeof update.apiKey === 'string') {
+            // A masked key ("abcd••••wxyz") echoed back must never overwrite the real one.
+            if (typeof update.apiKey === 'string' && !update.apiKey.includes('•')) {
               const trimmedKey = update.apiKey.trim();
               current.providers[pid as AIProviderId].apiKey = trimmedKey;
               // Reset validity status so the new key can be verified
@@ -992,6 +1023,10 @@ async function startServer() {
       if (!DATE_RE.test(String(booking.checkIn)) || !DATE_RE.test(String(booking.checkOut))) {
         return res.status(400).json({ error: 'Booking dates are missing.' });
       }
+      // Arrival PINs, deposit requests etc. only go to a confirmed stay.
+      if (booking.status !== 'confirmed') {
+        return res.status(409).json({ error: 'Reminders are only scheduled for confirmed bookings.' });
+      }
 
       // Format deposit instructions from hotel payment rails if available
       let depositInstructions = body.depositInstructions;
@@ -1236,7 +1271,7 @@ async function startServer() {
   // ----------------------------------------------------
 
   // Get current SMTP configuration (masked password)
-  app.get('/api/admin/email-config', adminOnly, (req, res) => {
+  app.get('/api/admin/email-config', globalAdminOnly, (req, res) => {
     try {
       const config = getAdminEmailConfig();
       res.json({ config });
@@ -1246,7 +1281,7 @@ async function startServer() {
   });
 
   // Save updated SMTP configuration
-  app.post('/api/admin/email-config', adminOnly, (req, res) => {
+  app.post('/api/admin/email-config', globalAdminOnly, (req, res) => {
     try {
       saveEmailConfig(req.body || {});
       const safeConfig = getAdminEmailConfig();
@@ -1257,7 +1292,7 @@ async function startServer() {
   });
 
   // Test SMTP connection and optional test email
-  app.post('/api/admin/email-test', adminOnly, async (req, res) => {
+  app.post('/api/admin/email-test', globalAdminOnly, async (req, res) => {
     try {
       const { testEmail, recipient, config } = req.body || {};
       const targetEmail = (testEmail || recipient || '').trim();
@@ -1266,6 +1301,50 @@ async function startServer() {
     } catch (err: any) {
       // Admin-only diagnostic: the SMTP server's reply helps fix the settings.
       res.status(400).json({ error: err?.message || 'SMTP connection test failed' });
+    }
+  });
+
+  // Tell a host their listing was approved / rejected / moved back to review (admin only; the dashboard
+  // sends it once per real status change)
+  app.post('/api/admin/email-listing-status', adminOnly, async (req, res) => {
+    try {
+      const { email, name, hotelName, status, reason } = req.body || {};
+      const to = lower(cleanText(email, 254, true));
+      if (!to.includes('@')) return res.status(400).json({ error: 'Email is required' });
+      if (status !== 'approved' && status !== 'rejected' && status !== 'pending') {
+        return res.status(400).json({ error: 'Unsupported status' });
+      }
+      const displayName = cleanText(name, 120, true) || 'there';
+      const property = cleanText(hotelName, 200, true) || 'your property';
+      const note = cleanText(reason, 1000, true);
+      const headline = status === 'approved'
+        ? `${property} is now live on Travel Malawi`
+        : status === 'rejected'
+          ? `${property} needs changes before it can go live`
+          : `${property} has been moved back to review`;
+      const body = status === 'approved'
+        ? 'Takulandirani! Your listing has been approved and travellers can now find and book it.'
+        : status === 'rejected'
+          ? 'Your listing was not approved yet. Please review the note below, update the listing and resubmit.'
+          : 'Your listing is no longer public while our team reviews it again. We will let you know once it is back online.';
+      const result = await sendSystemEmail({
+        to,
+        subject: `${headline} - Ulendo Malawi`,
+        text: `Hello ${displayName},\n\n${headline}.\n${body}${note ? `\n\nNote from the team: ${note}` : ''}\n\nManage your listing at https://ulendomalawi.com`,
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 560px; margin: 0 auto; padding: 28px 24px; border: 1px solid #e7e5e4; border-radius: 12px; background: #ffffff; color: #1c1917;">
+            <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #78716c; margin-bottom: 6px;">Ulendo Travel Malawi</div>
+            <h2 style="margin: 0 0 16px; font-size: 20px; font-weight: 700; color: #1c1917;">${escapeHtml(headline)}</h2>
+            <p style="font-size: 14px; line-height: 1.6; color: #44403c;">Hello ${escapeHtml(displayName)},<br/><br/>${escapeHtml(body)}</p>
+            ${note ? `<p style="font-size: 14px; line-height: 1.6; color: #44403c; background: #fafaf9; border-left: 3px solid #d97706; padding: 10px 14px;"><strong>Note from the team:</strong> ${escapeHtml(note)}</p>` : ''}
+            <p style="font-size: 14px;"><a href="https://ulendomalawi.com" style="color: #b45309;">Open your dashboard</a></p>
+          </div>
+        `
+      });
+      res.json({ success: true, emailSent: result.success });
+    } catch (err) {
+      console.error('[API] Listing status email failed:', err);
+      res.json({ success: true, emailSent: false });
     }
   });
 
@@ -1278,8 +1357,7 @@ async function startServer() {
         return res.status(400).json({ error: 'Email is required.' });
       }
 
-      const hostOrigin = req.get('origin') || `${req.protocol}://${req.get('host')}`;
-      const result = await sendSmtpPasswordResetEmail(cleanEmail, hostOrigin);
+      const result = await sendSmtpPasswordResetEmail(cleanEmail, trustedOrigin(req));
 
       res.json({ success: true, emailSent: result.emailSent });
     } catch (err) {
@@ -1289,7 +1367,7 @@ async function startServer() {
   });
 
   // Property Onboarding Welcome & Login Guidance email — dispatched upon listing submission or from Admin Dashboard
-  app.post(['/api/onboarding/send-welcome', '/api/onboarding/welcome-email'], requireAuth, async (req, res) => {
+  app.post(['/api/onboarding/send-welcome', '/api/onboarding/welcome-email'], requireAuth, notifyUserLimiter, async (req, res) => {
     try {
       const {
         hotelId,
@@ -1305,9 +1383,28 @@ async function startServer() {
         stayType
       } = req.body || {};
 
-      const effectiveEmail = ownerEmail || managerEmail || contactEmail || (req as any).user?.email || req.authUser?.email;
+      const effectiveEmail = ownerEmail || managerEmail || contactEmail || req.authUser?.email;
       if (!effectiveEmail || !String(effectiveEmail).includes('@')) {
         return res.status(400).json({ ok: false, success: false, error: 'Valid owner or manager email is required.' });
+      }
+
+      // This endpoint provisions accounts and emails set-your-password links
+      // (never passwords), so a host may
+      // only send it for a property they manage, to that property's own
+      // addresses (or their own). Admin / marketing may send for any property.
+      const caller = req.authUser!;
+      if (!isAdminUser(caller) && !caller.roles.includes('marketing')) {
+        if (!isSafeId(hotelId) || !(await canManageHotel(caller, hotelId))) {
+          return res.status(403).json({ ok: false, success: false, error: 'You can only send onboarding emails for your own property.' });
+        }
+        const hotelDoc = await readDoc('hotels', hotelId, caller.token);
+        const allowed = new Set([...hotelEmails(hotelDoc), ...(caller.email ? [caller.email.toLowerCase()] : [])]);
+        const requested = [effectiveEmail, managerEmail || contactEmail]
+          .filter(Boolean)
+          .map(e => String(e).trim().toLowerCase());
+        if (requested.some(e => !allowed.has(e))) {
+          return res.status(403).json({ ok: false, success: false, error: 'Onboarding emails can only go to the property\'s own contact addresses.' });
+        }
       }
 
       let resolvedHotelId = hotelId;
@@ -1331,7 +1428,10 @@ async function startServer() {
       resolvedHotelId = resolvedHotelId || 'host-onboarding';
       resolvedPropertyName = resolvedPropertyName || 'Ulendo Partner Host';
 
-      const hostOrigin = req.get('origin') || `${req.protocol}://${req.get('host')}`;
+      // Links in the email (incl. the reset link's continueUrl) use the host that
+      // served this request, allowlisted again in resolveBaseUrl; the
+      // client-supplied Origin header is not trusted for account emails.
+      const hostOrigin = `${req.protocol}://${req.get('host')}`;
       const result = await sendOnboardingWelcomeEmail({
         hotelId: String(resolvedHotelId),
         propertyName: String(resolvedPropertyName),
@@ -1411,7 +1511,7 @@ async function startServer() {
   app.post('/api/admin/delete-user', adminOnly, async (req, res) => {
     try {
       const { uid } = req.body || {};
-      if (!uid || typeof uid !== 'string') {
+      if (!isSafeId(uid)) {
         return res.status(400).json({ error: 'UID is required' });
       }
 
@@ -1420,16 +1520,20 @@ async function startServer() {
       }
 
       // Check caller's privileges: only global admin or owner can delete an admin
+      const isCallerGlobal = Boolean(req.authUser?.roles.includes('global_admin'));
       const targetUser = await readDoc('users', uid, req.authUser?.token);
-      if (targetUser) {
+      if (targetUser && !isCallerGlobal) {
         const targetRoles: string[] = Array.isArray(targetUser.roles)
           ? targetUser.roles
           : [targetUser.role || ''];
-        const isCallerGlobal =
-          req.authUser?.roles.includes('global_admin') ||
-          (req.authUser?.email && OWNER_EMAILS.includes(req.authUser.email.toLowerCase()));
-
-        if ((targetRoles.includes('admin') || targetRoles.includes('global_admin')) && !isCallerGlobal) {
+        if (targetRoles.includes('admin') || targetRoles.includes('global_admin')) {
+          return res.status(403).json({ error: 'Only a Global Admin can delete an administrator profile' });
+        }
+      }
+      // An owner account is a global admin even without a profile document.
+      if (!isCallerGlobal) {
+        const targetEmail = await adminAuth().getUser(uid).then(u => u.email?.toLowerCase() || '').catch(() => '');
+        if (targetEmail && OWNER_EMAILS.includes(targetEmail)) {
           return res.status(403).json({ error: 'Only a Global Admin can delete an administrator profile' });
         }
       }
@@ -1451,8 +1555,7 @@ async function startServer() {
 
       res.json({ success: true, uid });
     } catch (err: any) {
-      console.error('[server] Error in /api/admin/delete-user:', err);
-      res.status(500).json({ error: err?.message || 'Failed to delete user' });
+      sendError(res, err, 'Failed to delete user');
     }
   });
 
@@ -1471,7 +1574,7 @@ async function startServer() {
   });
 
   // Get current WhatsApp configuration (masked access token)
-  app.get('/api/admin/whatsapp-config', adminOnly, (req, res) => {
+  app.get('/api/admin/whatsapp-config', globalAdminOnly, (req, res) => {
     try {
       const config = getAdminWhatsAppConfig();
       res.json({ config });
@@ -1481,18 +1584,18 @@ async function startServer() {
   });
 
   // Save updated WhatsApp configuration
-  app.post('/api/admin/whatsapp-config', adminOnly, (req, res) => {
+  app.post('/api/admin/whatsapp-config', globalAdminOnly, (req, res) => {
     try {
       saveWhatsAppConfig(req.body || {});
       const safeConfig = getAdminWhatsAppConfig();
       res.json({ success: true, config: safeConfig });
-    } catch (err) {
-      sendError(res, err, 'Failed to save WhatsApp config');
+    } catch (err: any) {
+      res.status(400).json({ error: err?.message || 'Failed to save WhatsApp config' });
     }
   });
 
   // Test WhatsApp connection and optional test message
-  app.post('/api/admin/whatsapp-test', adminOnly, async (req, res) => {
+  app.post('/api/admin/whatsapp-test', globalAdminOnly, async (req, res) => {
     try {
       const { testPhone, config } = req.body || {};
       const result = await testWhatsAppConnection(testPhone, config);
@@ -1589,9 +1692,28 @@ async function startServer() {
     }
   });
 
-  // Get a document as text, markdown, or standalone HTML. Public: these are the
-  // partner guides, also linked as plain downloads from the public guide pages.
-  app.get('/api/admin/docs/:id', (req, res) => {
+  // Who is asking: a doc is shown only when its audience (public / host / admin) allows it.
+  // The token is optional; when present it is verified by optionalAuth.
+  const docViewer = async (req: express.Request) => {
+    const user = req.authUser;
+    const isStaff = hasAnyRole(user, 'admin', 'marketing');
+    let isHost = false;
+    if (user && !isStaff) {
+      isHost = user.roles.includes('hotel_manager');
+      if (!isHost) {
+        const owned = [
+          ...(await queryDocs('hotels', 'managerId', user.uid, user.token, 1)),
+          ...(user.email && user.emailVerified ? await queryDocs('hotels', 'managerEmail', user.email, user.token, 1) : []),
+        ];
+        isHost = owned.length > 0;
+      }
+    }
+    return { isStaff, isHost };
+  };
+
+  // Get a document as text, markdown, or standalone HTML. Visible by audience: public partner
+  // guides need no sign-in; host and admin documents answer 404 to anyone not allowed to see them.
+  app.get('/api/admin/docs/:id', optionalAuth, async (req, res) => {
     try {
       const rawFormat = String(req.query.format || '').toLowerCase();
       let format: 'text' | 'md' | 'html' = 'text';
@@ -1605,7 +1727,7 @@ async function startServer() {
       const isRawView = req.query.raw === '1' || req.query.raw === 'true';
       const docResult = getAdminDocContent(String(req.params.id), format);
 
-      if (!docResult) {
+      if (!docResult || !docVisibleTo(docResult.doc, await docViewer(req))) {
         return res.status(404).json({ error: 'Document not found' });
       }
 
@@ -1634,7 +1756,7 @@ async function startServer() {
   });
 
   // Public alias for accessing current document content
-  app.get('/api/docs/:id', (req, res) => {
+  app.get('/api/docs/:id', optionalAuth, async (req, res) => {
     try {
       const rawFormat = String(req.query.format || '').toLowerCase();
       let format: 'text' | 'md' | 'html' = 'text';
@@ -1642,7 +1764,7 @@ async function startServer() {
       else if (rawFormat === 'md' || rawFormat === 'markdown') format = 'md';
 
       const docResult = getAdminDocContent(String(req.params.id), format);
-      if (!docResult) {
+      if (!docResult || !docVisibleTo(docResult.doc, await docViewer(req))) {
         return res.status(404).json({ error: 'Document not found' });
       }
       res.json(docResult);
@@ -1729,19 +1851,45 @@ async function startServer() {
     let scrapedContent: string | undefined;
     if (targetUrl && (targetUrl.startsWith('http://') || targetUrl.startsWith('https://'))) {
       try {
-        const fetchController = new AbortController();
-        const timeout = setTimeout(() => fetchController.abort(), 7000);
-        const resp = await fetch(targetUrl, {
-          signal: fetchController.signal,
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.9',
+        // Public hosts only: every redirect hop is resolved and checked so the
+        // scraper can never be pointed at the server's own network or cloud metadata.
+        const { lookup: dnsLookup } = await import('node:dns/promises');
+        const { isIP } = await import('node:net');
+        const isPrivateAddr = (addr: string): boolean => {
+          const v = addr.toLowerCase().replace(/^::ffff:/, '');
+          if (isIP(v) === 4) {
+            const [a, b] = v.split('.').map(Number);
+            return a === 0 || a === 10 || a === 127 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31)
+              || (a === 192 && b === 168) || (a === 100 && b >= 64 && b <= 127) || a >= 224;
           }
-        });
-        clearTimeout(timeout);
-        if (resp.ok) {
-          const rawHtml = await resp.text();
+          return v === '::' || v === '::1' || v.startsWith('fc') || v.startsWith('fd') || v.startsWith('fe80');
+        };
+        let pageUrl = targetUrl;
+        let resp: Awaited<ReturnType<typeof fetch>> | null = null;
+        for (let hop = 0; hop < 4; hop++) {
+          const host = new URL(pageUrl).hostname.replace(/^\[|\]$/g, '');
+          if (!host || host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.internal')) {
+            throw new Error('Review page must be a public web address.');
+          }
+          const addrs = isIP(host) ? [host] : (await dnsLookup(host, { all: true }).catch(() => [])).map(a => a.address);
+          if (!addrs.length || addrs.some(isPrivateAddr)) throw new Error('Review page must be a public web address.');
+          resp = await fetch(pageUrl, {
+            redirect: 'manual',
+            signal: AbortSignal.timeout(7000),
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+              'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+              'Accept-Language': 'en-US,en;q=0.9',
+            }
+          });
+          const next = resp.status >= 300 && resp.status < 400 ? resp.headers.get('location') : null;
+          if (!next) break;
+          pageUrl = new URL(next, pageUrl).toString();
+          if (!/^https?:\/\//i.test(pageUrl)) throw new Error('Review page redirected to an unsupported address.');
+          resp = null;
+        }
+        if (resp && resp.ok) {
+          const rawHtml = (await resp.text()).slice(0, 1_000_000);
           scrapedContent = rawHtml
             .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, ' ')
             .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, ' ')
@@ -1931,6 +2079,23 @@ async function startServer() {
   // Unknown API routes return JSON 404 instead of falling through to the SPA.
   app.use('/api', (req, res) => {
     res.status(404).json({ error: 'Not found' });
+  });
+
+  // Errors thrown by middleware (malformed or oversized JSON, upload limits)
+  // come back as JSON without a stack trace.
+  app.use((err: any, req: express.Request, res: Response, next: express.NextFunction) => {
+    if (res.headersSent) return next(err);
+    if (err?.code === 'LIMIT_FILE_SIZE') {
+      res.status(413).json({ error: 'File is too large.' });
+      return;
+    }
+    const status = Number(err?.status || err?.statusCode);
+    if (status >= 400 && status < 500) {
+      res.status(status).json({ error: status === 413 ? 'Request is too large.' : 'Invalid request.' });
+      return;
+    }
+    console.error('[API] Unhandled error:', err);
+    res.status(500).json({ error: 'Something went wrong.' });
   });
 
   // Explicitly block any direct public access to backend code, source maps, internal docs, or markdown files

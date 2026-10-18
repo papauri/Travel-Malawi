@@ -131,10 +131,10 @@ export default function IcalSyncManager({
           success: false,
           eventCount: 0,
           blockedNightsCount: 0,
-          summary: data.summary || 'Failed to connect to calendar.',
+          summary: data.summary || data.error || 'Failed to connect to calendar.',
           latencyMs,
         });
-        toast.error(data.summary || 'Could not parse external feed.');
+        toast.error(data.summary || data.error || 'Could not parse external feed.');
       }
     } catch (err: any) {
       const latencyMs = Math.round(performance.now() - startTime);
@@ -309,7 +309,12 @@ export default function IcalSyncManager({
 
       const data = await res.json();
       if (res.ok && data.success) {
-        toast.success(`Synchronized! ${data.totalBlockedDates} dates blocked from external channels.`);
+        const failedFeeds = (Array.isArray(data.feeds) ? data.feeds : []).filter((f: any) => f?.syncStatus === 'error');
+        if (failedFeeds.length > 0) {
+          toast.error(`${failedFeeds.length} feed(s) could not be read: ${failedFeeds.map((f: any) => f.name).join(', ')}. Their last known blocked dates were kept.`);
+        } else {
+          toast.success(`Synchronized! ${data.totalBlockedDates} dates blocked from external channels.`);
+        }
         if (isRoomMode && room) {
           onRoomUpdated?.({
             ...room,

@@ -1,20 +1,24 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useAuthDialog } from '../contexts/AuthDialogContext';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Hotel } from '../types';
 import HotelCard from '../components/HotelCard';
 import { useWishlist } from '../hooks/useWishlist';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Search, Heart, Compass, Navigation, MapPin } from 'lucide-react';
+import { Search, Heart, Compass, Navigation, MapPin, AlertTriangle } from 'lucide-react';
 import { motion } from 'motion/react';
 import TripPlannerD3 from '../components/TripPlannerD3';
 
 export default function SavedProperties() {
   const { user, loading: authLoading } = useAuth();
+  const { openAuth } = useAuthDialog();
   const { savedHotelIds, loading: wishlistLoading } = useWishlist();
   const [savedHotels, setSavedHotels] = useState<Hotel[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [searchParams, setSearchParams] = useSearchParams();
 
   const viewMode: 'grid' | 'planner' = searchParams.get('tab') === 'planner' ? 'planner' : 'grid';
@@ -43,45 +47,74 @@ export default function SavedProperties() {
   }, [uid]);
 
   useEffect(() => {
+    let cancelled = false;
+
     async function loadSaved() {
       if (!cacheKey || savedHotelIds.length === 0) {
         setSavedHotels([]);
+        setLoadError(false);
         setLoading(false);
         return;
       }
-      
+
+      // Un-saving a stay only removes it from the list; nothing needs fetching.
+      const loadedIds = new Set(savedHotels.map(h => h.id));
+      if (reloadKey === 0 && savedHotelIds.every(id => loadedIds.has(id))) {
+        setSavedHotels(prev => prev.filter(h => savedHotelIds.includes(h.id)));
+        setLoading(false);
+        return;
+      }
+
       try {
         const cached = localStorage.getItem(cacheKey);
         if (cached) {
           const parsed: Hotel[] = JSON.parse(cached);
-          setSavedHotels(parsed.filter(h => savedHotelIds.includes(h.id)));
-          setLoading(false);
+          if (!cancelled && Array.isArray(parsed)) {
+            setSavedHotels(parsed.filter(h => savedHotelIds.includes(h.id)));
+            setLoading(false);
+          }
         }
       } catch (e) {
         console.warn('Failed to read saved hotels cache', e);
       }
-      
-      try {
-        const hotelPromises = savedHotelIds.map(id => getDoc(doc(db, 'hotels', id)));
-        const docs = await Promise.all(hotelPromises);
-        const hotels = docs.filter(d => d.exists()).map(d => ({ id: d.id, ...d.data() } as Hotel));
+
+      // One removed or no-longer-readable listing must not hide the rest.
+      const results = await Promise.allSettled(savedHotelIds.map(id => getDoc(doc(db, 'hotels', id))));
+      if (cancelled) return;
+      const hotels: Hotel[] = [];
+      let failed = 0;
+      for (const result of results) {
+        if (result.status === 'rejected') {
+          failed++;
+        } else if (result.value.exists()) {
+          const hotel = { id: result.value.id, ...result.value.data() } as Hotel;
+          if (!hotel.status || hotel.status === 'approved') hotels.push(hotel);
+        }
+      }
+      if (failed < results.length || results.length === 0) {
         setSavedHotels(hotels);
+        setLoadError(false);
         try {
           localStorage.setItem(cacheKey, JSON.stringify(hotels));
         } catch (e) {
           console.warn('Failed to cache saved hotels', e);
         }
-      } catch (err) {
-        console.error("Failed to load saved hotels:", err);
-      } finally {
-        setLoading(false);
+      } else {
+        console.error('Failed to load saved hotels');
+        setLoadError(true);
       }
+      setLoading(false);
     }
 
     if (!wishlistLoading) {
       loadSaved();
     }
-  }, [savedHotelIds, wishlistLoading, cacheKey]);
+    return () => {
+      cancelled = true;
+    };
+    // savedHotels is read only to skip refetching; it must not retrigger the load.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [savedHotelIds, wishlistLoading, cacheKey, reloadKey]);
 
   if (authLoading || wishlistLoading || loading) {
     return (
@@ -97,6 +130,13 @@ export default function SavedProperties() {
         <Heart className="w-16 h-16 text-stone-200 mb-6" />
         <h1 className="text-3xl font-serif text-stone-900 mb-4 tracking-tight">Saved Stays</h1>
         <p className="text-stone-500 max-w-md mb-8">Sign in to view your saved properties and build your Malawi route.</p>
+        <button
+          type="button"
+          onClick={() => openAuth('signin')}
+          className="bg-stone-900 text-white px-8 py-3 rounded-full font-medium hover:bg-stone-800 transition cursor-pointer"
+        >
+          Sign in
+        </button>
       </div>
     );
   }
@@ -145,7 +185,22 @@ export default function SavedProperties() {
         </div>
       </div>
 
-      {savedHotels.length === 0 ? (
+      {loadError && savedHotels.length === 0 ? (
+        <div className="py-12 sm:py-16 text-center border border-dashed border-amber-200 rounded-2xl sm:rounded-3xl bg-amber-50/50 px-4">
+          <AlertTriangle className="w-10 h-10 text-amber-600 mx-auto mb-3" />
+          <h2 className="text-base sm:text-lg font-bold text-stone-900 mb-1">We could not load your saved stays</h2>
+          <p className="text-stone-500 text-xs sm:text-sm mb-6 max-w-sm mx-auto">
+            Check your connection and try again. Your saved stays are still on your account.
+          </p>
+          <button
+            type="button"
+            onClick={() => { setLoading(true); setReloadKey(k => k + 1); }}
+            className="inline-flex items-center justify-center gap-2 rounded-xl sm:rounded-full bg-stone-900 px-5 sm:px-6 py-2.5 text-xs sm:text-sm font-bold text-white transition hover:bg-stone-800 cursor-pointer"
+          >
+            Try again
+          </button>
+        </div>
+      ) : savedHotels.length === 0 ? (
         viewMode === 'planner' ? (
           <div className="py-12 sm:py-16 text-center border border-dashed border-stone-200 rounded-2xl sm:rounded-3xl bg-stone-50/50 px-4">
             <div className="w-12 h-12 rounded-2xl bg-stone-900 text-white flex items-center justify-center mx-auto mb-4 shadow-xs">

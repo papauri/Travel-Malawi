@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Phone, Video, PhoneOff, Mic, MicOff, Video as VideoIcon, VideoOff, Volume2, VolumeX, SignalHigh, SignalMedium, SignalLow, SignalZero } from 'lucide-react';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { Call } from '../types';
+import { startRinging, stopRinging } from '../lib/notificationSound';
 
 interface CallModalProps {
   activeCall: Call | null;
@@ -59,6 +60,21 @@ export function CallModal({
       setIsSpeakerOn(!isSpeakerOn);
     }
   };
+
+  // Each call starts unmuted with camera and speaker on; don't carry the last call's toggles over.
+  React.useEffect(() => {
+    setIsMuted(false);
+    setIsVideoOff(false);
+    setIsSpeakerOn(true);
+  }, [localStream]);
+
+  // Ring while a call is waiting to be answered in the open chat (respects the mute preference).
+  const incomingCallId = incomingCall?.id;
+  React.useEffect(() => {
+    if (!incomingCallId) return;
+    startRinging();
+    return () => stopRinging();
+  }, [incomingCallId]);
 
   React.useEffect(() => {
     if (localVideoRef.current && localStream) {

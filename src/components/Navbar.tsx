@@ -45,13 +45,18 @@ export default function Navbar() {
         setShowUserMenu(false);
       }
     }
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') setShowUserMenu(false);
+    }
     if (showUserMenu) {
       document.addEventListener('mousedown', handleClickOutside);
       document.addEventListener('touchstart', handleClickOutside);
+      document.addEventListener('keydown', handleEscape);
     }
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('touchstart', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
     };
   }, [showUserMenu]);
 
@@ -82,17 +87,20 @@ export default function Navbar() {
 
   // User initials for avatar
   const initials = user?.displayName
-    ? user.displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+    ? user.displayName.split(' ').filter(Boolean).map(n => n[0]).join('').toUpperCase().slice(0, 2)
     : user?.email?.[0]?.toUpperCase() ?? '?';
 
   const [hasProperties, setHasProperties] = useState(false);
   useEffect(() => {
+    // Reset first so a previous account's result never leaks into the next one.
+    setHasProperties(false);
     if (user && !isHotelManager(user)) {
+      let cancelled = false;
       const checkProperties = async () => {
         try {
           const q = query(collection(db, 'hotels'), where('managerId', '==', user.uid), limit(1));
           const snapshot = await getDocs(q);
-          if (!snapshot.empty) {
+          if (!cancelled && !snapshot.empty) {
             setHasProperties(true);
           }
         } catch (e) {
@@ -100,6 +108,7 @@ export default function Navbar() {
         }
       };
       checkProperties();
+      return () => { cancelled = true; };
     }
   }, [user]);
 

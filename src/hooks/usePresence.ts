@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
@@ -64,6 +64,9 @@ export function useManagerPresence(managerId?: string) {
 export function usePresence() {
   const { user } = useAuth();
   const [presence, setPresence] = useState<Presence | null>(null);
+  // A manager's chosen 'away'/'offline' must survive the heartbeat and tab
+  // switches; choosing 'online' hands control back to activity tracking.
+  const manualStatus = useRef<PresenceStatus | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -92,7 +95,6 @@ export function usePresence() {
     if (!user || !isHotelManager(user)) return;
 
     let isActive = true;
-    let manualOverride = false; // To respect manual status
 
     const updateActivity = async (status: PresenceStatus) => {
       try {
@@ -111,7 +113,7 @@ export function usePresence() {
 
     // Heartbeat every 2 minutes
     const heartbeat = setInterval(() => {
-      if (!manualOverride) {
+      if (!manualStatus.current) {
         if (!document.hidden && isActive) {
           updateActivity('online');
         } else {
@@ -119,13 +121,13 @@ export function usePresence() {
         }
       } else {
         // Even if manual override is on, bump lastActive so we don't go offline
-        updateActivity(presence?.status || 'online');
+        updateActivity(manualStatus.current);
       }
       isActive = false; // Reset activity flag
     }, 2 * 60 * 1000); 
 
     // Initial setup
-    updateActivity('online');
+    updateActivity(manualStatus.current || 'online');
 
     // Track real activity
     window.addEventListener('mousemove', handleActivity);
@@ -134,7 +136,7 @@ export function usePresence() {
     
     // Visibility
     const handleVisibilityChange = () => {
-      if (!manualOverride) {
+      if (!manualStatus.current) {
         updateActivity(document.hidden ? 'away' : 'online');
       }
     };
@@ -147,10 +149,11 @@ export function usePresence() {
       window.removeEventListener('scroll', handleActivity);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [user]); // We intentionally do not depend on `presence` to avoid re-binding listeners every time it changes, but we have `manualOverride` limitation. We can export `setManualStatus` separately.
+  }, [user]);
 
   const setManualStatus = async (status: PresenceStatus) => {
     if (!user) return;
+    manualStatus.current = status === 'online' ? null : status;
     try {
       await setDoc(doc(db, 'presence', user.uid), {
         status,

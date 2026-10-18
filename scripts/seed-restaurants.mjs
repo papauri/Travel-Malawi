@@ -1,7 +1,9 @@
 /**
- * Seeds trading hours, kwacha pricing and restaurant menus onto the imported
- * listings, so the currency switch, opening hours and Menu tab all have real
- * data behind them.
+ * Seeds trading hours, kwacha pricing and restaurant menus onto FICTIONAL test
+ * listings ("Example ... Lodge") in a dev/test project, so the currency switch,
+ * opening hours and Menu tab have data behind them. It never touches a real or
+ * onboarded property: only listings whose names are keyed below are changed
+ * (directive D1 — only onboarded properties exist in the product).
  *
  * Kwacha amounts are set explicitly rather than converted: the whole point of
  * the pricing model is that a property authors each currency itself. The rates
@@ -48,7 +50,7 @@ const dish = (name, usd, description, tags) => ({
 
 /** Menus keyed by listing name. Templates differ so each one gets exercised. */
 const RESTAURANTS = {
-  'Blue Zebra Island Lodge': menuFor(
+  'Example Island Lodge': menuFor(
     'elegant',
     'The Boathouse',
     'Lakeside dining',
@@ -92,10 +94,10 @@ const RESTAURANTS = {
     'Two sittings nightly, 7pm and 8.30pm. Please tell us about allergies when you book. A 10% service charge supports the island team.'
   ),
 
-  'Kaya Mawa': menuFor(
+  'Example Lakeside Lodge': menuFor(
     'heritage',
-    'Kaya Mawa Table',
-    'Est. 1998 · Likoma Island',
+    'The Long Table',
+    'Est. 1998 · Lakeshore',
     'One menu, changed daily, served at a long table under the fig tree.',
     [
       {
@@ -127,9 +129,9 @@ const RESTAURANTS = {
     'Dinner is a set menu at 7.30pm. Vegetarian and gluten-free versions of every course are available with a day’s notice.'
   ),
 
-  'Pumulani Lodge': menuFor(
+  'Example Hillside Lodge': menuFor(
     'bistro',
-    'Pumulani Terrace',
+    'The Terrace',
     'All day, lake view',
     'Breakfast until late, long lunches, and something cold at sundown.',
     [
@@ -176,13 +178,15 @@ const RESTAURANTS = {
 
 /** Property hours; a lodge reception is not a nine-to-five. */
 const PROPERTY_HOURS = {
-  'Blue Zebra Island Lodge': { hours: weekWith('06:00', '22:00'), checkInTime: '14:00', checkOutTime: '10:00' },
-  'Kaya Mawa': { hours: weekWith('00:00', '00:00'), checkInTime: '13:00', checkOutTime: '10:00' },
-  'Pumulani Lodge': { hours: weekWith('06:30', '23:00'), checkInTime: '14:00', checkOutTime: '11:00' },
-  'Sunbird Ku Chawe': { hours: weekWith('07:00', '21:00'), checkInTime: '14:00', checkOutTime: '11:00' },
-  'Mvuu Camp & Lodge': { hours: weekWith('05:30', '21:30'), checkInTime: '13:00', checkOutTime: '10:00' },
-  'Lilongwe Grand': { hours: weekWith('00:00', '00:00'), checkInTime: '15:00', checkOutTime: '12:00' },
+  'Example Island Lodge': { hours: weekWith('06:00', '22:00'), checkInTime: '14:00', checkOutTime: '10:00' },
+  'Example Lakeside Lodge': { hours: weekWith('00:00', '00:00'), checkInTime: '13:00', checkOutTime: '10:00' },
+  'Example Hillside Lodge': { hours: weekWith('06:30', '23:00'), checkInTime: '14:00', checkOutTime: '11:00' },
+  'Example Safari Camp': { hours: weekWith('05:30', '21:30'), checkInTime: '13:00', checkOutTime: '10:00' },
+  'Example City Hotel': { hours: weekWith('00:00', '00:00'), checkInTime: '15:00', checkOutTime: '12:00' },
 };
+
+/** Only these fictional test listings are ever modified. */
+const TEST_HOTEL_NAMES = new Set([...Object.keys(PROPERTY_HOURS), ...Object.keys(RESTAURANTS)]);
 
 let changes = 0;
 
@@ -206,9 +210,13 @@ for (const doc of hotels.docs) {
 // --- 2. Kwacha prices on every room -----------------------------------------
 heading('Room pricing in both currencies');
 const rooms = await db.collection('room_types').get();
+// Invented rates are only ever written to the fictional test listings' rooms,
+// never to a real property's rooms.
+const testHotelIds = new Set(hotels.docs.filter(d => TEST_HOTEL_NAMES.has(d.data().name)).map(d => d.id));
 
 for (const doc of rooms.docs) {
   const room = doc.data();
+  if (!testHotelIds.has(room.hotelId)) continue;
   const usd = Number(room.prices?.USD ?? room.price ?? 0);
   if (!(usd > 0)) {
     console.log(`  skip  ${room.name}: no USD rate to work from`);

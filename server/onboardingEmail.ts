@@ -17,17 +17,34 @@ export interface OnboardingWelcomeData {
   origin?: string;
 }
 
-interface StoredHostCredential {
-  email: string;
-  uid: string;
-  cipherText: string;
-  iv: string;
-  authTag: string;
-  updatedAt: number;
+/**
+ * Base URL for links in account emails. The origin comes from request
+ * headers, so only the platform domain (and subdomains), localhost and the
+ * host named in APP_URL are trusted; anything else falls back to the platform
+ * domain so a forged header cannot point a password email at another site.
+ */
+export function resolveBaseUrl(origin: string | undefined, domain: string): string {
+  const fallback = `https://${domain}`;
+  if (!origin) return fallback;
+  try {
+    const url = new URL(origin);
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') return fallback;
+    const host = url.hostname.toLowerCase();
+    let appHost = '';
+    try { appHost = process.env.APP_URL ? new URL(process.env.APP_URL).hostname.toLowerCase() : ''; } catch { /* ignore */ }
+    const trusted =
+      host === domain || host.endsWith(`.${domain}`) ||
+      host === 'localhost' || host === '127.0.0.1' ||
+      (!!appHost && host === appHost);
+    return trusted ? url.origin : fallback;
+  } catch {
+    return fallback;
+  }
 }
 
-const DATA_DIR = path.join(process.cwd(), 'data');
-const HOST_CREDS_FILE = path.join(DATA_DIR, 'host_credentials.json');
+// Earlier versions kept a reversible temp-password vault in
+// data/host_credentials.json. Passwords are no longer generated for email,
+// stored or re-sent; that file (if present) is ignored and left untouched.
 
 function getFirebaseApiKey(): string {
   if (process.env.FIREBASE_API_KEY) return process.env.FIREBASE_API_KEY;
@@ -40,75 +57,12 @@ function getFirebaseApiKey(): string {
   }
 }
 
-function getVaultKey(): Buffer {
-  const secret = process.env.ENCRYPTION_SECRET || process.env.FIREBASE_PROJECT_ID || 'ulendo-malawi-host-credential-vault-key-v1';
-  return crypto.createHash('sha256').update(secret).digest();
-}
-
-function encryptPassword(plain: string): { cipherText: string; iv: string; authTag: string } {
-  const iv = crypto.randomBytes(12);
-  const cipher = crypto.createCipheriv('aes-256-gcm', getVaultKey(), iv);
-  const encrypted = Buffer.concat([cipher.update(plain, 'utf8'), cipher.final()]);
-  const authTag = cipher.getAuthTag();
-  return {
-    cipherText: encrypted.toString('base64'),
-    iv: iv.toString('base64'),
-    authTag: authTag.toString('base64'),
-  };
-}
-
-function decryptPassword(entry: StoredHostCredential): string | null {
-  try {
-    const decipher = crypto.createDecipheriv(
-      'aes-256-gcm',
-      getVaultKey(),
-      Buffer.from(entry.iv, 'base64')
-    );
-    decipher.setAuthTag(Buffer.from(entry.authTag, 'base64'));
-    const decrypted = Buffer.concat([
-      decipher.update(Buffer.from(entry.cipherText, 'base64')),
-      decipher.final(),
-    ]);
-    return decrypted.toString('utf8');
-  } catch {
-    return null;
-  }
-}
-
-function loadHostVault(): Record<string, StoredHostCredential> {
-  try {
-    if (fs.existsSync(HOST_CREDS_FILE)) {
-      return JSON.parse(fs.readFileSync(HOST_CREDS_FILE, 'utf-8'));
-    }
-  } catch (err) {
-    console.warn('[OnboardingEmail] Could not read host_credentials.json:', err);
-  }
-  return {};
-}
-
-function saveHostCredential(email: string, uid: string, password: string): void {
-  try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
-    const vault = loadHostVault();
-    const enc = encryptPassword(password);
-    vault[email.toLowerCase()] = {
-      email: email.toLowerCase(),
-      uid,
-      ...enc,
-      updatedAt: Date.now(),
-    };
-    fs.writeFileSync(HOST_CREDS_FILE, JSON.stringify(vault, null, 2), 'utf-8');
-  } catch (err) {
-    console.warn('[OnboardingEmail] Could not save host credential:', err);
-  }
-}
-
-function generateTempPassword(): string {
-  const code = crypto.randomInt(1000, 9999);
-  const suffix = crypto.randomBytes(2).toString('hex').toUpperCase();
-  return `Ulendo-${code}${suffix}!`;
+/**
+ * Throwaway password for the sign-up call only: 256 random bits, never stored,
+ * logged or emailed. The host sets their real password through the reset link.
+ */
+function generateUnusablePassword(): string {
+  return `${crypto.randomBytes(32).toString('base64url')}!Aa1`;
 }
 
 async function upsertHostUserDoc(uid: string, email: string, displayName: string, idToken: string): Promise<void> {
@@ -177,34 +131,23 @@ export interface ProvisionedAccountInfo {
   email: string;
   uid?: string;
   createdNew: boolean;
-  tempPassword?: string;
-  resetLink?: string;
 }
 
 /**
  * Ensures a Firebase Auth account + Firestore `hotel_manager` profile exists for the email.
- * - If the email does not exist yet in Firebase Auth, creates it with a clean temporary password
- *   and initializes `users/{uid}` with `roles: ['traveller', 'hotel_manager']`.
- * - If the email already exists, checks if our stored initial password is still active (and optionally
- *   rotates it when requested via Forgot Password), or attempts to generate a direct reset link.
+ * A new account gets a random throwaway password nobody knows; the host chooses their own
+ * password through the set-your-password (reset) link we email. Existing accounts are untouched.
  */
-export async function provisionOrVerifyHostAccount(
+export async function provisionHostAccount(
   rawEmail: string,
-  displayName = 'Property Host',
-  options?: { rotatePasswordIfStored?: boolean }
+  displayName = 'Property Host'
 ): Promise<ProvisionedAccountInfo> {
   const email = rawEmail.trim().toLowerCase();
   const apiKey = getFirebaseApiKey();
   const result: ProvisionedAccountInfo = { email, createdNew: false };
-
-  if (!email || !email.includes('@') || !apiKey) {
-    return result;
-  }
-
-  const candidatePassword = generateTempPassword();
+  if (!email || !email.includes('@') || !apiKey) return result;
 
   try {
-    // 1. Attempt to create the Firebase Auth user via Identity Toolkit REST API
     const signUpRes = await fetch(
       `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${encodeURIComponent(apiKey)}`,
       {
@@ -212,100 +155,101 @@ export async function provisionOrVerifyHostAccount(
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email,
-          password: candidatePassword,
+          password: generateUnusablePassword(),
           displayName: displayName.trim() || email.split('@')[0],
           returnSecureToken: true,
         }),
         signal: AbortSignal.timeout(7000),
       }
     );
-
     const signUpData: any = await signUpRes.json();
-
     if (signUpRes.ok && signUpData?.localId && signUpData?.idToken) {
       result.createdNew = true;
       result.uid = signUpData.localId;
-      result.tempPassword = candidatePassword;
-      saveHostCredential(email, signUpData.localId, candidatePassword);
       await upsertHostUserDoc(signUpData.localId, email, displayName, signUpData.idToken);
-      return result;
     }
-
-    // 2. If account already exists, check if we have a valid initial credential stored
-    const errMsg = String(signUpData?.error?.message || '');
-    if (errMsg.includes('EMAIL_EXISTS')) {
-      const vault = loadHostVault();
-      const stored = vault[email];
-      if (stored) {
-        const storedPass = decryptPassword(stored);
-        if (storedPass) {
-          const signInRes = await fetch(
-            `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${encodeURIComponent(apiKey)}`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                email,
-                password: storedPass,
-                returnSecureToken: true,
-              }),
-              signal: AbortSignal.timeout(6000),
-            }
-          );
-          const signInData: any = await signInRes.json();
-          if (signInRes.ok && signInData?.idToken && signInData?.localId) {
-            result.uid = signInData.localId;
-            await upsertHostUserDoc(signInData.localId, email, displayName, signInData.idToken);
-
-            if (options?.rotatePasswordIfStored) {
-              const rotatedPassword = generateTempPassword();
-              const updateRes = await fetch(
-                `https://identitytoolkit.googleapis.com/v1/accounts:update?key=${encodeURIComponent(apiKey)}`,
-                {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    idToken: signInData.idToken,
-                    password: rotatedPassword,
-                    returnSecureToken: true,
-                  }),
-                  signal: AbortSignal.timeout(6000),
-                }
-              );
-              if (updateRes.ok) {
-                saveHostCredential(email, signInData.localId, rotatedPassword);
-                result.tempPassword = rotatedPassword;
-              } else {
-                result.tempPassword = storedPass;
-              }
-            } else {
-              result.tempPassword = storedPass;
-            }
-          }
-        }
-      }
-
-      // 3. Also try Firebase Admin SDK password reset link generation if service account / ADC is available
-      try {
-        const resetLink = await adminAuth().generatePasswordResetLink(email);
-        if (resetLink) {
-          result.resetLink = resetLink;
-        }
-      } catch {
-        // Admin SDK generatePasswordResetLink requires service account credentials; ignore in local dev
-      }
-    }
+    // EMAIL_EXISTS: the account already exists; the host simply gets a reset link.
   } catch (err) {
-    console.warn('[OnboardingEmail] Account provisioning check warning:', err);
+    console.warn('[OnboardingEmail] Account provisioning warning:', err);
   }
-
   return result;
 }
 
 /**
- * Dispatches a single onboarding welcome & credentials email to a specific recipient (owner or manager).
+ * Server-side set-your-password link from the Admin SDK that returns the user to
+ * `continueUrl` (always built from resolveBaseUrl, so on an allowlisted host).
+ * Without Admin SDK credentials Firebase is asked to send its own reset email
+ * and null is returned (our email then links to the in-app Forgot Password screen).
  */
-async function sendWelcomeEmailToRecipient(params: {
+export async function generateHostResetLink(email: string, continueUrl: string): Promise<string | null> {
+  try {
+    return await adminAuth().generatePasswordResetLink(email, { url: continueUrl });
+  } catch {
+    // continueUrl domain not authorised in Firebase → retry with Firebase's default landing page.
+    try {
+      return await adminAuth().generatePasswordResetLink(email);
+    } catch {
+      // No service account / ADC (local dev) or unknown user.
+    }
+  }
+  const apiKey = getFirebaseApiKey();
+  if (apiKey) {
+    fetch(`https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${encodeURIComponent(apiKey)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ requestType: 'PASSWORD_RESET', email, continueUrl }),
+      signal: AbortSignal.timeout(5000),
+    }).catch(() => {});
+  }
+  return null;
+}
+
+async function findHotelByEmail(cleanEmail: string): Promise<Record<string, any> | null> {
+  try {
+    const [byOwner, byManager, byContact] = await Promise.all([
+      queryDocs('hotels', 'ownerEmail', cleanEmail, undefined, 1),
+      queryDocs('hotels', 'managerEmail', cleanEmail, undefined, 1),
+      queryDocs('hotels', 'contactEmail', cleanEmail, undefined, 1),
+    ]);
+    return byOwner[0] || byManager[0] || byContact[0] || null;
+  } catch {
+    return null;
+  }
+}
+
+/** Side effects used by the email senders; tests inject stubs. */
+export interface OnboardingDeps {
+  sendEmail: (options: { to: string; subject: string; html: string; text?: string }) => Promise<{ success: boolean; messageId?: string; error?: string }>;
+  provisionAccount: (email: string, displayName: string) => Promise<ProvisionedAccountInfo>;
+  generateResetLink: (email: string, continueUrl: string) => Promise<string | null>;
+  findHotelByEmail: (email: string) => Promise<Record<string, any> | null>;
+}
+
+const defaultDeps: OnboardingDeps = {
+  sendEmail: sendSystemEmail,
+  provisionAccount: provisionHostAccount,
+  generateResetLink: generateHostResetLink,
+  findHotelByEmail,
+};
+
+/** Links used by the welcome email; dashboardUrl doubles as the reset link's continueUrl. */
+export function welcomeEmailLinks(baseUrl: string, hotelId: string, recipientEmail: string) {
+  const encodedEmail = encodeURIComponent(recipientEmail);
+  // 'host-onboarding' is the placeholder used when the host has no property
+  // yet; /hotel/host-onboarding would be a dead link, so point at the dashboard.
+  const hasProperty = Boolean(hotelId) && hotelId !== 'host-onboarding';
+  const safeHotelId = encodeURIComponent(hotelId);
+  return {
+    dashboardUrl: hasProperty
+      ? `${baseUrl}/dashboard/hotel/${safeHotelId}?auth=signin&email=${encodedEmail}`
+      : `${baseUrl}/dashboard?auth=signin&email=${encodedEmail}`,
+    previewUrl: hasProperty ? `${baseUrl}/hotel/${safeHotelId}` : `${baseUrl}/dashboard`,
+    forgotUrl: `${baseUrl}/?auth=reset&email=${encodedEmail}`,
+    profileUrl: `${baseUrl}/profile`,
+  };
+}
+
+export interface WelcomeEmailParams {
   recipientEmail: string;
   recipientName: string;
   roleLabel: string;
@@ -314,7 +258,13 @@ async function sendWelcomeEmailToRecipient(params: {
   location: string;
   baseUrl: string;
   domain: string;
-}): Promise<{ success: boolean; messageId?: string; error?: string; createdAccount?: boolean }> {
+  /** Set-your-password link, or null when it could not be generated server-side. */
+  resetLink: string | null;
+  createdNew: boolean;
+}
+
+/** Pure builder for the welcome email: no I/O, never includes a password. */
+export function buildWelcomeEmail(params: WelcomeEmailParams): { subject: string; text: string; html: string } {
   const {
     recipientEmail,
     recipientName,
@@ -324,20 +274,17 @@ async function sendWelcomeEmailToRecipient(params: {
     location,
     baseUrl,
     domain,
+    resetLink,
+    createdNew,
   } = params;
+  const { dashboardUrl, previewUrl, forgotUrl, profileUrl } = welcomeEmailLinks(baseUrl, hotelId, recipientEmail);
+  const setPasswordUrl = resetLink || forgotUrl;
 
-  const accountInfo = await provisionOrVerifyHostAccount(recipientEmail, recipientName);
-  const encodedEmail = encodeURIComponent(recipientEmail);
-  const dashboardUrl = `${baseUrl}/dashboard/hotel/${hotelId}?auth=signin&email=${encodedEmail}`;
-  const previewUrl = `${baseUrl}/hotel/${hotelId}`;
-  const resetUrl = accountInfo.resetLink || `${baseUrl}/?auth=reset&email=${encodedEmail}`;
-  const profileUrl = `${baseUrl}/profile`;
+  const subject = `Takulandirani! Set Your Password & Listing Preview — ${propertyName}`;
 
-  const subject = `Takulandirani! Login Credentials & Listing Preview — ${propertyName}`;
-
-  const passwordPlainTextSection = accountInfo.tempPassword
-    ? `   • Login Email: ${recipientEmail}\n   • Temporary Password: ${accountInfo.tempPassword}\n   (You can change this password anytime in Account Profile -> Security Settings at ${profileUrl})`
-    : `   • Login Email: ${recipientEmail}\n   • Password: Use your existing Ulendo account password (or Google Sign-In).\n   • Need a new password? Reset instantly at: ${resetUrl}`;
+  const accessPlainTextSection = createdNew
+    ? `   • Login Email: ${recipientEmail}\n   • We created your Ulendo host account. Choose your password here: ${setPasswordUrl}\n${resetLink ? '   (This link expires after a while; if it has, use Forgot Password at ' + forgotUrl + ')\n' : '   (We also sent a separate set-password email from our sign-in system.)\n'}`
+    : `   • Login Email: ${recipientEmail}\n   • Sign in with your existing Ulendo password (or Google Sign-In).\n   • Need to set or reset your password? ${setPasswordUrl}\n`;
 
   const plainText = `Dear ${recipientName},
 
@@ -353,13 +300,12 @@ Property Summary:
 - Assigned Role: ${roleLabel}
 - Current Status: Pending Review (Accessible Now in Preview & Management Hub)
 
-Your Account Login Credentials:
-${passwordPlainTextSection}
-
+Your Account Access:
+${accessPlainTextSection}
 Direct Quick Links:
-1. Manage Property & Rooms (Dashboard): ${dashboardUrl}
-2. View Your Live Pending Listing Preview: ${previewUrl}
-3. Forgot / Reset Password: ${resetUrl}
+1. Set Your Password (secure link): ${setPasswordUrl}
+2. Manage Property & Rooms (Dashboard): ${dashboardUrl}
+3. View Your Live Pending Listing Preview: ${previewUrl}
 4. Account Profile & Security Settings: ${profileUrl}
 
 If you have any questions or need assistance, reply directly to this email or reach us at ${DEFAULT_PLATFORM_EMAIL}.
@@ -369,35 +315,21 @@ The Ulendo Travel Malawi Team
 ${baseUrl}
 `;
 
-  const passwordHtmlBlock = accountInfo.tempPassword
-    ? `
-      <div style="background: #ffffff; border: 1px solid #e7e5e4; border-radius: 10px; padding: 14px 16px; margin-bottom: 14px;">
-        <div style="margin-bottom: 10px;">
-          <div style="font-size: 11px; color: #78716c; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em;">Registered Login Email</div>
-          <div style="font-size: 15px; font-weight: 700; color: #1c1917; margin-top: 2px;">${escapeHtml(recipientEmail)}</div>
-        </div>
-        <div style="padding-top: 10px; border-top: 1px dashed #e7e5e4;">
-          <div style="font-size: 11px; color: #78716c; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em;">
-            ${accountInfo.createdNew ? 'Your Generated Temporary Password' : 'Your Active Temporary Password'}
-          </div>
-          <div style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 16px; font-weight: 800; color: #047857; background: #ecfdf5; border: 1px solid #a7f3d0; display: inline-block; padding: 4px 10px; border-radius: 6px; margin-top: 4px; letter-spacing: 0.04em;">
-            ${escapeHtml(accountInfo.tempPassword)}
-          </div>
-          <div style="font-size: 11px; color: #57534e; margin-top: 6px;">
-            Sign in with the email and password above. You can set your own personal password anytime in <a href="${escapeHtml(profileUrl)}" style="color: #b45309; font-weight: 600; text-decoration: underline;">Account Profile &rarr; Security</a>.
-          </div>
-        </div>
-      </div>
-    `
-    : `
+  const accessHtmlBlock = `
       <div style="background: #ffffff; border: 1px solid #e7e5e4; border-radius: 10px; padding: 14px 16px; margin-bottom: 14px;">
         <div style="margin-bottom: 8px;">
           <div style="font-size: 11px; color: #78716c; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em;">Registered Login Email</div>
           <div style="font-size: 15px; font-weight: 700; color: #1c1917; margin-top: 2px;">${escapeHtml(recipientEmail)}</div>
         </div>
         <div style="padding-top: 8px; border-top: 1px dashed #e7e5e4; font-size: 12px; color: #57534e; line-height: 1.5;">
-          <strong>Password:</strong> Sign in with your existing Ulendo password or click <strong>Continue with Google</strong>.<br/>
-          Need to set or reset your password? <a href="${escapeHtml(resetUrl)}" style="color: #b45309; font-weight: 700; text-decoration: underline;">Click here to reset your password</a>.
+          ${createdNew
+            ? `We created your Ulendo host account. <strong>Choose your own password</strong> with the button below, then sign in to manage your property.${resetLink ? '' : '<br/>We have also sent a separate set-password email from our sign-in system.'}`
+            : `Sign in with your existing Ulendo password or click <strong>Continue with Google</strong>. Need to set or reset your password? Use the button below.`}
+        </div>
+        <div style="margin-top: 12px;">
+          <a href="${escapeHtml(setPasswordUrl)}" style="display: inline-block; padding: 10px 18px; background: #b45309; color: #ffffff; text-decoration: none; font-size: 13px; font-weight: 700; border-radius: 10px;">
+            Set Your Password &rarr;
+          </a>
         </div>
       </div>
     `;
@@ -459,16 +391,16 @@ ${baseUrl}
           </table>
         </div>
 
-        <!-- Login Credentials & Direct Access Card -->
+        <!-- Account Access Card -->
         <div style="background: #fdfaf6; border: 1px solid #fed7aa; border-radius: 12px; padding: 20px; margin-bottom: 22px;">
           <h3 style="margin: 0 0 8px; font-size: 15px; font-weight: 700; color: #9a3412;">
-            Your Login Credentials &amp; Instant Access
+            Your Account &amp; Instant Access
           </h3>
           <p style="margin: 0 0 12px; font-size: 13px; line-height: 1.5; color: #57534e;">
-            Use the credentials below to sign in, view your pending listing, and manage rooms, rates, and bookings:
+            Sign in to view your pending listing and manage rooms, rates, and bookings:
           </p>
 
-          ${passwordHtmlBlock}
+          ${accessHtmlBlock}
 
           <div style="text-align: center; margin-top: 16px;">
             <a href="${escapeHtml(dashboardUrl)}" style="display: inline-block; padding: 12px 22px; background: #1c1917; color: #ffffff; text-decoration: none; font-size: 13px; font-weight: 700; border-radius: 10px; margin: 4px;">
@@ -486,8 +418,8 @@ ${baseUrl}
             Account Management &amp; Password Recovery
           </h4>
           <ul style="margin: 0; padding-left: 18px; font-size: 12px; color: #57534e; line-height: 1.6;">
-            <li><strong>View Listing Anytime:</strong> Your preview link (<a href="${escapeHtml(previewUrl)}" style="color: #047857; text-decoration: underline;">/hotel/${escapeHtml(hotelId)}</a>) works immediately even while pending verification.</li>
-            <li><strong>Forgot Password:</strong> Need a password reset link at any time? Use <a href="${escapeHtml(resetUrl)}" style="color: #b45309; text-decoration: underline;">Forgot Password</a> on the login window for an instant email reset.</li>
+            <li><strong>View Listing Anytime:</strong> Your preview link (<a href="${escapeHtml(previewUrl)}" style="color: #047857; text-decoration: underline;">${escapeHtml(previewUrl.slice(baseUrl.length))}</a>) works immediately even while pending verification.</li>
+            <li><strong>Forgot Password:</strong> Need a password reset link at any time? Use <a href="${escapeHtml(forgotUrl)}" style="color: #b45309; text-decoration: underline;">Forgot Password</a> on the login window for an instant email reset.</li>
             <li><strong>Profile &amp; Security Settings:</strong> Update your password, phone, WhatsApp alerts, and preferred currency in <a href="${escapeHtml(profileUrl)}" style="color: #1c1917; text-decoration: underline;">Account Profile</a>.</li>
           </ul>
         </div>
@@ -505,13 +437,23 @@ ${baseUrl}
     </div>
   `;
 
+  return { subject, text: plainText, html };
+}
+
+/**
+ * Provisions (or finds) the recipient's account, generates a set-your-password
+ * link server-side and sends the welcome email. No password is ever emailed.
+ */
+async function sendWelcomeEmailToRecipient(
+  params: Omit<WelcomeEmailParams, 'resetLink' | 'createdNew'>,
+  deps: OnboardingDeps
+): Promise<{ success: boolean; messageId?: string; error?: string; createdAccount?: boolean }> {
   try {
-    const result = await sendSystemEmail({
-      to: recipientEmail,
-      subject,
-      text: plainText,
-      html,
-    });
+    const accountInfo = await deps.provisionAccount(params.recipientEmail, params.recipientName);
+    const { dashboardUrl } = welcomeEmailLinks(params.baseUrl, params.hotelId, params.recipientEmail);
+    const resetLink = await deps.generateResetLink(params.recipientEmail, dashboardUrl);
+    const email = buildWelcomeEmail({ ...params, resetLink, createdNew: accountInfo.createdNew });
+    const result = await deps.sendEmail({ to: params.recipientEmail, ...email });
     return { ...result, createdAccount: accountInfo.createdNew };
   } catch (err: any) {
     console.error('[OnboardingEmail] Failed to dispatch welcome email:', err);
@@ -521,15 +463,16 @@ ${baseUrl}
 
 /**
  * Sends a welcome email immediately upon successful property onboarding submission,
- * auto-provisioning Firebase Auth + `hotel_manager` profile credentials for the owner
- * (and manager, if distinct) so they can sign in and view their pending listing right away.
+ * auto-provisioning a Firebase Auth account + `hotel_manager` profile for the owner
+ * (and manager, if distinct) with a set-your-password link instead of a password.
  */
-export async function sendOnboardingWelcomeEmail(data: OnboardingWelcomeData): Promise<{
+export async function sendOnboardingWelcomeEmail(data: OnboardingWelcomeData, overrides: Partial<OnboardingDeps> = {}): Promise<{
   success: boolean;
   messageId?: string;
   error?: string;
   recipients?: string[];
 }> {
+  const deps: OnboardingDeps = { ...defaultDeps, ...overrides };
   const ownerEmail = data.ownerEmail?.trim().toLowerCase() || '';
   const managerEmail = data.managerEmail?.trim().toLowerCase() || '';
   const primaryEmail = ownerEmail || managerEmail;
@@ -539,9 +482,7 @@ export async function sendOnboardingWelcomeEmail(data: OnboardingWelcomeData): P
   }
 
   const domain = DEFAULT_PLATFORM_DOMAIN || 'ulendomalawi.com';
-  const baseUrl = data.origin && data.origin.startsWith('http')
-    ? data.origin.replace(/\/$/, '')
-    : `https://${domain}`;
+  const baseUrl = resolveBaseUrl(data.origin, domain);
 
   const propertyName = data.propertyName?.trim() || 'Your Property';
   const ownerName = data.ownerName?.trim() || 'Valued Property Owner';
@@ -563,7 +504,7 @@ export async function sendOnboardingWelcomeEmail(data: OnboardingWelcomeData): P
     location,
     baseUrl,
     domain,
-  });
+  }, deps);
 
   if (primaryRes.success) {
     recipientsSent.push(primaryEmail);
@@ -580,7 +521,7 @@ export async function sendOnboardingWelcomeEmail(data: OnboardingWelcomeData): P
       location,
       baseUrl,
       domain,
-    });
+    }, deps);
     if (mgrRes.success) {
       recipientsSent.push(managerEmail);
     }
@@ -594,91 +535,23 @@ export async function sendOnboardingWelcomeEmail(data: OnboardingWelcomeData): P
   };
 }
 
-/**
- * Handles Forgot Password via our saved SMTP server:
- * - If the email belongs to a property owner/manager in Firestore who never had a Firebase Auth
- *   account created yet, auto-creates their Firebase Auth account with a temporary password!
- * - If the account was provisioned by Ulendo and still uses a managed credential, rotates to a fresh
- *   temporary password and sends it via SMTP so the user can log in immediately.
- * - Also triggers Firebase's password reset link (and includes the direct link if Admin SDK ADC is active).
- */
-export async function sendSmtpPasswordResetEmail(
-  rawEmail: string,
-  origin?: string
-): Promise<{ success: boolean; emailSent: boolean }> {
-  const cleanEmail = rawEmail.trim().toLowerCase();
-  if (!cleanEmail || !cleanEmail.includes('@')) {
-    return { success: false, emailSent: false };
-  }
+/** Pure builder for the password-reset email: no I/O, never includes a password. */
+export function buildPasswordResetEmail(params: {
+  email: string;
+  baseUrl: string;
+  domain: string;
+  resetLink: string | null;
+  signInUrl: string;
+}): { subject: string; text: string; html: string } {
+  const { email, baseUrl, domain, resetLink, signInUrl } = params;
+  const actionUrl = resetLink || signInUrl;
+  const bodyText = resetLink
+    ? `\nClick the link below to set a new password:\n${resetLink}\n`
+    : `\nPlease use the password reset link sent to your inbox, or sign in at: ${signInUrl}\n`;
 
-  const domain = DEFAULT_PLATFORM_DOMAIN || 'ulendomalawi.com';
-  const baseUrl = origin && origin.startsWith('http')
-    ? origin.replace(/\/$/, '')
-    : `https://${domain}`;
-
-  // Check if this email is associated with any hotel in Firestore (ownerEmail, managerEmail, contactEmail)
-  let associatedHotel: Record<string, any> | null = null;
-  try {
-    const [byOwner, byManager, byContact] = await Promise.all([
-      queryDocs('hotels', 'ownerEmail', cleanEmail, undefined, 1),
-      queryDocs('hotels', 'managerEmail', cleanEmail, undefined, 1),
-      queryDocs('hotels', 'contactEmail', cleanEmail, undefined, 1),
-    ]);
-    associatedHotel = byOwner[0] || byManager[0] || byContact[0] || null;
-  } catch {
-    // Non-fatal
-  }
-
-  // If they are a hotel owner/manager or exist in our host vault, ensure their account is provisioned/rotated
-  const vault = loadHostVault();
-  let accountInfo: ProvisionedAccountInfo = { email: cleanEmail, createdNew: false };
-  if (associatedHotel || vault[cleanEmail]) {
-    const displayName =
-      associatedHotel?.ownerName ||
-      associatedHotel?.managerName ||
-      cleanEmail.split('@')[0];
-    accountInfo = await provisionOrVerifyHostAccount(cleanEmail, displayName, {
-      rotatePasswordIfStored: true,
-    });
-  } else {
-    try {
-      const link = await adminAuth().generatePasswordResetLink(cleanEmail);
-      if (link) accountInfo.resetLink = link;
-    } catch {
-      // Ignore when service account is not attached
-    }
-  }
-
-  // Also trigger Firebase Identity Toolkit PASSWORD_RESET OOB email if we didn't just rotate/create a temp password
-  const apiKey = getFirebaseApiKey();
-  if (apiKey && !accountInfo.tempPassword) {
-    fetch(
-      `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${encodeURIComponent(apiKey)}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ requestType: 'PASSWORD_RESET', email: cleanEmail }),
-        signal: AbortSignal.timeout(5000),
-      }
-    ).catch(() => {});
-  }
-
-  const encodedEmail = encodeURIComponent(cleanEmail);
-  const signInUrl = associatedHotel?.id
-    ? `${baseUrl}/dashboard/hotel/${associatedHotel.id}?auth=signin&email=${encodedEmail}`
-    : `${baseUrl}/?auth=signin&email=${encodedEmail}`;
-  const actionUrl = accountInfo.resetLink || signInUrl;
-
-  const tempPassText = accountInfo.tempPassword
-    ? `\nYour New Temporary Password: ${accountInfo.tempPassword}\nSign in directly at: ${signInUrl}\n(After signing in, you can set a custom password in Account Profile -> Security Settings at ${baseUrl}/profile)\n`
-    : accountInfo.resetLink
-      ? `\nClick the link below to set a new password:\n${accountInfo.resetLink}\n`
-      : `\nPlease check your inbox for the verification link, or sign in at: ${signInUrl}\n`;
-
-  const result = await sendSystemEmail({
-    to: cleanEmail,
+  return {
     subject: 'Password Reset & Account Access — Ulendo Travel Malawi',
-    text: `Hello,\n\nA password reset was requested for your Ulendo Travel Malawi account (${cleanEmail}).\n${tempPassText}\nIf you did not request this change, please contact us at ${DEFAULT_PLATFORM_EMAIL}.`,
+    text: `Hello,\n\nA password reset was requested for your Ulendo Travel Malawi account (${email}).\n${bodyText}\nIf you did not request this change, you can ignore this email or contact us at ${DEFAULT_PLATFORM_EMAIL}.`,
     html: `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 560px; margin: 0 auto; padding: 28px 24px; border: 1px solid #e7e5e4; border-radius: 14px; background: #ffffff; color: #1c1917;">
         <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #78716c; margin-bottom: 6px;">
@@ -687,43 +560,71 @@ export async function sendSmtpPasswordResetEmail(
         <h2 style="margin: 0 0 6px; font-size: 20px; font-weight: 700; color: #1c1917;">Password Reset &amp; Account Recovery</h2>
         <p style="margin: 0 0 16px; font-size: 13px; color: #78716c;">Account Security &bull; ${escapeHtml(domain)}</p>
         <p style="margin: 0 0 14px; font-size: 14px; line-height: 1.5; color: #44403c;">
-          A password reset request was received for <strong>${escapeHtml(cleanEmail)}</strong>.
+          A password reset request was received for <strong>${escapeHtml(email)}</strong>.
         </p>
 
-        ${accountInfo.tempPassword ? `
-          <div style="background: #fafaf9; border: 1px solid #e7e5e4; border-radius: 10px; padding: 16px; margin-bottom: 18px;">
-            <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #78716c;">
-              Your Temporary Recovery Password
-            </div>
-            <div style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 17px; font-weight: 800; color: #047857; background: #ecfdf5; border: 1px solid #a7f3d0; display: inline-block; padding: 5px 12px; border-radius: 6px; margin-top: 6px; letter-spacing: 0.04em;">
-              ${escapeHtml(accountInfo.tempPassword)}
-            </div>
-            <p style="margin: 8px 0 0; font-size: 12px; color: #57534e; line-height: 1.5;">
-              Use this password with <strong>${escapeHtml(cleanEmail)}</strong> to sign in immediately. Once signed in, you can choose your own custom password under <strong>Profile Settings &rarr; Security &amp; Password</strong>.
-            </p>
-          </div>
-        ` : accountInfo.resetLink ? `
-          <p style="margin: 0 0 16px; font-size: 13px; color: #57534e; line-height: 1.6;">
-            Click the button below to choose a new password for your account:
-          </p>
-        ` : `
-          <p style="margin: 0 0 16px; font-size: 13px; color: #57534e; line-height: 1.6;">
-            Please use the verification link sent to your inbox to choose a new password, or click below to return to the sign-in screen.
-          </p>
-        `}
+        <p style="margin: 0 0 16px; font-size: 13px; color: #57534e; line-height: 1.6;">
+          ${resetLink
+            ? 'Click the button below to choose a new password for your account:'
+            : 'Please use the password reset link sent to your inbox to choose a new password, or click below to return to the sign-in screen.'}
+        </p>
 
         <div style="margin: 18px 0;">
           <a href="${escapeHtml(actionUrl)}" style="display: inline-block; padding: 12px 22px; background: #1c1917; color: #ffffff; text-decoration: none; font-size: 13px; font-weight: 700; border-radius: 10px;">
-            ${accountInfo.resetLink ? 'Set New Password &rarr;' : 'Sign In to Your Account &rarr;'}
+            ${resetLink ? 'Set New Password &rarr;' : 'Sign In to Your Account &rarr;'}
           </a>
         </div>
+
+        <p style="margin: 0; font-size: 12px; color: #78716c; line-height: 1.5;">
+          If you did not request this change, you can ignore this email.
+        </p>
 
         <div style="margin-top: 24px; padding-top: 14px; border-top: 1px solid #f5f5f4; font-size: 11px; color: #a8a29e; text-align: center;">
           Ulendo Travel Malawi &bull; <a href="${escapeHtml(baseUrl)}" style="color: #78716c; text-decoration: none;">${escapeHtml(domain)}</a> &bull; <a href="mailto:${escapeHtml(DEFAULT_PLATFORM_EMAIL)}" style="color: #78716c; text-decoration: none;">${escapeHtml(DEFAULT_PLATFORM_EMAIL)}</a>
         </div>
       </div>
     `,
-  });
+  };
+}
+
+/**
+ * Handles Forgot Password via our saved SMTP server:
+ * - If the email belongs to a property owner/manager in Firestore who has no Firebase Auth
+ *   account yet, the account is created (with no usable password).
+ * - In every case a set-your-password link is generated server-side and emailed; no
+ *   password is ever generated for, stored for or sent to the user.
+ */
+export async function sendSmtpPasswordResetEmail(
+  rawEmail: string,
+  origin?: string,
+  overrides: Partial<OnboardingDeps> = {}
+): Promise<{ success: boolean; emailSent: boolean }> {
+  const deps: OnboardingDeps = { ...defaultDeps, ...overrides };
+  const cleanEmail = rawEmail.trim().toLowerCase();
+  if (!cleanEmail || !cleanEmail.includes('@')) {
+    return { success: false, emailSent: false };
+  }
+
+  const domain = DEFAULT_PLATFORM_DOMAIN || 'ulendomalawi.com';
+  const baseUrl = resolveBaseUrl(origin, domain);
+
+  const associatedHotel = await deps.findHotelByEmail(cleanEmail);
+  if (associatedHotel) {
+    const displayName =
+      associatedHotel.ownerName ||
+      associatedHotel.managerName ||
+      cleanEmail.split('@')[0];
+    await deps.provisionAccount(cleanEmail, displayName);
+  }
+
+  const encodedEmail = encodeURIComponent(cleanEmail);
+  const signInUrl = associatedHotel?.id
+    ? `${baseUrl}/dashboard/hotel/${encodeURIComponent(associatedHotel.id)}?auth=signin&email=${encodedEmail}`
+    : `${baseUrl}/?auth=signin&email=${encodedEmail}`;
+  const resetLink = await deps.generateResetLink(cleanEmail, signInUrl);
+
+  const email = buildPasswordResetEmail({ email: cleanEmail, baseUrl, domain, resetLink, signInUrl });
+  const result = await deps.sendEmail({ to: cleanEmail, ...email });
 
   return { success: true, emailSent: result.success };
 }

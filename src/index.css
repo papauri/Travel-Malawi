@@ -213,3 +213,14 @@ html, body {
     max-width: 100% !important;
   }
 }
+
+/* Respect the OS "reduce motion" setting: stop looping/ambient animation. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-bell-ring,
+  .animate-bell-vibrate {
+    animation: none !important;
+  }
+  html:focus-within {
+    scroll-behavior: auto !important;
+  }
+}

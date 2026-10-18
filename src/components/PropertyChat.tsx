@@ -95,12 +95,18 @@ export default function PropertyChat({
   const [chatId, setChatId] = useState<string | null>(null);
 
   const activeGuestId = guestId || currentUser?.uid;
-  const activeGuestName = guestName || currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Guest';
+  // The guest's own name when the guest is chatting; when a manager opens the
+  // chat only the name the caller passed in (never the manager's own name,
+  // which used to overwrite the guest's name on the chat doc).
+  const activeGuestName = guestId !== undefined
+    ? guestName
+    : (currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Guest');
+  const guestDisplayName = activeGuestName || chatDocData?.guestName || 'Guest';
   const isManager = guestId !== undefined || (currentUser && liveHotel.managerId === currentUser.uid);
   // The hotel's real manager only. Rules reject a chat that names anyone else,
   // and an unassigned hotel's inquiries are handled by admins.
   const effectiveManagerId = liveHotel.managerId || '';
-  const otherParticipantName = isManager ? activeGuestName : (liveHotel.name || 'Host');
+  const otherParticipantName = isManager ? guestDisplayName : (liveHotel.name || 'Host');
 
   const {
     activeCall,
@@ -114,7 +120,7 @@ export default function PropertyChat({
     answerCall,
     rejectCall,
     endCall
-  } = useWebRTC(chatId || '', currentUser?.uid || '', isManager ? (liveHotel.name || 'Manager') : activeGuestName);
+  } = useWebRTC(chatId || '', currentUser?.uid || '', isManager ? (liveHotel.name || 'Manager') : guestDisplayName);
 
   const adjustTextareaHeight = () => {
     if (textareaRef.current) {
@@ -152,7 +158,7 @@ export default function PropertyChat({
   const handleInsertDepositSnippet = (type: 'mobile_money' | 'bank' | 'general') => {
     const depositInfo = getHotelDepositInfo(liveHotel);
     const snippet = formatDepositSnippet(type, depositInfo, {
-      guestName: activeGuestName,
+      guestName: guestDisplayName,
       roomName: 'your stay'
     });
 
@@ -228,7 +234,12 @@ export default function PropertyChat({
     const ensureChatDocAndSetPresence = async () => {
       try {
         const chatRef = doc(db, 'hotel_chats', computedChatId);
-        const chatDocSnap = await getDoc(chatRef);
+        // Reading a chat that doesn't exist yet is denied by the rules (they
+        // check the stored participants), so treat a denial as "not created".
+        const chatDocSnap = await getDoc(chatRef).catch((err) => {
+          if (err?.code === 'permission-denied') return null;
+          throw err;
+        });
         const now = Date.now();
 
         const presenceUpdate = isManager
@@ -245,13 +256,13 @@ export default function PropertyChat({
               guestTyping: false
             };
 
-        if (!chatDocSnap.exists()) {
+        if (!chatDocSnap || !chatDocSnap.exists()) {
           const initialData: HotelChat = {
             hotelId: hotel.id!,
             hotelName: liveHotel.name || hotel.name,
             guestId: activeGuestId,
             managerId: effectiveManagerId,
-            guestName: activeGuestName,
+            guestName: activeGuestName || 'Guest',
             status: 'active',
             createdAt: now,
             updatedAt: now,
@@ -265,7 +276,17 @@ export default function PropertyChat({
         console.error('Error ensuring chat doc / updating presence:', err);
       }
     };
-    ensureChatDocAndSetPresence();
+    // Listeners attach only once the chat doc exists: a listener opened on a
+    // not-yet-created chat is denied and Firestore never retries it, which left
+    // a guest's first inquiry with no messages, receipts or typing indicator.
+    let cancelled = false;
+    let unsubChatDoc = () => {};
+    let unsubMessages = () => {};
+    let unsubCalls = () => {};
+    ensureChatDocAndSetPresence().then(() => {
+      if (cancelled) return;
+      attachListeners();
+    });
 
     const presenceInterval = setInterval(() => {
       if (computedChatId) {
@@ -277,68 +298,71 @@ export default function PropertyChat({
       }
     }, 10000);
 
-    // Listen to chat metadata changes (e.g. status, typing, presence, seenAt)
-    const unsubChatDoc = onSnapshot(doc(db, 'hotel_chats', computedChatId), (docSnap) => {
-      if (docSnap.exists()) {
-        setChatDocData({ id: docSnap.id, ...docSnap.data() } as HotelChat);
-      } else {
-        setChatDocData(null);
-      }
-    }, (err) => {
-      console.warn('Error listening to chat metadata:', err);
-    });
-
-    // Listen to messages subcollection
-    const q = query(
-      collection(db, 'hotel_chats', computedChatId, 'messages'),
-      orderBy('createdAt', 'asc')
-    );
-    
-    const unsubMessages = onSnapshot(q, (snapshot) => {
-      const msgs = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as Message[];
-      setMessages(msgs);
-      chimeForIncoming(msgs, currentUser?.uid, seenMessages);
-      setLoading(false);
-
-      // If new messages arrived while we have the chat open, update our lastSeenAt
-      if (msgs.length > 0) {
-        const lastMsg = msgs[msgs.length - 1];
-        if (lastMsg.senderId !== currentUser.uid) {
-          const now = Date.now();
-          updateDoc(doc(db, 'hotel_chats', computedChatId), {
-            [isManager ? 'managerLastSeenAt' : 'guestLastSeenAt']: now,
-            [isManager ? 'managerLastOpenedAt' : 'guestLastOpenedAt']: now
-          }).catch(() => {});
+    const attachListeners = () => {
+      // Listen to chat metadata changes (e.g. status, typing, presence, seenAt)
+      unsubChatDoc = onSnapshot(doc(db, 'hotel_chats', computedChatId), (docSnap) => {
+        if (docSnap.exists()) {
+          setChatDocData({ id: docSnap.id, ...docSnap.data() } as HotelChat);
+        } else {
+          setChatDocData(null);
         }
-      }
+      }, (err) => {
+        console.warn('Error listening to chat metadata:', err);
+      });
 
-      setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-      }, 100);
-    }, (error) => {
-      console.error('Error fetching messages:', error);
-      toast.error('Could not load messages.');
-      setLoading(false);
-    });
-
-    const callsQuery = query(
-      collection(db, 'hotel_chats', computedChatId, 'calls'),
-      orderBy('createdAt', 'asc')
-    );
+      // Listen to messages subcollection
+      const q = query(
+        collection(db, 'hotel_chats', computedChatId, 'messages'),
+        orderBy('createdAt', 'asc')
+      );
     
-    const unsubCalls = onSnapshot(callsQuery, (snapshot) => {
-      const cls = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as Call[];
-      setCalls(cls);
+      unsubMessages = onSnapshot(q, (snapshot) => {
+        const msgs = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as Message[];
+        setMessages(msgs);
+        chimeForIncoming(msgs, currentUser?.uid, seenMessages);
+        setLoading(false);
+
+        // If new messages arrived while we have the chat open, update our lastSeenAt
+        if (msgs.length > 0) {
+          const lastMsg = msgs[msgs.length - 1];
+          if (lastMsg.senderId !== currentUser.uid) {
+            const now = Date.now();
+            updateDoc(doc(db, 'hotel_chats', computedChatId), {
+              [isManager ? 'managerLastSeenAt' : 'guestLastSeenAt']: now,
+              [isManager ? 'managerLastOpenedAt' : 'guestLastOpenedAt']: now
+            }).catch(() => {});
+          }
+        }
+
+        setTimeout(() => {
+          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+      }, (error) => {
+        console.error('Error fetching messages:', error);
+        toast.error('Could not load messages.');
+        setLoading(false);
+      });
+
+      const callsQuery = query(
+        collection(db, 'hotel_chats', computedChatId, 'calls'),
+        orderBy('createdAt', 'asc')
+      );
+    
+      unsubCalls = onSnapshot(callsQuery, (snapshot) => {
+        const cls = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as Call[];
+        setCalls(cls);
       
-      setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-      }, 100);
-    }, (error) => {
-      console.warn('Error fetching calls:', error);
-    });
+        setTimeout(() => {
+          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+      }, (error) => {
+        console.warn('Error fetching calls:', error);
+      });
+    };
     
     // Cleanup presence & typing when closing / unmounting chat
     return () => {
+      cancelled = true;
       unsubChatDoc();
       unsubMessages();
       unsubCalls();
@@ -558,7 +582,7 @@ export default function PropertyChat({
         hotelName: liveHotel.name || hotel.name,
         guestId: activeGuestId,
         managerId: effectiveManagerId,
-        guestName: activeGuestName,
+        ...(activeGuestName ? { guestName: activeGuestName } : {}),
         lastMessage: textToSend,
         lastSenderId: currentUser.uid,
         lastSenderName: senderDisplayName,
@@ -650,7 +674,7 @@ export default function PropertyChat({
 
             <div className="min-w-0">
               <h3 className="font-bold text-sm truncate leading-tight">
-                {isManager ? `Chat with ${activeGuestName}` : `Chat with ${liveHotel.name}`}
+                {isManager ? `Chat with ${guestDisplayName}` : `Chat with ${liveHotel.name}`}
               </h3>
               
               {/* Dynamic Status: Typing / In Chat Now / Opened at / Online / Offline */}
@@ -978,7 +1002,7 @@ export default function PropertyChat({
                 >
                   <span className="text-[10px] font-medium text-stone-400 mb-1 px-1">
                     {msg.senderId === (chatDocData?.guestId || activeGuestId)
-                      ? (chatDocData?.guestName || activeGuestName)
+                      ? (chatDocData?.guestName || guestDisplayName)
                       : (liveHotel.name || 'Host')}
                   </span>
                   <div 

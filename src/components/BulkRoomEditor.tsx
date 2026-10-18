@@ -8,6 +8,7 @@ import { SALE_TYPE_OPTIONS, getSaleTypeBadge, getSaleTypeLabel, calculateSlashed
 import { validateRoom, firstError } from '../lib/validateRoom';
 import { addDays } from '../lib/dates';
 import { saveUpdatedRooms, saveSingleCachedHotel } from '../lib/mapCache';
+import ConfirmDialog from './ConfirmDialog';
 import {
   SlidersHorizontal, Percent, DollarSign, Tag, Check,
   RotateCcw, TrendingDown, TrendingUp, Calendar, Zap, AlertCircle,
@@ -133,6 +134,16 @@ export default function BulkRoomEditor({
     setSelectedRoomIds([]);
   };
 
+  /** Switching property drops selections the new filter hides, so a bulk save never touches rooms the manager can no longer see. */
+  const changeHotelFilter = (hotelId: string) => {
+    setSelectedHotelFilter(hotelId);
+    if (hotelId === 'all') return;
+    const visible = new Set(rooms.filter(r => r.hotelId === hotelId && r.id).map(r => r.id as string));
+    setSelectedRoomIds(prev => prev.filter(id => visible.has(id)));
+  };
+
+  const [pendingPromoDelete, setPendingPromoDelete] = useState<{ hotelId: string; promoId: string; name: string } | null>(null);
+
   const toggleRoomSelection = (id: string) => {
     setSelectedRoomIds(prev =>
       prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
@@ -178,7 +189,9 @@ export default function BulkRoomEditor({
       const prices = { ...(room.prices || {}) } as Record<string, number>;
       if (newMWK !== null) prices.MWK = newMWK;
       if (newUSD !== null) prices.USD = newUSD;
-      problem = firstError(validateRoom({ ...room, currencies, prices }) as Record<string, string | undefined>);
+      // Only the rate rules apply here: a legacy room missing a photo can still be repriced.
+      const { photos: _photos, ...rateProblems } = validateRoom({ ...room, currencies, prices });
+      problem = firstError(rateProblems as Record<string, string | undefined>);
     }
 
     return { originalMWK, originalUSD, newMWK, newUSD, currencies, problem };
@@ -270,7 +283,9 @@ export default function BulkRoomEditor({
       for (const room of selectedRooms) {
         if (!room.id) continue;
         const { newMWK, newUSD } = calculateNewRatesForRoom(room);
-        const primary = room.currency || 'MWK';
+        // Same default as roomPrice(): a legacy room without `currency` holds a USD `price`.
+        // Defaulting to MWK here relabelled that USD figure as kwacha (e.g. $95 → MK 95).
+        const primary = room.currency || 'USD';
 
         const updatedPrices: Record<string, number> = { ...(room.prices || {}) };
         if (newMWK !== null) updatedPrices.MWK = newMWK;
@@ -588,7 +603,7 @@ export default function BulkRoomEditor({
               {hotels.length > 1 && (
                 <select
                   value={selectedHotelFilter}
-                  onChange={e => setSelectedHotelFilter(e.target.value)}
+                  onChange={e => changeHotelFilter(e.target.value)}
                   aria-label="Filter campaigns by property"
                   className="bg-white border border-stone-200 text-xs font-medium rounded-lg px-2.5 py-1.5 text-stone-800 focus:outline-hidden"
                 >
@@ -739,7 +754,7 @@ export default function BulkRoomEditor({
                         </button>
                         <button
                           type="button"
-                          onClick={() => hotel.id && handleDeletePromotion(hotel.id, promo.id)}
+                          onClick={() => hotel.id && setPendingPromoDelete({ hotelId: hotel.id, promoId: promo.id, name: promo.name })}
                           className="p-1 text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition cursor-pointer"
                           title="Delete promotion"
                           aria-label="Delete promotion"
@@ -779,7 +794,7 @@ export default function BulkRoomEditor({
                 <div className="relative">
                   <select
                     value={selectedHotelFilter}
-                    onChange={(e) => setSelectedHotelFilter(e.target.value)}
+                    onChange={(e) => changeHotelFilter(e.target.value)}
                     className="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 text-xs font-medium text-stone-800 appearance-none pr-8 shadow-2xs focus:ring-2 focus:ring-stone-900 focus:outline-none cursor-pointer"
                   >
                     <option value="all">All Properties ({rooms.length} total rooms)</option>
@@ -1452,6 +1467,19 @@ export default function BulkRoomEditor({
         </div>
       </div>
       )}
+      <ConfirmDialog
+        isOpen={!!pendingPromoDelete}
+        title="Delete promotion?"
+        message={`"${pendingPromoDelete?.name ?? ''}" will be removed and guests will see full prices again. This cannot be undone.`}
+        confirmText="Delete promotion"
+        isDestructive
+        onCancel={() => setPendingPromoDelete(null)}
+        onConfirm={() => {
+          const target = pendingPromoDelete;
+          setPendingPromoDelete(null);
+          if (target) handleDeletePromotion(target.hotelId, target.promoId);
+        }}
+      />
     </div>
   );
 }

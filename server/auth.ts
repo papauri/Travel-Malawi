@@ -172,7 +172,7 @@ async function lookupRoles(uid: string, email: string | null, emailVerified: boo
     }
     if (roles.size === 0 && ALL_ROLES.includes(profile.role)) roles.add(profile.role);
     // A suspended account keeps no privileges on the server.
-    if (profile.accessRevoked === true || profile.status === 'suspended' || profile.status === 'revoked') {
+    if (profile.accessRevoked === true || ['suspended', 'revoked', 'deactivated'].includes(profile.status)) {
       roles.clear();
     }
   }
@@ -262,9 +262,10 @@ export function hotelEmails(hotel: Record<string, any> | null): string[] {
 }
 
 /**
- * True when the caller manages the hotel (managerId match, or a verified email
- * matching managerEmail/ownerEmail) or is an admin. Unassigned hotels belong
- * to nobody.
+ * True when the caller manages the hotel or is an admin/marketing. Mirrors
+ * isManager() in firestore.rules: managerId/ownerId/createdBy match, or a
+ * verified email matching managerEmail/ownerEmail/contactEmail. Unassigned
+ * hotels belong to nobody.
  */
 export async function canManageHotel(user: AuthUser | undefined, hotelId: unknown): Promise<boolean> {
   if (!user) return false;
@@ -272,9 +273,9 @@ export async function canManageHotel(user: AuthUser | undefined, hotelId: unknow
   if (!isSafeId(hotelId)) return false;
   const hotel = await readDoc('hotels', hotelId, user.token);
   if (!hotel) return false;
-  if (hotel.managerId && hotel.managerId === user.uid) return true;
+  if ([hotel.managerId, hotel.ownerId, hotel.createdBy].includes(user.uid)) return true;
   if (user.email && user.emailVerified) {
-    const owners = [hotel.managerEmail, hotel.ownerEmail]
+    const owners = [hotel.managerEmail, hotel.ownerEmail, hotel.contactEmail]
       .filter((e): e is string => typeof e === 'string')
       .map(e => e.toLowerCase());
     if (owners.includes(user.email)) return true;

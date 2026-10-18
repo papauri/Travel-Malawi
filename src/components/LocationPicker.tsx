@@ -171,18 +171,21 @@ export default function LocationPicker({
     setIsSearching(true);
     if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
 
+    // A slow answer for an earlier query must not replace the newer one.
+    let stale = false;
     searchTimeoutRef.current = setTimeout(async () => {
       try {
         const results = await searchNominatim(queryClean, 5);
-        setOnlineResults(results);
+        if (!stale) setOnlineResults(results);
       } catch (err) {
         console.error('Geocoding search failed:', err);
       } finally {
-        setIsSearching(false);
+        if (!stale) setIsSearching(false);
       }
     }, 450);
 
     return () => {
+      stale = true;
       if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
     };
   }, [searchQuery]);
@@ -225,10 +228,16 @@ export default function LocationPicker({
     toast.success(`Pin set to ${place.name} (${sourceLabel})`);
   };
 
+  const pinRequestRef = useRef(0);
   const handlePinUpdate = async (coords: LatLng, explicitName?: string, explicitNotes?: string) => {
     onChange(coords);
+    // Typing half a coordinate must not fire a lookup, and when the pin moves
+    // again before an answer arrives, only the latest answer may be applied.
+    if (!isValidLatLng(coords)) return;
+    const requestId = ++pinRequestRef.current;
     try {
       const geo = await reverseGeocodeCoordinates(coords);
+      if (requestId !== pinRequestRef.current) return;
       const chosenName = explicitName || geo.location;
       setSelectedPlaceName(chosenName);
       if (onLocationSelect) {
@@ -240,7 +249,7 @@ export default function LocationPicker({
         });
       }
     } catch {
-      if (explicitName) setSelectedPlaceName(explicitName);
+      if (requestId === pinRequestRef.current && explicitName) setSelectedPlaceName(explicitName);
     }
   };
 

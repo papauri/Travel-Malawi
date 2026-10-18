@@ -1,7 +1,7 @@
 import { db } from './firebase';
 import { collection, doc, getDocs, query, where, runTransaction, getDoc, Transaction } from 'firebase/firestore';
 import { isRoomAvailable, BookingLike } from './availability';
-import { computeBookingPricing } from './booking';
+import { computeBookingPricing, entirePlaceRoom, entirePlaceRoomId, withPropertyBlocks } from './booking';
 import { getActivePromotion } from './promotions';
 import { roomPrice } from './currency';
 import { updateBookingWithSlotTx } from './bookingWrites';
@@ -94,15 +94,18 @@ export function checkBookingPrice(booking: Booking, room: RoomType, hotel?: Hote
   const guests = booking.guests || 1;
   const quantity = booking.quantity || 1;
   const packageIds = booking.packageIds ?? [];
+  // Child rates are part of what the guest was quoted, so they are part of the check.
+  const breakdown = { adults: booking.adults, children: booking.children };
+  const childPolicy = hotel?.childPolicy;
 
   const candidates: number[] = [];
-  const noPromo = computeBookingPricing(room, booking.checkIn, booking.checkOut, guests, quantity, packageIds, currency, 0);
+  const noPromo = computeBookingPricing(room, booking.checkIn, booking.checkOut, guests, quantity, packageIds, currency, 0, breakdown, childPolicy);
   candidates.push(noPromo.total);
 
   const promotionId = booking.promotionId ?? undefined;
   const storedPromo: Promotion | undefined = promotionId ? hotel?.promotions?.find(p => p.id === promotionId) : undefined;
   if (storedPromo) {
-    candidates.push(computeBookingPricing(room, booking.checkIn, booking.checkOut, guests, quantity, packageIds, currency, storedPromo).total);
+    candidates.push(computeBookingPricing(room, booking.checkIn, booking.checkOut, guests, quantity, packageIds, currency, storedPromo, breakdown, childPolicy).total);
   } else if (promotionId) {
     // The promotion has since been deleted; accept the discount recorded at booking
     // time, capped like any promotion.
@@ -112,7 +115,7 @@ export function checkBookingPrice(booking: Booking, room: RoomType, hotel?: Hote
     const price = roomPrice(room, currency) ?? 0;
     const current = getActivePromotion(hotel, booking.checkIn, 'room', room.id, { price, currency });
     if (current) {
-      candidates.push(computeBookingPricing(room, booking.checkIn, booking.checkOut, guests, quantity, packageIds, currency, current).total);
+      candidates.push(computeBookingPricing(room, booking.checkIn, booking.checkOut, guests, quantity, packageIds, currency, current, breakdown, childPolicy).total);
     }
   }
 
@@ -146,18 +149,26 @@ export interface ConfirmOptions {
  * Error('ROOM_NOT_FOUND') or PriceMismatchError.
  */
 export async function confirmBooking(booking: Booking, options: ConfirmOptions = {}): Promise<Record<string, unknown>> {
-  let room = options.room ?? null;
-  if (!room) {
-    const snap = await getDoc(doc(db, 'room_types', booking.roomTypeId));
-    if (!snap.exists()) throw new Error('ROOM_NOT_FOUND');
-    room = { id: snap.id, ...snap.data() } as RoomType;
-  }
-
   let hotel = options.hotel ?? null;
   if (!hotel && booking.hotelId) {
     const snap = await getDoc(doc(db, 'hotels', booking.hotelId));
     if (snap.exists()) hotel = { id: snap.id, ...snap.data() } as Hotel;
   }
+
+  let room = options.room ?? null;
+  if (!room) {
+    const snap = await getDoc(doc(db, 'room_types', booking.roomTypeId));
+    if (snap.exists()) {
+      room = { id: snap.id, ...snap.data() } as RoomType;
+    } else if (hotel && booking.roomTypeId === entirePlaceRoomId(hotel.id)) {
+      // Entire-place listing sold as one synthetic unit (see entirePlaceRoom).
+      room = entirePlaceRoom(hotel);
+    } else {
+      throw new Error('ROOM_NOT_FOUND');
+    }
+  }
+  // Property-wide closures and iCal-synced blocks apply to every room.
+  room = withPropertyBlocks(room, hotel);
 
   if (!options.acceptStoredPrice) {
     const check = checkBookingPrice(booking, room, hotel);

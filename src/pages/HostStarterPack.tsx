@@ -60,7 +60,7 @@ export default function HostStarterPack() {
   };
 
   const handleDownload = () => {
-    window.location.href = '/api/admin/docs/host-onboarding-starter-pack/download?format=html';
+    window.location.href = '/api/admin/docs/host-onboarding-pack?format=html&download=1';
   };
 
   const copyTemplateText = (key: string, text: string) => {
@@ -1253,7 +1253,7 @@ ${window.location.origin}/list-your-property`;
                         required
                         value={formData.propName}
                         onChange={(e) => setFormData({ ...formData, propName: e.target.value })}
-                        placeholder="e.g. Makokola Breeze Cottage"
+                        placeholder="e.g. Example Lakeside Cottage"
                         className={inputClass}
                       />
                     </div>

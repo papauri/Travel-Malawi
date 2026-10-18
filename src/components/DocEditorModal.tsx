@@ -43,6 +43,7 @@ export default function DocEditorModal({
     const fetchDoc = async () => {
       try {
         setLoading(true);
+        setDocMeta(null);
         const res = await fetch(`/api/admin/docs/${docId}?format=md`);
         if (res.ok) {
           const data = await res.json();
@@ -87,6 +88,10 @@ export default function DocEditorModal({
   };
 
   const handleSave = async () => {
+    if (loading || !docMeta) {
+      toast.error('The document has not loaded, so it cannot be saved.');
+      return;
+    }
     if (!title.trim()) {
       toast.error('Document title is required');
       return;

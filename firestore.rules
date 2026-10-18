@@ -52,8 +52,11 @@ service cloud.firestore {
     }
 
     // Mirrors OWNER_EMAILS in src/lib/roles.ts.
+    // Requires a verified address, like OWNER_EMAILS in server/auth.ts: anyone
+    // can register an unverified email/password account with these addresses.
     function isOwner() {
       return isActive()
+        && verifiedEmail()
         && (request.auth.token.get('email', '') in ['johnpaulchirwa@gmail.com', 'johnpaulchirwa@promanaged-it.com']
             || request.auth.token.get('email', '').matches('(?i)^(johnpaulchirwa@gmail\\.com|johnpaulchirwa@promanaged-it\\.com)$'));
     }
@@ -105,7 +108,7 @@ service cloud.firestore {
           hotelData(hotelId).get('managerId', '') == request.auth.uid
           || hotelData(hotelId).get('ownerId', '') == request.auth.uid
           || hotelData(hotelId).get('createdBy', '') == request.auth.uid
-          || (signedIn() && request.auth.token.get('email', '') != '' && (
+          || (verifiedEmail() && (
                (hotelData(hotelId).get('managerEmail', '') != '' && hotelData(hotelId).get('managerEmail', '').lower() == request.auth.token.email.lower())
                || (hotelData(hotelId).get('ownerEmail', '') != '' && hotelData(hotelId).get('ownerEmail', '').lower() == request.auth.token.email.lower())
                || (hotelData(hotelId).get('contactEmail', '') != '' && hotelData(hotelId).get('contactEmail', '').lower() == request.auth.token.email.lower())
@@ -121,7 +124,7 @@ service cloud.firestore {
           getAfter(hotelPath(hotelId)).data.get('managerId', '') == request.auth.uid
           || getAfter(hotelPath(hotelId)).data.get('ownerId', '') == request.auth.uid
           || getAfter(hotelPath(hotelId)).data.get('createdBy', '') == request.auth.uid
-          || (signedIn() && request.auth.token.get('email', '') != '' && (
+          || (verifiedEmail() && (
                (getAfter(hotelPath(hotelId)).data.get('managerEmail', '') != '' && getAfter(hotelPath(hotelId)).data.get('managerEmail', '').lower() == request.auth.token.email.lower())
                || (getAfter(hotelPath(hotelId)).data.get('ownerEmail', '') != '' && getAfter(hotelPath(hotelId)).data.get('ownerEmail', '').lower() == request.auth.token.email.lower())
                || (getAfter(hotelPath(hotelId)).data.get('contactEmail', '') != '' && getAfter(hotelPath(hotelId)).data.get('contactEmail', '').lower() == request.auth.token.email.lower())
@@ -237,6 +240,12 @@ service cloud.firestore {
       allow write: if isGlobalAdmin();
     }
 
+    // Site content and listing settings are edited from the admin dashboard's
+    // Content, Destinations and Properties tabs, which admins and marketing see.
+    match /system/{docId} {
+      allow write: if docId in ['content', 'settings'] && (isAdmin() || isMarketing());
+    }
+
     match /documents/{docId} {
       allow read: if true;
       allow write: if isAdmin() || isMarketing();
@@ -322,11 +331,15 @@ service cloud.firestore {
     }
 
     // Optimistic-lock counter used by the confirmation transaction. Only the
-    // room's manager or an admin may touch it.
+    // room's manager or an admin may touch it. Entire-place listings lock the
+    // synthetic id `entire-<hotelId>` (no room_types doc).
     match /room_locks/{roomId} {
       allow read, write: if isAdmin() || (
         exists(/databases/$(database)/documents/room_types/$(roomId))
         && isManager(get(/databases/$(database)/documents/room_types/$(roomId)).data.get('hotelId', ''))
+      ) || (
+        roomId.matches('entire-.+')
+        && isManager(roomId.replace('^entire-', ''))
       );
     }
 
@@ -334,7 +347,8 @@ service cloud.firestore {
       allow read: if true;
       allow create: if isActive()
                     && request.resource.data.managerId == request.auth.uid
-                    && request.resource.data.status == 'pending';
+                    && request.resource.data.status == 'pending'
+                    && request.resource.data.get('featured', false) == false;
       // Admins and marketing approve, feature, or assign a manager.
       // `get(field, default)` because older listings lack some fields.
       allow update: if isAdmin()
@@ -533,13 +547,35 @@ service cloud.firestore {
     match /conference_rooms/{roomId} {
       allow read: if true;
       allow create: if isManager(request.resource.data.hotelId) || isAdmin() || isMarketing();
-      allow update, delete: if isManager(resource.data.hotelId) || isAdmin() || isMarketing();
+      // A manager can never move a room onto another property.
+      allow update: if (isManager(resource.data.hotelId) && request.resource.data.hotelId == resource.data.hotelId)
+                    || isAdmin() || isMarketing();
+      allow delete: if isManager(resource.data.hotelId) || isAdmin() || isMarketing();
     }
 
     match /broadcasts/{broadcastId} {
       allow read: if signedIn();
       allow create: if isManager(request.resource.data.hotelId) || isAdmin() || isMarketing();
-      allow update, delete: if isManager(resource.data.hotelId) || isAdmin() || isMarketing();
+      allow update: if (isManager(resource.data.hotelId) && request.resource.data.hotelId == resource.data.hotelId)
+                    || isAdmin() || isMarketing();
+      allow delete: if isManager(resource.data.hotelId) || isAdmin() || isMarketing();
+    }
+
+    // Host Starter Pack sign-up form (src/pages/HostStarterPack.tsx). Public,
+    // write-only, in the form's shape.
+    match /host_onboarding_submissions/{submissionId} {
+      allow read, update, delete: if isAdmin() || isMarketing();
+      allow create: if request.resource.data.keys().hasOnly(
+                         ['propName', 'propLoc', 'stayType', 'contactName', 'contactPhone', 'nightlyMwk',
+                          'nightlyUsd', 'roomCount', 'notes', 'createdAt', 'source', 'status'])
+                    && request.resource.data.propName is string
+                    && request.resource.data.propName.size() > 0
+                    && request.resource.data.propName.size() <= 200
+                    && request.resource.data.contactPhone is string
+                    && request.resource.data.contactPhone.size() <= 40
+                    && request.resource.data.get('notes', '') is string
+                    && request.resource.data.get('notes', '').size() <= 5000
+                    && request.resource.data.status == 'pending_review';
     }
 
     // Client activity log (src/lib/logger.ts). Anyone may append, but only in
@@ -585,8 +621,10 @@ service cloud.firestore {
                     && bookingDoc(request.resource.data.bookingId).hotelId == request.resource.data.hotelId
                     && bookingDoc(request.resource.data.bookingId).status == 'confirmed';
 
+      // The author edits their review; admins and marketing moderate it
+      // (AdminReviewScraper). Who, where and which booking never change.
       allow update: if isActive()
-                    && resource.data.guestId == request.auth.uid
+                    && (resource.data.guestId == request.auth.uid || isAdmin() || isMarketing())
                     && unchanged('guestId')
                     && unchanged('hotelId')
                     && unchanged('bookingId')

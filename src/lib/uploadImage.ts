@@ -5,6 +5,8 @@ export const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'i
 export const IMAGE_ACCEPT_ATTR = ACCEPTED_IMAGE_TYPES.join(',');
 export const MAX_RAW_INPUT_BYTES = 40 * 1024 * 1024; // Allow up to 40MB raw uploads from modern cameras & phones
 export const MAX_IMAGE_BYTES = MAX_RAW_INPUT_BYTES;
+/** What /api/upload accepts after compression (multer `fileSize` in server.ts). */
+export const MAX_UPLOAD_BYTES = 16 * 1024 * 1024;
 
 export function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -165,6 +167,13 @@ export async function uploadImage(
 
   // Automatically compress the image before uploading to recommended web size (< 800KB)
   const fileToUpload = await compressImageToRecommended(file);
+  // GIFs are never compressed, and a photo the browser cannot decode stays at
+  // full size; the server would refuse either with a bare status code.
+  if (fileToUpload.size > MAX_UPLOAD_BYTES) {
+    throw new ImageUploadError(
+      `That image is still ${formatBytes(fileToUpload.size)} after compression. The upload limit is ${formatBytes(MAX_UPLOAD_BYTES)}.`
+    );
+  }
 
   const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
   const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;

@@ -334,28 +334,11 @@ function liveDataAnswer(req: OperationsAssistantRequest): string | null {
     });
     return diningBlocks.length ? diningBlocks.join('\n\n') : 'No dining information recorded for this stay yet.';
   }
-  if (/\b(permission|permissions|what can you (help|do)|what can i (do|change)|my role|access level|capabilities|scope|privileges)\b/.test(lower)) {
-    return [
-      `**Ulendo Concierge Scope & Role Access (${isAdmin ? 'Global Administrator' : 'Property Manager'})**`,
-      `\n**What Ulendo Can Help With:**`,
-      `• **Live Property Ops**: Room rates (USD & MWK), inventory, blocked dates, amenities, check-in/out policies, Wi-Fi & utilities, front desk status.`,
-      `• **Menus & Dining**: Restaurant menu sections, dishes, ingredients, dietary tags (v, vg, gf, sf, s), dish pricing, and Daily Board specials.`,
-      `• **Guest Logistics**: Today's arrivals and departures, in-house guests, airport transfers (LLW/BLZ), 4x4 hire with driver, boat transfers on Lake Malawi, local safari & mountain guides.`,
-      `• **Safe Action Proposals**: Prepares clear proposal cards for rate changes, promotions, amenities, menu dishes, and daily board updates (applied only when you click **Confirm & Apply**).`,
-      `• **Authentic Malawian Grounding**: Lake Malawi destinations, national parks (Liwonde, Majete, Nyika), Mount Mulanje, road navigation, and local cuisine.`,
-      `\n**Your Role Permissions (${isAdmin ? 'Global Administrator' : 'Property Manager'}):**`,
-      isAdmin
-        ? `• **Global Platform Scope**: Full access across all properties in Malawi. You can approve/reject listings, feature lodges on the homepage, manage platform users, and modify any stay.`
-        : `• **Host Scope**: Scoped strictly to your own assigned properties (${properties.map(p => p.name).join(', ') || 'your portfolio'}). You can adjust rates, rooms, menus, policies, and view your bookings. You cannot alter platform-wide listings, approve other hosts' stays, or access other users' accounts.`,
-      `\n**Firmly Out of Scope:**`,
-      `• Raw software/code execution, vehicle trading/purchases, crypto/forex, medical, legal, politics, trivia, or making database edits without your explicit review.`
-    ].join('\n');
-  }
   if (/\b(check-?in time|check-?out time|cancellation policy|payment policy|policies|house rules)\b/.test(lower)) {
     const policyBlocks = properties.slice(0, 5).map(p => [
       `**${p.name} Policies**`,
-      `• Check-in: ${p.checkInTime || '14:00'} · Check-out: ${p.checkOutTime || '10:00'}`,
-      `• Cancellation: ${p.cancellationPolicy || 'Standard lodge policy'}`,
+      `• Check-in: ${p.checkInTime || 'not set'} · Check-out: ${p.checkOutTime || 'not set'}`,
+      `• Cancellation: ${p.cancellationPolicy || 'not set'}`,
       p.paymentPolicy ? `• Payment: ${p.paymentPolicy}` : '',
     ].filter(Boolean).join('\n'));
     return policyBlocks.length ? policyBlocks.join('\n\n') : null;
@@ -363,24 +346,12 @@ function liveDataAnswer(req: OperationsAssistantRequest): string | null {
   if (/\b(amenities|amenity|facilities|features)\b/.test(lower) && mentionedIds.size) {
     return properties.slice(0, 5).map(p => `**${p.name} Amenities**\n• ${(p.amenities || []).join(', ') || 'No amenities listed yet'}`).join('\n\n');
   }
-  if (/\b(onboard|list property|list my property|how to list|create listing|add new lodge|register lodge)\b/.test(lower)) {
-    return `**Effortless Host Onboarding**\nListing takes ~3 minutes with 0% host commission, direct WhatsApp guest messaging, and instant browser auto-save.\n• [Start Listing Your Property](/list-your-property)\n• [Host Starter Pack & Field Guide](/host-guide)\n• [How Hosting Works](/how-hosting-works)`;
-  }
-  if (/\b(marketing|starter pack|field guide|field onboarding|pitch deck|prospect)\b/.test(lower)) {
-    return `**Marketing & Host Acquisition**\nEmpower your field acquisition with these live tools:\n• [Host Starter Pack & Field Guide](/host-guide) (0% commission, 4 winning photo angles, WhatsApp templates)\n• [Marketing Presentation & Deck](/marketing)\n• [Pending Properties Review Queue](/admin?tab=properties)`;
-  }
-  if (/\b(reviews?|ratings?|stars?|feedback|sentiment|scrape)\b/.test(lower) && mentionedIds.size) {
+  if (/\b(reviews?|ratings?|stars?|feedback)\b/.test(lower) && mentionedIds.size) {
     return properties.slice(0, 5).map(p => {
-      const revs = (p as any).reviews || [];
       const summary = (p as any).reviewsSummary;
-      const count = summary?.count || revs.length || 0;
+      const count = summary?.count || ((p as any).reviews || []).length || 0;
       const avg = summary?.averageRating || 0;
-      return [
-        `**${p.name} — Review & Reputation Intelligence**`,
-        `• Direct Verified Reviews: ${count} recorded (${avg > 0 ? `${avg.toFixed(1)}★ average` : 'no rating yet'}).`,
-        `• Direct Verified Review Flow: Confirmed guests can submit authentic reviews directly from their booking or the stay listing.`,
-        `• Online Scraper: Swarm agent scans Google Maps, TripAdvisor, and Booking.com for genuine traveler quotes using lean batches (3-5 reviews).`
-      ].join('\n');
+      return `**${p.name}**\n• Reviews: ${count} recorded (${avg > 0 ? `${avg.toFixed(1)}★ average` : 'no rating yet'})`;
     }).join('\n\n');
   }
   return null;

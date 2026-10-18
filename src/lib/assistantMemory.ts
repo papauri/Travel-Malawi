@@ -41,11 +41,12 @@ export function getLearnedDirectives(userId: string = 'global'): LearnedDirectiv
     const raw = localStorage.getItem(`${STORAGE_PREFIX}${userId}`);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
+      // An empty list is the user's choice (they removed every directive): never re-seed it.
+      if (Array.isArray(parsed)) {
         return parsed;
       }
     }
-    // Seed defaults if empty
+    // Seed defaults only the first time
     const seeded: LearnedDirective[] = DEFAULT_DIRECTIVES.map((d, index) => ({
       id: `seed_${index + 1}`,
       text: d.text,

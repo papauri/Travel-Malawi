@@ -88,7 +88,7 @@ export default function ImageUpload({
     if (candidateUrl && (candidateUrl.startsWith("http://") || candidateUrl.startsWith("https://") || candidateUrl.startsWith("/") || candidateUrl.startsWith("data:"))) {
       onChange(candidateUrl);
       setIsChanging(false);
-      toast.success("Set as Room Cover photo.");
+      toast.success("Set as cover photo.");
       return;
     }
 

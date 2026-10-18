@@ -1,0 +1,3 @@
+- [H-onboarding-3] P2 → settings | src/pages/AdminDashboard.tsx:397 handleUpdateStatus | approve/reject/suspend only writes `status`; host gets no email or notification on the transition → notify the hotel's manager/owner once per actual status change (skip when status unchanged) | contract: none
+- [H-platform-c2] P1 → settings | server.ts:~1791-1815 /api/admin/scrape-reviews | tsc errors in this route body → fix types | contract: none
+- [H-orch-D1] P1 → settings | scripts/test-scraped-reviews.ts and any admin/docs content (server/docUtils.ts, server/docs) naming non-onboarded properties | apply directive agents/directives/D1-no-hardcoded-properties.md to these files | contract: none

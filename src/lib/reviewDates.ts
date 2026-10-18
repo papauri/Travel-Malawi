@@ -32,17 +32,19 @@ export function parseReviewDateToTimestamp(
   if (lower === 'yesterday') {
     return Date.now() - 86400000;
   }
-  const relativeDays = lower.match(/^(\d+)\s+days?\s+ago$/);
-  if (relativeDays) {
-    return Date.now() - parseInt(relativeDays[1], 10) * 86400000;
-  }
-  const relativeWeeks = lower.match(/^(\d+)\s+weeks?\s+ago$/);
-  if (relativeWeeks) {
-    return Date.now() - parseInt(relativeWeeks[1], 10) * 7 * 86400000;
-  }
-  const relativeMonths = lower.match(/^(\d+)\s+months?\s+ago$/);
-  if (relativeMonths) {
-    return Date.now() - parseInt(relativeMonths[1], 10) * 30 * 86400000;
+  // "3 days ago", "a month ago", "an hour ago", "2 years ago" (Google / TripAdvisor phrasing)
+  const relative = lower.match(/^(\d+|a|an)\s+(minute|hour|day|week|month|year)s?\s+ago$/);
+  if (relative) {
+    const amount = /^\d+$/.test(relative[1]) ? parseInt(relative[1], 10) : 1;
+    const unitMs: Record<string, number> = {
+      minute: 60000,
+      hour: 3600000,
+      day: 86400000,
+      week: 7 * 86400000,
+      month: 30 * 86400000,
+      year: 365 * 86400000,
+    };
+    return Date.now() - amount * unitMs[relative[2]];
   }
 
   // European / Commonwealth DD/MM/YYYY or DD-MM-YYYY
@@ -51,8 +53,15 @@ export function parseReviewDateToTimestamp(
     const day = parseInt(dmyMatch[1], 10);
     const month = parseInt(dmyMatch[2], 10) - 1;
     const year = parseInt(dmyMatch[3], 10);
-    const parsed = new Date(year, month, day).getTime();
-    if (!isNaN(parsed)) return parsed;
+    const candidate = new Date(year, month, day);
+    // Reject impossible dates (US-style 12/25/2024 would otherwise roll into 2026); Date.parse handles those.
+    if (
+      candidate.getFullYear() === year &&
+      candidate.getMonth() === month &&
+      candidate.getDate() === day
+    ) {
+      return candidate.getTime();
+    }
   }
 
   // Standard JS Date parser handles "October 2024", "2024-11-15", "Jan 5, 2025", etc.
@@ -125,7 +134,7 @@ export function isBrokenOrFakeReviewUrl(url?: string | null): boolean {
         return true;
       }
     }
-    // Fake CID like cid=soulrebellodge or fake dummy CID numbers
+    // Fake CID (not a 15-22 digit number) or a known dummy CID number
     if (host.includes('google.') && search.includes('cid=')) {
       const cidMatch = search.match(/cid=([^&]+)/);
       if (cidMatch && (!/^\d{15,22}$/.test(cidMatch[1]) || cidMatch[1] === '1293847561029384756')) {
@@ -141,26 +150,16 @@ export function isBrokenOrFakeReviewUrl(url?: string | null): boolean {
       if (path.includes('/showuserreviews-') && (path.includes('987123456') || !/-g\d+-d\d+-r\d+/i.test(path))) {
         return true;
       }
-      if (path.includes('/review-') || (path.includes('rosalyns-beach') && !search.includes('q='))) {
+      if (path.includes('/review-')) {
         return true;
       }
     }
 
-    // 4. Booking.com fake paths (hallucinated slugs without real listing)
-    if (host.includes('booking.')) {
-      if (path.includes('/hotel/mw/') && !search.includes('tab=reviews')) {
-        if (path.includes('rosalyns-beach') || path.includes('soul-rebel') || path.includes('esthers-guest')) {
-          return true;
-        }
-      }
-    }
-
-    // 5. Facebook fake permalinks
+    // 4. Facebook: group posts/permalinks cannot be verified (and private groups need a login), plus a known dummy post id
     if (host.includes('facebook.')) {
       if (
         path.includes('/permalink/9182736450123') ||
-        path.includes('/groups/malawitravel/rosalyns-beach') ||
-        path.includes('/groups/malawitravel/permalink/rosalynsbeach')
+        /\/groups\/[^/]+\/(permalink|posts)\//.test(path)
       ) {
         return true;
       }

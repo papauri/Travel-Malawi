@@ -80,6 +80,10 @@ export default function WalkthroughTooltip({
   const [progressWidth, setProgressWidth] = useState(100);
   const dismissedRef = useRef(false);
   const tooltipRef = useRef<HTMLElement>(null);
+  // Read through a ref: an inline callback from the parent would otherwise restart
+  // the effect on every render, and a restart sees the tip as "already seen" and hides it.
+  const onDismissRef = useRef(onDismiss);
+  onDismissRef.current = onDismiss;
 
   const handleDismiss = () => {
     if (dismissedRef.current) return;
@@ -90,7 +94,7 @@ export default function WalkthroughTooltip({
     markWalkthroughSeen(id);
     markWalkthroughSeen(); // Also mark global key
     setPhase('gone');
-    onDismiss?.();
+    onDismissRef.current?.();
   };
 
   useEffect(() => {
@@ -137,7 +141,7 @@ export default function WalkthroughTooltip({
         activeWalkthroughId = null;
       }
       setPhase('gone');
-      onDismiss?.();
+      onDismissRef.current?.();
     }, delayMs + visibleMs + fadeMs);
 
     // Auto-dismiss on outside interaction or page scroll
@@ -164,7 +168,7 @@ export default function WalkthroughTooltip({
         activeWalkthroughId = null;
       }
     };
-  }, [id, delayMs, visibleMs, fadeMs, onDismiss]);
+  }, [id, delayMs, visibleMs, fadeMs]);
 
   if (phase === 'init' || phase === 'gone') {
     return null;

@@ -85,21 +85,21 @@ function classifyStopRegion(hotel: Hotel): {
 } {
   const text = `${hotel.name || ''} ${hotel.location || ''}`.toLowerCase();
 
-  if (text.includes('likoma') || text.includes('kaya mawa')) {
+  if (text.includes('likoma') || text.includes('chizumulu')) {
     return {
       category: 'lake',
       regionLabel: 'Likoma Island, Lake Malawi',
       coords: isValidLatLng(hotel.coordinates) ? hotel.coordinates : { lat: -12.0622, lng: 34.7351 },
     };
   }
-  if (text.includes('nkhata') || text.includes('chintheche') || text.includes('kande') || text.includes('mayoka')) {
+  if (text.includes('nkhata') || text.includes('chintheche') || text.includes('kande')) {
     return {
       category: 'lake',
       regionLabel: 'Northern Lakeshore (Nkhata Bay)',
       coords: isValidLatLng(hotel.coordinates) ? hotel.coordinates : { lat: -11.6067, lng: 34.2908 },
     };
   }
-  if (text.includes('salima') || text.includes('senga') || text.includes('blue zebra') || text.includes('nankoma')) {
+  if (text.includes('salima') || text.includes('senga')) {
     return {
       category: 'lake',
       regionLabel: 'Central Lake Malawi (Senga Bay)',
@@ -110,9 +110,6 @@ function classifyStopRegion(hotel: Hotel): {
     text.includes('cape maclear') ||
     text.includes('mangochi') ||
     text.includes('monkey bay') ||
-    text.includes('makokola') ||
-    text.includes('nkopola') ||
-    text.includes('pumulani') ||
     text.includes('lake')
   ) {
     return {
@@ -121,21 +118,21 @@ function classifyStopRegion(hotel: Hotel): {
       coords: isValidLatLng(hotel.coordinates) ? hotel.coordinates : { lat: -14.0267, lng: 34.8519 },
     };
   }
-  if (text.includes('nyika') || text.includes('chelinda') || text.includes('vwaza')) {
+  if (text.includes('nyika') || text.includes('vwaza')) {
     return {
       category: 'safari',
       regionLabel: 'Nyika National Park Plateau',
       coords: isValidLatLng(hotel.coordinates) ? hotel.coordinates : { lat: -10.5847, lng: 33.8053 },
     };
   }
-  if (text.includes('majete') || text.includes('mkulumadzi') || text.includes('thawale') || text.includes('lengwe')) {
+  if (text.includes('majete') || text.includes('lengwe') || text.includes('chikwawa')) {
     return {
       category: 'safari',
       regionLabel: 'Majete Wildlife Reserve (Lower Shire)',
       coords: isValidLatLng(hotel.coordinates) ? hotel.coordinates : { lat: -15.9167, lng: 34.75 },
     };
   }
-  if (text.includes('nkhotakota') || text.includes('tongole') || text.includes('kasungu')) {
+  if (text.includes('nkhotakota') || text.includes('kasungu')) {
     return {
       category: 'safari',
       regionLabel: 'Nkhotakota Wildlife Sanctuary',
@@ -144,8 +141,6 @@ function classifyStopRegion(hotel: Hotel): {
   }
   if (
     text.includes('liwonde') ||
-    text.includes('mvuu') ||
-    text.includes('kuthengo') ||
     text.includes('safari') ||
     text.includes('game')
   ) {
@@ -175,7 +170,7 @@ function classifyStopRegion(hotel: Hotel): {
         : { lat: -15.3642, lng: 35.3048 },
     };
   }
-  if (text.includes('blantyre') || text.includes('thyolo') || text.includes('limbe') || text.includes('satemwa')) {
+  if (text.includes('blantyre') || text.includes('thyolo') || text.includes('limbe')) {
     return {
       category: 'south',
       regionLabel: 'Southern Hub (Blantyre & Thyolo Tea Estates)',
@@ -194,7 +189,7 @@ function getHighwayCorridorAdvice(fromStop: Hotel, toStop: Hotel, crossesLake: b
   const toMeta = classifyStopRegion(toStop);
   const combined = `${fromStop.location || ''} ${toStop.location || ''} ${fromStop.name} ${toStop.name}`.toLowerCase();
 
-  if (combined.includes('likoma') || combined.includes('kaya mawa')) {
+  if (combined.includes('likoma') || combined.includes('chizumulu')) {
     return 'Connect via Nkhata Bay jetty on the M5 lakeshore highway or scheduled domestic hop from Lilongwe (LLW) to Likoma airstrip.';
   }
   if (crossesLake) {
@@ -551,10 +546,9 @@ export default function TripAIInsights({ hotels, nightsByHotel, onOpenListing }:
         }
       }
       toast.success('Route blueprint updated with your custom notes');
-    } catch {
-      // Fall back gracefully to local deterministic engine without noisy error banners
-      setInsights(buildLocalTripInsights(hotels, selectedStyle, nightsByHotel));
-      toast.success('Route blueprint refreshed');
+    } catch (err: any) {
+      // Keep the current blueprint and say honestly that the refresh failed.
+      toast.error(err?.message || 'Ulendo could not refresh the route blueprint. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -603,13 +597,14 @@ export default function TripAIInsights({ hotels, nightsByHotel, onOpenListing }:
         ...prev,
         { role: 'assistant', text: data.answer, time: replyTime },
       ]);
-    } catch {
+    } catch (err: any) {
+      // An honest notice, never a scripted answer.
       const replyTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       setChatMessages(prev => [
         ...prev,
         {
           role: 'assistant',
-          text: 'Along your itinerary, daytime driving on the main highways (M1, M3, M5) is paved and scenic. Keep Malawian Kwacha cash handy for highway toll plazas and lakeside fish stalls.',
+          text: err?.message || "Ulendo couldn't answer right now. Please try again.",
           time: replyTime,
         },
       ]);
@@ -821,6 +816,11 @@ Plan and book direct with 0% fees on Travel Malawi: https://travel-malawi.ai.stu
             <p className="text-stone-700 text-sm sm:text-base leading-relaxed">
               {insights.summary}
             </p>
+            {insights.aiNotice && (
+              <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+                {insights.aiNotice}
+              </p>
+            )}
           </div>
 
           {/* Day-by-Day Journey Breakdown */}

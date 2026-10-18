@@ -14,7 +14,7 @@ import { collection, doc, getDocs, query, where, limit, writeBatch, setDoc, upda
  */
 
 import { db, auth } from './firebase';
-import { Hotel, PropertyStayType, EntirePlaceDetails } from '../types';
+import { Hotel, PropertyStayType, EntirePlaceDetails, CurrencyCode } from '../types';
 import { defaultWeek } from './hours';
 import { normalizeImageUrl } from './images';
 import { emailProblem, phoneProblem } from './contact';
@@ -151,8 +151,8 @@ export function emptyDraft(): ListingDraft {
       bathrooms: 2,
       beds: 3,
       maxGuests: 6,
-      ratePerNightUsd: 120,
-      ratePerNightMwk: 210000,
+      ratePerNightUsd: 0,
+      ratePerNightMwk: 0,
       hasPrivateKitchen: true,
       hasDedicatedHost: true,
     },
@@ -422,7 +422,7 @@ export async function findExistingProperty(name: string, excludeId?: string): Pr
         };
       }
 
-      // Check if one contains the other (e.g. "Kaya Mawa" in "Kaya Mawa Lodge")
+      // Check if one contains the other (e.g. "Example Lakeside" in "Example Lakeside Lodge")
       if (queryText.length >= 5 && (hName.includes(queryText) || queryText.includes(hName))) {
         closestMatch = {
           id: doc.id,
@@ -476,6 +476,8 @@ export function draftToHotel(draft: ListingDraft, managerId: string): Omit<Hotel
     amenities,
     // Was hard-coded to `[]`, which kept the listing out of every category filter.
     categories: draft.category ? [draft.category] : [],
+    // Legacy single field, still read for SEO titles and default images.
+    category: draft.category || undefined,
     stayType: draft.stayType || 'rooms',
     entirePlaceDetails: draft.stayType === 'entire_place' ? draft.entirePlaceDetails : undefined,
     checkInTime: draft.checkInTime,
@@ -538,23 +540,22 @@ export async function createListing(draft: ListingDraft, managerId: string): Pro
   let roomsToWrite = draft.rooms || [];
   if (draft.stayType === 'entire_place' && roomsToWrite.length === 0) {
     const ep = draft.entirePlaceDetails || {};
-    const primaryRateUsd = Number(ep.ratePerNightUsd || 120);
-    const primaryRateMwk = Number(ep.ratePerNightMwk || 210000);
+    // Only the rates the host actually entered are sold; a missing one used to
+    // be filled with an invented $120 / MK 210,000.
+    const rateUsd = Number(ep.ratePerNightUsd) || 0;
+    const rateMwk = Number(ep.ratePerNightMwk) || 0;
+    const currencies = ([['USD', rateUsd], ['MWK', rateMwk]] as const)
+      .filter(([, rate]) => rate > 0)
+      .map(([code]) => code) as CurrencyCode[];
     roomsToWrite = [
       {
         name: ep.propertyType ? `Entire ${ep.propertyType}` : 'Entire Property',
         description: ep.wholeHouseDescription || `${draft.name} is rented exclusively as an entire private space. Includes all ${ep.bedrooms || 2} bedrooms, private grounds, and amenities.`,
         maxGuests: Number(ep.maxGuests || 6),
         quantity: 1,
-        currencies: ['USD', 'MWK'],
-        prices: {
-          USD: primaryRateUsd,
-          MWK: primaryRateMwk,
-        },
-        extraGuestFees: {
-          USD: 0,
-          MWK: 0,
-        },
+        currencies,
+        prices: Object.fromEntries(currencies.map(code => [code, code === 'USD' ? rateUsd : rateMwk])),
+        extraGuestFees: Object.fromEntries(currencies.map(code => [code, 0])),
         amenities: draft.amenities || [],
         galleryUrls: draft.galleryUrls || [],
         imageUrl: draft.imageUrl || '',

@@ -276,7 +276,13 @@ export default function MenuImporter({ open, onClose, onImport, currencies }: Me
             id: item.id || `imported-item-${Date.now()}-${sIdx}-${iIdx}`,
             name: item.name || 'Unnamed item',
             description: item.description || '',
-            prices: item.prices || {},
+            // The scanner can return prices as strings ("14,000") or zero;
+            // keep only real positive numbers so menu math stays numeric.
+            prices: Object.fromEntries(
+              Object.entries(item.prices || {})
+                .map(([cur, v]) => [cur, Number(String(v).replace(/,/g, ''))] as const)
+                .filter(([, v]) => Number.isFinite(v) && v > 0)
+            ) as PriceMap,
             tags: item.tags || [],
           })),
         }));
@@ -763,12 +769,12 @@ Fresh Malawi Mango Smoothie - MWK 4,500`}
                               <div className="flex items-center gap-3 shrink-0">
                                 {item.prices && Object.keys(item.prices).length > 0 ? (
                                   <div className="text-right">
-                                    {item.prices.MWK && (
+                                    {!!item.prices.MWK && (
                                       <p className="text-xs font-bold text-emerald-800">
                                         MK {Number(item.prices.MWK).toLocaleString()}
                                       </p>
                                     )}
-                                    {item.prices.USD && (
+                                    {!!item.prices.USD && (
                                       <p className="text-xs font-medium text-stone-600">
                                         ${Number(item.prices.USD).toLocaleString()}
                                       </p>

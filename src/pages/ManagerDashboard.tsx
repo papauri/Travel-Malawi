@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { collection, query, where, getDocs, doc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { Booking, RoomType } from '../types';
-import { db } from '../lib/firebase';
+import { db, auth } from '../lib/firebase';
 import { Hotel } from '../types';
 import { 
   Building2, Plus, ChevronRight, Clock, CheckCircle2, XCircle, 
@@ -179,7 +179,11 @@ export default function ManagerDashboard() {
         ...doc.data()
       })) as Hotel[];
 
-      const userEmailLower = user?.email?.toLowerCase();
+      // firestore.rules only honours an email match for a verified address;
+      // listing an unverified match would show a property whose saves all fail.
+      const emailTrusted = isShadowing || auth.currentUser?.emailVerified === true;
+      const rawEmailLower = user?.email?.toLowerCase();
+      const userEmailLower = emailTrusted ? rawEmailLower : undefined;
       const userIsAdmin = !isShadowing && Boolean(user && (isAdmin(user) || isMarketing(user)));
       const shadowedHotelIds: string[] = Array.isArray((user as any)?.managedHotelIds)
         ? (user as any).managedHotelIds
@@ -206,6 +210,12 @@ export default function ManagerDashboard() {
         // Unassigned properties are managed by admins only.
         return false;
       });
+
+      if (!emailTrusted && rawEmailLower && allHotels.some(h =>
+        !hotelsData.includes(h) && [h.managerEmail, h.ownerEmail, h.contactEmail].some(e => e?.toLowerCase() === rawEmailLower)
+      )) {
+        toast(`Verify ${user?.email} to manage the properties listed under it: open the link we emailed you, then sign in again.`, { duration: 8000, id: 'verify-host-email' });
+      }
 
       setHotels(hotelsData);
       if (hotelsData.length > 0 && user && !isShadowing && !isHotelManager(user) && !isAdmin(user) && !isMarketing(user)) {
@@ -274,7 +284,7 @@ export default function ManagerDashboard() {
       const hotelBookings = bookings.filter(b => b.hotelId === hotel.id);
       map.set(hotel.id, {
         rooms: hotelRooms.length,
-        units: hotelRooms.reduce((sum, r) => sum + (Number(r.quantity) || 1), 0),
+        units: hotelRooms.reduce((sum, r) => sum + (Number(r.quantity) || 0), 0),
         pending: hotelBookings.filter(b => b.status === 'pending').length,
         confirmed: hotelBookings.filter(b => b.status === 'confirmed').length,
       });
@@ -291,7 +301,7 @@ export default function ManagerDashboard() {
   const revenueUSD = confirmedBookingsList
     .filter(b => b.currency === 'USD')
     .reduce((sum, b) => sum + (Number(b.total) || 0), 0);
-  const totalRoomUnits = rooms.reduce((sum, r) => sum + (Number(r.quantity) || 1), 0);
+  const totalRoomUnits = rooms.reduce((sum, r) => sum + (Number(r.quantity) || 0), 0);
   const syncedPropertiesCount = hotels.filter(
     h => (h.icalSyncUrls?.length || 0) > 0 || rooms.some(r => r.hotelId === h.id && (r.icalSyncUrls?.length || 0) > 0)
   ).length;

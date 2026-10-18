@@ -31,8 +31,7 @@ import {
 import {
   parsePropertyText,
   ParsedPropertyResult,
-  convertUsdToMwk,
-  convertMwkToUsd,
+  roomPriceFields,
 } from '../lib/localPropertyParser';
 import { RoomInput } from '../lib/validateRoom';
 import { auth } from '../lib/firebase';
@@ -197,8 +196,6 @@ export default function PropertyDocumentImporter({
     const normalizedRooms: RoomInput[] = rawRooms.map((r: any) => {
       const rawUsd = Number(r.prices?.USD ?? r.priceUSD ?? r.price ?? 0) || 0;
       const rawMwk = Number(r.prices?.MWK ?? r.priceMWK ?? 0) || 0;
-      const usd = rawUsd > 0 ? rawUsd : rawMwk > 0 ? convertMwkToUsd(rawMwk) : 0;
-      const mwk = rawMwk > 0 ? rawMwk : rawUsd > 0 ? convertUsdToMwk(rawUsd) : 0;
       const maxGuests = Math.max(1, Number(r.maxGuests) || 2);
       const quantity = Math.max(1, Number(r.quantity) || 1);
 
@@ -208,11 +205,8 @@ export default function PropertyDocumentImporter({
         maxGuests,
         baseGuests: Math.min(2, maxGuests),
         quantity,
-        currencies: ['USD', 'MWK'],
-        prices: {
-          USD: usd,
-          MWK: mwk,
-        },
+        // Only the currencies the document priced — never converted (owner decision).
+        ...roomPriceFields(Math.round(rawUsd), Math.round(rawMwk)),
       };
     });
 
@@ -270,6 +264,10 @@ export default function PropertyDocumentImporter({
         const rawText = activeTab === 'text' ? pastedText.trim() : await file!.text();
         const localParsed = parsePropertyText(rawText);
         const normalized = normalizeAndMergeParsed(localParsed);
+        if (!normalized.name && !normalized.location && !normalized.description && !(normalized.rooms?.length)) {
+          setError('No property details were found in that text. Include the property name, location or room rates and try again.');
+          return;
+        }
         setDraftData(normalized);
         setStep(2);
         return;
@@ -361,19 +359,11 @@ export default function PropertyDocumentImporter({
       if (!prev) return prev;
       const currentRooms = [...(prev.rooms || [])];
       const existing = currentRooms[index] || {};
-      const prevPrices = existing.prices || { USD: 0, MWK: 0 };
-      const nextPrices = { ...prevPrices, [currency]: num };
-
-      if (currency === 'USD' && num > 0 && !prevPrices.MWK) {
-        nextPrices.MWK = convertUsdToMwk(num);
-      } else if (currency === 'MWK' && num > 0 && !prevPrices.USD) {
-        nextPrices.USD = convertMwkToUsd(num);
-      }
-
+      const nextPrices = { ...(existing.prices || {}), [currency]: num };
+      // Each currency is typed by the host; the other one is never derived.
       currentRooms[index] = {
         ...existing,
-        currencies: ['USD', 'MWK'],
-        prices: nextPrices,
+        ...roomPriceFields(nextPrices.USD || 0, nextPrices.MWK || 0),
       };
       return { ...prev, rooms: currentRooms };
     });
@@ -391,7 +381,7 @@ export default function PropertyDocumentImporter({
           baseGuests: 2,
           quantity: 1,
           currencies: ['USD', 'MWK'],
-          prices: { USD: 0, MWK: 0 },
+          prices: {},
         },
       ];
       return { ...prev, rooms: nextRooms };
@@ -457,16 +447,17 @@ export default function PropertyDocumentImporter({
           maxGuests,
           baseGuests: Math.min(2, maxGuests),
           quantity: Math.max(1, Number(r.quantity) || 1),
-          currencies: ['USD', 'MWK'] as ('USD' | 'MWK')[],
-          prices: {
-            USD: usd,
-            MWK: mwk,
-          },
+          ...roomPriceFields(usd, mwk),
         };
       });
 
     if (validRooms.length > 0) {
       cleanPayload.rooms = validRooms;
+    }
+
+    const droppedRooms = (draftData.rooms || []).length - validRooms.length;
+    if (droppedRooms > 0) {
+      toast(`${droppedRooms} room${droppedRooms === 1 ? '' : 's'} without a name ${droppedRooms === 1 ? 'was' : 'were'} not imported.`);
     }
 
     onImport(cleanPayload);
@@ -623,9 +614,9 @@ export default function PropertyDocumentImporter({
                       setError(null);
                     }}
                     placeholder={`Example:
-Property Name: Cape Maclear Lakeside Lodge
+Property Name: Example Lakeside Lodge
 Location: Cape Maclear, Mangochi
-Owner: Chisomo Banda (+265 999 123 456, chisomo@lakelodge.mw)
+Owner: Chisomo Banda (+265 999 123 456, chisomo@example.com)
 WhatsApp: +265 888 654 321
 Check-in: 14:00 | Check-out: 10:30
 Amenities: Free WiFi, Solar backup power, Private beach, Breakfast included, Restaurant, Bar
@@ -661,7 +652,7 @@ ROOMS & RATES:
                   <input
                     ref={inputRef}
                     type="file"
-                    accept=".txt,.csv,.jpg,.jpeg,.png,.webp,.pdf"
+                    accept=".txt,.csv,.xlsx,.xls,.jpg,.jpeg,.png,.webp,.pdf"
                     onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
                     className="hidden"
                   />
@@ -726,7 +717,7 @@ ROOMS & RATES:
                       type="text"
                       value={draftData.name || ''}
                       onChange={(e) => updateField('name', e.target.value)}
-                      placeholder="e.g. Kaya Mawa Lodge"
+                      placeholder="e.g. Example Lakeside Lodge"
                       className={inputClass}
                     />
                   </div>
@@ -1051,7 +1042,7 @@ ROOMS & RATES:
                             <input
                               type="number"
                               min={0}
-                              value={room.prices?.USD ?? 0}
+                              value={room.prices?.USD || ''}
                               onChange={(e) => updateRoomPrice(idx, 'USD', e.target.value)}
                               className={inputClass}
                             />
@@ -1062,7 +1053,7 @@ ROOMS & RATES:
                               type="number"
                               min={0}
                               step={1000}
-                              value={room.prices?.MWK ?? 0}
+                              value={room.prices?.MWK || ''}
                               onChange={(e) => updateRoomPrice(idx, 'MWK', e.target.value)}
                               className={inputClass}
                             />

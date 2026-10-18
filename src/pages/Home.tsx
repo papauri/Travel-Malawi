@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import Pagination from '../components/Pagination';
-import { Search, MapPin, Calendar, Users, Star, LocateFixed, Locate, ChevronDown, Plus, Minus, ShieldCheck, MessageCircle, Smartphone, X, Clock, LayoutGrid, Map as MapIcon, Compass, Navigation, SlidersHorizontal, RotateCcw, Filter, Check, Car, ExternalLink, Route, ArrowRight, Building2, CheckCircle2, BookOpen, AlignJustify } from 'lucide-react';
+import { Search, MapPin, Calendar, Users, Star, LocateFixed, Locate, ChevronDown, Plus, Minus, ShieldCheck, MessageCircle, Smartphone, X, Clock, LayoutGrid, Map as MapIcon, Compass, Navigation, SlidersHorizontal, RotateCcw, Filter, Check, Car, ExternalLink, Route, ArrowRight, Building2, CheckCircle2, BookOpen, AlignJustify, WifiOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { collection, getDocs, getDoc, doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -169,8 +169,66 @@ const HERO_PLACES = [
 /** Shown only until the real listings load and supply their own locations. */
 const FALLBACK_DESTINATIONS = ['Lake Malawi', 'Likoma', 'Zomba', 'Liwonde', 'Lilongwe'];
 
+const DISCOVERY_KEY = 'tm_discovery_v1';
+const VIEW_MODES = ['grid', 'map', 'compact'] as const;
+
+interface DiscoverySnapshot {
+  stayType?: string;
+  category?: string;
+  amenities?: string[];
+  sortKey?: string;
+  viewMode?: string;
+  page?: number;
+  priceRange?: [number, number];
+  priceCurrency?: string;
+  includeUnpriced?: boolean;
+  mapSearchText?: string;
+  form?: {
+    location?: string; checkIn?: string; checkOut?: string;
+    adults?: number; children?: number; rooms?: number; proximity?: number;
+  };
+  applied?: Partial<AppliedSearch>;
+}
+
+/** Filters a link can carry (`/?category=`, `/?stayType=`, `/?location=`, `/?search=`). */
+function parseUrlFilters(search: string) {
+  const params = new URLSearchParams(search);
+  const category = params.get('category') ?? '';
+  const stayType = params.get('stayType') ?? '';
+  return {
+    category: (PROPERTY_CATEGORIES as readonly string[]).includes(category) ? category : '',
+    stayType: STAY_TYPE_OPTIONS.some(o => o.id === stayType && o.id !== 'All') ? stayType : '',
+    location: (params.get('location') || params.get('search') || '').trim().slice(0, 80),
+  };
+}
+
+/**
+ * The visitor's search and filters, kept for the tab session so a reload or the
+ * back button after opening a property lands them where they were. A link that
+ * carries its own filters wins and starts clean.
+ */
+function readDiscovery(): DiscoverySnapshot | null {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    if (['category', 'stayType', 'location', 'search'].some(k => params.has(k))) return null;
+    const raw = sessionStorage.getItem(DISCOVERY_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
 export default function Home() {
   const today = todayStr();
+  const [restored] = useState<DiscoverySnapshot | null>(readDiscovery);
+  const [urlFilters] = useState(() => parseUrlFilters(typeof window === 'undefined' ? '' : window.location.search));
+  const restoredDates = (() => {
+    const f = restored?.form;
+    return f?.checkIn && f?.checkOut && f.checkIn >= todayStr() && f.checkOut > f.checkIn
+      ? { checkIn: f.checkIn, checkOut: f.checkOut }
+      : { checkIn: '', checkOut: '' };
+  })();
 
   const [hotels, setHotels] = useState<Hotel[]>(() => getCachedHotels());
   const [rooms, setRooms] = useState<RoomType[]>(() => getCachedRooms());
@@ -179,15 +237,26 @@ export default function Home() {
   const [bookingsLoaded, setBookingsLoaded] = useState(false);
   const [loading, setLoading] = useState(() => getCachedHotels().length === 0);
   const [searching, setSearching] = useState(false);
-  const [activeStayType, setActiveStayType] = useState('All');
-  const [activeCategory, setActiveCategory] = useState('All');
-  const [activeAmenities, setActiveAmenities] = useState<string[]>([]);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [listingsReloadKey, setListingsReloadKey] = useState(0);
+  const [activeStayType, setActiveStayType] = useState(() =>
+    urlFilters.stayType || (STAY_TYPE_OPTIONS.some(o => o.id === restored?.stayType) ? restored!.stayType! : 'All'));
+  const [activeCategory, setActiveCategory] = useState(() =>
+    urlFilters.category || ((PROPERTY_CATEGORIES as readonly string[]).includes(restored?.category ?? '') ? restored!.category! : 'All'));
+  const [activeAmenities, setActiveAmenities] = useState<string[]>(() =>
+    Array.isArray(restored?.amenities) ? restored!.amenities!.filter(a => (COMMON_AMENITIES as readonly string[]).includes(a)) : []);
   const [searchParams] = useSearchParams();
-  const [sortKey, setSortKey] = useState<SortKey>('recommended');
-  const [currentPage, setCurrentPage] = useState(1);
+  const [sortKey, setSortKey] = useState<SortKey>(() => {
+    const saved = restored?.sortKey as SortKey | undefined;
+    // "Nearest to me" needs a live location that is not restored with the rest.
+    return saved && saved in SORT_LABELS && saved !== 'distance_asc' ? saved : 'recommended';
+  });
+  const [currentPage, setCurrentPage] = useState(() =>
+    Number.isInteger(restored?.page) && restored!.page! > 0 ? restored!.page! : 1);
   const itemsPerPage = 6;
   const [currency, setCurrency] = useState<CurrencyCode>(readStoredCurrency);
-  const [viewMode, setViewMode] = useState<'grid' | 'map' | 'compact'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'map' | 'compact'>(() =>
+    (VIEW_MODES as readonly string[]).includes(restored?.viewMode ?? '') ? (restored!.viewMode as 'grid' | 'map' | 'compact') : 'grid');
   const [selectedMapLodgeId, setSelectedMapLodgeId] = useState<string | null>(null);
   const { user } = useAuth();
   const { openAuth } = useAuthDialog();
@@ -212,9 +281,19 @@ export default function Home() {
     }
   }, [currency]);
 
-  const [priceRange, setPriceRange] = useState<[number, number]>(() => 
-    (readStoredCurrency() === 'USD' ? [0, 800] : [0, 1500000])
-  );
+  const [priceRange, setPriceRange] = useState<[number, number]>(() => {
+    const stored = readStoredCurrency();
+    const saved = restored?.priceRange;
+    const max = stored === 'USD' ? 800 : 1500000;
+    if (
+      restored?.priceCurrency === stored && Array.isArray(saved) &&
+      Number.isFinite(saved[0]) && Number.isFinite(saved[1]) &&
+      saved[0] >= 0 && saved[1] <= max && saved[0] <= saved[1]
+    ) {
+      return [saved[0], saved[1]];
+    }
+    return [0, max];
+  });
 
   // Keep price range bounded within active currency limit when currency toggles
   useEffect(() => {
@@ -224,13 +303,13 @@ export default function Home() {
       setPriceRange(prev => (prev[1] <= 800 ? [0, 1500000] : prev));
     }
   }, [currency]);
-  const [includeUnpricedRooms, setIncludeUnpricedRooms] = useState<boolean>(true);
+  const [includeUnpricedRooms, setIncludeUnpricedRooms] = useState<boolean>(restored?.includeUnpriced !== false);
   const [showPriceFilterDrawer, setShowPriceFilterDrawer] = useState<boolean>(false);
 
   const isPriceFiltered = priceRange[0] > priceLimitMin || priceRange[1] < priceLimitMax;
 
   // Map View specific search and filter states
-  const [mapSearchText, setMapSearchText] = useState('');
+  const [mapSearchText, setMapSearchText] = useState(() => (typeof restored?.mapSearchText === 'string' ? restored.mapSearchText.slice(0, 80) : ''));
   const [mapRadius, setMapRadius] = useState<number | 'any'>('any');
   const [showMapFiltersModal, setShowMapFiltersModal] = useState(false);
 
@@ -355,20 +434,35 @@ export default function Home() {
     };
   }, []);
 
-  const [searchLocation, setSearchLocation] = useState('');
-  const [searchCheckIn, setSearchCheckIn] = useState('');
-  const [searchCheckOut, setSearchCheckOut] = useState('');
+  const [searchLocation, setSearchLocation] = useState(() => urlFilters.location || restored?.form?.location || '');
+  const [searchCheckIn, setSearchCheckIn] = useState(restoredDates.checkIn);
+  const [searchCheckOut, setSearchCheckOut] = useState(restoredDates.checkOut);
 
   // Advanced Guest Selector
   const [showGuestDropdown, setShowGuestDropdown] = useState(false);
-  const [adults, setAdults] = useState(2);
-  const [children, setChildren] = useState(0);
-  const [roomsWanted, setRoomsWanted] = useState(1);
+  const clampCount = (value: unknown, min: number, max: number, fallback: number) =>
+    typeof value === 'number' && Number.isInteger(value) && value >= min && value <= max ? value : fallback;
+  const [adults, setAdults] = useState(() => clampCount(restored?.form?.adults, 1, 16, 2));
+  const [children, setChildren] = useState(() => clampCount(restored?.form?.children, 0, 16, 0));
+  const [roomsWanted, setRoomsWanted] = useState(() => clampCount(restored?.form?.rooms, 1, 8, 1));
   const totalGuests = adults + children;
   const guestSelectorRef = useRef<HTMLDivElement>(null);
 
-  const [searchProximity, setSearchProximity] = useState(50);
-  const [appliedSearch, setAppliedSearch] = useState<AppliedSearch>(NO_SEARCH);
+  const [searchProximity, setSearchProximity] = useState(() => clampCount(restored?.form?.proximity, 1, 500, 50));
+  const [appliedSearch, setAppliedSearch] = useState<AppliedSearch>(() => {
+    if (urlFilters.location) return { ...NO_SEARCH, location: urlFilters.location };
+    const a = restored?.applied;
+    if (!a) return NO_SEARCH;
+    const coords = a.coords && isValidLatLng(a.coords as LatLng) ? { lat: a.coords.lat, lng: a.coords.lng } : null;
+    return {
+      location: typeof a.location === 'string' ? a.location : '',
+      checkIn: restoredDates.checkIn && a.checkIn === restoredDates.checkIn ? a.checkIn : '',
+      checkOut: restoredDates.checkOut && a.checkOut === restoredDates.checkOut ? a.checkOut : '',
+      guests: typeof a.guests === 'number' && a.guests > 0 && a.guests <= 32 ? a.guests : '',
+      coords,
+      proximity: clampCount(a.proximity, 1, 500, 50),
+    };
+  });
 
   const [recentSearches, setRecentSearches] = useState<RecentSearch[]>(() => {
     try {
@@ -427,22 +521,33 @@ export default function Home() {
   }, []);
 
   /**
-   * `?category=` preselects the filter, so a link from anywhere else on the
-   * site can land on the stays it promised. The footer's category links used
-   * to point at the bare home page and filter nothing at all.
+   * Links from elsewhere (footer, sitemap, search-engine results) can carry
+   * `?category=`, `?stayType=`, `?location=` or `?search=`. The first load reads
+   * them straight into state; this applies them when the visitor follows such a
+   * link while already on the page.
    */
+  const urlAppliedRef = useRef(true);
   useEffect(() => {
+    const first = urlAppliedRef.current;
+    urlAppliedRef.current = false;
+    const filters = parseUrlFilters(searchParams.toString());
     let shouldScroll = false;
-    const requested = searchParams.get('category');
-    if (requested && (PROPERTY_CATEGORIES as readonly string[]).includes(requested)) {
-      setActiveCategory(requested);
+    if (filters.category) {
+      setActiveCategory(filters.category);
       setCurrentPage(1);
       shouldScroll = true;
     }
-    const requestedStay = searchParams.get('stayType');
-    if (requestedStay) {
-      setActiveStayType(requestedStay);
+    if (filters.stayType) {
+      setActiveStayType(filters.stayType);
       setCurrentPage(1);
+      shouldScroll = true;
+    }
+    if (filters.location) {
+      if (!first) {
+        setSearchLocation(filters.location);
+        setAppliedSearch(prev => ({ ...NO_SEARCH, checkIn: prev.checkIn, checkOut: prev.checkOut, guests: prev.guests, location: filters.location }));
+        setCurrentPage(1);
+      }
       shouldScroll = true;
     }
     if (shouldScroll) {
@@ -453,6 +558,36 @@ export default function Home() {
       return () => clearTimeout(timer);
     }
   }, [searchParams]);
+
+  // Keep the visitor's search and filters for reload and back navigation.
+  useEffect(() => {
+    try {
+      const snapshot: DiscoverySnapshot = {
+        stayType: activeStayType,
+        category: activeCategory,
+        amenities: activeAmenities,
+        sortKey,
+        viewMode,
+        page: currentPage,
+        priceRange,
+        priceCurrency: currency,
+        includeUnpriced: includeUnpricedRooms,
+        mapSearchText,
+        form: {
+          location: searchLocation, checkIn: searchCheckIn, checkOut: searchCheckOut,
+          adults, children, rooms: roomsWanted, proximity: searchProximity,
+        },
+        applied: appliedSearch,
+      };
+      sessionStorage.setItem(DISCOVERY_KEY, JSON.stringify(snapshot));
+    } catch {
+      // storage unavailable: the search still works, it just is not remembered
+    }
+  }, [
+    activeStayType, activeCategory, activeAmenities, sortKey, viewMode, currentPage, priceRange, currency,
+    includeUnpricedRooms, mapSearchText, searchLocation, searchCheckIn, searchCheckOut, adults, children,
+    roomsWanted, searchProximity, appliedSearch,
+  ]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent | TouchEvent) {
@@ -524,6 +659,7 @@ export default function Home() {
         // Cache offline for travelers with intermittent internet
         saveCachedHotels(approvedHotels);
         saveCachedRooms(roomsData);
+        setLoadFailed(false);
       } catch (error) {
         console.error("Error fetching hotels:", error);
         // If offline / network fails, fallback data from cache
@@ -532,16 +668,22 @@ export default function Home() {
           toast('Using cached offline lodge data', { icon: '📡' });
           setHotels(fallbackHotels);
           setRooms(getCachedRooms());
+        } else {
+          // Without this the page claimed "Nothing listed yet" when the real
+          // problem was that the listings could not be fetched.
+          setLoadFailed(true);
         }
       } finally {
         setLoading(false);
       }
     }
+    setLoading(prev => prev || getCachedHotels().length === 0);
     fetchListings();
 
     // Real-time synchronization: Any bulk price updates or promotion launches
     // in the Admin or Manager Dashboard immediately update the live home page
     const unsubHotels = onSnapshot(collection(db, 'hotels'), (snap) => {
+      setLoadFailed(false);
       const hotelsData = snap.docs.map(d => ({ id: d.id, ...d.data() })) as Hotel[];
       const approvedHotels = hotelsData.filter(h => h.status === 'approved' || !h.status);
       setHotels(approvedHotels);
@@ -589,7 +731,7 @@ export default function Home() {
       window.removeEventListener('travel_malawi_rooms_updated', onRoomsUpdated);
       window.removeEventListener('travel_malawi_hotels_updated', onHotelsUpdated);
     };
-  }, []);
+  }, [listingsReloadKey]);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -693,6 +835,15 @@ export default function Home() {
     setBookingsLoaded(true);
     return loaded;
   };
+
+  // A restored search with dates must see live availability, not an empty mirror.
+  useEffect(() => {
+    if (appliedSearch.checkIn && appliedSearch.checkOut) {
+      ensureBookings().catch(error => console.error('Could not load availability:', error));
+    }
+    // Runs once for the restored search; later searches load bookings themselves.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const applySearch = async (next: AppliedSearch) => {
     if (next.checkIn && next.checkOut && next.checkOut <= next.checkIn) {
@@ -806,6 +957,7 @@ export default function Home() {
     setPriceRange([priceLimitMin, priceLimitMax]);
     setIncludeUnpricedRooms(true);
     setMapSearchText('');
+    setMapRadius('any');
   };
 
   const activeMapFiltersCount = useMemo(() => {
@@ -836,7 +988,7 @@ export default function Home() {
     const suggestions = [];
     
     // Extract unique locations
-    const locations = Array.from(new Set(hotels.map(h => h.location.trim()))).filter(loc => loc.toLowerCase().includes(query));
+    const locations = Array.from(new Set(hotels.map(h => (h.location || '').trim()))).filter(loc => loc.toLowerCase().includes(query));
     
     locations.forEach(loc => {
       suggestions.push({ type: 'location', text: loc });
@@ -844,7 +996,7 @@ export default function Home() {
     
     // Extract hotels
     const matchingHotels = hotels.filter(h => 
-      h.name.toLowerCase().includes(query) || 
+      (h.name || '').toLowerCase().includes(query) || 
       (h.locationNotes && h.locationNotes.toLowerCase().includes(query))
     );
     
@@ -940,8 +1092,8 @@ export default function Home() {
         }
         if (appliedSearch.location && appliedSearch.location !== 'Near Me') {
           const q = appliedSearch.location.toLowerCase();
-          if (!entry.hotel.name.toLowerCase().includes(q) && 
-              !entry.hotel.location.toLowerCase().includes(q) && 
+          if (!(entry.hotel.name || '').toLowerCase().includes(q) && 
+              !(entry.hotel.location || '').toLowerCase().includes(q) && 
               !entry.hotel.locationNotes?.toLowerCase().includes(q)) {
             return false;
           }
@@ -950,8 +1102,8 @@ export default function Home() {
         // Map View quick search query
         if (mapSearchText.trim()) {
           const q = mapSearchText.trim().toLowerCase();
-          const nameMatch = entry.hotel.name.toLowerCase().includes(q);
-          const locationMatch = entry.hotel.location.toLowerCase().includes(q);
+          const nameMatch = (entry.hotel.name || '').toLowerCase().includes(q);
+          const locationMatch = (entry.hotel.location || '').toLowerCase().includes(q);
           const descMatch = entry.hotel.description?.toLowerCase().includes(q);
           const notesMatch = entry.hotel.locationNotes?.toLowerCase().includes(q);
           const catMatch = entry.hotel.categories?.some(c => c.toLowerCase().includes(q));
@@ -1005,7 +1157,7 @@ export default function Home() {
     } else if (sortKey === 'rating') {
       sorted.sort((a, b) => (b.rating?.average ?? 0) - (a.rating?.average ?? 0));
     } else if (sortKey === 'name_asc') {
-      sorted.sort((a, b) => a.hotel.name.localeCompare(b.hotel.name));
+      sorted.sort((a, b) => (a.hotel.name || '').localeCompare(b.hotel.name || ''));
     }
     return sorted;
   }, [
@@ -1021,15 +1173,20 @@ export default function Home() {
     activeCategory, activeStayType, activeAmenities, appliedSearch, sortKey, mapSearchText,
     mapRadius, priceRange, includeUnpricedRooms,
   ]);
+  const filterSignatureRef = useRef(filterSignature);
   useEffect(() => {
+    // The first run is the restored state, so its page must be kept.
+    if (filterSignatureRef.current === filterSignature) return;
+    filterSignatureRef.current = filterSignature;
     setCurrentPage(1);
   }, [filterSignature]);
 
   // Data refreshes can also shrink the list; keep the page in range.
   const totalPages = Math.max(1, Math.ceil(filteredHotels.length / itemsPerPage));
   useEffect(() => {
+    if (loading) return; // nothing is listed yet, so the page count means nothing
     if (currentPage > totalPages) setCurrentPage(totalPages);
-  }, [currentPage, totalPages]);
+  }, [currentPage, totalPages, loading]);
 
   /**
    * Prepared map markers for clustered Map View.
@@ -1143,8 +1300,9 @@ export default function Home() {
   /** Whether the row above is a real editorial pick or just the best rated. */
   const hasPromotedFeatures = useMemo(() => hotels.some(h => h.featured), [hotels]);
 
-  const currentLocParam = searchParams.get('location') || searchParams.get('search') || appliedSearch.location;
-  const currentCategoryParam = searchParams.get('category') || (activeCategory !== 'All' ? activeCategory : undefined);
+  // State, not the URL: clearing a filter must not leave its old title behind.
+  const currentLocParam = appliedSearch.location && appliedSearch.location !== 'Near Me' ? appliedSearch.location : undefined;
+  const currentCategoryParam = activeCategory !== 'All' ? activeCategory : undefined;
 
   const pageSeo = useMemo(() => {
     return generateAutonomousSeo({
@@ -1154,7 +1312,7 @@ export default function Home() {
       ratingByHotel,
       locationParam: currentLocParam,
       categoryParam: currentCategoryParam,
-      searchParam: searchParams.get('search'),
+      searchParam: null,
     });
   }, [
     hotels,
@@ -1163,7 +1321,6 @@ export default function Home() {
     ratingByHotel,
     currentLocParam,
     currentCategoryParam,
-    searchParams,
   ]);
 
   return (
@@ -2563,7 +2720,7 @@ export default function Home() {
                         </p>
                         <button
                           type="button"
-                          onClick={clearMapFilters}
+                          onClick={hasSearch ? clearFilters : clearMapFilters}
                           className="px-4 py-1.5 rounded-full bg-stone-900 text-white text-xs font-semibold hover:bg-stone-800 transition"
                         >
                           Clear Map Filters
@@ -2793,6 +2950,24 @@ export default function Home() {
             )}
           </div>
         ) : (
+          loadFailed ? (
+          <div className="col-span-full py-16 flex flex-col items-center justify-center text-center">
+             <div className="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mb-4">
+                <WifiOff className="w-6 h-6 text-amber-600" />
+             </div>
+             <h3 className="text-xl font-serif font-bold text-stone-900 mb-2">We could not load the stays</h3>
+             <p className="text-stone-500 text-sm max-w-md mb-6">
+               Check your mobile data or Wi-Fi and try again. Stays you have opened before are kept on your device.
+             </p>
+             <button
+               type="button"
+               onClick={() => { setLoadFailed(false); setLoading(true); setListingsReloadKey(k => k + 1); }}
+               className="bg-stone-900 text-white px-6 py-2.5 rounded-full text-sm font-semibold hover:bg-stone-800 transition cursor-pointer"
+             >
+               Try again
+             </button>
+          </div>
+          ) : (
           <div className="col-span-full py-16 flex flex-col items-center justify-center text-center">
              <div className="w-16 h-16 bg-stone-100 rounded-full flex items-center justify-center mb-4">
                 <MapPin className="w-6 h-6 text-stone-400" />
@@ -2809,6 +2984,7 @@ export default function Home() {
                List your property
              </Link>
           </div>
+          )
         )}
       </section>
     </div>

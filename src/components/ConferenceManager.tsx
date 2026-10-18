@@ -22,7 +22,14 @@ export default function ConferenceManager({ hotelId }: Props) {
   const [roomToDelete, setRoomToDelete] = useState<ConferenceRoom | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const roomsPerPage = 4;
+
+  // Deleting the last space on a page falls back to the page before it.
+  const totalPages = Math.max(1, Math.ceil(rooms.length / roomsPerPage));
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
 
   useEffect(() => {
     async function fetchRooms() {
@@ -31,6 +38,7 @@ export default function ConferenceManager({ hotelId }: Props) {
         setRooms(snap.docs.map(d => ({ id: d.id, ...d.data() } as ConferenceRoom)));
       } catch (error) {
         console.error('Error fetching conference rooms:', error);
+        toast.error('Could not load your conference spaces. Refresh to try again.');
       } finally {
         setLoading(false);
       }
@@ -40,12 +48,24 @@ export default function ConferenceManager({ hotelId }: Props) {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingRoom) return;
+    if (!editingRoom || saving) return;
 
+    setSaving(true);
     try {
       const roomRef = editingRoom.id ? doc(db, 'conference_rooms', editingRoom.id) : doc(collection(db, 'conference_rooms'));
-      const roomData = { ...editingRoom, hotelId, id: roomRef.id };
-      await setDoc(roomRef, roomData);
+      // Lists are kept loose while typing (so commas and new lines are not
+      // eaten); blanks are dropped here.
+      const roomData = {
+        ...editingRoom,
+        hotelId,
+        id: roomRef.id,
+        amenities: (editingRoom.amenities || []).map(a => a.trim()).filter(Boolean),
+        policies: (editingRoom.policies || []).map(p => p.trim()).filter(Boolean),
+      };
+      // Firestore rejects undefined (a cleared rate is undefined), so those
+      // fields are dropped instead of failing the whole save.
+      const stored = Object.fromEntries(Object.entries(roomData).filter(([, v]) => v !== undefined));
+      await setDoc(roomRef, stored);
       
       setRooms(prev => {
         const exists = prev.find(r => r.id === roomRef.id);
@@ -58,6 +78,8 @@ export default function ConferenceManager({ hotelId }: Props) {
     } catch (error) {
       console.error('Error saving conference room:', error);
       toast.error('Failed to save conference room');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -132,7 +154,7 @@ export default function ConferenceManager({ hotelId }: Props) {
                 label="Primary Cover Image"
                 value={editingRoom.imageUrl || ''}
                 onChange={url => setEditingRoom({ ...editingRoom, imageUrl: url })}
-                folder="conferences"
+                folder={`hotels/${hotelId}/conferences`}
               />
             </div>
 
@@ -141,14 +163,14 @@ export default function ConferenceManager({ hotelId }: Props) {
                 label="Gallery Images"
                 value={editingRoom.galleryUrls || []}
                 onChange={urls => setEditingRoom({ ...editingRoom, galleryUrls: urls })}
-                folder="conferences"
+                folder={`hotels/${hotelId}/conferences`}
               />
             </div>
             
             <div className="md:col-span-2 border-t border-stone-100 pt-6 mt-2">
               <label className="block">
                 <span className="text-sm font-semibold text-stone-900 mb-1.5 block">Amenities (Comma separated)</span>
-                <input type="text" value={(editingRoom.amenities || []).join(', ')} onChange={e => setEditingRoom({ ...editingRoom, amenities: e.target.value.split(',').map(a => a.trim()).filter(Boolean) })} className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all" placeholder="Projector, Whiteboard, AC, High-speed Wi-Fi, Microphones..." />
+                <input type="text" value={(editingRoom.amenities || []).join(', ')} onChange={e => setEditingRoom({ ...editingRoom, amenities: e.target.value.split(',').map(a => a.trimStart()) })} className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all" placeholder="Projector, Whiteboard, AC, High-speed Wi-Fi, Microphones..." />
               </label>
             </div>
             
@@ -210,14 +232,14 @@ export default function ConferenceManager({ hotelId }: Props) {
             <div className="md:col-span-2">
               <label className="block">
                 <span className="text-sm font-semibold text-stone-900 mb-1.5 block">Guidelines & Offers (One per line)</span>
-                <textarea rows={4} value={(editingRoom.policies || []).join('\n')} onChange={e => setEditingRoom({ ...editingRoom, policies: e.target.value.split('\n').filter(p => p.trim() !== '') })} className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-sm" placeholder="Breakfast and Coffee/Tea packages available on request\n50% deposit required to secure booking" />
+                <textarea rows={4} value={(editingRoom.policies || []).join('\n')} onChange={e => setEditingRoom({ ...editingRoom, policies: e.target.value.split('\n') })} className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-sm" placeholder="Breakfast and Coffee/Tea packages available on request\n50% deposit required to secure booking" />
               </label>
             </div>
           </div>
           
           <div className="flex justify-end gap-3 pt-6 border-t border-stone-100">
             <button type="button" onClick={() => setEditingRoom(null)} className="px-6 py-2.5 rounded-full text-sm font-bold text-stone-600 hover:bg-stone-100 transition">Cancel</button>
-            <button type="submit" className="flex items-center gap-2 bg-stone-900 text-white px-6 py-2.5 rounded-full text-sm font-bold hover:bg-emerald-700 transition"><Save className="w-4 h-4" /> Save Conference Room</button>
+            <button type="submit" disabled={saving} className="flex items-center gap-2 bg-stone-900 text-white px-6 py-2.5 rounded-full text-sm font-bold hover:bg-emerald-700 transition disabled:opacity-50 disabled:cursor-not-allowed"><Save className="w-4 h-4" /> {saving ? 'Saving...' : 'Save Conference Room'}</button>
           </div>
         </form>
       </div>
@@ -255,7 +277,7 @@ export default function ConferenceManager({ hotelId }: Props) {
                 return (
                   <div key={`${room.id || 'room'}-${rIdx}`} className="bg-white rounded-2xl border border-stone-200 shadow-2xs flex flex-col md:flex-row md:items-start gap-5 p-5 group transition hover:shadow-xs">
                     <div className="w-full h-48 md:w-64 md:h-48 object-cover rounded-xl overflow-hidden bg-stone-100 shrink-0 relative">
-                      <RoomGallery images={Array.from(new Set([room.imageUrl, ...(room.galleryUrls || [])]))} altPrefix={room.name} />
+                      <RoomGallery images={Array.from(new Set([room.imageUrl, ...(room.galleryUrls || [])].filter(Boolean) as string[]))} altPrefix={room.name} />
                     </div>
                     <div className="flex-1 flex flex-col justify-between min-w-0 py-1 w-full">
                       <div>

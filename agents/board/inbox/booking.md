@@ -1,0 +1,1 @@
+- [H-platform-c1] P2 → booking | firestore.rules isManager/isOwner | email-based manager/owner match now requires email_verified → check your flows that grant manager access by email (ownerEmail/managerEmail/contactEmail) still work for verified users and surface a clear message for unverified ones | contract: rules require email_verified

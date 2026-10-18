@@ -63,6 +63,13 @@ export default function GlobalNotificationManager() {
   // Track call listeners so we don't leak memory or duplicate ringing
   const callUnsubs = useRef<Record<string, () => void>>({});
   const activeCallToasts = useRef<Record<string, string>>({});
+  const latestCallContext = useRef<Record<string, {
+    isOpen: () => boolean;
+    hotelId: string;
+    hotelName?: string;
+    managerId?: string;
+    open: (hotel: Hotel) => void;
+  }>>({});
 
   // Cached hotels so we can immediately construct Hotel objects for the chat modal
   const hotelCache = useRef<Record<string, Hotel>>({});
@@ -131,6 +138,114 @@ export default function GlobalNotificationManager() {
     };
 
     // ==========================================
+    // 0. INCOMING CALLS (inquiry chats and booking chats)
+    // ==========================================
+    // Each watched chat keeps its latest context in latestCallContext, so a
+    // call listener created on the first snapshot never reads stale chat data.
+    const watchCalls = (collectionName: 'hotel_chats' | 'bookings', parentId: string) => {
+      const key = `${collectionName}/${parentId}`;
+      if (callUnsubs.current[key]) return;
+      const callsQuery = query(
+        collection(db, collectionName, parentId, 'calls'),
+        where('calleeId', '==', user.uid)
+      );
+      callUnsubs.current[key] = onSnapshot(callsQuery, (callSnap) => {
+        callSnap.docChanges().forEach(async (callChange) => {
+          const callData = callChange.doc.data();
+          const callId = callChange.doc.id;
+          const ctx = latestCallContext.current[key];
+          if (!ctx) return;
+
+          if (callData.status === 'ringing') {
+            // Ignore stale calls left over from earlier or from before session start
+            if (callData.createdAt && (Date.now() - callData.createdAt > 45000 || callData.createdAt < sessionStartTime.current - 10000)) {
+              return;
+            }
+            // The open chat shows its own incoming-call prompt.
+            if (ctx.isOpen()) return;
+            if (activeCallToasts.current[callId]) return;
+
+            const hotel = await fetchHotelData(ctx.hotelId) || ({ id: ctx.hotelId, name: ctx.hotelName || 'Property', managerId: ctx.managerId } as Hotel);
+            const isVideo = callData.type === 'video';
+
+            startRinging();
+            showBrowserNotification(
+              `Incoming ${isVideo ? 'Video' : 'Voice'} Call`,
+              `${callData.callerName || 'Guest'} is calling about ${hotel?.name || 'your property'}`,
+              () => ctx.open(hotel)
+            );
+
+            const toastId = toast.custom(
+              (t) => {
+                const CallIcon = isVideo ? Video : Phone;
+                return (
+                  <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-sm w-full bg-stone-900 text-white shadow-2xl rounded-2xl pointer-events-auto flex flex-col p-4 border border-stone-800`}>
+                    <div className="flex items-start gap-3">
+                      <div className="p-2.5 bg-blue-500/20 text-blue-400 rounded-xl shrink-0 animate-pulse">
+                        <CallIcon className="w-5 h-5" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold uppercase tracking-wider text-blue-400">Incoming {isVideo ? 'Video' : 'Voice'} Call</p>
+                        <p className="text-sm font-semibold text-white mt-0.5 truncate">
+                          {callData.callerName || 'Guest'}
+                        </p>
+                        <p className="text-xs text-stone-300 mt-1 truncate">
+                          Property: {hotel?.name || 'Loading...'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="mt-4 flex items-center gap-2">
+                      <button
+                        onClick={async () => {
+                          toast.dismiss(t.id);
+                          stopRinging();
+                          const callRef = doc(db, collectionName, parentId, 'calls', callId);
+                          await updateDoc(callRef, { status: 'rejected', updatedAt: Date.now(), endedAt: Date.now() })
+                            .catch(err => console.warn('Failed to reject call:', err));
+                        }}
+                        className="flex-1 px-3 py-2 bg-stone-800 hover:bg-stone-700 text-white text-xs font-semibold rounded-lg transition flex items-center justify-center gap-1.5"
+                      >
+                        <PhoneOff className="w-3.5 h-3.5" /> Reject
+                      </button>
+                      <button
+                        onClick={() => {
+                          toast.dismiss(t.id);
+                          stopRinging();
+                          ctx.open(hotel);
+                        }}
+                        className="flex-1 px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg shadow-sm transition flex items-center justify-center gap-1.5"
+                      >
+                        <CallIcon className="w-3.5 h-3.5" /> Accept {isVideo ? 'Video' : 'Voice'}
+                      </button>
+                    </div>
+                  </div>
+                );
+              },
+              { duration: 30000, position: 'top-right', id: `call-${callId}` }
+            );
+            activeCallToasts.current[callId] = toastId;
+          } else if (activeCallToasts.current[callId] || callChange.type === 'modified') {
+            // Only a call we were ringing for (or one that just changed) may
+            // stop the ringer; a new chat's backlog of ended calls must not
+            // silence a call ringing in another chat.
+            if (activeCallToasts.current[callId]) {
+              toast.dismiss(activeCallToasts.current[callId]);
+              delete activeCallToasts.current[callId];
+            }
+            stopRinging();
+          }
+        });
+      }, (err) => console.warn('Error listening to calls:', err));
+    };
+
+    const unwatchCalls = (collectionName: 'hotel_chats' | 'bookings', parentId: string) => {
+      const key = `${collectionName}/${parentId}`;
+      callUnsubs.current[key]?.();
+      delete callUnsubs.current[key];
+      delete latestCallContext.current[key];
+    };
+
+    // ==========================================
     // 1. CHAT DOCUMENT HANDLER
     // ==========================================
     const handleChatDocChange = async (change: any, isInitial: boolean) => {
@@ -147,112 +262,23 @@ export default function GlobalNotificationManager() {
       const amIManager = data.managerId === user.uid;
 
       // --- Call Listener per Chat ---
+      latestCallContext.current[`hotel_chats/${chatId}`] = {
+        isOpen: () => isChatCurrentlyOpen(data.hotelId, data.guestId, data),
+        hotelId: data.hotelId,
+        hotelName: data.hotelName,
+        managerId: data.managerId,
+        open: (hotel) => openInquiryChat(
+          hotel,
+          amIManager ? (data.guestId || undefined) : undefined,
+          amIManager ? (data.guestName || undefined) : undefined
+        ),
+      };
       if (change.type === 'added' || change.type === 'modified') {
-        if (!callUnsubs.current[chatId]) {
-          const callsQuery = query(
-            collection(db, 'hotel_chats', chatId, 'calls'),
-            where('calleeId', '==', user.uid)
-          );
-          callUnsubs.current[chatId] = onSnapshot(callsQuery, async (callSnap) => {
-            callSnap.docChanges().forEach(async (callChange) => {
-              const callData = callChange.doc.data();
-              const callId = callChange.doc.id;
-              
-              if (callData.status === 'ringing') {
-                // Ignore stale calls left over from earlier or from before session start
-                if (callData.createdAt && (Date.now() - callData.createdAt > 45000 || callData.createdAt < sessionStartTime.current - 10000)) {
-                  return;
-                }
-
-                if (isChatCurrentlyOpen(data.hotelId, data.guestId, data)) {
-                  return;
-                }
-                
-                const hotel = await fetchHotelData(data.hotelId);
-                const isVideo = callData.type === 'video';
-                
-                startRinging();
-                showBrowserNotification(
-                  `Incoming ${isVideo ? 'Video' : 'Voice'} Call`,
-                  `${callData.callerName || 'Guest'} is calling about ${hotel?.name || 'your property'}`,
-                  () => {
-                    openInquiryChat(
-                      hotel!,
-                      amIManager ? (data.guestId || undefined) : undefined,
-                      amIManager ? (data.guestName || undefined) : undefined
-                    );
-                  }
-                );
-
-                const toastId = toast.custom(
-                  (t) => {
-                    const CallIcon = isVideo ? Video : Phone;
-                    return (
-                      <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-sm w-full bg-stone-900 text-white shadow-2xl rounded-2xl pointer-events-auto flex flex-col p-4 border border-stone-800`}>
-                        <div className="flex items-start gap-3">
-                          <div className="p-2.5 bg-blue-500/20 text-blue-400 rounded-xl shrink-0 animate-pulse">
-                            <CallIcon className="w-5 h-5" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-bold uppercase tracking-wider text-blue-400">Incoming {isVideo ? 'Video' : 'Voice'} Call</p>
-                            <p className="text-sm font-semibold text-white mt-0.5 truncate">
-                              {callData.callerName || 'Guest'}
-                            </p>
-                            <p className="text-xs text-stone-300 mt-1 truncate">
-                              Property: {hotel?.name || 'Loading...'}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="mt-4 flex items-center gap-2">
-                          <button
-                            onClick={async () => {
-                              toast.dismiss(t.id);
-                              stopRinging();
-                              const callRef = doc(db, 'hotel_chats', chatId, 'calls', callId);
-                              await updateDoc(callRef, { status: 'rejected', updatedAt: Date.now(), endedAt: Date.now() });
-                            }}
-                            className="flex-1 px-3 py-2 bg-stone-800 hover:bg-stone-700 text-white text-xs font-semibold rounded-lg transition flex items-center justify-center gap-1.5"
-                          >
-                            <PhoneOff className="w-3.5 h-3.5" /> Reject
-                          </button>
-                          <button
-                            onClick={() => {
-                              toast.dismiss(t.id);
-                              stopRinging();
-                              openInquiryChat(
-                                hotel!,
-                                amIManager ? (data.guestId || undefined) : undefined,
-                                amIManager ? (data.guestName || undefined) : undefined
-                              );
-                            }}
-                            className="flex-1 px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg shadow-sm transition flex items-center justify-center gap-1.5"
-                          >
-                            <CallIcon className="w-3.5 h-3.5" /> Accept {isVideo ? 'Video' : 'Voice'}
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  },
-                  { duration: 30000, position: 'top-right', id: `call-${callId}` }
-                );
-                activeCallToasts.current[callId] = toastId;
-              } else if (callData.status !== 'ringing') {
-                if (activeCallToasts.current[callId]) {
-                  toast.dismiss(activeCallToasts.current[callId]);
-                  delete activeCallToasts.current[callId];
-                }
-                stopRinging();
-              }
-            });
-          });
-        }
+        watchCalls('hotel_chats', chatId);
       }
 
       if (change.type === 'removed') {
-        if (callUnsubs.current[chatId]) {
-          callUnsubs.current[chatId]();
-          delete callUnsubs.current[chatId];
-        }
+        unwatchCalls('hotel_chats', chatId);
       }
 
       // Alert on real message activity only, not on status/presence/close bumps.
@@ -390,6 +416,28 @@ export default function GlobalNotificationManager() {
       const currentStatus = booking.status;
       const previousStatus = knownBookingStatuses.current[booking.id!];
       const amIManager = booking.managerId === user.uid;
+
+      // Booking-chat calls: watch only stays that can still be live, so a
+      // long booking history doesn't open a listener per past booking.
+      const callKey = `bookings/${booking.id}`;
+      const stayIsLive = change.type !== 'removed'
+        && ['pending', 'confirmed', 'checked_in'].includes(currentStatus)
+        && (booking.checkOut || '') >= new Date().toISOString().slice(0, 10);
+      if (stayIsLive) {
+        latestCallContext.current[callKey] = {
+          isOpen: () => {
+            const open = activeChatRef.current;
+            return open?.type === 'booking' && open.booking.id === booking.id && !isMinimizedRef.current;
+          },
+          hotelId: booking.hotelId,
+          hotelName: booking.hotelName,
+          managerId: booking.managerId,
+          open: () => openBookingChat(booking),
+        };
+        watchCalls('bookings', booking.id!);
+      } else if (callUnsubs.current[callKey]) {
+        unwatchCalls('bookings', booking.id!);
+      }
 
       const currentMessageAt = booking.lastMessageAt || 0;
       const previousMessageAt = knownBookingMessageTimestamps.current[booking.id!] || 0;
@@ -530,8 +578,10 @@ export default function GlobalNotificationManager() {
           return;
         }
 
-        playChime();
+        // The guest's own cancellation is already confirmed on the page they did it from.
+        if (currentStatus === 'cancelled' && booking.cancelledBy === 'guest') return;
         if (currentStatus === 'confirmed' && previousStatus === 'pending') {
+          playChime();
           showBrowserNotification(
             'Booking Confirmed!',
             'The property has approved your stay request.',
@@ -559,7 +609,8 @@ export default function GlobalNotificationManager() {
             { duration: 6000, position: 'top-right' }
           );
         } else if (currentStatus === 'cancelled') {
-          const byWho = booking.cancelledBy === 'manager' ? 'the property' : 'you';
+          playChime();
+          const byWho = 'the property';
           showBrowserNotification(
             'Booking Cancelled',
             `Your booking was cancelled by ${byWho}.`,
@@ -638,6 +689,7 @@ export default function GlobalNotificationManager() {
       unsubs.forEach(unsub => unsub());
       Object.values(callUnsubs.current).forEach(unsub => unsub());
       callUnsubs.current = {};
+      latestCallContext.current = {};
       stopRinging();
     };
   }, [user]);

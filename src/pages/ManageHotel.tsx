@@ -5,10 +5,9 @@ import { useConfirmBooking } from '../hooks/useConfirmBooking';
 import PriceMismatchNotice from '../components/PriceMismatchNotice';
 import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
-import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { useParams, useNavigate, useSearchParams, Link, useLocation } from 'react-router-dom';
 import { doc, getDoc, collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, onSnapshot, writeBatch } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db, auth } from '../lib/firebase';
 import { Hotel, RoomType, Booking, CurrencyCode, PriceMap, Restaurant, WeeklyHours } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { useAuthDialog } from '../contexts/AuthDialogContext';
@@ -32,7 +31,7 @@ import EditBookingModal from '../components/EditBookingModal';
 import ManagerMessageTemplatesHub from '../components/ManagerMessageTemplatesHub';
 import BulkRoomEditor from '../components/BulkRoomEditor';
 import { useWhatsAppSettings } from '../hooks/useWhatsAppSettings';
-import { getHotelImages, getHotelImage, getRoomImage, localImagesForName, normalizeImageUrl } from '../lib/images';
+import { getHotelImages, getHotelImage, getRoomImage, normalizeImageUrl } from '../lib/images';
 import { useBreadcrumbLabel } from '../components/Breadcrumbs';
 import LocationPicker from '../components/LocationPicker';
 import AvailabilityCalendar from '../components/AvailabilityCalendar';
@@ -45,7 +44,7 @@ import AIAssistantButton from '../components/AIAssistantButton';
 import toast from 'react-hot-toast';
 import { addDays, formatDateStr, isValidDateStr, nightsBetween, nightsInRange, todayStr } from '../lib/dates';
 import { isRoomAvailable } from '../lib/availability';
-import { formatMoney, computeBookingPricing } from '../lib/booking';
+import { formatMoney, computeBookingPricing, withPropertyBlocks, entirePlaceRoom, entirePlaceRoomId } from '../lib/booking';
 import { CURRENCIES, CURRENCY_CODES, currenciesForRooms, roomCurrencies, roomPrice } from '../lib/currency';
 import { defaultWeek, allDayWeek, isWeekAllDay } from '../lib/hours';
 import { SPAM_REASON_LABELS } from '../lib/spam';
@@ -110,6 +109,13 @@ function hotelFormSnapshot(data: Partial<Hotel>): string {
     outOfOfficeMessage: data.outOfOfficeMessage ?? '',
     depositInfo: data.depositInfo ?? null,
     childPolicy: data.childPolicy ?? null,
+    // Also edited on the details/media tabs; left out, their edits were lost on a tab switch without warning.
+    stayType: data.stayType ?? null,
+    entirePlaceDetails: data.entirePlaceDetails ?? null,
+    heroLayout: data.heroLayout ?? null,
+    conferenceGuidelines: data.conferenceGuidelines ?? '',
+    conferencePaymentPolicy: (data as any).conferencePaymentPolicy ?? '',
+    conferenceCancellationPolicy: (data as any).conferenceCancellationPolicy ?? '',
   });
 }
 
@@ -151,6 +157,16 @@ function pickHotelFormData(data: Partial<Hotel>): Partial<Hotel> {
     depositInfo: getHotelDepositInfo(data as Hotel),
     childPolicy: data.childPolicy ?? null,
   });
+}
+
+/** Rates an imported room actually states; a missing one is never filled with a guess. */
+function importedRoomPrices(r: any): { currencies: CurrencyCode[]; prices: PriceMap } {
+  const usd = Number(r?.prices?.USD ?? r?.priceUSD) || 0;
+  const mwk = Number(r?.prices?.MWK ?? r?.priceMWK) || 0;
+  const prices: PriceMap = {};
+  if (usd > 0) prices.USD = usd;
+  if (mwk > 0) prices.MWK = mwk;
+  return { currencies: Object.keys(prices) as CurrencyCode[], prices };
 }
 
 /** Fields that describe the listing itself and are never edited from this form. */
@@ -389,6 +405,8 @@ export default function ManageHotel() {
   const canEditElevatedFields = isElevatedUser && !viewAsManager;
   const activeTab: Tab = isTab(searchParams.get('tab')) ? (searchParams.get('tab') as Tab) : 'details';
   const [pendingTab, setPendingTab] = useState<Tab | null>(null);
+  const [stayOsDirty, setStayOsDirty] = useState(false);
+  const [promotionsDirty, setPromotionsDirty] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -521,8 +539,7 @@ export default function ManageHotel() {
     if (importedRooms.length > 0 && id) {
       if (importedRooms.length === 1 && editingRoomId !== null) {
         const r = importedRooms[0] as any;
-        const usd = Number(r.prices?.USD ?? r.priceUSD) || 50;
-        const mwk = Number(r.prices?.MWK ?? r.priceMWK) || 85000;
+        const found = importedRoomPrices(r);
         setEditRoomData(prev => ({
           ...prev,
           name: r.name || prev.name || 'Standard Room',
@@ -530,10 +547,8 @@ export default function ManageHotel() {
           maxGuests: Number(r.maxGuests) || prev.maxGuests || 2,
           baseGuests: Number(r.maxGuests) || prev.baseGuests || 2,
           quantity: Number(r.quantity) || prev.quantity || 1,
-          currencies: ['USD', 'MWK'],
-          prices: { USD: usd, MWK: mwk },
-          price: usd,
-          priceMWK: mwk,
+          // Rates the document did not state are left as they were, never invented.
+          ...(found.currencies.length > 0 ? { currencies: found.currencies, prices: found.prices } : {}),
         }));
         toast.success('Imported property details and 1 room type!');
         return;
@@ -541,10 +556,13 @@ export default function ManageHotel() {
 
       try {
         const createdRooms: RoomType[] = [];
+        let unpricedImports = 0;
         for (const rawRoom of importedRooms) {
           const r = rawRoom as any;
-          const usd = Number(r.prices?.USD ?? r.priceUSD) || 50;
-          const mwk = Number(r.prices?.MWK ?? r.priceMWK) || 85000;
+          const found = importedRoomPrices(r);
+          const currencies: CurrencyCode[] = found.currencies.length > 0 ? found.currencies : ['USD'];
+          const primary = currencies[0];
+          if (found.currencies.length === 0) unpricedImports++;
           const maxGuests = Number(r.maxGuests) || 2;
           const roomPayload = {
             hotelId: id,
@@ -553,12 +571,12 @@ export default function ManageHotel() {
             maxGuests,
             baseGuests: maxGuests,
             quantity: Number(r.quantity) || 1,
-            currencies: ['USD', 'MWK'] as CurrencyCode[],
-            prices: { USD: usd, MWK: mwk } as PriceMap,
-            currency: 'USD' as CurrencyCode,
-            price: usd,
-            priceMWK: mwk,
-            showDualCurrency: true,
+            currencies,
+            prices: found.prices,
+            currency: primary,
+            price: Number(found.prices[primary] ?? 0),
+            priceMWK: Number(found.prices.MWK ?? 0),
+            showDualCurrency: currencies.length > 1,
             extraGuestFees: {},
             extraGuestFee: 0,
             amenities: Array.isArray(r.amenities) ? r.amenities : [],
@@ -572,6 +590,9 @@ export default function ManageHotel() {
         }
         setRooms(prev => [...prev, ...createdRooms]);
         toast.success(`Imported property details and ${createdRooms.length} room type(s)!`);
+        if (unpricedImports > 0) {
+          toast(`${unpricedImports} imported room${unpricedImports === 1 ? ' has' : 's have'} no rate in the document. Set a nightly rate before guests can book.`, { duration: 8000 });
+        }
       } catch (err) {
         console.error('Failed to save imported rooms:', err);
         toast.error('Imported property details, but failed to save rooms.');
@@ -603,7 +624,7 @@ export default function ManageHotel() {
   const [hotel, setHotel] = useState<Hotel | null>(null);
   const isPropertyOwner = Boolean(
     user && (
-      (hotel?.ownerEmail && user.email && hotel.ownerEmail.toLowerCase() === user.email.toLowerCase()) ||
+      (hotel?.ownerEmail && user.email && (isShadowing || auth.currentUser?.emailVerified) && hotel.ownerEmail.toLowerCase() === user.email.toLowerCase()) ||
       (hotel as any)?.ownerId === user?.uid ||
       (hotel as any)?.createdBy === user?.uid
     )
@@ -625,6 +646,8 @@ export default function ManageHotel() {
   const [showBulkEditor, setShowBulkEditor] = useState(false);
   const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
   const [editRoomData, setEditRoomData] = useState<Partial<RoomType>>({});
+  /** The room editor's starting point, so merely opening (or re-opening after a save) is not "unsaved work". */
+  const roomBaselineRef = useRef<string>('');
   const [managingBlockDate, setManagingBlockDate] = useState<string | null>(null);
   const [managerCheckIn, setManagerCheckIn] = useState<string>('');
   const [managerCheckOut, setManagerCheckOut] = useState<string>('');
@@ -786,7 +809,11 @@ export default function ManageHotel() {
           hRaw.managerId !== 'none' &&
           hRaw.managerId.trim() !== ''
         );
-        const userEmailLower = user?.email?.toLowerCase();
+        // firestore.rules only honours an email match for a verified address,
+        // so an unverified one would open the editor and then fail every save.
+        const emailTrusted = isShadowing || auth.currentUser?.emailVerified === true;
+        const rawEmailLower = user?.email?.toLowerCase();
+        const userEmailLower = emailTrusted ? rawEmailLower : undefined;
         const shadowedIds: string[] = Array.isArray((user as any)?.managedHotelIds)
           ? (user as any).managedHotelIds
           : [];
@@ -805,31 +832,25 @@ export default function ManageHotel() {
         );
 
         if (cancelled) return;
+        if (docSnap.exists() && !canManage && !emailTrusted && rawEmailLower && (
+          hRaw?.managerEmail?.toLowerCase() === rawEmailLower ||
+          hRaw?.ownerEmail?.toLowerCase() === rawEmailLower ||
+          hRaw?.contactEmail?.toLowerCase() === rawEmailLower
+        )) {
+          toast.error(`Verify ${user?.email} first: open the link we emailed you, then sign in again to manage this property.`, { duration: 8000 });
+        }
         if (docSnap.exists() && canManage) {
           // Auto-ensure the user has the hotel_manager role when they manage this property
           if (user && !isShadowing && !isHotelManager(user) && !isAdmin(user) && !isMarketing(user)) {
             becomeHost().catch(() => {});
           }
           const rawHotel = { id: docSnap.id, ...docSnap.data() } as Hotel;
+          // Only the property's own photos are shown; bundled photos of other
+          // lodges are never mixed in (directive D1).
           const hData = { ...rawHotel } as Hotel;
-          
-          // Seed missing images with local fallbacks so the admin sees exactly what guests see and can manage them.
-          const local = localImagesForName(hData.name);
-          if (!hData.imageUrl && local.length > 0) {
-             hData.imageUrl = local[0];
-          }
-          if (local.length > 1) {
-             const currentGal = hData.galleryUrls || [];
-             // Only add local images that aren't already the main image or in the gallery
-             const toAdd = local.slice(1).filter(img => img !== hData.imageUrl && !currentGal.includes(img));
-             if (toAdd.length > 0) {
-               hData.galleryUrls = [...currentGal, ...toAdd];
-             }
-          }
 
           setHotel(hData);
-          // The edit form starts from the stored document, not the display copy,
-          // so the local fallback images are never written back to Firestore.
+          // The edit form starts from the stored document, not the display copy.
           setEditHotelData(rawHotel);
           editBaselineRef.current = rawHotel;
           setRestaurant(hData.restaurant ?? null);
@@ -917,7 +938,7 @@ export default function ManageHotel() {
     const sumByCurrency = (rows: Booking[]) => {
       const totals = new Map<string, number>();
       for (const b of rows) {
-        const code = b.currency || 'USD';
+        const code = b.currency || 'MWK';
         totals.set(code, (totals.get(code) ?? 0) + (b.total ?? 0));
       }
       return [...totals.entries()].sort((a, b) => b[1] - a[1]);
@@ -954,7 +975,7 @@ export default function ManageHotel() {
   const canSeeFinancials = Boolean(
     isAdmin(user) || isMarketing(user) ||
     (!!hotel?.managerId && hotel.managerId === user?.uid) ||
-    (user?.email && (
+    (user?.email && (isShadowing || auth.currentUser?.emailVerified) && (
       (hotel?.managerEmail && hotel.managerEmail.toLowerCase() === user.email.toLowerCase()) ||
       (hotel?.ownerEmail && hotel.ownerEmail.toLowerCase() === user.email.toLowerCase()) ||
       (hotel?.contactEmail && hotel.contactEmail.toLowerCase() === user.email.toLowerCase())
@@ -991,7 +1012,7 @@ export default function ManageHotel() {
       nightsBetween(b.checkIn, b.checkOut),
       b.guests,
       b.quantity ?? 1,
-      b.currency ?? 'USD',
+      b.currency ?? 'MWK',
       ...(canSeeFinancials ? [b.total ?? 0] : []),
       b.createdAt ? new Date(b.createdAt).toISOString().slice(0, 10) : '',
     ].map(escape).join(','));
@@ -1156,10 +1177,10 @@ export default function ManageHotel() {
   );
   const restaurantDirty =
     Boolean(hotel) && JSON.stringify(restaurant ?? null) !== (restaurantBaselineRef.current || 'null');
-  const roomDirty = editingRoomId !== null;
+  const roomDirty = editingRoomId !== null && JSON.stringify(editRoomData) !== roomBaselineRef.current;
 
   const dirtyOn = (tab: Tab) =>
-    (tab === 'details' || tab === 'media') ? hotelDirty : tab === 'rooms' ? roomDirty : tab === 'restaurant' ? restaurantDirty : false;
+    (tab === 'details' || tab === 'media') ? hotelDirty : tab === 'rooms' ? roomDirty : tab === 'restaurant' ? restaurantDirty : tab === 'stayos' ? stayOsDirty : tab === 'promotions' ? promotionsDirty : false;
 
   const goToTab = (tab: Tab) => {
     setSearchParams(tab === 'details' ? {} : { tab }, { replace: false });
@@ -1194,14 +1215,14 @@ export default function ManageHotel() {
   // Closing or reloading the tab with unsaved work gets the browser's own
   // warning; nothing here can be recovered once the page is gone.
   useEffect(() => {
-    if (!hotelDirty && !restaurantDirty && !roomDirty) return;
+    if (!hotelDirty && !restaurantDirty && !roomDirty && !promotionsDirty) return;
     const warn = (event: BeforeUnloadEvent) => {
       event.preventDefault();
       event.returnValue = '';
     };
     window.addEventListener('beforeunload', warn);
     return () => window.removeEventListener('beforeunload', warn);
-  }, [hotelDirty, restaurantDirty, roomDirty]);
+  }, [hotelDirty, restaurantDirty, roomDirty, promotionsDirty]);
 
   /** Currencies the property's rooms are sold in, reused for menu prices. */
   const propertyCurrencies = useMemo(() => {
@@ -1226,6 +1247,7 @@ export default function ManageHotel() {
                 ...item,
                 name: item.name.trim(),
                 description: item.description?.trim() || '',
+                ...(item.tags ? { tags: item.tags.map(t => t.trim()).filter(Boolean) } : {}),
                 prices: Object.fromEntries(
                   Object.entries(item.prices ?? {}).filter(([, amount]) => Number(amount) > 0)
                 ),
@@ -1346,6 +1368,7 @@ export default function ManageHotel() {
         setRooms(rooms.map(r => r.id === editingRoomId ? { ...r, ...roomPayload } as RoomType : r));
         await logSystemEvent('action', `Manager updated room type "${roomPayload.name}" for ${hotel.name}`, { hotelId: id, roomId: editingRoomId }, user, 'property');
       }
+      roomBaselineRef.current = JSON.stringify(editRoomData);
       toast.success('Room saved.');
     } catch (error) {
       console.error("Error saving room:", error);
@@ -1360,7 +1383,7 @@ export default function ManageHotel() {
     // Legacy rooms have no `prices` map, so it is derived from whatever they do
     // have; the editor then only ever deals in the map.
     const currencies = roomCurrencies(room);
-    setEditRoomData({
+    const start: Partial<RoomType> = {
       ...room,
       currencies,
       prices: Object.fromEntries(
@@ -1376,13 +1399,15 @@ export default function ManageHotel() {
       amenities: room.amenities || [],
       // Kept as an array so the calendar can toggle entries directly.
       blockedDates: [...(room.blockedDates ?? [])],
-    });
+    };
+    roomBaselineRef.current = JSON.stringify(start);
+    setEditRoomData(start);
     setEditingRoomId(room.id!);
   };
 
   const startNewRoom = () => {
     setRoomErrors({});
-    setEditRoomData({
+    const start: Partial<RoomType> = {
       name: '',
       description: '',
       currencies: ['USD'],
@@ -1398,7 +1423,9 @@ export default function ManageHotel() {
       amenities: '' as any,
       blockedDates: [],
       packages: []
-    });
+    };
+    roomBaselineRef.current = JSON.stringify(start);
+    setEditRoomData(start);
     setEditingRoomId('new');
     setShowAddRoom(true);
   };
@@ -1658,14 +1685,23 @@ export default function ManageHotel() {
         await updateBookingWithSlot(bookingId, full, booking as any);
       } else {
         if (!checkIn || !checkOut || checkOut <= checkIn) return 'Check-out must be after check-in.';
-        const room = rooms.find(r => r.id === booking.roomTypeId);
-        if (!room) return 'The room type for this booking could not be found.';
+        // Entire-place stays are sold as a synthetic unit with no room_types doc;
+        // hotel-wide manual and iCal blocks count against every room.
+        const baseRoom = rooms.find(r => r.id === booking.roomTypeId)
+          ?? (hotel && booking.roomTypeId === entirePlaceRoomId(hotel.id) ? entirePlaceRoom(hotel) : undefined);
+        if (!baseRoom) return 'The room type for this booking could not be found.';
+        const room = withPropertyBlocks(baseRoom, hotel);
         if (room.maxGuests && guests > room.maxGuests) return `This room sleeps up to ${room.maxGuests}.`;
 
         const promo = booking.promotionId ? hotel?.promotions?.find(p => p.id === booking.promotionId) ?? null : null;
         const pricing = computeBookingPricing(
           room, checkIn, checkOut, guests, booking.quantity || 1, booking.packageIds ?? [],
-          (booking.currency as CurrencyCode) || undefined, promo
+          (booking.currency as CurrencyCode) || undefined, promo,
+          // Children keep their rate; a changed head count adjusts the adults.
+          booking.children != null
+            ? { adults: guests - Math.min(booking.children, guests), children: Math.min(booking.children, guests) }
+            : booking.adults != null ? { adults: guests, children: 0 } : undefined,
+          hotel?.childPolicy
         );
         full.checkIn = checkIn;
         full.checkOut = checkOut;
@@ -1984,6 +2020,8 @@ export default function ManageHotel() {
               <h3 className="text-sm font-bold text-stone-900">
                 {hotel.status === 'pending'
                   ? 'Listing Pending Verification · Full Preview & Editing Active'
+                  : hotel.status === 'rejected'
+                  ? 'Listing Not Approved'
                   : 'Listing Currently Unpublished'}
               </h3>
               <p className="text-xs text-stone-600 mt-0.5 leading-relaxed">
@@ -1991,6 +2029,12 @@ export default function ManageHotel() {
                   ? 'Your property is under standard verification review. You can preview your listing and configure rooms, rates, and photos right now so it is ready to accept bookings the moment it is approved.'
                   : 'This listing is not currently published in public search. Contact the Travel-Malawi support team if you need assistance.'}
               </p>
+              {hotel.moderationNotes?.trim() && (
+                <p className="text-xs text-stone-800 mt-2 leading-relaxed whitespace-pre-line">
+                  <span className="font-semibold">Note from the review team: </span>
+                  {hotel.moderationNotes.trim()}
+                </p>
+              )}
             </div>
           </div>
           <a
@@ -2083,7 +2127,7 @@ export default function ManageHotel() {
             { id: 'restaurant' as Tab, label: 'Restaurant', icon: UtensilsCrossed },
             { id: 'conferences' as Tab, label: 'Conferences', icon: Presentation },
             { id: 'promotions' as Tab, label: 'Promotions', icon: Percent },
-            { id: 'stayos' as Tab, label: 'Stay OS', icon: ShieldCheck },
+            { id: 'stayos' as Tab, label: 'Ulendo Stay', icon: ShieldCheck },
             { id: 'broadcasts' as Tab, label: 'Broadcasts', icon: Megaphone },
             { id: 'templates' as Tab, label: 'Automation', icon: Mail },
           ];
@@ -2286,8 +2330,8 @@ export default function ManageHotel() {
                           bathrooms: 2,
                           beds: 3,
                           maxGuests: 6,
-                          ratePerNightUsd: 120,
-                          ratePerNightMwk: 210000,
+                          ratePerNightUsd: 0,
+                          ratePerNightMwk: 0,
                         },
                       });
                     }}
@@ -3281,7 +3325,7 @@ export default function ManageHotel() {
                   ...editHotelData,
                   depositInfo: { ...editHotelData.depositInfo, airtelMoneyName: e.target.value }
                 })}
-                placeholder="e.g. Blue Zebra Island Lodge Ltd"
+                placeholder="e.g. Example Lakeside Lodge Ltd"
                 className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-xs sm:text-sm focus:bg-white focus:border-stone-900 transition outline-none"
               />
             </div>
@@ -3307,7 +3351,7 @@ export default function ManageHotel() {
                   ...editHotelData,
                   depositInfo: { ...editHotelData.depositInfo, mpambaName: e.target.value }
                 })}
-                placeholder="e.g. Blue Zebra Island Lodge"
+                placeholder="e.g. Example Lakeside Lodge"
                 className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-xs sm:text-sm focus:bg-white focus:border-stone-900 transition outline-none"
               />
             </div>
@@ -3541,9 +3585,13 @@ export default function ManageHotel() {
         </div>
       )}
 
-      {/* TAB CONTENT: STAY OS */}
+      {/* TAB CONTENT: ULENDO STAY (StayOSManager) */}
       {activeTab === 'stayos' && (
-        <StayOSManager hotel={hotel} />
+        <StayOSManager
+          hotel={hotel}
+          onDirtyChange={setStayOsDirty}
+          onSaved={patch => setHotel(prev => (prev ? { ...prev, ...patch } : prev))}
+        />
       )}
 
       {/* TAB CONTENT: BROADCASTS */}
@@ -4500,7 +4548,8 @@ export default function ManageHotel() {
           <PromotionsManager 
             hotel={hotel} 
             rooms={rooms}
-            onUpdate={(promotions) => setHotel({ ...hotel, promotions })} 
+            onUpdate={(promotions) => setHotel(prev => (prev ? { ...prev, promotions } : prev))}
+            onDirtyChange={setPromotionsDirty}
           />
         </div>
       )}
@@ -4903,7 +4952,7 @@ export default function ManageHotel() {
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Total Rooms Available</label>
-                    <input type="number" required min={0} value={editRoomData.quantity || 1} onChange={e => setEditRoomData({...editRoomData, quantity: Number(e.target.value)})} className={`w-full bg-stone-50 border p-3 rounded-xl outline-none transition ${roomErrors.quantity ? 'border-red-300 focus:border-red-500' : 'border-stone-200 focus:border-stone-900'}`} />
+                    <input type="number" required min={0} value={editRoomData.quantity ?? 1} onChange={e => setEditRoomData({...editRoomData, quantity: Number(e.target.value)})} className={`w-full bg-stone-50 border p-3 rounded-xl outline-none transition ${roomErrors.quantity ? 'border-red-300 focus:border-red-500' : 'border-stone-200 focus:border-stone-900'}`} />
                     <FieldError message={roomErrors.quantity} />
                   </div>
                   </div>

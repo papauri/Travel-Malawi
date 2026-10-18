@@ -437,7 +437,8 @@ export default function BookingChat({ booking, currentUser, onClose, onMinimize 
               checkIn: liveBooking.checkIn,
               checkOut: liveBooking.checkOut,
               roomName: room?.name,
-              arrivalPin: liveBooking.arrivalPin,
+              // liveBooking is this render's snapshot; on first confirmation the new PIN is only in `written`.
+              arrivalPin: (written as Partial<Booking>).arrivalPin || liveBooking.arrivalPin,
               totalPrice: liveBooking.total ? `${liveBooking.currency || 'MWK'} ${Number(liveBooking.total).toLocaleString()}` : undefined,
               automationSettings: hotel?.emailAutomationSettings,
               wifiName: hotel?.infrastructure?.wifiSSID,

@@ -9,13 +9,53 @@ export interface SEOHeadProps {
   url?: string;
   type?: 'website' | 'article' | 'hotel';
   schema?: Record<string, any> | Array<Record<string, any>>;
+  /** Keep this page out of search results (404s, private screens). */
+  noindex?: boolean;
 }
 
 const DEFAULT_TITLE = 'Travel Malawi';
 const DEFAULT_DESCRIPTION =
   'Direct booking platform connecting travelers with verified independent lodges, Lake Malawi cottages, safari camps, boutique hotels, and guest houses across Malawi.';
-const DEFAULT_IMAGE = 'https://ulendomalawi.com/hotels/kaya_main.jpg';
+const DEFAULT_IMAGE = 'https://ulendomalawi.com/icons/icon-512.png';
 const BASE_ORIGIN = 'https://ulendomalawi.com';
+const INDEXABLE = 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1';
+
+function setMetaTag(attrName: 'name' | 'property', attrValue: string, content: string) {
+  let element = document.querySelector(`meta[${attrName}="${attrValue}"]`) as HTMLMetaElement | null;
+  if (!element) {
+    element = document.createElement('meta');
+    element.setAttribute(attrName, attrValue);
+    document.head.appendChild(element);
+  }
+  element.setAttribute('content', content);
+}
+
+function setCanonical(href: string) {
+  let canonicalTag = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
+  if (!canonicalTag) {
+    canonicalTag = document.createElement('link');
+    canonicalTag.setAttribute('rel', 'canonical');
+    document.head.appendChild(canonicalTag);
+  }
+  canonicalTag.setAttribute('href', href);
+}
+
+/** Puts the head back to the site defaults for whatever page is current. */
+function resetHead() {
+  const canonicalUrl = `${BASE_ORIGIN}${window.location.pathname}`;
+  document.title = DEFAULT_TITLE;
+  setMetaTag('name', 'description', DEFAULT_DESCRIPTION);
+  setMetaTag('name', 'robots', INDEXABLE);
+  setMetaTag('property', 'og:title', DEFAULT_TITLE);
+  setMetaTag('property', 'og:description', DEFAULT_DESCRIPTION);
+  setMetaTag('property', 'og:image', DEFAULT_IMAGE);
+  setMetaTag('property', 'og:url', canonicalUrl);
+  setMetaTag('property', 'og:type', 'website');
+  setMetaTag('name', 'twitter:title', DEFAULT_TITLE);
+  setMetaTag('name', 'twitter:description', DEFAULT_DESCRIPTION);
+  setMetaTag('name', 'twitter:image', DEFAULT_IMAGE);
+  setCanonical(canonicalUrl);
+}
 
 /**
  * Manages document head metadata dynamically for enhanced search engine ranking,
@@ -29,6 +69,7 @@ export default function SEOHead({
   url,
   type = 'website',
   schema,
+  noindex = false,
 }: SEOHeadProps) {
   const location = useLocation();
 
@@ -53,17 +94,6 @@ export default function SEOHead({
     // 1. Update Title
     document.title = fullTitle;
 
-    // Helper to update or create meta tags
-    const setMetaTag = (attrName: 'name' | 'property', attrValue: string, content: string) => {
-      let element = document.querySelector(`meta[${attrName}="${attrValue}"]`) as HTMLMetaElement | null;
-      if (!element) {
-        element = document.createElement('meta');
-        element.setAttribute(attrName, attrValue);
-        document.head.appendChild(element);
-      }
-      element.setAttribute('content', content);
-    };
-
     // 2. Standard Search Metadata
     setMetaTag('name', 'description', metaDescription);
     if (keywords) {
@@ -84,14 +114,9 @@ export default function SEOHead({
     setMetaTag('name', 'twitter:image', metaImage);
     setMetaTag('name', 'twitter:card', 'summary_large_image');
 
-    // 5. Canonical Link Tag
-    let canonicalTag = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
-    if (!canonicalTag) {
-      canonicalTag = document.createElement('link');
-      canonicalTag.setAttribute('rel', 'canonical');
-      document.head.appendChild(canonicalTag);
-    }
-    canonicalTag.setAttribute('href', canonicalUrl);
+    // 5. Canonical Link Tag and robots
+    setCanonical(canonicalUrl);
+    setMetaTag('name', 'robots', noindex ? 'noindex, follow' : INDEXABLE);
 
     // 6. Schema.org JSON-LD structured data for page
     const scriptId = 'dynamic-seo-schema';
@@ -113,8 +138,11 @@ export default function SEOHead({
       // Cleanup dynamically injected schema on page unmount
       const existing = document.getElementById(scriptId);
       if (existing) existing.remove();
+      // Pages without their own SEOHead (profile, bookings...) would otherwise
+      // keep the previous page's title, description and canonical.
+      resetHead();
     };
-  }, [title, description, keywords, image, url, type, schema, location.pathname]);
+  }, [title, description, keywords, image, url, type, schema, noindex, location.pathname]);
 
   return null;
 }

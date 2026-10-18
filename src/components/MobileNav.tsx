@@ -34,6 +34,14 @@ export default function MobileNav() {
     setIsOpen(false);
   }, [pathname]);
 
+  // Escape closes the sheet.
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') setIsOpen(false); };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [isOpen]);
+
   // Hide bottom nav on hotel details pages on mobile to make room for the sticky "Book" bar
   if (pathname.includes('/hotel/')) return null;
 
@@ -75,6 +83,7 @@ export default function MobileNav() {
             key="mobile-nav-backdrop"
             role="button"
             tabIndex={0}
+            aria-label="Close menu"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -91,11 +100,14 @@ export default function MobileNav() {
         {isOpen && (
           <motion.div
             key="mobile-nav-sheet-panel"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Menu"
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="md:hidden fixed bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.1)] z-[70] overflow-hidden flex flex-col pb-safe max-h-[85vh]"
+            className="md:hidden fixed bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.1)] z-[70] overflow-hidden flex flex-col pb-safe max-h-[85dvh]"
           >
               <div className="p-5 flex items-center justify-between border-b border-stone-100 relative">
                 <div className="flex items-center gap-3">
@@ -134,7 +146,9 @@ export default function MobileNav() {
                   </div>
                 </div>
                 <button
+                  type="button"
                   onClick={() => setIsOpen(false)}
+                  aria-label="Close menu"
                   className="p-2 rounded-full hover:bg-stone-100 transition text-stone-500 hover:text-stone-900 cursor-pointer"
                 >
                   <X className="w-5 h-5" />

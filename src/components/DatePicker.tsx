@@ -21,7 +21,19 @@ export default function DatePicker({ checkIn, checkOut, onSelect, isDateBlocked 
     (date: Date) => {
       if (!isDateBlocked) return false;
       const dateStr = format(date, 'yyyy-MM-dd');
-      return isDateBlocked(dateStr);
+      if (!isDateBlocked(dateStr)) return false;
+      // A blocked night can still be the check-out day (check-out is not a
+      // night stayed), provided every night from check-in up to it is free.
+      if (checkIn && !checkOut && dateStr > checkIn) {
+        let cursor = checkIn;
+        let guard = 0;
+        while (cursor < dateStr && guard++ < 1000) {
+          if (isDateBlocked(cursor)) return true;
+          cursor = format(addDays(parseDateStr(cursor)!, 1), 'yyyy-MM-dd');
+        }
+        return false;
+      }
+      return true;
     }
   ];
 

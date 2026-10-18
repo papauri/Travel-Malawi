@@ -102,20 +102,30 @@ export default function Profile() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (hydratedUid !== user.uid) return;
+
+    const cleanName = displayName.trim();
+    if (cleanName.length < 2) {
+      toast.error('Please enter your full name (at least 2 characters).');
+      return;
+    }
+    if (cleanName.length > 80 || bio.trim().length > 600) {
+      toast.error(cleanName.length > 80 ? 'Name must be 80 characters or fewer.' : 'Bio must be 600 characters or fewer.');
+      return;
+    }
     setIsSaving(true);
 
     try {
       if (auth.currentUser) {
-        await updateProfile(auth.currentUser, { displayName });
+        await updateProfile(auth.currentUser, { displayName: cleanName });
       }
 
       await updateDoc(doc(db, 'users', user.uid), {
-        displayName,
-        phone,
-        whatsapp,
-        city,
-        country,
-        bio,
+        displayName: cleanName,
+        phone: phone.trim(),
+        whatsapp: whatsapp.trim(),
+        city: city.trim(),
+        country: country.trim(),
+        bio: bio.trim(),
         preferredCurrency,
         notificationPreferences: notifications,
       });

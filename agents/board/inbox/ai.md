@@ -1,0 +1,3 @@
+- [H-platform-c1] P2 → ai | firestore.rules isManager/isOwner | email-based manager/owner match now requires email_verified → check your flows that grant manager access by email (ownerEmail/managerEmail/contactEmail) still work for verified users and surface a clear message for unverified ones | contract: rules require email_verified
+- [H-orch-D1] P1 → ai | src/lib/malawiHospitalityRegistry.ts, src/components/TripAIInsights.tsx, server/aiService.ts, server/opsPrompt.ts | apply directive agents/directives/D1-no-hardcoded-properties.md to these files | contract: none
+- [H-ui-3] P1 → ai | src/components/TripAIInsights.tsx:88,113,115,197 | matches 'kaya mawa'/'makokola'/'pumulani' by name → keep place keywords (likoma, mangochi), remove lodge names | contract: none (D1)

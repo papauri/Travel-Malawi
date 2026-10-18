@@ -81,6 +81,7 @@ export function useUnreadMessagesSource() {
 
     const isManager = isHotelManager(user);
     const unsubs: (() => void)[] = [];
+    isInitialLoad.current = true;
 
     let currentInquiriesGuestActive: ActiveChatItem[] = [];
     let currentInquiriesGuestInactive: ActiveChatItem[] = [];
@@ -94,7 +95,14 @@ export function useUnreadMessagesSource() {
     let currentBookingsManagerActive: ActiveChatItem[] = [];
     let currentBookingsManagerInactive: ActiveChatItem[] = [];
 
-    const recalculateAndAlert = () => {
+    // The first snapshot of every listener is existing data, not new activity.
+    // Stay in "initial load" until all of them have reported once, otherwise
+    // the 2nd-4th listeners' backlog would buzz the badge on every page load.
+    const expectedListeners = isManager ? 4 : 2;
+    const reported = new Set<string>();
+
+    const recalculateAndAlert = (source: string) => {
+      reported.add(source);
       // Deduplicate active items by ID
       const activeMap = new Map<string, ActiveChatItem>();
       [
@@ -145,7 +153,7 @@ export function useUnreadMessagesSource() {
         triggerVibration();
       }
 
-      isInitialLoad.current = false;
+      if (reported.size >= expectedListeners) isInitialLoad.current = false;
       setUnreadItems(unreadOnly);
       setActiveChats(sortedActive);
       setInactiveChats(sortedInactive);
@@ -211,8 +219,8 @@ export function useUnreadMessagesSource() {
 
         currentInquiriesGuestActive = activeList;
         currentInquiriesGuestInactive = inactiveList;
-        recalculateAndAlert();
-      }, (err) => console.warn('Error listening to guest chats:', err))
+        recalculateAndAlert('guestChats');
+      }, (err) => { console.warn('Error listening to guest chats:', err); recalculateAndAlert('guestChats'); })
     );
 
     // 2. Manager Inquiry Chats
@@ -276,8 +284,8 @@ export function useUnreadMessagesSource() {
 
           currentInquiriesManagerActive = activeList;
           currentInquiriesManagerInactive = inactiveList;
-          recalculateAndAlert();
-        }, (err) => console.warn('Error listening to manager chats:', err))
+          recalculateAndAlert('managerChats');
+        }, (err) => { console.warn('Error listening to manager chats:', err); recalculateAndAlert('managerChats'); })
       );
     }
 
@@ -345,8 +353,8 @@ export function useUnreadMessagesSource() {
 
         currentBookingsGuestActive = activeList;
         currentBookingsGuestInactive = inactiveList;
-        recalculateAndAlert();
-      }, (err) => console.warn('Error listening to guest booking messages:', err))
+        recalculateAndAlert('guestBookings');
+      }, (err) => { console.warn('Error listening to guest booking messages:', err); recalculateAndAlert('guestBookings'); })
     );
 
     // 4. Manager Bookings Chats
@@ -413,8 +421,8 @@ export function useUnreadMessagesSource() {
 
           currentBookingsManagerActive = activeList;
           currentBookingsManagerInactive = inactiveList;
-          recalculateAndAlert();
-        }, (err) => console.warn('Error listening to manager booking messages:', err))
+          recalculateAndAlert('managerBookings');
+        }, (err) => { console.warn('Error listening to manager booking messages:', err); recalculateAndAlert('managerBookings'); })
       );
     }
 

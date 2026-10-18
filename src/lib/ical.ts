@@ -4,6 +4,7 @@
  */
 
 import { IcalFeedConfig } from '../types';
+import { nightsInRange } from './dates';
 
 export interface ChannelPlatformPreset {
   id: IcalFeedConfig['platform'];
@@ -157,16 +158,8 @@ export function parseClientIcsText(ics: string): {
             datesSet.add(startStr);
           } else {
             // Expand range [startStr, endStr)
-            let cur = new Date(startStr);
-            const end = new Date(endStr);
-            let guard = 0;
-            while (cur < end && guard++ < 365) {
-              const y = cur.getFullYear();
-              const m = String(cur.getMonth() + 1).padStart(2, '0');
-              const d = String(cur.getDate()).padStart(2, '0');
-              datesSet.add(`${y}-${m}-${d}`);
-              cur.setDate(cur.getDate() + 1);
-            }
+            // Calendar-date stepping (UTC) so the viewer's timezone cannot shift nights.
+            for (const night of nightsInRange(startStr, endStr).slice(0, 365)) datesSet.add(night);
           }
         }
       }

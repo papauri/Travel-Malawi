@@ -15,7 +15,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { isAdmin, isHotelManager } from '../lib/roles';
 import { useAIAssistant, OperationsChatPayload, OperationsChatResult, ActionProposal, QueryIntent } from '../hooks/useAIAssistant';
-import { db } from '../lib/firebase';
+import { db, auth } from '../lib/firebase';
 import { collection, getDocs, doc, updateDoc, query, where } from 'firebase/firestore';
 import { Hotel, RoomType, Booking, Review, Broadcast } from '../types';
 import { 
@@ -177,6 +177,61 @@ function FormattedTableCell({ children }: { children: React.ReactNode }) {
     }
   }
   return <>{children}</>;
+}
+
+const POLICY_FIELDS = new Set([
+  'checkInTime', 'checkOutTime', 'cancellationPolicy', 'paymentPolicy', 'contactWhatsapp', 'mealPolicy',
+  'conferenceCancellationPolicy', 'conferencePaymentPolicy', 'conferenceGuidelines',
+]);
+const BOOKING_STATUSES = new Set(['pending', 'confirmed', 'cancelled', 'rejected']);
+const LISTING_STATUSES = new Set(['pending', 'approved', 'rejected']);
+const KNOWN_PROPOSALS = new Set([
+  'add_amenity', 'remove_amenity', 'update_amenities', 'update_property_policy', 'update_property_online',
+  'update_daily_board', 'add_restaurant_dish', 'update_room_price', 'update_booking_status',
+  'update_property_status', 'toggle_featured', 'apply_promotion', 'scrape_reviews',
+]);
+
+/**
+ * AI proposals are untrusted: anything malformed, out of range or touching fields outside the
+ * proposal's scope is refused before a single write. Returns the reason, or null when valid.
+ */
+function proposalProblem(action: ActionProposal, knownRoomIds: Set<string>): string | null {
+  const type = action.type;
+  if (type === 'update_amenities' && action.amenities !== undefined) {
+    const ok = Array.isArray(action.amenities) && action.amenities.every(a => typeof a === 'string' && a.trim());
+    return ok ? null : 'The proposed amenity list is invalid.';
+  }
+  if (type === 'add_amenity' || type === 'remove_amenity' || type === 'update_amenities' || action.amenity !== undefined || action.amenities !== undefined) {
+    return typeof action.amenity === 'string' && action.amenity.trim() ? null : 'The proposal does not name an amenity.';
+  }
+  if (type === 'update_property_policy' || action.policyField) {
+    if (!POLICY_FIELDS.has(action.policyField || 'cancellationPolicy')) return `"${action.policyField}" is not a policy Ulendo can change.`;
+    return typeof action.policyValue === 'string' && action.policyValue.trim() ? null : 'The proposal has no policy text.';
+  }
+  if (type === 'update_room_price') {
+    const price = Number(action.newPrice);
+    if (!action.roomId || !knownRoomIds.has(action.roomId)) return 'That room is not one of your loaded rooms.';
+    if (!Number.isFinite(price) || price <= 0) return 'The proposed rate is not a valid price.';
+    if (!['USD', 'MWK'].includes((action.currency || 'USD').toUpperCase())) return 'Rates can only be set in USD or MWK.';
+    return null;
+  }
+  if (type === 'update_booking_status') {
+    return BOOKING_STATUSES.has(action.newStatus || '') ? null : 'The proposed booking status is not valid.';
+  }
+  if (type === 'update_property_status') {
+    return LISTING_STATUSES.has(action.newStatus || '') ? null : 'The proposed listing status is not valid.';
+  }
+  if (type === 'apply_promotion') {
+    const pct = Number(action.discountPercentage);
+    if (!Number.isFinite(pct) || pct <= 0 || pct >= 100) return 'The discount must be between 1% and 99%.';
+    if (action.startDate && action.endDate && action.endDate <= action.startDate) return 'The promotion must end after it starts.';
+    return null;
+  }
+  if (type === 'add_restaurant_dish') {
+    return typeof action.dishName === 'string' && action.dishName.trim() ? null : 'The proposal does not name a dish.';
+  }
+  if (KNOWN_PROPOSALS.has(type) || action.isOnline !== undefined || action.dishOfTheDay || action.activities) return null;
+  return 'Ulendo proposed a change it cannot apply. Ask again in different words.';
 }
 
 export default function OperationsCopilot() {
@@ -367,7 +422,15 @@ export default function OperationsCopilot() {
         const hotelsSnap = await getDocs(collection(db, 'hotels'));
         const allHotels = hotelsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Hotel));
 
-        const userEmailLower = user.email?.toLowerCase();
+        // Security rules only honour an email match once the email is verified.
+        const rawEmailLower = user.email?.toLowerCase();
+        const emailVerified = auth.currentUser?.emailVerified === true;
+        const userEmailLower = emailVerified ? rawEmailLower : undefined;
+        const matchesEmail = (h: Hotel) => Boolean(rawEmailLower && [h.managerEmail, h.ownerEmail, h.contactEmail]
+          .some(e => e && e.toLowerCase() === rawEmailLower));
+        if (!emailVerified && allHotels.some(h => h.managerId !== user.uid && matchesEmail(h))) {
+          toast.error('Verify your email address to manage the properties listed under it, then sign in again.', { id: 'verify-email-copilot' });
+        }
         hotelDocs = allHotels.filter(h => {
           const hasAssignedManager = Boolean(
             h.managerId &&
@@ -1008,6 +1071,11 @@ export default function OperationsCopilot() {
         setExecutingAction(null);
         return;
       }
+      const problem = proposalProblem(action, new Set(rooms.map(r => r.id).filter(Boolean) as string[]));
+      if (problem) {
+        toast.error(problem);
+        return;
+      }
 
       // Authorization Check: Property Managers may only modify their own properties
       if (!userIsAdmin) {
@@ -1022,14 +1090,11 @@ export default function OperationsCopilot() {
             prop.managerId.trim() !== ''
           );
           // If property has an assigned manager other than current user, check email
+          // (verified only, matching the security rules: manager, owner or contact email).
           if (hasAssignedManager && prop.managerId !== user?.uid) {
-            if (userEmailLower && prop.managerEmail && prop.managerEmail.toLowerCase() === userEmailLower) {
-              return false;
-            }
-            if (userEmailLower && prop.ownerEmail && prop.ownerEmail.toLowerCase() === userEmailLower) {
-              return false;
-            }
-            return true;
+            const matches = Boolean(auth.currentUser?.emailVerified && userEmailLower && [prop.managerEmail, prop.ownerEmail, prop.contactEmail]
+              .some(e => e && e.toLowerCase() === userEmailLower));
+            return !matches;
           }
           // Unassigned properties belong to the signed-in user!
           return false;
@@ -1053,7 +1118,7 @@ export default function OperationsCopilot() {
         Boolean(action.amenities);
 
       if (isAmenityOp) {
-        const amenityValue = (action.amenity || 'Breakfast Included').trim();
+        const amenityValue = (action.amenity || '').trim();
 
         for (const hid of targetIds) {
           const hotel = properties.find(p => p.id === hid);
@@ -1102,7 +1167,7 @@ export default function OperationsCopilot() {
       // 2. PROPERTY POLICY OPERATIONS
       } else if (action.type === 'update_property_policy' || action.policyField) {
         const field = action.policyField || 'cancellationPolicy';
-        const value = action.policyValue ?? 'Standard';
+        const value = (action.policyValue || '').trim();
 
         for (const hid of targetIds) {
           await updateDoc(doc(db, 'hotels', hid), { [field]: value });
@@ -1213,7 +1278,10 @@ export default function OperationsCopilot() {
         const targetRoom = rooms.find(r => r.id === action.roomId);
         const existingPrices = targetRoom?.prices || {};
         const currency = (action.currency || 'USD').toUpperCase();
-        const newPrice = Number(action.newPrice);
+        // Platform rounding: MWK to the nearest 1,000, USD to whole dollars.
+        const newPrice = currency === 'MWK'
+          ? Math.max(1000, Math.round(Number(action.newPrice) / 1000) * 1000)
+          : Math.max(1, Math.round(Number(action.newPrice)));
 
         const updateData: any = {
           prices: {
@@ -1369,14 +1437,19 @@ export default function OperationsCopilot() {
               location: targetProp.location,
               count: 3,
               sentimentMode: 'balanced',
+              existingReviews: Array.isArray(targetProp.reviews) ? targetProp.reviews : [],
             })
           });
           toast.dismiss('swarm-scrape');
-          const scrapeRes = await resp.json();
+          const scrapeRes = await resp.json().catch(() => ({}));
+          if (!resp.ok) {
+            toast.error(resp.status === 403 ? 'Review scanning is limited to platform admins.' : (scrapeRes?.error || 'Review scan failed. Please try again.'));
+            return;
+          }
           const found = Array.isArray(scrapeRes?.data) ? scrapeRes.data : [];
           if (found.length === 0) {
-            actionSummaryText = `Review Swarm scanned live web channels for **${targetProp.name}**; zero authentic public reviews were found. No fake reviews generated.`;
-            toast('No public reviews found on live web for this stay.', { icon: 'ℹ️' });
+            actionSummaryText = scrapeRes?.message || `No public reviews were found for **${targetProp.name}**. No reviews were added.`;
+            toast(scrapeRes?.message || 'No public reviews found on live web for this stay.', { icon: 'ℹ️' });
           } else {
             const currentReviews = Array.isArray(targetProp.reviews) ? [...targetProp.reviews] : [];
             const updated = [...currentReviews, ...found];
@@ -1395,7 +1468,8 @@ export default function OperationsCopilot() {
           toast.dismiss('swarm-scrape');
           console.error('Review Swarm scrape error:', scrapeErr);
           toast.error('Failed to scrape reviews from web');
-          actionSummaryText = `Review Swarm encountered an error reaching web channels.`;
+          // Nothing was applied: never post an "Applied Successfully" card for a failed scan.
+          return;
         }
       } else {
         // If there's an amenity field
@@ -1409,7 +1483,9 @@ export default function OperationsCopilot() {
           }
           actionSummaryText = `Added "${action.amenity}" to ${targetIds.length} properties.`;
         } else {
-          actionSummaryText = `Executed operational update across ${targetIds.length} properties.`;
+          // Nothing to write: never report a change that did not happen.
+          toast.error('Ulendo proposed a change it cannot apply. Ask again in different words.');
+          return;
         }
         toast.success('Operational update applied successfully!');
       }

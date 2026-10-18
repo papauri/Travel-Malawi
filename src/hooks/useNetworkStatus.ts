@@ -22,25 +22,45 @@ function notifyListeners() {
   listeners.forEach(listener => listener());
 }
 
+// Browsers fire offline/online in quick bursts on a flaky link. A drop is only
+// committed if it is still offline after a short grace period, and a blip that
+// never became visible does not trigger the "Back Online" banner either.
+const OFFLINE_GRACE_MS = 1500;
+let offlineTimer: any = null;
+
+function markReconnected() {
+  globalIsOnline = true;
+  globalLastChangedAt = Date.now();
+  globalJustReconnected = true;
+  notifyListeners();
+
+  if (reconnectTimer) clearTimeout(reconnectTimer);
+  reconnectTimer = setTimeout(() => {
+    globalJustReconnected = false;
+    notifyListeners();
+  }, 4000);
+}
+
 if (typeof window !== 'undefined') {
   window.addEventListener('online', () => {
-    globalIsOnline = true;
-    globalLastChangedAt = Date.now();
-    globalJustReconnected = true;
-    notifyListeners();
-
-    if (reconnectTimer) clearTimeout(reconnectTimer);
-    reconnectTimer = setTimeout(() => {
-      globalJustReconnected = false;
-      notifyListeners();
-    }, 4000);
+    if (offlineTimer) {
+      clearTimeout(offlineTimer);
+      offlineTimer = null;
+    }
+    if (globalIsOnline) return; // the drop was never shown
+    markReconnected();
   });
 
   window.addEventListener('offline', () => {
-    globalIsOnline = false;
-    globalLastChangedAt = Date.now();
-    globalJustReconnected = false;
-    notifyListeners();
+    if (offlineTimer) clearTimeout(offlineTimer);
+    offlineTimer = setTimeout(() => {
+      offlineTimer = null;
+      if (navigator.onLine || !globalIsOnline) return;
+      globalIsOnline = false;
+      globalLastChangedAt = Date.now();
+      globalJustReconnected = false;
+      notifyListeners();
+    }, OFFLINE_GRACE_MS);
   });
 }
 
@@ -83,22 +103,15 @@ export function useNetworkStatus(): NetworkStatus {
       globalIsOnline = isHealthy;
 
       if (!prevOnline && isHealthy) {
-        globalJustReconnected = true;
-        globalLastChangedAt = Date.now();
-        if (reconnectTimer) clearTimeout(reconnectTimer);
-        reconnectTimer = setTimeout(() => {
-          globalJustReconnected = false;
-          notifyListeners();
-        }, 4000);
-      } else if (!isHealthy) {
-        globalIsOnline = false;
+        markReconnected();
+      } else if (!isHealthy && prevOnline) {
         globalLastChangedAt = Date.now();
       }
 
       return isHealthy;
     } catch {
+      if (globalIsOnline) globalLastChangedAt = Date.now();
       globalIsOnline = false;
-      globalLastChangedAt = Date.now();
       return false;
     } finally {
       globalIsChecking = false;

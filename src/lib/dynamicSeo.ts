@@ -128,8 +128,16 @@ export function generateAutonomousSeo({
   searchParam,
 }: AutonomousSeoInput): AutonomousSeoResult {
   const resolvedFiltered = extractHotelList(filteredHotels);
-  const activeHotels = resolvedFiltered.length > 0 ? resolvedFiltered : hotels;
   const rawLoc = (locationParam || searchParam || '').trim();
+  // A search that matched nothing must say so; falling back to every hotel
+  // would advertise "N lodges in <place>" and rate the place on other towns' reviews.
+  const filtersActive = Boolean(rawLoc || categoryParam);
+  const activeHotels =
+    filteredHotels !== undefined && filtersActive
+      ? resolvedFiltered
+      : resolvedFiltered.length > 0
+        ? resolvedFiltered
+        : hotels;
 
   // 1. Gather all prices across active hotels dynamically
   const allMwkPrices: number[] = [];
@@ -237,7 +245,7 @@ export function generateAutonomousSeo({
       alternateName: ['Ulendo Malawi', 'Travel Malawi Hospitality Platform'],
       url: `${BASE_URL}/`,
       logo: `${BASE_URL}/favicon-32.png`,
-      image: `${BASE_URL}/hotels/kaya_main.jpg`,
+      image: `${BASE_URL}/icons/icon-512.png`,
       description:
         'The Warm Heart of Africa direct booking platform for independent lodges, safari camps, and lakeside cottages in Malawi. Book direct in MWK and USD with zero booking commissions.',
       currenciesAccepted: 'MWK, USD',

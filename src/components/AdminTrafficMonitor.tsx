@@ -32,6 +32,8 @@ import {
 import { format, formatDistanceToNow } from 'date-fns';
 import toast from 'react-hot-toast';
 import ConfirmDialog from './ConfirmDialog';
+import { useAuth } from '../contexts/AuthContext';
+import { isGlobalAdmin } from '../lib/roles';
 import {
   fetchLiveTrafficSummary,
   clearTrafficBuffer,
@@ -46,6 +48,8 @@ interface AdminTrafficMonitorProps {
 type TrafficFilter = 'all' | 'anonymous' | 'authenticated' | 'high_intent' | 'waiting_long';
 
 export default function AdminTrafficMonitor({ compactMode = false }: AdminTrafficMonitorProps) {
+  const { user: authedUser } = useAuth();
+  const canClear = isGlobalAdmin(authedUser); // the server restricts clearing to global admins
   const [data, setData] = useState<LiveTrafficResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -64,6 +68,9 @@ export default function AdminTrafficMonitor({ compactMode = false }: AdminTraffi
     const result = await fetchLiveTrafficSummary();
     if (result) {
       setData(result);
+    } else {
+      // Deduplicated by id so the 5s poll does not stack toasts.
+      toast.error('Could not load live traffic. Showing the last data received.', { id: 'traffic-load-failed' });
     }
     setLoading(false);
     if (isManual) setRefreshing(false);
@@ -259,13 +266,18 @@ export default function AdminTrafficMonitor({ compactMode = false }: AdminTraffi
         `"${new Date(s.lastHeartbeatAt).toISOString()}"`,
       ]);
 
-      const csvString = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+      // Page titles and names are visitor-controlled: neutralise spreadsheet formulas, and use a Blob
+      // URL so a '#' in a title cannot truncate the file the way it does in a data: URI.
+      const safeRows = rows.map((r) => r.map((c) => (typeof c === 'string' ? c.replace(/^"([=+\-@\t\r])/, '"\'$1') : c)));
+      const csvString = [headers.join(','), ...safeRows.map((r) => r.join(','))].join('\n');
+      const csvUrl = URL.createObjectURL(new Blob([csvString], { type: 'text/csv;charset=utf-8' }));
       const anchor = document.createElement('a');
-      anchor.setAttribute('href', encodeURI(csvString));
+      anchor.setAttribute('href', csvUrl);
       anchor.setAttribute('download', `travel_malawi_visitors_${format(new Date(), 'yyyy-MM-dd_HHmm')}.csv`);
       document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();
+      setTimeout(() => URL.revokeObjectURL(csvUrl), 1000);
       setShowExportMenu(false);
       toast.success('Exported visitor sessions to CSV');
     } catch {
@@ -652,15 +664,17 @@ export default function AdminTrafficMonitor({ compactMode = false }: AdminTraffi
             )}
           </div>
 
-          <button
-            type="button"
-            onClick={handleClear}
-            disabled={clearing}
-            className="p-2 text-stone-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg border border-stone-200 bg-white transition cursor-pointer"
-            title="Clear session history"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
+          {canClear && (
+            <button
+              type="button"
+              onClick={handleClear}
+              disabled={clearing}
+              className="p-2 text-stone-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg border border-stone-200 bg-white transition cursor-pointer"
+              title="Clear session history"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       </div>
 

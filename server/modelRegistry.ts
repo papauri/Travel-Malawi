@@ -238,7 +238,7 @@ export function markModelRetired(provider: AIProviderId, model: string, errorMes
   s.retired[provider] = [...retired];
 
   const hint = errorMessage ? parseReplacementHint(errorMessage) : null;
-  if (hint && hint !== model && !retired.has(hint)) {
+  if (hint && hint !== model && !retired.has(hint) && !isExcludedModel(provider, hint)) {
     s.hints[provider] = [hint, ...(s.hints[provider] || []).filter(h => h !== hint)].slice(0, 5);
   }
   console.warn(`[modelRegistry] ${provider} model ${model} is retired${hint ? `; provider suggests ${hint}` : ''}.`);
@@ -385,7 +385,7 @@ export function autoPickModel(provider: AIProviderId): string {
   const ranked = getRankedModels(provider);
   const top = ranked.find(m => m.isLatestGeneration && m.stable) || ranked[0];
   if (top) return top.id;
-  const hint = (getState().hints[provider] || []).find(h => !retired.has(h));
+  const hint = (getState().hints[provider] || []).find(h => !retired.has(h) && !isExcludedModel(provider, h));
   if (hint) return hint;
   return FALLBACK_MODELS[provider].find(m => !retired.has(m)) || FALLBACK_MODELS[provider][0];
 }

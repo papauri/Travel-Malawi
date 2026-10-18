@@ -9,6 +9,7 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import DocQuickEditButton from '../components/DocQuickEditButton';
 import { useDocContent } from '../hooks/useDocContent';
+import { downloadDocHtml } from '../lib/downloadDoc';
 
 export default function PropertyListingGuide() {
   const { title: customTitle, subtitle: customSubtitle, isCustomized, lastEditedBy, refreshDoc } = useDocContent(
@@ -48,15 +49,7 @@ export default function PropertyListingGuide() {
     window.print();
   };
 
-  const handleDownload = () => {
-    const link = document.createElement('a');
-    link.href = '/api/admin/docs/property-listing-guide?format=html&download=1';
-    link.download = 'travel_malawi_property_listing_guide.html';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success('Downloaded listing guide (.html)');
-  };
+  const handleDownload = () => downloadDocHtml('property-listing-guide', 'travel_malawi_property_listing_guide.html', 'Downloaded listing guide (.html)');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

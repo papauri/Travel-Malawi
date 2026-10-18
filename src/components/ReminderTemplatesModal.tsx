@@ -19,6 +19,7 @@ import { formatMoney } from '../lib/booking';
 import { formatDateStr } from '../lib/dates';
 import { useWhatsAppSettings } from '../hooks/useWhatsAppSettings';
 import { doc, updateDoc } from 'firebase/firestore';
+import { whatsappDigits } from '../lib/contact';
 import { db } from '../lib/firebase';
 
 interface ReminderTemplatesModalProps {
@@ -81,7 +82,8 @@ export default function ReminderTemplatesModal({
 
     const wifiName = hotel.infrastructure?.wifiSSID || `${hotel.name} Guest WiFi`;
     const wifiPassword = hotel.infrastructure?.wifiPassword || 'Available at reception desk';
-    const managerPhone = hotel.contactPhone || hotel.contactWhatsapp || hotel.managerPhone || '+265 999 000 000';
+    // Never invent a number: an unset phone falls back to fillTemplate's wording.
+    const managerPhone = hotel.contactPhone || hotel.contactWhatsapp || hotel.managerPhone || undefined;
     const managerEmail = hotel.contactEmail || hotel.managerEmail || 'info@ulendomalawi.com';
 
     return {
@@ -267,7 +269,8 @@ export default function ReminderTemplatesModal({
   // 4. Open in WhatsApp (wa.me)
   const handleOpenWhatsApp = () => {
     const rawNumber = recipientWhatsapp.trim() || booking.guestWhatsapp || booking.guestPhone || '';
-    const cleanNumber = rawNumber.replace(/[^0-9]/g, '');
+    // whatsappDigits expands local 0-prefixed numbers to 265...; wa.me rejects them otherwise.
+    const cleanNumber = whatsappDigits(rawNumber) || '';
     const encodedMessage = encodeURIComponent(`*${editedSubject}*\n\n${editedBody}`);
     
     if (cleanNumber) {

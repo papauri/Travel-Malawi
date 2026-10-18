@@ -73,6 +73,8 @@ export default function AdminDocsHub() {
       if (res.ok) {
         const data = await res.json();
         setSurveys(data.surveys || []);
+      } else {
+        toast.error('Failed to load partner survey responses');
       }
     } catch {
       // non-fatal
@@ -99,10 +101,13 @@ export default function AdminDocsHub() {
         // Fetch raw markdown
         const mdRes = await fetch(`/api/admin/docs/${selectedDocId}?format=md`);
         let rawMd = '';
-        if (mdRes.ok) {
-          const data = await mdRes.json();
-          rawMd = data.content || '';
+        if (!mdRes.ok) {
+          // Do not cache a failed load as an empty document.
+          toast.error('Failed to load document content');
+          return;
         }
+        const data = await mdRes.json();
+        rawMd = data.content || '';
 
         // Convert or fetch readable text
         const plainText = markdownToReadableText(rawMd);

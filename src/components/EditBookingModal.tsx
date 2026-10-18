@@ -3,6 +3,7 @@ import Modal from './Modal';
 import { Booking } from '../types';
 import { Save } from 'lucide-react';
 import { fieldClass, labelClass } from './Modal';
+import { todayStr } from '../lib/dates';
 
 interface Props {
   booking: Booking | null;
@@ -44,22 +45,33 @@ export default function EditBookingModal({ booking, isOpen, onClose, onSave }: P
       setError('Check-out must be after check-in.');
       return;
     }
+    // A stay may keep a check-in that has already passed, but cannot be moved into the past.
+    if (checkIn !== booking.checkIn && checkIn < todayStr()) {
+      setError('Check-in cannot be moved to a date in the past.');
+      return;
+    }
     if (guests < 1) {
       setError('There must be at least one guest.');
       return;
     }
     setSaving(true);
-    const problem = await onSave(booking.id!, {
-      guestName,
-      guestEmail,
-      guestPhone,
-      guestWhatsapp,
-      checkIn,
-      checkOut,
-      guests
-    });
-    setSaving(false);
-    if (typeof problem === 'string') setError(problem);
+    try {
+      const problem = await onSave(booking.id!, {
+        guestName,
+        guestEmail,
+        guestPhone,
+        guestWhatsapp,
+        checkIn,
+        checkOut,
+        guests
+      });
+      if (typeof problem === 'string') setError(problem);
+    } catch (err) {
+      console.error('Saving booking changes failed:', err);
+      setError('Could not save these changes. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (

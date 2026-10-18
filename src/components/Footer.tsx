@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Palmtree, Map, Mail, Phone, MapPin, Facebook, Instagram, Twitter } from 'lucide-react';
+import { Palmtree, Mail, Phone, MapPin } from 'lucide-react';
 import { useSystemSettings } from '../hooks/useSystemSettings';
 import { openAccessPermissionsModal } from './AccessRequestModal';
 import { useAuth } from '../contexts/AuthContext';
@@ -25,8 +25,8 @@ export default function Footer() {
 
   return (
     <footer className="bg-stone-900 text-stone-300 pt-10 sm:pt-14 pb-28 sm:pb-24 md:py-16 border-t border-stone-800 mt-auto">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-x-5 sm:gap-x-8 gap-y-7 sm:gap-y-8 lg:gap-10">
-        <div className="col-span-2 md:col-span-4 lg:col-span-1 space-y-3 sm:space-y-4">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-5 sm:gap-x-8 gap-y-7 sm:gap-y-8 lg:gap-10">
+        <div className="col-span-2 md:col-span-3 lg:col-span-1 space-y-3 sm:space-y-4">
           <Link to="/" className="flex items-center gap-2 text-white">
             <Palmtree className="h-6 w-6 sm:h-7 sm:w-7 text-emerald-400" />
             <span className="text-lg sm:text-xl font-serif font-bold tracking-tight">Travel Malawi</span>
@@ -92,21 +92,6 @@ export default function Footer() {
               <span>Lilongwe, Malawi</span>
             </li>
           </ul>
-        </div>
-        
-        <div>
-          <h4 className="text-white font-serif font-semibold text-sm sm:text-base mb-2.5 sm:mb-4">Follow Us</h4>
-          <div className="flex items-center gap-2.5 sm:gap-3">
-            <a href="#" aria-label="Facebook" className="bg-stone-800 p-2 sm:p-2.5 rounded-full hover:bg-stone-700 hover:text-white transition">
-              <Facebook className="h-4 w-4" />
-            </a>
-            <a href="#" aria-label="Instagram" className="bg-stone-800 p-2 sm:p-2.5 rounded-full hover:bg-stone-700 hover:text-white transition">
-              <Instagram className="h-4 w-4" />
-            </a>
-            <a href="#" aria-label="Twitter" className="bg-stone-800 p-2 sm:p-2.5 rounded-full hover:bg-stone-700 hover:text-white transition">
-              <Twitter className="h-4 w-4" />
-            </a>
-          </div>
         </div>
       </div>
       

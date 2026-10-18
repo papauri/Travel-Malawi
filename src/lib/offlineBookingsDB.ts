@@ -7,6 +7,8 @@
  * bookings to Firebase Firestore atomically once connectivity returns.
  */
 
+import { doc, getDoc } from 'firebase/firestore';
+import { db as firestoreDb } from './firebase';
 import { createBookingWithSlot } from './bookingWrites';
 import { logSystemEvent } from './logger';
 
@@ -144,7 +146,9 @@ export async function getAllOfflineBookings(): Promise<OfflineBookingRecord[]> {
  */
 export async function getPendingOfflineBookings(): Promise<OfflineBookingRecord[]> {
   const all = await getAllOfflineBookings();
-  return all.filter((b) => b.status === 'pending_sync' || b.status === 'failed');
+  // 'syncing' is included so a record left mid-sync by a closed tab is retried;
+  // replays are idempotent (fixed document id), and one tab syncs at a time.
+  return all.filter((b) => b.status === 'pending_sync' || b.status === 'failed' || b.status === 'syncing');
 }
 
 /**
@@ -231,6 +235,20 @@ export async function syncOfflineBookings(): Promise<SyncResult> {
   }
 
   isSyncInProgress = true;
+  try {
+    return await runSync();
+  } finally {
+    isSyncInProgress = false;
+    notifyOfflineChange();
+  }
+}
+
+/** Firestore id derived from the local record, so every replay targets the same document. */
+function firestoreIdFor(localId: string): string {
+  return localId.replace(/[^A-Za-z0-9_-]/g, '_');
+}
+
+async function runSync(): Promise<SyncResult> {
   const pending = await getPendingOfflineBookings();
   const result: SyncResult = {
     total: pending.length,
@@ -239,24 +257,29 @@ export async function syncOfflineBookings(): Promise<SyncResult> {
     records: [],
   };
 
-  if (pending.length === 0) {
-    isSyncInProgress = false;
-    return result;
-  }
+  if (pending.length === 0) return result;
 
   for (const booking of pending) {
     try {
       await updateOfflineBooking(booking.id, { status: 'syncing' });
 
-      // Write booking and public inventory slot atomically to Firebase Firestore
-      const firebaseBookingId = await createBookingWithSlot({
-        ...booking.bookingData,
-        reference: booking.reference,
-        status: 'pending',
-        offlineSynced: true,
-        offlineCreatedAt: booking.createdAt,
-        syncedAt: Date.now(),
-      });
+      // Write booking and public inventory slot atomically to Firebase Firestore.
+      // A fixed id makes the replay idempotent: if an earlier attempt landed but
+      // its acknowledgement was lost, the rules refuse the second create
+      // instead of a duplicate booking being made.
+      const firebaseBookingId = firestoreIdFor(booking.id);
+      try {
+        await createBookingWithSlot({
+          ...booking.bookingData,
+          reference: booking.reference,
+          status: 'pending',
+          offlineSynced: true,
+          offlineCreatedAt: booking.createdAt,
+          syncedAt: Date.now(),
+        }, firebaseBookingId);
+      } catch (writeErr: any) {
+        if (writeErr?.code !== 'permission-denied' || !(await bookingAlreadyExists(firebaseBookingId))) throw writeErr;
+      }
 
       // Mark locally as synced
       await updateOfflineBooking(booking.id, {
@@ -274,20 +297,24 @@ export async function syncOfflineBookings(): Promise<SyncResult> {
         firebaseId: firebaseBookingId,
       });
 
-      // Attempt to notify manager if managerEmail is provided
+      // Attempt to notify manager if managerEmail is provided (same shape as an online booking)
       if (booking.managerEmail) {
         fetch('/api/notify', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            booking: {
-              ...booking.bookingData,
-              id: firebaseBookingId,
-              reference: booking.reference,
-            },
-            hotelName: booking.hotelName,
-            managerEmail: booking.managerEmail,
-            roomName: booking.roomName,
+            email: booking.managerEmail,
+            hotelId: booking.hotelId,
+            bookingId: firebaseBookingId,
+            subject: `New booking request: ${booking.guestName} at ${booking.hotelName}`,
+            message: `You have received a new booking request on Travel Malawi.
+
+Guest: ${booking.guestName}
+Dates: ${booking.checkIn} to ${booking.checkOut}
+Room: ${booking.roomName}
+Total: ${booking.total} ${booking.currency}
+
+Please log in to review and confirm this booking.`,
           }),
         }).catch(() => {
           // Non-fatal notification failure
@@ -325,9 +352,16 @@ export async function syncOfflineBookings(): Promise<SyncResult> {
     }
   }
 
-  isSyncInProgress = false;
-  notifyOfflineChange();
   return result;
+}
+
+/** True when the booking document is readable and exists (a signed-in guest's own booking). */
+async function bookingAlreadyExists(bookingId: string): Promise<boolean> {
+  try {
+    return (await getDoc(doc(firestoreDb, 'bookings', bookingId))).exists();
+  } catch {
+    return false;
+  }
 }
 
 // Global auto-sync listener when connection returns

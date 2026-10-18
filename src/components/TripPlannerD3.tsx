@@ -168,7 +168,7 @@ export function getLegMetrics(fromHotel: Hotel, toHotel: Hotel): LegMetrics {
   let highway = 'M1 / M5';
   let advice = 'Paved inter-district highway transfer; morning departure recommended.';
 
-  if (est.travelMode === 'boat_transfer' || combinedLoc.includes('likoma') || combinedLoc.includes('kaya mawa')) {
+  if (est.travelMode === 'boat_transfer' || combinedLoc.includes('likoma')) {
     highway = 'M5 + Boat / Ferry';
     advice = 'Drive to Nkhata Bay port via M5 lakeshore highway followed by Lake Malawi boat or MV Ilala ferry transfer.';
   } else if (crossesLake) {
@@ -764,12 +764,16 @@ Total Drive: ${totalDistanceKm} km (~${formatTotalMinutes(totalDriveMinutes)})
 Route Sequence:
 ${legsText}
 
-Plan and book direct at: https://travel-malawi.ai.studio/`;
+Plan and book direct at: https://ulendomalawi.com/`;
 
-    navigator.clipboard.writeText(text);
-    setCopiedShare(true);
-    toast.success('Itinerary copied! Ready to share via WhatsApp or Email.');
-    setTimeout(() => setCopiedShare(false), 3000);
+    navigator.clipboard.writeText(text).then(
+      () => {
+        setCopiedShare(true);
+        toast.success('Itinerary copied! Ready to share via WhatsApp or Email.');
+        setTimeout(() => setCopiedShare(false), 3000);
+      },
+      () => toast.error('Could not copy the itinerary. Please try again.')
+    );
   };
 
   return (

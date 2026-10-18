@@ -51,23 +51,14 @@ import {
   findExistingProperty, ExistingPropertyMatch,
 } from '../lib/listing';
 import { searchNominatim, searchMalawiPlaces, MalawiPlaceSuggestion, parseGoogleMapsPlaceUrl, reverseGeocodeCoordinates } from '../lib/geo';
-import { getRegisteredPropertyByName, POPULAR_MALAWI_PROPERTIES_SHOWCASE } from '../lib/malawiHospitalityRegistry';
 import { RoomInput } from '../lib/validateRoom';
 import { CURRENCIES, formatMoney } from '../lib/currency';
 import { CurrencyCode } from '../types';
 import { useWhatsAppSettings } from '../hooks/useWhatsAppSettings';
+import { DEFAULT_PLATFORM_EMAIL } from '../lib/contact';
 
-const ESTIMATED_MWK_PER_USD = 1750;
-
-function convertUsdToMwk(usd: number): number {
-  if (!usd || usd <= 0) return 0;
-  return Math.round((usd * ESTIMATED_MWK_PER_USD) / 5000) * 5000;
-}
-
-function convertMwkToUsd(mwk: number): number {
-  if (!mwk || mwk <= 0) return 0;
-  return Math.max(5, Math.round((mwk / ESTIMATED_MWK_PER_USD) / 5) * 5);
-}
+// Shared with the document importer so both round kwacha to MK 1,000.
+import { roomPriceFields } from '../lib/localPropertyParser';
 
 export interface SuggestedRoomItem {
   name: string;
@@ -133,7 +124,7 @@ export function inferCategoryFromNameAndLocation(name: string, location?: string
   if (text.includes('mulanje') || text.includes('hiker') || text.includes('climb') || text.includes('backpacker') || text.includes('adventure')) {
     return 'Adventure';
   }
-  if (text.includes('kaya mawa') || text.includes('pumulani') || text.includes('5-star') || text.includes('luxury') || text.includes('retreat')) {
+  if (text.includes('5-star') || text.includes('luxury') || text.includes('retreat')) {
     return 'Luxury';
   }
   if (text.includes('guest house') || text.includes('guesthouse') || text.includes('inn') || text.includes('residency') || text.includes('lilongwe') || text.includes('blantyre') || text.includes('mzuzu') || text.includes('zomba')) {
@@ -513,11 +504,10 @@ export default function ListProperty() {
   const handleSelectMalawiPlace = (item: MalawiPlaceSuggestion, autoFillDetails: boolean = false) => {
     setShowPlaceDropdown(false);
 
-    const regMatch = getRegisteredPropertyByName(item.name);
-    const targetCategory = (regMatch?.category || item.category || normalizePropertyCategory(item.category)) as PropertyCategory | undefined;
-    const targetLocation = regMatch?.location || (item.location && item.location !== 'Malawi' ? item.location : draft.location) || 'Malawi';
-    const targetCoords = regMatch?.coordinates || item.coordinates;
-    const targetNotes = regMatch?.locationNotes || item.locationNotes || (item.district ? `Located in ${item.district}, Malawi` : '');
+    const targetCategory = (item.category || normalizePropertyCategory(item.category)) as PropertyCategory | undefined;
+    const targetLocation = (item.location && item.location !== 'Malawi' ? item.location : draft.location) || 'Malawi';
+    const targetCoords = item.coordinates;
+    const targetNotes = item.locationNotes || (item.district ? `Located in ${item.district}, Malawi` : '');
 
     setDraft(prev => ({
       ...prev,
@@ -532,7 +522,7 @@ export default function ListProperty() {
       setAiCategorized(true);
     }
 
-    const p = regMatch || item;
+    const p = item;
 
     const suggestionObj = {
       matched: true,
@@ -579,8 +569,8 @@ export default function ListProperty() {
                 id: uuidv4(),
                 name: r.name,
                 description: r.description || 'Authentic and comfortable stay with ensuite bathroom and warm Malawian hospitality.',
-                currencies: ['MWK', 'USD'],
-                prices: { MWK: r.priceMwk || 120000, USD: r.priceUsd || 70 },
+                // Only prices actually suggested — no invented defaults, no conversion.
+                ...roomPriceFields(Number(r.priceUsd) || 0, Number(r.priceMwk) || 0),
                 maxGuests: maxG,
                 baseGuests: Math.min(Math.max(1, Number(r.baseGuests || maxG)), maxG),
                 quantity: r.quantity || 3,
@@ -640,44 +630,6 @@ export default function ListProperty() {
     const searchName = (isUrl && !overrideName)
       ? (draft.name && !draft.name.startsWith('http') && !draft.name.startsWith('www.') && draft.name !== 'Malawi Accommodation' ? draft.name : (extractedBrandFromUrl || 'Malawi Accommodation'))
       : (targetUrl && (rawInput.startsWith('http') || rawInput.startsWith('www.')) ? (extractedBrandFromUrl || 'Malawi Accommodation') : rawInput);
-
-    // 1. Instant check in verified Malawi Hospitality Registry (unless forceWebScrape or URL scraping is requested)
-    if (!options?.forceWebScrape && !isUrl) {
-      const regMatch = getRegisteredPropertyByName(searchName);
-      if (regMatch) {
-        setAiPropertySuggestion({
-          matched: true,
-          officialName: regMatch.name,
-          category: regMatch.category,
-          location: regMatch.location,
-          locationNotes: regMatch.locationNotes,
-          description: regMatch.description,
-          amenities: regMatch.amenities,
-          coordinates: regMatch.coordinates,
-          confidence: 'high',
-          summary: regMatch.summary,
-          checkInTime: regMatch.checkInTime,
-          checkOutTime: regMatch.checkOutTime,
-          suggestedRooms: regMatch.suggestedRooms,
-          contactPhone: regMatch.contactPhone || '+265 991 234 567',
-          contactEmail: regMatch.contactEmail || user?.email || 'reservations@property.mw',
-          contactWhatsapp: regMatch.contactWhatsapp || regMatch.contactPhone || '+265 991 234 567',
-        });
-
-        setDraft(prev => ({
-          ...prev,
-          name: regMatch.name,
-          category: regMatch.category || prev.category,
-          location: regMatch.location || prev.location,
-          coordinates: regMatch.coordinates || prev.coordinates,
-          locationNotes: regMatch.locationNotes || prev.locationNotes,
-        }));
-        setAiCategorized(true);
-        setAiLookupLoading(false);
-        toast.success(`Matched "${regMatch.name}" from Malawi Hospitality Registry (${regMatch.badge || regMatch.category})!`);
-        return;
-      }
-    }
 
     try {
       const locationContext = options?.location || draft.location || undefined;
@@ -835,21 +787,15 @@ export default function ListProperty() {
             rooms: rooms.length > 0 ? rooms.map((r, i) => {
               const usd = Number(r.priceUsd || 0);
               const mwk = Number(r.priceMwk || 0);
-              const finalUsd = usd > 0 ? usd : (mwk > 0 ? Math.round(mwk / 1750) : 0);
-              const finalMwk = mwk > 0 ? mwk : (usd > 0 ? Math.round((usd * 1750) / 1000) * 1000 : 0);
               return {
                 id: `room-${Date.now()}-${i}`,
                 name: r.name,
                 description: r.description || '',
-                priceMwk: finalMwk,
-                priceUsd: finalUsd,
-                currencies: ['MWK', 'USD'],
-                prices: {
-                  MWK: finalMwk,
-                  USD: finalUsd,
-                },
+                priceMwk: mwk,
+                priceUsd: usd,
+                ...roomPriceFields(usd, mwk),
                 maxGuests: r.maxGuests || 2,
-                baseGuests: r.baseGuests || 2,
+                baseGuests: Math.min(r.baseGuests || 2, r.maxGuests || 2),
                 quantity: r.quantity || 1,
                 amenities: r.amenities || ['Ensuite bathroom'],
                 images: [],
@@ -955,17 +901,11 @@ export default function ListProperty() {
             const maxG = Math.max(1, Number(r.maxGuests) || 2);
             const usd = Number(r.priceUsd || 0);
             const mwk = Number(r.priceMwk || 0);
-            const finalUsd = usd > 0 ? usd : (mwk > 0 ? Math.round(mwk / 1750) : 0);
-            const finalMwk = mwk > 0 ? mwk : (usd > 0 ? Math.round((usd * 1750) / 1000) * 1000 : 0);
             return {
               id: uuidv4(),
               name: r.name,
               description: r.description || `Authentic and comfortable stay with ensuite bathroom, ceiling fan, and warm Malawian hospitality.`,
-              currencies: ['MWK', 'USD'],
-              prices: {
-                MWK: finalMwk,
-                USD: finalUsd,
-              },
+              ...roomPriceFields(usd, mwk),
               maxGuests: maxG,
               baseGuests: Math.min(Math.max(1, Number(r.baseGuests || maxG)), maxG),
               quantity: r.quantity || 1,
@@ -1209,15 +1149,16 @@ export default function ListProperty() {
 
       if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
         const formatted: SuggestedRoomItem[] = res.data.map(item => {
-          const usd = Number(item.suggestedPriceUsd) || 65;
-          const mwk = Number(item.suggestedPriceMwk) || convertUsdToMwk(usd);
+          // Only what the suggestion priced; the other currency is never converted.
+          const usd = Number(item.suggestedPriceUsd) || 0;
+          const mwk = Number(item.suggestedPriceMwk) || 0;
           return {
             name: item.name || 'Standard Room',
             description: item.description || '',
             maxGuests: Number(item.maxGuests) || 2,
             suggestedPriceUsd: usd,
             suggestedPriceMwk: mwk,
-            currencies: ['USD', 'MWK'],
+            currencies: roomPriceFields(usd, mwk).currencies,
             isCustomizing: false,
           };
         });
@@ -1249,19 +1190,11 @@ export default function ListProperty() {
       const item = next[index];
       if (!item) return prev;
       if (currency === 'usd') {
-        const newUsd = Math.max(10, (item.suggestedPriceUsd || 50) + delta);
-        next[index] = {
-          ...item,
-          suggestedPriceUsd: newUsd,
-          suggestedPriceMwk: convertUsdToMwk(newUsd),
-        };
+        const newUsd = Math.max(5, (item.suggestedPriceUsd || 0) + delta);
+        next[index] = { ...item, suggestedPriceUsd: newUsd };
       } else {
-        const newMwk = Math.max(10000, (item.suggestedPriceMwk || 75000) + delta);
-        next[index] = {
-          ...item,
-          suggestedPriceMwk: newMwk,
-          suggestedPriceUsd: convertMwkToUsd(newMwk),
-        };
+        const newMwk = Math.max(1000, (item.suggestedPriceMwk || 0) + delta);
+        next[index] = { ...item, suggestedPriceMwk: newMwk };
       }
       return next;
     });
@@ -1301,12 +1234,13 @@ export default function ListProperty() {
       ? item.currencies
       : ['USD', 'MWK'];
 
+    // Unpriced currencies stay empty for the host to fill (no defaults, no conversion).
     const prices: Partial<Record<CurrencyCode, number>> = {};
-    if (currencies.includes('USD')) {
-      prices.USD = Number(item.suggestedPriceUsd) || 60;
+    if (currencies.includes('USD') && Number(item.suggestedPriceUsd) > 0) {
+      prices.USD = Number(item.suggestedPriceUsd);
     }
-    if (currencies.includes('MWK')) {
-      prices.MWK = Number(item.suggestedPriceMwk) || convertUsdToMwk(item.suggestedPriceUsd || 60);
+    if (currencies.includes('MWK') && Number(item.suggestedPriceMwk) > 0) {
+      prices.MWK = Number(item.suggestedPriceMwk);
     }
 
     const maxG = Math.max(1, Number(item.maxGuests) || 2);
@@ -1335,11 +1269,11 @@ export default function ListProperty() {
         : ['USD', 'MWK'];
 
       const prices: Partial<Record<CurrencyCode, number>> = {};
-      if (currencies.includes('USD')) {
-        prices.USD = Number(item.suggestedPriceUsd) || 60;
+      if (currencies.includes('USD') && Number(item.suggestedPriceUsd) > 0) {
+        prices.USD = Number(item.suggestedPriceUsd);
       }
-      if (currencies.includes('MWK')) {
-        prices.MWK = Number(item.suggestedPriceMwk) || convertUsdToMwk(item.suggestedPriceUsd || 60);
+      if (currencies.includes('MWK') && Number(item.suggestedPriceMwk) > 0) {
+        prices.MWK = Number(item.suggestedPriceMwk);
       }
 
       const maxG = Math.max(1, Number(item.maxGuests) || 2);
@@ -1387,20 +1321,15 @@ export default function ListProperty() {
       });
 
       if (res?.data && (res.data.suggestedPriceUsd || res.data.suggestedPriceMwk)) {
-        const usd = Number(res.data.suggestedPriceUsd) || 75;
-        const mwk = Number(res.data.suggestedPriceMwk) || convertUsdToMwk(usd);
+        // Each currency only as suggested — never converted or defaulted.
         setAiRateData({
-          usd,
-          mwk,
+          usd: Number(res.data.suggestedPriceUsd) || 0,
+          mwk: Number(res.data.suggestedPriceMwk) || 0,
           reasoning: res.data.reasoning || `Recommended rates for ${room.name || 'this room'} based on local Malawian hospitality standards.`,
         });
       } else {
-        const fallbackUsd = 75;
-        setAiRateData({
-          usd: fallbackUsd,
-          mwk: convertUsdToMwk(fallbackUsd),
-          reasoning: `Competitive benchmark rate for ${draft.category || 'accommodation'} in ${draft.location || 'Malawi'}.`,
-        });
+        toast.error('No rate suggestion available right now. Please enter your own rates.');
+        setAiRateRoomIdx(null);
       }
     } catch {
       toast.error('Could not fetch rate recommendation');
@@ -1415,20 +1344,20 @@ export default function ListProperty() {
     const room = updated[roomIdx];
     if (!room) return;
 
-    const currs: CurrencyCode[] = Array.from(new Set([...(room.currencies || []), 'USD', 'MWK'])) as CurrencyCode[];
+    const suggested: Partial<Record<CurrencyCode, number>> = {};
+    if (aiRateData.usd > 0) suggested.USD = aiRateData.usd;
+    if (aiRateData.mwk > 0) suggested.MWK = aiRateData.mwk;
+    const currs: CurrencyCode[] = Array.from(new Set([...(room.currencies || []), ...(Object.keys(suggested) as CurrencyCode[])]));
     updated[roomIdx] = {
       ...room,
       currencies: currs,
-      prices: {
-        ...room.prices,
-        USD: aiRateData.usd,
-        MWK: aiRateData.mwk,
-      },
+      prices: { ...room.prices, ...suggested },
     };
     set('rooms', updated);
     setAiRateRoomIdx(null);
     setAiRateData(null);
-    toast.success(`Applied $${aiRateData.usd} USD & MK ${aiRateData.mwk.toLocaleString()} to ${room.name || 'room'}`);
+    const applied = [suggested.USD ? `$${suggested.USD} USD` : '', suggested.MWK ? `MK ${suggested.MWK.toLocaleString()}` : ''].filter(Boolean).join(' & ');
+    toast.success(`Applied ${applied} to ${room.name || 'room'}`);
   };
 
   // Optional AI Helper: Review listing appeal before submission
@@ -1541,7 +1470,7 @@ export default function ListProperty() {
               const sentTo = Array.isArray(result.recipients) && result.recipients.length > 0
                 ? result.recipients.join(', ')
                 : ownerEmailToSend;
-              toast.success(`Login credentials & listing preview sent to ${sentTo}`, { duration: 5000 });
+              toast.success(`Set-your-password link & listing preview sent to ${sentTo}`, { duration: 5000 });
             }
           }).catch(err => {
             console.warn('[Onboarding] Could not dispatch welcome email:', err);
@@ -1824,7 +1753,7 @@ export default function ListProperty() {
                       }
                       set('name', val);
                     }}
-                    placeholder="e.g. Kaya Mawa, Sunbird Capital, or paste website / Maps link"
+                    placeholder="e.g. Example Lakeside Lodge, or paste website / Maps link"
                     className={fieldClass}
                     autoComplete="off"
                   />
@@ -1939,51 +1868,6 @@ export default function ListProperty() {
                     </div>
                   )}
                 </div>
-
-                {/* Popular Malawian Accommodations Showcase */}
-                {!draft.name.trim() && (
-                  <div className="mt-2.5 flex items-center gap-1.5 flex-wrap text-xs text-stone-500">
-                    <span className="text-[11px] font-medium text-stone-400">Popular:</span>
-                    {POPULAR_MALAWI_PROPERTIES_SHOWCASE.slice(0, 5).map((showcase, scIdx) => (
-                      <button
-                        key={`showcase-${showcase.name}-${scIdx}`}
-                        type="button"
-                        onClick={() => {
-                          const reg = getRegisteredPropertyByName(showcase.name);
-                          if (reg) {
-                            handleSelectMalawiPlace({
-                              id: `reg-${reg.id}`,
-                              name: reg.name,
-                              location: reg.location,
-                              coordinates: reg.coordinates,
-                              category: reg.category,
-                              type: 'hospitality',
-                              district: reg.district,
-                              source: 'registry',
-                              badge: reg.badge,
-                              description: reg.description,
-                              summary: reg.summary,
-                              amenities: reg.amenities,
-                              suggestedRooms: reg.suggestedRooms,
-                              locationNotes: reg.locationNotes,
-                              checkInTime: reg.checkInTime,
-                              checkOutTime: reg.checkOutTime,
-                              contactPhone: reg.contactPhone,
-                              contactEmail: reg.contactEmail,
-                              contactWhatsapp: reg.contactWhatsapp,
-                            }, true);
-                          } else {
-                            setDraft(d => ({ ...d, name: showcase.name }));
-                            handleLookupPropertyAI(showcase.name);
-                          }
-                        }}
-                        className="text-[11px] bg-stone-100 hover:bg-stone-200 text-stone-700 px-2 py-0.5 rounded-md border border-stone-200 transition cursor-pointer"
-                      >
-                        {showcase.name}
-                      </button>
-                    ))}
-                  </div>
-                )}
 
                 {/* Duplicate / Existing Property Warning */}
                 {existingMatch?.exists && (
@@ -2127,8 +2011,6 @@ export default function ListProperty() {
                           bathrooms: 2,
                           beds: 3,
                           maxGuests: 6,
-                          ratePerNightUsd: 120,
-                          ratePerNightMwk: 210000,
                           hasPrivateKitchen: true,
                           hasDedicatedHost: true,
                         });
@@ -2540,7 +2422,7 @@ export default function ListProperty() {
                     </div>
                     <div className="flex items-center gap-2 self-start sm:self-auto bg-stone-200/60 px-3 py-1.5 rounded-full text-xs font-semibold text-stone-700">
                       <Coins className="w-3.5 h-3.5 text-stone-500" />
-                      <span>Benchmark: ~1,750 MK per USD</span>
+                      <span>Set each currency's rate yourself</span>
                     </div>
                   </div>
                 </div>
@@ -2658,7 +2540,7 @@ export default function ListProperty() {
                         <input
                           type="number"
                           min={0}
-                          value={draft.entirePlaceDetails?.ratePerNightUsd ?? 120}
+                          value={draft.entirePlaceDetails?.ratePerNightUsd || ''}
                           onChange={(e) => {
                             const usd = Number(e.target.value);
                             set('entirePlaceDetails', {
@@ -2670,21 +2552,6 @@ export default function ListProperty() {
                           className={`${fieldClass} pl-8`}
                         />
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const usd = draft.entirePlaceDetails?.ratePerNightUsd ?? 120;
-                          const mwk = convertUsdToMwk(usd);
-                          set('entirePlaceDetails', {
-                            ...(draft.entirePlaceDetails || {}),
-                            ratePerNightMwk: mwk,
-                          });
-                          toast.success(`Calculated MK rate: MK ${mwk.toLocaleString()}`);
-                        }}
-                        className="mt-1 text-[11px] text-stone-700 font-semibold hover:underline cursor-pointer"
-                      >
-                        Auto-calculate MK from USD →
-                      </button>
                     </div>
 
                     <div>
@@ -2694,8 +2561,8 @@ export default function ListProperty() {
                         <input
                           type="number"
                           min={0}
-                          step={5000}
-                          value={draft.entirePlaceDetails?.ratePerNightMwk ?? 210000}
+                          step={1000}
+                          value={draft.entirePlaceDetails?.ratePerNightMwk || ''}
                           onChange={(e) => {
                             const mwk = Number(e.target.value);
                             set('entirePlaceDetails', {
@@ -2707,21 +2574,6 @@ export default function ListProperty() {
                           className={`${fieldClass} pl-10`}
                         />
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const mwk = draft.entirePlaceDetails?.ratePerNightMwk ?? 210000;
-                          const usd = convertMwkToUsd(mwk);
-                          set('entirePlaceDetails', {
-                            ...(draft.entirePlaceDetails || {}),
-                            ratePerNightUsd: usd,
-                          });
-                          toast.success(`Calculated USD rate: $${usd}`);
-                        }}
-                        className="mt-1 text-[11px] text-stone-700 font-semibold hover:underline cursor-pointer"
-                      >
-                        Auto-calculate USD from MK →
-                      </button>
                     </div>
                   </div>
                 </div>
@@ -2801,7 +2653,7 @@ export default function ListProperty() {
                     </div>
                     <div className="flex items-center gap-2 self-start sm:self-auto bg-stone-200/60 px-3 py-1.5 rounded-full text-xs font-semibold text-stone-700">
                       <Coins className="w-3.5 h-3.5 text-stone-500" />
-                      <span>Benchmark: ~1,750 MK per USD</span>
+                      <span>Set each currency's rate yourself</span>
                     </div>
                   </div>
                 </div>
@@ -2875,7 +2727,7 @@ export default function ListProperty() {
                         name: '',
                         description: '',
                         currencies: ['USD', 'MWK'],
-                        prices: { USD: 70, MWK: 120000 },
+                        prices: {},
                         maxGuests: 2,
                         quantity: 1,
                         imageUrl: '',
@@ -3062,10 +2914,7 @@ export default function ListProperty() {
                                         value={roomItem.suggestedPriceUsd || ''}
                                         onChange={e => {
                                           const val = Number(e.target.value);
-                                          updateSuggestedRoom(rIdx, {
-                                            suggestedPriceUsd: val,
-                                            suggestedPriceMwk: convertUsdToMwk(val),
-                                          });
+                                          updateSuggestedRoom(rIdx, { suggestedPriceUsd: val });
                                         }}
                                         className="w-full text-xs font-bold text-stone-900 bg-transparent outline-hidden"
                                         min="0"
@@ -3103,10 +2952,7 @@ export default function ListProperty() {
                                         value={roomItem.suggestedPriceMwk || ''}
                                         onChange={e => {
                                           const val = Number(e.target.value);
-                                          updateSuggestedRoom(rIdx, {
-                                            suggestedPriceMwk: val,
-                                            suggestedPriceUsd: convertMwkToUsd(val),
-                                          });
+                                          updateSuggestedRoom(rIdx, { suggestedPriceMwk: val });
                                         }}
                                         className="w-full text-xs font-bold text-stone-900 bg-transparent outline-hidden"
                                         min="0"
@@ -3293,11 +3139,10 @@ export default function ListProperty() {
                                 return;
                               }
                               updated[idx].currencies = nextCurrs;
-                              if (e.target.checked && (!updated[idx].prices?.USD || updated[idx].prices?.USD === 0)) {
-                                updated[idx].prices = {
-                                  ...updated[idx].prices,
-                                  USD: convertMwkToUsd(updated[idx].prices?.MWK || 0) || 70,
-                                };
+                              // The host types each rate; unticking drops it from the saved prices.
+                              if (!e.target.checked) {
+                                const { USD: _usd, ...rest } = updated[idx].prices || {};
+                                updated[idx].prices = rest;
                               }
                               set('rooms', updated);
                             }}
@@ -3322,11 +3167,9 @@ export default function ListProperty() {
                                 return;
                               }
                               updated[idx].currencies = nextCurrs;
-                              if (e.target.checked && (!updated[idx].prices?.MWK || updated[idx].prices?.MWK === 0)) {
-                                updated[idx].prices = {
-                                  ...updated[idx].prices,
-                                  MWK: convertUsdToMwk(updated[idx].prices?.USD || 0) || 120000,
-                                };
+                              if (!e.target.checked) {
+                                const { MWK: _mwk, ...rest } = updated[idx].prices || {};
+                                updated[idx].prices = rest;
                               }
                               set('rooms', updated);
                             }}
@@ -3385,49 +3228,6 @@ export default function ListProperty() {
                         )}
                       </div>
 
-                      {/* Dual-Currency Auto-Sync Helpers */}
-                      {hasUsd && hasMwk && (
-                        <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-stone-200 text-xs text-stone-500">
-                          <span className="font-medium">Quick sync:</span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const usd = room.prices?.USD || 0;
-                              if (usd <= 0) {
-                                toast.error('Enter a USD rate first');
-                                return;
-                              }
-                              const calcMwk = convertUsdToMwk(usd);
-                              const updated = [...(draft.rooms || [])];
-                              updated[idx].prices = { ...updated[idx].prices, MWK: calcMwk };
-                              set('rooms', updated);
-                              toast.success(`Calculated MK ${calcMwk.toLocaleString()} from $${usd} USD`);
-                            }}
-                            className="px-2.5 py-1 bg-white hover:bg-stone-200/70 border border-stone-200 rounded-md font-semibold text-stone-700 transition"
-                          >
-                            ⚡ Calc MK from USD ($ {room.prices?.USD || 0} → MK {convertUsdToMwk(room.prices?.USD || 0).toLocaleString()})
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const mwk = room.prices?.MWK || 0;
-                              if (mwk <= 0) {
-                                toast.error('Enter an MK rate first');
-                                return;
-                              }
-                              const calcUsd = convertMwkToUsd(mwk);
-                              const updated = [...(draft.rooms || [])];
-                              updated[idx].prices = { ...updated[idx].prices, USD: calcUsd };
-                              set('rooms', updated);
-                              toast.success(`Calculated $${calcUsd} USD from MK ${mwk.toLocaleString()}`);
-                            }}
-                            className="px-2.5 py-1 bg-white hover:bg-stone-200/70 border border-stone-200 rounded-md font-semibold text-stone-700 transition"
-                          >
-                            ⚡ Calc USD from MK
-                          </button>
-                        </div>
-                      )}
-
                       {/* Rate Advisor Inline Card */}
                       {aiRateRoomIdx === idx && aiRateData && (
                         <div className="p-4 bg-white border border-stone-200 rounded-xl space-y-3 animate-in fade-in">
@@ -3453,11 +3253,11 @@ export default function ListProperty() {
                           <div className="grid grid-cols-2 gap-3 bg-stone-50 p-3 rounded-lg border border-stone-200">
                             <div>
                               <span className="text-[10px] font-bold uppercase tracking-wider text-stone-600">Suggested USD</span>
-                              <p className="text-lg font-bold text-stone-900">${aiRateData.usd} <span className="text-xs font-normal text-stone-500">/nt</span></p>
+                              <p className="text-lg font-bold text-stone-900">{aiRateData.usd > 0 ? `$${aiRateData.usd}` : '—'} <span className="text-xs font-normal text-stone-500">/nt</span></p>
                             </div>
                             <div>
                               <span className="text-[10px] font-bold uppercase tracking-wider text-stone-600">Suggested MK</span>
-                              <p className="text-lg font-bold text-stone-900">MK {aiRateData.mwk.toLocaleString()} <span className="text-xs font-normal text-stone-500">/nt</span></p>
+                              <p className="text-lg font-bold text-stone-900">{aiRateData.mwk > 0 ? `MK ${aiRateData.mwk.toLocaleString()}` : '—'} <span className="text-xs font-normal text-stone-500">/nt</span></p>
                             </div>
                           </div>
 
@@ -3933,9 +3733,9 @@ export default function ListProperty() {
                       <h4 className="font-bold text-stone-900">Basic</h4>
                       <p className="text-sm text-stone-500 mt-1 mb-4">Perfect for getting started.</p>
                       <p className="text-2xl font-bold text-stone-900 mb-6">Free</p>
-                      <button className="w-full rounded-full bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-stone-800">
+                      <div className="w-full rounded-full bg-stone-900 px-4 py-2 text-center text-sm font-semibold text-white">
                         Selected
-                      </button>
+                      </div>
                     </div>
                     <div className="rounded-xl border-2 border-stone-900 bg-stone-50/60 p-6 relative">
                       <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-stone-900 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
@@ -3944,9 +3744,13 @@ export default function ListProperty() {
                       <h4 className="font-bold text-stone-900">Premium</h4>
                       <p className="text-sm text-stone-500 mt-1 mb-4">Maximum visibility and tools.</p>
                       <p className="text-2xl font-bold text-stone-900 mb-6">$49<span className="text-sm text-stone-500 font-normal">/mo</span></p>
-                      <button className="w-full rounded-full bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-stone-800">
-                        Upgrade
-                      </button>
+                      {/* No in-app checkout exists yet; upgrades are arranged with the team. */}
+                      <a
+                        href={`mailto:${DEFAULT_PLATFORM_EMAIL}?subject=${encodeURIComponent('Premium listing upgrade')}`}
+                        className="block w-full rounded-full bg-stone-900 px-4 py-2 text-center text-sm font-semibold text-white transition hover:bg-stone-800"
+                      >
+                        Ask about Premium
+                      </a>
                     </div>
                   </div>
                 </div>

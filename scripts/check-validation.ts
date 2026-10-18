@@ -163,7 +163,7 @@ check('a repeated snapshot does not sound again', shouldChime(theirs, 'me', stat
 // for one of them leaves the pin unset with no error anywhere.
 console.log('\n- Map pins -');
 
-const kayaMawa = { lat: -12.0699, lng: 34.7239 };
+const likomaPin = { lat: -12.0699, lng: 34.7239 };
 
 check('a bare pair', parseCoordinates('-13.98, 33.78'), { lat: -13.98, lng: 33.78 });
 check('a pair separated by a space', parseCoordinates('-13.98 33.78'), { lat: -13.98, lng: 33.78 });
@@ -174,13 +174,13 @@ check('prose is not a coordinate', parseCoordinates('Near the mission, turn left
 check('empty input', parseCoordinates(''), null);
 check('an out-of-range pair is refused', parseCoordinates('-913.98, 33.78'), null);
 
-check('a Malawian pin is inside', isWithinMalawi(kayaMawa), true);
+check('a Malawian pin is inside', isWithinMalawi(likomaPin), true);
 check('London is not', isWithinMalawi({ lat: 51.5, lng: -0.12 }), false);
 check('a swapped pair is spotted', looksSwapped({ lat: 34.7239, lng: -12.0699 }), true);
-check('a correct pair is not called swapped', looksSwapped(kayaMawa), false);
+check('a correct pair is not called swapped', looksSwapped(likomaPin), false);
 
 check('no pin reports missing', pinProblem(undefined), 'missing');
-check('a good pin reports nothing', pinProblem(kayaMawa), null);
+check('a good pin reports nothing', pinProblem(likomaPin), null);
 check('a swapped pin is named', pinProblem({ lat: 34.7239, lng: -12.0699 }), 'swapped');
 check('a foreign pin is named', pinProblem({ lat: 51.5, lng: -0.12 }), 'outside');
 check('rubbish is named', pinProblem({ lat: 'x', lng: 3 }), 'invalid');
@@ -198,7 +198,7 @@ const blantyre = { lat: -15.7861, lng: 35.0058 };
 check('distance is in a sane range', Math.round(distanceKm(lilongwe, blantyre) / 10) * 10, 240);
 check('distance to self is zero', Math.round(distanceKm(lilongwe, lilongwe)), 0);
 
-check('the embed uses the pin when there is one', mapEmbedUrl({ location: 'Somewhere', coordinates: kayaMawa }).includes('-12.0699,34.7239'), true);
+check('the embed uses the pin when there is one', mapEmbedUrl({ location: 'Somewhere', coordinates: likomaPin }).includes('-12.0699,34.7239'), true);
 check('the embed falls back to the text', mapEmbedUrl({ location: 'Cape Maclear', coordinates: null }).includes('Cape%20Maclear'), true);
 
 /* ----------------------------------------------------------- onboarding -- */
@@ -206,11 +206,11 @@ check('the embed falls back to the text', mapEmbedUrl({ location: 'Cape Maclear'
 console.log('\n— Onboarding Draft Validation —');
 
 const validDraft: any = {
-  name: 'Sunbird Capital',
+  name: 'Example Capital Hotel',
   category: 'Hotel',
   description: 'Premier business and leisure hotel in the heart of Lilongwe with lush landscaped gardens, swimming pool, international restaurant, conference facilities, and warm Malawian hospitality.',
   location: 'City Centre, Lilongwe',
-  contactEmail: 'capital@sunbird.mw',
+  contactEmail: 'capital@example.com',
   contactPhone: '+265 1 773 388',
   managerName: 'General Manager',
   stayType: 'rooms',
@@ -268,9 +268,9 @@ check('detects backup power & wifi amenities', parsedDoc.amenities?.includes('Ba
 check('extracts all 4 room types', parsedDoc.rooms?.length, 4);
 check('extracts explicit dual-currency prices', parsedDoc.rooms?.[0]?.prices, { USD: 120, MWK: 210000 });
 check('extracts room quantity and maxGuests', { g: parsedDoc.rooms?.[0]?.maxGuests, q: parsedDoc.rooms?.[0]?.quantity }, { g: 2, q: 4 });
-check('converts USD-only room to dual currency', parsedDoc.rooms?.[1]?.prices?.USD, 220);
-check('converts MWK-only room to dual currency', parsedDoc.rooms?.[2]?.prices?.MWK, 140000);
-check('does not invent fake prices for unpriced room', parsedDoc.rooms?.[3]?.prices, { USD: 0, MWK: 0 });
+check('keeps USD-only room price without converting to MWK', { usd: parsedDoc.rooms?.[1]?.prices?.USD, mwk: parsedDoc.rooms?.[1]?.prices?.MWK || 0 }, { usd: 220, mwk: 0 });
+check('keeps MWK-only room price without converting to USD', { mwk: parsedDoc.rooms?.[2]?.prices?.MWK, usd: parsedDoc.rooms?.[2]?.prices?.USD || 0 }, { mwk: 140000, usd: 0 });
+check('does not invent fake prices for unpriced room', !parsedDoc.rooms?.[3]?.prices?.USD && !parsedDoc.rooms?.[3]?.prices?.MWK, true);
 
 const sampleCsv = `Room Name,Max Guests,Units,Price USD,Price MWK,Description
 Executive King Suite,2,3,150,265000,Panoramic lake view with balcony
@@ -280,7 +280,7 @@ check('deciphers CSV/Excel room table rows', parsedCsv.rooms?.length, 2);
 check('deciphers CSV room dual prices and units', { p: parsedCsv.rooms?.[0]?.prices, q: parsedCsv.rooms?.[0]?.quantity }, { p: { USD: 150, MWK: 265000 }, q: 3 });
 
 const sengaBay = { lat: -13.7333, lng: 34.6167 };
-check('detects Lake Malawi crossing to Likoma Island', isCrossingLakeMalawi(sengaBay, kayaMawa), true);
+check('detects Lake Malawi crossing to Likoma Island', isCrossingLakeMalawi(sengaBay, likomaPin), true);
 check('road leg Lilongwe -> Blantyre does not cross lake', isCrossingLakeMalawi(lilongwe, blantyre), false);
 const legEstimate = estimateTravelTime(distanceKm(lilongwe, blantyre), lilongwe, blantyre);
 check('estimates realistic road drive minutes (> 180m)', legEstimate.drivingMinutes > 180 && legEstimate.travelMode === 'driving', true);

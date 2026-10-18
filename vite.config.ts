@@ -11,7 +11,7 @@ export default defineConfig(() => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: ['favicon-32.png', 'apple-touch-icon.png', 'icons/*.png', 'hotels/*.jpg'],
+        includeAssets: ['favicon-32.png', 'apple-touch-icon.png', 'icons/*.png'],
         manifest: {
           id: '/',
           name: 'Travel Malawi',

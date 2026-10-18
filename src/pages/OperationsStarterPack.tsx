@@ -9,6 +9,7 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import DocQuickEditButton from '../components/DocQuickEditButton';
 import { useDocContent } from '../hooks/useDocContent';
+import { downloadDocHtml } from '../lib/downloadDoc';
 
 export default function OperationsStarterPack() {
   const { title: customTitle, subtitle: customSubtitle, isCustomized, lastEditedBy, refreshDoc } = useDocContent(
@@ -46,15 +47,7 @@ export default function OperationsStarterPack() {
     window.print();
   };
 
-  const handleDownload = () => {
-    const link = document.createElement('a');
-    link.href = '/api/admin/docs/operations-starter-pack?format=html&download=1';
-    link.download = 'travel_malawi_operations_playbook.html';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success('Downloaded operations playbook (.html)');
-  };
+  const handleDownload = () => downloadDocHtml('operations-starter-pack', 'travel_malawi_operations_playbook.html', 'Downloaded operations playbook (.html)');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

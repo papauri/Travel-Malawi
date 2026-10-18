@@ -15,6 +15,7 @@ import {
   getRedirectResult,
   signOut,
   sendPasswordResetEmail,
+  sendEmailVerification,
 } from 'firebase/auth';
 import { collection, doc, getDoc, getDocs, limit, query, setDoc, where } from 'firebase/firestore';
 import { auth, db, googleProvider } from '../lib/firebase';
@@ -103,7 +104,8 @@ async function loadOrCreateUser(
   let userData: User;
   if (userDoc && userDoc.exists()) {
     userData = { uid: firebaseUser.uid, ...userDoc.data() } as User;
-    if (userData.accessRevoked || userData.status === 'suspended') {
+    // Same statuses the security rules and server treat as locked out.
+    if (userData.accessRevoked || ['suspended', 'revoked', 'deactivated'].includes(String(userData.status))) {
       await signOut(auth);
       throw new AccountSuspendedError();
     }
@@ -134,8 +136,10 @@ async function loadOrCreateUser(
     }
   }
 
-  // Auto-recognize property owners/managers whose email or uid is attached to an onboarded hotel (including pending listings)
-  if (!isHotelManager(userData) && firebaseUser.email && !isOffline) {
+  // Auto-recognize property owners/managers whose email or uid is attached to an onboarded hotel (including pending listings).
+  // Hosts with an unverified address are checked too: managing a property by its email needs a verified address.
+  const needsHostCheck = !isHotelManager(userData) || !firebaseUser.emailVerified;
+  if (needsHostCheck && firebaseUser.email && !isOffline) {
     try {
       const cleanEmail = firebaseUser.email.trim().toLowerCase();
       const [byUid, byOwnerEmail, byManagerEmail] = await Promise.all([
@@ -143,7 +147,16 @@ async function loadOrCreateUser(
         getDocs(query(collection(db, 'hotels'), where('ownerEmail', '==', cleanEmail), limit(1))),
         getDocs(query(collection(db, 'hotels'), where('managerEmail', '==', cleanEmail), limit(1))),
       ]);
-      if (!byUid.empty || !byOwnerEmail.empty || !byManagerEmail.empty) {
+      const byEmail = !byOwnerEmail.empty || !byManagerEmail.empty;
+      // firestore.rules isManager only honours a verified email. Send the link once per browser session.
+      if (byEmail && !firebaseUser.emailVerified && typeof window !== 'undefined'
+          && !sessionStorage.getItem('tm_verify_sent')) {
+        sessionStorage.setItem('tm_verify_sent', '1');
+        sendEmailVerification(firebaseUser)
+          .then(() => toast(`Check ${firebaseUser.email} for a verification link to manage your property.`, { duration: 8000 }))
+          .catch(() => {});
+      }
+      if (!isHotelManager(userData) && (!byUid.empty || byEmail)) {
         const currentRoles = Array.isArray(userData.roles) ? userData.roles : (userData.role ? [userData.role] : ['traveller']);
         const roleFields = toRoleFields([...currentRoles, 'hotel_manager'] as Role[]);
         userData = { ...userData, ...roleFields };
@@ -390,6 +403,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const cleanName = displayName.trim();
     try {
       const result = await createUserWithEmailAndPassword(auth, cleanEmail, password);
+      // A verified address is what lets a host manage a property listed under
+      // their email (firestore.rules isManager); travellers lose nothing if it fails.
+      sendEmailVerification(result.user).catch(() => {});
       
       if (cleanName) {
         try {
