@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import SmartImage from './SmartImage';
 
@@ -8,9 +8,10 @@ interface LightboxProps {
   images: string[];
   initialIndex?: number;
   onClose: () => void;
+  onDelete?: (index: number) => void;
 }
 
-export default function Lightbox({ images, initialIndex = 0, onClose }: LightboxProps) {
+export default function Lightbox({ images, initialIndex = 0, onClose, onDelete }: LightboxProps) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
 
   // Touch gesture tracking for mobile swipe navigation
@@ -92,17 +93,40 @@ export default function Lightbox({ images, initialIndex = 0, onClose }: Lightbox
       style={{ touchAction: 'pan-y' }}
     >
       {/* Header controls */}
-      <div className="absolute top-4 left-0 right-0 px-6 flex justify-between items-center z-10 pointer-events-none">
+      <div className="absolute top-4 left-0 right-0 px-4 sm:px-6 flex justify-between items-center z-10 pointer-events-none">
         <span className="text-white/80 font-mono text-sm tracking-widest font-semibold bg-black/50 px-3 py-1 rounded-full backdrop-blur-md">
           {currentIndex + 1} / {images.length}
         </span>
-        <button
-          onClick={onClose}
-          className="pointer-events-auto p-2.5 bg-white/10 hover:bg-white/20 rounded-full text-white transition backdrop-blur-md active:scale-95 cursor-pointer"
-          aria-label="Close photo gallery"
-        >
-          <X className="w-6 h-6" />
-        </button>
+        <div className="flex items-center gap-2 pointer-events-auto">
+          {onDelete && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                const idxToDelete = currentIndex;
+                onDelete(idxToDelete);
+                if (images.length <= 1) {
+                  onClose();
+                } else {
+                  setCurrentIndex(prev => (prev >= images.length - 1 ? Math.max(0, images.length - 2) : prev));
+                }
+              }}
+              className="flex items-center gap-1.5 px-3 py-2 bg-red-600/90 hover:bg-red-600 text-white text-xs font-bold rounded-full backdrop-blur-md shadow-md active:scale-95 transition cursor-pointer"
+              title="Delete this photo"
+              aria-label="Delete this photo"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span>Delete Photo</span>
+            </button>
+          )}
+          <button
+            onClick={onClose}
+            className="p-2.5 bg-white/10 hover:bg-white/20 rounded-full text-white transition backdrop-blur-md active:scale-95 cursor-pointer"
+            aria-label="Close photo gallery"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
       </div>
 
       {/* Main Image with swipe indicators on mobile */}

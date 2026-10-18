@@ -1352,6 +1352,51 @@ export default function OperationsCopilot() {
         toast.success(`Promotion applied successfully!`, { icon: '🏷️' });
 
       // 10. INTELLIGENT UNIVERSAL FALLBACK (Prevents any proposal from failing silently)
+      } else if (action.type === 'scrape_reviews') {
+        const targetProp = properties.find(p => targetIds.includes(p.id!)) || properties[0];
+        if (!targetProp || !targetProp.id) {
+          toast.error('No property found to scrape reviews for.');
+          setExecutingAction(null);
+          return;
+        }
+        toast.loading(`Review Swarm scanning Google Maps & TripAdvisor for ${targetProp.name}...`, { id: 'swarm-scrape' });
+        try {
+          const resp = await fetch('/api/admin/scrape-reviews', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              hotelName: targetProp.name,
+              location: targetProp.location,
+              count: 3,
+              sentimentMode: 'balanced',
+            })
+          });
+          toast.dismiss('swarm-scrape');
+          const scrapeRes = await resp.json();
+          const found = Array.isArray(scrapeRes?.data) ? scrapeRes.data : [];
+          if (found.length === 0) {
+            actionSummaryText = `Review Swarm scanned live web channels for **${targetProp.name}**; zero authentic public reviews were found. No fake reviews generated.`;
+            toast('No public reviews found on live web for this stay.', { icon: 'ℹ️' });
+          } else {
+            const currentReviews = Array.isArray(targetProp.reviews) ? [...targetProp.reviews] : [];
+            const updated = [...currentReviews, ...found];
+            const totalScore = updated.reduce((sum: number, r: any) => sum + (r.rating || 5), 0);
+            const newAvg = updated.length > 0 ? Math.round((totalScore / updated.length) * 10) / 10 : 0;
+            const summary = { count: updated.length, averageRating: newAvg, recentReviews: updated.slice(0, 20) };
+            await updateDoc(doc(db, 'hotels', targetProp.id), {
+              reviews: updated,
+              reviewsSummary: summary,
+            });
+            setProperties(prev => prev.map(p => p.id === targetProp.id ? { ...p, reviews: updated, reviewsSummary: summary } : p));
+            actionSummaryText = `Review Swarm discovered and attached **${found.length} real public reviews** for **${targetProp.name}** from Google Maps & TripAdvisor.`;
+            toast.success(`Attached ${found.length} real reviews from web!`);
+          }
+        } catch (scrapeErr: any) {
+          toast.dismiss('swarm-scrape');
+          console.error('Review Swarm scrape error:', scrapeErr);
+          toast.error('Failed to scrape reviews from web');
+          actionSummaryText = `Review Swarm encountered an error reaching web channels.`;
+        }
       } else {
         // If there's an amenity field
         if (action.amenity) {

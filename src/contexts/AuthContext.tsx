@@ -80,26 +80,46 @@ async function loadOrCreateUser(
   defaultRoles: Role[] = ['traveller']
 ): Promise<User> {
   const userDocRef = doc(db, 'users', firebaseUser.uid);
-  const userDoc = await getDoc(userDocRef);
+  let userDoc: any = null;
+  let isOffline = false;
+
+  try {
+    userDoc = await getDoc(userDocRef);
+  } catch (err: any) {
+    const isOfflineErr =
+      err?.code === 'unavailable' ||
+      err?.code === 'failed-precondition' ||
+      err?.message?.toLowerCase().includes('offline') ||
+      err?.message?.toLowerCase().includes('backend') ||
+      (typeof navigator !== 'undefined' && !navigator.onLine);
+    if (isOfflineErr) {
+      isOffline = true;
+      console.warn('[Auth] Firestore client offline; resolving user profile locally.');
+    } else {
+      console.warn('[Auth] Could not fetch user document:', err);
+    }
+  }
   
   let userData: User;
-  if (userDoc.exists()) {
+  if (userDoc && userDoc.exists()) {
     userData = { uid: firebaseUser.uid, ...userDoc.data() } as User;
     if (userData.accessRevoked || userData.status === 'suspended') {
       await signOut(auth);
       throw new AccountSuspendedError();
     }
   } else {
+    const isOwner = isOwnerEmail(firebaseUser.email);
+    const initialRoles: Role[] = isOwner ? ['admin'] : defaultRoles;
     userData = {
       uid: firebaseUser.uid,
       email: firebaseUser.email,
       displayName: firebaseUser.displayName || (firebaseUser.email ? firebaseUser.email.split('@')[0] : 'User'),
-      ...toRoleFields(defaultRoles),
+      ...toRoleFields(initialRoles),
       createdAt: Date.now(),
     };
   }
 
-  let needsWrite = !userDoc.exists();
+  let needsWrite = Boolean(userDoc && !userDoc.exists());
 
   // Force global admin role for the requested email
   if (isOwnerEmail(userData.email)) {
@@ -108,12 +128,14 @@ async function loadOrCreateUser(
       const updatedRoles = [...roles, 'admin'] as Role[];
       const roleFields = toRoleFields(updatedRoles);
       userData = { ...userData, ...roleFields };
-      needsWrite = true;
+      if (userDoc && !isOffline) {
+        needsWrite = true;
+      }
     }
   }
 
   // Auto-recognize property owners/managers whose email or uid is attached to an onboarded hotel (including pending listings)
-  if (!isHotelManager(userData) && firebaseUser.email) {
+  if (!isHotelManager(userData) && firebaseUser.email && !isOffline) {
     try {
       const cleanEmail = firebaseUser.email.trim().toLowerCase();
       const [byUid, byOwnerEmail, byManagerEmail] = await Promise.all([
@@ -132,8 +154,12 @@ async function loadOrCreateUser(
     }
   }
 
-  if (needsWrite) {
-    await setDoc(userDocRef, { ...userData }, { merge: true });
+  if (needsWrite && !isOffline) {
+    try {
+      await setDoc(userDocRef, { ...userData }, { merge: true });
+    } catch (writeErr) {
+      console.warn('[Auth] Non-fatal setDoc error while saving profile:', writeErr);
+    }
   }
 
   return userData;
@@ -241,7 +267,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               }).catch(() => {});
             }
           }
-        } catch (err) {
+        } catch (err: any) {
           if (err instanceof AccountSuspendedError) {
             // loadOrCreateUser has already signed them out; never fall back
             // to a traveller session for a suspended account.
@@ -250,14 +276,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setLoading(false);
             return;
           }
-          console.error('Error loading user profile:', err);
-          // Fallback to basic user profile so UI loads seamlessly
+          const isOfflineErr =
+            err?.code === 'unavailable' ||
+            err?.code === 'failed-precondition' ||
+            err?.message?.toLowerCase().includes('offline') ||
+            err?.message?.toLowerCase().includes('backend') ||
+            (typeof navigator !== 'undefined' && !navigator.onLine);
+
+          if (!isOfflineErr) {
+            console.error('Error loading user profile:', err);
+          } else {
+            console.warn('[Auth] Offline profile active for:', firebaseUser.email);
+          }
+          // Fallback to basic user profile so UI loads seamlessly, respecting owner email
+          const isOwner = isOwnerEmail(firebaseUser.email);
+          const fallbackRoles: Role[] = isOwner ? ['admin'] : ['traveller'];
           applyEffectiveUser({
             uid: firebaseUser.uid,
             email: firebaseUser.email,
             displayName: firebaseUser.displayName || (firebaseUser.email ? firebaseUser.email.split('@')[0] : 'User'),
-            role: 'traveller',
-            roles: ['traveller'],
+            ...toRoleFields(fallbackRoles),
             createdAt: Date.now(),
           });
         }
@@ -269,7 +307,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       setLoading(false);
     });
-    return unsubscribe;
+
+    const handleOnline = () => {
+      if (auth.currentUser) {
+        loadOrCreateUser(auth.currentUser)
+          .then((appUser) => applyEffectiveUser(appUser))
+          .catch(() => {});
+      }
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('online', handleOnline);
+    }
+
+    return () => {
+      unsubscribe();
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('online', handleOnline);
+      }
+    };
   }, []);
 
   const signIn = async (email: string, password: string) => {
@@ -280,16 +335,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         appUser = await loadOrCreateUser(result.user);
         applyEffectiveUser(appUser);
-      } catch (err) {
+      } catch (err: any) {
         // A suspended account must fail the sign-in, not log in as a traveller.
         if (err instanceof AccountSuspendedError) throw err;
-        console.error('Error loading user profile after sign-in:', err);
+        const isOfflineErr =
+          err?.code === 'unavailable' ||
+          err?.code === 'failed-precondition' ||
+          err?.message?.toLowerCase().includes('offline') ||
+          err?.message?.toLowerCase().includes('backend');
+
+        if (!isOfflineErr) {
+          console.error('Error loading user profile after sign-in:', err);
+        } else {
+          console.warn('[Auth] Offline sign-in user profile fallback:', result.user.email);
+        }
+        const isOwner = isOwnerEmail(result.user.email || cleanEmail);
+        const fallbackRoles: Role[] = isOwner ? ['admin'] : ['traveller'];
         appUser = {
           uid: result.user.uid,
           email: result.user.email || cleanEmail,
           displayName: result.user.displayName || cleanEmail.split('@')[0] || 'User',
-          role: 'traveller',
-          roles: ['traveller'],
+          ...toRoleFields(fallbackRoles),
           createdAt: Date.now(),
         };
         applyEffectiveUser(appUser);

@@ -766,7 +766,7 @@ export default function MyBookings() {
             {activeBookings.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((booking, bkIdx) => {
               const terms = cancellationTerms(booking);
               const nights = nightsBetween(booking.checkIn, booking.checkOut);
-              const canReview = activeMainTab === 'guest' && isStayComplete(booking) && booking.id && !reviewedBookingIds.has(booking.id);
+              const canReview = activeMainTab === 'guest' && booking.status === 'confirmed' && booking.id && !reviewedBookingIds.has(booking.id);
               return (
               <div key={`${booking.id || 'booking'}-${bkIdx}`} className="group flex flex-col md:flex-row bg-white border border-stone-200 rounded-2xl md:rounded-3xl overflow-hidden shadow-2xs hover:shadow-sm transition-shadow">
                 <div className="md:w-64 lg:w-72 h-36 sm:h-44 md:h-auto bg-stone-100 relative overflow-hidden shrink-0">
@@ -1123,6 +1123,7 @@ function ReviewDialog({
 }) {
   const { user } = useAuth();
   const [rating, setRating] = useState(5);
+  const [title, setTitle] = useState('');
   const [text, setText] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
@@ -1154,12 +1155,13 @@ function ReviewDialog({
         hotelId: booking.hotelId,
         bookingId: booking.id,
         guestId: user.uid,
-        authorName: booking.guestName || user.displayName || 'Guest',
+        authorName: booking.guestName || user.displayName || 'Verified Guest',
         rating,
+        title: title.trim() || undefined,
         text: text.trim(),
         createdAt: Date.now(),
       });
-      toast.success('Thanks — your review is live.');
+      toast.success('Thanks — your verified review is live.');
       onSubmitted(booking.id);
     } catch (error) {
       console.error('Error submitting review:', error);
@@ -1217,6 +1219,18 @@ function ReviewDialog({
             ))}
             <span className="ml-3 text-sm font-semibold text-stone-600">{RATING_WORDS[rating]}</span>
           </div>
+        </div>
+
+        <div>
+          <label className={labelClass}>Review title (optional)</label>
+          <input
+            type="text"
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+            maxLength={120}
+            placeholder="e.g. Unforgettable lake views & fantastic host"
+            className={fieldClass}
+          />
         </div>
 
         <div>

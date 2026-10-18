@@ -709,6 +709,7 @@ export const MALAWI_KNOWN_PLACES: KnownPlace[] = [
   { id: 'sunbird-nkopola', name: 'Sunbird Nkopola Lodge', category: 'hotel', region: 'Mangochi', location: 'Nkopola, Mangochi', coordinates: { lat: -14.3012, lng: 35.1558 }, description: 'Lake Malawi beach resort south of Club Makokola' },
   { id: 'nkhata-bay', name: 'Nkhata Bay', category: 'town', region: 'Northern Region', location: 'Nkhata Bay, Lake Malawi', coordinates: { lat: -11.6067, lng: 34.2908 }, description: 'Scenic bay town with lodges and diving' },
   { id: 'mayoka-village', name: 'Mayoka Village', category: 'hotel', region: 'Northern Region', location: 'Nkhata Bay', coordinates: { lat: -11.6015, lng: 34.3032 }, description: 'Renowned cliffside lodge on Lake Malawi' },
+  { id: 'soul-rebel-lodge', name: 'Soul Rebel Lodge & Backpackers', category: 'hotel', region: 'Northern Region', location: 'Nkhata Bay, Lake Malawi', coordinates: { lat: -11.6045, lng: 34.3015 }, description: 'Charming lakeside beach lodge in Nkhata Bay' },
 
   // Lilongwe Area
   { id: 'lilongwe-city-centre', name: 'Lilongwe City Centre', category: 'town', region: 'Central Region', location: 'City Centre, Lilongwe', coordinates: { lat: -13.9626, lng: 33.7741 }, description: 'Capital city administrative and business district' },

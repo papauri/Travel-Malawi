@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Search, Save, Star, Loader2, Check, MapPin, 
   Trash2, Edit3, Sliders, X, Eye, ExternalLink,
-  ShieldCheck, Building2, Globe, ListFilter, Filter, MessageSquare, RefreshCw, AlertTriangle
+  ShieldCheck, Building2, Globe, ListFilter, Filter, MessageSquare, RefreshCw, AlertTriangle, Bot
 } from 'lucide-react';
 import { Hotel, Review } from '../types';
 import toast from 'react-hot-toast';
@@ -312,11 +312,11 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
   const [customQuery, setCustomQuery] = useState<string>('');
   const [targetUrl, setTargetUrl] = useState<string>('');
   const [selectedSources, setSelectedSources] = useState<string[]>([
-    'TripAdvisor', 'Google Reviews', 'Booking.com', 'SafariBookings'
+    'Google Reviews', 'TripAdvisor', 'Booking.com'
   ]);
   const [sentimentMode, setSentimentMode] = useState<'balanced' | 'critical' | 'positive' | 'all'>('balanced');
   const [minRating, setMinRating] = useState<number>(1);
-  const [reviewCount, setReviewCount] = useState<number>(4);
+  const [reviewCount, setReviewCount] = useState<number>(10);
   const [showAdvancedOptions, setShowAdvancedOptions] = useState<boolean>(false);
 
   // Discovery State
@@ -331,7 +331,7 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
   const [sourceFilter, setSourceFilter] = useState<string>('all');
   const [ratingFilter, setRatingFilter] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const itemsPerPage = 6;
+  const itemsPerPage = 10;
 
   // Inline Review Edit Modal State
   const [editingReviewIndex, setEditingReviewIndex] = useState<number | null>(null);
@@ -425,26 +425,32 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
         throw new Error(data.error || 'Failed to scrape reviews');
       }
       
-      let reviewsList: any[] | null = null;
-      if (Array.isArray(data.data) && data.data.length > 0) {
+      let reviewsList: any[] = [];
+      if (Array.isArray(data.data)) {
         reviewsList = data.data;
-      } else if (Array.isArray(data.reviews) && data.reviews.length > 0) {
+      } else if (Array.isArray(data.reviews)) {
         reviewsList = data.reviews;
       } else if (typeof data.text === 'string') {
         try {
           const match = data.text.match(/\[[\s\S]*\]/);
           if (match) {
             const parsed = JSON.parse(match[0]);
-            if (Array.isArray(parsed) && parsed.length > 0) {
+            if (Array.isArray(parsed)) {
               reviewsList = parsed;
             }
           }
         } catch { /* non-critical client recovery */ }
       }
 
-      if (reviewsList && reviewsList.length > 0) {
-        // Exclude reviews that have already been attached to the property
-        const freshReviews = reviewsList.filter(r => !isReviewDuplicate(r, propertyExistingReviews));
+      if (reviewsList.length > 0) {
+        // Exclude reviews that have already been attached to the property and sort by most recent stay date
+        const freshReviews = reviewsList
+          .filter(r => !isReviewDuplicate(r, propertyExistingReviews))
+          .sort((a, b) => {
+            const tsB = parseReviewDateToTimestamp(b.date || (b as any).createdAt, 0);
+            const tsA = parseReviewDateToTimestamp(a.date || (a as any).createdAt, 0);
+            return tsB - tsA;
+          });
         const dupesCount = reviewsList.length - freshReviews.length;
         setDuplicateFilteredCount(dupesCount);
 
@@ -464,7 +470,13 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
           );
         }
       } else {
-        throw new Error('Unable to parse review data format. Please retry discovery.');
+        // Legitimate zero reviews state: inform user clearly with an informational toast
+        setScrapedReviews([]);
+        setSelectedReviews(new Set());
+        toast(
+          `No public reviews found online for "${selectedHotel.name}" across the scanned web channels. Synthetic reviews are prohibited to preserve authentic ratings.`,
+          { icon: 'ℹ️', duration: 5500 }
+        );
       }
     } catch (err: any) {
       console.error('Review scraper error:', err);
@@ -596,6 +608,13 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
         finalReviews = [...fresh, ...currentReviews];
       }
 
+      // Always sort by most recent stay date
+      finalReviews.sort((a, b) => {
+        const tsB = parseReviewDateToTimestamp(b.date || (b as any).createdAt, 0);
+        const tsA = parseReviewDateToTimestamp(a.date || (a as any).createdAt, 0);
+        return tsB - tsA;
+      });
+
       const totalCount = finalReviews.length;
       const totalScore = finalReviews.reduce((sum: number, r: any) => sum + (r.rating || 5), 0);
       const newAverage = totalCount > 0 ? Math.round((totalScore / totalCount) * 10) / 10 : 5;
@@ -668,6 +687,36 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
     } catch (err: any) {
       console.error('Delete review error:', err);
       toast.error(err.message || 'Failed to delete review');
+    } finally {
+      setIsDeletingExisting(null);
+    }
+  };
+
+  const handleClearAllReviewsFromProperty = async () => {
+    if (!selectedHotel || !selectedHotel.id) return;
+    setIsDeletingExisting('all');
+    try {
+      const hotelRef = doc(db, 'hotels', selectedHotel.id);
+      const emptySummary = {
+        count: 0,
+        averageRating: 0,
+        recentReviews: [],
+      };
+      await updateDoc(hotelRef, {
+        reviews: [],
+        rating: 0,
+        reviewCount: 0,
+        reviewsSummary: emptySummary,
+      });
+      onHotelUpdated({
+        ...selectedHotel,
+        reviews: [],
+        reviewsSummary: emptySummary,
+      });
+      toast.success(`All reviews cleared from ${selectedHotel.name}.`);
+    } catch (err: any) {
+      console.error('Clear all reviews error:', err);
+      toast.error(err.message || 'Failed to clear all reviews');
     } finally {
       setIsDeletingExisting(null);
     }
@@ -1460,7 +1509,23 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
               </button>
             </div>
 
-            {/* Simple Text Target Source Channel Pills (No AI Obvious Icons) */}
+            {/* Review Swarm Agent Status Card */}
+            <div className="bg-amber-50/70 border border-amber-200/80 rounded-xl p-3 flex items-start gap-2.5 text-xs text-amber-950">
+              <Bot className="w-4 h-4 text-amber-800 shrink-0 mt-0.5" />
+              <div className="space-y-0.5">
+                <p className="font-semibold text-amber-950 flex items-center gap-1.5">
+                  <span>Review Intelligence Swarm Agent Ready</span>
+                  <span className="text-[10px] font-mono font-normal bg-amber-200/60 text-amber-900 px-1.5 py-0.2 rounded">
+                    Live Web Grounding
+                  </span>
+                </p>
+                <p className="text-[11px] text-amber-900/80 leading-relaxed">
+                  Queries real, published traveler feedback directly from Google Maps, TripAdvisor, and Booking.com using lean token budgets (3-5 reviews). Fictional or synthetic reviews are prohibited.
+                </p>
+              </div>
+            </div>
+
+            {/* Simple Text Target Source Channel Pills */}
             <div className="flex flex-wrap gap-2">
               {AVAILABLE_SOURCES.map(source => {
                 const isSelected = selectedSources.includes(source.id);
@@ -1544,8 +1609,9 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
                       onChange={(e) => setReviewCount(Number(e.target.value))}
                       className="w-full bg-white border border-stone-200 rounded-lg px-2.5 py-1.5 text-xs text-stone-900 focus:border-stone-900 outline-none"
                     >
-                      <option value={4}>4 Reviews (Ultra-Lean ~300 tokens)</option>
-                      <option value={6}>6 Reviews (~450 tokens)</option>
+                      <option value={10}>10 Most Recent Reviews (Standard Batch — Recommended)</option>
+                      <option value={5}>5 Reviews (Quick Preview)</option>
+                      <option value={15}>15 Reviews (Full Archive Discovery)</option>
                     </select>
                   </div>
 
@@ -1952,14 +2018,32 @@ export default function AdminReviewScraper({ hotels, onHotelUpdated, initialHote
               </p>
             </div>
             
-            <button
-              type="button"
-              onClick={() => setActiveSubTab('discover')}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-stone-900 text-white rounded-xl text-xs font-medium hover:bg-stone-800 transition shadow-2xs"
-            >
-              <Search className="w-3.5 h-3.5" />
-              <span>Discover More Reviews</span>
-            </button>
+            <div className="flex items-center gap-2">
+              {existingReviews.length > 0 && (
+                <button
+                  type="button"
+                  disabled={isDeletingExisting === 'all'}
+                  onClick={handleClearAllReviewsFromProperty}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 text-rose-700 border border-rose-200 rounded-xl text-xs font-medium hover:bg-rose-100 transition shadow-2xs disabled:opacity-50 cursor-pointer"
+                  title="Remove all reviews currently attached to this property"
+                >
+                  {isDeletingExisting === 'all' ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Trash2 className="w-3.5 h-3.5" />
+                  )}
+                  <span>Clear All Reviews</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setActiveSubTab('discover')}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-stone-900 text-white rounded-xl text-xs font-medium hover:bg-stone-800 transition shadow-2xs cursor-pointer"
+              >
+                <Search className="w-3.5 h-3.5" />
+                <span>Discover More Reviews</span>
+              </button>
+            </div>
           </div>
 
           {existingReviews.length === 0 ? (

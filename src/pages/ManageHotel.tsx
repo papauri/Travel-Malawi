@@ -32,7 +32,7 @@ import EditBookingModal from '../components/EditBookingModal';
 import ManagerMessageTemplatesHub from '../components/ManagerMessageTemplatesHub';
 import BulkRoomEditor from '../components/BulkRoomEditor';
 import { useWhatsAppSettings } from '../hooks/useWhatsAppSettings';
-import { getHotelImages, getHotelImage, getRoomImage, localImagesForName } from '../lib/images';
+import { getHotelImages, getHotelImage, getRoomImage, localImagesForName, normalizeImageUrl } from '../lib/images';
 import { useBreadcrumbLabel } from '../components/Breadcrumbs';
 import LocationPicker from '../components/LocationPicker';
 import AvailabilityCalendar from '../components/AvailabilityCalendar';
@@ -3554,13 +3554,15 @@ export default function ManageHotel() {
       {/* TAB CONTENT: ROOMS */}
       
       {activeTab === 'media' && (() => {
-        const currentCover = editHotelData.imageUrl?.trim() || '';
+        const currentCover = normalizeImageUrl(editHotelData.imageUrl) || '';
         const rawGallery = Array.isArray(editHotelData.galleryUrls)
           ? editHotelData.galleryUrls
           : typeof editHotelData.galleryUrls === 'string'
           ? (editHotelData.galleryUrls as string).split(',')
           : [];
-        const currentGallery = rawGallery.map((u: any) => typeof u === 'string' ? u.trim() : '').filter(Boolean);
+        const currentGallery = rawGallery
+          .map((u: any) => normalizeImageUrl(u))
+          .filter((u): u is string => Boolean(u));
 
         // Unified Property Photo Collection:
         // Index 0 is always the primary Cover Photo (Hero Slot 1 & Search Card Thumbnail).
@@ -3813,138 +3815,251 @@ export default function ManageHotel() {
                       </p>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-2 aspect-[16/11] sm:aspect-[16/8] md:aspect-[16/6] rounded-2xl overflow-hidden bg-stone-900 p-2 border border-stone-800">
-                      {/* SLOT 1: Primary Cover Photo */}
-                      <div className={`relative rounded-xl overflow-hidden group bg-stone-950 ${allPropertyPhotos.length > 1 ? 'md:col-span-2 md:row-span-2' : 'md:col-span-4 md:row-span-2'}`}>
-                        <SmartImage src={allPropertyPhotos[0]} alt="Hero Slot 1 Cover" className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 bg-gradient-to-t from-stone-950/80 via-stone-950/20 to-transparent pointer-events-none" />
-                        
-                        {/* Top Left Badge */}
-                        <div className="absolute top-2.5 left-2.5 z-10 flex items-center gap-1.5 pointer-events-none">
-                          <span className="px-2.5 py-1 rounded-lg bg-amber-500 text-white text-[11px] font-bold shadow-md flex items-center gap-1 tracking-wide">
-                            <Star className="w-3.5 h-3.5 fill-current" />
-                            <span>Cover Photo · Hero Slot 1</span>
-                          </span>
-                        </div>
+                    <div>
+                      {/* MOBILE VIEW (< md): Simplistic, clear hero management */}
+                      <div className="block md:hidden space-y-3">
+                        {/* Slot 1: Primary Cover Photo */}
+                        <div className="relative rounded-2xl overflow-hidden bg-stone-950 aspect-[16/10] border border-stone-800 shadow-sm">
+                          <SmartImage src={allPropertyPhotos[0]} alt="Hero Slot 1 Cover" className="w-full h-full object-cover" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-stone-950/85 via-stone-950/25 to-transparent pointer-events-none" />
 
-                        {/* Bottom Info */}
-                        <div className="absolute bottom-2.5 left-2.5 z-10 text-white pointer-events-none">
-                          <p className="text-xs font-bold leading-tight drop-shadow-xs">{editHotelData.name || 'Your Property'}</p>
-                          <p className="text-[10px] text-white/70">Main Thumbnail in Search &amp; Hero Listing Banner</p>
-                        </div>
+                          {/* Top Badge */}
+                          <div className="absolute top-2.5 left-2.5 z-10 flex items-center gap-1.5">
+                            <span className="px-2.5 py-1 rounded-lg bg-amber-500 text-white text-[11px] font-bold shadow-md flex items-center gap-1 tracking-wide">
+                              <Star className="w-3.5 h-3.5 fill-current" />
+                              <span>Cover Photo · Hero Slot 1</span>
+                            </span>
+                          </div>
 
-                        {/* Hover Action Controls */}
-                        <div className="absolute top-2.5 right-2.5 z-10 flex items-center gap-1 opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity">
-                          {allPropertyPhotos.length > 1 && (
+                          {/* Bottom Info */}
+                          <div className="absolute bottom-2.5 left-2.5 right-2.5 z-10 text-white">
+                            <p className="text-sm font-bold leading-tight drop-shadow-xs truncate">{editHotelData.name || 'Your Property'}</p>
+                            <p className="text-[11px] text-white/80">Main search thumbnail &amp; listing cover</p>
+                          </div>
+
+                          {/* Quick Mobile Actions */}
+                          <div className="absolute top-2.5 right-2.5 z-10 flex items-center gap-1">
+                            {allPropertyPhotos.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => handleMovePropertyPhoto(0, 1)}
+                                className="p-2 bg-stone-900/90 text-white rounded-lg transition active:scale-95 shadow-xs"
+                                title="Move to Slot 2"
+                              >
+                                <ChevronRight className="w-4 h-4" />
+                              </button>
+                            )}
                             <button
                               type="button"
-                              onClick={() => handleMovePropertyPhoto(0, 1)}
-                              className="p-1.5 bg-stone-900/80 hover:bg-stone-900 text-white rounded-lg transition backdrop-blur-xs cursor-pointer shadow-xs"
-                              title="Move to Slot 2"
+                              onClick={() => {
+                                setMediaLightboxImages(allPropertyPhotos);
+                                setMediaLightboxIndex(0);
+                              }}
+                              className="p-2 bg-stone-900/90 text-white rounded-lg transition active:scale-95 shadow-xs"
+                              title="View full screen"
                             >
-                              <ChevronRight className="w-3.5 h-3.5" />
+                              <Eye className="w-4 h-4" />
                             </button>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setMediaLightboxImages(allPropertyPhotos);
-                              setMediaLightboxIndex(0);
-                            }}
-                            className="p-1.5 bg-stone-900/80 hover:bg-stone-900 text-white rounded-lg transition backdrop-blur-xs cursor-pointer shadow-xs"
-                            title="View full screen"
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleRemovePropertyPhoto(0)}
-                            className="p-1.5 bg-stone-900/80 hover:bg-red-600 text-white rounded-lg transition backdrop-blur-xs cursor-pointer shadow-xs"
-                            title="Remove cover photo"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
+                            <button
+                              type="button"
+                              onClick={() => handleRemovePropertyPhoto(0)}
+                              className="p-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition active:scale-95 shadow-xs flex items-center justify-center cursor-pointer"
+                              title="Delete cover photo"
+                              aria-label="Delete cover photo"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </div>
+
+                        {/* Supporting Slots Mobile Grid */}
+                        {allPropertyPhotos.length > 1 && (
+                          <div className="space-y-2 pt-1">
+                            <div className="flex items-center justify-between text-xs text-stone-600 font-medium px-0.5">
+                              <span>Supporting Header Photos (Slots 2–{1 + maxHeroSupportingSlots})</span>
+                              <span className="text-[11px] text-stone-400">Tap ★ to set as Cover</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              {allPropertyPhotos.slice(1, 1 + maxHeroSupportingSlots).map((url, sIdx) => {
+                                const actualIdx = sIdx + 1;
+                                return (
+                                  <div key={`mob-hero-slot-${actualIdx}`} className="relative rounded-xl overflow-hidden bg-stone-950 aspect-[4/3] border border-stone-800 shadow-2xs">
+                                    <SmartImage src={url} alt={`Hero Slot ${actualIdx + 1}`} className="w-full h-full object-cover" />
+                                    <div className="absolute inset-0 bg-stone-950/25 pointer-events-none" />
+
+                                    {/* Slot Badge */}
+                                    <div className="absolute top-1.5 left-1.5 z-10 pointer-events-none">
+                                      <span className="px-1.5 py-0.5 rounded-md bg-stone-900/90 text-white text-[10px] font-mono shadow-xs">
+                                        Slot #{actualIdx + 1}
+                                      </span>
+                                    </div>
+
+                                    {/* Direct Mobile Controls */}
+                                    <div className="absolute bottom-1.5 left-1.5 right-1.5 z-10 flex items-center justify-between gap-1">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleSetPropertyCover(url)}
+                                        className="flex-1 py-1.5 px-1.5 bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold rounded-lg flex items-center justify-center gap-1 shadow-xs active:scale-95 transition cursor-pointer"
+                                        title="Make this photo the Cover"
+                                      >
+                                        <Star className="w-3 h-3 fill-current" />
+                                        <span>Cover</span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRemovePropertyPhoto(actualIdx)}
+                                        className="py-1.5 px-2 bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold rounded-lg shadow-xs active:scale-95 transition flex items-center gap-1 cursor-pointer"
+                                        title="Delete photo"
+                                        aria-label="Delete photo"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                        <span>Delete</span>
+                                      </button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
                       </div>
 
-                      {/* SUPPORTING SLOTS */}
-                      {allPropertyPhotos.length > 1 && (
-                        allPropertyPhotos.slice(1, 1 + maxHeroSupportingSlots).map((url, sIdx) => {
-                          const actualIdx = sIdx + 1;
-                          let slotSpanClass = 'md:col-span-1 md:row-span-1';
-                          let slotLabel = `Slot #${actualIdx + 1}`;
-                          if (activeHeroLayout === 'duo-3') {
-                            slotSpanClass = 'md:col-span-2 md:row-span-1';
-                            slotLabel = actualIdx === 1 ? 'Slot #2 (Top-Right)' : 'Slot #3 (Bottom-Right)';
-                          } else if (activeHeroLayout === 'bento-4') {
-                            if (sIdx === 0) {
+                      {/* DESKTOP VIEW (>= md): Bento Collage Grid */}
+                      <div className="hidden md:grid md:grid-cols-4 gap-2 md:aspect-[16/6] rounded-2xl overflow-hidden bg-stone-900 p-2 border border-stone-800">
+                        {/* SLOT 1: Primary Cover Photo */}
+                        <div className={`relative rounded-xl overflow-hidden group bg-stone-950 ${allPropertyPhotos.length > 1 ? 'md:col-span-2 md:row-span-2' : 'md:col-span-4 md:row-span-2'}`}>
+                          <SmartImage src={allPropertyPhotos[0]} alt="Hero Slot 1 Cover" className="w-full h-full object-cover" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-stone-950/80 via-stone-950/20 to-transparent pointer-events-none" />
+                          
+                          {/* Top Left Badge */}
+                          <div className="absolute top-2.5 left-2.5 z-10 flex items-center gap-1.5 pointer-events-none">
+                            <span className="px-2.5 py-1 rounded-lg bg-amber-500 text-white text-[11px] font-bold shadow-md flex items-center gap-1 tracking-wide">
+                              <Star className="w-3.5 h-3.5 fill-current" />
+                              <span>Cover Photo · Hero Slot 1</span>
+                            </span>
+                          </div>
+
+                          {/* Bottom Info */}
+                          <div className="absolute bottom-2.5 left-2.5 z-10 text-white pointer-events-none">
+                            <p className="text-xs font-bold leading-tight drop-shadow-xs">{editHotelData.name || 'Your Property'}</p>
+                            <p className="text-[10px] text-white/70">Main Thumbnail in Search &amp; Hero Listing Banner</p>
+                          </div>
+
+                          {/* Hover Action Controls */}
+                          <div className="absolute top-2.5 right-2.5 z-10 flex items-center gap-1 opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                            {allPropertyPhotos.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => handleMovePropertyPhoto(0, 1)}
+                                className="p-1.5 bg-stone-900/80 hover:bg-stone-900 text-white rounded-lg transition backdrop-blur-xs cursor-pointer shadow-xs"
+                                title="Move to Slot 2"
+                              >
+                                <ChevronRight className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setMediaLightboxImages(allPropertyPhotos);
+                                setMediaLightboxIndex(0);
+                              }}
+                              className="p-1.5 bg-stone-900/80 hover:bg-stone-900 text-white rounded-lg transition backdrop-blur-xs cursor-pointer shadow-xs"
+                              title="View full screen"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleRemovePropertyPhoto(0)}
+                              className="p-1.5 bg-red-600/90 hover:bg-red-700 text-white rounded-lg transition backdrop-blur-xs cursor-pointer shadow-xs"
+                              title="Delete cover photo"
+                              aria-label="Delete cover photo"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* SUPPORTING SLOTS */}
+                        {allPropertyPhotos.length > 1 && (
+                          allPropertyPhotos.slice(1, 1 + maxHeroSupportingSlots).map((url, sIdx) => {
+                            const actualIdx = sIdx + 1;
+                            let slotSpanClass = 'md:col-span-1 md:row-span-1';
+                            let slotLabel = `Slot #${actualIdx + 1}`;
+                            if (activeHeroLayout === 'duo-3') {
                               slotSpanClass = 'md:col-span-2 md:row-span-1';
-                              slotLabel = 'Slot #2 (Top-Right Wide)';
-                            } else if (sIdx === 1) {
-                              slotSpanClass = 'md:col-span-1 md:row-span-1';
-                              slotLabel = 'Slot #3 (Bottom-Left)';
+                              slotLabel = actualIdx === 1 ? 'Slot #2 (Top-Right)' : 'Slot #3 (Bottom-Right)';
+                            } else if (activeHeroLayout === 'bento-4') {
+                              if (sIdx === 0) {
+                                slotSpanClass = 'md:col-span-2 md:row-span-1';
+                                slotLabel = 'Slot #2 (Top-Right Wide)';
+                              } else if (sIdx === 1) {
+                                slotSpanClass = 'md:col-span-1 md:row-span-1';
+                                slotLabel = 'Slot #3 (Bottom-Left)';
+                              } else {
+                                slotSpanClass = 'md:col-span-1 md:row-span-1';
+                                slotLabel = 'Slot #4 (Bottom-Right)';
+                              }
                             } else {
                               slotSpanClass = 'md:col-span-1 md:row-span-1';
-                              slotLabel = 'Slot #4 (Bottom-Right)';
+                              slotLabel = `Slot #${actualIdx + 1}`;
                             }
-                          } else {
-                            slotSpanClass = 'md:col-span-1 md:row-span-1';
-                            slotLabel = `Slot #${actualIdx + 1}`;
-                          }
 
-                          return (
-                            <div key={`hero-slot-${actualIdx}`} className={`relative rounded-xl overflow-hidden group bg-stone-950 ${slotSpanClass}`}>
-                              <SmartImage src={url} alt={`Hero Slot ${actualIdx + 1}`} className="w-full h-full object-cover" />
-                              <div className="absolute inset-0 bg-stone-950/20 group-hover:bg-transparent transition pointer-events-none" />
+                            return (
+                              <div key={`hero-slot-${actualIdx}`} className={`relative rounded-xl overflow-hidden group bg-stone-950 ${slotSpanClass}`}>
+                                <SmartImage src={url} alt={`Hero Slot ${actualIdx + 1}`} className="w-full h-full object-cover" />
+                                <div className="absolute inset-0 bg-stone-950/20 group-hover:bg-transparent transition pointer-events-none" />
 
-                              {/* Slot Badge */}
-                              <div className="absolute top-2 left-2 z-10 pointer-events-none">
-                                <span className="px-2 py-0.5 rounded-md bg-stone-900/80 text-white text-[10px] font-mono backdrop-blur-xs">
-                                  {slotLabel}
-                                </span>
-                              </div>
+                                {/* Slot Badge */}
+                                <div className="absolute top-2 left-2 z-10 pointer-events-none">
+                                  <span className="px-2 py-0.5 rounded-md bg-stone-900/80 text-white text-[10px] font-mono backdrop-blur-xs">
+                                    {slotLabel}
+                                  </span>
+                                </div>
 
-                              {/* Actions */}
-                              <div className="absolute top-2 right-2 z-10 flex items-center gap-1 opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button
-                                  type="button"
-                                  onClick={() => handleSetPropertyCover(url)}
-                                  className="p-1.5 bg-stone-900/85 hover:bg-amber-600 text-amber-300 hover:text-white rounded-lg transition backdrop-blur-xs cursor-pointer shadow-xs"
-                                  title="Promote to Cover Photo (Slot 1)"
-                                >
-                                  <Star className="w-3.5 h-3.5 fill-current" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleMovePropertyPhoto(actualIdx, actualIdx - 1)}
-                                  className="p-1.5 bg-stone-900/85 hover:bg-stone-900 text-white rounded-lg transition backdrop-blur-xs cursor-pointer shadow-xs"
-                                  title="Move backward"
-                                >
-                                  <ChevronLeft className="w-3.5 h-3.5" />
-                                </button>
-                                {actualIdx < allPropertyPhotos.length - 1 && (
+                                {/* Actions */}
+                                <div className="absolute top-2 right-2 z-10 flex items-center gap-1 opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity">
                                   <button
                                     type="button"
-                                    onClick={() => handleMovePropertyPhoto(actualIdx, actualIdx + 1)}
-                                    className="p-1.5 bg-stone-900/85 hover:bg-stone-900 text-white rounded-lg transition backdrop-blur-xs cursor-pointer shadow-xs"
-                                    title="Move forward"
+                                    onClick={() => handleSetPropertyCover(url)}
+                                    className="p-1.5 bg-stone-900/85 hover:bg-amber-600 text-amber-300 hover:text-white rounded-lg transition backdrop-blur-xs cursor-pointer shadow-xs"
+                                    title="Promote to Cover Photo (Slot 1)"
                                   >
-                                    <ChevronRight className="w-3.5 h-3.5" />
+                                    <Star className="w-3.5 h-3.5 fill-current" />
                                   </button>
-                                )}
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemovePropertyPhoto(actualIdx)}
-                                  className="p-1.5 bg-stone-900/85 hover:bg-red-600 text-white rounded-lg transition backdrop-blur-xs cursor-pointer shadow-xs"
-                                  title="Remove"
-                                >
-                                  <X className="w-3.5 h-3.5" />
-                                </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleMovePropertyPhoto(actualIdx, actualIdx - 1)}
+                                    className="p-1.5 bg-stone-900/85 hover:bg-stone-900 text-white rounded-lg transition backdrop-blur-xs cursor-pointer shadow-xs"
+                                    title="Move backward"
+                                  >
+                                    <ChevronLeft className="w-3.5 h-3.5" />
+                                  </button>
+                                  {actualIdx < allPropertyPhotos.length - 1 && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleMovePropertyPhoto(actualIdx, actualIdx + 1)}
+                                      className="p-1.5 bg-stone-900/85 hover:bg-stone-900 text-white rounded-lg transition backdrop-blur-xs cursor-pointer shadow-xs"
+                                      title="Move forward"
+                                    >
+                                      <ChevronRight className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemovePropertyPhoto(actualIdx)}
+                                    className="p-1.5 bg-stone-900/85 hover:bg-red-600 text-white rounded-lg transition backdrop-blur-xs cursor-pointer shadow-xs"
+                                    title="Delete photo"
+                                    aria-label="Delete photo"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
                               </div>
-                            </div>
-                          );
-                        })
-                      )}
+                            );
+                          })
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -4196,46 +4311,81 @@ export default function ManageHotel() {
                     {allPropertyPhotos.length === 0 ? (
                       <p className="text-xs text-stone-400 italic">No property photos uploaded yet.</p>
                     ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-4 md:grid-rows-2 gap-1 aspect-[16/10] sm:aspect-[16/8] md:aspect-[16/6] rounded-2xl overflow-hidden bg-stone-900 border border-stone-800">
-                        {/* Main Cover */}
-                        <div className={`relative overflow-hidden ${allPropertyPhotos.length > 1 ? 'md:col-span-2 md:row-span-2' : 'md:col-span-4 md:row-span-2'}`}>
-                          <SmartImage src={allPropertyPhotos[0]} alt="Hero Cover" className="w-full h-full object-cover" />
-                          <div className="absolute inset-0 bg-gradient-to-t from-stone-950/80 via-transparent to-transparent" />
-                          <div className="absolute bottom-3 left-3 text-white">
-                            <p className="text-xs text-white/80 font-medium">{editHotelData.location || 'Malawi'}</p>
-                            <h4 className="text-base sm:text-lg font-serif font-bold">{editHotelData.name || 'Your Property'}</h4>
+                      <div>
+                        {/* Mobile preview */}
+                        <div className="block md:hidden space-y-2">
+                          <div className="relative rounded-2xl overflow-hidden aspect-[16/10] bg-stone-950 border border-stone-800 shadow-sm">
+                            <SmartImage src={allPropertyPhotos[0]} alt="Hero Cover" className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-gradient-to-t from-stone-950/85 via-stone-950/20 to-transparent" />
+                            <div className="absolute bottom-3 left-3 text-white">
+                              <p className="text-xs text-white/80 font-medium">{editHotelData.location || 'Malawi'}</p>
+                              <h4 className="text-base font-serif font-bold">{editHotelData.name || 'Your Property'}</h4>
+                            </div>
                           </div>
+                          {allPropertyPhotos.length > 1 && (
+                            <div className="grid grid-cols-3 gap-1.5">
+                              {allPropertyPhotos.slice(1, 1 + maxHeroSupportingSlots).map((url, idx) => {
+                                const isLastSlot = idx === Math.min(allPropertyPhotos.length - 2, maxHeroSupportingSlots - 1);
+                                const remainingPhotos = allPropertyPhotos.length - (1 + maxHeroSupportingSlots);
+                                return (
+                                  <div key={`mob-prev-tile-${idx}`} className="relative rounded-lg overflow-hidden aspect-[4/3] bg-stone-950 border border-stone-800">
+                                    <SmartImage src={url} alt={`Hero ${idx + 2}`} className="w-full h-full object-cover" />
+                                    {isLastSlot && remainingPhotos > 0 && (
+                                      <div className="absolute inset-0 bg-stone-950/60 flex items-center justify-center">
+                                        <span className="text-white text-[10px] font-bold px-1.5 py-0.5 rounded bg-black/70 backdrop-blur-xs">
+                                          +{remainingPhotos}
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
                         </div>
 
-                        {/* Supporting */}
-                        {allPropertyPhotos.length > 1 && (
-                          allPropertyPhotos.slice(1, 1 + maxHeroSupportingSlots).map((url, idx) => {
-                            let previewSpanClass = 'md:col-span-1 md:row-span-1';
-                            if (activeHeroLayout === 'duo-3') {
-                              previewSpanClass = 'md:col-span-2 md:row-span-1';
-                            } else if (activeHeroLayout === 'bento-4') {
-                              previewSpanClass = idx === 0 ? 'md:col-span-2 md:row-span-1' : 'md:col-span-1 md:row-span-1';
-                            } else {
-                              previewSpanClass = 'md:col-span-1 md:row-span-1';
-                            }
+                        {/* Desktop preview */}
+                        <div className="hidden md:grid md:grid-cols-4 md:grid-rows-2 gap-1 md:aspect-[16/6] rounded-2xl overflow-hidden bg-stone-900 border border-stone-800">
+                          {/* Main Cover */}
+                          <div className={`relative overflow-hidden ${allPropertyPhotos.length > 1 ? 'md:col-span-2 md:row-span-2' : 'md:col-span-4 md:row-span-2'}`}>
+                            <SmartImage src={allPropertyPhotos[0]} alt="Hero Cover" className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-gradient-to-t from-stone-950/80 via-transparent to-transparent" />
+                            <div className="absolute bottom-3 left-3 text-white">
+                              <p className="text-xs text-white/80 font-medium">{editHotelData.location || 'Malawi'}</p>
+                              <h4 className="text-base sm:text-lg font-serif font-bold">{editHotelData.name || 'Your Property'}</h4>
+                            </div>
+                          </div>
 
-                            const isLastSlot = idx === Math.min(allPropertyPhotos.length - 2, maxHeroSupportingSlots - 1);
-                            const remainingPhotos = allPropertyPhotos.length - (1 + maxHeroSupportingSlots);
+                          {/* Supporting */}
+                          {allPropertyPhotos.length > 1 && (
+                            allPropertyPhotos.slice(1, 1 + maxHeroSupportingSlots).map((url, idx) => {
+                              let previewSpanClass = 'md:col-span-1 md:row-span-1';
+                              if (activeHeroLayout === 'duo-3') {
+                                previewSpanClass = 'md:col-span-2 md:row-span-1';
+                              } else if (activeHeroLayout === 'bento-4') {
+                                previewSpanClass = idx === 0 ? 'md:col-span-2 md:row-span-1' : 'md:col-span-1 md:row-span-1';
+                              } else {
+                                previewSpanClass = 'md:col-span-1 md:row-span-1';
+                              }
 
-                            return (
-                              <div key={`prev-grid-${activeHeroLayout}-${idx}`} className={`relative overflow-hidden ${previewSpanClass}`}>
-                                <SmartImage src={url} alt={`Hero ${idx + 2}`} className="w-full h-full object-cover" />
-                                {isLastSlot && remainingPhotos > 0 && (
-                                  <div className="absolute inset-0 bg-stone-950/50 flex items-center justify-center">
-                                    <span className="text-white text-xs font-bold px-2 py-1 rounded bg-black/60 backdrop-blur-xs">
-                                      +{remainingPhotos} more
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })
-                        )}
+                              const isLastSlot = idx === Math.min(allPropertyPhotos.length - 2, maxHeroSupportingSlots - 1);
+                              const remainingPhotos = allPropertyPhotos.length - (1 + maxHeroSupportingSlots);
+
+                              return (
+                                <div key={`prev-grid-${activeHeroLayout}-${idx}`} className={`relative overflow-hidden ${previewSpanClass}`}>
+                                  <SmartImage src={url} alt={`Hero ${idx + 2}`} className="w-full h-full object-cover" />
+                                  {isLastSlot && remainingPhotos > 0 && (
+                                    <div className="absolute inset-0 bg-stone-950/50 flex items-center justify-center">
+                                      <span className="text-white text-xs font-bold px-2 py-1 rounded bg-black/60 backdrop-blur-xs">
+                                        +{remainingPhotos} more
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -6113,6 +6263,32 @@ export default function ManageHotel() {
           images={mediaLightboxImages}
           initialIndex={mediaLightboxIndex}
           onClose={() => setMediaLightboxImages(null)}
+          onDelete={(delIdx) => {
+            if (!mediaLightboxImages || delIdx < 0 || delIdx >= mediaLightboxImages.length) return;
+            const urlToDelete = mediaLightboxImages[delIdx];
+            const currentCover = normalizeImageUrl(editHotelData.imageUrl) || '';
+            const rawGallery = Array.isArray(editHotelData.galleryUrls)
+              ? editHotelData.galleryUrls
+              : typeof editHotelData.galleryUrls === 'string'
+              ? (editHotelData.galleryUrls as string).split(',')
+              : [];
+            const currentGallery = rawGallery
+              .map((u: any) => normalizeImageUrl(u))
+              .filter((u): u is string => Boolean(u));
+            const allPhotos: string[] = [];
+            if (currentCover) allPhotos.push(currentCover);
+            for (const u of currentGallery) {
+              if (u && !allPhotos.includes(u)) allPhotos.push(u);
+            }
+            const remaining = allPhotos.filter(u => u !== urlToDelete);
+            if (remaining.length === 0) {
+              setEditHotelData(prev => ({ ...prev, imageUrl: '', galleryUrls: [] }));
+            } else {
+              setEditHotelData(prev => ({ ...prev, imageUrl: remaining[0], galleryUrls: remaining.slice(1) }));
+            }
+            setMediaLightboxImages(prev => prev ? prev.filter((_, i) => i !== delIdx) : null);
+            toast.success("Photo deleted from property media");
+          }}
         />
       )}
 

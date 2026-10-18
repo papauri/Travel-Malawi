@@ -589,6 +589,7 @@ export interface Review {
   guestId: string;
   authorName: string;
   rating: number; // 1-5
+  title?: string;
   text: string;
   createdAt: number;
 }

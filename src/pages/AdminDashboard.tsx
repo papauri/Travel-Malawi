@@ -650,6 +650,60 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleResendUserOnboardingEmail = async (targetUser: User) => {
+    if (!targetUser.email) {
+      toast.error('This user does not have an email address.');
+      return;
+    }
+
+    // Check if the user is associated with any property as manager or owner
+    const userProperty = hotels.find(
+      h => h.managerId === targetUser.uid ||
+           (h.ownerEmail && h.ownerEmail.toLowerCase() === targetUser.email!.toLowerCase()) ||
+           (h.managerEmail && h.managerEmail.toLowerCase() === targetUser.email!.toLowerCase()) ||
+           (h.contactEmail && h.contactEmail.toLowerCase() === targetUser.email!.toLowerCase())
+    );
+
+    const toastId = toast.loading(`Sending onboarding details to ${targetUser.email}…`);
+    try {
+      const token = await auth.currentUser?.getIdToken().catch(() => null);
+      const res = await fetch('/api/onboarding/welcome-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          hotelId: userProperty?.id || 'host-onboarding',
+          hotelName: userProperty?.name || 'Ulendo Partner Host',
+          propertyName: userProperty?.name || 'Ulendo Partner Host',
+          location: userProperty?.location || 'Malawi',
+          category: userProperty?.category || 'Boutique Stay',
+          status: userProperty?.status || 'pending',
+          ownerName: targetUser.displayName || userProperty?.ownerName || 'Valued Partner Host',
+          ownerEmail: targetUser.email,
+          managerName: targetUser.displayName || userProperty?.managerName || 'Property Host',
+          managerEmail: targetUser.email,
+          submittedByEmail: (actualUser || user)?.email,
+        }),
+      });
+      const data = await res.json();
+      if ((data.ok || data.success) && (data.sentCount > 0 || data.sent)) {
+        const count = data.sentCount || data.recipients?.length || 1;
+        toast.success(`Onboarding details email sent via SMTP to ${targetUser.email}! (${count} email${count > 1 ? 's' : ''})`, { id: toastId });
+        await logSystemEvent('action', `Admin/Marketing resent onboarding details email to ${targetUser.email}`, {
+          targetUserId: targetUser.uid,
+          targetEmail: targetUser.email,
+          associatedProperty: userProperty?.name || 'Host Account',
+        }, user, 'admin');
+      } else {
+        toast.error(data.error || 'Could not dispatch onboarding email. Verify SMTP settings in Email Config.', { id: toastId });
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to dispatch onboarding details.', { id: toastId });
+    }
+  };
+
   const handleDeleteUser = (targetUser: User) => {
     if (targetUser.uid === user?.uid) {
       toast.error('Cannot delete your own account.');
@@ -1881,7 +1935,7 @@ export default function AdminDashboard() {
                                 className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center gap-2 transition cursor-pointer"
                               >
                                 <Mail className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-                                <span>Send Host Login Details (SMTP)</span>
+                                <span>Resend Onboarding Details Email (SMTP)</span>
                               </button>
                               <div className="my-1 border-t border-stone-100" />
                             </>
@@ -2579,14 +2633,29 @@ export default function AdminDashboard() {
                             </button>
                           )}
 
-                          {isAdmin(user) && (
+                          {(isAdmin(user) || isMarketing(user)) && (
                             <>
                               <div className="my-1 border-t border-stone-100" />
                               <div className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-stone-400">
-                                Account
+                                Onboarding &amp; Account
                               </div>
 
                               {u.email && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    handleResendUserOnboardingEmail(u);
+                                    setOpenUserMenuId(null);
+                                  }}
+                                  className="w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 flex items-center gap-2 transition cursor-pointer"
+                                  title="Resend partner onboarding credentials and listing access details via SMTP"
+                                >
+                                  <Mail className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                                  <span>Resend Onboarding Details</span>
+                                </button>
+                              )}
+
+                              {isAdmin(user) && u.email && (
                                 <button
                                   type="button"
                                   onClick={() => {

@@ -9,6 +9,7 @@ export type SwarmAgentId =
   | 'tourism_concierge'
   | 'onboarding_specialist'
   | 'marketing_specialist'
+  | 'review_specialist'
   | 'swarm_coordinator';
 
 export interface SwarmClassification {
@@ -20,6 +21,7 @@ export interface SwarmClassification {
     | 'tourism_activities' 
     | 'onboarding_assistance' 
     | 'marketing_outreach' 
+    | 'review_intelligence'
     | 'general_chat';
   reason: string;
 }
@@ -62,7 +64,22 @@ export function classifySwarmIntent(req: OperationsAssistantRequest): SwarmClass
     };
   }
 
-  // 3. Front Desk / Reservations / Arrivals
+  // 3. Review Intelligence, Verification & Global Scraper Specialist
+  const reviewTerms = [
+    'review', 'reviews', 'scrape review', 'scrape reviews', 'scraper', 'scrapper',
+    'tripadvisor', 'google review', 'google reviews', 'maps reviews', 'booking reviews',
+    'guest feedback', 'star rating', 'reputation', 'verified stay', 'verified review',
+    'authentic review', 'scraping', 'swarm reviews'
+  ];
+  if (reviewTerms.some(t => new RegExp(`\\b${t}\\b`, 'i').test(cleanMsg))) {
+    return {
+      primaryAgent: 'review_specialist',
+      intent: 'review_intelligence',
+      reason: 'User is querying property reviews, guest feedback, reputation, or requesting to scrape authentic public reviews from Google Maps, TripAdvisor, or Booking.com.',
+    };
+  }
+
+  // 4. Front Desk / Reservations / Arrivals
   const frontDeskTerms = [
     'arrival', 'arrivals', 'checkin', 'check in', 'check-in',
     'departure', 'departures', 'checkout', 'check out', 'check-out',
@@ -186,6 +203,14 @@ BREVITY RULE: Be laser-specific and concise. Give the direct answer in 1-2 sente
 Key Guidelines:
 1. Regional Grounding: Give specific, practical recommendations for Lake Malawi (Cape Maclear, Mangochi, Senga Bay, Nkhata Bay, Likoma), Parks (Liwonde, Majete, Nyika), and Highlands (Mulanje, Zomba).
 2. Logistics: State exact route, airport (LLW/BLZ), or 4x4 facts concisely without long travel essays.`;
+
+    case 'review_specialist':
+      return `SWARM ROLE: REVIEW INTELLIGENCE & REPUTATION SPECIALIST (ULENDO SWARM)
+BREVITY RULE: Be laser-specific and concise. Give direct answers in 1-2 sentences.
+Key Guidelines:
+1. Strict Authenticity: Never tolerate fake or synthesized reviews. Only real, verified guest bookings on Travel Malawi or actual public reviews from Google Maps, TripAdvisor, and Booking.com.
+2. Lean Token Scraper: When a host or admin requests scraping public reviews, instruct or trigger the lean scraper (3-5 reviews per batch) to conserve tokens.
+3. Actions: When asked to fetch/scrape reviews for a property in context, emit an \`\`\`action_proposal block with type: "scrape_reviews", propertyId, and propertyName.`;
 
     case 'swarm_coordinator':
     default:
@@ -343,6 +368,20 @@ function liveDataAnswer(req: OperationsAssistantRequest): string | null {
   }
   if (/\b(marketing|starter pack|field guide|field onboarding|pitch deck|prospect)\b/.test(lower)) {
     return `**Marketing & Host Acquisition**\nEmpower your field acquisition with these live tools:\n• [Host Starter Pack & Field Guide](/host-guide) (0% commission, 4 winning photo angles, WhatsApp templates)\n• [Marketing Presentation & Deck](/marketing)\n• [Pending Properties Review Queue](/admin?tab=properties)`;
+  }
+  if (/\b(reviews?|ratings?|stars?|feedback|sentiment|scrape)\b/.test(lower) && mentionedIds.size) {
+    return properties.slice(0, 5).map(p => {
+      const revs = (p as any).reviews || [];
+      const summary = (p as any).reviewsSummary;
+      const count = summary?.count || revs.length || 0;
+      const avg = summary?.averageRating || 0;
+      return [
+        `**${p.name} — Review & Reputation Intelligence**`,
+        `• Direct Verified Reviews: ${count} recorded (${avg > 0 ? `${avg.toFixed(1)}★ average` : 'no rating yet'}).`,
+        `• Direct Verified Review Flow: Confirmed guests can submit authentic reviews directly from their booking or the stay listing.`,
+        `• Online Scraper: Swarm agent scans Google Maps, TripAdvisor, and Booking.com for genuine traveler quotes using lean batches (3-5 reviews).`
+      ].join('\n');
+    }).join('\n\n');
   }
   return null;
 }

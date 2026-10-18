@@ -34,19 +34,13 @@ const LOCAL_HOTEL_IMAGES: Record<string, string[]> = {
   pumulani: ['/hotels/pumulani_main.jpg', '/hotels/pumulani_gal1.jpg', '/hotels/pumulani_gal2.jpg'],
   'kaya mawa': ['/hotels/kaya_main.jpg', '/hotels/kaya_gal1.jpg', '/hotels/kaya_gal2.jpg'],
   makokola: ['/hotels/makokola_main.jpg', '/hotels/makokola_gal1.jpg', '/hotels/makokola_gal2.jpg'],
-  rosalyn: ['/hotels/rosalyn_main.jpg', '/hotels/rosalyn_gal1.jpg', '/hotels/rosalyn_gal2.jpg', '/hotels/rosalyn_gal3.jpg'],
 };
 
 /** A local image safe to use as decorative background art. */
-export const DECORATIVE_IMAGE = '/hotels/rosalyn_main.jpg';
+export const DECORATIVE_IMAGE = '/hotels/pumulani_main.jpg';
 
 /**
  * The home page hero.
- *
- * This was a stock Unsplash photograph of a modern white villa — with a
- * construction crane in the frame — which had nothing to do with Malawi and
- * depended on a third-party host. Kaya Mawa on Likoma Island is bundled with
- * the app, loads instantly, and is actually one of the listings.
  */
 export const HERO_IMAGE = 'https://images.unsplash.com/photo-1543116696-9e33bf8c3425?auto=format&fit=crop&q=80&w=2000';
 
@@ -79,6 +73,11 @@ export function normalizeImageUrl(url: unknown): string | null {
   // Firestore records sometimes hold these as literal strings.
   if (!trimmed || trimmed === 'undefined' || trimmed === 'null') return null;
 
+  // Drop default app mock pictures so authentic property pictures are not cluttered
+  if (trimmed.includes('rosalyn_main') || trimmed.includes('rosalyn_gal') || trimmed.includes('/hotels/rosalyn_')) {
+    return null;
+  }
+
   for (const { match, replacement } of DEAD_URL_REWRITES) {
     if (trimmed.includes(match)) return replacement;
   }
@@ -100,9 +99,8 @@ export function localImagesForName(name: unknown): string[] {
 }
 
 /**
- * Every usable image for a hotel, main image first, de-duplicated. Falls back
- * to bundled local photography, then to the placeholder, so the result is
- * never empty and callers can index into it safely.
+ * Every usable image for a hotel, main image first, de-duplicated.
+ * Never appends default or sample pictures to the end of a property's authentic photos.
  */
 export function getHotelImages(hotel: {
   name?: string;
@@ -120,13 +118,19 @@ export function getHotelImages(hotel: {
     .map(normalizeImageUrl)
     .filter((url): url is string => url !== null);
 
-  // Bundled photography for this property is appended rather than used only as
-  // an all-or-nothing fallback: stored records rarely carry a gallery, so
-  // without this a listing would show its single hero shot everywhere.
-  const local = localImagesForName(hotel?.name);
-  const unique = [...new Set([...resolved, ...local])];
+  // If the listing has authentic uploaded photos, return ONLY those photos!
+  // Do NOT append bundled or default sample photos to the end of their pictures.
+  if (resolved.length > 0) {
+    return [...new Set(resolved)];
+  }
 
-  return unique.length > 0 ? unique : [PLACEHOLDER_IMAGE];
+  // Only if the property has absolutely no photos, fall back to bundled reference or placeholder
+  const local = localImagesForName(hotel?.name);
+  if (local.length > 0) {
+    return local;
+  }
+
+  return [PLACEHOLDER_IMAGE];
 }
 
 /** The single best image for a hotel. Never empty. */

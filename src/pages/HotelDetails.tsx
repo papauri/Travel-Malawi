@@ -735,7 +735,7 @@ export default function HotelDetails() {
         key: r?.id ? `rev-${r.id}-${i}` : `review-${ts}-${i}`,
         author: r?.authorName || 'Guest',
         rating: typeof r?.rating === 'number' ? r.rating : 5,
-        title: undefined as string | undefined,
+        title: (r?.title || undefined) as string | undefined,
         text: r?.text || '',
         date: formatReviewDate(ts),
         timestamp: ts,
@@ -4265,12 +4265,16 @@ export default function HotelDetails() {
       {hotel.id && (
         <ReviewModal
           hotelId={hotel.id}
+          hotelName={hotel.name}
+          googleMapsReviewsUrl={googleMapsReviewsUrl}
           open={isReviewModalOpen}
           onClose={() => setIsReviewModalOpen(false)}
-          onReviewSubmitted={() => {
-            // Force a refresh of the page to show the new review, 
-            // since the reviews effect runs on mount/id change.
-            window.location.reload();
+          onReviewSubmitted={(newRev) => {
+            if (newRev) {
+              setReviews(prev => [newRev, ...prev.filter(r => r.id !== newRev.id)]);
+            } else {
+              window.location.reload();
+            }
           }}
         />
       )}

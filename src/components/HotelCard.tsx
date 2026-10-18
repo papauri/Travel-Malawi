@@ -45,8 +45,11 @@ export default function HotelCard({
   rating
 }: HotelCardProps) {
   const [currentImageIdx, setCurrentImageIdx] = useState(0);
-  const isDraggingRef = useRef(false);
-  const dragTimeoutRef = useRef<any>(null);
+  const touchStartXRef = useRef<number | null>(null);
+  const touchStartYRef = useRef<number | null>(null);
+  const justSwipedRef = useRef(false);
+  const swipeTimerRef = useRef<any>(null);
+
   const { savedHotelIds, toggleSave } = useWishlist();
   const { selectedHotels, toggleHotel } = useCompare();
 
@@ -58,11 +61,21 @@ export default function HotelCard({
   const allImages = getHotelImages(hotel);
 
   const nextImage = () => {
+    if (allImages.length <= 1) return;
     setCurrentImageIdx((prev) => (prev + 1) % allImages.length);
   };
 
   const prevImage = () => {
+    if (allImages.length <= 1) return;
     setCurrentImageIdx((prev) => (prev - 1 + allImages.length) % allImages.length);
+  };
+
+  const markSwiped = () => {
+    justSwipedRef.current = true;
+    if (swipeTimerRef.current) clearTimeout(swipeTimerRef.current);
+    swipeTimerRef.current = setTimeout(() => {
+      justSwipedRef.current = false;
+    }, 200);
   };
 
   const handleNextImage = (e: React.SyntheticEvent | Event) => {
@@ -77,6 +90,34 @@ export default function HotelCard({
     prevImage();
   };
 
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 1) {
+      touchStartXRef.current = e.touches[0].clientX;
+      touchStartYRef.current = e.touches[0].clientY;
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartXRef.current === null || touchStartYRef.current === null) return;
+    const touchEndX = e.changedTouches[0].clientX;
+    const touchEndY = e.changedTouches[0].clientY;
+    const deltaX = touchEndX - touchStartXRef.current;
+    const deltaY = touchEndY - touchStartYRef.current;
+
+    // Only register horizontal swipe if movement is predominantly horizontal and > 35px
+    if (Math.abs(deltaX) > 35 && Math.abs(deltaX) > Math.abs(deltaY) * 1.2) {
+      markSwiped();
+      if (deltaX < 0) {
+        nextImage();
+      } else {
+        prevImage();
+      }
+    }
+
+    touchStartXRef.current = null;
+    touchStartYRef.current = null;
+  };
+
   const searchQuery = new URLSearchParams(
     Object.entries({
       checkIn: searchParams.checkIn || '',
@@ -86,7 +127,7 @@ export default function HotelCard({
   ).toString();
 
   const handleLinkClick = (e: React.MouseEvent) => {
-    if (isDraggingRef.current) {
+    if (justSwipedRef.current) {
       e.preventDefault();
       e.stopPropagation();
     }
@@ -96,13 +137,13 @@ export default function HotelCard({
     <Link
       to={searchQuery ? `/hotel/${hotel.id}?${searchQuery}` : `/hotel/${hotel.id}`}
       onClick={handleLinkClick}
-      className="group flex flex-col gap-2.5 sm:gap-3 md:gap-4 w-full"
+      className="group flex flex-col gap-2.5 sm:gap-3 md:gap-4 w-full select-none"
     >
       <motion.div 
-        initial={{ opacity: 0, y: 30 }}
+        initial={{ opacity: 0, y: 20 }}
         whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: "-50px" }}
-        transition={{ delay: index * 0.05, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+        viewport={{ once: true }}
+        transition={{ delay: Math.min(index * 0.04, 0.4), duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
         className="relative w-full aspect-[16/11] sm:aspect-[4/3] overflow-hidden bg-stone-100 rounded-xl sm:rounded-2xl"
       >
         <button
@@ -150,47 +191,29 @@ export default function HotelCard({
           );
         })()}
 
-        <AnimatePresence initial={false} mode="wait">
-          <motion.div
-            key={currentImageIdx}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.4 }}
-            className="absolute inset-0"
-            style={{ touchAction: 'pan-y' }}
-            drag="x"
-            dragConstraints={{ left: 0, right: 0 }}
-            dragElastic={1}
-            onDragStart={() => {
-              isDraggingRef.current = false;
-            }}
-            onDrag={() => {
-              isDraggingRef.current = true;
-            }}
-            onDragEnd={(e, { offset, velocity }) => {
-              const swipe = offset.x;
-              if (Math.abs(swipe) > 8) {
-                isDraggingRef.current = true;
-                if (dragTimeoutRef.current) clearTimeout(dragTimeoutRef.current);
-                dragTimeoutRef.current = setTimeout(() => {
-                  isDraggingRef.current = false;
-                }, 200);
-              }
-              if (swipe < -40) {
-                nextImage();
-              } else if (swipe > 40) {
-                prevImage();
-              }
-            }}
-          >
-            <SmartImage
-              src={allImages[currentImageIdx]}
-              alt={hotel.name}
-              className="absolute inset-0 object-cover w-full h-full group-hover:scale-105 transition-transform duration-1000 ease-[cubic-bezier(0.25,1,0.5,1)]"
-            />
-          </motion.div>
-        </AnimatePresence>
+        {/* Carousel Image Display with native touch swipe */}
+        <div 
+          className="absolute inset-0 cursor-pointer overflow-hidden touch-pan-y"
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+        >
+          <AnimatePresence initial={false}>
+            <motion.div
+              key={currentImageIdx}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              className="absolute inset-0 pointer-events-none"
+            >
+              <SmartImage
+                src={allImages[currentImageIdx]}
+                alt={hotel.name}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out select-none pointer-events-none"
+              />
+            </motion.div>
+          </AnimatePresence>
+        </div>
 
         {/* Carousel Controls */}
         {allImages.length > 1 && (
@@ -351,7 +374,7 @@ export default function HotelCard({
               ) : (
                 <span className="text-xs sm:text-sm text-stone-400 italic">Rates on request</span>
               )}
-              {rating && (
+              {rating && rating.count > 0 && (
                 <span className="flex items-center gap-1 text-sm text-stone-600 shrink-0 ml-auto">
                   <Star className="w-3.5 h-3.5 fill-stone-900 text-stone-900" />
                   <span className="font-semibold text-stone-900">{rating.average.toFixed(1)}</span>

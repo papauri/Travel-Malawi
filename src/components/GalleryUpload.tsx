@@ -1,5 +1,5 @@
 import React, { useState, useRef } from "react";
-import { Upload, Link as LinkIcon, Image as ImageIcon, Loader2, X, GripVertical, Eye, Plus, Star, ChevronLeft, ChevronRight } from "lucide-react";
+import { Upload, Link as LinkIcon, Image as ImageIcon, Loader2, X, GripVertical, Eye, Plus, Star, ChevronLeft, ChevronRight, Trash2, CheckSquare, Square } from "lucide-react";
 import Tooltip from './Tooltip';
 import Lightbox from './Lightbox';
 import { uploadImage, uploadErrorMessage, validateImage, IMAGE_ACCEPT_ATTR } from "../lib/uploadImage";
@@ -35,6 +35,8 @@ export default function GalleryUpload({
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState("");
   const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
+  const [isSelectMode, setIsSelectMode] = useState(false);
+  const [selectedUrls, setSelectedUrls] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Drag and Drop state
@@ -124,9 +126,46 @@ export default function GalleryUpload({
   };
 
   const removeImage = (idx: number) => {
+    if (idx < 0 || idx >= value.length) return;
     const newUrls = [...value];
-    newUrls.splice(idx, 1);
+    const removedUrl = newUrls.splice(idx, 1)[0];
     onChange(newUrls);
+    toast.success("Photo deleted from media.", {
+      icon: "🗑️",
+      duration: 5000,
+    });
+  };
+
+  const toggleSelectUrl = (url: string) => {
+    setSelectedUrls(prev => {
+      const next = new Set(prev);
+      if (next.has(url)) {
+        next.delete(url);
+      } else {
+        next.add(url);
+      }
+      return next;
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedUrls.size === value.length) {
+      setSelectedUrls(new Set());
+    } else {
+      setSelectedUrls(new Set(value));
+    }
+  };
+
+  const handleDeleteSelected = () => {
+    if (selectedUrls.size === 0) return;
+    const count = selectedUrls.size;
+    const newUrls = value.filter(u => !selectedUrls.has(u));
+    onChange(newUrls);
+    setSelectedUrls(new Set());
+    setIsSelectMode(false);
+    toast.success(`Deleted ${count} photo${count > 1 ? 's' : ''} from media.`, {
+      icon: "🗑️",
+    });
   };
 
   const moveImage = (from: number, to: number) => {
@@ -201,7 +240,7 @@ export default function GalleryUpload({
         </div>
 
         {/* Compact, non-wide mode toggle buttons */}
-        <div className="flex items-center gap-1.5 self-start sm:self-auto shrink-0">
+        <div className="flex items-center gap-1.5 self-start sm:self-auto shrink-0 flex-wrap">
           <div className="inline-flex items-center bg-stone-100/90 p-0.5 sm:p-1 rounded-lg border border-stone-200">
             <button
               type="button"
@@ -228,8 +267,65 @@ export default function GalleryUpload({
               <span>Web Link</span>
             </button>
           </div>
+
+          {value.length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                setIsSelectMode(!isSelectMode);
+                setSelectedUrls(new Set());
+              }}
+              className={`px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer border ${
+                isSelectMode
+                  ? "bg-red-50 border-red-300 text-red-700 shadow-2xs"
+                  : "bg-white border-stone-200 text-stone-700 hover:bg-stone-50"
+              }`}
+              title={isSelectMode ? "Exit multi-select mode" : "Select multiple photos to delete"}
+            >
+              <Trash2 className="h-3 w-3 text-red-600" />
+              <span>{isSelectMode ? "Cancel" : "Select & Delete"}</span>
+            </button>
+          )}
         </div>
       </div>
+
+      {/* Select & Delete Bulk Action Bar */}
+      {isSelectMode && value.length > 0 && (
+        <div className="mb-3.5 p-2.5 sm:p-3 bg-red-50/90 border border-red-200 rounded-xl flex items-center justify-between gap-2.5 flex-wrap">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleSelectAll}
+              className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-white border border-stone-200 text-stone-700 hover:bg-stone-50 flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
+            >
+              {selectedUrls.size === value.length ? (
+                <>
+                  <Square className="w-3.5 h-3.5 text-stone-500" />
+                  <span>Deselect All</span>
+                </>
+              ) : (
+                <>
+                  <CheckSquare className="w-3.5 h-3.5 text-red-600" />
+                  <span>Select All ({value.length})</span>
+                </>
+              )}
+            </button>
+            <span className="text-xs font-bold text-red-900">
+              {selectedUrls.size} photo{selectedUrls.size === 1 ? '' : 's'} selected
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleDeleteSelected}
+            disabled={selectedUrls.size === 0}
+            className="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white text-xs font-bold rounded-lg shadow-xs flex items-center gap-1.5 transition cursor-pointer active:scale-98"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>Delete Selected ({selectedUrls.size})</span>
+          </button>
+        </div>
+      )}
 
       {/* URL Input Bar (visible when mode === 'url') */}
       {mode === "url" && (
@@ -316,126 +412,139 @@ export default function GalleryUpload({
       ) : (
         /* Populated Grid with Integrated Upload Tile */
         <div className={compact ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 max-h-60 overflow-y-auto pr-1" : "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5"}>
-          {value.map((url, idx) => (
-            <div
-              key={`gallery-${idx}`}
-              draggable
-              onDragStart={(e) => handleDragStart(e, idx)}
-              onDragEnd={handleDragEnd}
-              onDragOver={(e) => handleDragOver(e, idx)}
-              className={`relative aspect-video ${compact ? 'rounded-lg' : 'rounded-xl'} overflow-hidden group cursor-move bg-stone-100 border border-stone-200 hover:border-stone-300 hover:shadow-xs transition-all select-none`}
-            >
-              <SmartImage
-                src={url}
-                alt={`Gallery ${idx + 1}`}
-                className="w-full h-full object-cover pointer-events-none"
-              />
+          {value.map((url, idx) => {
+            const isSelected = selectedUrls.has(url);
+            return (
+              <div
+                key={`gallery-${idx}`}
+                draggable={!isSelectMode}
+                onDragStart={(e) => handleDragStart(e, idx)}
+                onDragEnd={handleDragEnd}
+                onDragOver={(e) => handleDragOver(e, idx)}
+                onClick={() => {
+                  if (isSelectMode) toggleSelectUrl(url);
+                }}
+                className={`relative aspect-video ${compact ? 'rounded-lg' : 'rounded-xl'} overflow-hidden group ${isSelectMode ? 'cursor-pointer ring-2' : 'cursor-move'} ${isSelected ? 'ring-red-600 bg-red-50' : 'ring-transparent'} bg-stone-100 border border-stone-200 hover:border-stone-300 hover:shadow-xs transition-all select-none`}
+              >
+                <SmartImage
+                  src={url}
+                  alt={`Gallery ${idx + 1}`}
+                  className="w-full h-full object-cover pointer-events-none"
+                />
 
-              {/* Gradient hover overlay */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/40 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                {/* Subtle gradient overlay */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/40 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
 
-              {/* Position / Cover Badge */}
-              <div className="absolute top-2 left-2 pointer-events-none z-10">
-                {showCoverBadge && idx === 0 ? (
-                  <span className="px-2 py-0.5 bg-amber-500 text-white text-[10px] font-bold rounded-md shadow-xs flex items-center gap-1">
-                    ★ Cover
-                  </span>
-                ) : (
-                  <span className="px-1.5 py-0.5 bg-stone-900/70 text-white text-[10px] font-mono rounded-md backdrop-blur-xs">
-                    #{idx + 1}
-                  </span>
+                {/* Top-Left: Position / Cover Badge OR Selection Checkbox */}
+                <div className="absolute top-2 left-2 z-10">
+                  {isSelectMode ? (
+                    <div className={`p-1 rounded-md shadow-xs ${isSelected ? 'bg-red-600 text-white' : 'bg-stone-900/80 text-white/80'}`}>
+                      {isSelected ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+                    </div>
+                  ) : showCoverBadge && idx === 0 ? (
+                    <span className="px-2 py-0.5 bg-amber-500 text-white text-[10px] font-bold rounded-md shadow-xs flex items-center gap-1 pointer-events-none">
+                      ★ Cover
+                    </span>
+                  ) : (
+                    <span className="px-1.5 py-0.5 bg-stone-900/70 text-white text-[10px] font-mono rounded-md backdrop-blur-xs pointer-events-none">
+                      #{idx + 1}
+                    </span>
+                  )}
+                </div>
+
+                {/* Reorder Arrows (◀ and ▶) for touch and quick sorting */}
+                {!isSelectMode && (
+                  <div className="absolute bottom-2 left-2 flex items-center gap-1 z-10 opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                    {idx > 0 && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          moveImage(idx, idx - 1);
+                        }}
+                        className="p-1 bg-stone-900/80 hover:bg-stone-900 text-white rounded-md transition backdrop-blur-xs cursor-pointer shadow-xs"
+                        title="Move backward"
+                      >
+                        <ChevronLeft className="w-3 h-3" />
+                      </button>
+                    )}
+                    {idx < value.length - 1 && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          moveImage(idx, idx + 1);
+                        }}
+                        className="p-1 bg-stone-900/80 hover:bg-stone-900 text-white rounded-md transition backdrop-blur-xs cursor-pointer shadow-xs"
+                        title="Move forward"
+                      >
+                        <ChevronRight className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* Action Buttons: ALWAYS VISIBLE ON MOBILE / TOUCH (opacity-100 on small screens, hover on desktop) */}
+                {!isSelectMode && (
+                  <div className="absolute top-2 right-2 flex items-center gap-1.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity z-10">
+                    {onSetCover && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSetCover(url, idx);
+                        }}
+                        className="p-1.5 bg-stone-900/80 hover:bg-amber-600 text-amber-300 hover:text-white rounded-lg transition-colors backdrop-blur-xs cursor-pointer shadow-xs"
+                        title="Promote to Cover Photo"
+                        aria-label="Set as cover"
+                      >
+                        <Star className="w-3.5 h-3.5 fill-current" />
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setLightboxIdx(idx);
+                      }}
+                      className="p-1.5 bg-stone-900/80 hover:bg-stone-900 text-white rounded-lg transition-colors backdrop-blur-xs cursor-pointer shadow-xs"
+                      title="View full photo"
+                      aria-label="View photo"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeImage(idx);
+                      }}
+                      className="p-1.5 bg-red-600 hover:bg-red-700 active:scale-95 text-white rounded-lg transition-all shadow-xs cursor-pointer flex items-center justify-center"
+                      title="Delete photo permanently"
+                      aria-label="Delete photo"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 )}
               </div>
-
-              {/* Hover Drag Grip Indicator */}
-              <div className="absolute bottom-2 left-2 bg-stone-900/80 backdrop-blur-xs text-white px-1.5 py-0.5 rounded text-[10px] font-medium opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none flex items-center gap-0.5">
-                <GripVertical className="h-3 w-3" />
-                <span>Move</span>
-              </div>
-
-              {/* Reorder Arrows (◀ and ▶) for touch and quick sorting */}
-              <div className="absolute bottom-2 right-2 flex items-center gap-1 z-10 opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity">
-                {idx > 0 && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      moveImage(idx, idx - 1);
-                    }}
-                    className="p-1 bg-stone-900/80 hover:bg-stone-900 text-white rounded-md transition backdrop-blur-xs cursor-pointer shadow-xs"
-                    title="Move backward"
-                  >
-                    <ChevronLeft className="w-3 h-3" />
-                  </button>
-                )}
-                {idx < value.length - 1 && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      moveImage(idx, idx + 1);
-                    }}
-                    className="p-1 bg-stone-900/80 hover:bg-stone-900 text-white rounded-md transition backdrop-blur-xs cursor-pointer shadow-xs"
-                    title="Move forward"
-                  >
-                    <ChevronRight className="w-3 h-3" />
-                  </button>
-                )}
-              </div>
-
-              {/* Action Buttons */}
-              <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                {onSetCover && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onSetCover(url, idx);
-                    }}
-                    className="p-1.5 bg-stone-900/80 hover:bg-amber-600 text-amber-300 hover:text-white rounded-lg transition-colors backdrop-blur-xs cursor-pointer shadow-xs"
-                    title="Promote to Cover Photo"
-                  >
-                    <Star className="w-3.5 h-3.5 fill-current" />
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setLightboxIdx(idx);
-                  }}
-                  className="p-1.5 bg-stone-900/80 hover:bg-stone-900 text-white rounded-lg transition-colors backdrop-blur-xs cursor-pointer shadow-xs"
-                  title="View full photo"
-                >
-                  <Eye className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    removeImage(idx);
-                  }}
-                  className="p-1.5 bg-stone-900/80 hover:bg-red-600 text-white rounded-lg transition-colors backdrop-blur-xs cursor-pointer shadow-xs"
-                  title="Remove photo"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
 
           {/* Integrated "Add Photos" Tile inside the Grid */}
-          <div
-            onClick={() => fileInputRef.current?.click()}
-            className={`relative aspect-video ${compact ? 'rounded-lg p-2' : 'rounded-xl p-3'} border-2 border-dashed border-stone-300 hover:border-amber-500 hover:bg-amber-50/20 transition-all flex flex-col items-center justify-center text-center cursor-pointer group bg-stone-50/60`}
-            title="Click to add more photos"
-          >
-            <div className={`${compact ? 'w-6 h-6 mb-1' : 'w-8 h-8 mb-1.5'} rounded-full bg-stone-200/80 group-hover:bg-amber-100 text-stone-600 group-hover:text-amber-800 flex items-center justify-center transition-transform group-hover:scale-105`}>
-              <Plus className={compact ? "w-3 h-3" : "w-4 h-4"} />
+          {!isSelectMode && (
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              className={`relative aspect-video ${compact ? 'rounded-lg p-2' : 'rounded-xl p-3'} border-2 border-dashed border-stone-300 hover:border-amber-500 hover:bg-amber-50/20 transition-all flex flex-col items-center justify-center text-center cursor-pointer group bg-stone-50/60`}
+              title="Click to add more photos"
+            >
+              <div className={`${compact ? 'w-6 h-6 mb-1' : 'w-8 h-8 mb-1.5'} rounded-full bg-stone-200/80 group-hover:bg-amber-100 text-stone-600 group-hover:text-amber-800 flex items-center justify-center transition-transform group-hover:scale-105`}>
+                <Plus className={compact ? "w-3 h-3" : "w-4 h-4"} />
+              </div>
+              <p className={`${compact ? 'text-[11px]' : 'text-xs'} font-bold text-stone-700 group-hover:text-amber-900`}>Add Photos</p>
+              <p className="text-[10px] text-stone-400 group-hover:text-stone-500">{compact ? 'Browse' : 'Drop or browse'}</p>
             </div>
-            <p className={`${compact ? 'text-[11px]' : 'text-xs'} font-bold text-stone-700 group-hover:text-amber-900`}>Add Photos</p>
-            <p className="text-[10px] text-stone-400 group-hover:text-stone-500">{compact ? 'Browse' : 'Drop or browse'}</p>
-          </div>
+          )}
         </div>
       )}
 
@@ -450,12 +559,13 @@ export default function GalleryUpload({
         disabled={isUploading}
       />
 
-      {/* Lightbox Modal */}
+      {/* Lightbox Modal with Delete support */}
       {lightboxIdx !== null && (
         <Lightbox
           images={value}
           initialIndex={lightboxIdx}
           onClose={() => setLightboxIdx(null)}
+          onDelete={(delIdx) => removeImage(delIdx)}
         />
       )}
     </div>

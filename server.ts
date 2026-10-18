@@ -25,8 +25,7 @@ import {
   executeOperationsAssistantChat,
   testProviderConnection,
   generateTripInsights,
-  executeTripConciergeChat,
-  generateCuratedMalawiReviews
+  executeTripConciergeChat
 } from './server/aiService';
 import { sendOfflineNotification } from './server/notifications';
 import { sendOnboardingWelcomeEmail, sendSmtpPasswordResetEmail } from './server/onboardingEmail';
@@ -1306,26 +1305,42 @@ async function startServer() {
         stayType
       } = req.body || {};
 
-      const resolvedPropertyName = propertyName || hotelName;
-      if (!hotelId || !resolvedPropertyName) {
-        return res.status(400).json({ ok: false, success: false, error: 'hotelId and propertyName are required.' });
-      }
-
       const effectiveEmail = ownerEmail || managerEmail || contactEmail || (req as any).user?.email || req.authUser?.email;
       if (!effectiveEmail || !String(effectiveEmail).includes('@')) {
         return res.status(400).json({ ok: false, success: false, error: 'Valid owner or manager email is required.' });
       }
 
+      let resolvedHotelId = hotelId;
+      let resolvedPropertyName = propertyName || hotelName;
+      let resolvedLocation = location;
+      let resolvedCategory = category;
+
+      // If hotel details were omitted, attempt to look up their assigned property in Firestore
+      if (!resolvedHotelId || !resolvedPropertyName) {
+        try {
+          const matching = await queryDocs('hotels', 'managerEmail', String(effectiveEmail).toLowerCase(), undefined, 1);
+          if (matching.length > 0) {
+            resolvedHotelId = resolvedHotelId || matching[0].id;
+            resolvedPropertyName = resolvedPropertyName || matching[0].name;
+            resolvedLocation = resolvedLocation || matching[0].location;
+            resolvedCategory = resolvedCategory || matching[0].category;
+          }
+        } catch {}
+      }
+
+      resolvedHotelId = resolvedHotelId || 'host-onboarding';
+      resolvedPropertyName = resolvedPropertyName || 'Ulendo Partner Host';
+
       const hostOrigin = req.get('origin') || `${req.protocol}://${req.get('host')}`;
       const result = await sendOnboardingWelcomeEmail({
-        hotelId: String(hotelId),
+        hotelId: String(resolvedHotelId),
         propertyName: String(resolvedPropertyName),
         ownerEmail: String(effectiveEmail),
         ownerName: ownerName ? String(ownerName) : undefined,
         managerEmail: (managerEmail || contactEmail) ? String(managerEmail || contactEmail) : undefined,
         managerName: managerName ? String(managerName) : undefined,
-        location: location ? String(location) : undefined,
-        category: category ? String(category) : undefined,
+        location: resolvedLocation ? String(resolvedLocation) : undefined,
+        category: resolvedCategory ? String(resolvedCategory) : undefined,
         stayType: stayType ? String(stayType) : undefined,
         origin: hostOrigin,
       });
@@ -1688,7 +1703,7 @@ async function startServer() {
     const hotelName = cleanText(req.body?.hotelName, 200, true);
     const location = cleanText(req.body?.location, 200, true);
     const category = cleanText(req.body?.category, 100, true);
-    const count = typeof req.body?.count === 'number' ? Math.min(Math.max(req.body.count, 3), 6) : 4;
+    const count = typeof req.body?.count === 'number' ? Math.min(Math.max(req.body.count, 1), 15) : 10;
     const sentimentMode = cleanText(req.body?.sentimentMode, 30, true) || 'balanced';
 
     if (!hotelName) {
@@ -1699,7 +1714,7 @@ async function startServer() {
     const targetUrl = cleanText(req.body?.targetUrl, 500, true);
     const targetSources = Array.isArray(req.body?.targetSources)
       ? req.body.targetSources.map((s: any) => cleanText(s, 60, true)).filter(Boolean)
-      : undefined;
+      : ['Google Reviews', 'TripAdvisor', 'Booking.com'];
     const minRating = typeof req.body?.minRating === 'number' ? Math.min(Math.max(req.body.minRating, 1), 5) : (sentimentMode === 'critical' ? 1 : 4);
     const existingReviews = Array.isArray(req.body?.existingReviews)
       ? req.body.existingReviews
@@ -1748,13 +1763,13 @@ async function startServer() {
     try {
       const status = getPublicAIStatus();
       if (!status.enabled || !status.available) {
-        const fallback = generateCuratedMalawiReviews(hotelName, location, category, count, sentimentMode, targetSources, existingReviews);
         return res.json({
-          text: JSON.stringify(fallback),
+          text: '[]',
           provider: 'gemini',
-          model: 'malawi-curated',
-          data: fallback,
-          cached: true
+          model: 'none',
+          data: [],
+          cached: true,
+          message: 'AI providers are currently disabled or unavailable. No reviews were scraped.'
         });
       }
 
@@ -1776,31 +1791,28 @@ async function startServer() {
         }
       }, req.authUser!));
 
-      // Guard: Ensure result.data is guaranteed to be a valid, populated array
+      // Guard: Ensure result.data is guaranteed to be a valid array (no synthetic fallback)
       if (!Array.isArray(result?.data) || result.data.length === 0) {
-        console.warn(`[scrape_reviews] AI generation returned empty or non-array data, falling back to curated reviews.`);
-        const fallback = generateCuratedMalawiReviews(hotelName, location, category, count, sentimentMode, targetSources, existingReviews);
         return res.json({
-          text: JSON.stringify(fallback),
+          text: '[]',
           provider: result?.provider || 'gemini',
-          model: result?.model || 'malawi-curated',
-          data: fallback,
+          model: result?.model || 'none',
+          data: [],
           cached: false,
-          repaired: true
+          message: 'No authentic public reviews found for this property on the scanned web channels.'
         });
       }
 
       res.json(result);
     } catch (err: any) {
-      console.warn(`[scrape_reviews] Auto-fallback to curated reviews due to: ${err?.message || err}`);
-      const fallback = generateCuratedMalawiReviews(hotelName, location, category, count, sentimentMode, targetSources, existingReviews);
+      console.warn(`[scrape_reviews] Error during review scrape:`, err?.message || err);
       res.json({
-        text: JSON.stringify(fallback),
+        text: '[]',
         provider: 'gemini',
-        model: 'malawi-curated',
-        data: fallback,
-        cached: true,
-        recovered: true
+        model: 'none',
+        data: [],
+        cached: false,
+        message: 'Could not reach web review sources. No reviews scraped.'
       });
     }
   });

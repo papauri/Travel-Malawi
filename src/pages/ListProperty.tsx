@@ -41,7 +41,7 @@ import PropertyDocumentImporter from '../components/PropertyDocumentImporter';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { useAIAssistant } from '../hooks/useAIAssistant';
 import { analyzeDescriptionLocal, DescriptionAnalysisResult } from '../lib/descriptionAnalyzer';
-import { DECORATIVE_IMAGE, getHotelImage, getDefaultImageForCategory, localImagesForName } from '../lib/images';
+import { DECORATIVE_IMAGE, getHotelImage } from '../lib/images';
 import { db, auth } from '../lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import {
@@ -533,8 +533,6 @@ export default function ListProperty() {
     }
 
     const p = regMatch || item;
-    const matchedLocal = localImagesForName(item.name);
-    const suggestedImageUrl = matchedLocal.length > 0 ? matchedLocal[0] : getDefaultImageForCategory(targetCategory || 'Bed & Breakfast');
 
     const suggestionObj = {
       matched: true,
@@ -553,7 +551,6 @@ export default function ListProperty() {
       contactPhone: p.contactPhone || '+265 991 234 567',
       contactEmail: p.contactEmail || user?.email || 'reservations@property.mw',
       contactWhatsapp: p.contactWhatsapp || p.contactPhone || '+265 991 234 567',
-      suggestedImageUrl,
     };
 
     setAiPropertySuggestion(suggestionObj);
@@ -570,7 +567,6 @@ export default function ListProperty() {
         amenities: suggestionObj.amenities ? Array.from(new Set([...current.amenities, ...suggestionObj.amenities])) : current.amenities,
         checkInTime: suggestionObj.checkInTime || current.checkInTime,
         checkOutTime: suggestionObj.checkOutTime || current.checkOutTime,
-        imageUrl: current.imageUrl || suggestionObj.suggestedImageUrl,
         contactPhone: current.contactPhone || suggestionObj.contactPhone,
         contactEmail: current.contactEmail || suggestionObj.contactEmail,
         contactWhatsapp: current.contactWhatsapp || suggestionObj.contactWhatsapp,
@@ -649,9 +645,6 @@ export default function ListProperty() {
     if (!options?.forceWebScrape && !isUrl) {
       const regMatch = getRegisteredPropertyByName(searchName);
       if (regMatch) {
-        const matchedLocal = localImagesForName(regMatch.name);
-        const suggestedImageUrl = matchedLocal.length > 0 ? matchedLocal[0] : getDefaultImageForCategory(regMatch.category);
-
         setAiPropertySuggestion({
           matched: true,
           officialName: regMatch.name,
@@ -669,7 +662,6 @@ export default function ListProperty() {
           contactPhone: regMatch.contactPhone || '+265 991 234 567',
           contactEmail: regMatch.contactEmail || user?.email || 'reservations@property.mw',
           contactWhatsapp: regMatch.contactWhatsapp || regMatch.contactPhone || '+265 991 234 567',
-          suggestedImageUrl,
         });
 
         setDraft(prev => ({
@@ -803,9 +795,6 @@ export default function ListProperty() {
         } catch {}
       }
 
-      const matchedLocal = localImagesForName(finalOfficialName);
-      const suggestedImageUrl = matchedLocal.length > 0 ? matchedLocal[0] : getDefaultImageForCategory(verifiedCategory);
-
       if (aiData && (aiData.matched || aiData.officialName || isUrl)) {
         const suggestion = {
           matched: aiData.matched ?? true,
@@ -824,7 +813,6 @@ export default function ListProperty() {
           contactPhone: aiData.contactPhone || '+265 991 234 567',
           contactEmail: aiData.contactEmail || user?.email || 'reservations@property.mw',
           contactWhatsapp: aiData.contactWhatsapp || aiData.contactPhone || '+265 991 234 567',
-          suggestedImageUrl,
         };
         setAiPropertySuggestion(suggestion);
 
@@ -844,7 +832,6 @@ export default function ListProperty() {
             contactWhatsapp: suggestion.contactWhatsapp || prev.contactWhatsapp,
             checkInTime: suggestion.checkInTime || prev.checkInTime,
             checkOutTime: suggestion.checkOutTime || prev.checkOutTime,
-            imageUrl: suggestedImageUrl || prev.imageUrl,
             rooms: rooms.length > 0 ? rooms.map((r, i) => {
               const usd = Number(r.priceUsd || 0);
               const mwk = Number(r.priceMwk || 0);
@@ -897,7 +884,6 @@ export default function ListProperty() {
           contactPhone: '+265 991 234 567',
           contactEmail: user?.email || 'reservations@property.mw',
           contactWhatsapp: '+265 991 234 567',
-          suggestedImageUrl,
         };
         setAiPropertySuggestion(suggestion);
         if (isUrl) {
@@ -950,12 +936,6 @@ export default function ListProperty() {
         // Auto-fill Check-In & Check-Out times
         if (s.checkInTime) next.checkInTime = s.checkInTime;
         if (s.checkOutTime) next.checkOutTime = s.checkOutTime;
-
-        // Auto-fill Cover Photography if not set
-        if (!current.imageUrl) {
-          const matched = localImagesForName(s.officialName);
-          next.imageUrl = matched.length > 0 ? matched[0] : (s.suggestedImageUrl || getDefaultImageForCategory(s.category));
-        }
 
         // Auto-fill Contact & Manager details
         if (s.contactPhone && !current.contactPhone) next.contactPhone = s.contactPhone;

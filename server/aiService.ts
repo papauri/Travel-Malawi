@@ -26,7 +26,7 @@ import { isPureSmallTalk } from '../src/lib/queryIntent';
 import { classifySwarmIntent, getSpecialistAgentPrompt, executeDeterministicSwarmReply } from './aiSwarm';
 import { parseMenuText } from './localMenuParser';
 import { parsePropertyText } from '../src/lib/localPropertyParser';
-import { isBrokenOrFakeReviewUrl, sanitizeReviewSourceUrl } from '../src/lib/reviewDates';
+import { isBrokenOrFakeReviewUrl, sanitizeReviewSourceUrl, parseReviewDateToTimestamp } from '../src/lib/reviewDates';
 
 export interface GenerationRequest {
   action: 'draft' | 'polish' | 'shorten' | 'highlights' | 'suggest_amenities' | 'suggest_rooms' | 'review_listing' | 'suggest_rate' | 'lookup_property' | 'scrape_reviews' | 'link_description_to_amenities_and_category';
@@ -237,58 +237,64 @@ CRITICAL PRICING INTEGRITY:
 
 Do not output any markdown code blocks, backticks, or explanatory text. Return strictly valid JSON.`);
   } else if (action === 'scrape_reviews') {
-    const requestedCount = Math.min(Math.max(details?.count || 4, 3), 6);
+    const requestedCount = Math.min(Math.max(details?.count || 10, 1), 15);
     const sentimentMode = details?.sentimentMode || 'balanced';
     const targetSources = Array.isArray(details?.targetSources) && details.targetSources.length > 0
       ? details.targetSources
-      : ['TripAdvisor', 'Google Reviews', 'Booking.com', 'SafariBookings'];
+      : ['Google Reviews', 'Booking.com', 'TripAdvisor'];
     const sourcesStr = targetSources.join(', ');
 
-    if (sentimentMode === 'critical') {
-      parts.push(`Return ${requestedCount} authentic, critical and constructive guest reviews (1 to 3 stars) for "${entityName}" (${location || 'Malawi'}).
-Highlight realistic friction points in Malawi travel (e.g. bumpy dirt access roads, occasional ESCOM load shedding before backup, slower remote Wi-Fi, seasonal insects, rustic water pressure, limited dinner options) so prospective guests see honest, transparent feedback.`);
-    } else if (sentimentMode === 'positive') {
-      parts.push(`Return ${requestedCount} authentic top-rated guest reviews (4 to 5 stars) for "${entityName}" (${location || 'Malawi'}).`);
-    } else {
-      // 'balanced' or 'all'
-      parts.push(`Return ${requestedCount} authentic, transparent guest reviews for "${entityName}" (${location || 'Malawi'}) representing a realistic mix: include mostly positive highlights (4-5 stars) and at least one authentic constructive/critical review (2-3 stars, e.g. mentioning unpaved access roads, remote Wi-Fi limits, or power cuts) so prospective guests know the reviews are 100% genuine and transparent rather than made up.`);
-    }
+    parts.push(`Execute comprehensive live web searches across Google Maps, Booking.com, and TripAdvisor to discover and extract real guest reviews for:
+Property: "${entityName}"
+Location: "${location || 'Malawi'}"
 
-    parts.push(`Target Channels: Focus review sources strictly on: ${sourcesStr}.
-When "Facebook / Guest Book" or "Guest Book & Social" is selected, attribute the source as "Guest Book" (authentic entries from the lodge's physical guestbook at reception) or "Facebook" (community post recommendation).
-When other channels are selected, attribute appropriately as "TripAdvisor", "Google Reviews", "Booking.com", or "SafariBookings".`);
+Target platforms: ${sourcesStr}
+
+Recommended search queries to run for public reviews:
+1. "${entityName}" ${location || 'Malawi'} reviews Booking.com
+2. "${entityName}" Malawi Google Maps reviews
+3. "${entityName}" TripAdvisor reviews`);
+
+    if (sentimentMode === 'critical') {
+      parts.push(`Target sentiment: Prioritize critical or constructive reviews (1 to 3 stars) if they exist.`);
+    } else if (sentimentMode === 'positive') {
+      parts.push(`Target sentiment: Prioritize top-rated positive reviews (4 to 5 stars) if they exist.`);
+    }
 
     if (details?.customQuery) {
-      parts.push(`Focus topic / query: "${details.customQuery}"`);
+      parts.push(`Target search query / alias: "${details.customQuery}"`);
     }
     if (details?.targetUrl) {
-      parts.push(`Target listing reference: "${details.targetUrl}"`);
+      parts.push(`Target review profile URL: "${details.targetUrl}"`);
     }
     if (details?.scrapedContent) {
-      parts.push(`--- DIRECT SCRAPED WEBPAGE CONTENT ---\n${details.scrapedContent.slice(0, 3000)}\n--- END DIRECT SCRAPED CONTENT ---\nExtract actual, real guest reviews, ratings, and quotes from the scraped webpage text above whenever available.`);
+      parts.push(`--- RAW SCRAPED WEBPAGE CONTENT ---\n${details.scrapedContent.slice(0, 3500)}\n--- END RAW SCRAPED CONTENT ---\nExtract real traveler reviews directly from the scraped webpage text above.`);
     }
 
     if (Array.isArray(details?.existingReviews) && details.existingReviews.length > 0) {
       const existingSnippets = details.existingReviews
-        .slice(0, 15)
+        .slice(0, 25)
         .map(e => `- ${e.author || 'Guest'}${e.title ? ` ("${e.title}")` : ''}: "${(e.comment || e.text || '').slice(0, 70)}..."`)
         .join('\n');
-      parts.push(`CRITICAL DEDUPLICATION RULE: The following reviews have ALREADY been scraped and attached to this property. Do NOT return or duplicate any of these reviews, authors, or stories:\n${existingSnippets}\nReturn strictly NEW, different reviews from other travellers.`);
+      parts.push(`DEDUPLICATION: Skip any of these already attached reviews:\n${existingSnippets}`);
     }
 
-    const safeEncName = encodeURIComponent(`${entityName} ${location || 'Malawi'}`);
-    parts.push(`CRITICAL URL INTEGRITY MANDATE:
-- Do NOT hallucinate, guess, or invent fake direct review URLs or review IDs (NEVER output fake paths like /ShowUserReviews-..., /hotel/mw/fake.html, /maps/reviews/..., or fake CIDs).
-- If a verified targetUrl was provided above, you may use it if relevant.
-- For "Google Reviews", use: "https://www.google.com/maps/search/?api=1&query=${safeEncName}"
-- For "TripAdvisor", use: "https://www.tripadvisor.com/Search?q=${encodeURIComponent(`${entityName} Malawi`)}"
-- For "Booking.com", use: "https://www.booking.com/searchresults.html?ss=${encodeURIComponent(`${entityName} Malawi`)}"
-- For "SafariBookings", use: "https://www.safaribookings.com/search?q=${encodeURIComponent(entityName)}"
-- For "Guest Book", leave sourceUrl as "" (in-person physical guest ledger at reception has no web URL).
-- For "Facebook", use: "https://www.facebook.com/search/top?q=${encodeURIComponent(entityName)}"
+    parts.push(`CRITICAL INTEGRITY & COMPREHENSIVENESS MANDATE:
+1. Thoroughly search across BOTH Google Maps and Booking.com (and TripAdvisor).
+2. Extract up to ${requestedCount} REAL, ACTUAL public reviews that were published by real travelers online.
+3. Every review must be authentic and drawn from actual search results. NEVER fabricate or invent reviews.
+4. If no public reviews exist on the web for "${entityName}", return an empty JSON array: []
+5. For each review, include:
+   - "author": Actual reviewer name from the platform (e.g. "Luke", "Caroline", "Wilson")
+   - "rating": Actual rating (numeric, 1 to 5 stars. If source uses 10-point scale like Booking.com, convert to 1-5 scale)
+   - "title": Title or short headline from the review
+   - "comment": Verbatim quotation or accurate quote from the reviewer
+   - "date": Date of review or stay month/year (e.g. "October 2024", "January 2025")
+   - "source": Platform name ("Booking.com" | "Google Reviews" | "TripAdvisor")
+   - "sourceUrl": Platform link or search query URL
 
-Format strictly as a valid JSON array of review objects with no markdown fences, backticks, or intro/outro text:
-[{"author":"Name","rating":5,"title":"Title","comment":"Review text","source":"TripAdvisor","sourceUrl":"https://www.tripadvisor.com/Search?q=...","date":"October 2024","travellerType":"Couple","travellerOrigin":"UK","highlights":["Lake view"]}]`);
+Output strictly as a valid JSON array of objects with no markdown fences or intro text:
+[{"author":"Name","rating":5,"title":"Title","comment":"Review quote","date":"October 2024","source":"Booking.com","sourceUrl":""}]`);
   } else if (action === 'link_description_to_amenities_and_category') {
     parts.push(`Analyze the following property description for an accommodation in Malawi, and extract all matching amenities and the single best fitting property category (or categories):`);
     parts.push(`Property Name: ${entityName}`);
@@ -1508,11 +1514,12 @@ async function executeWithProvider(
   const userPrompt = buildUserPrompt(req);
 
   const effectiveSystemPrompt = req.action === 'scrape_reviews'
-    ? 'Extract authentic guest reviews for Malawi accommodation. Output valid JSON array only.'
+    ? 'You are an authentic web review extraction agent. Search the live web and extract ONLY real, verbatim traveler reviews publicly published on Google Maps, TripAdvisor, or Booking.com. Never fabricate or invent reviews. Output valid JSON array only.'
     : SYSTEM_PROMPT;
 
-  const targetMaxTokens = req.action === 'scrape_reviews' ? 1800 : (req.action === 'lookup_property' ? 2500 : 750);
-  const useSearch = req.action === 'lookup_property';
+  // Sized to allow extracting up to 10-15 detailed authentic reviews from live web search
+  const targetMaxTokens = req.action === 'scrape_reviews' ? 3500 : (req.action === 'lookup_property' ? 2500 : 750);
+  const useSearch = req.action === 'lookup_property' || req.action === 'scrape_reviews';
 
   const isJsonAction = req.action === 'suggest_amenities' || req.action === 'suggest_rooms' || req.action === 'scrape_reviews' || req.action === 'suggest_rate' || req.action === 'lookup_property' || req.action === 'link_description_to_amenities_and_category';
   const genOptions = {
@@ -1591,18 +1598,10 @@ async function executeWithProvider(
       structuredData = structuredData.filter((r: any) => !matchesExistingReview(r, req.details!.existingReviews!));
     }
 
-    // Auto-fallback: If scrape_reviews still could not be parsed into an array (or all were duplicates), generate curated reviews
+    // Never generate synthetic reviews: if no real reviews could be scraped, return an empty array
     if (req.action === 'scrape_reviews' && (!Array.isArray(structuredData) || structuredData.length === 0)) {
-      console.warn(`[scrape_reviews] Model output empty or duplicate-filtered. Generating curated reviews.`);
-      structuredData = generateCuratedMalawiReviews(
-        req.details?.name || 'This Property',
-        req.details?.location,
-        req.details?.category,
-        req.details?.count || 4,
-        req.details?.sentimentMode || 'balanced',
-        req.details?.targetSources,
-        req.details?.existingReviews
-      );
+      console.warn(`[scrape_reviews] Model output empty or duplicate-filtered. Returning empty list (no synthetic reviews).`);
+      structuredData = [];
     }
 
     // Comprehensive review normalization for scrape_reviews
@@ -1610,16 +1609,18 @@ async function executeWithProvider(
       const entityName = req.details?.name || 'Malawi Lodge';
       const entityLoc = req.details?.location || 'Malawi';
       const safeQuery = encodeURIComponent(`${entityName} ${entityLoc}`);
-      const fallbackDates = ['October 2024', 'January 2025', 'August 2024', 'November 2024', 'February 2025', 'September 2024'];
+      const fallbackDates = ['February 2025', 'January 2025', 'December 2024', 'November 2024', 'October 2024', 'September 2024', 'August 2024', 'July 2024', 'June 2024', 'May 2024'];
 
       structuredData = structuredData.map((r: any, idx: number) => {
         const comment = (r.comment || r.text || '').trim();
-        const rating = typeof r.rating === 'number' ? Math.min(Math.max(r.rating, 1), 5) : 5;
-        const source = (r.source || 'TripAdvisor').trim();
+        const rawRating = typeof r.rating === 'number' ? r.rating : (Number(r.rating) || 5);
+        const rating = rawRating > 5
+          ? Math.min(Math.max(Math.round(rawRating / 2), 1), 5)
+          : Math.min(Math.max(Math.round(rawRating), 1), 5);
+        const source = (r.source || 'Google Reviews').trim();
 
         const rawSourceUrl = typeof r.sourceUrl === 'string' ? r.sourceUrl.trim() : '';
         const sourceUrl = sanitizeReviewSourceUrl(rawSourceUrl, source, entityName, entityLoc, req.details?.targetUrl) || '';
-
 
         let dateStr = typeof r.date === 'string' && r.date.trim() && r.date.trim().toLowerCase() !== 'recent stay'
           ? r.date.trim()
@@ -1649,6 +1650,13 @@ async function executeWithProvider(
           sentiment,
           verified: typeof r.verified === 'boolean' ? r.verified : true,
         };
+      });
+
+      // Strictly sort by most recent date first
+      structuredData.sort((a: any, b: any) => {
+        const tsB = parseReviewDateToTimestamp(b.date, 0);
+        const tsA = parseReviewDateToTimestamp(a.date, 0);
+        return tsB - tsA;
       });
     }
   } else if (req.action === 'suggest_rate' || req.action === 'lookup_property' || req.action === 'link_description_to_amenities_and_category') {
@@ -1756,7 +1764,7 @@ export async function executeAIGeneration(
   for (const providerId of providers) {
     try {
       const result = await executeWithProvider(providerId, req, config);
-      if (req.action === 'scrape_reviews' && (!Array.isArray(result?.data) || result.data.length === 0)) {
+      if (req.action === 'scrape_reviews' && !Array.isArray(result?.data)) {
         throw new Error('Provider returned non-array review data');
       }
       return result;
@@ -3535,17 +3543,21 @@ export function generateCuratedMalawiReviews(
   let selected: any[] = [];
 
   if (sentimentMode === 'critical') {
-    selected = [...availableCrit, ...availablePos];
+    selected = [...availableCrit, ...availablePos, ...criticalLake, ...criticalSafari, ...criticalGeneral];
   } else if (sentimentMode === 'positive') {
-    selected = [...availablePos];
+    selected = [...availablePos, ...positiveLake, ...positiveSafari, ...positiveGeneral, ...guestBookReviews];
   } else {
     selected = [
-      availablePos[0],
-      availableCrit[0],
-      availablePos[1],
-      availableCrit[1] || availablePos[2],
-      ...availablePos.slice(2),
-      ...availableCrit.slice(2)
+      ...availablePos,
+      ...availableCrit,
+      ...backupCandidates,
+      ...positiveLake,
+      ...positiveSafari,
+      ...positiveGeneral,
+      ...criticalLake,
+      ...criticalSafari,
+      ...criticalGeneral,
+      ...guestBookReviews
     ].filter(Boolean);
   }
 
@@ -3559,13 +3571,22 @@ export function generateCuratedMalawiReviews(
     return true;
   });
 
-  const targetCount = Math.min(Math.max(count, 3), uniqueSelected.length);
-  return uniqueSelected.slice(0, targetCount).map((r, idx) => ({
+  const targetCount = Math.min(Math.max(count, 1), uniqueSelected.length);
+  const sliced = uniqueSelected.slice(0, targetCount).map((r, idx) => ({
     ...r,
     id: `curated-${Date.now()}-${idx}`,
     text: r.comment,
     verified: true,
   }));
+
+  // Sort strictly by most recent date first
+  sliced.sort((a, b) => {
+    const tsB = parseReviewDateToTimestamp(b.date, 0);
+    const tsA = parseReviewDateToTimestamp(a.date, 0);
+    return tsB - tsA;
+  });
+
+  return sliced;
 }
 
 // ============================================================================
@@ -4214,19 +4235,12 @@ export function handleCuratedActionFallback(req: GenerationRequest): GenerationR
       };
     }
     case 'scrape_reviews': {
-      const data = generateCuratedMalawiReviews(
-        details?.name || 'This Property',
-        details?.location,
-        details?.category,
-        details?.count || 4,
-        details?.sentimentMode || 'balanced',
-        details?.targetSources,
-        details?.existingReviews
-      );
+      // Return empty array rather than fabricating synthetic reviews
+      const data: any[] = [];
       return {
         text: JSON.stringify(data),
         provider: 'gemini',
-        model: 'malawi-curated',
+        model: 'none',
         data,
       };
     }
