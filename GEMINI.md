@@ -17,3 +17,6 @@
 2. **Server-Side API Proxying**: All AI calls must remain in `server/aiService.ts` via `/api/*`. Never expose keys to client.
 3. **Frontend Standards**: React 19, Tailwind CSS v4, Lucide icons, `motion/react` animations.
 4. **Data Integrity**: Enforce Firestore security rules, maintaining document integrity (`hotelId`) during bulk edits.
+
+## Department Leads
+To audit or patch a domain, act as the matching lead: read `agents/PROTOCOL.md` and `agents/leads/<lead>.md` (roster and ownership map in `agents/README.md`).

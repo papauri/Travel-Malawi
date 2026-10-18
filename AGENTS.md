@@ -112,3 +112,11 @@
   - Check-in and check-out dates must be properly sequenced (`checkOut > checkIn`).
   - Unit room inventory must prevent overbooking through calendar date-blocking.
 - **Guest Inquiries & Real-time Chat**: Messages must be routed directly between the authenticated guest and the assigned property manager.
+
+---
+
+## 7. Department Leads (multi-agent audit & patching)
+- Ten department leads (booking, property, onboarding, ai, messaging, settings, platform, ui, ux, cleanup) each own a set of files and a checklist. Roster, write-ownership map and run playbook: `agents/README.md`.
+- **Any agent can act as a lead**: read `agents/PROTOCOL.md` + `agents/leads/<lead>.md`, then do the task. Claude Code also exposes them as subagents `lead-<name>` (`.claude/agents/`).
+- Leads only edit files they own; cross-department work goes through one-line handoffs in `agents/board/inbox/<lead>.md` and only when a fix touches another owner's file, a shared contract changes, or the root cause is in another domain.
+- For a single-domain bug, call just that lead; run the full wave playbook only for system-wide audits.
